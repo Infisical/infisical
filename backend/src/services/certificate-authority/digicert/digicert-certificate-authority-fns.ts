@@ -32,13 +32,16 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
-import { createDigiCertApiClient, TDigiCertApiClient } from "./digicert-api-client";
+import {
+  DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS,
+  createDigiCertApiClient,
+  TDigiCertApiClient
+} from "./digicert-api-client";
 import {
   DIGICERT_FINAL_ISSUED_STATUSES,
   DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS,
   DigiCertOrderStatus,
-  DigiCertPollOutcome,
-  DigiCertRevocationRequestStatus
+  DigiCertPollOutcome
 } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose, DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
 import {
@@ -325,7 +328,7 @@ export const DigiCertCertificateAuthorityFns = ({
     return cas.map(castDbEntryToDigiCertCertificateAuthority);
   };
 
-  const $getActiveDigiCertCa = async (caId: string) => {
+  const $getActiveDigiCertCa = async (caId: string, clientOptions?: { requestTimeoutMs?: number }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
@@ -342,7 +345,7 @@ export const DigiCertCertificateAuthorityFns = ({
       kmsService
     );
 
-    return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
+    return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl, clientOptions) };
   };
 
   const $getOrderForCa = async (
@@ -652,9 +655,17 @@ export const DigiCertCertificateAuthorityFns = ({
     };
   };
 
-  const cancelReissue = async ({ caId, orderId }: { caId: string; orderId: number }): Promise<boolean> => {
+  const cancelReissue = async ({
+    caId,
+    orderId,
+    requestTimeoutMs
+  }: {
+    caId: string;
+    orderId: number;
+    requestTimeoutMs?: number;
+  }): Promise<boolean> => {
     try {
-      const { client } = await $getActiveDigiCertCa(caId);
+      const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs });
       await client.cancelOrderReissue(orderId, "Canceled from Infisical");
       logger.info(`DigiCert reissue canceled [caId=${caId}] [orderId=${orderId}]`);
       return true;
@@ -948,7 +959,9 @@ export const DigiCertCertificateAuthorityFns = ({
       appConnectionDAL,
       kmsService
     );
-    const client = createDigiCertApiClient(apiKey, baseUrl);
+    const client = createDigiCertApiClient(apiKey, baseUrl, {
+      requestTimeoutMs: DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS
+    });
 
     let digicertCertificateId = storedDigiCertCertificateId;
     if (!digicertCertificateId) {
@@ -967,16 +980,10 @@ export const DigiCertCertificateAuthorityFns = ({
 
     try {
       const comments = `Revoked via Infisical. Reason: ${reason}`;
-      const { requestStatus } = digicertCertificateId
-        ? await client.revokeCertificate(digicertCertificateId, comments)
-        : await client.revokeOrder(orderId, comments);
-      if (requestStatus === DigiCertRevocationRequestStatus.Rejected) {
-        throw new BadRequestError({ message: `DigiCert rejected the revocation of order ${orderId}.` });
-      }
-      if (requestStatus && requestStatus !== DigiCertRevocationRequestStatus.Approved) {
-        throw new BadRequestError({
-          message: `DigiCert is waiting for an administrator to approve the revocation of order ${orderId}. Approve it in CertCentral, then revoke again here. Use an API key with administrator access to revoke without approval.`
-        });
+      if (digicertCertificateId) {
+        await client.revokeCertificate(digicertCertificateId, comments);
+      } else {
+        await client.revokeOrder(orderId, comments);
       }
     } catch (err) {
       const message = (err as Error)?.message ?? "";

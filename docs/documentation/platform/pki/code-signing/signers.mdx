@@ -66,7 +66,7 @@ In **Certificate Manager → Code Signing → Signers**, select **Create Signer*
     | **Certificate Template** | ADCS CAs only, required. The AD CS template this Signer requests. Pick a code-signing template published on your CA. |
     | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. You can change it later; doing so reissues the certificate. |
     | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
-    | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |
+    | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. Auto-renewal works like **Renew Certificate**, so the Signer keeps signing while it runs. |
 
     <Note>
       Some CAs add extra fields on this step. Check your CA's documentation for any CA-specific options.
@@ -125,7 +125,7 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 | **Active** | Certificate issued and bound. Signing works, subject to the approval policy. |
 | **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry Issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
 | **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
-| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Renew it from the **Options** menu. A Signer without a CA can't renew, so create a new Signer. |
+| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Renew it from the **Options** menu. If the Signer has no CA, choose one in **Options → Edit Settings**. Saving issues a new certificate. |
 | **Revoked** | The certificate was revoked. Revocation is permanent, so create a new Signer to keep signing. |
 
 ## Edit a signer
@@ -174,8 +174,10 @@ Open the Signer and choose an action from the **Options** menu, or call the [Ren
 
 | Action | What happens |
 |--------|--------------|
-| **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. On DigiCert, this places a renewal order, or reissues into the current order if your account has no unused code signing subscription. Not available while the Signer is disabled or has a request in progress. |
-| **Revoke Certificate** | Revokes the certificate at the CA. This can't be undone, so create a new Signer to keep signing. On DigiCert, only this certificate is revoked, not the rest of its order, and DigiCert may hold the revocation until an administrator approves it in CertCentral unless the connection's API key has administrator access. Not available for Azure AD CS. |
+| **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. An Active Signer keeps signing with its current certificate until the new one is issued. On DigiCert, this places a renewal order. If your account has no unused code signing subscription, it reissues the current order instead, and DigiCert revokes the current certificate within 72 hours. If the renewal fails, the Signer keeps its certificate and shows a **Renewal Failed** badge with the reason. Not available while the Signer is disabled or has a request in progress. |
+| **Revoke Certificate** | Revokes the certificate at the CA, and the Signer stops signing right away. This can't be undone, so create a new Signer to keep signing. If a certificate request is in progress, revoking cancels it. If that request placed a new DigiCert order, the order stays open, so cancel it in CertCentral. On DigiCert, only this certificate is revoked, not the rest of its order. Depending on your CertCentral account's revocation policy, DigiCert may queue the revocation for administrator approval. Not available for Azure AD CS. |
+
+If you sign with `signtool` through the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp), the certificate file you pass with `/f` still holds the old certificate after a renewal. Once the Signer shows the new serial number, [save the certificate again](/documentation/platform/pki/code-signing/windows-ksp#sign-with-signtool) and replace the file on each signing machine. If the Signer's key is managed by Infisical rather than an HSM, the renewal also creates a new key, so `signtool` fails with the old file as soon as the new certificate is issued. If the renewal reissued a DigiCert order, replace the file within 72 hours, before DigiCert revokes the old certificate.
 
 ## Signing with a signer
 

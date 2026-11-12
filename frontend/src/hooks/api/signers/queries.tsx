@@ -96,7 +96,10 @@ export const useGetSigner = (signerId: string) => {
     },
     enabled: Boolean(signerId),
     refetchInterval: (query) =>
-      query.state.data?.status === SignerStatus.Pending ? SIGNER_DETAIL_POLL_MS : false
+      query.state.data?.status === SignerStatus.Pending ||
+      query.state.data?.pendingCertificateRequest
+        ? SIGNER_DETAIL_POLL_MS
+        : false
   });
 };
 

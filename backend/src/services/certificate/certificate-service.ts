@@ -38,7 +38,6 @@ import {
 import {
   CA_TYPE_LABEL,
   CertificateImportLinkageMap,
-  DigiCertExternalMetadataSchema,
   TDigiCertExternalMetadata,
   TImportExternalMetadata
 } from "@app/services/certificate-common/external-metadata-schemas";
@@ -174,7 +173,7 @@ type TCertificateServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "find">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
-  signerDAL: Pick<TSignerDALFactory, "findOne" | "findOneByCertificateOrDigiCertOrder">;
+  signerDAL: Pick<TSignerDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -742,7 +741,7 @@ export const certificateServiceFactory = ({
     await certificateDAL.transaction(async (tx) => {
       const lockedCert = await certificateDAL.findByIdForUpdate(revokedCertId, tx);
       if (lockedCert?.status === CertStatus.REVOKED) {
-        throw new BadRequestError({ message: "Certificate has already been revoked" });
+        throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
       }
       await certificateDAL.update(
         {
@@ -900,19 +899,12 @@ export const certificateServiceFactory = ({
     });
 
     if (cert.status === CertStatus.REVOKED) {
-      throw new BadRequestError({ message: "Certificate has already been revoked" });
+      throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
     }
-    const digicertMetadata = DigiCertExternalMetadataSchema.safeParse(cert.externalMetadata);
-    const signerUsingCertificate = await signerDAL.findOneByCertificateOrDigiCertOrder({
-      certificateId: cert.id,
-      caId: cert.caId ?? null,
-      digicertOrderId: digicertMetadata.success ? digicertMetadata.data.orderId : undefined
-    });
+    const signerUsingCertificate = await signerDAL.findOne({ certificateId: cert.id });
     if (signerUsingCertificate) {
       throw new BadRequestError({
-        message: digicertMetadata.success
-          ? "This certificate, or another certificate on the same DigiCert order, is in use by a code signing signer. Revoke it from the signer instead."
-          : "This certificate is in use by a code signing signer. Revoke it from the signer instead."
+        message: "This certificate is in use by a code signing signer. Revoke it from the signer instead."
       });
     }
 

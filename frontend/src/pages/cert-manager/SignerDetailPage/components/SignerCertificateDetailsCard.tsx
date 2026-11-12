@@ -14,7 +14,12 @@ import {
   Empty,
   EmptyTitle
 } from "@app/components/v3";
-import { CertKeySource, certKeySourceLabels, TSigner } from "@app/hooks/api/signers";
+import {
+  CertKeySource,
+  certKeySourceLabels,
+  getNextDigicertOrderId,
+  TSigner
+} from "@app/hooks/api/signers";
 
 const NotSet = () => <span className="text-muted">—</span>;
 
@@ -22,8 +27,19 @@ type Props = {
   signer: TSigner;
 };
 
+const OrderIdDetail = ({ label, orderId }: { label: string; orderId: string }) => (
+  <Detail>
+    <DetailLabel>{label}</DetailLabel>
+    <DetailValue className="flex items-start gap-2 font-mono">
+      <span className="break-all">{orderId}</span>
+      <CopyButton className="shrink-0" value={orderId} ariaLabel={`Copy ${label}`} />
+    </DetailValue>
+  </Detail>
+);
+
 export const SignerCertificateDetailsCard = ({ signer }: Props) => {
   const orderId = signer.externalOrder ? String(signer.externalOrder.orderId) : null;
+  const nextOrderId = getNextDigicertOrderId(signer);
   const hasDetails = Boolean(signer.certificateId || orderId || signer.certificateHsmKeyLabel);
 
   return (
@@ -92,18 +108,9 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
                 </DetailValue>
               </Detail>
             )}
-            {orderId && (
-              <Detail>
-                <DetailLabel>DigiCert Order ID</DetailLabel>
-                <DetailValue className="flex items-start gap-2 font-mono">
-                  <span className="break-all">{orderId}</span>
-                  <CopyButton
-                    className="shrink-0"
-                    value={orderId}
-                    ariaLabel="Copy DigiCert order ID"
-                  />
-                </DetailValue>
-              </Detail>
+            {orderId && <OrderIdDetail label="DigiCert Order ID" orderId={orderId} />}
+            {nextOrderId && (
+              <OrderIdDetail label="Next DigiCert Order ID" orderId={String(nextOrderId)} />
             )}
           </DetailGroup>
         ) : (

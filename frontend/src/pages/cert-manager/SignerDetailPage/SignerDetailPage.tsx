@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { ReactElement, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   BanIcon,
   CheckCircleIcon,
   ChevronLeftIcon,
+  ClockIcon,
   CopyIcon,
   DownloadIcon,
   MoreVerticalIcon,
@@ -62,7 +63,9 @@ import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
+  getNextDigicertOrderId,
   getSignerStatusBadgeVariant,
+  hasFailedRenewal,
   SignerStatus,
   signerStatusLabels,
   useCheckSignerIssuance,
@@ -84,6 +87,26 @@ import { SignerMembersTab } from "./components/SignerMembersTab";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
 
 type Tab = "overview" | "approvals" | "members";
+
+const BadgeWithTooltip = ({
+  tooltip,
+  children
+}: {
+  tooltip: string | null;
+  children: ReactElement;
+}) => {
+  if (!tooltip) return children;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-help">{children}</span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[260px] text-pretty break-words">{tooltip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 export const SignerDetailPage = () => {
   const { currentOrg } = useOrganization();
@@ -147,26 +170,48 @@ export const SignerDetailPage = () => {
 
   const hasLiveCertificate =
     Boolean(signer.certificateId) && signer.certificateStatus !== CertStatus.REVOKED;
+  const hasPendingCertificateRequest =
+    signer.status === SignerStatus.Pending || Boolean(signer.pendingCertificateRequest);
   const canRenewCertificate =
     hasLiveCertificate &&
     Boolean(signer.caId) &&
-    signer.status !== SignerStatus.Pending &&
+    !hasPendingCertificateRequest &&
     signer.status !== SignerStatus.Disabled &&
     signer.status !== SignerStatus.Revoked;
   const canRevokeCertificate =
     hasLiveCertificate &&
-    signer.status !== SignerStatus.Pending &&
     Boolean(signerCaType) &&
     caSupportsCapability(signerCaType as CaType, CaCapability.REVOKE_CERTIFICATES);
 
+  const pendingExternalOrder =
+    signer.pendingCertificateRequest?.externalOrder ??
+    (signer.certificateId ? null : signer.externalOrder);
   let statusTooltip: string | null = null;
   if (signer.status === SignerStatus.Revoked) {
     statusTooltip = "Create a new signer to keep signing.";
   } else if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
     statusTooltip = signer.certificateFailureReason;
-  } else if (signer.status === SignerStatus.Pending && signer.externalOrder) {
-    statusTooltip = `DigiCert order #${signer.externalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
+  } else if (signer.status === SignerStatus.Pending && pendingExternalOrder) {
+    statusTooltip = `DigiCert order #${pendingExternalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
   }
+
+  const showsRenewalBadge =
+    signer.status !== SignerStatus.Pending && signer.status !== SignerStatus.Revoked;
+  const signsUntilRenewed = signer.status === SignerStatus.Active;
+  let renewalTooltip: string | null = null;
+  let isRenewalFailed = false;
+  if (showsRenewalBadge && signer.pendingCertificateRequest) {
+    const keepsSigning = signsUntilRenewed
+      ? " The signer keeps signing with its current certificate until the new one is issued."
+      : "";
+    renewalTooltip = pendingExternalOrder
+      ? `DigiCert order #${pendingExternalOrder.orderId} is awaiting approval.${keepsSigning}`
+      : `A new certificate is being issued.${keepsSigning}`;
+  } else if (hasFailedRenewal(signer)) {
+    isRenewalFailed = true;
+    renewalTooltip = `${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer keeps its current certificate. Renew it again once the cause is fixed.`;
+  }
+  const nextDigicertOrderId = getNextDigicertOrderId(signer);
 
   return (
     <>
@@ -190,25 +235,25 @@ export const SignerDetailPage = () => {
                 <span className="inline-flex items-center gap-x-2 align-middle">
                   {signer.name}
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
-                  {statusTooltip ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-help">
-                            <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                              {signerStatusLabels[signer.status] ?? signer.status}
-                            </Badge>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-[260px] text-pretty break-words">
-                          {statusTooltip}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
+                  <BadgeWithTooltip tooltip={statusTooltip}>
                     <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
                       {signerStatusLabels[signer.status] ?? signer.status}
                     </Badge>
+                  </BadgeWithTooltip>
+                  {renewalTooltip && (
+                    <BadgeWithTooltip tooltip={renewalTooltip}>
+                      {isRenewalFailed ? (
+                        <Badge variant="warning">
+                          <AlertTriangleIcon />
+                          Renewal Failed
+                        </Badge>
+                      ) : (
+                        <Badge variant="info">
+                          <ClockIcon />
+                          Renewal in Progress
+                        </Badge>
+                      )}
+                    </BadgeWithTooltip>
                   )}
                 </span>
               }
@@ -260,7 +305,7 @@ export const SignerDetailPage = () => {
                       Enable Signer
                     </DropdownMenuItem>
                   ) : null}
-                  {signer.status === SignerStatus.Pending && (
+                  {hasPendingCertificateRequest && (
                     <DropdownMenuItem
                       onClick={() => checkSignerIssuance.mutate(signer.id)}
                       isDisabled={
@@ -394,11 +439,14 @@ export const SignerDetailPage = () => {
             </AlertDialogMedia>
             <AlertDialogTitle>Renew Certificate for &apos;{signer.name}&apos;?</AlertDialogTitle>
             <AlertDialogDescription>
-              A new certificate is requested from the signer&apos;s certificate authority. The
-              signer switches to it once it&apos;s issued.
+              A new certificate is requested from the signer&apos;s certificate authority.
+              {signsUntilRenewed &&
+                " The signer keeps signing with its current certificate and switches to the new one once it's issued."}
               {isDigicertSigner && (
                 <span className="mt-2 block font-medium text-warning">
-                  This places a renewal order on DigiCert.
+                  This places a renewal order on DigiCert. If your account has no unused code
+                  signing subscription, it reissues the current order instead, and DigiCert revokes
+                  the current certificate within 72 hours.
                 </span>
               )}
             </AlertDialogDescription>
@@ -430,8 +478,10 @@ export const SignerDetailPage = () => {
               history. The certificate is preserved for audit but signing will stop immediately.
               {isDigicertSigner && (
                 <span className="mt-2 block font-medium text-warning">
-                  This also revokes the certificate&apos;s DigiCert order, so the certificate can no
-                  longer be used to sign anywhere.
+                  This also revokes the certificate on DigiCert, so it can no longer be used to sign
+                  anywhere. Other certificates on the same order stay valid.
+                  {nextDigicertOrderId &&
+                    ` DigiCert order #${nextDigicertOrderId} stays open, so cancel it in CertCentral.`}
                 </span>
               )}
             </AlertDialogDescription>

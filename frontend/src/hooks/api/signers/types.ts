@@ -180,6 +180,12 @@ export const signingAlgorithmLabels: Record<SigningAlgorithm, string> = {
   [SigningAlgorithm.ML_DSA_87]: "ML-DSA-87"
 };
 
+export type TSignerExternalOrder = {
+  provider: string;
+  orderId: number;
+  status?: string | null;
+};
+
 export type TSigner = {
   id: string;
   projectId: string;
@@ -207,12 +213,22 @@ export type TSigner = {
   certificateCaId?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
-  externalOrder?: {
-    provider: string;
-    orderId: number;
-    status?: string | null;
-  } | null;
+  externalOrder?: TSignerExternalOrder | null;
+  pendingCertificateRequest?: { externalOrder: TSignerExternalOrder | null } | null;
 };
+
+export const getNextDigicertOrderId = (signer: TSigner) => {
+  const nextOrderId = signer.pendingCertificateRequest?.externalOrder?.orderId;
+  return signer.certificateId && nextOrderId && nextOrderId !== signer.externalOrder?.orderId
+    ? nextOrderId
+    : null;
+};
+
+export const hasFailedRenewal = (signer: TSigner) =>
+  Boolean(signer.certificateFailureReason) &&
+  signer.status !== SignerStatus.Failed &&
+  signer.status !== SignerStatus.Pending &&
+  signer.status !== SignerStatus.Revoked;
 
 export enum SigningActorType {
   User = "user",

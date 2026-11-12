@@ -42,6 +42,7 @@ import {
 import { getInstancePinningLink } from "@app/helpers/project";
 import {
   getSignerStatusBadgeVariant,
+  hasFailedRenewal,
   SIGNER_TABLE_PAGE_SIZE,
   SignerStatus,
   signerStatusLabels,
@@ -182,9 +183,30 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                          {signerStatusLabels[signer.status] ?? signer.status}
-                        </Badge>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
+                            {signerStatusLabels[signer.status] ?? signer.status}
+                          </Badge>
+                          {hasFailedRenewal(signer) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">
+                                  <Badge variant="warning">
+                                    <AlertTriangleIcon />
+                                    Renewal Failed
+                                  </Badge>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                align="start"
+                                className="max-w-[320px] text-pretty break-words"
+                              >
+                                {signer.certificateFailureReason}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>

@@ -19,6 +19,10 @@ import {
   SignerKeyAlgorithm
 } from "./schemas";
 
+const PERMANENT_REVOCATION_REASONS = Object.values(CrlReason).filter(
+  (reason) => reason !== CrlReason.CERTIFICATE_HOLD
+) as [CrlReason, ...CrlReason[]];
+
 export const registerSignerCertificateRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -149,12 +153,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       description: "Revoke the signer's certificate. This can't be undone. Create a new signer to keep signing.",
       params: SignerIdParamsSchema,
       body: z.object({
-        revocationReason: z
-          .nativeEnum(CrlReason)
-          .refine((reason) => reason !== CrlReason.CERTIFICATE_HOLD, {
-            message: "Certificate Hold is a temporary revocation, and revoking a signer's certificate is permanent."
-          })
-          .describe(CERTIFICATES.REVOKE.revocationReason)
+        revocationReason: z.enum(PERMANENT_REVOCATION_REASONS).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
       response: { 200: PkiSignersSchema }
     },

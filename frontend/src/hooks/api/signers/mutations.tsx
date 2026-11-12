@@ -1,8 +1,10 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests/queries";
+import { certKeys } from "@app/hooks/api/certificates/queries";
+import { projectKeys } from "@app/hooks/api/projects";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 
 import { signerKeys } from "./queries";
@@ -34,6 +36,17 @@ import {
   TUpdateSignerPolicyDTO,
   TUpdateSignerUserRoleDTO
 } from "./types";
+
+const invalidateInventoryCertificates = (
+  queryClient: QueryClient,
+  certificateId?: string | null
+) => {
+  if (certificateId) {
+    queryClient.invalidateQueries({ queryKey: certKeys.getCertificateById(certificateId) });
+  }
+  queryClient.invalidateQueries({ queryKey: projectKeys.allProjectCertificates() });
+  queryClient.invalidateQueries({ queryKey: ["cert-dashboard-stats"] });
+};
 
 export const useCreateSigner = () => {
   const queryClient = useQueryClient();
@@ -153,13 +166,17 @@ export const useRenewSignerCertificate = () => {
       return data;
     },
     onSuccess: (signer) => {
+      const previousCertificateId = queryClient.getQueryData<TSigner>(
+        signerKeys.byId(signer.id)
+      )?.certificateId;
       queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
+      invalidateInventoryCertificates(queryClient, signer.certificateId);
       createNotification({
         text:
-          signer.status === SignerStatus.Pending
-            ? "Certificate renewal scheduled"
+          signer.certificateId === previousCertificateId
+            ? "Certificate renewal requested. The signer keeps signing with its current certificate until the new one is issued."
             : "Certificate renewed",
         type: "success"
       });
@@ -180,6 +197,7 @@ export const useRevokeSignerCertificate = () => {
     },
     onSuccess: (signer) => {
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
+      invalidateInventoryCertificates(queryClient, signer.certificateId);
       createNotification({ text: "Certificate revoked", type: "success" });
     },
     onSettled: (_, __, { signerId }) => {
@@ -235,11 +253,15 @@ export const useCheckSignerIssuance = () => {
       queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
-      const stillPending = signer.status === SignerStatus.Pending;
+      const stillPending =
+        signer.status === SignerStatus.Pending || Boolean(signer.pendingCertificateRequest);
+      const pendingOrder =
+        signer.pendingCertificateRequest?.externalOrder ??
+        (signer.certificateId ? null : signer.externalOrder);
       let text = "Issuance status updated";
       if (stillPending) {
-        text = signer.externalOrder
-          ? `Still pending. DigiCert order #${signer.externalOrder.orderId} is awaiting approval in DigiCert.`
+        text = pendingOrder
+          ? `Still pending. DigiCert order #${pendingOrder.orderId} is awaiting approval in DigiCert.`
           : "Issuance still pending. Checked just now.";
       }
       createNotification({

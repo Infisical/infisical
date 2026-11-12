@@ -20,6 +20,12 @@ import {
   SignerKeyAlgorithm
 } from "./schemas";
 
+const ExternalOrderResponseSchema = z.object({
+  provider: z.string(),
+  orderId: z.number(),
+  status: z.string().nullable()
+});
+
 const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateCommonName: z.string().nullable().optional(),
   certificateSerialNumber: z.string().nullable().optional(),
@@ -32,14 +38,8 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
   approvalPolicyName: z.string().nullable().optional(),
-  externalOrder: z
-    .object({
-      provider: z.string(),
-      orderId: z.number(),
-      status: z.string().nullable()
-    })
-    .nullable()
-    .optional()
+  externalOrder: ExternalOrderResponseSchema.nullable().optional(),
+  pendingCertificateRequest: z.object({ externalOrder: ExternalOrderResponseSchema.nullable() }).nullable().optional()
 });
 
 export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) => {
