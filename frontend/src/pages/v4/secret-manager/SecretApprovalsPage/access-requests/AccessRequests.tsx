@@ -250,7 +250,7 @@ export const AccessRequests = ({
           delegatedName: delegatedName(request)
         });
         const statusText = (
-          <StatusText tone={display.tone} icon={display.icon}>
+          <StatusText tone={display.tone} icon={display.icon} loading={display.loading}>
             {display.label}
           </StatusText>
         );

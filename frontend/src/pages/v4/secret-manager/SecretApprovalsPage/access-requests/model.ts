@@ -15,6 +15,7 @@ export type RequestDisplay = {
   label: string;
   tone: "neutral" | "ok" | "warn" | "bad";
   icon: IconName;
+  loading?: boolean;
   tooltip?: string;
 };
 
@@ -96,7 +97,7 @@ export const displayOf = ({
       tooltip: `Rejected ${stamp(request.updatedAt)}`
     };
   if (state === "policy-deleted") return { label: "Policy deleted", tone: "bad", icon: "alert" };
-  if (isRetrying) return { label: "Retrying", tone: "neutral", icon: "sync" };
+  if (isRetrying) return { label: "Retrying", tone: "neutral", icon: "sync", loading: true };
   if (request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch)
     return {
       label: "Not submitted",
@@ -106,7 +107,7 @@ export const displayOf = ({
     };
   if (request.delegatedApproval) {
     if (request.delegatedApproval.status === DelegatedApprovalRequestStatus.PendingDispatch)
-      return { label: "Submitting", tone: "neutral", icon: "sync" };
+      return { label: "Submitting", tone: "neutral", icon: "sync", loading: true };
     return {
       label: delegatedName ? `Pending in ${delegatedName}` : "Pending external review",
       tone: "warn",

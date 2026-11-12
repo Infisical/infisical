@@ -223,17 +223,6 @@ export const secretsChangeRequestsDemo: SecretsChangeRequestsAdapter = {
       return { data, isPending: false, isError: !data, error: null, refetch: () => undefined };
     });
   },
-  useApprovalPolicies: ({ projectId, enabled }) => {
-    const policies = [
-      ...new Map(useApprovals(projectId).map(({ policy }) => [policy.id, policy])).values()
-    ];
-    return {
-      data: enabled ? policies.map(({ bypassers: _bypassers, ...rest }) => rest) : undefined,
-      isPending: false,
-      isSuccess: enabled,
-      error: null
-    } as ReturnType<SecretsChangeRequestsAdapter["useApprovalPolicies"]>;
-  },
   useSecretImports: ({ projectId, environment, path, enabled }) => {
     const { imports } = useStore().use();
     return {

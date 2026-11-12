@@ -1,4 +1,3 @@
-import { useGetSecretApprovalPolicies } from "@app/hooks/api/secretApproval/queries";
 import {
   useBulkActOnSecretApprovalRequests,
   usePerformSecretApprovalRequestMerge,
@@ -20,8 +19,6 @@ export const secretsChangeRequestsLive: SecretsChangeRequestsAdapter = {
   useApprovalRequestCount: useGetSecretApprovalRequestCount,
   useApprovalRequestDetails: useGetSecretApprovalRequestDetails,
   useApprovalRequestDetailsList: (ids) => useGetSecretApprovalRequestDetailsList({ ids }),
-  useApprovalPolicies: ({ projectId, enabled }) =>
-    useGetSecretApprovalPolicies({ projectId, options: { enabled } }),
   useSecretImports: ({ projectId, environment, path, enabled }) =>
     useGetSecretImports({ projectId, environment, path, options: { enabled } }),
   useReviewApprovalRequest: useUpdateSecretApprovalReviewStatus,
