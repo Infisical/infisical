@@ -39,11 +39,12 @@ export async function down(knex: Knex): Promise<void> {
     knex,
     `"sessionId" IS NULL OR ("memberProvidedFields" IS NULL AND "credentialType" <> 'oauth' AND "allowedTools" IS NULL)`,
     async (trx) => {
+      const now = new Date();
       const sessionIds = trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools").distinct("sessionId");
       await trx(TableName.AgentVaultSession)
         .whereIn("id", sessionIds)
         .whereNull("revokedAt")
-        .update({ revokedAt: trx.fn.now() });
+        .update({ revokedAt: now });
 
       const serviceIds = trx(SERVICE).whereIn("sessionId", sessionIds).whereNull("secretsDeletedAt").select("id");
       await trx(TableName.AgentVaultServiceCustomHeader)
@@ -55,7 +56,7 @@ export async function down(knex: Knex): Promise<void> {
       await trx(SERVICE)
         .whereIn("sessionId", sessionIds)
         .whereNull("secretsDeletedAt")
-        .update({ encryptedCredential: null, secretsDeletedAt: trx.fn.now() });
+        .update({ encryptedCredential: null, secretsDeletedAt: now });
 
       await trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools").update({ allowedTools: null });
     }
