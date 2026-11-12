@@ -519,12 +519,15 @@ export const signerIssuanceServiceFactory = ({
     // owns), so the issued cert is the source of truth for the common name.
     const issuedCert = await certificateDAL.findById(certificateId);
     let isSuperseded = false;
+    let isSupersededByRevokeOrDelete = false;
     let isRefusedForRevokedSigner = false;
     try {
       await signerDAL.transaction(async (tx) => {
         const completedJob = await signerIssuanceJobDAL.completeIfPending(job.id, certificateId, tx);
         if (!completedJob) {
           isSuperseded = true;
+          const currentSigner = await signerDAL.findById(job.signerId, tx);
+          isSupersededByRevokeOrDelete = !currentSigner || currentSigner.status === SignerStatus.Revoked;
           return;
         }
         const lockedSigner = await signerDAL.findByIdForUpdate(job.signerId, tx);
@@ -591,6 +594,7 @@ export const signerIssuanceServiceFactory = ({
       return;
     }
     if (isSuperseded) {
+      if (isSupersededByRevokeOrDelete) await revokeUnattachedCertificate(certificateId, projectId);
       logger.info(
         `signer issuance: job was superseded before completion, certificate not attached [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
       );

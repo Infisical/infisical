@@ -81,7 +81,9 @@ export const useListSigners = (dto: TListSignersDTO) => {
     enabled: Boolean(dto.projectId),
     placeholderData: (previousData) => previousData,
     refetchInterval: (query) =>
-      query.state.data?.signers?.some((s) => s.status === SignerStatus.Pending)
+      query.state.data?.signers?.some(
+        (s) => s.status === SignerStatus.Pending || s.hasOpenCertificateRequest
+      )
         ? SIGNER_LIST_POLL_MS
         : false
   });

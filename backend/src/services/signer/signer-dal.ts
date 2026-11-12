@@ -6,7 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-import { SignerStatus } from "./signer-enums";
+import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
 
 export type TSignerWithCertificate = TPkiSigners & {
   certificateCommonName: string | null;
@@ -29,6 +29,7 @@ export type TSignerWithCertificateSummary = TPkiSigners & {
   certificateNotAfter: Date | null;
   certificateStatus: string | null;
   approvalPolicyName: string | null;
+  hasOpenCertificateRequest: boolean;
 };
 
 export type TSignerDALFactory = ReturnType<typeof signerDALFactory>;
@@ -98,7 +99,17 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
-          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
+          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName"),
+          db.raw(`exists (select 1 from ?? where ??.?? = ??.?? and ??.?? = ?) as "hasOpenCertificateRequest"`, [
+            TableName.PkiSignerCertificateIssuanceJobs,
+            TableName.PkiSignerCertificateIssuanceJobs,
+            "signerId",
+            TableName.PkiSigners,
+            "id",
+            TableName.PkiSignerCertificateIssuanceJobs,
+            "status",
+            SignerIssuanceJobStatus.Pending
+          ])
         )
         .where(`${TableName.PkiSigners}.projectId`, projectId);
 

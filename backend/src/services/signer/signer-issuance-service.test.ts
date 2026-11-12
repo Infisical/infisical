@@ -156,6 +156,46 @@ describe("signerIssuanceService attaching an issued certificate", () => {
     });
   });
 
+  it("revokes a certificate that comes back after a revoke already cancelled its job", async () => {
+    const { service, deps } = buildService({ signerStatus: SignerStatus.Revoked });
+    deps.signerIssuanceJobDAL.completeIfPending.mockResolvedValue(null);
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.signerDAL.updateById).not.toHaveBeenCalledWith(
+      SIGNER_ID,
+      expect.objectContaining({ certificateId: NEW_CERT_ID }),
+      expect.anything()
+    );
+    expect(deps.certificateService.revokeOwnedCertificate).toHaveBeenCalledWith({
+      certificateId: NEW_CERT_ID,
+      revocationReason: CrlReason.CESSATION_OF_OPERATION,
+      orgId: ORG_ID
+    });
+  });
+
+  it("revokes a certificate that comes back after its signer was deleted", async () => {
+    const { service, deps } = buildService({ signerStatus: SignerStatus.Active });
+    deps.signerIssuanceJobDAL.completeIfPending.mockResolvedValue(null);
+    const signer = await deps.signerDAL.findById(SIGNER_ID);
+    deps.signerDAL.findById.mockImplementation(async (_id: string, trx?: Knex) => (trx ? undefined : signer));
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.certificateService.revokeOwnedCertificate).toHaveBeenCalledWith(
+      expect.objectContaining({ certificateId: NEW_CERT_ID })
+    );
+  });
+
+  it("leaves the certificate alone when another request superseded the job on a signer that is still in use", async () => {
+    const { service, deps } = buildService({ signerStatus: SignerStatus.Active });
+    deps.signerIssuanceJobDAL.completeIfPending.mockResolvedValue(null);
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.certificateService.revokeOwnedCertificate).not.toHaveBeenCalled();
+  });
+
   it("attaches the certificate and makes a renewing signer Active when it is not revoked", async () => {
     const { service, deps } = buildService({ signerStatus: SignerStatus.Active });
 

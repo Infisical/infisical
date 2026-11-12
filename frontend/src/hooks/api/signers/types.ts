@@ -215,6 +215,7 @@ export type TSigner = {
   certificateFailureReason?: string | null;
   externalOrder?: TSignerExternalOrder | null;
   pendingCertificateRequest?: { externalOrder: TSignerExternalOrder | null } | null;
+  hasOpenCertificateRequest?: boolean;
 };
 
 export const getNextDigicertOrderId = (signer: TSigner) => {

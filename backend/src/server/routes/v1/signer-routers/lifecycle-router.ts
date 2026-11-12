@@ -151,7 +151,8 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
               certificateCommonName: z.string().nullable().optional(),
               certificateSerialNumber: z.string().nullable().optional(),
               certificateNotAfter: z.date().nullable().optional(),
-              approvalPolicyName: z.string().nullable().optional()
+              approvalPolicyName: z.string().nullable().optional(),
+              hasOpenCertificateRequest: z.boolean()
             })
           ),
           totalCount: z.number()
