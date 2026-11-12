@@ -42,6 +42,7 @@ import { useOrganization, useProject } from "@app/context";
 import type { TCertificatePemSummary } from "@app/helpers/certificatePem";
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
 import { useImportCertificate, useImportPkcs12Entries } from "@app/hooks/api";
+import { CaType } from "@app/hooks/api/ca/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWizardSteps } from "@app/hooks/useWizardSteps";
 
@@ -77,7 +78,7 @@ type ImportStepKey = (typeof STEP_KEYS)[number];
 
 const STEP_FIELDS: Record<ImportStepKey, string[]> = {
   source: ["certificatePem", "chainPem", "privateKeyPem"],
-  profile: ["profileId", "providerReference"],
+  profile: ["profileId", "providerReference", "csr"],
   review: []
 };
 
@@ -301,7 +302,13 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(certificateImportSchema),
-    defaultValues: { certificatePem: "", chainPem: "", privateKeyPem: "", providerReference: "" }
+    defaultValues: {
+      certificatePem: "",
+      chainPem: "",
+      privateKeyPem: "",
+      csr: "",
+      providerReference: ""
+    }
   });
 
   const { profileOptions, isProfilesLoading } = useCertificateImportProfiles(applicationId);
@@ -311,6 +318,14 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
   const { reference } = referenceSource;
 
   const isKeystore = format === ImportFormat.Keystore;
+  const privateKeyPem = useWatch({ control, name: "privateKeyPem" });
+  // A CSR only matters when a CA-backed profile will renew the certificate without its private key, and
+  // AWS Certificate Manager can't issue from one.
+  const isCsrApplicable =
+    !isKeystore &&
+    Boolean(selectedProfile?.caId) &&
+    selectedProfile?.caType !== CaType.AWS_ACM_PUBLIC_CA &&
+    !privateKeyPem?.trim();
 
   const selectableEntries = useMemo(
     () => (entries ?? []).filter((entry) => !importedFingerprints.has(entry.fingerprintSha256)),
@@ -422,6 +437,7 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
       certificatePem: "",
       chainPem: "",
       privateKeyPem: "",
+      csr: "",
       profileId: undefined,
       linkedCaType: undefined,
       providerReference: ""
@@ -466,6 +482,7 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
     setPemError(null);
     const trimmedPrivateKey = values.privateKeyPem?.trim();
     const trimmedChain = values.chainPem?.trim();
+    const trimmedCsr = isCsrApplicable ? values.csr?.trim() : undefined;
     const linkage = getCertificateImportReference(values.linkedCaType);
     const externalMetadata =
       linkage && values.providerReference ? linkage.parse(values.providerReference) : undefined;
@@ -475,6 +492,7 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
         certificatePem: values.certificatePem,
         ...(trimmedPrivateKey ? { privateKeyPem: trimmedPrivateKey } : {}),
         ...(trimmedChain ? { chainPem: trimmedChain } : {}),
+        ...(trimmedCsr ? { csr: trimmedCsr } : {}),
         ...(values.profileId ? { profileId: values.profileId } : {}),
         ...(externalMetadata ? { externalMetadata } : {}),
         applicationId
@@ -756,6 +774,27 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
                   onChange={field.onChange}
                 />
                 <FieldDescription>{reference.description}</FieldDescription>
+                {error && <FieldError>{error.message}</FieldError>}
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+
+      {isCsrApplicable && (
+        <Controller
+          control={control}
+          name="csr"
+          render={({ field, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel>Certificate Signing Request PEM (optional)</FieldLabel>
+              <FieldContent>
+                <TextArea {...field} />
+                <FieldDescription>
+                  The CSR generated from this certificate&apos;s private key. Infisical uses it to
+                  renew on the same key pair, including auto-renewal, without holding the private
+                  key.
+                </FieldDescription>
                 {error && <FieldError>{error.message}</FieldError>}
               </FieldContent>
             </Field>

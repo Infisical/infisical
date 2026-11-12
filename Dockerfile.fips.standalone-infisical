@@ -2,7 +2,7 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 
-ARG INFISICAL_CLI_VERSION=0.44.12
+ARG INFISICAL_CLI_VERSION=0.45.4
 
 FROM node:26.12.1-trixie-slim AS base
 
@@ -204,6 +204,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libc-bin=2.41-12+deb13u4 \
     libssl3t64=3.5.7-1~deb13u3 \
     dpkg=1.22.22 \
+    apt=3.0.4 \
+    libapt-pkg7.0=3.0.4 \
     libcap2 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
     libngtcp2-16=1.11.0-1+deb13u1 \
@@ -221,6 +223,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsystemd0=257.13-1~deb13u1 \
     libudev1=257.13-1~deb13u1 \
     sed=4.9-2+deb13u1 \
+    zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
@@ -239,6 +242,7 @@ RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-li
 
 WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
+    && echo "a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539  openssl-3.1.2.tar.gz" | sha256sum -c - \
     && tar -xf openssl-3.1.2.tar.gz \
     && cd openssl-3.1.2 \
     && ./Configure enable-fips \
@@ -249,13 +253,13 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Build OpenSSL 3.5.6 for PQC (ML-DSA / SLH-DSA) certificate support.
+# Build OpenSSL 3.5.9 for PQC (ML-DSA / SLH-DSA) certificate support.
 # Installed to /opt/openssl-pqc so it does not conflict with the FIPS OpenSSL above.
 WORKDIR /tmp/openssl-pqc-build
-RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
-    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
-    && tar -xf openssl-3.5.6.tar.gz \
-    && cd openssl-3.5.6 \
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz \
+    && echo "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a  openssl-3.5.9.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.5.9.tar.gz \
+    && cd openssl-3.5.9 \
     && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
     && make -j"$(nproc)" \
     && make install_sw \

@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
 import {
   ChevronDownIcon,
@@ -77,7 +77,8 @@ export const SecretInput = <TName extends SecretName>({
   hasStoredSecret,
   canBeCleared,
   storedKeys,
-  canInsertVariable
+  canInsertVariable,
+  allowsVariables = true
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
@@ -95,6 +96,8 @@ export const SecretInput = <TName extends SecretName>({
   storedKeys?: string[];
   /** Joins a chevron button to the input that opens the variable list, for readers who would not know to type {{. */
   canInsertVariable?: boolean;
+  /** Off for a field the API takes only as typed, so typing {{ opens no variable list. */
+  allowsVariables?: boolean;
 }) => {
   const { setFocus } = useFormContext<TServiceForm>();
   const [isVisible, setIsVisible] = useState(false);
@@ -173,11 +176,13 @@ export const SecretInput = <TName extends SecretName>({
                 }}
                 aria-label={ariaLabel}
                 aria-describedby={hasStoredKeys && isStoredValueKept ? descriptionId : undefined}
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={autocomplete.isOpen}
-                aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
-                aria-activedescendant={autocomplete.activeOptionId}
+                {...(allowsVariables && {
+                  role: "combobox",
+                  "aria-autocomplete": "list" as const,
+                  "aria-expanded": autocomplete.isOpen,
+                  "aria-controls": autocomplete.isOpen ? autocomplete.listId : undefined,
+                  "aria-activedescendant": autocomplete.activeOptionId
+                })}
                 // Not type="password": that opens the browser's and password managers' autofill menus over
                 // the variable list, so the field is masked in CSS and each manager is told to skip it.
                 className={cn(
@@ -197,13 +202,13 @@ export const SecretInput = <TName extends SecretName>({
                   // An emptied field masks again, since what is typed next may be a real secret.
                   if (!event.target.value) setIsVisible(false);
                   field.onChange(event);
-                  autocomplete.refresh();
+                  if (allowsVariables) autocomplete.refresh();
                 }}
-                onKeyDown={autocomplete.onKeyDown}
+                onKeyDown={allowsVariables ? autocomplete.onKeyDown : undefined}
                 onKeyUp={(event) => {
-                  if (!SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
+                  if (allowsVariables && !SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
                 }}
-                onClick={autocomplete.refresh}
+                onClick={allowsVariables ? autocomplete.refresh : undefined}
                 onSelect={syncOverlay}
                 onScroll={syncOverlay}
                 onFocus={() => {
@@ -277,17 +282,25 @@ const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberP
     AgentVaultVariableReferenceField.CredentialValue
   ],
   [AgentVaultCredentialType.Passthrough]: [],
-  [AgentVaultCredentialType.OAuth]: []
+  [AgentVaultCredentialType.OAuth]: [],
+  [AgentVaultCredentialType.SshKey]: []
 };
 
-const MemberProvidedToggle = ({
+export const MemberProvidedToggle = ({
   label,
   isOn,
-  onChange
+  onChange,
+  isDisabled,
+  about,
+  docsUrl = AgentVaultDocsUrls.memberProvidedValues
 }: {
   label: string;
   isOn: boolean;
   onChange: (isOn: boolean) => void;
+  isDisabled?: boolean;
+  /** Replaces the hover card's explanation, for a credential a member doesn't type. */
+  about?: ReactNode;
+  docsUrl?: string;
 }) => {
   const id = useId();
   return (
@@ -300,17 +313,21 @@ const MemberProvidedToggle = ({
           />
         </HoverCardTrigger>
         <HoverCardContent className="w-80">
-          <p>Choose who sets the {label.toLowerCase()} the proxy sends for this service.</p>
-          <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
-            <li>Off: you set the {label.toLowerCase()} here, and every session uses it.</li>
-            <li>
-              On: each member sets their own from the access bundle page, and a session uses the{" "}
-              {label.toLowerCase()} of whoever started it, or of the user it was started on behalf
-              of.
-            </li>
-          </ul>
+          {about ?? (
+            <>
+              <p>Choose who sets the {label.toLowerCase()} the proxy sends for this service.</p>
+              <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
+                <li>Off: you set the {label.toLowerCase()} here, and every session uses it.</li>
+                <li>
+                  On: each member sets their own from the access bundle page, and a session uses the{" "}
+                  {label.toLowerCase()} of whoever started it, or of the user it was started on
+                  behalf of.
+                </li>
+              </ul>
+            </>
+          )}
           <a
-            href={AgentVaultDocsUrls.memberProvidedValues}
+            href={docsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-2 inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground"
@@ -321,12 +338,19 @@ const MemberProvidedToggle = ({
         </HoverCardContent>
       </HoverCard>
       <FieldLabel htmlFor={id}>Member provided</FieldLabel>
-      <Toggle id={id} size="sm" variant="av" checked={isOn} onCheckedChange={onChange} />
+      <Toggle
+        id={id}
+        size="sm"
+        variant="av"
+        checked={isOn}
+        onCheckedChange={onChange}
+        disabled={isDisabled}
+      />
     </div>
   );
 };
 
-const MemberProvidedInput = ({ label }: { label: string }) => (
+export const MemberProvidedInput = ({ label }: { label: string }) => (
   <InputGroup>
     <InputGroupAddon>
       <LockIcon />
@@ -343,9 +367,23 @@ type Props = {
   storedType?: AgentVaultCredentialType;
   /** The fields that were member-provided when the sheet opened, which have no stored value behind them. */
   storedMemberFields?: TAgentVaultMemberProvidedField[];
+  /** The types to offer. The type picker is left out when there is only one. */
+  credentialTypes?: AgentVaultCredentialType[];
+  typeLabels?: Partial<Record<AgentVaultCredentialType, string>>;
+  /** Off for a database or SSH service, which sends no HTTP header. */
+  showsSendsPreview?: boolean;
+  /** Puts the username above the password instead of beside it. */
+  stacksLogin?: boolean;
 };
 
-export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props) => {
+export const CredentialFields = ({
+  storedType,
+  storedMemberFields = [],
+  credentialTypes = HTTP_CREDENTIAL_TYPES,
+  typeLabels = CREDENTIAL_LABELS,
+  showsSendsPreview = true,
+  stacksLogin = false
+}: Props) => {
   const { control, watch, setValue, clearErrors } = useFormContext<TServiceForm>();
   const { storedKeys } = useServiceVariables();
   const credentialType = watch("credentialType");
@@ -402,8 +440,9 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
     setValue("memberProvidedFields", storedMemberFields);
     if (!storedMemberFields.includes(secretCredentialField)) setValue("secret", UNCHANGED_SECRET);
     if (
-      credentialType === AgentVaultCredentialType.Basic &&
-      !storedMemberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)
+      (credentialType === AgentVaultCredentialType.Basic &&
+        !storedMemberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)) ||
+      credentialType === AgentVaultCredentialType.SshKey
     ) {
       setValue("username", UNCHANGED_SECRET);
     }
@@ -471,34 +510,36 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
 
   return (
     <div className="flex flex-col gap-5">
-      <Controller
-        control={control}
-        name="credentialType"
-        render={({ field }) => (
-          <Field>
-            <FieldLabel>Credential Type</FieldLabel>
-            <FieldContent>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {HTTP_CREDENTIAL_TYPES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {CREDENTIAL_LABELS[value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isDeletingAllMemberValues && (
-                <FieldDescription>
-                  Members&apos; saved values for this service are deleted when you save.
-                </FieldDescription>
-              )}
-            </FieldContent>
-          </Field>
-        )}
-      />
+      {credentialTypes.length > 1 && (
+        <Controller
+          control={control}
+          name="credentialType"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel>Credential Type</FieldLabel>
+              <FieldContent>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {credentialTypes.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {typeLabels[value] ?? CREDENTIAL_LABELS[value]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isDeletingAllMemberValues && (
+                  <FieldDescription>
+                    Members&apos; saved values for this service are deleted when you save.
+                  </FieldDescription>
+                )}
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
 
       {credentialType === AgentVaultCredentialType.Bearer && (
         <div className="flex items-start gap-3">
@@ -537,7 +578,7 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
       )}
 
       {credentialType === AgentVaultCredentialType.Basic && (
-        <div className="flex items-start gap-3">
+        <div className={stacksLogin ? "flex flex-col gap-5" : "flex items-start gap-3"}>
           <Controller
             control={control}
             name="username"
@@ -578,7 +619,9 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
         </div>
       )}
 
-      {credentialType !== AgentVaultCredentialType.Passthrough && <SendsPreview />}
+      {showsSendsPreview && credentialType !== AgentVaultCredentialType.Passthrough && (
+        <SendsPreview />
+      )}
 
       {credentialType === AgentVaultCredentialType.Passthrough && (
         <Alert variant="info">

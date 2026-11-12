@@ -208,6 +208,7 @@ import {
   IncidentIoConnectionMethod,
   validateIncidentIoConnectionCredentials
 } from "./incident-io";
+import { getJenkinsConnectionListItem, JenkinsConnectionMethod, validateJenkinsConnectionCredentials } from "./jenkins";
 import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
 import {
@@ -519,6 +520,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getConvexConnectionListItem(),
     getRundeckConnectionListItem(),
     getPortainerConnectionListItem(),
+    getJenkinsConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
@@ -771,6 +773,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Portainer]: validatePortainerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Jenkins]: validateJenkinsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -842,6 +845,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
+    case JenkinsConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
     case JiraConnectionMethod.ApiToken:
       return "API Token";
@@ -1105,6 +1109,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Portainer]: platformManagedCredentialsNotSupported,
+  [AppConnection.Jenkins]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,

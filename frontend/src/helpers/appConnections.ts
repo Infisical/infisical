@@ -77,6 +77,7 @@ import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/hero
 import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
 import { ImpervaConnectionMethod } from "@app/hooks/api/appConnections/types/imperva-connection";
 import { IncidentIoConnectionMethod } from "@app/hooks/api/appConnections/types/incident-io-connection";
+import { JenkinsConnectionMethod } from "@app/hooks/api/appConnections/types/jenkins-connection";
 import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-connection";
 import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
@@ -724,6 +725,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "incident.io.png",
     category: "MONITORING",
     description: "On-call schedules for PAM auto-approval."
+  },
+  [AppConnection.Jenkins]: {
+    name: "Jenkins",
+    image: "Jenkins.png",
+    category: "CI/CD",
+    description: "Credentials and folder access for Jenkins."
   }
 };
 
@@ -837,6 +844,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
     case JiraConnectionMethod.ApiToken:
+    case JenkinsConnectionMethod.ApiToken:
       return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };

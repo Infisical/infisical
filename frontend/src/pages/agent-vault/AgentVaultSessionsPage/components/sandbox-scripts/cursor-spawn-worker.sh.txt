@@ -1,0 +1,91 @@
+#!/bin/sh
+# spawn-worker.sh
+set -eu
+
+NAMESPACE=cursor-workers
+
+case "$CURSOR_AGENT_WORKER_ID$CURSOR_POOL" in
+  *[!a-zA-Z0-9._-]*) echo "Unexpected characters in the worker ID or pool" >&2; exit 1 ;;
+esac
+
+WORKER_SLUG=$(printf '%s' "$CURSOR_AGENT_WORKER_ID" | tr 'A-Z._' 'a-z--' | cut -c1-40)
+POD_NAME="worker-$WORKER_SLUG-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+
+# Logs in with Universal Auth. For Kubernetes Auth, call /api/v1/auth/kubernetes-auth/login instead.
+ACCESS_TOKEN=$(curl -fsS -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"clientId\": \"$INFISICAL_CLIENT_ID\", \"clientSecret\": \"$INFISICAL_CLIENT_SECRET\"}" \
+  | jq -er .accessToken)
+
+SESSION_TOKEN=$(curl -fsS -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"projectId\": \"<project-id>\", \"accessBundle\": \"<access-bundle-name>\", \"ttl\": \"24h\", \"label\": \"cursor $POD_NAME\"}" \
+  | jq -er .session.token)
+
+POD_UID=$(kubectl create -f - -o 'jsonpath={.metadata.uid}' <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: $POD_NAME
+  namespace: $NAMESPACE
+  labels:
+    app: cursor-worker
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  # To isolate workers from the node, set your cluster's RuntimeClass, such as gvisor.
+  # runtimeClassName: gvisor
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: worker
+      image: <worker-image>
+      env:
+        - name: CURSOR_POOL
+          value: "$CURSOR_POOL"
+        - name: CURSOR_AGENT_WORKER_ID
+          value: "$CURSOR_AGENT_WORKER_ID"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          memory: 4Gi
+      volumeMounts:
+        - name: tokens
+          mountPath: /var/run/worker
+          readOnly: true
+  volumes:
+    - name: tokens
+      secret:
+        secretName: $POD_NAME
+EOF
+)
+
+if ! kubectl create -f - >/dev/null <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: $POD_NAME
+  namespace: $NAMESPACE
+  ownerReferences:
+    - apiVersion: v1
+      kind: Pod
+      name: $POD_NAME
+      uid: $POD_UID
+stringData:
+  cursor-token: "$CURSOR_AUTH_TOKEN"
+  session-token: "$SESSION_TOKEN"
+EOF
+then
+  kubectl -n "$NAMESPACE" delete pod "$POD_NAME" --wait=false
+  exit 1
+fi

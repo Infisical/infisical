@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -155,12 +156,17 @@ export type TRemoveUsersFromGroupByUserIds = {
   actorId?: string;
   userDAL: Pick<TUserDALFactory, "find" | "findById" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   groupDAL: TGroupOrgIdsDAL;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
+  // Skip the Agent Vault personal value clear and return the group's project ids instead, for a caller that removes
+  // the same user from several groups in one transaction and clears once after every group's rows are locked.
+  deferPersonalValueClear?: boolean;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
@@ -182,6 +188,8 @@ export type TRemoveIdentitiesFromGroup = {
     TIdentityGroupMembershipDALFactory,
     "find" | "delete" | "filterProjectsByIdentityMembership"
   >;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   eventEmitter: TEventEmitter;

@@ -292,6 +292,12 @@ import {
   TValidateIncidentIoConnectionCredentialsSchema
 } from "./incident-io";
 import {
+  TJenkinsConnection,
+  TJenkinsConnectionConfig,
+  TJenkinsConnectionInput,
+  TValidateJenkinsConnectionCredentialsSchema
+} from "./jenkins";
+import {
   TJiraConnection,
   TJiraConnectionConfig,
   TJiraConnectionInput,
@@ -659,6 +665,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TConvexConnection
   | TRundeckConnection
   | TPortainerConnection
+  | TJenkinsConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
@@ -767,6 +774,7 @@ export type TAppConnectionInput = { id: string } & (
   | TConvexConnectionInput
   | TRundeckConnectionInput
   | TPortainerConnectionInput
+  | TJenkinsConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
@@ -909,6 +917,7 @@ export type TAppConnectionConfig =
   | TConvexConnectionConfig
   | TRundeckConnectionConfig
   | TPortainerConnectionConfig
+  | TJenkinsConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
@@ -1008,6 +1017,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateConvexConnectionCredentialsSchema
   | TValidateRundeckConnectionCredentialsSchema
   | TValidatePortainerConnectionCredentialsSchema
+  | TValidateJenkinsConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema

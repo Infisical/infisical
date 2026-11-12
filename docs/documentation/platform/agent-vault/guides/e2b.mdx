@@ -53,11 +53,12 @@ One proxy serves every sandbox, so you set it up once.
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - An [E2B](https://e2b.dev) account with [bring your own proxy](https://e2b.dev/docs/network/byop) turned on (E2B lists it as a private beta, so you may need to ask E2B to turn it on)
 - An [E2B API key](https://e2b.dev/docs/api-key) in the `E2B_API_KEY` environment variable on the machine that runs your code
 - The E2B SDK version 2.57.0 or later for your language: [Python](https://pypi.org/project/e2b/) (with [`requests`](https://pypi.org/project/requests/)) or [TypeScript](https://www.npmjs.com/package/e2b)
+- For Python, the [Infisical Python SDK](/sdks/languages/python), and for TypeScript, the [Infisical Node.js SDK](/sdks/languages/node)
 - A Linux machine or Kubernetes cluster to run the proxy, reachable from the internet, with a DNS name that points to it
 - For the systemd setup, the [Infisical CLI](/cli/install) installed on that machine
 
@@ -207,6 +208,7 @@ The proxy token stays on the proxy's machine, so your code doesn't need it.
 
 This function runs one shell command in a new sandbox and returns the command's output. Replace the values at the top:
 
+- `<project-id>`: the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id))
 - `<access-bundle-name>`: your access bundle's name
 - `<proxy-id>`: the proxy's ID from [Step 2](#step-2-run-the-proxy-on-a-public-machine)
 - `<proxy-dns-name>`: the proxy machine's DNS name
@@ -216,18 +218,27 @@ This function runs one shell command in a new sandbox and returns the command's 
 
 ```python Python expandable
 # run_in_sandbox.py
+import base64
+import json
 import os
+import shlex
 
 import requests
 from e2b import Sandbox
+from infisical_sdk import InfisicalSDKClient
 
 INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
 ACCESS_BUNDLE = "<access-bundle-name>"
 PROXY_ID = "<proxy-id>"
 PROXY_ADDRESS = "<proxy-dns-name>:1080"
 TEMPLATE = "base"
 SANDBOX_TIMEOUT = 15 * 60
 SANDBOX_ENV = {}
+# Claude Code's skills folder. For Codex or OpenCode, use /home/user/.agents/skills.
+SKILLS_DIR = "/home/user/.claude/skills"
+# The session's MCP servers, in the format of Claude Code's --mcp-config.
+MCP_CONFIG_PATH = "/home/user/agent-vault-mcp.json"
 
 CA_PATH = "/usr/local/share/ca-certificates/agent-vault-ca.crt"
 # Points the tools that don't read the system trust store at the proxy's CA.
@@ -239,39 +250,39 @@ CA_ENV = {
 
 def run_in_sandbox(command: str) -> str:
     # The machine identity's credentials stay here and never enter the sandbox.
-    login = requests.post(
-        f"{INFISICAL_URL}/api/v1/auth/universal-auth/login",
-        json={
-            "clientId": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
-            "clientSecret": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
-        },
-        timeout=30,
+    infisical = InfisicalSDKClient(host=INFISICAL_URL)
+    infisical.auth.universal_auth.login(
+        client_id=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
+        client_secret=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
     )
-    login.raise_for_status()
-    headers = {"Authorization": f"Bearer {login.json()['accessToken']}"}
 
     # Fetched on every run, because the CA changes when you rotate the proxy's token.
-    ca_response = requests.get(f"{INFISICAL_URL}/api/v1/agent-vault/proxies/{PROXY_ID}/ca", headers=headers, timeout=30)
+    # The SDK has no method for the CA, so this request calls the API with the SDK's access token.
+    ca_response = requests.get(
+        f"{INFISICAL_URL}/api/v1/agent-vault/proxies/{PROXY_ID}/ca",
+        headers={"Authorization": f"Bearer {infisical.get_token()}"},
+        timeout=30,
+    )
     ca_response.raise_for_status()
     ca = ca_response.json()["ca"]["certificate"]
 
     # One session per run. The ttl outlasts the sandbox's timeout, so the agent
     # can't lose access mid-run.
-    created = requests.post(
-        f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
-        headers=headers,
-        json={"accessBundle": ACCESS_BUNDLE, "ttl": "20m"},
-        timeout=30,
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
     )
-    created.raise_for_status()
-    session = created.json()["session"]
 
     sandbox = None
     try:
         sandbox = Sandbox.create(
             template=TEMPLATE,
             timeout=SANDBOX_TIMEOUT,
-            envs={**CA_ENV, **SANDBOX_ENV},
+            envs={
+                **CA_ENV,
+                # Where the agent lists its services, through the proxy.
+                "INFISICAL_AGENT_VAULT_URL": INFISICAL_URL,
+                **SANDBOX_ENV,
+            },
             network={
                 # E2B sends hostnames to the proxy, instead of IP addresses, only for
                 # traffic that a domain entry in allow_out lets through.
@@ -281,7 +292,7 @@ def run_in_sandbox(command: str) -> str:
                     "address": PROXY_ADDRESS,
                     # The proxy ignores the username and reads the session token from the password.
                     "username": "x-agent-vault",
-                    "password": session["token"],
+                    "password": session.token,
                     "tls": {"ca_cert": ca},
                 },
             },
@@ -291,16 +302,45 @@ def run_in_sandbox(command: str) -> str:
             f"install -m 644 /tmp/agent-vault-ca.pem {CA_PATH} && update-ca-certificates",
             user="root",
         )
+        # The session's skills, including the one that tells the agent how to work behind the proxy.
+        # The SDK has no method for them either, and the session token is the only credential this request takes.
+        skills = requests.get(
+            f"{INFISICAL_URL}/api/v1/agent-vault/session/skills",
+            headers={"Authorization": f"Bearer {session.token}"},
+            timeout=30,
+        )
+        skills.raise_for_status()
+        for skill in skills.json()["skills"]:
+            for file in skill["files"]:
+                path = f"{SKILLS_DIR}/{skill['name']}/{file['path']}"
+                sandbox.files.write(path, base64.b64decode(file["contentBase64"]))
+                if file["mode"] == "0755":
+                    sandbox.commands.run(f"chmod 755 {shlex.quote(path)}")
+        # The session's MCP servers that are ready, for an agent that loads them only when it starts.
+        services = requests.get(
+            f"{INFISICAL_URL}/api/v1/agent-vault/session/services",
+            headers={"Authorization": f"Bearer {session.token}"},
+            timeout=30,
+        )
+        services.raise_for_status()
+        mcp_servers = {}
+        for service in services.json()["services"]:
+            header = service["credential"].get("header")
+            # Claude Code fills in ${VAR} from the sandbox's environment, so it skips a URL or header with a $.
+            if service["type"] != "mcp" or service["status"] != "ready" or "$" in service["url"] + (header or ""):
+                continue
+            server = {"type": "sse" if service.get("transport") == "sse" else "http", "url": service["url"]}
+            if service["credential"]["addedByProxy"] and header:
+                # A placeholder, so the agent doesn't try to sign in. The proxy replaces it.
+                server["headers"] = {header: "Bearer agent-vault"}
+            mcp_servers[service["name"]] = server
+        sandbox.files.write(MCP_CONFIG_PATH, json.dumps({"mcpServers": mcp_servers}))
         result = sandbox.commands.run(command, timeout=SANDBOX_TIMEOUT - 60)
         return result.stdout
     finally:
         # Revoke first, so the session ends even if killing the sandbox fails.
         try:
-            requests.post(
-                f"{INFISICAL_URL}/api/v1/agent-vault/sessions/{session['id']}/revoke",
-                headers=headers,
-                timeout=30,
-            ).raise_for_status()
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
         finally:
             if sandbox:
                 sandbox.kill()
@@ -308,15 +348,21 @@ def run_in_sandbox(command: str) -> str:
 
 ```typescript TypeScript expandable
 // runInSandbox.ts
+import { InfisicalSDK } from "@infisical/sdk";
 import { Sandbox } from "e2b";
 
 const INFISICAL_URL = "https://app.infisical.com";
+const PROJECT_ID = "<project-id>";
 const ACCESS_BUNDLE = "<access-bundle-name>";
 const PROXY_ID = "<proxy-id>";
 const PROXY_ADDRESS = "<proxy-dns-name>:1080";
 const TEMPLATE = "base";
 const SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
 const SANDBOX_ENV: Record<string, string> = {};
+// Claude Code's skills folder. For Codex or OpenCode, use /home/user/.agents/skills.
+const SKILLS_DIR = "/home/user/.claude/skills";
+// The session's MCP servers, in the format of Claude Code's --mcp-config.
+const MCP_CONFIG_PATH = "/home/user/agent-vault-mcp.json";
 
 const CA_PATH = "/usr/local/share/ca-certificates/agent-vault-ca.crt";
 // Points the tools that don't read the system trust store at the proxy's CA.
@@ -326,47 +372,43 @@ const CA_ENV = Object.fromEntries(
   ),
 );
 
-async function infisical(
-  path: string,
-  { method = "POST", token, body }: { method?: string; token?: string; body?: unknown } = {},
-) {
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const response = await fetch(`${INFISICAL_URL}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Infisical returned ${response.status}: ${await response.text()}`);
-  return response.json();
-}
+const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 
 export async function runInSandbox(command: string): Promise<string> {
   // The machine identity's credentials stay here and never enter the sandbox.
-  const { accessToken } = await infisical("/api/v1/auth/universal-auth/login", {
-    body: {
-      clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID,
-      clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET,
-    },
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
   });
 
   // Fetched on every run, because the CA changes when you rotate the proxy's token.
-  const { ca } = await infisical(`/api/v1/agent-vault/proxies/${PROXY_ID}/ca`, { method: "GET", token: accessToken });
+  // The SDK has no method for the CA, so this request calls the API with the SDK's access token.
+  const caResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/proxies/${PROXY_ID}/ca`, {
+    headers: { Authorization: `Bearer ${infisical.auth().getAccessToken()}` },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!caResponse.ok) throw new Error(`Infisical returned ${caResponse.status}: ${await caResponse.text()}`);
+  const { ca } = await caResponse.json();
 
   // One session per run. The ttl outlasts the sandbox's timeout, so the agent
   // can't lose access mid-run.
-  const { session } = await infisical("/api/v1/agent-vault/sessions", {
-    token: accessToken,
-    body: { accessBundle: ACCESS_BUNDLE, ttl: "20m" },
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
   });
 
   let sandbox: Sandbox | undefined;
   try {
     sandbox = await Sandbox.create(TEMPLATE, {
       timeoutMs: SANDBOX_TIMEOUT_MS,
-      envs: { ...CA_ENV, ...SANDBOX_ENV },
+      envs: {
+        ...CA_ENV,
+        // Where the agent lists its services, through the proxy.
+        INFISICAL_AGENT_VAULT_URL: INFISICAL_URL,
+        ...SANDBOX_ENV,
+      },
       network: {
         // E2B sends hostnames to the proxy, instead of IP addresses, only for
         // traffic that a domain entry in allowOut lets through.
@@ -385,12 +427,47 @@ export async function runInSandbox(command: string): Promise<string> {
     await sandbox.commands.run(`install -m 644 /tmp/agent-vault-ca.pem ${CA_PATH} && update-ca-certificates`, {
       user: "root",
     });
+    // The session's skills, including the one that tells the agent how to work behind the proxy.
+    // The SDK has no method for them either, and the session token is the only credential this request takes.
+    const skillsResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/session/skills`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!skillsResponse.ok) throw new Error(`Infisical returned ${skillsResponse.status}: ${await skillsResponse.text()}`);
+    const { skills } = await skillsResponse.json();
+    for (const skill of skills) {
+      for (const file of skill.files) {
+        const path = `${SKILLS_DIR}/${skill.name}/${file.path}`;
+        await sandbox.files.write(path, new Blob([Buffer.from(file.contentBase64, "base64")]));
+        if (file.mode === "0755") await sandbox.commands.run(`chmod 755 ${shellQuote(path)}`);
+      }
+    }
+    // The session's MCP servers that are ready, for an agent that loads them only when it starts.
+    const servicesResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/session/services`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!servicesResponse.ok) throw new Error(`Infisical returned ${servicesResponse.status}: ${await servicesResponse.text()}`);
+    const { services } = await servicesResponse.json();
+    const mcpServers: Record<string, { type: string; url: string; headers?: Record<string, string> }> = {};
+    for (const service of services) {
+      const header: string | undefined = service.credential.header;
+      // Claude Code fills in ${VAR} from the sandbox's environment, so it skips a URL or header with a $.
+      if (service.type !== "mcp" || service.status !== "ready" || `${service.url}${header ?? ""}`.includes("$")) continue;
+      mcpServers[service.name] = {
+        type: service.transport === "sse" ? "sse" : "http",
+        url: service.url,
+        // A placeholder, so the agent doesn't try to sign in. The proxy replaces it.
+        ...(service.credential.addedByProxy && header ? { headers: { [header]: "Bearer agent-vault" } } : {}),
+      };
+    }
+    await sandbox.files.write(MCP_CONFIG_PATH, JSON.stringify({ mcpServers }));
     const result = await sandbox.commands.run(command, { timeoutMs: SANDBOX_TIMEOUT_MS - 60_000 });
     return result.stdout;
   } finally {
     // Revoke first, so the session ends even if killing the sandbox fails.
     try {
-      await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
+      await infisical.agentVault().sessions.revoke(session.id);
     } finally {
       await sandbox?.kill();
     }
@@ -401,6 +478,12 @@ export async function runInSandbox(command: string): Promise<string> {
 </CodeGroup>
 
 The function adds the proxy's CA to the sandbox's system trust store, and sets the variables that [`agent-vault run`](/documentation/platform/agent-vault/proxies#certificate-trust) sets for the tools that don't read that store.
+
+The function also prepares the sandbox for an agent, as `agent-vault run` does on other hosts:
+
+- It installs the session's [skills](/documentation/platform/agent-vault/skills) from the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint, including Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill), which tells the agent how to work behind the proxy
+- It sets `INFISICAL_AGENT_VAULT_URL` to your Infisical instance's URL, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy
+- It writes the session's MCP servers that are ready to `MCP_CONFIG_PATH`, in the format of Claude Code's `--mcp-config`, as [Give the agent its MCP servers](/documentation/platform/agent-vault/service-discovery#give-the-agent-its-mcp-servers) describes
 
 To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/proxies#use-your-own-certificate-authority). Infisical doesn't have your own CA, so read its certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca).
 
@@ -434,7 +517,7 @@ The response lists Anthropic's models, even though the sandbox has no Anthropic 
   Each run now gets its own sandbox and session. The session token never enters the sandbox, and your code revokes the session when the run ends.
 </Check>
 
-To check which requests the sandbox made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
+To check which requests the sandbox made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in your Agent Vault project. Requests that got a credential have the outcome **Brokered**.
 
 ## Step 6: Run an agent
 
@@ -474,7 +557,7 @@ To run an agent such as Claude Code, start the sandbox from an E2B template that
     </CodeGroup>
   </Step>
   <Step>
-    Call the function with the agent's non-interactive command, such as `claude -p 'Reply with the word OK.' --permission-mode bypassPermissions`.
+    Call the function with the agent's non-interactive command. For Claude Code, pass the session's MCP servers with `--mcp-config`, such as `claude --mcp-config=/home/user/agent-vault-mcp.json -p 'Reply with the word OK.' --permission-mode bypassPermissions`.
   </Step>
 </Steps>
 
@@ -518,12 +601,19 @@ The proxy token is only on the proxy's machine. If you think someone took contro
   <Accordion title="Connections from the sandbox fail right away">
     The proxy refused the connection before any request. Check the proxy's log for one of these lines:
 
-    - `agent-vault: refused, the session is no longer valid`: the session expired or was revoked
+    - `agent-vault: refused, the session is no longer valid, or it belongs to a different Agent Vault project than this proxy`: the session expired or was revoked, or the session is in a different Agent Vault project from the proxy
     - `agent-vault: refused, Infisical rejected this proxy's token`: someone rotated or revoked the proxy's token, so restart the proxy with the new token
     - `agent-vault: refused, the session could not be resolved`: the proxy couldn't reach Infisical to check the session
     - `agent-vault: a client spoke plain SOCKS5 to the TLS port`: the sandbox's `egress_proxy` has no `tls` setting
 
     If none of these lines appears, the password might not be a session token, or E2B might not trust the SOCKS5 port's certificate. Start the proxy with `--log-level debug` to log these refusals too.
+  </Accordion>
+  <Accordion title="The agent can't list its services">
+    Run `curl -sS "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"` in the sandbox, and look for one of these errors in its output:
+
+    - `No host part in the URL`: the sandbox has no `INFISICAL_AGENT_VAULT_URL`, so set the variable when you create the sandbox, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does
+    - `Could not resolve host`: the sandbox can't find your Infisical instance's hostname in public DNS, so add the hostname to the sandbox's `/etc/hosts` with any public address, such as `1.1.1.1` (E2B sends the proxy the hostname, not the address)
+    - A `401` error from Infisical: the proxy adds the session's token only for the URL you passed to the proxy with `--domain`, so set the variable to that URL
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked while the sandbox was running. Set the session's `ttl` a few minutes longer than the sandbox's timeout, so the session lasts as long as the sandbox can run.

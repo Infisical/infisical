@@ -3,12 +3,16 @@ export {
   matchesAllowedEmailDomain,
   normalizeAllowedEmailDomains
 } from "./email-domain-matcher";
-export type { TValidatedHost } from "./safe-request";
+export type { TSsrfSafeUrl, TValidatedHost } from "./safe-request";
 export {
   buildSsrfSafeAgent,
+  buildSsrfSafeJwksFetcher,
+  buildSsrfSafeUrl,
   buildUncachedSsrfSafeAgent,
   PRIVATE_ADDRESS_REFUSED_MESSAGE,
-  safeRequest
+  safeRequest,
+  ssrfSafeLookup,
+  validateAndPinUrl
 } from "./safe-request";
 export {
   isAliasedEmail,

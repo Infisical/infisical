@@ -26,6 +26,8 @@ export type TAgentVaultSessionListRow = {
   createdAt: Date;
   // Null for a session with services of its own only.
   accessBundle: { id: string | null; name: string } | null;
+  // Null until the proxy uploads the session's first log chunk.
+  stats: { requests: number; brokered: number | null } | null;
 };
 
 // The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
@@ -156,6 +158,16 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       return await (tx || db.replicaNode())(TableName.AgentVaultSession).where({ tokenHash }).first();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session by token hash" });
+    }
+  };
+
+  // Revoking by token and listing the proxy CA fingerprints read the primary: a script that mints and then revokes
+  // or connects straight away would otherwise get a 401 from a replica that hasn't seen the new session.
+  const findByTokenHashOnPrimary = async (tokenHash: string): Promise<TAgentVaultSessions | undefined> => {
+    try {
+      return await db(TableName.AgentVaultSession).where({ tokenHash }).first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault session by token hash on primary" });
     }
   };
 
@@ -294,6 +306,11 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultAccessBundle}.id`,
           `${TableName.AgentVaultSessionAccessBundle}.accessBundleId`
         )
+        .leftJoin(
+          TableName.AgentVaultSessionStats,
+          `${TableName.AgentVaultSessionStats}.sessionId`,
+          `${TableName.AgentVaultSession}.id`
+        )
         .select(
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
@@ -319,7 +336,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(ON_BEHALF_OF_USER).as("onBehalfOfUserLiveLastName"),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
-          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName")
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
+          db.ref("requests").withSchema(TableName.AgentVaultSessionStats).as("statsRequests"),
+          db.ref("brokered").withSchema(TableName.AgentVaultSessionStats).as("statsBrokered")
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
@@ -347,6 +366,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
+        // bigint columns, which pg returns as strings
+        statsRequests: string | null;
+        statsBrokered: string | null;
       }[];
 
       const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
@@ -377,7 +399,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           accessBundle:
             row.accessBundleName === null
               ? null
-              : { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName }
+              : { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName },
+          stats:
+            row.statsRequests === null
+              ? null
+              : {
+                  requests: Number(row.statsRequests),
+                  brokered: row.statsBrokered === null ? null : Number(row.statsBrokered)
+                }
         };
       });
 
@@ -458,5 +487,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, updateLabel, findByIdOnPrimary, createWithId };
+  return {
+    ...orm,
+    findByTokenHash,
+    findByTokenHashOnPrimary,
+    findForList,
+    revokeIfActive,
+    updateLabel,
+    findByIdOnPrimary,
+    createWithId
+  };
 };

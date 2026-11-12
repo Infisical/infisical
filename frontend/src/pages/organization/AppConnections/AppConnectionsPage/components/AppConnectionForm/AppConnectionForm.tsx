@@ -62,6 +62,7 @@ import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
 import { IncidentIoConnectionForm } from "./IncidentIoConnectionForm";
+import { JenkinsConnectionForm } from "./JenkinsConnectionForm";
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
@@ -229,7 +230,9 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
   const renderForm = () => {
     switch (app) {
       case AppConnection.AWS:
-        return <AwsConnectionForm onSubmit={onSubmit} projectType={projectType} />;
+        return (
+          <AwsConnectionForm onSubmit={onSubmit} projectType={projectType} projectId={projectId} />
+        );
       case AppConnection.GitHub:
         return <GitHubConnectionForm projectId={projectId} onSubmit={onSubmit} />;
       case AppConnection.GitHubRadar:
@@ -418,6 +421,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <RundeckConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -504,6 +509,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
             appConnection={appConnection}
             onSubmit={onSubmit}
             projectType={appConnection.project?.type}
+            projectId={appConnection.projectId}
           />
         );
       case AppConnection.GitHub:
@@ -739,6 +745,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />

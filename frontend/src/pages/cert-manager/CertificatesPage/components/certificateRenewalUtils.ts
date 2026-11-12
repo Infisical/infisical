@@ -142,6 +142,7 @@ export const buildRenewalFormDefaults = (
 ): RenewalFormData => ({
   keySource: CertificateRenewalKeySource.New,
   reissue: false,
+  renewsFromStoredCsr: false,
   csr: "",
   ttl: deriveTtlFromCertificate(cert),
   subjectAttributes: renewalPreview?.hasOriginatingRequest
@@ -230,8 +231,8 @@ export const buildRenewalRequestAttributes = ({
       ...(extension.critical !== undefined && { critical: extension.critical })
     }));
 
-  if (formData.keySource === CertificateRenewalKeySource.Csr) {
-    return { ttl: formData.ttl, customExtensions };
+  if (formData.keySource === CertificateRenewalKeySource.Csr || formData.renewsFromStoredCsr) {
+    return { ...(!isExternalTemplateProfile && { ttl: formData.ttl }), customExtensions };
   }
 
   const basicConstraints = buildBasicConstraints(formData, constraints);

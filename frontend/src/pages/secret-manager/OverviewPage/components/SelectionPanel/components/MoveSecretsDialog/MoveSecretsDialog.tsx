@@ -78,6 +78,7 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2, useMoveSecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
@@ -997,20 +998,11 @@ const SingleEnvContent = ({
         isSourceUpdated = result.isSourceUpdated;
         secretMoveSucceeded = true;
       } catch (error) {
-        if (!foldersToMove.length && !rotationsToMove.length) throw error;
-        let message = (error as Error)?.message ?? "Failed to move selected secrets";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        createNotification({
-          type: "error",
-          text: `Failed to move selected secrets: ${message}`
-        });
+        showSecretWriteErrors([{ error }]);
+        if (!foldersToMove.length && !rotationsToMove.length) return;
       }
     }
 
-    const rotationFailures: { name: string; message: string }[] = [];
     let rotationSuccessCount = 0;
 
     for await (const rotation of rotationsToMove) {
@@ -1026,16 +1018,10 @@ const SingleEnvContent = ({
         });
         rotationSuccessCount += 1;
       } catch (error) {
-        let message = (error as Error)?.message ?? "Failed to move rotation";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        rotationFailures.push({ name: rotation.name, message });
+        showSecretWriteErrors([{ error }]);
       }
     }
 
-    const folderFailures: { name: string; message: string }[] = [];
     let folderSuccessCount = 0;
     let folderApprovalCount = 0;
 
@@ -1053,14 +1039,11 @@ const SingleEnvContent = ({
         folderSuccessCount += 1;
         if (result.hasApprovalRequests) folderApprovalCount += 1;
       } catch (error) {
-        let message = (error as Error)?.message ?? "Failed to move folder";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        folderFailures.push({ name: folder.name, message });
+        showSecretWriteErrors([{ error }]);
       }
     }
+
+    if (!secretMoveSucceeded && !rotationSuccessCount && !folderSuccessCount) return;
 
     if (secretMoveSucceeded) {
       if (isDestinationUpdated && isSourceUpdated) {
@@ -1104,15 +1087,6 @@ const SingleEnvContent = ({
                 folderSuccessCount === 1 ? "" : "s"
               }. Approval requests were generated for change-policy protected paths.`
             : `Successfully moved ${folderSuccessCount} folder${folderSuccessCount === 1 ? "" : "s"}`
-      });
-    }
-
-    if (folderFailures.length > 0) {
-      createNotification({
-        type: "error",
-        text: `Failed to move ${folderFailures.length} folder${
-          folderFailures.length === 1 ? "" : "s"
-        }: ${folderFailures.map((f) => f.name).join(", ")}`
       });
     }
 

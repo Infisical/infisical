@@ -48,6 +48,7 @@ import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerImpervaConnectionRouter } from "./imperva-connection-router";
 import { registerIncidentIoConnectionRouter } from "./incident-io-connection-router";
+import { registerJenkinsConnectionRouter } from "./jenkins-connection-router";
 import { registerJiraConnectionRouter } from "./jira-connection-router";
 import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
@@ -184,6 +185,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Convex]: registerConvexConnectionRouter,
     [AppConnection.Rundeck]: registerRundeckConnectionRouter,
     [AppConnection.Portainer]: registerPortainerConnectionRouter,
+    [AppConnection.Jenkins]: registerJenkinsConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,

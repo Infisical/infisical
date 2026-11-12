@@ -15,6 +15,7 @@ import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundle
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
+import { ServicesCard } from "@app/components/agent-vault/ServicesCard";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -37,7 +38,8 @@ import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
-  useProjectPermission
+  useProjectPermission,
+  useProject
 } from "@app/context";
 import {
   AgentVaultSessionScope,
@@ -50,10 +52,11 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
-import { ServicesCard } from "./components/ServicesCard";
+import { AddBundleServiceDialog } from "./components/AddBundleServiceDialog";
 import { SkillsCard } from "./components/SkillsCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole, permission } = useProjectPermission();
@@ -72,13 +75,14 @@ export const AgentVaultAccessBundleDetailPage = () => {
     select: (params) => params.accessBundleId as string
   });
 
-  const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(accessBundleId);
+  const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(projectId, accessBundleId);
   const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
   // Listing every session is admin-only, and only admins see the note that reads this.
   const { data: sessions } = useListAgentVaultSessions(
+    projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
     {
       enabled: isAdmin,
@@ -90,6 +94,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
   useAgentVaultCreateIntent(
     () => {
@@ -118,8 +123,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
             </EmptyHeader>
             <Button variant="av" asChild>
               <Link
-                to="/organizations/$orgId/agent-vault/access-bundles"
-                params={{ orgId: currentOrg.id }}
+                to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+                params={{ orgId: currentOrg.id, projectId }}
               >
                 Back to Access Bundles
               </Link>
@@ -141,8 +146,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
         description={accessBundle.description || "No description"}
         backLink={
           <Link
-            to="/organizations/$orgId/agent-vault/access-bundles"
-            params={{ orgId: currentOrg.id }}
+            to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+            params={{ orgId: currentOrg.id, projectId }}
           >
             <ChevronLeftIcon aria-hidden className="size-4" />
             Access Bundles
@@ -203,8 +208,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
             <AlertAction>
               <Button variant="outline" size="sm" asChild>
                 <Link
-                  to="/organizations/$orgId/agent-vault/sessions"
-                  params={{ orgId: currentOrg.id }}
+                  to="/organizations/$orgId/projects/agent-vault/$projectId/sessions"
+                  params={{ orgId: currentOrg.id, projectId }}
                 >
                   Go to Sessions
                 </Link>
@@ -220,10 +225,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
           onSetUp={setServiceToSetUp}
           services={accessBundle.services}
           canManage={isAdmin}
-          onAdd={() => {
-            setServiceToEdit(null);
-            setIsServiceSheetOpen(true);
-          }}
+          onAdd={() => setIsAddServiceOpen(true)}
           onEdit={(service) => {
             setServiceToEdit(service);
             setIsServiceSheetOpen(true);
@@ -239,9 +241,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
       </div>
 
       <PersonalValuesDialog
-        target={
-          serviceToSetUp ? { service: serviceToSetUp, accessBundleName: accessBundle.name } : null
-        }
+        target={serviceToSetUp ? { service: serviceToSetUp } : null}
         onOpenChange={(isOpen) => {
           if (!isOpen) setServiceToSetUp(null);
         }}
@@ -250,6 +250,17 @@ export const AgentVaultAccessBundleDetailPage = () => {
       <ManageAccessSheet
         accessBundle={isManageAccessOpen ? accessBundle : null}
         onOpenChange={setIsManageAccessOpen}
+      />
+
+      <AddBundleServiceDialog
+        accessBundleId={accessBundle.id}
+        bundleServiceIds={accessBundle.services.map((service) => service.id)}
+        isOpen={isAddServiceOpen}
+        onOpenChange={setIsAddServiceOpen}
+        onCreateNew={() => {
+          setServiceToEdit(null);
+          setIsServiceSheetOpen(true);
+        }}
       />
 
       <ServiceSheet
@@ -270,8 +281,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onOpenChange={setIsDeleteOpen}
         onDeleted={() =>
           navigate({
-            to: "/organizations/$orgId/agent-vault/access-bundles",
-            params: { orgId: currentOrg.id }
+            to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles",
+            params: { orgId: currentOrg.id, projectId }
           })
         }
       />

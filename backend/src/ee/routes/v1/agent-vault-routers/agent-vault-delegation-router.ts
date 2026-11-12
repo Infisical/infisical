@@ -10,8 +10,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext } from "./agent-vault-router-fns";
-import { AgentVaultProductMemberSchema, agentVaultListQuery } from "./agent-vault-schemas";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { AgentVaultProductMemberSchema, agentVaultListQuery, AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 const MAX_DELEGATION_SUBJECTS = 100;
 
@@ -93,6 +93,10 @@ const SubjectChangeBodySchema = (docs: { userIds: string; groupIds: string }) =>
       message: "Name at least one user or group."
     });
 
+// A delegation is addressed by its machine identity, which can belong to several projects, so every route names the
+// project in the query string, whatever its method.
+const projectQuery = z.object({ projectId: AgentVaultProjectIdSchema });
+
 const machineIdentityParams = z.object({
   machineIdentityId: z.string().uuid().describe(AGENT_VAULT.DELEGATION.machineIdentityId)
 });
@@ -134,7 +138,8 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
           .pipe(z.string().uuid().array().max(100).optional())
           .describe(AGENT_VAULT.DELEGATION.machineIdentityIds),
         limit: z.coerce.number().int().min(1).max(100).default(100).describe(AGENT_VAULT.DELEGATION.limit),
-        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(AGENT_VAULT.DELEGATION.offset)
+        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(AGENT_VAULT.DELEGATION.offset),
+        projectId: AgentVaultProjectIdSchema
       }),
       response: {
         200: z.object({
@@ -144,12 +149,15 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.agentVaultDelegation.listDelegations({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        ...req.query
-      })
+    handler: async (req) => {
+      const { projectId: requestedProjectId, ...query } = req.query;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
+      return server.services.agentVaultDelegation.listDelegations({
+        ...query,
+        projectId,
+        ctx: actorContext(req)
+      });
+    }
   });
 
   server.route({
@@ -163,15 +171,18 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         "Get which users a machine identity can start Agent Vault sessions on behalf of. A machine identity can read its own.",
       tags: [ApiDocsTags.AgentVaultDelegations],
       params: machineIdentityParams,
+      querystring: projectQuery,
       response: { 200: z.object({ delegation: DelegationDetailSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.agentVaultDelegation.getDelegation({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
+      return server.services.agentVaultDelegation.getDelegation({
+        projectId,
         ctx: actorContext(req),
         machineIdentityId: req.params.machineIdentityId
-      })
+      });
+    }
   });
 
   server.route({
@@ -185,6 +196,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         "Set which users a machine identity can start Agent Vault sessions on behalf of, replacing any delegation it has",
       tags: [ApiDocsTags.AgentVaultDelegations],
       params: machineIdentityParams,
+      querystring: projectQuery,
       body: z
         .object({
           scope: DelegationScopeSchema,
@@ -235,18 +247,19 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { delegation: saved } = await server.services.agentVaultDelegation.setDelegation({
-        projectId: req.internalAgentVaultProjectId,
+        ...req.body,
+        projectId,
         ctx: actorContext(req),
-        machineIdentityId: req.params.machineIdentityId,
-        ...req.body
+        machineIdentityId: req.params.machineIdentityId
       });
 
       // Before the missing bundles are worked out, so a failure there still leaves the committed save audited.
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: { type: EventType.AGENT_VAULT_DELEGATION_SET, metadata: auditDelegationFields(saved) }
       });
       emitAgentVaultTelemetry(server.services.telemetry, req, {
@@ -255,7 +268,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       });
 
       const delegation = await server.services.agentVaultDelegation.withMissingAccessBundles({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         delegation: saved
       });
@@ -278,7 +291,8 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
           .enum([AgentVaultMemberType.User, AgentVaultMemberType.Group])
           .optional()
           .describe(AGENT_VAULT.AVAILABLE_DELEGATION_SUBJECT.actorTypeFilter),
-        ...agentVaultListQuery(AGENT_VAULT.AVAILABLE_DELEGATION_SUBJECT)
+        ...agentVaultListQuery(AGENT_VAULT.AVAILABLE_DELEGATION_SUBJECT),
+        projectId: AgentVaultProjectIdSchema
       }),
       response: {
         200: z.object({
@@ -288,13 +302,16 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.agentVaultDelegation.listAvailableDelegationSubjects({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const { projectId: requestedProjectId, ...query } = req.query;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
+      return server.services.agentVaultDelegation.listAvailableDelegationSubjects({
+        ...query,
+        projectId,
         ctx: actorContext(req),
-        machineIdentityId: req.params.machineIdentityId,
-        ...req.query
-      })
+        machineIdentityId: req.params.machineIdentityId
+      });
+    }
   });
 
   server.route({
@@ -308,6 +325,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         "Add users and groups to a machine identity's delegation, keeping the ones it already names. Creates a delegation to the users and groups named if the machine identity has none.",
       tags: [ApiDocsTags.AgentVaultDelegations],
       params: machineIdentityParams,
+      querystring: projectQuery,
       body: SubjectChangeBodySchema({
         userIds: AGENT_VAULT.DELEGATION.addUserIds,
         groupIds: AGENT_VAULT.DELEGATION.addGroupIds
@@ -316,18 +334,19 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { delegation: saved, isChanged } = await server.services.agentVaultDelegation.addDelegationSubjects({
-        projectId: req.internalAgentVaultProjectId,
+        ...req.body,
+        projectId,
         ctx: actorContext(req),
-        machineIdentityId: req.params.machineIdentityId,
-        ...req.body
+        machineIdentityId: req.params.machineIdentityId
       });
 
       if (isChanged) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           event: { type: EventType.AGENT_VAULT_DELEGATION_SET, metadata: auditDelegationFields(saved) }
         });
         emitAgentVaultTelemetry(server.services.telemetry, req, {
@@ -337,7 +356,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       }
 
       const delegation = await server.services.agentVaultDelegation.withMissingAccessBundles({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         delegation: saved
       });
@@ -356,6 +375,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         "Take users and groups out of a machine identity's delegation. Taking out the last one removes the delegation, and the sessions it started for them stop working.",
       tags: [ApiDocsTags.AgentVaultDelegations],
       params: machineIdentityParams,
+      querystring: projectQuery,
       body: SubjectChangeBodySchema({
         userIds: AGENT_VAULT.DELEGATION.removeUserIds,
         groupIds: AGENT_VAULT.DELEGATION.removeGroupIds
@@ -368,15 +388,16 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const {
         delegation: saved,
         previous,
         isChanged
       } = await server.services.agentVaultDelegation.removeDelegationSubjects({
-        projectId: req.internalAgentVaultProjectId,
+        ...req.body,
+        projectId,
         ctx: actorContext(req),
-        machineIdentityId: req.params.machineIdentityId,
-        ...req.body
+        machineIdentityId: req.params.machineIdentityId
       });
 
       // Taking out the last user or group ends the delegation, so it's audited as one being removed, naming who it
@@ -385,7 +406,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           event: saved
             ? { type: EventType.AGENT_VAULT_DELEGATION_SET, metadata: auditDelegationFields(saved) }
             : { type: EventType.AGENT_VAULT_DELEGATION_DELETE, metadata: auditDelegationFields(previous) }
@@ -401,7 +422,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
 
       if (!saved) return { delegation: null };
       const delegation = await server.services.agentVaultDelegation.withMissingAccessBundles({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         delegation: saved
       });
@@ -420,12 +441,14 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         "Stop a machine identity from starting Agent Vault sessions on behalf of users. Sessions it already started stop working.",
       tags: [ApiDocsTags.AgentVaultDelegations],
       params: machineIdentityParams,
+      querystring: projectQuery,
       response: { 200: z.object({ delegation: DelegationSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
       const { delegation } = await server.services.agentVaultDelegation.deleteDelegation({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         machineIdentityId: req.params.machineIdentityId
       });
@@ -433,7 +456,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_DELEGATION_DELETE,
           metadata: auditDelegationFields(delegation)

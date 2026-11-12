@@ -23,6 +23,8 @@ declare module "pg-cursor" {
     read(rows: number): Promise<TRow[]>;
 
     close(): Promise<void>;
+
+    on(event: "row", listener: (row: TRow) => void): this;
   }
 
   export = Cursor;

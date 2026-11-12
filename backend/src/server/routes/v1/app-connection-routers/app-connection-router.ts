@@ -158,6 +158,10 @@ import {
   IncidentIoConnectionListItemSchema,
   SanitizedIncidentIoConnectionSchema
 } from "@app/services/app-connection/incident-io";
+import {
+  JenkinsConnectionListItemSchema,
+  SanitizedJenkinsConnectionSchema
+} from "@app/services/app-connection/jenkins";
 import { JiraConnectionListItemSchema, SanitizedJiraConnectionSchema } from "@app/services/app-connection/jira";
 import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
@@ -389,6 +393,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedPortainerConnectionSchema.options,
+  ...SanitizedJenkinsConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
@@ -489,6 +494,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
   PortainerConnectionListItemSchema,
+  JenkinsConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,

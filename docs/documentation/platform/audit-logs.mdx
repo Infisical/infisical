@@ -59,10 +59,10 @@ To view all events scoped to a single product:
         Open the product from the organization sidebar.
       </Step>
       <Step>
-        For **Secrets Management**, **Certificate Manager**, **KMS**, and **Secret Scanning**, select the project you want to audit.
+        For **Secrets Management**, **Certificate Manager**, **KMS**, **Agent Vault**, and **Secret Scanning**, select the project you want to audit.
         
         <Note>
-        For **Privileged Access Manager** and **Agent Vault**, skip this step.
+        For **Privileged Access Manager**, skip this step.
         </Note>
       </Step>
       <Step>
@@ -86,9 +86,9 @@ To view all events scoped to a single product:
     See the [audit log export API reference](/api-reference/endpoints/audit-logs/export-audit-log) for the full parameter list.
 
     <Note>
-      **Privileged Access Management (PAM)** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID.
+      **Privileged Access Management (PAM)** uses a single project that Infisical manages internally. There's no public API for looking up that project's ID.
       
-      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to PAM and Agent Vault [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
+      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to PAM [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
     </Note>
   </Tab>
 </Tabs>
@@ -860,13 +860,13 @@ Here are a few common patterns for filtering audit logs, grouped by product.
 
 <AccordionGroup>
   <Accordion title="Sessions issued this week">
-    Find every Agent Vault session minted or revoked over the last 7 days.
+    Find every session created or revoked in an Agent Vault project over the last 7 days.
 
     <Tabs>
       <Tab title="Infisical UI">
         <Steps>
           <Step>
-            Go to **Agent Vault > Audit Logs**.
+            In your Agent Vault project, go to **Audit Logs**.
           </Step>
           <Step>
             Set the date range to the last 7 days.
@@ -881,6 +881,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
           --data-urlencode "eventType=agent-vault-session-mint,agent-vault-session-revoke" \
           --data-urlencode "startDate=<start-date>"
         ```
@@ -888,13 +889,13 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     </Tabs>
   </Accordion>
   <Accordion title="Proxy lifecycle events">
-    Find every proxy registration, token rotation, and revocation.
+    Find every proxy registration, token rotation, and revocation in an Agent Vault project.
 
     <Tabs>
       <Tab title="Infisical UI">
         <Steps>
           <Step>
-            Go to **Agent Vault > Audit Logs**.
+            In your Agent Vault project, go to **Audit Logs**.
           </Step>
           <Step>
             Select **Search audit logs** and add:
@@ -906,6 +907,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
           --data-urlencode "eventType=agent-vault-proxy-register,agent-vault-proxy-token-rotate,agent-vault-proxy-revoke,agent-vault-proxy-delete"
         ```
       </Tab>

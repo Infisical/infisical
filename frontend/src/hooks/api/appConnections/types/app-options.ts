@@ -403,6 +403,10 @@ export type TIncidentIoConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.IncidentIo;
 };
 
+export type TJenkinsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Jenkins;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -500,7 +504,8 @@ export type TAppConnectionOption =
   | TS3CompatibleConnectionOption
   | TJiraConnectionOption
   | TClickHouseConnectionOption
-  | TIncidentIoConnectionOption;
+  | TIncidentIoConnectionOption
+  | TJenkinsConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -600,4 +605,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Jira]: TJiraConnectionOption;
   [AppConnection.ClickHouse]: TClickHouseConnectionOption;
   [AppConnection.IncidentIo]: TIncidentIoConnectionOption;
+  [AppConnection.Jenkins]: TJenkinsConnectionOption;
 };

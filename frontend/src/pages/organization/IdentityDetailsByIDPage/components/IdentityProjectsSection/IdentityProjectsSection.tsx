@@ -26,7 +26,7 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
-import { IdentityProjectsTable } from "./IdentityProjectsTable";
+import { getIdentityProjectsFirstPageParams, IdentityProjectsTable } from "./IdentityProjectsTable";
 
 type Props = {
   identityId: string;
@@ -68,7 +68,10 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
     handlePopUpClose("removeIdentityFromProject");
   };
 
-  const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
+  const { data: projectMemberships } = useGetIdentityProjectMemberships(
+    identityId,
+    getIdentityProjectsFirstPageParams()
+  );
 
   return (
     <>
@@ -76,7 +79,7 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
         <CardHeader>
           <CardTitle>Projects</CardTitle>
           <CardDescription>Manage machine identity project memberships</CardDescription>
-          {Boolean(projectMemberships?.length) && (
+          {Boolean(projectMemberships?.totalCount) && (
             <CardAction>
               <Button
                 onClick={() => {

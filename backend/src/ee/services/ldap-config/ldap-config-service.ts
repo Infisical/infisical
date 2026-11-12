@@ -9,10 +9,15 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -76,7 +81,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { buildLdapTlsOptions, searchGroups, testLDAPConfig } from "./ldap-fns";
+import { buildLdapTlsOptions, pinLdapTarget, searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -131,6 +136,8 @@ type TLdapConfigServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -164,7 +171,9 @@ export const ldapConfigServiceFactory = ({
   usageMeteringService,
   pamAccountDAL,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -478,10 +487,10 @@ export const ldapConfigServiceFactory = ({
       isActive: true
     });
 
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
+    const { url, tlsOptions } = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
     const opts = {
       server: {
-        url: ldapConfig.url,
+        url,
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
         uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
@@ -751,14 +760,17 @@ export const ldapConfigServiceFactory = ({
           { tx }
         );
 
+        const removedGroupProjectIds = new Set<string>();
         for await (const group of groupsCurrentlyPartOf) {
           if (!toBePartOfGroupIdsSet.has(group.id)) {
             // remove user from group that they should no longer be part of
-            const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
+            const { sendPamCancellations, projectIds } = await removeUsersFromGroupByUserIds({
               group,
               userIds: [newUser.id],
               userDAL,
               userGroupMembershipDAL,
+              identityGroupMembershipDAL,
+              agentVaultPersonalValueDAL,
               membershipGroupDAL,
               groupDAL,
               projectKeyDAL,
@@ -771,11 +783,20 @@ export const ldapConfigServiceFactory = ({
               pamAccountDAL,
               pamSessionDAL,
               gatewayV2Service,
+              deferPersonalValueClear: true,
               tx
             });
             pamCancellations.push(sendPamCancellations);
+            projectIds.forEach((projectId) => removedGroupProjectIds.add(projectId));
           }
         }
+
+        // After every group's rows are locked, so the row locks come before the cleanup lock like every other removal.
+        await clearPersonalValuesInProjects(
+          { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+          { projectIds: [...removedGroupProjectIds], userIds: [newUser.id] },
+          tx
+        );
       }
 
       return newUser;
