@@ -9,7 +9,6 @@ import { UsageReportCache } from "./data-access/usage-report-cache";
 import { CounterRegistry } from "./service/counter-registry";
 import { TLicenseOrganizations, TLicenseProvider, TLicenseServer, TUsageCounter } from "./service/dependencies";
 import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
-import { TLicenseServerBilling } from "./service/license-server-types/license-server-types";
 import { LicenseService, TLicenseService } from "./service/license-service";
 import { UsageQueue, UsageQueues } from "./service/usage-queue";
 
@@ -40,7 +39,6 @@ export type TLicenseDeps = {
   // Licensing policy and the License Server, from the EE edition. Required: CE has no defaults of its own.
   provider: TLicenseProvider;
   licenseServer: TLicenseServer;
-  billing: TLicenseServerBilling;
   // Root orgs, workspace and seat counts, from the organizations-projects domain.
   organizations: TLicenseOrganizations;
   // One per Meter, each from the domain that owns the data it counts.
@@ -49,8 +47,6 @@ export type TLicenseDeps = {
 
 export class LicenseModule {
   readonly service: TLicenseService;
-
-  readonly billing: TLicenseServerBilling;
 
   // Exposed for the e2e suite's license overrides, which replace the instance entitlements in place.
   readonly instanceEntitlements = new InstanceEntitlementsHolder();
@@ -64,7 +60,6 @@ export class LicenseModule {
     const { keyStore, organizations, provider, licenseServer } = deps;
     const usageReportCache = new UsageReportCache(keyStore);
     this.counters = new CounterRegistry(deps.usageCounters);
-    this.billing = deps.billing;
 
     this.license = new LicenseService({
       instance: this.instanceEntitlements,

@@ -916,7 +916,7 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     licenseService,
-    licenseBilling: domains.license.billing,
+    licenseBilling: domains.licenseBilling,
     organizationsProjectsService: domains.organizationsProjects.service,
     certManagerService: domains.certManager.service,
     breakdownDAL: licenseV2BreakdownDAL

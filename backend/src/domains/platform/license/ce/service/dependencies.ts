@@ -1,7 +1,6 @@
 import { InstanceEntitlements } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { Plan } from "../model/plan";
-import { SeatUsage } from "../model/seat-usage";
 import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/license-server-types";
 import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "./license-server-types/usage-reports";
 
@@ -37,8 +36,8 @@ export type TLicenseOrganizations = {
   findOrganization(orgId: string): Promise<{ id: string; name: string; slug: string } | null>;
   // The projects that count against a plan's workspace limit, shown on the plan as workspacesUsed.
   countWorkspaces(rootOrgId: string): Promise<number>;
-  // A null orgId counts the whole instance.
-  countSeats(orgId: string | null): Promise<SeatUsage>;
+  // Users and machine identities that count as seats. A null orgId counts the whole instance.
+  countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
 };
 
 export type TUsageCounter = {

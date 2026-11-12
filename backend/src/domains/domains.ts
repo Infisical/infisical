@@ -8,7 +8,7 @@ import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
-import { LicenseModule } from "./platform/license/ce/module";
+import { LicenseModule, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsProjectsModule } from "./platform/organizations-projects/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
@@ -50,7 +50,6 @@ export const createDomains = (deps: TDomainDeps) => {
     startLocalRefresh,
     provider: licenseEe.resolver,
     licenseServer: licenseEe.licenseServerClient,
-    billing: licenseEe.licenseServerClient,
     organizations: organizationsProjectsService,
     usageCounters: [
       ...organizationsProjects.usageCounters,
@@ -61,5 +60,8 @@ export const createDomains = (deps: TDomainDeps) => {
     ]
   });
 
-  return { license, organizationsProjects, certManager };
+  // Subscriptions are managed on the EE client itself; License never calls it.
+  const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
+
+  return { license, licenseBilling, organizationsProjects, certManager };
 };

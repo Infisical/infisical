@@ -17,7 +17,7 @@ may edit into a paid one.
 | `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`: classes only, with no feature data. `Plan` exposes its props as read-only fields (`withProps`) |
 | `ce/data-access/` | `PlanCache` and `UsageReportCache`, both in the key store, with their key names; they implement `TPlanCache` and `TUsageReportCache` |
 | `ce/service/` | The mechanism: `LicenseService` (plans, refresh, seats, usage counts, closing deleted orgs, and the usage workers), `UsageQueue` (putting usage on the queues), and `dependencies.ts`: what the service needs from its data access, organizations-projects, the products (`TUsageCounter`) and EE |
-| `ce/service/license-server-types/` | The License Server's request and response shapes, which `LicenseModule.billing` and the dependency types expose |
+| `ce/service/license-server-types/` | The License Server's request and response shapes, which `TLicenseServerBilling` and the dependency types expose |
 | `ee/service/` | The policy behind `TLicenseProvider`: default features and license key parsing (`license-fns.ts`), the license resolver, entitlement projection and its feature mapping |
 | `ee/license-server-client/` | `LicenseServerClient`, the only client (entitlements, billing, usage posts), its HTTP backends and token provider |
 
@@ -51,8 +51,8 @@ may edit into a paid one.
   changed. Self-hosted reports everything once, as `self-hosted`, counting the whole instance (`count(null)`).
 - **Workers are not on `TLicenseService`.** `handleUsageEvent`, `handleMeteringEvents` and `flushInstanceUsage`
   are public on the `LicenseService` class only so `LicenseModule.start()` can register them.
-- **Billing is not on `TLicenseService`.** It is the EE `LicenseServerClient`, exposed as `LicenseModule.billing`
-  and passed only to the code that manages subscriptions (`licenseBilling: TLicenseServerBilling`).
+- **Billing is not on `TLicenseService`.** It is the EE `LicenseServerClient`, which `createDomains` returns as
+  `licenseBilling` and is passed only to the code that manages subscriptions (`licenseBilling: TLicenseServerBilling`).
 - **No caller's transaction reaches License.** Neither its service nor the counters take a transaction.
   A seat limit is enforced by reading `getSeatUsage` (or `getInstanceSeatUsage` for an instance-wide limit)
   before the caller opens its transaction and checking it with `seatUsage.assertAvailable(...)` inside it.

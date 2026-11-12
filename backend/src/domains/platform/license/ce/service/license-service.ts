@@ -160,15 +160,15 @@ export class LicenseService implements TLicenseService {
   }
 
   async getSeatUsage(orgId: string): Promise<SeatUsage> {
-    if (!this.deps.instance.isCloud()) return this.deps.organizations.countSeats(null);
+    if (!this.deps.instance.isCloud()) return this.countSeats(null);
     const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
     if (!rootOrgId) throw new EntityNotFoundError({ message: `Organization with ID '${orgId}' not found` });
-    return this.deps.organizations.countSeats(rootOrgId);
+    return this.countSeats(rootOrgId);
   }
 
   // Every org on the instance, which is what an instance-wide identity limit caps.
   getInstanceSeatUsage(): Promise<SeatUsage> {
-    return this.deps.organizations.countSeats(null);
+    return this.countSeats(null);
   }
 
   // Reports the new seat count and refreshes the plan, which carries it. A failure is logged rather than
@@ -311,6 +311,11 @@ export class LicenseService implements TLicenseService {
   flushInstanceUsage(): void {
     if (!this.deps.licenseServer.canReportUsage()) return;
     this.deps.usageQueue.emitAll(SELF_HOSTED_LICENSE_ORG_ID);
+  }
+
+  private async countSeats(orgId: string | null): Promise<SeatUsage> {
+    const { users, identities } = await this.deps.organizations.countBillableOrgActors(orgId);
+    return SeatUsage.create({ membersUsed: users, identitiesUsed: users + identities });
   }
 
   private get source() {

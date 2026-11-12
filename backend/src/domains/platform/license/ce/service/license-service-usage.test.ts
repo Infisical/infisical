@@ -1,6 +1,5 @@
 import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
-import { SeatUsage } from "../model/seat-usage";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../testing/build-license";
 import { FakeLicenseServer } from "../testing/fake-license-server";
 import { FakeUsageCounter } from "../testing/fake-usage-counter";
@@ -226,9 +225,9 @@ describe("LicenseService.getSeatUsage", () => {
     const counted: (string | null)[] = [];
     const { licenseService } = await buildLicense({
       organizations: {
-        countSeats: async (orgId) => {
+        countBillableOrgActors: async (orgId) => {
           counted.push(orgId);
-          return SeatUsage.create({ membersUsed: 3, identitiesUsed: 7 });
+          return { users: 3, identities: 4 };
         }
       }
     });
@@ -245,7 +244,7 @@ describe("LicenseService.getSeatUsage", () => {
     // Setup
     const { licenseService } = await buildLicense({
       organizations: {
-        countSeats: async (orgId) => SeatUsage.create({ membersUsed: 0, identitiesUsed: orgId === null ? 9 : 2 })
+        countBillableOrgActors: async (orgId) => ({ users: 0, identities: orgId === null ? 9 : 2 })
       }
     });
 

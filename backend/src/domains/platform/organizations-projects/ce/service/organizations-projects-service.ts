@@ -1,5 +1,4 @@
 import { ProjectType } from "@app/db/schemas";
-import { SeatUsage } from "@app/domains/platform/license/ce/module";
 
 import { TBillableActorDataAccess, TIdentityOwnership, TOrganization, TOrganizationDataAccess } from "./dependencies";
 
@@ -15,8 +14,6 @@ export type TOrganizationsProjectsService = {
   findOrganization(orgId: string): Promise<TOrganization | null>;
   // Includes sub-orgs.
   countWorkspaces(orgId: string): Promise<number>;
-  // Null orgId = whole instance.
-  countSeats(orgId: string | null): Promise<SeatUsage>;
   // Org members in a Secret Manager/KMS project or in none. Null orgId = whole instance.
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
@@ -61,11 +58,6 @@ export class OrganizationsProjectsService implements TOrganizationsProjectsServi
 
   countWorkspaces(orgId: string): Promise<number> {
     return this.deps.organizations.countWorkspaces(orgId);
-  }
-
-  async countSeats(orgId: string | null): Promise<SeatUsage> {
-    const { users, identities } = await this.deps.billableActors.countBillableOrgActors(orgId);
-    return SeatUsage.create({ membersUsed: users, identitiesUsed: users + identities });
   }
 
   countBillableOrgActors(orgId: string | null) {

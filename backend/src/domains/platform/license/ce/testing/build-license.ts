@@ -1,7 +1,6 @@
 import { InMemoryKeyStore } from "@app/domains/lib/testing/in-memory-key-store";
 import { TQueueServiceFactory } from "@app/queue";
 
-import { SeatUsage } from "../model/seat-usage";
 import { LicenseModule } from "../module";
 import { TLicenseOrganizations, TUsageCounter } from "../service/dependencies";
 import { FakeLicenseServer } from "./fake-license-server";
@@ -29,7 +28,7 @@ const buildOrganizations = (overrides: Partial<TLicenseOrganizations> = {}): TLi
     resolveRootOrgId: async (orgId) => (await organizations.findRootOrgId(orgId)) ?? orgId,
     findOrganization: async (orgId) => ({ id: orgId, name: `org ${orgId}`, slug: `org-${orgId}` }),
     countWorkspaces: async () => WORKSPACES_USED,
-    countSeats: async () => SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 }),
+    countBillableOrgActors: async () => ({ users: 0, identities: 0 }),
     ...overrides
   };
   return organizations;
@@ -60,7 +59,6 @@ export const buildLicense = async ({
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
     provider: licenseServer,
     licenseServer,
-    billing: licenseServer.billing,
     organizations: buildOrganizations(organizations),
     usageCounters: counters
   });

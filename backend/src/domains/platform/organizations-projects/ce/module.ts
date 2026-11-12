@@ -24,8 +24,14 @@ export class OrganizationsProjectsModule {
     });
     this.service = service;
     this.usageCounters = [
-      { meter: Meter.Identities, count: async (orgId) => (await service.countSeats(orgId)).identitiesUsed },
-      { meter: Meter.UserIdentities, count: async (orgId) => (await service.countSeats(orgId)).membersUsed }
+      {
+        meter: Meter.Identities,
+        count: async (orgId) => {
+          const { users, identities } = await service.countBillableOrgActors(orgId);
+          return users + identities;
+        }
+      },
+      { meter: Meter.UserIdentities, count: async (orgId) => (await service.countBillableOrgActors(orgId)).users }
     ];
   }
 }
