@@ -1458,7 +1458,12 @@ export const orgServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    limit,
+    offset,
+    search,
+    orderDirection,
+    excludeProjectType
   }: TListProjectMembershipsByOrgMembershipIdDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -1476,9 +1481,13 @@ export const orgServiceFactory = ({
     }
     if (membership.orgId !== orgId) throw new NotFoundError({ message: "Failed to find organization membership" });
 
-    const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, membership.user.id);
-
-    return projectMemberships;
+    return projectMembershipDAL.findProjectMembershipsByUserId(orgId, membership.user.id, {
+      limit,
+      offset,
+      search,
+      orderDirection,
+      excludeProjectType
+    });
   };
 
   /*

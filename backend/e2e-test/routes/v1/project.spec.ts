@@ -1,7 +1,7 @@
-import { TableName } from "@app/db/schemas";
+import { ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
-import { createIdentityActor } from "../../testUtils/identities";
+import { addIdentityToProject, createIdentityActor } from "../../testUtils/identities";
 import { overrideLicenseFeatures } from "../../testUtils/license";
 import { createSecretV2, getSecretByNameV2 } from "../../testUtils/secrets";
 
@@ -343,5 +343,136 @@ describe("Project read (secret manager KMS key)", async () => {
     expect(JSON.parse(deprecatedRes.payload).workspace.kmsSecretManagerKeyId).toBe(kmsKeyId);
 
     await deleteProject(project.id);
+  });
+});
+
+describe("Project list pagination", async () => {
+  const listAs = async (authToken: string, query = "", url = "/api/v1/projects") =>
+    testServer.inject({ method: "GET", url: `${url}${query}`, headers: { authorization: `Bearer ${authToken}` } });
+
+  test("pages an identity's projects by name and reports the full count", async () => {
+    const projects = await Promise.all(["e2e-page-b", "e2e-page-c", "e2e-page-a"].map((name) => createProject(name)));
+    const { identityId, authToken } = await createIdentityActor({
+      orgId: seedData1.organization.id,
+      authToken: jwtAuthToken
+    });
+    for (const project of projects) {
+      // eslint-disable-next-line no-await-in-loop
+      await addIdentityToProject({
+        projectId: project.id,
+        identityId,
+        role: ProjectMembershipRole.Member,
+        authToken: jwtAuthToken
+      });
+    }
+
+    const names = async (query: string) => {
+      const res = await listAs(authToken, query);
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { projects: (TProject & { environments: unknown[] })[]; totalCount: number };
+      expect(body.totalCount).toBe(3);
+      expect(body.projects.every((project) => project.environments.length > 0)).toBe(true);
+      return body.projects.map((project) => project.name);
+    };
+
+    expect(await names("")).toEqual(["e2e-page-a", "e2e-page-b", "e2e-page-c"]);
+    expect(await names("?limit=2")).toEqual(["e2e-page-a", "e2e-page-b"]);
+    expect(await names("?limit=2&offset=2")).toEqual(["e2e-page-c"]);
+    expect(await names("?offset=1")).toEqual(["e2e-page-b", "e2e-page-c"]);
+    expect(await names("?limit=2&offset=5")).toEqual([]);
+
+    const memberships = async (query: string) => {
+      const res = await listAs(jwtAuthToken, query, `/api/v1/identities/${identityId}/identity-memberships`);
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { identityMemberships: { project: { name: string } }[]; totalCount: number };
+      return {
+        names: body.identityMemberships.map((membership) => membership.project.name),
+        totalCount: body.totalCount
+      };
+    };
+    expect(await memberships("")).toEqual({ names: ["e2e-page-a", "e2e-page-b", "e2e-page-c"], totalCount: 3 });
+    expect(await memberships("?limit=2&offset=1")).toEqual({ names: ["e2e-page-b", "e2e-page-c"], totalCount: 3 });
+    expect(await memberships("?limit=1&orderDirection=desc")).toEqual({ names: ["e2e-page-c"], totalCount: 3 });
+    expect(await memberships("?limit=5&search=PAGE-B")).toEqual({ names: ["e2e-page-b"], totalCount: 1 });
+    expect(await memberships("?limit=5&excludeProjectType=secret-manager")).toEqual({ names: [], totalCount: 0 });
+    expect(
+      (await listAs(jwtAuthToken, "?limit=101", `/api/v1/identities/${identityId}/identity-memberships`)).statusCode
+    ).toBe(422);
+
+    await Promise.all(projects.map((project) => deleteProject(project.id, true)));
+  });
+
+  test("pages a user's projects on the deprecated route too", async () => {
+    const all = await listAs(jwtAuthToken, "", "/api/v1/workspace");
+    expect(all.statusCode).toBe(200);
+    const { workspaces, totalCount } = all.json() as { workspaces: TProject[]; totalCount: number };
+    expect(totalCount).toBe(workspaces.length);
+    expect(totalCount).toBeGreaterThan(1);
+
+    const page = await listAs(jwtAuthToken, "?limit=1&offset=1", "/api/v1/workspace");
+    expect(page.statusCode).toBe(200);
+    expect(page.json().totalCount).toBe(totalCount);
+    expect((page.json().workspaces as TProject[]).map((workspace) => workspace.id)).toEqual([workspaces[1].id]);
+  });
+
+  test("rejects a limit or offset outside the allowed range", async () => {
+    const responses = await Promise.all(
+      ["?limit=0", "?limit=101", "?limit=abc", "?offset=-1"].map((query) => listAs(jwtAuthToken, query))
+    );
+    expect(responses.map((res) => res.statusCode)).toEqual([422, 422, 422, 422]);
+  });
+
+  test("pages, searches and orders a user's project memberships", async () => {
+    const headers = { authorization: `Bearer ${jwtAuthToken}` };
+    const orgId = seedData1.organization.id;
+    const projects = await Promise.all(["e2e-upm-b", "E2E-upm-c", "e2e-upm-a"].map((name) => createProject(name)));
+
+    const membersRes = await testServer.inject({
+      method: "GET",
+      url: `/api/v2/organizations/${orgId}/memberships`,
+      headers
+    });
+    expect(membersRes.statusCode).toBe(200);
+    const membershipId = (membersRes.json().users as { id: string; user: { id: string } }[]).find(
+      (member) => member.user.id === seedData1.id
+    )?.id;
+    expect(membershipId).toBeTruthy();
+
+    const list = async (query: string) => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v2/organizations/${orgId}/memberships/${membershipId}/project-memberships${query}`,
+        headers
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { memberships: { project: { name: string }; roles: unknown[] }[]; totalCount: number };
+      expect(body.memberships.every((membership) => membership.roles.length > 0)).toBe(true);
+      return { names: body.memberships.map((membership) => membership.project.name), totalCount: body.totalCount };
+    };
+
+    const all = await list("");
+    expect(all.totalCount).toBe(all.names.length);
+    expect(all.names).toEqual(expect.arrayContaining(["e2e-upm-a", "e2e-upm-b", "E2E-upm-c"]));
+
+    expect(await list("?search=E2E-UPM&limit=2")).toEqual({ names: ["e2e-upm-a", "e2e-upm-b"], totalCount: 3 });
+    expect(await list("?search=e2e-upm&limit=2&offset=2")).toEqual({ names: ["E2E-upm-c"], totalCount: 3 });
+    expect(await list("?search=e2e-upm&limit=2&orderDirection=desc")).toEqual({
+      names: ["E2E-upm-c", "e2e-upm-b"],
+      totalCount: 3
+    });
+    expect(await list("?search=e2e-upm&excludeProjectType=secret-manager&limit=2")).toEqual({
+      names: [],
+      totalCount: 0
+    });
+    expect(await list("?search=e2e_upm%25&limit=2")).toEqual({ names: [], totalCount: 0 });
+
+    const invalid = await testServer.inject({
+      method: "GET",
+      url: `/api/v2/organizations/${orgId}/memberships/${membershipId}/project-memberships?limit=101`,
+      headers
+    });
+    expect(invalid.statusCode).toBe(422);
+
+    await Promise.all(projects.map((project) => deleteProject(project.id, true)));
   });
 });

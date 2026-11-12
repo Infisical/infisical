@@ -216,6 +216,16 @@ export const IDENTITIES = {
     identityId: "The ID of the machine identity to get details.",
     orgId: "The ID of the org of the identity"
   },
+  LIST_PROJECT_MEMBERSHIPS: {
+    identityId: "The ID of the machine identity to list project memberships for.",
+    limit:
+      "The maximum number of project memberships to return. When omitted, every project membership of the machine identity is returned.",
+    offset: "The number of project memberships to skip.",
+    search: "Only return memberships of projects whose name contains this text. Case-insensitive.",
+    orderDirection: "The direction to order memberships in, by project name.",
+    excludeProjectType: "Leave out memberships of projects of this type.",
+    totalCount: "The number of project memberships matching the filters, ignoring limit and offset."
+  },
   LIST: {
     orgId: "The ID of the organization to list identities.",
     search: "The text string that identity names will be filtered by.",
@@ -917,6 +927,17 @@ export const ORGANIZATIONS = {
     organizationId: "The ID of the organization to delete the membership from.",
     membershipId: "The ID of the membership to delete."
   },
+  LIST_USER_PROJECT_MEMBERSHIPS: {
+    organizationId: "The ID of the organization the membership belongs to.",
+    membershipId: "The ID of the organization membership to list project memberships for.",
+    limit:
+      "The maximum number of project memberships to return. When omitted, every project membership of the user is returned.",
+    offset: "The number of project memberships to skip.",
+    search: "Only return memberships of projects whose name contains this text. Case-insensitive.",
+    orderDirection: "The direction to order memberships in, by project name.",
+    excludeProjectType: "Leave out memberships of projects of this type.",
+    totalCount: "The number of project memberships matching the filters, ignoring limit and offset."
+  },
   BULK_DELETE_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to delete the memberships from.",
     membershipIds: "The IDs of the memberships to delete."
@@ -1151,6 +1172,14 @@ export const PROJECTS = {
     projectId: "The ID of the project to delete.",
     hardDelete:
       "When true, the project is permanently deleted shortly after the request. When false or omitted, a secret manager project is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads."
+  },
+  LIST: {
+    includeRoles: "Whether to include each project's roles. Requires permission to add organization members.",
+    type: "The type of projects to list.",
+    limit:
+      "The maximum number of projects to return, ordered by name. When omitted, every project the caller can access is returned.",
+    offset: "The number of projects to skip, ordered by name.",
+    totalCount: "The number of projects the caller can access, ignoring limit and offset."
   },
   LIST_DELETED: {
     type: "The type of soft-deleted projects to list."

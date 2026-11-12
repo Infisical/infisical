@@ -1128,12 +1128,25 @@ export const projectServiceFactory = ({
     }
   };
 
-  const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
-    const workspaces = (
-      actor === ActorType.IDENTITY
-        ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type)
-    ).map((workspace) => ({
+  const getProjects = async ({
+    actorId,
+    actor,
+    includeRoles,
+    actorAuthMethod,
+    actorOrgId,
+    type,
+    limit,
+    offset
+  }: TListProjectsDTO) => {
+    const { projects: actorProjects, totalCount } = await projectDAL.findActorProjects({
+      actorType: actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+      actorId,
+      orgIds: [actorOrgId],
+      projectType: type,
+      limit,
+      offset
+    });
+    const workspaces = actorProjects.map((workspace) => ({
       ...workspace,
       deletedEnvironments: [] as {
         id: string;
@@ -1187,10 +1200,10 @@ export const projectServiceFactory = ({
         })
       );
 
-      return workspacesWithRoles;
+      return { projects: workspacesWithRoles, totalCount };
     }
 
-    return workspaces;
+    return { projects: workspaces, totalCount };
   };
 
   const getAccessibleProjectsWithSubOrgs = async ({

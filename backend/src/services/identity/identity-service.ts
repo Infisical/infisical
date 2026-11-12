@@ -537,7 +537,12 @@ export const identityServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    limit,
+    offset,
+    search,
+    orderDirection,
+    excludeProjectType
   }: TListProjectIdentitiesByIdentityIdDTO) => {
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
@@ -556,8 +561,13 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const identityMemberships = await identityProjectDAL.findByIdentityId(identityId, actorOrgId);
-    return identityMemberships;
+    return identityProjectDAL.findByIdentityId(identityId, actorOrgId, {
+      limit,
+      offset,
+      search,
+      orderDirection,
+      excludeProjectType
+    });
   };
 
   return {
