@@ -1,21 +1,24 @@
-import { useEffect, useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { ReactNode, useMemo, useState } from "react";
+import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
-import { PackageIcon, TriangleAlertIcon } from "lucide-react";
-import ms from "ms";
-import { z } from "zod";
+import {
+  BoxIcon,
+  ExternalLinkIcon,
+  PackageIcon,
+  TerminalIcon,
+  TriangleAlertIcon,
+  UserIcon
+} from "lucide-react";
 
-import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
-import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
-  AlertTitle,
   Button,
+  CodeBlock,
   Combobox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -24,100 +27,121 @@ import {
   Field,
   FieldContent,
   FieldDescription,
-  FieldError,
   FieldLabel,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  Item,
+  ItemMedia,
+  ItemTitle,
+  Tabs,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
-  useGetAgentVaultAccessBundle,
-  useListAgentVaultAccessBundles
+  useListAgentVaultAccessBundles,
+  useListAgentVaultProxies
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultAccessBundleListItem,
-  TAgentVaultMintedSession,
-  TAgentVaultService
+  TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { sessionLabelSchema } from "./sessionLabelSchema";
+import { DashboardSessionForm, TDashboardSessionInput } from "./DashboardSessionForm";
+import { CodeLanguage, highlight } from "./highlightCode";
+import {
+  CopyPromptButton,
+  PLATFORMS,
+  SandboxPlatform,
+  SandboxPlatformPanel,
+  setupPrompt
+} from "./SandboxPlatformPanel";
+import { hasScriptLanguages, ScriptLanguage } from "./sandboxSnippets";
+import { formatSessionExpiry } from "./SessionExpiry";
+import {
+  SessionMachineIdentityField,
+  TSnippetIdentity,
+  useSnippetClientId
+} from "./SessionMachineIdentityField";
+import { createSessionSnippet, INSTALL_COMMANDS, SnippetLanguage } from "./sessionSnippets";
 
-const NEVER_TTL = "never";
-const CUSTOM_TTL = "custom";
+enum DialogStep {
+  Platform = "platform",
+  Setup = "setup"
+}
 
-const TTL_PRESETS = [
-  { value: "1h", label: "1 hour" },
-  { value: "8h", label: "8 hours" },
-  { value: "24h", label: "24 hours" },
-  { value: "7d", label: "7 days" },
-  { value: NEVER_TTL, label: "Never" },
-  { value: CUSTOM_TTL, label: "Custom" }
-];
-const DEFAULT_TTL_PRESET = "7d";
+const OWN_SANDBOX = "own";
+type TPlatformTab = SandboxPlatform | typeof OWN_SANDBOX;
+const OWN_SANDBOX_DESCRIPTION =
+  "Create sessions from your own code, wherever your agent runs, or create one here to try it out.";
 
-const MIN_TTL_MS = 60 * 1000;
-// Mirrors the API's ceiling: past it the expiry overflows and the request fails with a 500.
-const MAX_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+const CREATE_NOW_TAB = "create-now";
+type TCreateSessionTab = SnippetLanguage | typeof CREATE_NOW_TAB;
 
-const getCustomTtlError = (value: string) => {
-  let parsed: number | undefined;
+const SNIPPET_CODE_LANGUAGES: Record<SnippetLanguage, CodeLanguage> = {
+  [SnippetLanguage.TypeScript]: CodeLanguage.TypeScript,
+  [SnippetLanguage.Python]: CodeLanguage.Python,
+  [SnippetLanguage.Cli]: CodeLanguage.Shell
+};
+
+const TAB_STORAGE_KEY = "agentVaultCreateSessionTab";
+const CREATE_NOW_FORM_ID = "agent-vault-create-session-form";
+
+const isCreateSessionTab = (value: unknown): value is TCreateSessionTab =>
+  value === CREATE_NOW_TAB || Object.values(SnippetLanguage).includes(value as SnippetLanguage);
+
+// Storage can be blocked, e.g. in a private window; the choice just isn't remembered.
+const readStored = <T,>(key: string, isValid: (value: unknown) => value is T, fallback: T): T => {
   try {
-    parsed = ms(value.trim() as Parameters<typeof ms>[0]);
+    const stored = localStorage.getItem(key);
+    return isValid(stored) ? stored : fallback;
   } catch {
-    parsed = undefined;
+    return fallback;
   }
-
-  if (typeof parsed !== "number" || Number.isNaN(parsed)) return "Not a valid duration.";
-  if (parsed < MIN_TTL_MS) return "At least 1 minute.";
-  if (parsed > MAX_TTL_MS) return "At most 100 years. Pick Never for no expiry.";
-  return null;
 };
 
-const schema = z
-  .object({
-    accessBundle: z.custom<TAgentVaultAccessBundleListItem | null>(),
-    label: sessionLabelSchema,
-    ttlPreset: z.string(),
-    customTtl: z.string()
-  })
-  .superRefine((data, ctx) => {
-    if (!data.accessBundle) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["accessBundle"],
-        message: "Pick an access bundle."
-      });
-    }
-    if (data.ttlPreset === CUSTOM_TTL) {
-      const error = getCustomTtlError(data.customTtl);
-      if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["customTtl"], message: error });
-    }
-  });
-
-type FormData = z.infer<typeof schema>;
-
-const DEFAULT_VALUES: FormData = {
-  accessBundle: null,
-  label: "",
-  ttlPreset: DEFAULT_TTL_PRESET,
-  customTtl: ""
+const store = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // See readStored
+  }
 };
+
+const runCommand = (token: string, siteUrl: string) =>
+  `infisical agent-vault run \\
+  --session-token ${token} \\
+  --proxy <proxy-host>:17323 \\
+  --domain ${siteUrl} \\
+  -- <agent-command>`;
+
+const Mono = ({ children }: { children: React.ReactNode }) => (
+  <span className="font-mono">{children}</span>
+);
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCreated: (session: TAgentVaultMintedSession) => void;
 };
 
-export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
+export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
+  const { hasProjectRole } = useProjectPermission();
+  const { user } = useUser();
+  const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+
+  const [platform, setPlatform] = useState<TPlatformTab>(() => SandboxPlatform.Modal);
+  const [tab, setTab] = useState<TCreateSessionTab>(() =>
+    readStored(TAB_STORAGE_KEY, isCreateSessionTab, SnippetLanguage.TypeScript)
+  );
+  const [step, setStep] = useState(DialogStep.Platform);
+  const [createdSession, setCreatedSession] = useState<TAgentVaultMintedSession | null>(null);
+  const [accessBundle, setAccessBundle] = useState<TAgentVaultAccessBundleListItem | null>(null);
+  const [identity, setIdentity] = useState<TSnippetIdentity | null>(null);
+
   const [bundleSearch, setBundleSearch] = useState("");
   const [debouncedBundleSearch] = useDebounce(bundleSearch);
   const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles(
@@ -129,271 +153,409 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
       limit: 50
     }
   );
+  const { data: proxies } = useListAgentVaultProxies(
+    projectId,
+    { limit: 1 },
+    // The dialog stays mounted on the sessions page, so it must not poll while closed. Its notice
+    // links to the proxies page in a new tab, so check again on return.
+    { enabled: isOpen, refetchOnWindowFocus: "always" }
+  );
+  // Unknown until the list loads, so the notice doesn't flash for a project that has proxies.
+  const hasNoProxy = proxies !== undefined && proxies.totalCount === 0;
+  const snippet = useSnippetClientId(identity);
+  const { clientId } = snippet;
   const createSession = useCreateAgentVaultSession(projectId);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { isSubmitting }
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: DEFAULT_VALUES });
-  const selectedBundle = watch("accessBundle");
-  const ttlPreset = watch("ttlPreset");
+  // Reset while rendering, not in an effect, so the first render after opening already shows the
+  // platform picker instead of the last session's one-time token.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) {
+      setStep(DialogStep.Platform);
+      setCreatedSession(null);
+      setAccessBundle(null);
+      setIdentity(null);
+      setBundleSearch("");
+    }
+  }
 
-  const { data: selectedBundleDetails } = useGetAgentVaultAccessBundle(
-    projectId,
-    selectedBundle?.id ?? ""
-  );
-  const needsSetup =
-    selectedBundle && selectedBundleDetails?.id === selectedBundle.id
-      ? selectedBundleDetails.services.filter(
-          (service) => service.personalValues && !service.personalValues.isConfigured
-        )
-      : [];
-  // Past four, three are listed and the rest link to the bundle, whose table lists every one.
-  const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
-  const hiddenNeedsSetupCount = needsSetup.length - shownNeedsSetup.length;
-  const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
-  const customTtlInputRef = useRef<HTMLInputElement | null>(null);
-  const shouldFocusCustomTtlRef = useRef(false);
+  const { protocol, hostname, port } = window.location;
+  const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
+  const accessBundleName = accessBundle?.name ?? "<access-bundle-name>";
+  const isOwnSandbox = platform === OWN_SANDBOX;
+  const isCreateNow = isOwnSandbox && tab === CREATE_NOW_TAB;
+  const language = tab === CREATE_NOW_TAB ? SnippetLanguage.Cli : tab;
+  const scriptLanguage =
+    tab === SnippetLanguage.Python ? ScriptLanguage.Python : ScriptLanguage.TypeScript;
 
-  useEffect(() => {
-    if (isOpen) reset(DEFAULT_VALUES);
-  }, [isOpen, reset]);
+  const onPlatformPick = (value: TPlatformTab) => {
+    setPlatform(value);
+    setStep(DialogStep.Setup);
+  };
 
-  const onSubmit = async ({ accessBundle, label, ttlPreset: preset, customTtl }: FormData) => {
+  const onTabChange = (value: string) => {
+    if (!isCreateSessionTab(value)) return;
+    setTab(value);
+    store(TAB_STORAGE_KEY, value);
+  };
+
+  const onCreateNowSubmit = async ({ label, ttl }: TDashboardSessionInput) => {
     if (!accessBundle) return;
-
     try {
       const session = await createSession.mutateAsync({
         accessBundle: accessBundle.name,
-        ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset,
-        label: label || undefined
+        ttl,
+        label
       });
       createNotification({ text: "Session created", type: "success" });
-      onCreated(session);
-      onOpenChange(false);
+      setCreatedSession(session);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create Session</DialogTitle>
-          <DialogDescription>
-            An agent running with this session can only reach the hosts in the session&apos;s
-            associated access bundle.
-          </DialogDescription>
-        </DialogHeader>
+  // Switching away after Create Now would hide a token that can't be shown again.
+  const isLocked = Boolean(createdSession);
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Controller
-            control={control}
-            name="accessBundle"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor="agent-vault-session-bundle">Access Bundle</FieldLabel>
-                <FieldContent>
-                  <Combobox
-                    id="agent-vault-session-bundle"
-                    options={accessBundles?.accessBundles ?? []}
-                    value={field.value}
-                    shouldFilter={false}
-                    isLoading={isSearchingBundles}
-                    includeMissingSelectedOptions
-                    onInputValueChange={setBundleSearch}
-                    getOptionValue={(bundle) => bundle.id}
-                    getOptionLabel={(bundle) => bundle.name}
-                    placeholder="Pick an access bundle"
-                    searchPlaceholder="Search access bundles..."
-                    emptyMessage="No access bundle matches."
-                    modal
-                    renderOption={(bundle) => (
-                      <span className="flex min-w-0 items-center gap-2">
-                        <PackageIcon className="size-4 shrink-0 text-muted" />
-                        <span className="truncate">{bundle.name}</span>
-                      </span>
-                    )}
-                    renderValue={(bundle) => (
-                      <span className="flex min-w-0 items-center gap-2">
-                        <PackageIcon className="size-4 shrink-0 text-muted" />
-                        <span className="truncate">{bundle.name}</span>
-                      </span>
-                    )}
-                    onValueChange={field.onChange}
-                    onClear={() => field.onChange(null)}
-                  />
-                </FieldContent>
-              </Field>
-            )}
-          />
+  const platformOptions: { value: TPlatformTab; name: string; icon: ReactNode }[] = [
+    ...Object.values(SandboxPlatform).map((value) => ({
+      value,
+      name: PLATFORMS[value].name,
+      icon: <img src={PLATFORMS[value].logo} alt="" className="size-8 rounded-sm object-contain" />
+    })),
+    {
+      value: OWN_SANDBOX,
+      name: "Your Own Sandbox",
+      icon: <BoxIcon className="size-7 text-accent" aria-hidden />
+    }
+  ];
 
-          <Controller
-            control={control}
-            name="label"
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel htmlFor="agent-vault-session-label">
-                  Label <span className="text-muted">(optional)</span>
-                </FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    id="agent-vault-session-label"
-                    placeholder="Nightly deploy"
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <FieldDescription>Describes what this session is for.</FieldDescription>
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
-
-          <Field>
-            <FieldLabel>Expires</FieldLabel>
-            <FieldContent>
-              <Controller
-                control={control}
-                name="ttlPreset"
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => {
-                      shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
-                      field.onChange(value);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      onCloseAutoFocus={(e) => {
-                        if (!shouldFocusCustomTtlRef.current) return;
-                        shouldFocusCustomTtlRef.current = false;
-                        e.preventDefault();
-                        customTtlInputRef.current?.focus();
-                      }}
-                    >
-                      {TTL_PRESETS.map((preset) => (
-                        <SelectItem key={preset.value} value={preset.value}>
-                          {preset.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {ttlPreset === CUSTOM_TTL && (
-                <Controller
-                  control={control}
-                  name="customTtl"
-                  render={({ field, fieldState }) => (
-                    <>
-                      <Input
-                        {...field}
-                        ref={(el) => {
-                          field.ref(el);
-                          customTtlInputRef.current = el;
-                        }}
-                        className="mt-2"
-                        placeholder="90m"
-                        isError={Boolean(fieldState.error)}
-                      />
-                      <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
-                      <FieldError>{fieldState.error?.message}</FieldError>
-                    </>
-                  )}
-                />
-              )}
-              {ttlPreset === NEVER_TTL && (
-                <FieldDescription>This session runs until someone revokes it.</FieldDescription>
-              )}
-            </FieldContent>
-          </Field>
-
-          {/* A warning, not a block: the session works for every other service, and picks up values
-              set up later on the proxy's next poll. */}
-          {needsSetup.length > 0 && selectedBundle && (
-            <Alert variant="warning">
-              <TriangleAlertIcon />
-              <AlertTitle>
-                {needsSetup.length === 1
-                  ? "1 service requires your personal values"
-                  : `${needsSetup.length} services require your personal values`}
-              </AlertTitle>
-              <AlertDescription>
-                <p>
-                  {needsSetup.length === 1
-                    ? "Until you set it up, this session can't reach it."
-                    : "Until you set them up, this session can't reach them."}
-                </p>
-                <ul className="mt-2 w-full divide-y divide-warning/15 rounded-md border border-warning/20">
-                  {shownNeedsSetup.map((service) => (
-                    <li key={service.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                      <ServiceIcon hostPattern={service.hostPattern} />
-                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                        {service.name}
-                      </span>
-                      <Button
-                        variant="warning"
-                        size="xs"
-                        onClick={() => setServiceToSetUp(service)}
-                      >
-                        Set Up
-                      </Button>
-                    </li>
-                  ))}
-                  {hiddenNeedsSetupCount > 0 && (
-                    <li className="px-2.5 py-1.5 text-xs">
-                      <Link
-                        to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-                        params={{
-                          orgId: currentOrg.id,
-                          projectId,
-                          accessBundleId: selectedBundle.id
-                        }}
-                        className="underline underline-offset-2 hover:text-foreground"
-                      >
-                        {hiddenNeedsSetupCount} more in {selectedBundle.name}
-                      </Link>
-                    </li>
-                  )}
-                </ul>
-              </AlertDescription>
-            </Alert>
+  const bundleField = (
+    <Field>
+      <FieldLabel htmlFor="agent-vault-session-bundle">Access Bundle</FieldLabel>
+      <FieldContent>
+        <Combobox
+          id="agent-vault-session-bundle"
+          options={accessBundles?.accessBundles ?? []}
+          value={accessBundle}
+          shouldFilter={false}
+          isLoading={isSearchingBundles}
+          includeMissingSelectedOptions
+          onInputValueChange={setBundleSearch}
+          getOptionValue={(bundle) => bundle.id}
+          getOptionLabel={(bundle) => bundle.name}
+          placeholder="Pick an access bundle"
+          searchPlaceholder="Search access bundles..."
+          emptyMessage="No access bundle matches."
+          modal
+          renderOption={(bundle) => (
+            <span className="flex min-w-0 items-center gap-2">
+              <PackageIcon className="size-4 shrink-0 text-muted" />
+              <span className="truncate">{bundle.name}</span>
+            </span>
           )}
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="av"
-              isDisabled={!selectedBundle}
-              isPending={isSubmitting}
-            >
-              Create Session
-            </Button>
-          </DialogFooter>
-        </form>
-
-        <PersonalValuesDialog
-          target={
-            serviceToSetUp && selectedBundle
-              ? { service: serviceToSetUp, accessBundleName: selectedBundle.name }
-              : null
-          }
-          onOpenChange={(open) => {
-            if (!open) setServiceToSetUp(null);
-          }}
+          renderValue={(bundle) => (
+            <span className="flex min-w-0 items-center gap-2">
+              <PackageIcon className="size-4 shrink-0 text-muted" />
+              <span className="truncate">{bundle.name}</span>
+            </span>
+          )}
+          onValueChange={setAccessBundle}
+          onClear={() => setAccessBundle(null)}
+          // The created session keeps the bundle it was made with.
+          isDisabled={isLocked}
         />
-      </DialogContent>
-    </Dialog>
+        <FieldDescription>The services an agent can reach with this session.</FieldDescription>
+      </FieldContent>
+    </Field>
+  );
+
+  const values = (
+    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+      {bundleField}
+      {isCreateNow && (
+        // Shaped like the identity field it replaces, so the tabs below don't move.
+        <Field>
+          <FieldLabel>Created As</FieldLabel>
+          <FieldContent>
+            {/* As tall as the picker beside it, so the two columns line up. */}
+            <span className="flex h-9 min-w-0 items-center gap-2 text-sm">
+              <UserIcon className="size-4 shrink-0 text-muted" />
+              <span className="truncate">{userName}</span>
+            </span>
+            <FieldDescription className="min-h-8">
+              Sessions you create here are attributed to you.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      )}
+      {!isCreateNow && isAdmin && (
+        <SessionMachineIdentityField
+          identity={identity}
+          onIdentityChange={setIdentity}
+          accessBundle={accessBundle}
+          snippet={snippet}
+          hasEnvCredentials={!isOwnSandbox}
+        />
+      )}
+      {!isCreateNow && !isAdmin && (
+        // Labeled like the picker admins see here, so it lines up with the bundle field beside it.
+        <Field>
+          <FieldLabel>Machine Identity</FieldLabel>
+          <FieldContent>
+            <FieldDescription>
+              Your code creates sessions as a machine identity. Ask an Agent Vault admin for the
+              client ID and client secret of one that&apos;s granted this access bundle.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      )}
+    </div>
+  );
+
+  const createSnippet = createSessionSnippet(language, {
+    siteUrl,
+    projectId,
+    accessBundle: accessBundleName,
+    clientId: clientId ?? "<client-id>",
+    clientSecret: "<client-secret>"
+  });
+  const highlightedInstall = useMemo(
+    () => highlight(INSTALL_COMMANDS[language], CodeLanguage.Shell),
+    [language]
+  );
+  const highlightedCreateSnippet = useMemo(
+    () => highlight(createSnippet, SNIPPET_CODE_LANGUAGES[language]),
+    [createSnippet, language]
+  );
+
+  const ownSandbox = (
+    <div className="flex flex-col gap-4">
+      {values}
+
+      <Tabs value={tab} onValueChange={onTabChange}>
+        <TabsList aria-label="How to create the session">
+          <TabsTrigger value={SnippetLanguage.TypeScript} disabled={isLocked}>
+            <SiTypescript />
+            TypeScript
+          </TabsTrigger>
+          <TabsTrigger value={SnippetLanguage.Python} disabled={isLocked}>
+            <SiPython />
+            Python
+          </TabsTrigger>
+          <TabsTrigger value={SnippetLanguage.Cli} disabled={isLocked}>
+            <TerminalIcon />
+            CLI
+          </TabsTrigger>
+          <TabsTrigger value={CREATE_NOW_TAB}>Create Now</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {createdSession && (
+        <div className="flex flex-col gap-4">
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              This command is shown once. Copy it now, since the session token cannot be retrieved
+              later.
+            </AlertDescription>
+          </Alert>
+          <div className="flex flex-col gap-2">
+            <CodeBlock
+              label="Run an agent with it"
+              value={runCommand(createdSession.token, siteUrl)}
+            />
+            <p className="text-xs text-accent">
+              Run it where your agent runs. Replace <Mono>&lt;proxy-host&gt;</Mono> with the host
+              your proxy runs on and <Mono>&lt;agent-command&gt;</Mono> with the agent to run, such
+              as <Mono>claude</Mono>.{" "}
+              {createdSession.expiresAt
+                ? `The session expires ${formatSessionExpiry(createdSession.expiresAt)}.`
+                : "The session lasts until someone revokes it."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!createdSession && isCreateNow && (
+        <DashboardSessionForm
+          formId={CREATE_NOW_FORM_ID}
+          accessBundle={accessBundle}
+          onSubmit={onCreateNowSubmit}
+        />
+      )}
+
+      {!isCreateNow && (
+        <>
+          <CodeBlock label="Install" value={INSTALL_COMMANDS[language]}>
+            {highlightedInstall}
+          </CodeBlock>
+          <div className="flex flex-col gap-2">
+            <CodeBlock label="Create a session" value={createSnippet}>
+              {highlightedCreateSnippet}
+            </CodeBlock>
+            <p className="text-xs text-accent">
+              {language === SnippetLanguage.Cli ? (
+                <>
+                  The command stores the session token in{" "}
+                  <Mono>INFISICAL_AGENT_VAULT_SESSION_TOKEN</Mono>, where{" "}
+                  <Mono>infisical agent-vault run</Mono> reads it.
+                </>
+              ) : (
+                "Revoking the session when the agent finishes stops its credentials from working, even if the agent fails."
+              )}
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const platformDetails = platform === OWN_SANDBOX ? null : PLATFORMS[platform];
+  const prompt =
+    platform === OWN_SANDBOX
+      ? null
+      : setupPrompt(PLATFORMS[platform], {
+          language: hasScriptLanguages(platform) ? scriptLanguage : undefined,
+          siteUrl,
+          projectId,
+          accessBundle: accessBundleName,
+          clientId
+        });
+
+  return (
+    <>
+      <Dialog open={isOpen && step === DialogStep.Platform} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Session</DialogTitle>
+            <DialogDescription>
+              An agent running with this session can only reach the hosts in the session&apos;s
+              associated access bundle.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {platformOptions.map((option) => (
+              <Item key={option.value} variant="outline" asChild>
+                <button
+                  type="button"
+                  // Item only styles hover for links, so a button adds its own.
+                  className="cursor-pointer hover:border-product-av/30 hover:bg-product-av/5"
+                  onClick={() => onPlatformPick(option.value)}
+                >
+                  <ItemMedia className="size-8">{option.icon}</ItemMedia>
+                  <ItemTitle>{option.name}</ItemTitle>
+                </button>
+              </Item>
+            ))}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isOpen && step === DialogStep.Setup} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="max-w-3xl"
+          height="fixed"
+          isPending={createSession.isPending}
+          // The token is shown only once, so a stray click outside mustn't close the dialog.
+          onInteractOutside={(event) => {
+            if (createdSession) event.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {platformDetails ? (
+                <img
+                  src={platformDetails.logo}
+                  alt=""
+                  className="size-5 shrink-0 rounded-sm object-contain"
+                />
+              ) : (
+                <BoxIcon className="size-5 shrink-0" aria-hidden />
+              )}
+              {platformDetails?.name ?? "Your Own Sandbox"}
+            </DialogTitle>
+            <DialogDescription>
+              {platformDetails?.description ?? OWN_SANDBOX_DESCRIPTION}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogBody className="flex flex-col gap-4">
+            {hasNoProxy && (
+              <p className="text-xs text-accent">
+                Agents reach their services through a proxy, and this project has none yet.{" "}
+                <Link
+                  to="/organizations/$orgId/projects/agent-vault/$projectId/proxies"
+                  params={{ orgId: currentOrg.id, projectId }}
+                  // A new tab, so the dialog keeps its picks while the user sets up a proxy.
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Create a proxy
+                </Link>{" "}
+                first.
+              </p>
+            )}
+
+            {isOwnSandbox ? (
+              ownSandbox
+            ) : (
+              <SandboxPlatformPanel
+                key={platform}
+                platform={platform}
+                language={scriptLanguage}
+                onLanguageChange={onTabChange}
+                siteUrl={siteUrl}
+                projectId={projectId}
+                accessBundle={accessBundleName}
+                values={values}
+              />
+            )}
+          </DialogBody>
+
+          <DialogFooter>
+            {!createdSession && (
+              <Button
+                variant="ghost"
+                className="mr-auto"
+                isDisabled={createSession.isPending}
+                onClick={() => setStep(DialogStep.Platform)}
+              >
+                Back
+              </Button>
+            )}
+            {platformDetails && prompt && (
+              <>
+                <Button variant="outline" asChild>
+                  <a href={platformDetails.guideUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLinkIcon />
+                    View Guide
+                  </a>
+                </Button>
+                <CopyPromptButton prompt={prompt} />
+              </>
+            )}
+            {isCreateNow && !createdSession && (
+              <Button
+                type="submit"
+                form={CREATE_NOW_FORM_ID}
+                variant="av"
+                isDisabled={!accessBundle}
+                isPending={createSession.isPending}
+              >
+                Create Session
+              </Button>
+            )}
+            {isOwnSandbox && (!isCreateNow || createdSession) && (
+              <Button variant="av" onClick={() => onOpenChange(false)}>
+                Done
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

@@ -102,11 +102,13 @@ export const isPullRequestCheckSkipStatus = (
 ): status is TPullRequestCheckSkipStatus =>
   Boolean(status) && Object.keys(PULL_REQUEST_CHECK_SKIP_ACTIONS).includes(status as string);
 
+type TCheckRunFinding = Pick<TFindingsPayload[number], "details" | "rule">;
+
 export type TPullRequestCheckRunResult = {
   conclusion: "success" | "failure" | "neutral" | "cancelled" | "timed_out";
   title: string;
   summary: string;
-  findings?: TFindingsPayload;
+  findings?: TCheckRunFinding[];
   offerSkipActions?: boolean;
 };
 
@@ -294,7 +296,8 @@ const scanGitHubFilesAndGetFindings = async (
     details: toFindingDetails(finding),
     fingerprint: finding.Fingerprint,
     severity: SecretScanningFindingSeverity.High,
-    rule: finding.RuleID
+    rule: finding.RuleID,
+    secretValue: finding.Secret
   }));
 };
 
@@ -590,13 +593,13 @@ const FindingLocationSchema = GitRepositoryScanFindingDetailsSchema.pick({
   link: true
 });
 
-const getFindingLocations = (findings: TFindingsPayload) =>
+const getFindingLocations = (findings: TCheckRunFinding[]) =>
   findings.flatMap((finding) => {
     const details = FindingLocationSchema.safeParse(finding.details);
     return details.success ? [{ rule: finding.rule, ...details.data }] : [];
   });
 
-const toCheckRunAnnotations = (findings: TFindingsPayload) =>
+const toCheckRunAnnotations = (findings: TCheckRunFinding[]) =>
   getFindingLocations(findings).map(({ rule, file, startLine, endLine, commit, description }) => ({
     path: file,
     start_line: startLine,
@@ -624,7 +627,7 @@ export const getPullRequestScanCheckRunResult = ({
   totalCommitCount,
   findingsUrl
 }: {
-  findings: (TFindingsPayload[number] & { id?: string; status?: string | null })[];
+  findings: (TCheckRunFinding & { id?: string; status?: string | null })[];
   scannedCommitCount: number;
   totalCommitCount: number;
   findingsUrl?: string;

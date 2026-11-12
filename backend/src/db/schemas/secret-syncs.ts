@@ -33,7 +33,8 @@ export const SecretSyncsSchema = z.object({
   lastRemoveJobId: z.string().nullable().optional(),
   lastRemoveMessage: z.string().nullable().optional(),
   lastRemovedAt: z.date().nullable().optional(),
-  lastSyncResult: z.string().nullable().optional()
+  lastSyncResult: z.string().nullable().optional(),
+  includeAllSubFolders: z.boolean().default(false)
 });
 
 export type TSecretSyncs = z.infer<typeof SecretSyncsSchema>;

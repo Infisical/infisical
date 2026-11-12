@@ -64,7 +64,7 @@ You become the project's admin.
 
     <Steps>
       <Step>
-        In the access bundle, select **Add Service**.
+        In the access bundle, select **Add Service**. In the **Services** list, select **Create New Service**.
       </Step>
       <Step>
         On the **Choose a template** panel, pick the template for the API, or select **Custom HTTP API**.
@@ -170,7 +170,7 @@ You become the project's admin.
       ```
     </CodeGroup>
 
-    The response includes the access bundle's `id`, which you need to add a service.
+    The response includes the access bundle's `id`, which you need to add a service to the access bundle.
 
     ### Add a service
 
@@ -183,16 +183,18 @@ You become the project's admin.
       - Each remote MCP server it connects to, such as Linear's (see [add an MCP server](/documentation/platform/agent-vault/mcp-servers#add-an-mcp-server))
     </Accordion>
 
-    Call [the endpoint to create a service](/api-reference/endpoints/agent-vault-services/create), replacing `<access-bundle-id>` in the URL with the `id` from the previous step and `<access-token>` with the `accessToken` from the login response.
-    
-    In the body, send the hosts that the credential applies to and the credential itself. For example, to add a GitHub personal access token:
+    Call the [Create service](/api-reference/endpoints/agent-vault-services/create) endpoint, replacing `<access-token>` with the `accessToken` from the login response.
+
+    In the body, send the project ID, the access bundle's `id` in `accessBundleIds`, the hosts that the credential applies to, and the credential itself. For example, to add a GitHub personal access token:
 
     <CodeGroup>
       ```bash US Cloud
-      curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST https://app.infisical.com/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",
@@ -205,10 +207,12 @@ You become the project's admin.
       ```
 
       ```bash EU Cloud
-      curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST https://eu.infisical.com/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",
@@ -221,10 +225,12 @@ You become the project's admin.
       ```
 
       ```bash Self-hosted
-      curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST <your-instance-url>/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",

@@ -355,6 +355,8 @@ describe("cert manager alert provider", () => {
     expect(payload.webhookType).toBe(`com.infisical.${ISSUANCE_EVENT}`);
     expect(payload.webhookSource).toBe("/alerts/alert-1");
     expect(payload.eventLabel).toBe("Issuance");
+    expect(payload.alert.viewUrl).toBe(viewUrl);
+    expect(payload.items[0].url).toBe("https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-1");
   });
 
   test("assertConditionInScope only checks IDs the update adds, so a deleted one can stay", async () => {

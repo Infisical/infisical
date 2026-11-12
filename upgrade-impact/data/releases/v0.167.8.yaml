@@ -1,0 +1,134 @@
+version: v0.167.8
+releasedAt: 2026-11-10T12:54:31-05:00
+sourceTag: v0.167.8
+previousTag: v0.167.7
+impactLevel: medium
+summary: Access approval policies left on the legacy system stop working,
+  reading audit logs needs a license that includes them, and keyless
+  certificates with a stored CSR start auto-renewing.
+requiresDbMigration: true
+breakingChanges:
+  - title: Legacy access approval system removed
+    description: Infisical no longer reads the legacy access approval tables, so
+      policies that the v0.166.9 migration left on the legacy system are not
+      listed or enforced, and their requests can't be reviewed.
+    action: 'Before upgrading, search the logs from your v0.166.9 or later upgrade
+      for "migrate-access-approval-policies-to-global: policy not migrated" and
+      recreate any policy listed there.'
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9236"
+        url: https://github.com/Infisical/infisical/pull/9236
+        description: Remove the legacy access approval implementation
+      - type: file
+        ref: backend/src/db/migrations/utils/approval-migration.ts
+        path: backend/src/db/migrations/utils/approval-migration.ts
+        description: Logs each policy the migration leaves on the legacy system
+  - title: Audit log reads need a license
+    description: GET /api/v1/organization/audit-logs and the deprecated project
+      audit logs route now return a 400 error when the license doesn't include
+      audit logs, which is the default without a license. Logs are still
+      recorded.
+    action: If you read audit logs through the API, confirm before upgrading that
+      your license includes them.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9322"
+        url: https://github.com/Infisical/infisical/pull/9322
+        description: Require the audit logs entitlement to read logs
+      - type: file
+        ref: backend/src/ee/services/audit-log/audit-log-service.ts
+        path: backend/src/ee/services/audit-log/audit-log-service.ts
+        description: listAuditLogs checks plan.auditLogs
+dbSchemaChanges:
+  - title: PKI imported CSR column
+    description: Infisical adds a nullable `importedCsr` column to
+      `certificate_bodies` for imported certificate renewal data.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261109120000_add-imported-csr-to-certificate-bodies.ts
+        path: backend/src/db/migrations/20261109120000_add-imported-csr-to-certificate-bodies.ts
+configChanges: []
+deploymentNotes:
+  - title: Keyless certificate auto-renewal
+    description: Keyless certificates that have auto-renewal on and a CSR from an
+      earlier "Use a CSR" renewal now renew in the daily job and reuse the key
+      pair. On external CAs such as DigiCert, each renewal issues a new
+      certificate.
+    action: Before upgrading, turn off auto-renewal on any keyless certificate you
+      don't want renewed.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9323"
+        url: https://github.com/Infisical/infisical/pull/9323
+        description: Accept a CSR on import so renewal can reuse the key pair
+      - type: file
+        ref: backend/src/services/certificate/certificate-dal.ts
+        path: backend/src/services/certificate/certificate-dal.ts
+        description: Renewal query now includes certificates that can renew from a CSR
+  - title: SCIM userName changes
+    description: A SCIM PUT that changes a member's userName now marks their SSO
+      link unverified, so they confirm their email with a code on their next SSO
+      sign-in. Orgs that enforce SSO on a verified domain confirm it
+      automatically.
+    action: If you rename users in your identity provider, make sure SMTP is
+      configured so they receive the code.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9213"
+        url: https://github.com/Infisical/infisical/pull/9213
+        description: Confirm the SSO link again when a PUT changes a member's userName
+      - type: file
+        ref: backend/src/ee/services/scim/scim-service.ts
+        path: backend/src/ee/services/scim/scim-service.ts
+        description: PUT marks the alias unverified when userName changes
+  - title: Bundled CLI
+    description: The standalone, FIPS standalone and backend images now bundle
+      Infisical CLI 0.45.4 instead of 0.44.12.
+    action: If you build custom images, rebuild them. If you pass
+      INFISICAL_CLI_VERSION as a build argument, set it to 0.45.4.
+    confidence: high
+    evidence:
+      - type: file
+        ref: build-versions.env
+        path: build-versions.env
+        description: INFISICAL_CLI_VERSION changed to 0.45.4
+      - type: file
+        ref: Dockerfile.standalone-infisical
+        path: Dockerfile.standalone-infisical
+        description: CLI ARG changed to 0.45.4
+      - type: file
+        ref: Dockerfile.fips.standalone-infisical
+        path: Dockerfile.fips.standalone-infisical
+        description: FIPS CLI ARG changed to 0.45.4
+knownIssues:
+  - title: CockroachDB PAM accounts need a newer CLI
+    description: The new CockroachDB PAM account type needs CLI support that isn't
+      released yet. CLI 0.45.4 and earlier reject these accounts as an
+      unsupported account type.
+    action: Wait for a CLI release that supports CockroachDB before using these
+      accounts.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9113"
+        url: https://github.com/Infisical/infisical/pull/9113
+        description: Add the CockroachDB account type
+      - type: pr
+        ref: Infisical/cli#484
+        url: https://github.com/Infisical/cli/pull/484
+        description: CLI support for CockroachDB accounts, not yet released
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-10T18:38:37.098Z
+  sourceRange:
+    from: v0.167.7
+    to: v0.167.8

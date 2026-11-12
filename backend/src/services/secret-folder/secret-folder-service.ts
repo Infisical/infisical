@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
@@ -9,11 +9,14 @@ import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynami
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
-import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -24,12 +27,18 @@ import { EventModificationType } from "@app/services/event-outbox/event-definiti
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
+  assertFolderDeleteAllowed,
   assertFolderMoveAllowed,
+  assertFolderRenameAllowed,
   buildFolderPath,
+  buildToAbsPath,
   canActorReadBlock,
   checkFolderHasRbacPolicies,
   checkFolderMoveBlock,
   checkFolderMovePolicyBlock,
+  findFoldersWithContent,
+  findPolicyProtectedFolder,
+  resolveBatchFolderEntries,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
 import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
@@ -62,6 +71,7 @@ import {
   TCreateManyFoldersDTO,
   TDeleteFolderDTO,
   TDeleteManyFoldersDTO,
+  TFolderChangeAction,
   TFolderMoveEligibility,
   TGetFolderByIdDTO,
   TGetFolderByPathDTO,
@@ -84,8 +94,8 @@ type TSecretFolderServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  secretApprovalPolicyService: Pick<
-    TSecretApprovalPolicyServiceFactory,
+  secretChangePolicyService: Pick<
+    TSecretChangePolicyServiceFactory,
     "getSecretApprovalPolicy" | "getSecretApprovalPolicyByPaths"
   >;
   secretV2BridgeDAL: Pick<
@@ -101,6 +111,7 @@ type TSecretFolderServiceFactoryDep = {
     | "findReferencedSecretReferencesBySecretKey"
     | "updateSecretReferenceEnvAndPath"
     | "findByFolderIds"
+    | "findFolderIdsWithSecrets"
     | "invalidateSecretCacheByProjectId"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -108,17 +119,16 @@ type TSecretFolderServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  secretApprovalRequestCreationFns: Pick<
-    TSecretApprovalRequestCreationFnsFactory,
-    "createSecretApprovalRequestV2Bridge"
+  secretChangeRequestService: Pick<
+    TSecretChangeRequestServiceFactory,
+    "findFolderIdsWithOpenRequests" | "createSecretApprovalRequestV2Bridge"
   >;
-  secretApprovalRequestService: Pick<TSecretApprovalRequestServiceFactory, "findFolderIdsWithOpenRequests">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findFolderIdsWithImports" | "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
@@ -136,15 +146,14 @@ export const secretFolderServiceFactory = ({
   folderCommitService,
   eventEmitter,
   projectDAL,
-  secretApprovalPolicyService,
+  secretChangePolicyService,
   secretV2BridgeDAL,
   kmsService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
-  secretApprovalRequestCreationFns,
-  secretApprovalRequestService,
+  secretChangeRequestService,
   secretQueueService,
   secretSyncQueue,
   dynamicSecretDAL,
@@ -347,6 +356,120 @@ export const secretFolderServiceFactory = ({
     }
   };
 
+  // a change request keeps the policy it was opened under, so a folder with open requests can be neither deleted
+  // nor renamed: either would let the request merge somewhere its policy no longer covers
+  const $assertNoOpenChangeRequests = async (
+    folders: { id: string; path: string }[],
+    action: TFolderChangeAction,
+    permission: MongoAbility<ProjectPermissionSet>,
+    tx: Knex
+  ) => {
+    const folderIdsWithOpenRequests = await secretChangeRequestService.findFolderIdsWithOpenRequests(
+      folders.map((folder) => folder.id),
+      tx
+    );
+    if (!folderIdsWithOpenRequests.length) return;
+
+    if (
+      !permission.can(ProjectPermissionSecretApprovalRequestActions.Read, ProjectPermissionSub.SecretApprovalRequest)
+    ) {
+      throw new BadRequestError({
+        message: `You cannot ${action} the selected folder because it contains resources that are protected by a change policy. Contact a project admin and try again.`,
+        name: action === "delete" ? "DeleteFolderProtectedByPolicy" : "RenameFolderProtectedByPolicy"
+      });
+    }
+
+    const blockedPaths = folders
+      .filter((folder) => folderIdsWithOpenRequests.includes(folder.id))
+      .map((folder) => `"${folder.path}"`)
+      .join(", ");
+    throw new BadRequestError({
+      message: `You cannot ${action} the selected folder because it has open change requests at folder path ${blockedPaths}. Merge or close the change requests and try again.`,
+      name: action === "delete" ? "DeleteFolderHasOpenChangeRequests" : "RenameFolderHasOpenChangeRequests"
+    });
+  };
+
+  const $assertFolderRenameAllowed = async ({
+    projectId,
+    environment,
+    folderId,
+    newName,
+    actor,
+    permission,
+    tx
+  }: {
+    projectId: string;
+    environment: string;
+    folderId: string;
+    newName: string;
+    actor: ActorType;
+    permission: MongoAbility<ProjectPermissionSet>;
+    tx: Knex;
+  }) => {
+    const unlockedSubtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
+    await folderDAL.lockFoldersForUpdate(
+      unlockedSubtree.map((folder) => folder.id),
+      tx
+    );
+
+    // a concurrent rename in or above this tree may have committed before the lock, so the paths read so far can be
+    // stale. renames and inserts in the locked tree now wait for this transaction, so read the tree and its path again
+    // and lock any folder created in between.
+    const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
+    const subtreeIds = subtree.map((folder) => folder.id);
+    const lockedIds = new Set(unlockedSubtree.map((folder) => folder.id));
+    await folderDAL.lockFoldersForUpdate(
+      subtreeIds.filter((id) => !lockedIds.has(id)),
+      tx
+    );
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Failed to retrieve path for folder with ID '${folderId}'` });
+    }
+    const oldPath = folderWithPath.path;
+
+    const toOldPath = buildToAbsPath(oldPath);
+    const toNewPath = buildToAbsPath(path.posix.join(path.posix.dirname(oldPath), newName));
+
+    await $assertNoOpenChangeRequests(
+      subtree.map((folder) => ({ id: folder.id, path: toOldPath(folder.path) })),
+      "rename",
+      permission,
+      tx
+    );
+    const content = await findFoldersWithContent(subtreeIds, { secretV2BridgeDAL, secretImportDAL }, tx);
+
+    const source = await findPolicyProtectedFolder(
+      {
+        folders: subtree.map((folder) => ({ id: folder.id, path: toOldPath(folder.path) })),
+        content,
+        projectId,
+        environment,
+        actor
+      },
+      { secretChangePolicyService },
+      tx
+    );
+    assertFolderRenameAllowed(source, "source", permission);
+
+    const destination = await findPolicyProtectedFolder(
+      {
+        folders: subtree.map((folder) => ({
+          id: folder.id,
+          path: toNewPath(folder.path),
+          contentPath: toOldPath(folder.path)
+        })),
+        content,
+        projectId,
+        environment,
+        actor
+      },
+      { secretChangePolicyService },
+      tx
+    );
+    assertFolderRenameAllowed(destination, "destination", permission);
+  };
+
   const updateManyFolders = async ({
     actor,
     actorId,
@@ -387,40 +510,31 @@ export const secretFolderServiceFactory = ({
     });
 
     const executeBulkUpdate = async (tx: Knex) => {
+      const entries = await resolveBatchFolderEntries(
+        { projectId: projectId as string, folders },
+        { folderDAL, projectEnvDAL },
+        tx
+      );
+
+      // lock every folder the batch can touch in one id-ordered statement, so two batches over the same
+      // folders queue behind each other instead of deadlocking on per-entry subtree locks
+      const renamedSubtrees = await folderDAL.findByEnvsDeep(
+        {
+          parentIds: entries
+            .filter(({ newFolder, folder }) => newFolder.name !== folder.name)
+            .map(({ folder }) => folder.id)
+        },
+        tx
+      );
+      await folderDAL.lockFoldersForUpdate(
+        [...new Set([...entries.map(({ folder }) => folder.id), ...renamedSubtrees.map((folder) => folder.id)])],
+        tx
+      );
+
       return Promise.all(
-        folders.map(async (newFolder) => {
-          const { environment, path: secretPath, id, name, description } = newFolder;
+        entries.map(async ({ newFolder, parentFolder, env, folder }) => {
+          const { environment, id, name, description } = newFolder;
 
-          const parentFolder = await folderDAL.findBySecretPath(projectId as string, environment, secretPath, tx);
-          if (!parentFolder) {
-            throw new NotFoundError({
-              message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
-              name: "UpdateManyFolders"
-            });
-          }
-
-          const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
-          if (!env) {
-            throw new NotFoundError({
-              message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`,
-              name: "UpdateManyFolders"
-            });
-          }
-          // now folder api accepts id based change
-          // this is for cli backward compatiability and when cli removes this, we will remove this logic
-          const folder = await folderDAL.findOne(
-            uuidValidate(id)
-              ? { envId: env.id, id, parentId: parentFolder.id }
-              : { envId: env.id, name: id, parentId: parentFolder.id },
-            tx
-          );
-
-          if (!folder) {
-            throw new NotFoundError({
-              message: `Folder with id '${id}' in environment with slug '${env.slug}' not found`,
-              name: "UpdateManyFolders"
-            });
-          }
           if (name !== folder.name) {
             // ensure that new folder name is unique
             const folderToCheck = await folderDAL.findOne(
@@ -438,6 +552,16 @@ export const secretFolderServiceFactory = ({
                 name: "Batch update folder"
               });
             }
+
+            await $assertFolderRenameAllowed({
+              projectId: projectId as string,
+              environment,
+              folderId: folder.id,
+              newName: name,
+              actor,
+              permission,
+              tx
+            });
           }
 
           const [doc] = await folderDAL.update(
@@ -566,7 +690,8 @@ export const secretFolderServiceFactory = ({
       .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found`, name: "UpdateFolder" });
-    if (name !== folder.name) {
+    const rename = name !== folder.name;
+    if (rename) {
       // ensure that new folder name is unique
       const folderToCheck = await folderDAL.findOne({
         name,
@@ -590,6 +715,18 @@ export const secretFolderServiceFactory = ({
       if (!oldFolderWithPath) {
         throw new NotFoundError({
           message: `Failed to retrieve path for folder with ID '${folder.id}'`
+        });
+      }
+
+      if (rename) {
+        await $assertFolderRenameAllowed({
+          projectId,
+          environment,
+          folderId: folder.id,
+          newName: name,
+          actor,
+          permission,
+          tx
         });
       }
 
@@ -670,6 +807,7 @@ export const secretFolderServiceFactory = ({
     parentId,
     idOrName,
     actor,
+    permission,
     tx
   }: {
     projectId: string;
@@ -677,7 +815,8 @@ export const secretFolderServiceFactory = ({
     parentId: string;
     idOrName: string;
     actor: ActorType;
-    tx?: Knex;
+    permission: MongoAbility<ProjectPermissionSet>;
+    tx: Knex;
   }) => {
     let targetFolder = await folderDAL
       .findOne(
@@ -748,47 +887,18 @@ export const secretFolderServiceFactory = ({
       path: folder.path,
       id: folder.id
     }));
+    const folderIds = folderPolicyPaths.map((p) => p.id);
+    await folderDAL.lockFoldersForUpdate(folderIds, tx);
 
-    const folderIdsWithOpenRequests = await secretApprovalRequestService.findFolderIdsWithOpenRequests(
-      folderPolicyPaths.map((p) => p.id),
+    await $assertNoOpenChangeRequests(folderPolicyPaths, "delete", permission, tx);
+
+    const content = await findFoldersWithContent(folderIds, { secretV2BridgeDAL, secretImportDAL }, tx);
+    const protectedFolder = await findPolicyProtectedFolder(
+      { folders: folderPolicyPaths, content, projectId, environment: env.slug, actor },
+      { secretChangePolicyService },
       tx
     );
-    if (folderIdsWithOpenRequests.length > 0) {
-      const blockedPaths = folderPolicyPaths
-        .filter((p) => folderIdsWithOpenRequests.includes(p.id))
-        .map((p) => `"${p.path}"`)
-        .join(", ");
-      throw new BadRequestError({
-        message: `You cannot delete the selected folder because it has open change requests at folder path ${blockedPaths}. Merge or close the change requests and try again.`,
-        name: "DeleteFolderHasOpenChangeRequests"
-      });
-    }
-
-    // get secrets under the given folders
-    const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: folderPolicyPaths.map((p) => p.id),
-      tx
-    });
-
-    for await (const folderPolicyPath of folderPolicyPaths) {
-      // eslint-disable-next-line no-continue
-      if (!secrets.some((s) => s.folderId === folderPolicyPath.id)) continue;
-
-      const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-        projectId,
-        env.slug,
-        folderPolicyPath.path,
-        tx
-      );
-
-      // if there is an enforced policy and there are secrets under the given folder, throw error
-      if (shouldApplyPolicy(policy, actor)) {
-        throw new BadRequestError({
-          message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
-          name: "DeleteFolderProtectedByPolicy"
-        });
-      }
-    }
+    assertFolderDeleteAllowed(protectedFolder, permission);
   };
 
   const deleteFolder = async ({
@@ -826,7 +936,7 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
 
       let folderToDelete = await folderDAL
         .findOne(
@@ -1520,7 +1630,7 @@ export const secretFolderServiceFactory = ({
     );
 
     const executeBulkDelete = async (tx: Knex) => {
-      const deletedFolders = [];
+      const targets = [];
 
       for (const [environment, envFolders] of Object.entries(foldersByEnv)) {
         const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
@@ -1539,8 +1649,6 @@ export const secretFolderServiceFactory = ({
               message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
             });
           }
-
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
 
           let folderToDelete = await folderDAL
             .findOne(
@@ -1574,61 +1682,76 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          const [doc] = await folderDAL.delete(
-            {
-              envId: env.id,
-              id: folderToDelete.id,
-              parentId: parentFolder.id,
-              isReserved: false
-            },
-            tx
-          );
-
-          const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
-
-          if (commitChanges) {
-            commitChanges.push({
-              type: CommitType.DELETE,
-              folderVersionId: folderVersions[doc.id].id,
-              folderId: doc.id
-            });
-          } else {
-            await folderCommitService.createCommit(
-              {
-                actor: {
-                  type: actor,
-                  metadata: {
-                    id: actorId
-                  }
-                },
-                message: "Folder deleted (batch)",
-                folderId: parentFolder.id,
-                changes: [
-                  {
-                    type: CommitType.DELETE,
-                    folderVersionId: folderVersions[doc.id].id,
-                    folderId: doc.id
-                  }
-                ]
-              },
-              tx
-            );
-          }
-
-          await FolderModifiedEventV1.emit(
-            eventEmitter,
-            {
-              folderId: doc.id,
-              projectId,
-              environment,
-              secretPath: path.posix.join(parentFolder.path, doc.name),
-              modificationType: EventModificationType.Deleted
-            },
-            tx
-          );
-
-          deletedFolders.push(doc);
+          targets.push({ environment, env, parentFolder, idOrName, folderToDelete });
         }
+      }
+
+      // lock every folder the batch deletes, with its subtree, in one id-ordered statement, so concurrent batch deletes
+      // queue behind each other instead of deadlocking on the per-folder subtree locks in $checkFolderPolicy
+      const subtrees = await folderDAL.findByEnvsDeep(
+        { parentIds: targets.map(({ folderToDelete }) => folderToDelete.id) },
+        tx
+      );
+      await folderDAL.lockFoldersForUpdate([...new Set(subtrees.map((folder) => folder.id))], tx);
+
+      const deletedFolders = [];
+      for (const { environment, env, parentFolder, idOrName, folderToDelete } of targets) {
+        await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
+
+        const [doc] = await folderDAL.delete(
+          {
+            envId: env.id,
+            id: folderToDelete.id,
+            parentId: parentFolder.id,
+            isReserved: false
+          },
+          tx
+        );
+
+        const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
+
+        if (commitChanges) {
+          commitChanges.push({
+            type: CommitType.DELETE,
+            folderVersionId: folderVersions[doc.id].id,
+            folderId: doc.id
+          });
+        } else {
+          await folderCommitService.createCommit(
+            {
+              actor: {
+                type: actor,
+                metadata: {
+                  id: actorId
+                }
+              },
+              message: "Folder deleted (batch)",
+              folderId: parentFolder.id,
+              changes: [
+                {
+                  type: CommitType.DELETE,
+                  folderVersionId: folderVersions[doc.id].id,
+                  folderId: doc.id
+                }
+              ]
+            },
+            tx
+          );
+        }
+
+        await FolderModifiedEventV1.emit(
+          eventEmitter,
+          {
+            folderId: doc.id,
+            projectId,
+            environment,
+            secretPath: path.posix.join(parentFolder.path, doc.name),
+            modificationType: EventModificationType.Deleted
+          },
+          tx
+        );
+
+        deletedFolders.push(doc);
       }
 
       return deletedFolders;
@@ -1675,7 +1798,7 @@ export const secretFolderServiceFactory = ({
     dynamicSecretDAL,
     honeyTokenDAL,
     secretRotationV2DAL,
-    secretApprovalPolicyService
+    secretChangePolicyService
   };
 
   // computes the reasons a folder subtree cannot be moved, shared by the read-only eligibility check and the
@@ -1713,14 +1836,16 @@ export const secretFolderServiceFactory = ({
     );
     const sourcePolicyBlock = await checkFolderMovePolicyBlock(
       { subtree, projectId, environment: sourceEnvironment, rootFolderPath: sourceFolderPath },
-      folderMoveBlockDeps
+      folderMoveBlockDeps,
+      tx
     );
     const sourceBlock = secretTypeBlock ?? sourcePolicyBlock;
 
     const destinationBlock = destination
       ? await checkFolderMovePolicyBlock(
           { subtree, projectId, environment: destination.environment, rootFolderPath: destination.path },
-          folderMoveBlockDeps
+          folderMoveBlockDeps,
+          tx
         )
       : null;
 
@@ -2130,8 +2255,8 @@ export const secretFolderServiceFactory = ({
             resourceMetadataDAL,
             folderCommitService,
             eventEmitter,
-            secretApprovalPolicyService,
-            secretApprovalRequestCreationFns,
+            secretChangePolicyService,
+            secretChangeRequestService,
             secretQueueService,
             reminderService,
             secretValidationRuleService

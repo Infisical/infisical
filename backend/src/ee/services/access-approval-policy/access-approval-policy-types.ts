@@ -1,18 +1,28 @@
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { EnforcementLevel, OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { ActorAuthMethod } from "@app/services/auth/auth-type";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import {
+  TApprovalPolicyBypassersDALFactory,
+  TApprovalPolicyDALFactory,
+  TApprovalPolicySecretEnvironmentDALFactory,
+  TApprovalPolicyStepApproversDALFactory,
+  TApprovalPolicyStepsDALFactory
+} from "@app/services/approval-policy/approval-policy-dal";
+import {
+  TApprovalRequestDALFactory,
+  TApprovalRequestGrantsDALFactory,
+  TApprovalRequestStepEligibleApproversDALFactory,
+  TApprovalRequestStepsDALFactory
+} from "@app/services/approval-policy/approval-request-dal";
+import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
-
-export type TIsApproversValid = {
-  userIds: string[];
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  envSlug: string;
-  actorAuthMethod: ActorAuthMethod;
-  secretPath: string;
-  projectId: string;
-  orgId: string;
-};
+import { TSecretAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 
 export enum ApproverType {
   Group = "group",
@@ -23,8 +33,6 @@ export enum BypasserType {
   Group = "group",
   User = "user"
 }
-
-export type TDelegatedApprovalPolicyOutput = TDelegatedApprovalPolicyInput;
 
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
@@ -90,261 +98,32 @@ export type TListAccessApprovalPoliciesDTO = {
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export interface TAccessApprovalPolicyServiceFactory {
-  getAccessPolicyCountByEnvSlug: ({
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug,
-    actorId,
-    envSlug
-  }: TGetAccessPolicyCountByEnvironmentDTO) => Promise<{
-    count: number;
-  }>;
-  createAccessApprovalPolicy: ({
-    name,
-    actor,
-    actorId,
-    actorOrgId,
-    secretPath,
-    actorAuthMethod,
-    approvals,
-    approvers,
-    bypassers,
-    projectSlug,
-    environment,
-    enforcementLevel,
-    allowedSelfApprovals,
-    approvalsRequired,
-    maxTimePeriod
-  }: TCreateAccessApprovalPolicy) => Promise<{
-    environment: {
-      name: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      projectId: string;
-      slug: string;
-      position: number;
-    };
-    environments: {
-      name: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      projectId: string;
-      slug: string;
-      position: number;
-    }[];
-    projectId: string;
-    name: string;
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    approvals: number;
-    envId: string;
-    enforcementLevel: string;
-    allowedSelfApprovals: boolean;
-    secretPath: string;
-    deletedAt?: Date | null | undefined;
-    maxTimePeriod?: string | null;
-    requestExpirationTime?: string | null;
-    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
-  }>;
-  deleteAccessApprovalPolicy: ({
-    policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteAccessApprovalPolicy) => Promise<{
-    approvers: {
-      id: string | null | undefined;
-      type: string;
-      sequence: number | null | undefined;
-      approvalsRequired: number | null | undefined;
-    }[];
-    name: string;
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    approvals: number;
-    envId: string;
-    enforcementLevel: string;
-    allowedSelfApprovals: boolean;
-    secretPath: string;
-    deletedAt?: Date | null | undefined;
-    maxTimePeriod?: string | null;
-    requestExpirationTime?: string | null;
-    environment: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-    environments: {
-      id: string;
-      name: string;
-      slug: string;
-    }[];
-    projectId: string;
-    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
-  }>;
-  updateAccessApprovalPolicy: ({
-    policyId,
-    approvers,
-    bypassers,
-    secretPath,
-    name,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    approvals,
-    enforcementLevel,
-    allowedSelfApprovals,
-    approvalsRequired,
-    environments,
-    maxTimePeriod
-  }: TUpdateAccessApprovalPolicy) => Promise<{
-    environment: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-    environments: {
-      id: string;
-      name: string;
-      slug: string;
-    }[];
-    projectId: string;
-    name: string;
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    approvals: number;
-    envId: string;
-    enforcementLevel: string;
-    allowedSelfApprovals: boolean;
-    secretPath: string;
-    deletedAt?: Date | null | undefined;
-    maxTimePeriod?: string | null;
-    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
-  }>;
-  getAccessApprovalPolicyByProjectSlug: ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug
-  }: TListAccessApprovalPoliciesDTO) => Promise<
-    {
-      approvers: (
-        | {
-            id: string | null | undefined;
-            type: ApproverType;
-            name: string;
-            sequence: number | null | undefined;
-            approvalsRequired: number | null | undefined;
-          }
-        | {
-            id: string | null | undefined;
-            type: ApproverType;
-            sequence: number | null | undefined;
-            approvalsRequired: number | null | undefined;
-          }
-      )[];
-      name: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      approvals: number;
-      envId: string;
-      enforcementLevel: string;
-      allowedSelfApprovals: boolean;
-      secretPath: string;
-      deletedAt?: Date | null | undefined;
-      maxTimePeriod?: string | null;
-      environment: {
-        id: string;
-        name: string;
-        slug: string;
-      };
-      environments: {
-        id: string;
-        name: string;
-        slug: string;
-      }[];
-      projectId: string;
-      bypassers: (
-        | {
-            id: string | null | undefined;
-            type: BypasserType;
-            name: string;
-          }
-        | {
-            id: string | null | undefined;
-            type: BypasserType;
-          }
-      )[];
-      delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
-    }[]
+export type TSecretAccessApprovalPolicyServiceFactoryDep = {
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findEffectiveProjectSubjectsMembership">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
+  userDAL: Pick<TUserDALFactory, "find">;
+  groupDAL: Pick<TGroupDALFactory, "find">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "create" | "transaction" | "updateById" | "deleteById" | "findByIdForUpdate"
   >;
-  getAccessApprovalPolicyById: ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    policyId
-  }: TGetAccessApprovalPolicyByIdDTO) => Promise<{
-    approvers: (
-      | {
-          id: string | null | undefined;
-          type: ApproverType.User;
-          name: string;
-          sequence: number | null | undefined;
-          approvalsRequired: number | null | undefined;
-        }
-      | {
-          id: string | null | undefined;
-          type: ApproverType.Group;
-          sequence: number | null | undefined;
-          approvalsRequired: number | null | undefined;
-        }
-    )[];
-    name: string;
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    approvals: number;
-    envId: string;
-    enforcementLevel: string;
-    allowedSelfApprovals: boolean;
-    secretPath: string;
-    deletedAt?: Date | null | undefined;
-    maxTimePeriod?: string | null;
-    requestExpirationTime?: string | null;
-    environment: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-    environments: {
-      id: string;
-      name: string;
-      slug: string;
-    }[];
-    projectId: string;
-    bypassers: (
-      | {
-          id: string | null | undefined;
-          type: BypasserType.User;
-          name: string;
-        }
-      | {
-          id: string | null | undefined;
-          type: BypasserType.Group;
-        }
-    )[];
-    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
-  }>;
-}
+  approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "insertMany" | "delete">;
+  approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany">;
+  approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
+  approvalPolicySecretEnvironmentDAL: Pick<
+    TApprovalPolicySecretEnvironmentDALFactory,
+    "insertMany" | "delete" | "findPolicyByEnvIdsAndSecretPath" | "findByPolicyIdForUpdate"
+  >;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find" | "update" | "findPendingByPolicyIdForUpdate">;
+  approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "delete">;
+  approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "update">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  secretAccessApprovalPolicyDAL: Pick<TSecretAccessApprovalPolicyDALFactory, "findSecretAccessPolicies">;
+  delegatedApprovalService: Pick<
+    TDelegatedApprovalServiceFactory,
+    "validateConnection" | "assertPlanAllowsPolicyEdit" | "createPolicy" | "updatePolicy" | "deletePolicyByPolicyId"
+  >;
+};
