@@ -332,17 +332,18 @@ off them in the database too.
   are refused, and so is one covering a pattern the session's bundle covers. Mint checks it without the bundle lock, so
   a later bundle edit can still create the overlap; resolve puts the bundle's services first, and the Go matcher breaks
   a tie by slice order, so the bundle's service gets the host.
-- **Secrets go when the session ends; the rest stays.** The credential (`encryptedCredential`) and the custom header and
-  substitution values (`encryptedValue` on the child rows) are set to NULL together with `secretsDeletedAt`, in one
-  transaction. The row keeps the name, type, hosts, rules,
-  credential type, header names and placeholders, since sessions stay until their project is deleted and the Sessions page shows what an
+- **Secrets go when the session ends; the rest stays.** The credential (`encryptedCredential`), the hook's signing
+  secret (`encryptedHookSecret`) and the custom header and substitution values (`encryptedValue` on the child rows) are
+  set to NULL together with `secretsDeletedAt`, in one transaction. The row keeps the name, type, hosts, rules,
+  credential type, header names, placeholders and hook URL, since sessions stay until their project is deleted and the Sessions page shows what an
   ended session could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
   (`deleteSecretsOfEndedSessions`) catches sessions that expired or lost their owner, matching `deriveSessionStatus`.
   Neither writes the session row, so an ownerless session's `updatedAt` never moves. `ttl: never` is allowed, so such a
   session keeps its secrets until it is revoked or its owner is deleted.
 - **Resolve opens an inline service's values with `openInlineServiceSecrets`**, which returns none once
   `secretsDeletedAt` is set or any value it needs is missing, so resolve leaves the service out rather than send a
-  half-built one. Only a pass-through service with no custom headers or substitutions goes out with nothing sealed.
+  half-built one. Only a pass-through service with no custom headers, substitutions or hook goes out with nothing
+  sealed.
 
 ## Database and SSH services
 
@@ -481,6 +482,37 @@ outside it is logged unparsed and still checked against the list.
   credential the admin sets in full that only the list call sees: a typed token (`memberProvidedFields: []`), or a
   sign-in. A saved member-provided OAuth service signs the admin in as a member (`personal: true`, the stored client),
   so the read accepts an authorization of either intent; nothing claims it, and it expires unused.
+
+## Hooks
+
+A service can name a hook: a server of the customer's that the proxy asks before it attaches the credential, and
+that allows or refuses the request. HTTP and MCP services ask on every request; Postgres, MySQL and SSH ask once
+when a connection opens. The proxy does the asking (`packages/agentvault/hook.go` in the CLI repo); Infisical only
+stores the hook and sends it on resolve.
+
+- **The signing secret is the admin's, write-only.** Sealed under the project data key as `{ value }` in
+  `encryptedHookSecret`, never returned, audited only as `hookSecretReplaced`. A PATCH without `signingSecret`
+  keeps it; `hook: null` removes URL and secret together. The URL refuses a query string, userinfo and a fragment
+  because it is shown in reads, audits and session details.
+- **Members never see a hook.** `viewService` leaves `hook` out for anyone without Edit on access bundles, the same
+  branch that leaves out `variableReferences`; the response schemas take it as optional for that reason.
+- **A PATCH that echoes the stored hook changes nothing** (`classifyHookUpdate`): the same URL with no secret, or
+  `null` with none stored, is dropped like the other read-backs, before the "Provide at least one field" check.
+  `updateService` re-checks under the lock that a hook it sets still has none and one it changes or removes still
+  exists (`reconcileWithLockedRow`), and audits from the locked row.
+- **The plan flag gates writes only** (`agentVaultHooks`, on for every plan, `assertAgentVaultHooksOnPlan`): adding
+  a hook or changing its URL or secret on create, update and mint. Removal, reads and resolve never check it, so a
+  downgrade keeps existing hooks running.
+- **A hook the proxy can't sign for never becomes "no hook".** Two CHECKs pair the columns
+  (`agent_vault_services_hook_secret_check`, `agent_vault_services_hook_url_check`); only an inline service whose
+  secrets were deleted may keep a URL without a secret, and resolve leaves such a service out.
+- **The secret is never expanded.** Resolve sends it as stored, outside `$expandVariableReferences`, and it only
+  signs checks to the hook, so braces in it are allowed, including on inline services.
+- **Old proxies skip hooks by decision.** Resolve sends `hook` to every proxy with no version check; a proxy from
+  before hooks ignores the field and brokers without asking. Docs and the UI make no version promise.
+- Resolve also sends each service's `accessBundleId` (null inline) and a top-level `session` (`label`, `actor`
+  with the `actorType` fallback, `onBehalfOf`), which the proxy puts in the hook's payload. Every field must be in the
+  `/resolve` 200 schema or it is stripped.
 
 ## Transformations
 

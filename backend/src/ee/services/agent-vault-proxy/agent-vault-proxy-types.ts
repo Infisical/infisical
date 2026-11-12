@@ -140,4 +140,8 @@ export type TResolvedService = {
   personalValuesMissing: boolean;
   // Some of the credential is each member's own, so a rejection is theirs to fix, not the admin's.
   memberProvided: boolean;
+  // The bundle the service came from. Null for a service sent inline with the session.
+  accessBundleId: string | null;
+  // Asked before each request (each connection for a database or SSH service). Null when the service has none.
+  hook: { url: string; secret: string } | null;
 };

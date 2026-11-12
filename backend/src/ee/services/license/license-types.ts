@@ -116,6 +116,7 @@ export type TFeatureSet = {
   agentVaultByoS3: false;
   agentVaultManagedStorage: boolean;
   agentVaultSessionLogRetentionDays: number | null;
+  agentVaultHooks: boolean;
   secretSyncLimit: null;
   maxPamAccounts: null;
 

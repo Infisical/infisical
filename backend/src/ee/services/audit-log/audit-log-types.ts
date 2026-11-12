@@ -6729,6 +6729,8 @@ interface AgentVaultServiceCreateEvent {
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
     variableKeys?: string[];
+    // The hook's URL when the service was created with one. Its signing secret is never recorded.
+    hookUrl?: string;
   };
 }
 
@@ -6757,6 +6759,11 @@ interface AgentVaultServiceUpdateEvent {
     tlsVerify?: boolean;
     // Present only when the update changed the stored CA the proxy checks the server's certificate against.
     tlsCaChanged?: "set" | "removed" | "replaced";
+    // Present only when the update changed the hook. hookUrl is set when it set the hook or changed its URL, and
+    // hookSecretReplaced when a new signing secret was saved. The secret itself is never recorded.
+    hookChanged?: "set" | "removed" | "updated";
+    hookUrl?: string;
+    hookSecretReplaced?: boolean;
     hostPattern?: string;
     credentialType?: string;
     // Present when the update connected or reauthorized an OAuth credential.
@@ -7100,6 +7107,7 @@ interface AgentVaultSessionMintEvent {
       allowedPathPrefixes: string[] | null;
       customHeaderNames: string[];
       substitutionPlaceholders: string[];
+      hookUrl?: string;
     }[];
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
