@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -138,7 +138,8 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
 
 export const useGetIdentityUniversalAuth = (
   identityId: string,
-  options?: TReactQueryOptions["options"]
+  options?: TReactQueryOptions["options"] &
+    Pick<UseQueryOptions<IdentityUniversalAuth>, "retry" | "refetchOnWindowFocus">
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityUniversalAuth(identityId),

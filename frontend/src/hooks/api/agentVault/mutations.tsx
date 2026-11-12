@@ -334,10 +334,9 @@ export const useAddAgentVaultAccessBundleMembers = (projectId: string) => {
       >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
       return data;
     },
-    onSuccess: (_, { accessBundleId }) => {
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, projectId, accessBundleId)
-      });
+    // accessBundles() prefixes accessBundle(), so it covers the bundle's members too. Invalidating
+    // both would refetch them twice, since the member check can't be cancelled midway.
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
       });
@@ -360,10 +359,9 @@ export const useRevokeAgentVaultAccessBundleMembers = (projectId: string) => {
       );
       return data;
     },
-    onSuccess: (_, { accessBundleId }) => {
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, projectId, accessBundleId)
-      });
+    // accessBundles() prefixes accessBundle(), so it covers the bundle's members too. Invalidating
+    // both would refetch them twice, since the member check can't be cancelled midway.
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
       });

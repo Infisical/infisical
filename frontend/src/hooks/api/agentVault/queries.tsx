@@ -129,6 +129,20 @@ export const agentVaultKeys = {
       "available",
       params
     ] as const,
+  // Nested under accessBundle(), the prefix a grant or revoke invalidates, so either refetches it.
+  accessBundleMemberCheck: (
+    orgId: string,
+    projectId: string,
+    accessBundleId: string,
+    actorType: AgentVaultMemberType,
+    actorId: string
+  ) =>
+    [
+      ...agentVaultKeys.accessBundleMembers(orgId, projectId, accessBundleId),
+      "check",
+      actorType,
+      actorId
+    ] as const,
   variables: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "variables"] as const,
   variableList: (orgId: string, projectId: string, params: TListAgentVaultVariablesDTO) =>
@@ -375,6 +389,55 @@ export const useListAvailableAgentVaultMembers = <
     },
     enabled,
     placeholderData: keepPreviousInProject(projectId)
+  });
+};
+
+const MEMBER_CHECK_PAGE_SIZE = 100;
+
+// The members endpoint can't filter by ID, and its search matches any name that contains the text,
+// so the actor can sit past the first page. Reads pages until it turns up or the matches run out.
+const findAccessBundleMember = async (
+  accessBundleId: string,
+  actor: { type: AgentVaultMemberType; id: string; name: string },
+  offset = 0
+): Promise<boolean> => {
+  const { data } = await apiRequest.get<{ members: TAgentVaultMember[]; totalCount: number }>(
+    `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
+    {
+      params: {
+        actorType: actor.type,
+        search: actor.name,
+        limit: MEMBER_CHECK_PAGE_SIZE,
+        offset
+      }
+    }
+  );
+  if (data.members.some((member) => member.id === actor.id)) return true;
+  const nextOffset = offset + data.members.length;
+  if (data.members.length < MEMBER_CHECK_PAGE_SIZE || nextOffset >= data.totalCount) return false;
+  return findAccessBundleMember(accessBundleId, actor, nextOffset);
+};
+
+export const useIsAgentVaultAccessBundleMember = (
+  projectId: string,
+  accessBundleId: string,
+  actor: { type: AgentVaultMemberType; id: string; name: string } | null
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.accessBundleMemberCheck(
+      currentOrg.id,
+      projectId,
+      accessBundleId,
+      actor?.type ?? AgentVaultMemberType.MachineIdentity,
+      actor?.id ?? ""
+    ),
+    queryFn: () => (actor ? findAccessBundleMember(accessBundleId, actor) : false),
+    enabled: Boolean(accessBundleId && actor),
+    placeholderData: keepPreviousInProject(projectId),
+    // The access can be granted in another tab, and the answer is fresh for a minute otherwise.
+    refetchOnWindowFocus: "always"
   });
 };
 
