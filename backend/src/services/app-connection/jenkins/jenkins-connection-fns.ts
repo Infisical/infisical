@@ -36,6 +36,8 @@ type TJenkinsItemResponse = {
 const JENKINS_REQUEST_TIMEOUT_MS = 30_000;
 const JENKINS_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const JENKINS_MAX_FOLDER_DEPTH = 10;
+const JENKINS_PAGE_SIZE = 100;
+const JENKINS_MAX_PAGES = 100;
 
 export const getJenkinsInstanceUrl = (config: Pick<TJenkinsConnectionConfig, "credentials">) =>
   removeTrailingSlash(config.credentials.instanceUrl);
@@ -178,6 +180,34 @@ export const jenkinsRequest = async <T>(
   );
 };
 
+// Jenkins returns a whole list unless the tree query asks for a range, and reports no total or next page, so
+// a page shorter than the range is the only sign that the list has ended
+export const paginateJenkins = async <T>(
+  config: TJenkinsRequestConfig,
+  { path, field, tree }: { path: string; field: string; tree: string },
+  deps?: TJenkinsGatewayDeps
+): Promise<T[]> => {
+  const items: T[] = [];
+
+  for (let page = 0; page < JENKINS_MAX_PAGES; page += 1) {
+    const offset = page * JENKINS_PAGE_SIZE;
+    // eslint-disable-next-line no-await-in-loop
+    const response = await jenkinsRequest<Partial<Record<string, T[]>>>(
+      config,
+      { method: "GET", path, params: { tree: `${tree}{${offset},${offset + JENKINS_PAGE_SIZE}}` } },
+      deps
+    );
+    const pageItems = response[field] ?? [];
+    items.push(...pageItems);
+
+    if (pageItems.length < JENKINS_PAGE_SIZE) return items;
+  }
+
+  logger.warn(`Jenkins listing stopped after ${JENKINS_MAX_PAGES} pages of ${JENKINS_PAGE_SIZE} items [path=${path}]`);
+
+  return items;
+};
+
 export const validateJenkinsConnectionCredentials = async (
   config: TJenkinsConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
@@ -225,13 +255,12 @@ export const listJenkinsFolders = async (
   appConnection: TJenkinsConnection,
   deps: TJenkinsGatewayDeps = {}
 ): Promise<TJenkinsFolder[]> => {
-  let root: TJenkinsItemResponse;
+  let rootItems: TJenkinsItemResponse[];
 
   try {
-    // Jenkins returns every item the user can read in one response; the item API is not paginated
-    root = await jenkinsRequest<TJenkinsItemResponse>(
+    rootItems = await paginateJenkins<TJenkinsItemResponse>(
       appConnection,
-      { method: "GET", path: "/api/json", params: { tree: getFolderTreeQuery(JENKINS_MAX_FOLDER_DEPTH) } },
+      { path: "/api/json", field: "jobs", tree: getFolderTreeQuery(JENKINS_MAX_FOLDER_DEPTH) },
       deps
     );
   } catch (error) {
@@ -263,7 +292,7 @@ export const listJenkinsFolders = async (
     });
   };
 
-  collectFolders(root.jobs);
+  collectFolders(rootItems);
 
   if (isTruncated) {
     logger.warn(

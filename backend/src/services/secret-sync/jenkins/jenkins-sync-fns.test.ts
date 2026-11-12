@@ -64,10 +64,18 @@ const payloadOf = (secrets: Record<string, string>) =>
 const axiosErrorWithStatus = (status: number) =>
   new AxiosError("Request failed", undefined, undefined, undefined, { status } as AxiosResponse);
 
+// Answers each listing with the slice its `{start,end}` range asks for, as Jenkins does
 const stubJenkins = (credentials: { id: string; typeName: string }[]) =>
-  safeRequestMock.mockImplementation(async (config: { method: string; url: string }) =>
-    config.method === "GET" ? { data: { credentials } } : { data: "" }
-  );
+  safeRequestMock.mockImplementation(async (config: { method: string; params?: { tree: string } }) => {
+    if (config.method !== "GET") return { data: "" };
+
+    const tree = config.params?.tree ?? "";
+    const [start, end] = tree
+      .slice(tree.lastIndexOf("{") + 1, -1)
+      .split(",")
+      .map(Number);
+    return { data: { credentials: credentials.slice(start, end) } };
+  });
 
 const requestsWith = (method: string) =>
   safeRequestMock.mock.calls.map(([config]) => config).filter((config) => config.method === method);
@@ -114,6 +122,19 @@ describe("JenkinsSyncFns", () => {
       ]
     ]);
     expect(deletedUrls()).toEqual([`${GLOBAL_STORE}/credential/STALE/config.xml`]);
+  });
+
+  it("reads every page of a store larger than one page", async () => {
+    stubJenkins(Array.from({ length: 250 }, (_, index) => ({ id: `STALE_${index}`, typeName: "Secret text" })));
+
+    await sync(syncWith(), payloadOf({}));
+
+    expect(requestsWith("GET").map(({ params }) => params.tree)).toEqual([
+      "credentials[id,typeName]{0,100}",
+      "credentials[id,typeName]{100,200}",
+      "credentials[id,typeName]{200,300}"
+    ]);
+    expect(deletedUrls()).toHaveLength(250);
   });
 
   it("refuses a key that belongs to a credential of another type without writing anything", async () => {

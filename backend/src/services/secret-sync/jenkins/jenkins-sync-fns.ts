@@ -8,6 +8,7 @@ import { BadRequestError, GatewayTransportError } from "@app/lib/errors";
 import {
   getJenkinsErrorMessage,
   jenkinsRequest,
+  paginateJenkins,
   TJenkinsConnection,
   TJenkinsGatewayDeps
 } from "@app/services/app-connection/jenkins";
@@ -103,15 +104,15 @@ const listJenkinsCredentials = async (
   deps: TJenkinsGatewayDeps
 ): Promise<TJenkinsCredential[]> => {
   try {
-    const { credentials } = await jenkinsRequest<{ credentials?: TJenkinsCredential[] }>(
+    const credentials = await paginateJenkins<TJenkinsCredential>(
       connection,
-      { method: "GET", path: `${storePath}/api/json`, params: { tree: "credentials[id,typeName]" } },
+      { path: `${storePath}/api/json`, field: "credentials", tree: "credentials[id,typeName]" },
       deps
     );
 
     // Infisical only writes IDs that pass this check, and an ID goes into the request path, where one
     // such as `..` would retarget an update or delete at the store's domain instead of a credential
-    return (credentials ?? []).filter((credential) => isValidJenkinsCredentialId(credential.id));
+    return credentials.filter((credential) => isValidJenkinsCredentialId(credential.id));
   } catch (error) {
     throw toSyncError(error, "Failed to list Jenkins credentials");
   }
