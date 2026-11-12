@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { FieldValues } from "react-hook-form";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
@@ -28,7 +29,10 @@ import { failed, toast } from "../../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../../access/ui";
 import { useV4Adapter } from "../../../data/adapters";
 import { useGo, v4Path } from "../../../links";
-import { CreateSecretSyncSheet } from "../../OverviewPage/secrets/secret-sync/create-secret-sync-sheet";
+import {
+  CreateSecretSyncSheet,
+  SYNC_DRAFT_STORAGE_KEY
+} from "../../OverviewPage/secrets/secret-sync/create-secret-sync-sheet";
 import type { LocalSecretSync } from "../../OverviewPage/secrets/secret-sync/sync-model";
 import {
   destinationNameOf,
@@ -37,6 +41,7 @@ import {
   SYNC_DOCS,
   SYNC_STATE,
   syncHref,
+  syncsHref,
   syncStateOf
 } from "./model";
 import {
@@ -93,7 +98,7 @@ export const SecretSyncsTab = ({
   const adapter = useV4Adapter("secrets");
   const go = useGo();
   const navigate = useNavigate();
-  const { addSync, ...search } = useSearch({ from: route });
+  const { addSync, connectionId, connectionName, ...search } = useSearch({ from: route });
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
   const {
     data: syncs = [],
@@ -107,7 +112,7 @@ export const SecretSyncsTab = ({
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [creating, setCreating] = useState<{ destination?: SecretSync }>();
+  const [creating, setCreating] = useState<{ destination?: SecretSync; draft?: FieldValues }>();
   const [dialog, setDialog] = useState<{ kind: SyncDialogKind; sync: TSecretSync }>();
 
   useEffect(() => {
@@ -115,6 +120,21 @@ export const SecretSyncsTab = ({
     setCreating({ destination: addSync as SecretSync });
     navigate({ to: listPath, params: { orgId, projectId }, search, replace: true });
   }, [addSync]);
+
+  useEffect(() => {
+    if (!connectionId || !connectionName) return;
+    navigate({ to: listPath, params: { orgId, projectId }, search, replace: true });
+    const stored = sessionStorage.getItem(SYNC_DRAFT_STORAGE_KEY);
+    sessionStorage.removeItem(SYNC_DRAFT_STORAGE_KEY);
+    if (!stored) return;
+    let draft: FieldValues;
+    try {
+      draft = JSON.parse(stored) as FieldValues;
+    } catch {
+      return;
+    }
+    setCreating({ draft: { ...draft, connection: { id: connectionId, name: connectionName } } });
+  }, [connectionId, connectionName]);
 
   const picked = (field: string) => filters.find((filter) => filter.field === field)?.values ?? [];
   const statusFilter = picked("status");
@@ -423,6 +443,8 @@ export const SecretSyncsTab = ({
       <CreateSecretSyncSheet
         open={Boolean(creating)}
         destination={creating?.destination}
+        draft={creating?.draft}
+        returnTo={syncsHref(orgId, projectId)}
         onOpenChange={(open) => !open && setCreating(undefined)}
         scope={{
           project: projectId,

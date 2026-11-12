@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 import { useParams } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v4/ui/button";
@@ -37,15 +38,10 @@ import { AccessRestricted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
-import {
-  canEditDestination,
-  type EditSection,
-  EditSyncSheet
-} from "../IntegrationsPage/secret-syncs/edit-sync-sheet";
+import { type EditSection, EditSyncSheet } from "../IntegrationsPage/secret-syncs/edit-sync-sheet";
 import {
   destinationNameOf,
   INITIAL_SYNC_LABEL,
-  labelOf,
   messageOf,
   plainValueOf,
   sourcePathOf,
@@ -60,28 +56,13 @@ import {
   SyncStatus,
   useSyncActions
 } from "../IntegrationsPage/secret-syncs/parts";
-import { SYNC_VIEWS } from "../OverviewPage/secrets/secret-sync/destination-fields";
+import { SYNC_VIEWS } from "../OverviewPage/secrets/secret-sync/sync-views";
 
 const route = v4Path(
   "/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId"
 );
 
-const ROOT_OPTIONS = new Set([
-  "initialSyncBehavior",
-  "disableSecretDeletion",
-  "keySchema",
-  "includeAllSubFolders",
-  "secretId"
-]);
-
 const enabledText = (value: unknown) => (value ? "Enabled" : "Disabled");
-
-const genericItems = (record: object, skip?: Set<string>): DataListItem[] =>
-  Object.entries(record).flatMap(([key, value]) => {
-    if (skip?.has(key)) return [];
-    const text = plainValueOf(value);
-    return text ? [[labelOf(key), text] as DataListItem] : [];
-  });
 
 const present = (value: ReactNode) => value !== undefined && value !== null && value !== "";
 
@@ -229,6 +210,9 @@ const SyncDetails = ({
   const editBlock = actions.blockFor(sync, ProjectPermissionSecretSyncActions.Edit);
   const syncBlock = actions.blockFor(sync, ProjectPermissionSecretSyncActions.SyncSecrets);
   const view = SYNC_VIEWS[sync.destination];
+  const reviewForm = useForm({
+    values: { connection: sync.connection, destinationConfig: sync.destinationConfig }
+  });
   const failure = messageOf(sync.syncStatus, sync.lastSyncMessage);
   const note = sync.syncStatus === SecretSyncStatus.Succeeded ? sync.lastSyncMessage : null;
   const options = sync.syncOptions as Record<string, unknown>;
@@ -287,9 +271,7 @@ const SyncDetails = ({
       </Inline>
     ],
     ["Connection", sync.connection.name],
-    ...(view
-      ? reviewItems(view.destinationReview(sync.destinationConfig as Record<string, unknown>))
-      : genericItems(sync.destinationConfig as object))
+    ...reviewItems(view.destinationReview(sync.destinationConfig as Record<string, unknown>))
   ];
 
   const initialBehavior = sync.syncOptions.initialSyncBehavior;
@@ -306,9 +288,7 @@ const SyncDetails = ({
         <Dash key="schema" />
       )
     ],
-    ...(view?.optionsReview
-      ? reviewItems(view.optionsReview(options))
-      : genericItems(options, ROOT_OPTIONS)),
+    ...reviewItems(view.optionsReview?.(options) ?? []),
     ["Secret deletion protection", enabledText(sync.syncOptions.disableSecretDeletion)]
   ];
 
@@ -375,18 +355,10 @@ const SyncDetails = ({
             </Stack>
           }
         >
-          <Card
-            variant="framed"
-            title="Destination"
-            action={editButton(
-              "destination",
-              editBlock ??
-                (canEditDestination(sync)
-                  ? undefined
-                  : `Editing ${name} destinations isn't in v4 yet`)
-            )}
-          >
-            <DataList variant="props" density="compact" items={destination} />
+          <Card variant="framed" title="Destination" action={editButton("destination")}>
+            <FormProvider {...reviewForm}>
+              <DataList variant="props" density="compact" items={destination} />
+            </FormProvider>
           </Card>
           <Card variant="framed" title="Sync options" action={editButton("options")}>
             <DataList variant="props" density="compact" items={syncOptions} />

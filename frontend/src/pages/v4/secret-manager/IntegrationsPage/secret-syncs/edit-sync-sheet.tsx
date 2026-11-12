@@ -34,11 +34,9 @@ import {
   OptionsFields,
   SourceFields
 } from "../../OverviewPage/secrets/secret-sync/create-secret-sync-sheet";
-import {
-  SYNC_VIEWS,
-  SyncConnections
-} from "../../OverviewPage/secrets/secret-sync/destination-fields";
+import { SyncConnections } from "../../OverviewPage/secrets/secret-sync/sync-fields";
 import type { LocalSyncConnection } from "../../OverviewPage/secrets/secret-sync/sync-model";
+import { SYNC_VIEWS } from "../../OverviewPage/secrets/secret-sync/sync-views";
 import { destinationNameOf } from "./model";
 
 import flowStyles from "../../OverviewPage/secrets/flows/flows.module.css";
@@ -58,8 +56,6 @@ const SECTION_FIELDS: Record<EditSection, string[]> = {
   options: ["syncOptions", "isAutoSyncEnabled"],
   details: ["name", "description"]
 };
-
-export const canEditDestination = (sync: TSecretSync) => Boolean(SYNC_VIEWS[sync.destination]);
 
 const firstError = (errors: FieldErrors): string | undefined => {
   const entry = Object.values(errors)[0];
@@ -126,7 +122,7 @@ export const EditSyncSheet = ({
   const [pending, setPending] = useState(false);
   const guard = useDiscardChangesGuard({ isDirty, onDiscard: onClose });
   const name = destinationNameOf(sync.destination);
-  const Destination = SYNC_VIEWS[sync.destination]?.Destination;
+  const { Destination } = SYNC_VIEWS[sync.destination];
 
   const connections = [
     { id: sync.connection.id, name: sync.connection.name, app },
@@ -176,7 +172,7 @@ export const EditSyncSheet = ({
         <OptionsFields />
       </>
     );
-  if (section === "destination" && Destination)
+  if (section === "destination")
     body = (
       <>
         <Destination />

@@ -13,7 +13,12 @@ export const Route = createFileRoute(
   },
   component: IntegrationsPage,
   validateSearch: zodValidator(
-    z.object({ selectedTab: z.string().optional(), addSync: z.string().optional() })
+    z.object({
+      selectedTab: z.string().optional(),
+      addSync: z.string().optional(),
+      connectionId: z.string().optional(),
+      connectionName: z.string().optional()
+    })
   ),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

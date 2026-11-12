@@ -19,6 +19,13 @@ import {
   updateSecrets,
   useStore
 } from "./demo-store";
+import { syncAutomationDemo } from "./demo-sync-automation";
+import { syncCloudDemo } from "./demo-sync-cloud";
+import { syncDataDemo } from "./demo-sync-data";
+import { syncDeployDemo } from "./demo-sync-deploy";
+import { syncGitDemo } from "./demo-sync-git";
+import { syncHostingDemo } from "./demo-sync-hosting";
+import { syncVaultsDemo } from "./demo-sync-vaults";
 import { DEMO_SYNC_CONNECTIONS, demoSync } from "./demo-syncs";
 import { type DemoSecret, envOf } from "./fixtures";
 
@@ -97,6 +104,13 @@ const valuesOf = (store: DemoStore, rotation: TSecretRotationV2) => {
 
 export const secretsManagedDemo: SecretsManagedAdapter = {
   ...secretsOptionsDemo,
+  ...syncCloudDemo,
+  ...syncDataDemo,
+  ...syncVaultsDemo,
+  ...syncGitDemo,
+  ...syncDeployDemo,
+  ...syncHostingDemo,
+  ...syncAutomationDemo,
   useSecretRotationCredentials: ({ rotationId }, options) => {
     const store = useStore();
     const state = store.use();

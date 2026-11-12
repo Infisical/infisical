@@ -1,3 +1,4 @@
+import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
@@ -7,7 +8,7 @@ import {
 } from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 
-export const DEMO_SYNC_CONNECTIONS: (TAvailableAppConnection & { app: AppConnection })[] = [
+const CORE_SYNC_CONNECTIONS = [
   { id: "00000000-0000-4000-9000-000000000001", name: "aws-demo-account", app: AppConnection.AWS },
   { id: "00000000-0000-4000-9000-000000000002", name: "aws-demo-staging", app: AppConnection.AWS },
   {
@@ -40,6 +41,21 @@ export const DEMO_SYNC_CONNECTIONS: (TAvailableAppConnection & { app: AppConnect
     name: "netlify-demo-token",
     app: AppConnection.Netlify
   }
+];
+
+const coveredApps = new Set<AppConnection>(
+  CORE_SYNC_CONNECTIONS.map((connection) => connection.app)
+);
+
+export const DEMO_SYNC_CONNECTIONS: (TAvailableAppConnection & { app: AppConnection })[] = [
+  ...CORE_SYNC_CONNECTIONS,
+  ...[...new Set(Object.values(SECRET_SYNC_CONNECTION_MAP))]
+    .filter((app) => !coveredApps.has(app))
+    .map((app, index) => ({
+      id: `00000000-0000-4000-9100-${String(index + 1).padStart(12, "0")}`,
+      name: `${app}-demo`,
+      app
+    }))
 ].map((connection) => ({ ...connection, projectId: "payments-api" }));
 
 export const demoSync = (input: {

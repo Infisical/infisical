@@ -37,9 +37,23 @@ import {
 
 import type { SecretsManagedAdapter } from "./contract-managed";
 import { secretsOptionsLive } from "./live-options";
+import { syncAutomationLive } from "./live-sync-automation";
+import { syncCloudLive } from "./live-sync-cloud";
+import { syncDataLive } from "./live-sync-data";
+import { syncDeployLive } from "./live-sync-deploy";
+import { syncGitLive } from "./live-sync-git";
+import { syncHostingLive } from "./live-sync-hosting";
+import { syncVaultsLive } from "./live-sync-vaults";
 
 export const secretsManagedLive: SecretsManagedAdapter = {
   ...secretsOptionsLive,
+  ...syncCloudLive,
+  ...syncDataLive,
+  ...syncVaultsLive,
+  ...syncGitLive,
+  ...syncDeployLive,
+  ...syncHostingLive,
+  ...syncAutomationLive,
   useSecretRotationCredentials: (dto, options) =>
     useViewSecretRotationV2GeneratedCredentials(dto, { enabled: options?.enabled }),
   useCreateSecretRotation: useCreateSecretRotationV2,

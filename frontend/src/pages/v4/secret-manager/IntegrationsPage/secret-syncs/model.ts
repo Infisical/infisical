@@ -81,30 +81,6 @@ export const INITIAL_SYNC_LABEL: Record<SecretSyncInitialSyncBehavior, (name: st
     `Import, prioritize ${name} values`
 };
 
-const ACRONYMS: Record<string, string> = {
-  id: "ID",
-  ids: "IDs",
-  url: "URL",
-  uuid: "UUID",
-  ocid: "OCID",
-  uid: "UID",
-  oci: "OCI",
-  scim: "SCIM",
-  kms: "KMS",
-  aws: "AWS"
-};
-
-export const labelOf = (key: string) =>
-  key
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .split(/[\s_-]+/)
-    .map((word, index) => {
-      const lower = word.toLowerCase();
-      if (ACRONYMS[lower]) return ACRONYMS[lower];
-      return index === 0 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
-    })
-    .join(" ");
-
 export const plainValueOf = (value: unknown): string | undefined => {
   if (value === null || value === undefined || value === "") return undefined;
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
