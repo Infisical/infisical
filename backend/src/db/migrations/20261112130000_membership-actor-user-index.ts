@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
 
       for (const { name, column } of INDEXES) {
         // eslint-disable-next-line no-await-in-loop
-        if (!(await knex.schema.hasColumn(TableName.Membership, column))) {
+        if (!(await knex.schema.connection(connection).hasColumn(TableName.Membership, column))) {
           // eslint-disable-next-line no-continue
           continue;
         }
