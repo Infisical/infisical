@@ -527,7 +527,10 @@ export const signerIssuanceServiceFactory = ({
         if (!completedJob) {
           isSuperseded = true;
           const currentSigner = await signerDAL.findById(job.signerId, tx);
-          isSupersededByRevokeOrDelete = !currentSigner || currentSigner.status === SignerStatus.Revoked;
+          await certificateDAL.findByIdForUpdate(certificateId, tx);
+          const signerOwningCertificate = await signerDAL.findOne({ certificateId }, tx);
+          isSupersededByRevokeOrDelete =
+            !signerOwningCertificate && (!currentSigner || currentSigner.status === SignerStatus.Revoked);
           return;
         }
         const lockedSigner = await signerDAL.findByIdForUpdate(job.signerId, tx);
