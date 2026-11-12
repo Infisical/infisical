@@ -139,6 +139,9 @@ export type TAutoApprovalOutcome = {
 export type TAutoApprovalCatalog = {
   // Apps a connection can be created for to use in rules
   apps: AppConnection[];
+  // Apps that add a request form field, and apps whose rules check the requester
+  fieldApps: AppConnection[];
+  requesterApps: AppConnection[];
   connections: TAutoApprovalCatalogConnection[];
 };
 

@@ -12,4 +12,13 @@ export const AUTO_APPROVAL_PROVIDER_REGISTRY: Partial<Record<AppConnection, TAut
 
 export const AUTO_APPROVAL_APPS = Object.keys(AUTO_APPROVAL_PROVIDER_REGISTRY) as AppConnection[];
 
+const offersSubject = (app: AppConnection, isField: boolean) =>
+  Object.values(AUTO_APPROVAL_PROVIDER_REGISTRY[app]?.subjects ?? {}).some(
+    (subject) => Boolean(subject.input) === isField
+  );
+
+// Apps that add a request form field, and apps whose rules check the requester
+export const AUTO_APPROVAL_FIELD_APPS = AUTO_APPROVAL_APPS.filter((app) => offersSubject(app, true));
+export const AUTO_APPROVAL_REQUESTER_APPS = AUTO_APPROVAL_APPS.filter((app) => offersSubject(app, false));
+
 export const getAutoApprovalProvider = (app: string) => AUTO_APPROVAL_PROVIDER_REGISTRY[app as AppConnection];

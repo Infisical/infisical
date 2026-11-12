@@ -20,7 +20,12 @@ import {
   getAutoApprovalSubjectKey,
   TResolvedAutoApprovalSubject
 } from "./auto-approval-fns";
-import { AUTO_APPROVAL_APPS, getAutoApprovalProvider } from "./auto-approval-providers";
+import {
+  AUTO_APPROVAL_APPS,
+  AUTO_APPROVAL_FIELD_APPS,
+  AUTO_APPROVAL_REQUESTER_APPS,
+  getAutoApprovalProvider
+} from "./auto-approval-providers";
 import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
@@ -548,6 +553,8 @@ export const autoApprovalServiceFactory = ({
 
     return {
       apps: AUTO_APPROVAL_APPS,
+      fieldApps: AUTO_APPROVAL_FIELD_APPS,
+      requesterApps: AUTO_APPROVAL_REQUESTER_APPS,
       connections: connectionsByApp.flat().flatMap((connection) => {
         const provider = getAutoApprovalProvider(connection.app);
         if (!provider) return [];

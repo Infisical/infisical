@@ -75,7 +75,10 @@ export const AutoApprovalCard = ({
     OrgPermissionAppConnectionActions.Create,
     OrgPermissionSubjects.AppConnections
   );
-  const [isCreatingConnection, setIsCreatingConnection] = useState(false);
+  // Which menu the new connection is for: a request form field, or a check on the requester
+  const [creatingConnectionFor, setCreatingConnectionFor] = useState<"field" | "condition" | null>(
+    null
+  );
   const hasRequesterChecks = catalog.some((connection) =>
     connection.subjects.some((subject) => isRequesterSubject(subject.id))
   );
@@ -221,7 +224,7 @@ export const AutoApprovalCard = ({
                         {canCreateConnection && (
                           <>
                             {availableInputs.length > 0 && <DropdownMenuSeparator />}
-                            <DropdownMenuItem onClick={() => setIsCreatingConnection(true)}>
+                            <DropdownMenuItem onClick={() => setCreatingConnectionFor("field")}>
                               <Plus />
                               Create App Connection
                             </DropdownMenuItem>
@@ -325,6 +328,11 @@ export const AutoApprovalCard = ({
                           scope={scope}
                           scopeId={scopeId}
                           showErrors={showErrors}
+                          onCreateConnection={
+                            canCreateConnection && catalogData?.requesterApps.length
+                              ? () => setCreatingConnectionFor("condition")
+                              : undefined
+                          }
                           onChange={(next) =>
                             onChange({
                               ...draft,
@@ -350,10 +358,17 @@ export const AutoApprovalCard = ({
         </CardContent>
       </Card>
       <AddAppConnectionModal
-        isOpen={isCreatingConnection}
-        onOpenChange={setIsCreatingConnection}
-        apps={catalogData?.apps ?? []}
-        onComplete={addFieldForConnection}
+        isOpen={creatingConnectionFor !== null}
+        onOpenChange={(isOpen) => !isOpen && setCreatingConnectionFor(null)}
+        apps={
+          (creatingConnectionFor === "condition"
+            ? catalogData?.requesterApps
+            : catalogData?.fieldApps) ?? []
+        }
+        onComplete={async (connection) => {
+          if (creatingConnectionFor === "field") await addFieldForConnection(connection);
+          else await refetch();
+        }}
       />
     </>
   );

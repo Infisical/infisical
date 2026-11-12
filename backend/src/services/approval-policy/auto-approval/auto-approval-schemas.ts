@@ -110,6 +110,8 @@ export const AutoApprovalInputDetailsSchema = z.object({
 
 export const AutoApprovalCatalogSchema = z.object({
   apps: z.nativeEnum(AppConnection).array(),
+  fieldApps: z.nativeEnum(AppConnection).array(),
+  requesterApps: z.nativeEnum(AppConnection).array(),
   connections: z
     .object({
       id: z.string().uuid(),
