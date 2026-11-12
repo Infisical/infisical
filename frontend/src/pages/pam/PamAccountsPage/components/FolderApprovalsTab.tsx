@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import {
   Ban,
   FilterIcon,
@@ -333,7 +334,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       return;
     }
 
-    if (autoApprovalDraft.rules.some((rule) => !isRuleComplete(rule, autoApprovalCatalog))) {
+    if (
+      autoApprovalDraft.rules.some(
+        (rule) => !isRuleComplete(rule, autoApprovalCatalog)
+      )
+    ) {
       setShowAutoApprovalErrors(true);
       createNotification({ type: "error", text: "Finish the auto-approval rules before saving" });
       return;
@@ -353,8 +358,14 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           createNotification({ type: "success", text: "Approval configuration saved" });
           setIsDirty(false);
         },
-        onError: () => {
-          createNotification({ type: "error", text: "Failed to save approval configuration" });
+        onError: (error) => {
+          const message = axios.isAxiosError(error)
+            ? (error.response?.data as { message?: unknown } | undefined)?.message
+            : undefined;
+          createNotification({
+            type: "error",
+            text: typeof message === "string" ? message : "Failed to save approval configuration"
+          });
         }
       }
     );
