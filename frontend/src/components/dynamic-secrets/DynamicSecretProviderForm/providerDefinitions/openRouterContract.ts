@@ -132,7 +132,7 @@ export const getOpenRouterEditPayload = (
   projectSlug: context.projectSlug,
   environmentSlug: context.environment,
   data: {
-    maxTTL: values.maxTTL || undefined,
+    maxTTL: values.maxTTL || null,
     defaultTTL: values.defaultTTL,
     inputs: buildInputs(values.inputs),
     newName: values.name === context.dynamicSecret.name ? undefined : values.name,

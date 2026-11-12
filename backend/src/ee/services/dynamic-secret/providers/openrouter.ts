@@ -6,7 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { OPEN_ROUTER_API_BASE_URL } from "@app/services/app-connection/open-router";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretOpenRouterSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretOpenRouterSchema, TDynamicProviderFns, TDynamicProviderValidateMetadata } from "./models";
 import { generateUsername } from "./templateUtils";
 
 type TOpenRouterCreateKeyResponse = {
@@ -14,15 +14,18 @@ type TOpenRouterCreateKeyResponse = {
   data: { hash: string };
 };
 
+type TOpenRouterOrganizationSettingsResponse = {
+  data: { id: string };
+};
+
+type TOpenRouterCurrentKeyResponse = {
+  data: { creator_user_id: string };
+};
+
 const OPEN_ROUTER_REQUEST_TIMEOUT_MS = 30_000;
 const OPEN_ROUTER_KEY_NAME_MAX_LENGTH = 255;
 
 export const OpenRouterProvider = (): TDynamicProviderFns => {
-  const validateProviderInputs = async (inputs: unknown) => {
-    const providerInputs = await DynamicSecretOpenRouterSchema.parseAsync(inputs);
-    return providerInputs;
-  };
-
   const $requestConfig = (managementKey: string) => ({
     headers: {
       Authorization: `Bearer ${managementKey}`,
@@ -38,6 +41,63 @@ export const OpenRouterProvider = (): TDynamicProviderFns => {
     }
     // sanitizeString splits on word boundaries, which never matches a hyphenated sk-or-v1- key
     return message.replaceAll(managementKey, "[REDACTED]");
+  };
+
+  const $getAccountId = async (managementKey: string) => {
+    try {
+      const { data } = await request.get<TOpenRouterOrganizationSettingsResponse>(
+        `${OPEN_ROUTER_API_BASE_URL}/organization/settings`,
+        $requestConfig(managementKey)
+      );
+      return data.data.id;
+    } catch (err) {
+      if (!isAxiosError(err) || err.response?.status !== 404) throw err;
+    }
+
+    // personal accounts have no organization settings, so the user who created the key identifies the account
+    const { data } = await request.get<TOpenRouterCurrentKeyResponse>(
+      `${OPEN_ROUTER_API_BASE_URL}/key`,
+      $requestConfig(managementKey)
+    );
+    return data.data.creator_user_id;
+  };
+
+  const validateProviderInputs = async (inputs: unknown, metadata?: TDynamicProviderValidateMetadata) => {
+    const providerInputs = await DynamicSecretOpenRouterSchema.parseAsync(inputs);
+
+    const previousManagementKey = (metadata?.previousInputs as { managementKey?: unknown } | undefined)?.managementKey;
+    if (typeof previousManagementKey !== "string" || previousManagementKey === providerInputs.managementKey) {
+      return providerInputs;
+    }
+
+    let previousAccountId: string;
+    try {
+      previousAccountId = await $getAccountId(previousManagementKey);
+    } catch (err) {
+      // a rejected stored key can no longer revoke anything, so there is no account to stay within
+      if (isAxiosError(err) && err.response?.status === 401) return providerInputs;
+      throw new BadRequestError({
+        message: `Failed to look up the OpenRouter organization of the current management key: ${$getErrorMessage(err, previousManagementKey)}`
+      });
+    }
+
+    let accountId: string;
+    try {
+      accountId = await $getAccountId(providerInputs.managementKey);
+    } catch (err) {
+      throw new BadRequestError({
+        message: `Failed to connect with OpenRouter: ${$getErrorMessage(err, providerInputs.managementKey)}`
+      });
+    }
+
+    if (accountId !== previousAccountId) {
+      throw new BadRequestError({
+        message:
+          "The new management key belongs to a different OpenRouter organization than the current one. Keys issued by this dynamic secret can only be deleted from their own organization, so use a management key from the same organization, or create a new dynamic secret."
+      });
+    }
+
+    return providerInputs;
   };
 
   const validateConnection = async (inputs: unknown) => {
@@ -90,7 +150,8 @@ export const OpenRouterProvider = (): TDynamicProviderFns => {
           limit_reset: providerInputs.limitReset ?? undefined,
           include_byok_in_limit: providerInputs.includeByokInLimit
         },
-        $requestConfig(providerInputs.managementKey)
+        // a retried POST can create a second key that no lease tracks
+        { ...$requestConfig(providerInputs.managementKey), "axios-retry": { retries: 0 } }
       );
 
       if (!response.key || !response.data?.hash) {

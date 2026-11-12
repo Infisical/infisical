@@ -7,12 +7,13 @@ import { BadRequestError } from "@app/lib/errors";
 import { OpenRouterLimitReset } from "./models";
 import { OpenRouterProvider } from "./openrouter";
 
-const { mockedPost, mockedDelete } = vi.hoisted(() => ({
+const { mockedGet, mockedPost, mockedDelete } = vi.hoisted(() => ({
+  mockedGet: vi.fn<(url: string, config: { headers: { Authorization: string } }) => Promise<unknown>>(),
   mockedPost: vi.fn<(url: string, body: Record<string, unknown>, config: { headers: object }) => Promise<unknown>>(),
   mockedDelete: vi.fn<(url: string, config: { headers: object }) => Promise<unknown>>()
 }));
 
-vi.mock("@app/lib/config/request", () => ({ request: { get: vi.fn(), post: mockedPost, delete: mockedDelete } }));
+vi.mock("@app/lib/config/request", () => ({ request: { get: mockedGet, post: mockedPost, delete: mockedDelete } }));
 
 const MANAGEMENT_KEY = "sk-or-v1-management-key-value";
 
@@ -64,6 +65,7 @@ describe("OpenRouterProvider", () => {
     });
     expect(body.name).toMatch(/^infisical-[a-zA-Z0-9]{16}$/);
     expect(config.headers).toMatchObject({ Authorization: `Bearer ${MANAGEMENT_KEY}` });
+    expect(config).toMatchObject({ "axios-retry": { retries: 0 } });
     expect(result).toEqual({
       entityId: "hash-1",
       data: { API_KEY: "sk-or-v1-leased", KEY_HASH: "hash-1", KEY_NAME: body.name }
@@ -128,6 +130,83 @@ describe("OpenRouterProvider", () => {
     await expect(OpenRouterProvider().revoke(inputs, "hash-1", { projectId: "proj-1" })).rejects.toThrow(
       "Failed to delete OpenRouter API key: Rate limit exceeded"
     );
+  });
+});
+
+describe("OpenRouterProvider management key replacement", () => {
+  const NEW_MANAGEMENT_KEY = "sk-or-v1-new-management-key-value";
+
+  const mockAccounts = (accounts: Record<string, { organizationId?: string; userId?: string; status?: number }>) => {
+    mockedGet.mockImplementation(async (url, config) => {
+      const account = accounts[config.headers.Authorization.replace("Bearer ", "")];
+      if (account.status)
+        throw upstreamError(account.status, { error: { code: account.status, message: "Invalid API key" } });
+      if (url.endsWith("/organization/settings")) {
+        if (!account.organizationId) throw upstreamError(404, { error: { code: 404, message: "Not an organization" } });
+        return { data: { data: { id: account.organizationId } } };
+      }
+      return { data: { data: { creator_user_id: account.userId } } };
+    });
+  };
+
+  const replaceKey = () =>
+    OpenRouterProvider().validateProviderInputs(
+      { ...inputs, managementKey: NEW_MANAGEMENT_KEY },
+      { projectId: "proj-1", previousInputs: inputs }
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("skips the organization check when the management key is unchanged", async () => {
+    await OpenRouterProvider().validateProviderInputs(inputs, { projectId: "proj-1", previousInputs: inputs });
+
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  test("accepts a key from the same organization", async () => {
+    mockAccounts({
+      [MANAGEMENT_KEY]: { organizationId: "org_1", userId: "user_1" },
+      [NEW_MANAGEMENT_KEY]: { organizationId: "org_1", userId: "user_2" }
+    });
+
+    await expect(replaceKey()).resolves.toMatchObject({ managementKey: NEW_MANAGEMENT_KEY });
+  });
+
+  test("rejects a key from another organization", async () => {
+    mockAccounts({
+      [MANAGEMENT_KEY]: { organizationId: "org_1" },
+      [NEW_MANAGEMENT_KEY]: { organizationId: "org_2" }
+    });
+
+    await expect(replaceKey()).rejects.toThrow("belongs to a different OpenRouter organization");
+  });
+
+  test("compares the key creator for personal accounts", async () => {
+    mockAccounts({ [MANAGEMENT_KEY]: { userId: "user_1" }, [NEW_MANAGEMENT_KEY]: { userId: "user_1" } });
+    await expect(replaceKey()).resolves.toBeDefined();
+
+    mockAccounts({ [MANAGEMENT_KEY]: { userId: "user_1" }, [NEW_MANAGEMENT_KEY]: { userId: "user_2" } });
+    await expect(replaceKey()).rejects.toThrow("belongs to a different OpenRouter organization");
+  });
+
+  test("rejects a personal account key replacing an organization key", async () => {
+    mockAccounts({ [MANAGEMENT_KEY]: { organizationId: "org_1" }, [NEW_MANAGEMENT_KEY]: { userId: "user_1" } });
+
+    await expect(replaceKey()).rejects.toThrow("belongs to a different OpenRouter organization");
+  });
+
+  test("accepts any valid key when OpenRouter rejects the stored key", async () => {
+    mockAccounts({ [MANAGEMENT_KEY]: { status: 401 }, [NEW_MANAGEMENT_KEY]: { organizationId: "org_2" } });
+
+    await expect(replaceKey()).resolves.toBeDefined();
+  });
+
+  test("rejects an invalid replacement key without exposing it", async () => {
+    mockAccounts({ [MANAGEMENT_KEY]: { organizationId: "org_1" }, [NEW_MANAGEMENT_KEY]: { status: 401 } });
+
+    await expect(replaceKey()).rejects.toThrow("Failed to connect with OpenRouter: Invalid API key");
   });
 });
 
