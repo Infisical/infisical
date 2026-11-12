@@ -107,6 +107,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "v4/secret-manager/IntegrationsPage/route.tsx"
       ),
       route(
+        "/secret-management/$projectId/integrations/select-integration-auth",
+        "v4/secret-manager/SelectIntegrationAuthRedirect/route.tsx"
+      ),
+      route(
         "/secret-management/$projectId/integrations/$integrationId",
         "v4/secret-manager/IntegrationDetailsByIDPage/route.tsx"
       ),

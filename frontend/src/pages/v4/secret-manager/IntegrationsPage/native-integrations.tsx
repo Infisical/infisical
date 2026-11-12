@@ -214,7 +214,7 @@ export const NativeIntegrationsTab = ({
         return (
           <Inline gap={8} align="center" wrap={false}>
             {option && <ProviderIcon icon={option.image} alt="" size="sm" />}
-            <RowLink {...go.link(integrationHref(orgId, projectId, integration.id))}>
+            <RowLink link={go.link(integrationHref(orgId, projectId, integration.id))}>
               {nameOf(integration)}
             </RowLink>
           </Inline>

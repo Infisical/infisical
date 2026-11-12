@@ -220,6 +220,7 @@ import { Route as certManagerDashboardPageRouteIndexImport } from './pages/cert-
 import { Route as v4SecretManagerSecretDashboardPageRouteImport } from './pages/v4/secret-manager/SecretDashboardPage/route'
 import { Route as v4ProjectRoleDetailsBySlugPageRouteImport } from './pages/v4/project/RoleDetailsBySlugPage/route'
 import { Route as v4ProjectMemberDetailsByIDPageRouteImport } from './pages/v4/project/MemberDetailsByIDPage/route'
+import { Route as v4SecretManagerSelectIntegrationAuthRedirectRouteImport } from './pages/v4/secret-manager/SelectIntegrationAuthRedirect/route'
 import { Route as v4SecretManagerIntegrationDetailsByIDPageRouteImport } from './pages/v4/secret-manager/IntegrationDetailsByIDPage/route'
 import { Route as v4ProjectIdentityDetailsByIDPageRouteImport } from './pages/v4/project/IdentityDetailsByIDPage/route'
 import { Route as v4ProjectGroupDetailsByIDPageRouteImport } from './pages/v4/project/GroupDetailsByIDPage/route'
@@ -2284,6 +2285,13 @@ const v4ProjectMemberDetailsByIDPageRouteRoute =
   v4ProjectMemberDetailsByIDPageRouteImport.update({
     id: '/secret-management/$projectId/members/$membershipId',
     path: '/secret-management/$projectId/members/$membershipId',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
+const v4SecretManagerSelectIntegrationAuthRedirectRouteRoute =
+  v4SecretManagerSelectIntegrationAuthRedirectRouteImport.update({
+    id: '/secret-management/$projectId/integrations/select-integration-auth',
+    path: '/secret-management/$projectId/integrations/select-integration-auth',
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
@@ -5489,6 +5497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4SecretManagerIntegrationDetailsByIDPageRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
+    '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': {
+      id: '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
+      path: '/secret-management/$projectId/integrations/select-integration-auth'
+      fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
+      preLoaderRoute: typeof v4SecretManagerSelectIntegrationAuthRedirectRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
     '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId': {
       id: '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId'
       path: '/secret-management/$projectId/members/$membershipId'
@@ -7129,6 +7144,7 @@ interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4ProjectGroupDetailsByIDPageRouteRoute: typeof v4ProjectGroupDetailsByIDPageRouteRoute
   v4ProjectIdentityDetailsByIDPageRouteRoute: typeof v4ProjectIdentityDetailsByIDPageRouteRoute
   v4SecretManagerIntegrationDetailsByIDPageRouteRoute: typeof v4SecretManagerIntegrationDetailsByIDPageRouteRoute
+  v4SecretManagerSelectIntegrationAuthRedirectRouteRoute: typeof v4SecretManagerSelectIntegrationAuthRedirectRouteRoute
   v4ProjectMemberDetailsByIDPageRouteRoute: typeof v4ProjectMemberDetailsByIDPageRouteRoute
   v4ProjectRoleDetailsBySlugPageRouteRoute: typeof v4ProjectRoleDetailsBySlugPageRouteRoute
   v4SecretManagerSecretDashboardPageRouteRoute: typeof v4SecretManagerSecretDashboardPageRouteRoute
@@ -7194,6 +7210,8 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
       v4ProjectIdentityDetailsByIDPageRouteRoute,
     v4SecretManagerIntegrationDetailsByIDPageRouteRoute:
       v4SecretManagerIntegrationDetailsByIDPageRouteRoute,
+    v4SecretManagerSelectIntegrationAuthRedirectRouteRoute:
+      v4SecretManagerSelectIntegrationAuthRedirectRouteRoute,
     v4ProjectMemberDetailsByIDPageRouteRoute:
       v4ProjectMemberDetailsByIDPageRouteRoute,
     v4ProjectRoleDetailsBySlugPageRouteRoute:
@@ -8986,6 +9004,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId': typeof v4ProjectGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof v4SecretManagerIntegrationDetailsByIDPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof v4SecretManagerSelectIntegrationAuthRedirectRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId': typeof v4ProjectMemberDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug': typeof v4ProjectRoleDetailsBySlugPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof v4SecretManagerSecretDashboardPageRouteRoute
@@ -9405,6 +9424,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId': typeof v4ProjectGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof v4SecretManagerIntegrationDetailsByIDPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof v4SecretManagerSelectIntegrationAuthRedirectRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId': typeof v4ProjectMemberDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug': typeof v4ProjectRoleDetailsBySlugPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof v4SecretManagerSecretDashboardPageRouteRoute
@@ -9827,6 +9847,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId': typeof v4ProjectGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof v4SecretManagerIntegrationDetailsByIDPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof v4SecretManagerSelectIntegrationAuthRedirectRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId': typeof v4ProjectMemberDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug': typeof v4ProjectRoleDetailsBySlugPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof v4SecretManagerSecretDashboardPageRouteRoute
@@ -10264,6 +10285,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
@@ -10682,6 +10704,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
@@ -11102,6 +11125,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
@@ -11959,6 +11983,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
@@ -12651,6 +12676,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId": {
       "filePath": "v4/secret-manager/IntegrationDetailsByIDPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth": {
+      "filePath": "v4/secret-manager/SelectIntegrationAuthRedirect/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId": {
