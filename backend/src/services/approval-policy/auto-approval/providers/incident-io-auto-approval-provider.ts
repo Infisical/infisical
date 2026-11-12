@@ -75,7 +75,7 @@ export const INCIDENT_IO_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TIncident
     [AUTO_APPROVAL_REQUESTER_SUBJECT]: {
       label: "Requester",
       input: null,
-      resolve: async (conn, _id, ctx, _constraintIds, deps, valuesByConstraint): Promise<TIncidentIoRequesterFacts> => {
+      resolve: async (conn, _id, ctx, valuesByConstraint, deps): Promise<TIncidentIoRequesterFacts> => {
         const values = valuesByConstraint[IncidentIoRequesterConstraint.OnCall] ?? [];
         if (!values.length) return { schedules: [], ambiguousNames: [] };
 

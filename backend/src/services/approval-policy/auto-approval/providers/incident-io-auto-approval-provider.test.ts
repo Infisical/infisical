@@ -36,9 +36,8 @@ const evaluate = async (values: string[], allValues = values, context = ctx) => 
     {} as Parameters<typeof resolve>[0],
     null,
     context,
-    [IncidentIoRequesterConstraint.OnCall],
-    {} as Parameters<typeof resolve>[4],
-    { [IncidentIoRequesterConstraint.OnCall]: allValues }
+    { [IncidentIoRequesterConstraint.OnCall]: allValues },
+    {} as Parameters<typeof resolve>[4]
   )) as TIncidentIoRequesterFacts;
   return checkOnCall(facts, values, context);
 };

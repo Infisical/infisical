@@ -188,7 +188,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
         parse: parseJiraTicket,
         getUrl: (id, conn) => `${removeTrailingSlash(conn.credentials.instanceUrl)}/browse/${encodeURIComponent(id)}`
       },
-      resolve: async (conn, id, ctx, constraintIds, deps): Promise<TJiraTicketFacts> => {
+      resolve: async (conn, id, ctx, valuesByConstraint, deps): Promise<TJiraTicketFacts> => {
         if (!id) throw new BadRequestError({ message: "No Jira ticket was provided" });
 
         let issue: TJiraIssue;
@@ -207,10 +207,10 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
 
         const key = issue.key || id;
         const [assignee, approval] = await Promise.all([
-          constraintIds.includes(JiraTicketConstraint.AssignedToRequester)
+          Object.hasOwn(valuesByConstraint, JiraTicketConstraint.AssignedToRequester)
             ? matchAssigneeToRequester({ ...issue, key }, ctx)
             : null,
-          constraintIds.includes(JiraTicketConstraint.Approved) ? readLatestApproval(conn, key, deps) : null
+          Object.hasOwn(valuesByConstraint, JiraTicketConstraint.Approved) ? readLatestApproval(conn, key, deps) : null
         ]);
 
         return {

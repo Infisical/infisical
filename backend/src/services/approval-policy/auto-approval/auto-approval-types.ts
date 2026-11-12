@@ -65,10 +65,9 @@ export type TAutoApprovalSubject<TConn, TFacts> = {
     conn: TConn,
     id: string | null,
     ctx: TAutoApprovalContext,
-    constraintIds: string[],
-    deps: TAutoApprovalProviderDeps,
-    // Every value the policy's conditions on this subject check, by constraint
-    valuesByConstraint: Record<string, string[]>
+    // The constraints in use on this subject, each with every value the policy's conditions give it
+    valuesByConstraint: Record<string, string[]>,
+    deps: TAutoApprovalProviderDeps
   ) => Promise<TFacts>;
   constraints: Record<string, TAutoApprovalConstraint<TConn, TFacts>>;
   // An ID that survives renames and moves, so linking the same record under another name still counts as reuse

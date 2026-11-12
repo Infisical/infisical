@@ -377,7 +377,6 @@ export const autoApprovalServiceFactory = ({
         connectionId: string;
         subject: string;
         inputId: string | null;
-        constraintIds: Set<string>;
         valuesByConstraint: Map<string, Set<string>>;
       }
     >();
@@ -388,10 +387,8 @@ export const autoApprovalServiceFactory = ({
           connectionId: condition.connectionId,
           subject: condition.subject,
           inputId: condition.inputId,
-          constraintIds: new Set<string>(),
           valuesByConstraint: new Map<string, Set<string>>()
         };
-        target.constraintIds.add(condition.constraint);
         target.valuesByConstraint.set(
           condition.constraint,
           new Set([...(target.valuesByConstraint.get(condition.constraint) ?? []), ...condition.values])
@@ -459,11 +456,10 @@ export const autoApprovalServiceFactory = ({
                   connection,
                   parsedInput?.id ?? null,
                   ctx,
-                  [...target.constraintIds],
-                  { ...providerDeps, signal },
                   Object.fromEntries(
                     [...target.valuesByConstraint].map(([constraintId, values]) => [constraintId, [...values]])
-                  )
+                  ),
+                  { ...providerDeps, signal }
                 ),
               RESOLVE_TIMEOUT_MS,
               `${getAppName(connection.app)} didn't respond in time`
@@ -488,7 +484,7 @@ export const autoApprovalServiceFactory = ({
           const previouslyUsed = Boolean(
             parsedInput &&
             stableId &&
-            target.constraintIds.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
+            target.valuesByConstraint.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
             (await isRecordUsed({
               connectionId: target.connectionId,
               subject: target.subject,
