@@ -286,6 +286,7 @@ export type TApprovalResource<
     request: TApprovalRequests;
     comment?: string;
     bypassReason?: string;
+    failureReason?: string;
   }) => Promise<TApprovalNotification | null>;
   // The domain event a lifecycle event owes; called inside the transaction, so it must not touch the database.
   buildEvent?: (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }) => TEventInput | null;

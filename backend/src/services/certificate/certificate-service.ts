@@ -209,7 +209,7 @@ type TCertificateServiceFactoryDep = {
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
   approvalPolicyService: Pick<
     TApprovalPolicyServiceFactory,
-    "matchPolicy" | "createRequestFromPolicy" | "cancelPendingRequests"
+    "matchPolicy" | "createRequestFromPolicy" | "cancelPendingRequests" | "notifyApprovedActionFailed"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "updateById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -1072,7 +1072,7 @@ export const certificateServiceFactory = ({
       reason:
         error instanceof BadRequestError || error instanceof NotFoundError
           ? error.message
-          : "The revocation didn't complete, so the certificate is still active. Request the revocation again."
+          : "An unexpected error stopped the revocation. Request the revocation again."
     };
   };
 
@@ -1135,6 +1135,7 @@ export const certificateServiceFactory = ({
           }
         }
       });
+      await approvalPolicyService.notifyApprovedActionFailed(approvalRequest, reason);
       return;
     }
 

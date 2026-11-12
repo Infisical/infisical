@@ -3,7 +3,8 @@ export enum ApprovalNotificationEvent {
   Approved = "approved",
   Rejected = "rejected",
   Bypassed = "bypassed",
-  AutoApproved = "auto-approved"
+  AutoApproved = "auto-approved",
+  ApprovedActionFailed = "approved-action-failed"
 }
 
 export enum ApprovalAuditAction {
