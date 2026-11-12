@@ -244,9 +244,9 @@ export const membershipGroupServiceFactory = ({
 
     // Assigning a group to a project brings the group's users + identities into it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
     }
     return { membership, group };
   };
@@ -645,9 +645,9 @@ export const membershipGroupServiceFactory = ({
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.SecretIdentities);
+      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.PamIdentities);
+      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities);
     }
     return { membership: membershipDoc, group };
   };

@@ -135,7 +135,7 @@ export const orgAdminServiceFactory = ({
 
     // Agent Vault's project starts empty and admins join through here, so this is where its seat count moves.
     if (project.type === ProjectType.AgentVault) {
-      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);

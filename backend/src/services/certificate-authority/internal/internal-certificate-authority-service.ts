@@ -2425,8 +2425,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts.key);
-    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2923,8 +2923,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts.key);
-    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
 
     return {
       certificate: leafCert,

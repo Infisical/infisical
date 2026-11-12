@@ -71,7 +71,7 @@ import { userDALFactory } from "@app/services/user/user-dal";
 const countAgentVaultSeats = (orgId: string) => {
   const organizationsProjectsService = new OrganizationsProjectsModule({ db: testDb }).service;
   const { usageCounters } = new AgentVaultModule({ organizationsProjectsService });
-  return usageCounter(usageCounters, Meter.AgentVaultIdentities.key).count(orgId);
+  return usageCounter(usageCounters, Meter.AgentVaultIdentities).count(orgId);
 };
 
 declare const testKeyStore: TKeyStoreFactory;

@@ -16,8 +16,8 @@ describe("CertManagerModule usage counters", () => {
     return { module: new CertManagerModule({ db: h.db, organizationsProjectsService }) };
   };
 
-  const count = ({ module }: ReturnType<typeof build>, key: string, orgId: string | null) =>
-    usageCounter(module.usageCounters, key).count(orgId);
+  const count = ({ module }: ReturnType<typeof build>, meter: Meter, orgId: string | null) =>
+    usageCounter(module.usageCounters, meter).count(orgId);
 
   test("should count internal CAs across the root org's tree", async () => {
     // Setup
@@ -27,7 +27,7 @@ describe("CertManagerModule usage counters", () => {
     const built = build();
 
     // Action
-    const cas = await count(built, Meter.InternalCas.key, pki.root.id);
+    const cas = await count(built, Meter.InternalCas, pki.root.id);
 
     // Assert
     expect(cas).toBe(2);
@@ -43,7 +43,7 @@ describe("CertManagerModule usage counters", () => {
     const built = build();
 
     // Action
-    const active = await count(built, Meter.ActiveCerts.key, pki.root.id);
+    const active = await count(built, Meter.ActiveCerts, pki.root.id);
 
     // Assert
     expect(active).toBe(1);
@@ -59,8 +59,8 @@ describe("CertManagerModule usage counters", () => {
 
     // Action
     const [active, wildcard] = await Promise.all([
-      count(built, Meter.ActiveCerts.key, pki.root.id),
-      count(built, Meter.WildcardCerts.key, pki.root.id)
+      count(built, Meter.ActiveCerts, pki.root.id),
+      count(built, Meter.WildcardCerts, pki.root.id)
     ]);
 
     // Assert
@@ -75,8 +75,8 @@ describe("CertManagerModule usage counters", () => {
 
     // Action
     const [unrelated, instance] = await Promise.all([
-      count(built, Meter.ActiveCerts.key, randomUUID()),
-      count(built, Meter.ActiveCerts.key, null)
+      count(built, Meter.ActiveCerts, randomUUID()),
+      count(built, Meter.ActiveCerts, null)
     ]);
 
     // Assert

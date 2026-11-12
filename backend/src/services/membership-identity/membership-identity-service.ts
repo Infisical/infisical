@@ -249,9 +249,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
     }
     return { membership };
   };
@@ -551,9 +551,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
 
     if (needsRevocationBump && externalTx) {
       return {

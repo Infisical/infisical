@@ -456,7 +456,7 @@ export const pamMembershipServiceFactory = ({
     });
 
     // A new PAM project member (user/identity/group) changes the pam_identities meter.
-    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities);
     return result;
   };
 
@@ -589,7 +589,7 @@ export const pamMembershipServiceFactory = ({
 
     // Only re-meter when project members were actually added.
     if (memberships.length > 0) {
-      usageMeteringService.emit(ctx.actorOrgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(ctx.actorOrgId, Meter.PamIdentities);
     }
 
     return { memberships, skipped };
@@ -740,7 +740,7 @@ export const pamMembershipServiceFactory = ({
 
     sendSessionCancellations();
 
-    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities);
     return result;
   };
 

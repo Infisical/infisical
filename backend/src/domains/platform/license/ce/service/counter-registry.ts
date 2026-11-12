@@ -1,3 +1,4 @@
+import { Meter } from "../model/meter";
 import { TUsageCounter } from "./dependencies";
 
 export class CounterRegistry {
@@ -12,8 +13,8 @@ export class CounterRegistry {
     });
   }
 
-  get(key: string) {
-    return this.byKey.get(key);
+  get(meter: Meter) {
+    return this.byKey.get(meter.key);
   }
 
   all() {

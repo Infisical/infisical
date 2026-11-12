@@ -9,9 +9,9 @@ import { TMeteringEventInput, UsageQueue } from "./usage-queue";
 
 export type TUsageMeteringService = {
   // Org count on cloud, whole instance on self-hosted. Null when nothing counts the dimension.
-  countUsage(orgId: string, dimensionKey: string): Promise<number | null>;
+  countUsage(orgId: string, meter: Meter): Promise<number | null>;
   // Never throws: the metered write already happened.
-  emit(orgId: string, dimensionKey: string): void;
+  emit(orgId: string, meter: Meter): void;
   recordMeteringEvents(orgId: string, events: TMeteringEventInput[]): void;
   // Call after the member change commits. Logs failures instead of throwing since the change is already in.
   syncSeats(orgId: string): Promise<void>;
@@ -27,14 +27,14 @@ export type TUsageMeteringServiceDeps = {
 export class UsageMeteringService implements TUsageMeteringService {
   constructor(private readonly deps: TUsageMeteringServiceDeps) {}
 
-  async countUsage(orgId: string, dimensionKey: string): Promise<number | null> {
-    const counter = this.deps.counters.get(dimensionKey);
+  async countUsage(orgId: string, meter: Meter): Promise<number | null> {
+    const counter = this.deps.counters.get(meter);
     if (!counter) return null;
     return counter.count(this.deps.licenseService.getInstanceType() === InstanceType.Cloud ? orgId : null);
   }
 
-  emit(orgId: string, dimensionKey: string): void {
-    this.deps.usageQueue.emit(orgId, dimensionKey);
+  emit(orgId: string, meter: Meter): void {
+    this.deps.usageQueue.emit(orgId, meter);
   }
 
   recordMeteringEvents(orgId: string, events: TMeteringEventInput[]): void {
@@ -44,7 +44,7 @@ export class UsageMeteringService implements TUsageMeteringService {
   async syncSeats(orgId: string): Promise<void> {
     try {
       const rootOrgId = await this.deps.organizationsProjectsService.resolveRootOrgId(orgId);
-      this.deps.usageQueue.emit(rootOrgId, Meter.UserIdentities.key);
+      this.deps.usageQueue.emit(rootOrgId, Meter.UserIdentities);
       await this.deps.licenseService.refreshPlan(rootOrgId);
     } catch (error) {
       logger.error(error, `syncSeats: failed to sync seats [orgId=${orgId}]`);

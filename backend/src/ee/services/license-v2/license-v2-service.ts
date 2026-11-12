@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import {
+  Meter,
   TCatalogProduct,
   TEntitlementOrg,
   TLicenseServerBilling,
@@ -446,7 +447,8 @@ export const licenseV2ServiceFactory = ({
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
-        const present = await usageMeteringService.countUsage(orgId, price.dimensionKey);
+        const meter = Meter.fromKey(price.dimensionKey);
+        const present = meter ? await usageMeteringService.countUsage(orgId, meter) : null;
         return { dimensionKey: price.dimensionKey, present, included: price.includedQuantity ?? 0 };
       })
     );

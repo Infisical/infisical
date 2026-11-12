@@ -529,17 +529,17 @@ export const groupServiceFactory = ({
       sendPamCancellations();
       await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
-      usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
+      usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+      usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
     const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId, actorOrgId });
     // Deleting the group drops its members from any project it was on.
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return { group: deletedGroup, isUnlinked: false };
   };
 

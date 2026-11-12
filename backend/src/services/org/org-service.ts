@@ -844,7 +844,7 @@ export const orgServiceFactory = ({
     // Seat sync calls the License Server, so it waits for commit (the caller's, if it passed a tx).
     if (!trx) await usageMeteringService.syncSeats(organization.id);
 
-    usageMeteringService.emit(organization.id, Meter.PamIdentities.key);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
 
     return organization;
   };
@@ -1392,9 +1392,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
-    usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(orgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(orgId, Meter.PamIdentities);
+    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMembership;
   };
 
@@ -1446,9 +1446,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.
-    usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(orgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(orgId, Meter.PamIdentities);
+    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMemberships;
   };
 

@@ -837,9 +837,9 @@ export const projectServiceFactory = ({
     // The plan caches the project count, so drop it after commit (the caller's commit, if it passed a tx).
     if (!trx) await licenseService.invalidatePlan(actorOrgId);
     // New projects seed members, so re-meter seats. The counters filter by project type.
-    usageMeteringService.emit(results.orgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(results.orgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(results.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(results.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(results.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(results.orgId, Meter.AgentVaultIdentities);
     return results;
   };
 
@@ -954,9 +954,9 @@ export const projectServiceFactory = ({
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
-      usageMeteringService.emit(project.orgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(project.orgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
       return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
@@ -1106,9 +1106,9 @@ export const projectServiceFactory = ({
       await licenseService.invalidatePlan(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
-      usageMeteringService.emit(project.orgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(project.orgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
       return restoredProject;
     } finally {
       await lock.release();

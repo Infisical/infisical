@@ -131,9 +131,9 @@ export const orgAccessReconcileConsumerFactory = ({
           groupId: scope.groupId
         });
 
-        usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
-        usageMeteringService.emit(orgId, Meter.PamIdentities.key);
-        usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
+        usageMeteringService.emit(orgId, Meter.SecretIdentities);
+        usageMeteringService.emit(orgId, Meter.PamIdentities);
+        usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
       }
     }
   };

@@ -36,6 +36,13 @@ export class Meter<K extends string = string> {
       Meter.WildcardCerts
     ] as const;
   }
+
+  private static readonly byKey: ReadonlyMap<string, Meter> = new Map(Meter.all().map((meter) => [meter.key, meter]));
+
+  // For keys that arrive as strings: queued jobs (old pods share them) and License Server catalog dimensions.
+  static fromKey(key: string): Meter | null {
+    return Meter.byKey.get(key) ?? null;
+  }
 }
 
 export type TMeterKey = ReturnType<typeof Meter.all>[number]["key"];

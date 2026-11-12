@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { logger } from "@app/lib/logger";
 import type { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
+import { Meter } from "../model/meter";
 import { CounterRegistry } from "./counter-registry";
 import { TLicenseServer, TUsageReportCache } from "./dependencies";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types/usage-reports";
@@ -21,7 +22,7 @@ export const UsageQueues = {
 // because the server reads a missing one as 0; a count meter ignores it, so pass 1.
 export type TMeteringEventInput = {
   eventId: string;
-  dimensionKey: string;
+  meter: Meter;
   quantity: number;
   occurredAt: Date;
 };
@@ -42,8 +43,9 @@ export class UsageQueue {
   constructor(private readonly deps: TUsageQueueDeps) {}
 
   // Debounced: replaces a pending event for the same org and dimension.
-  emit(orgId: string, dimensionKey: string): void {
+  emit(orgId: string, meter: Meter): void {
     if (!this.deps.licenseServer.isEnabled()) return;
+    const dimensionKey = meter.key;
 
     void this.deps.queueService
       .queue(
@@ -72,7 +74,7 @@ export class UsageQueue {
   }
 
   emitAll(orgId: string): void {
-    this.deps.counters.all().forEach((counter) => this.emit(orgId, counter.meter.key));
+    this.deps.counters.all().forEach((counter) => this.emit(orgId, counter.meter));
   }
 
   // Reports only go out on metered writes, so a lost report (or an expired last-reported value) would stay
@@ -96,14 +98,14 @@ export class UsageQueue {
 
     const byDimension = new Map<string, TMeteringEventPayload>();
     events.forEach((e) => {
-      const group = byDimension.get(e.dimensionKey) ?? [];
+      const group = byDimension.get(e.meter.key) ?? [];
       group.push({
         eventId: e.eventId,
-        dimensionKey: e.dimensionKey,
+        dimensionKey: e.meter.key,
         quantity: e.quantity,
         occurredAt: e.occurredAt.toISOString()
       });
-      byDimension.set(e.dimensionKey, group);
+      byDimension.set(e.meter.key, group);
     });
 
     const chunks = [...byDimension.values()].flatMap((group) => {

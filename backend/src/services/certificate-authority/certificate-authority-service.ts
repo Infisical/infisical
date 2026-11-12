@@ -396,7 +396,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -980,7 +980,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
@@ -1219,7 +1219,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,

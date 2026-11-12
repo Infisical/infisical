@@ -1,21 +1,22 @@
+import { Meter } from "../model/meter";
 import { TUsageMeteringService } from "../service/usage-metering-service";
 import { TMeteringEventInput } from "../service/usage-queue";
 
 // Sends nothing, records calls to assert on.
 export class FakeUsageMeteringService implements TUsageMeteringService {
-  // Org id and dimension key of each emit, in order.
-  emitted: [string, string][] = [];
+  // Org id and meter of each emit, in order.
+  emitted: [string, Meter][] = [];
 
   meteringEvents: { orgId: string; events: TMeteringEventInput[] }[] = [];
 
   seatSyncs: string[] = [];
 
-  counts = new Map<string, number>();
+  counts = new Map<Meter, number>();
 
-  countUsage = async (_orgId: string, dimensionKey: string) => this.counts.get(dimensionKey) ?? null;
+  countUsage = async (_orgId: string, meter: Meter) => this.counts.get(meter) ?? null;
 
-  emit = (orgId: string, dimensionKey: string) => {
-    this.emitted.push([orgId, dimensionKey]);
+  emit = (orgId: string, meter: Meter) => {
+    this.emitted.push([orgId, meter]);
   };
 
   recordMeteringEvents = (orgId: string, events: TMeteringEventInput[]) => {

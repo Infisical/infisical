@@ -774,11 +774,11 @@ export const userServiceFactory = ({
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      usageMeteringService.emit(orgId, Meter.Identities.key);
-      usageMeteringService.emit(orgId, Meter.UserIdentities.key);
-      usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(orgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.Identities);
+      usageMeteringService.emit(orgId, Meter.UserIdentities);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
+      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     });
 
     try {

@@ -620,8 +620,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts.key);
-    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     return {
       deletedCert,
@@ -803,8 +803,8 @@ export const certificateServiceFactory = ({
       });
     }
 
-    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts.key);
-    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1563,8 +1563,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts.key);
-    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);

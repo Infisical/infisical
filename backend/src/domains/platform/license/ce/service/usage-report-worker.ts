@@ -2,6 +2,7 @@ import { TOrganizationsProjectsService } from "@app/domains/platform/organizatio
 import { logger } from "@app/lib/logger";
 
 import { InstanceType } from "../model/instance-entitlements";
+import { Meter } from "../model/meter";
 import { CounterRegistry } from "./counter-registry";
 import { TLicenseServer, TUsageReportCache, TUsageSource } from "./dependencies";
 import { SELF_HOSTED_LICENSE_ORG_ID } from "./license-server-types/license-server-types";
@@ -28,7 +29,8 @@ export class UsageReportWorker {
     // On cloud an unpaid org has no license on the server, so a report would just 404.
     if (cloud && !(await this.deps.licenseService.getPlan(orgId)).isPaid) return;
 
-    const counter = this.deps.counters.get(dimensionKey);
+    const meter = Meter.fromKey(dimensionKey);
+    const counter = meter && this.deps.counters.get(meter);
     if (!counter) {
       logger.warn(`usage-metering: unknown metered feature, dropping event [dimensionKey=${dimensionKey}]`);
       return;

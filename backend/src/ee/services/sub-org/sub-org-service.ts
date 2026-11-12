@@ -136,7 +136,7 @@ export const subOrgServiceFactory = ({
       return org;
     });
 
-    usageMeteringService.emit(organization.id, Meter.PamIdentities.key);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
 
     return {
       organization

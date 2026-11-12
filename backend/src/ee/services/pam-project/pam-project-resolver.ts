@@ -85,7 +85,7 @@ export const pamProjectResolverFactory = ({
 
     // Bootstrap seeds org admins as project members, which changes the pam_identities meter.
     if (created) {
-      usageMeteringService.emit(orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
     }
     return projectId;
   };

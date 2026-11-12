@@ -16,7 +16,7 @@ describe("UsageQueue.emit", () => {
     const { usageMeteringService, queue } = await buildLicense({ licenseServer });
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities);
     await queue.drain();
 
     // Assert
@@ -29,9 +29,9 @@ describe("UsageQueue.emit", () => {
     const { usageMeteringService, queue } = await buildLicense();
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
-    usageMeteringService.emit(ROOT.id, Meter.Identities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities);
+    usageMeteringService.emit(ROOT.id, Meter.Identities);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -48,7 +48,7 @@ describe("UsageQueue.emit", () => {
     const { usageMeteringService, queue } = await buildLicense();
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -66,9 +66,9 @@ describe("UsageQueue.recordMeteringEvents", () => {
 
     // Action
     usageMeteringService.recordMeteringEvents(ROOT.id, [
-      { eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at },
-      { eventId: "e2", dimensionKey: "b", quantity: 1, occurredAt: at },
-      { eventId: "e3", dimensionKey: "a", quantity: 1, occurredAt: at }
+      { eventId: "e1", meter: Meter.ActiveCerts, quantity: 1, occurredAt: at },
+      { eventId: "e2", meter: Meter.InternalCas, quantity: 1, occurredAt: at },
+      { eventId: "e3", meter: Meter.ActiveCerts, quantity: 1, occurredAt: at }
     ]);
     await new Promise((resolve) => {
       setImmediate(resolve);
@@ -86,12 +86,12 @@ describe("UsageQueue.recordMeteringEvents", () => {
     const { usageMeteringService, queue } = await buildLicense({ licenseServer });
     const at = new Date("2026-01-01T00:00:00Z");
     usageMeteringService.recordMeteringEvents(ROOT.id, [
-      { eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at }
+      { eventId: "e1", meter: Meter.ActiveCerts, quantity: 1, occurredAt: at }
     ]);
     await queue.drain();
     licenseServer.failNextReports.push("rejected");
     usageMeteringService.recordMeteringEvents(ROOT.id, [
-      { eventId: "e2", dimensionKey: "a", quantity: 1, occurredAt: at }
+      { eventId: "e2", meter: Meter.ActiveCerts, quantity: 1, occurredAt: at }
     ]);
 
     // Action

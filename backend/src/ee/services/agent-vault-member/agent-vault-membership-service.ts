@@ -524,7 +524,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.created.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
+    if (written.created.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities);
     return { members: written.created, skipped: written.skipped };
   };
 
@@ -713,7 +713,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.removed.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
+    if (written.removed.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities);
     return { members: written.removed, skipped: written.skipped };
   };
   return {

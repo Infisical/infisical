@@ -752,11 +752,11 @@ export const superAdminServiceFactory = ({
   const emitUserDeletionMeterEvents = (orgMemberships: { scopeOrgId?: string | null }[]) => {
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      usageMeteringService.emit(orgId, Meter.Identities.key);
-      usageMeteringService.emit(orgId, Meter.UserIdentities.key);
-      usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(orgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.Identities);
+      usageMeteringService.emit(orgId, Meter.UserIdentities);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
+      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     });
   };
 
@@ -1100,9 +1100,9 @@ export const superAdminServiceFactory = ({
       eventEmitter
     });
 
-    usageMeteringService.emit(organizationId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(organizationId, Meter.PamIdentities.key);
-    usageMeteringService.emit(organizationId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(organizationId, Meter.SecretIdentities);
+    usageMeteringService.emit(organizationId, Meter.PamIdentities);
+    usageMeteringService.emit(organizationId, Meter.AgentVaultIdentities);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 

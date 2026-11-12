@@ -382,9 +382,9 @@ export const projectMembershipServiceFactory = ({
         }
       });
     }
-    usageMeteringService.emit(project.orgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(project.orgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     return orgMembers;
   };
 
@@ -546,9 +546,9 @@ export const projectMembershipServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
 
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return memberships;
   };
 
@@ -641,9 +641,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Failed to leave project" });
     }
 
-    usageMeteringService.emit(project.orgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(project.orgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     return deletedMembership;
   };
 

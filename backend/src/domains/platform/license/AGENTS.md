@@ -56,6 +56,9 @@ Rules:
   (SSO, SCIM, invites) read `getSeatUsage` before the transaction and call `seatUsage.assertAvailable(plan, via)`
   inside it. `syncSeats` runs after the commit and never throws; code already
   inside a caller's transaction (org/project create) leaves it to the caller.
+- **Name a meter with `Meter`, never its key.** `emit`, `countUsage`, `recordMeteringEvents` and `usageCounter` take a
+  `Meter` (`Meter.SecretIdentities`). A key arrives as a string only from a queued job or a License Server catalog
+  dimension; turn it into a meter once with `Meter.fromKey`, which returns null for a key no meter defines.
 - **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend an active
   paid org's meters; `UsageReportWorker` and `syncSeats` call `getPlan`/`refreshPlan`.
 - **Deleted orgs close from the outbox.** Only the `license-org-deleted` consumer

@@ -206,7 +206,7 @@ export const identityServiceFactory = ({
       };
     });
     await usageMeteringService.syncSeats(orgId);
-    usageMeteringService.emit(orgId, Meter.Identities.key);
+    usageMeteringService.emit(orgId, Meter.Identities);
 
     return identity;
   };
@@ -448,22 +448,22 @@ export const identityServiceFactory = ({
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
       await usageMeteringService.syncSeats(identityOrgMembership.scopeOrgId);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
     await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
     // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
     // identity meters change too.
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

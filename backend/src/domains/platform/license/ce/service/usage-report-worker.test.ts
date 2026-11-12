@@ -4,6 +4,7 @@ import { buildLicense, ROOT, SUB_ORG_ID } from "../testing/build-license";
 import { FakeLicenseServer } from "../testing/fake-license-server";
 import { FakeUsageCounter } from "../testing/fake-usage-counter";
 import { enterprisePlan } from "../testing/test-features";
+import { UsageQueues } from "./usage-queue";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -19,7 +20,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
     await queue.drain();
 
     // Assert
@@ -31,7 +32,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     const counter = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
     licenseServer.loseNextReplies = 1;
-    usageMeteringService.emit(ROOT.id, Meter.ActiveCerts.key);
+    usageMeteringService.emit(ROOT.id, Meter.ActiveCerts);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -55,11 +56,11 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
-    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
     await queue.drain();
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
     await queue.drain();
 
     // Assert
@@ -74,7 +75,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
     await queue.drain();
 
     // Assert
@@ -88,8 +89,8 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [certs, users] });
 
     // Action
-    usageMeteringService.emit(SUB_ORG_ID, Meter.ActiveCerts.key);
-    usageMeteringService.emit(SUB_ORG_ID, Meter.SecretIdentities.key);
+    usageMeteringService.emit(SUB_ORG_ID, Meter.ActiveCerts);
+    usageMeteringService.emit(SUB_ORG_ID, Meter.SecretIdentities);
     await queue.drain();
 
     // Assert
@@ -109,7 +110,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
     await queue.drain();
 
     // Assert
@@ -117,12 +118,15 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     expect(licenseServer.snapshots[0].snapshot.source).toBe("self-hosted");
   });
 
-  test("should drop an event for a dimension nothing counts", async () => {
+  test("should drop a queued event for a dimension nothing counts, as an older pod may send", async () => {
     // Setup
-    const { usageMeteringService, queue, licenseServer } = await buildLicense();
+    const { queue, licenseServer } = await buildLicense();
 
     // Action
-    usageMeteringService.emit(ROOT.id, "unknown_dimension");
+    await queue.queue(UsageQueues.usageEvent, UsageQueues.usageEventJob, {
+      orgId: ROOT.id,
+      dimensionKey: "unknown_dimension"
+    });
     await queue.drain();
 
     // Assert
@@ -137,11 +141,11 @@ describe("UsageReportWorker.handleUsageEvent", () => {
       licenseServer.failNextReports.push(outcome);
       const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
       const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
-      usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+      usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
       await queue.drain();
 
       // Action
-      usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+      usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
       await queue.drain();
 
       // Assert
@@ -155,7 +159,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     licenseServer.failNextReports.push(new Error("License Server unavailable"));
     const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
     const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
-    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities);
 
     // Action
     const result = queue.drain();

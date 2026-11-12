@@ -209,8 +209,8 @@ export const certificateCleanupQueueFactory = ({
     await flushAuditLog();
 
     if (deletedCount > 0 && orgId) {
-      usageMeteringService.emit(orgId, Meter.ActiveCerts.key);
-      usageMeteringService.emit(orgId, Meter.WildcardCerts.key);
+      usageMeteringService.emit(orgId, Meter.ActiveCerts);
+      usageMeteringService.emit(orgId, Meter.WildcardCerts);
     }
 
     return { deletedCount, errors: errorMessages.length };

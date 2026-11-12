@@ -323,11 +323,11 @@ export const identityV2ServiceFactory = ({
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
-    usageMeteringService.emit(dto.permission.orgId, Meter.Identities.key);
+    usageMeteringService.emit(dto.permission.orgId, Meter.Identities);
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(dto.permission.orgId, Meter.SecretIdentities.key);
-      usageMeteringService.emit(dto.permission.orgId, Meter.PamIdentities.key);
-      usageMeteringService.emit(dto.permission.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(dto.permission.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(dto.permission.orgId, Meter.AgentVaultIdentities);
     }
 
     return { identity };
@@ -451,10 +451,10 @@ export const identityV2ServiceFactory = ({
     await usageMeteringService.syncSeats(scopeData.orgId);
 
     // Deleting the identity cascades its org + project + group memberships, so all meters change.
-    usageMeteringService.emit(scopeData.orgId, Meter.Identities.key);
-    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.Identities);
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
 
     return { identity: deletedIdentity };
   };
