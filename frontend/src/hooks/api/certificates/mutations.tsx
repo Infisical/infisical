@@ -9,6 +9,7 @@ import { pkiSyncKeys } from "../pkiSyncs/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
+  CertificateRevocationStatus,
   TCancelCertificateRequestResponse,
   TCertificate,
   TDeleteCertDTO,
@@ -90,9 +91,12 @@ export const useRevokeCert = () => {
       );
       return data;
     },
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
-      invalidateRevokedCertificate(queryClient, id);
+    onSuccess: ({ status }, { id }) => {
+      if (status === CertificateRevocationStatus.PendingApproval) {
+        queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+      } else {
+        invalidateRevokedCertificate(queryClient, id);
+      }
     }
   });
 };

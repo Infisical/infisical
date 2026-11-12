@@ -233,6 +233,7 @@ const PageContent = () => {
   const resolvedPolicyType = policyType || ApprovalPolicyType.CertRequest;
   const isCodeSigning = resolvedPolicyType === ApprovalPolicyType.CertCodeSigning;
   const isRevocation = resolvedPolicyType === ApprovalPolicyType.CertRevocation;
+  const returnsToRequests = from === "root-requests" || isRevocation;
 
   const { data: request, isPending } = useQuery(
     approvalRequestQuery.getById({
@@ -270,7 +271,7 @@ const PageContent = () => {
             });
             return;
           }
-          if (from === "root-requests" || isRevocation) {
+          if (returnsToRequests) {
             navigate({
               to: "/organizations/$orgId/cert-manager/requests",
               params: { orgId: currentProject.orgId }
@@ -476,7 +477,7 @@ const PageContent = () => {
       );
     }
 
-    if (from === "root-requests" || isRevocation) {
+    if (returnsToRequests) {
       return (
         <Link
           to="/organizations/$orgId/cert-manager/requests"

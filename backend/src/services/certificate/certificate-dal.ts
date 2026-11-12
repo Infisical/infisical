@@ -874,15 +874,17 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const hasRenewalAwaitingApproval = async (
+  const $pendingRenewalApprovalRequests = (
     { certificateId, projectId }: { certificateId: string; projectId: string },
     tx?: Knex
-  ) => {
+  ) =>
+    (tx || db)(TableName.ApprovalRequests)
+      .where({ projectId, type: ApprovalPolicyType.CertRequest, status: ApprovalRequestStatus.Pending })
+      .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId]);
+
+  const hasRenewalAwaitingApproval = async (filter: { certificateId: string; projectId: string }, tx?: Knex) => {
     try {
-      const row = await (tx || db)(TableName.ApprovalRequests)
-        .where({ projectId, type: ApprovalPolicyType.CertRequest, status: ApprovalRequestStatus.Pending })
-        .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
-        .first("id");
+      const row = await $pendingRenewalApprovalRequests(filter, tx).first("id");
       return Boolean(row);
     } catch (error) {
       throw new DatabaseError({ error, name: "Check renewal awaiting approval" });
@@ -890,14 +892,11 @@ export const certificateDALFactory = (db: TDbClient) => {
   };
 
   const findPendingRenewalApprovalRequestIds = async (
-    { certificateId, projectId }: { certificateId: string; projectId: string },
+    filter: { certificateId: string; projectId: string },
     tx?: Knex
   ) => {
     try {
-      const rows = (await (tx || db)(TableName.ApprovalRequests)
-        .where({ projectId, type: ApprovalPolicyType.CertRequest, status: ApprovalRequestStatus.Pending })
-        .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
-        .select("id")) as { id: string }[];
+      const rows = (await $pendingRenewalApprovalRequests(filter, tx).select("id")) as { id: string }[];
       return rows.map((row) => row.id);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find pending renewal approval requests" });

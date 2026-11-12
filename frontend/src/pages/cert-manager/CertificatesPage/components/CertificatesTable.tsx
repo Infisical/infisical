@@ -94,7 +94,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { getCertManagerLink } from "../../cert-manager-link";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
-import { BlockedActionTooltip } from "./BlockedActionTooltip";
+import { BlockedActionTooltip, PENDING_REVOCATION_REASON } from "./BlockedActionTooltip";
 import {
   canRenewOnExistingKeyPair,
   canRevokeAfterDeletion,
@@ -1375,22 +1375,16 @@ export const CertificatesTable = ({
                                 )}
                               {(() => {
                                 if (!canOfferRevoke) return null;
+                                const revokeBlockedReason = hasPendingRevocation
+                                  ? PENDING_REVOCATION_REASON
+                                  : rowApplicationAccess?.revokeBlockedReason;
 
                                 return (
-                                  <BlockedActionTooltip
-                                    reason={
-                                      hasPendingRevocation
-                                        ? "A revocation of this certificate is already waiting for approval."
-                                        : rowApplicationAccess?.revokeBlockedReason
-                                    }
-                                  >
+                                  <BlockedActionTooltip reason={revokeBlockedReason}>
                                     <DropdownMenuItem
                                       variant="danger"
                                       isDisabled={!canDeleteCertificate || hasPendingRevocation}
-                                      isDisabledFocusable={
-                                        hasPendingRevocation ||
-                                        Boolean(rowApplicationAccess?.revokeBlockedReason)
-                                      }
+                                      isDisabledFocusable={Boolean(revokeBlockedReason)}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("revokeCertificate", {

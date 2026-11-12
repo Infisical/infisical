@@ -136,7 +136,6 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
   const onSubmit = async ({ policyType, ...data }: TPolicyForm) => {
     if (!currentProject?.id) return;
 
-    // Revocation policies can't be bypassed by machine identities, so the field is never sent as true for them.
     const policyFields = {
       ...data,
       bypassForMachineIdentities:

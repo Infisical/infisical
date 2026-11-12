@@ -52,7 +52,10 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
-import { BlockedActionTooltip } from "../CertificatesPage/components/BlockedActionTooltip";
+import {
+  BlockedActionTooltip,
+  PENDING_REVOCATION_REASON
+} from "../CertificatesPage/components/BlockedActionTooltip";
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
 import { CertificateDeletionSyncImpact } from "../CertificatesPage/components/CertificateDeletionSyncImpact";
 import {
@@ -268,6 +271,9 @@ const Page = () => {
   const canEditPkiSyncs = applicationAccess
     ? applicationAccess.canManagePkiSyncs
     : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
+  const revokeBlockedReason = hasPendingRevocation
+    ? PENDING_REVOCATION_REASON
+    : applicationAccess?.revokeBlockedReason;
 
   let certificateBackLink = (
     <Link
@@ -507,18 +513,10 @@ const Page = () => {
                     </BlockedActionTooltip>
                   )}
                 {canOfferRevoke && (
-                  <BlockedActionTooltip
-                    reason={
-                      hasPendingRevocation
-                        ? "A revocation of this certificate is already waiting for approval."
-                        : applicationAccess?.revokeBlockedReason
-                    }
-                  >
+                  <BlockedActionTooltip reason={revokeBlockedReason}>
                     <DropdownMenuItem
                       isDisabled={!canDeleteCertificate || hasPendingRevocation}
-                      isDisabledFocusable={
-                        hasPendingRevocation || Boolean(applicationAccess?.revokeBlockedReason)
-                      }
+                      isDisabledFocusable={Boolean(revokeBlockedReason)}
                       onClick={() =>
                         handlePopUpOpen("revokeCertificate", {
                           certificateId: certificate.id
