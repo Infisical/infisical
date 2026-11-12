@@ -55,7 +55,7 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     expect(licenseServer.fetches).toEqual([ROOT.id]);
-    expect(plan.workspacesUsed).toBe(WORKSPACES_USED);
+    expect(plan.toJSON().workspacesUsed).toBe(WORKSPACES_USED);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).not.toBeNull();
   });
 

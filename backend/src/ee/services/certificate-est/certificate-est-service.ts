@@ -1,6 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -53,7 +53,7 @@ export const certificateEstServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(estConfig.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleReenroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -154,7 +154,7 @@ export const certificateEstServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(estConfig.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleEnroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -215,7 +215,7 @@ export const certificateEstServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(estConfig.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."
       });

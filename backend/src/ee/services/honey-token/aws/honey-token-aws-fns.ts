@@ -10,7 +10,7 @@ import {
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -313,7 +313,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     config
   }: TUpsertAwsHoneyTokenConfigInput): Promise<THoneyTokenConfigRecord> => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.honeyTokens) {
+    if (!plan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to save honey token configuration due to plan restriction. Upgrade plan to use honey tokens."
       });

@@ -2,7 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
-import { Meter, SeatUsage, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  SeatUsage,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -111,7 +118,7 @@ export const identityServiceFactory = ({
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
       const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -138,18 +145,18 @@ export const identityServiceFactory = ({
     }
 
     // Before the transaction: a plan cache miss calls the License Server.
-    const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
+    const plan = await licenseService.getPlan(orgId);
 
     const seatCountScope = licenseService.getSeatCountScope(orgId);
 
     const identity = await identityDAL.transaction(async (tx) => {
       // Counted under the seat lock on this transaction, so concurrent creates can't pass the limit together.
-      if (identityLimit) {
+      if (plan.isLimited(PlanLimit.Identities)) {
         const counts = await organizationsProjectsService
           .within(sealKnexTransaction(tx))
           .lockAndCountBillableOrgActors(seatCountScope);
         if (!counts) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-        if (SeatUsage.fromBillableActors(counts).identitiesUsed >= identityLimit) {
+        if (plan.exceeds(PlanLimit.Identities, SeatUsage.fromBillableActors(counts).identitiesUsed)) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
           });
@@ -243,7 +250,7 @@ export const identityServiceFactory = ({
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
         const plan = await licenseService.getPlan(actorOrgId);
-        if (!plan?.rbac)
+        if (!plan?.has(PlanFeature.Rbac))
           throw new BadRequestError({
             message:
               "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."

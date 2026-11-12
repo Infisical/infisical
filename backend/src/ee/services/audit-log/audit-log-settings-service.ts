@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TAuditLogSettings } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -126,7 +126,7 @@ export const auditLogSettingsServiceFactory = ({
 }: TAuditLogSettingsServiceFactoryDep) => {
   const assertPlanAllowsAuditLogs = async (orgId: string) => {
     const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
-    if (!plan.auditLogs) {
+    if (!plan.has(PlanFeature.AuditLogs)) {
       throw new BadRequestError({
         message:
           "Audit log settings can only be changed on a plan that includes audit logs. Upgrade your plan to continue."

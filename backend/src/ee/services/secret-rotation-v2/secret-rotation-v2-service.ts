@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -392,7 +392,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message: "Failed to access secret rotations due to plan restriction. Upgrade plan to access secret rotations."
       });
@@ -428,7 +428,7 @@ export const secretRotationV2ServiceFactory = ({
   const findSecretRotationById = async ({ type, rotationId }: TFindSecretRotationV2ByIdDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message: "Failed to access secret rotation due to plan restriction. Upgrade plan to access secret rotations."
       });
@@ -470,7 +470,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message:
           "Failed to access secret rotation credentials due to plan restriction. Upgrade plan to access secret rotations credentials."
@@ -522,7 +522,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message: "Failed to access secret rotation due to plan restriction. Upgrade plan to access secret rotations."
       });
@@ -583,7 +583,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message: "Failed to create secret rotation due to plan restriction. Upgrade plan to create secret rotations."
       });
@@ -806,7 +806,7 @@ export const secretRotationV2ServiceFactory = ({
   const updateSecretRotation = async (dto: TUpdateSecretRotationV2DTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message: "Failed to update secret rotation due to plan restriction. Upgrade plan to update secret rotations."
       });
@@ -1076,7 +1076,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message: "Failed to move secret rotation due to plan restriction. Upgrade plan to manage secret rotations."
       });
@@ -1641,7 +1641,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message:
           "Failed to rotate secret rotation secrets due to plan restriction. Upgrade plan to rotate secret rotation secrets."
@@ -1701,7 +1701,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message:
           "Failed to check secret rotation credentials due to plan restriction. Upgrade plan to check secret rotation credentials."
@@ -2066,7 +2066,7 @@ export const secretRotationV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretRotation)
+    if (!plan.has(PlanFeature.SecretRotation))
       throw new BadRequestError({
         message:
           "Failed to reconcile secret rotation due to plan restriction. Upgrade plan to reconcile secret rotations."

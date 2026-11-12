@@ -1,4 +1,9 @@
+import { testFeatures } from "../testing/test-features";
+import { Plan } from "./plan";
 import { SeatUsage } from "./seat-usage";
+
+const planWithIdentityLimit = (identityLimit: number | null) =>
+  Plan.restore({ ...testFeatures(), slug: "pro", identityLimit });
 
 describe("SeatUsage.assertAvailable", () => {
   test("should refuse a new member once the plan's cap is reached, naming the provisioning method", () => {
@@ -6,7 +11,7 @@ describe("SeatUsage.assertAvailable", () => {
     const usage = SeatUsage.create({ membersUsed: 5, identitiesUsed: 5 });
 
     // Action
-    const check = () => usage.assertAvailable({ identityLimit: 5, via: "oidc" });
+    const check = () => usage.assertAvailable(planWithIdentityLimit(5), "oidc");
 
     // Assert
     expect(check).toThrow("Failed to create new member via OIDC due to member limit reached.");
@@ -18,8 +23,8 @@ describe("SeatUsage.assertAvailable", () => {
 
     // Action
     const checks = () => {
-      usage.assertAvailable({ identityLimit: 5 });
-      SeatUsage.create({ membersUsed: 99, identitiesUsed: 99 }).assertAvailable({ identityLimit: null });
+      usage.assertAvailable(planWithIdentityLimit(5));
+      SeatUsage.create({ membersUsed: 99, identitiesUsed: 99 }).assertAvailable(planWithIdentityLimit(null));
     };
 
     // Assert

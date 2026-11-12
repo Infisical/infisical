@@ -18,7 +18,13 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -348,11 +354,11 @@ export const projectServiceFactory = ({
 
       // Counted under the lock on this transaction, so concurrent creates and restores can't pass the limit
       // together, and an import creating many projects in one transaction counts the ones it already made.
-      if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
+      if (plan.isLimited(PlanLimit.Projects) && type === ProjectType.SecretManager) {
         const currentProjectCount = await organizationsProjectsService
           .within(sealKnexTransaction(tx))
           .lockAndCountWorkspaces(organization.id);
-        if (currentProjectCount >= plan.workspaceLimit) {
+        if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
           });
@@ -1041,11 +1047,11 @@ export const projectServiceFactory = ({
 
         // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
         // exceed them.
-        if (plan.honeyTokenLimit !== null) {
+        if (plan.isLimited(PlanLimit.HoneyTokens)) {
           const projectHoneyTokenCount = await honeyTokenDAL.countByProjectIdIncludingDeletedEnvironments(project.id);
           if (
             projectHoneyTokenCount &&
-            (await honeyTokenDAL.countByOrgId(project.orgId)) + projectHoneyTokenCount > plan.honeyTokenLimit
+            plan.exceeds(PlanLimit.HoneyTokens, await honeyTokenDAL.countByOrgId(project.orgId), projectHoneyTokenCount)
           ) {
             throw new BadRequestError({
               message:
@@ -1054,11 +1060,11 @@ export const projectServiceFactory = ({
           }
         }
 
-        if (typeof plan.secretSyncLimit === "number") {
+        if (plan.isLimited(PlanLimit.SecretSyncs)) {
           const projectSecretSyncCount = await secretSyncDAL.countByProjectId(project.id);
           if (
             projectSecretSyncCount &&
-            (await secretSyncDAL.countByOrgId(project.orgId)) + projectSecretSyncCount > plan.secretSyncLimit
+            plan.exceeds(PlanLimit.SecretSyncs, await secretSyncDAL.countByOrgId(project.orgId), projectSecretSyncCount)
           ) {
             throw new BadRequestError({
               message:
@@ -1068,11 +1074,11 @@ export const projectServiceFactory = ({
         }
 
         const restored = await projectDAL.transaction(async (tx) => {
-          if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
+          if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
             const currentProjectCount = await organizationsProjectsService
               .within(sealKnexTransaction(tx))
               .lockAndCountWorkspaces(project.orgId);
-            if (currentProjectCount >= plan.workspaceLimit) {
+            if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
               throw new BadRequestError({
                 message:
                   "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
@@ -1302,7 +1308,7 @@ export const projectServiceFactory = ({
 
       const plan = await licenseService.getPlan(project.orgId);
 
-      if (!plan.auditLogs) {
+      if (!plan.has(PlanFeature.AuditLogs)) {
         throw new BadRequestError({
           message:
             "Failed to update the audit logs retention period because audit logs are not included in your current plan. Upgrade your plan to configure retention."
@@ -1465,7 +1471,7 @@ export const projectServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
+    if (!plan.has(PlanFeature.AuditLogs) || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
@@ -2065,7 +2071,7 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });
@@ -2095,7 +2101,7 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });

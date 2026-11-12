@@ -35,15 +35,26 @@ Rules:
   pods share them during a rolling deploy.
 - **Only a License Server failure writes the fallback plan** (`fetchPlanOrFallback`). DB or key store errors
   throw, so they never clobber a cached paid plan.
-- **`getPlan` returns a `Plan`.** Read fields (`plan.rbac`), use `has`/`assert`/`isPaid`. Never mutate it.
+- **`getPlan` returns a `Plan`, which keeps its props private and frozen.** Check a feature with
+  `plan.has(PlanFeature.X)` / `plan.assert(PlanFeature.X)`, a product a plan can switch off (null means available)
+  with `plan.allows(PlanProduct.X)`, and read data through its getters (`slug`, `rateLimits`, ...). Add a getter only
+  for data with no rule attached. `toJSON()` returns a mutable copy for the cache and API responses. Code holding only
+  the instance's feature props wraps them in `Plan.restore(...)` first. A new feature gets a `PlanFeature` member and a `featureNames` entry
+  (the compiler requires both).
+- **Check a numeric limit through the plan, never by reading the field.** Name it with the `PlanLimit` enum (add a
+  member for a new limit). `plan.limit(PlanLimit.X)` is the cap the plan enforces (null when uncapped),
+  `isLimited` says whether to count at all, and `exceeds(PlanLimit.X, used, adding)` answers the check. They hold the rules a raw field read gets wrong: an enterprise identity limit only counts with
+  `enforceIdentityLimit` and 0 means uncapped, `maxCas` takes the larger of it and `maxInternalCas`, and an offline
+  v1 license may lack the field. The caller keeps its own error and message.
 - **Keep `ce/module.ts` cheap to import.** See the `import type` rule in `src/domains/AGENTS.md`.
 - **License never joins a caller's transaction.** It owns no rows, so it hands out values before the
   transaction and the domain owning the rows does the locked count. For a seat limit that must hold under
   concurrency (identity create), read the plan and `getSeatCountScope(orgId)` before your transaction, then
   call `organizationsProjectsService.within(sealKnexTransaction(trx)).lockAndCountBillableOrgActors(scope)`
-  inside it, before the insert, and compare `SeatUsage.fromBillableActors(counts).identitiesUsed`. Paths
-  that never locked (SSO, SCIM, invites) read `getSeatUsage` before the transaction and call
-  `seatUsage.assertAvailable(...)` inside it. `syncSeats` runs after the commit and never throws; code already
+  inside it, before the insert, and check
+  `plan.exceeds(PlanLimit.Identities, SeatUsage.fromBillableActors(counts).identitiesUsed)`. Paths that never locked
+  (SSO, SCIM, invites) read `getSeatUsage` before the transaction and call `seatUsage.assertAvailable(plan, via)`
+  inside it. `syncSeats` runs after the commit and never throws; code already
   inside a caller's transaction (org/project create) leaves it to the caller.
 - **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend an active
   paid org's meters; `UsageReportWorker` and `syncSeats` call `getPlan`/`refreshPlan`.

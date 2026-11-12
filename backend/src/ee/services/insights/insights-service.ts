@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -120,7 +120,7 @@ const assertInsightsPlanEnabled = async (
   orgId: string
 ) => {
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.secretAccessInsights) {
+  if (!plan.has(PlanFeature.SecretAccessInsights)) {
     throw new BadRequestError({
       message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
     });
@@ -748,7 +748,7 @@ export const insightsServiceFactory = ({
           folderDAL.countByProject(dto.projectId),
           dynamicSecretDAL.countByProject(dto.projectId),
           secretRotationV2DAL.countByProject(dto.projectId),
-          plan.honeyTokens ? honeyTokenDAL.countByProjectId(dto.projectId) : Promise.resolve(null)
+          plan.has(PlanFeature.HoneyTokens) ? honeyTokenDAL.countByProjectId(dto.projectId) : Promise.resolve(null)
         ]);
 
         return {

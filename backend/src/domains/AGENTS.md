@@ -26,8 +26,8 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md).
 
-`lib/` has `TransactionRunner`, `TTransaction`, `sealKnexTransaction` (`legacy-transaction.ts`), `withProps`,
-the domain errors (`errors.ts`) and in-memory versions under `lib/testing/`.
+`lib/` has `TransactionRunner`, `TTransaction`, `sealKnexTransaction` (`legacy-transaction.ts`), the domain
+errors (`errors.ts`) and in-memory versions under `lib/testing/`.
 
 Each domain has `ce/`, plus `ee/` with the same layout if it has paid features. Nothing else at the root.
 
@@ -45,7 +45,7 @@ Each domain has `ce/`, plus `ee/` with the same layout if it has paid features. 
 
 | Piece | Rule |
 | --- | --- |
-| Model | One per entity, even if stored across several tables. Private constructor, static `create()`/`restore()`, `toJSON()`. If callers read its fields, extend `withProps<TProps>()` so `plan.rbac` works. Never a bare type or function |
+| Model | One per entity, even if stored across several tables. Private constructor, static `create()`/`restore()`, `toJSON()`. Props stay private: expose behavior, plus getters for the fields callers need, so nobody reads a raw field the model has a rule for (`plan.has(PlanFeature.Rbac)`, not `plan.rbac`) or mutates it. Never a bare type or function |
 | Data access | One per model. Owns every table storing that model, returns models not rows. A table belongs to exactly one data access class; other domains go through the owner's service. Shared query fragments are private methods |
 | Store | All of a domain's data access, bound to one connection or transaction |
 | Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |

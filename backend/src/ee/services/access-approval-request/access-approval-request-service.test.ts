@@ -2,6 +2,8 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
@@ -273,7 +275,7 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: "dev", name: "Development" }) },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: canEditPolicies }) },
     queueService: { queue: vi.fn().mockResolvedValue(undefined) },
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) }
+    licenseService: { getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), secretApproval: true })) }
   } as never);
 
   return { service, findByIdForShare, create, createRequest };

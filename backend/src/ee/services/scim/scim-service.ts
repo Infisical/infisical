@@ -13,7 +13,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -237,7 +237,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.has(PlanFeature.Scim))
       throw new BadRequestError({
         message: "Failed to create a SCIM token due to plan restriction. Upgrade plan to create a SCIM token."
       });
@@ -331,7 +331,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.has(PlanFeature.Scim))
       throw new BadRequestError({
         message: "Failed to get SCIM events due to plan restriction. Upgrade plan to get SCIM events."
       });
@@ -1282,7 +1282,7 @@ export const scimServiceFactory = ({
 
   const createScimGroup: TScimServiceFactory["createScimGroup"] = async ({ displayName, orgId, members }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to create a SCIM group due to plan restriction. Upgrade plan to create a SCIM group."
       });
@@ -1663,7 +1663,7 @@ export const scimServiceFactory = ({
     members
   }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });
@@ -1723,7 +1723,7 @@ export const scimServiceFactory = ({
 
   const updateScimGroup: TScimServiceFactory["updateScimGroup"] = async ({ groupId, orgId, operations }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });

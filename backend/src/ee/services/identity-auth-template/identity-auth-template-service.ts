@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
@@ -87,7 +87,7 @@ export const identityAuthTemplateServiceFactory = ({
   // Plan check
   const $checkPlan = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.machineIdentityAuthTemplates)
+    if (!plan.has(PlanFeature.MachineIdentityAuthTemplates))
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -192,7 +192,7 @@ export const identityAuthTemplateServiceFactory = ({
     permission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"];
   }) => {
     if (gatewayId) {
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -204,7 +204,7 @@ export const identityAuthTemplateServiceFactory = ({
       );
     }
     if (gatewayPoolId) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -125,7 +125,7 @@ export const gitHubAppServiceFactory = ({
   // GitHub Enterprise Server) isn't directly reachable from the Infisical backend.
   const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.gateway) {
+    if (!plan.has(PlanFeature.Gateway)) {
       throw new BadRequestError({
         message:
           "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."

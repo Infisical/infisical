@@ -7,6 +7,7 @@ import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
 import { createDomains } from "@app/domains/domains";
+import { Plan, PlanFeature } from "@app/domains/platform/license/ce/module";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -4767,7 +4768,7 @@ export const registerRoutes = async (
   const hsmStatus = await isHsmActiveAndEnabled({
     hsmService,
     kmsRootConfigDAL,
-    instanceHasHsm: licenseService.getInstanceEntitlements().features.hsm
+    instanceHasHsm: Plan.restore(licenseService.getInstanceEntitlements().features).has(PlanFeature.Hsm)
   });
 
   // if the encryption strategy is software - user needs to provide an encryption key

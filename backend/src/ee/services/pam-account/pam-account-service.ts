@@ -2,7 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanLimit, PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -708,7 +708,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
 
     const plan = await licenseService.getPlan(ctx.actorOrgId);
-    if (typeof plan.pam === "boolean" && !plan.pam) {
+    if (!plan.allows(PlanProduct.Pam)) {
       throw new BadRequestError({
         message: "PAM is not available on your current plan. Please upgrade to continue."
       });
@@ -716,19 +716,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     if (
       (accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd) &&
-      typeof plan.enterprisePamAccount === "boolean" &&
-      !plan.enterprisePamAccount
+      !plan.allows(PlanProduct.PamEnterpriseAccounts)
     ) {
       throw new BadRequestError({
         message: "Windows PAM accounts are not available on your current plan. Please upgrade to continue."
       });
     }
 
-    // maxPamAccounts is uncapped by default (null); only enforce a cap when the plan configures a numeric
-    // limit. Counted org-wide right before creation.
-    if (typeof plan.maxPamAccounts === "number") {
+    if (plan.isLimited(PlanLimit.PamAccounts)) {
       const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.actorOrgId);
-      if (currentPamAccountCount >= plan.maxPamAccounts) {
+      if (plan.exceeds(PlanLimit.PamAccounts, currentPamAccountCount)) {
         throw new BadRequestError({
           name: "PAM_ACCOUNT_LIMIT_REACHED",
           message: "Failed to create PAM account due to plan limit reached. Upgrade plan to add more PAM accounts."

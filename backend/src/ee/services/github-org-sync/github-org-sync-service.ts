@@ -7,7 +7,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -468,7 +468,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to create github organization team sync due to plan restriction. Upgrade plan to create github organization sync."
@@ -527,7 +527,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to update github organization team sync due to plan restriction. Upgrade plan to update github organization sync."
@@ -593,7 +593,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to delete github organization team sync due to plan restriction. Upgrade plan to delete github organization sync."
@@ -873,7 +873,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to validate GitHub token due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -963,7 +963,7 @@ export const githubOrgSyncServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to sync all GitHub teams due to plan restriction. Upgrade plan to use GitHub organization sync."

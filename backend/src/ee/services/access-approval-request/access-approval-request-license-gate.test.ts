@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { TPlanProps } from "@app/domains/platform/license/ce/module";
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -22,7 +23,7 @@ const actor = {
 };
 
 const createService = (secretApproval: boolean) => {
-  const getPlan = vi.fn().mockResolvedValue({ secretApproval } as unknown as TPlanProps);
+  const getPlan = vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), secretApproval }));
 
   const deps = {
     projectDAL: {

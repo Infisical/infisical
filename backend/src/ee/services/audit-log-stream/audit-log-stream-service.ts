@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -39,7 +39,7 @@ export const auditLogStreamServiceFactory = ({
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.auditLogStreams) {
+    if (!plan.has(PlanFeature.AuditLogStreams)) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });
@@ -57,7 +57,7 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
-    if (plan.auditLogStreamLimit !== null && totalStreams.length >= plan.auditLogStreamLimit) {
+    if (plan.exceeds(PlanLimit.AuditLogStreams, totalStreams.length)) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
       });
@@ -91,7 +91,7 @@ export const auditLogStreamServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.auditLogStreams) {
+    if (!plan.has(PlanFeature.AuditLogStreams)) {
       throw new BadRequestError({
         message: "Failed to update Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });

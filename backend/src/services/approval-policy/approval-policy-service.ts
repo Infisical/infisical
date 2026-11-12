@@ -10,7 +10,7 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -673,7 +673,7 @@ export const approvalPolicyServiceFactory = ({
     // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
     if (policyType === ApprovalPolicyType.CertRequest) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.pkiApprovals) {
+      if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({
           message:
             "Failed to create certificate approval policy due to plan restriction. Upgrade plan to use certificate approvals."

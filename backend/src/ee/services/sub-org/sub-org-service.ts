@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
@@ -63,7 +63,7 @@ export const subOrgServiceFactory = ({
     );
 
     const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
-    if (!orgLicensePlan.subOrganization) {
+    if (!orgLicensePlan.has(PlanFeature.SubOrganization)) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
       });
@@ -245,7 +245,7 @@ export const subOrgServiceFactory = ({
 
   const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
     const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
-    if (!orgLicensePlan.subOrganization) {
+    if (!orgLicensePlan.has(PlanFeature.SubOrganization)) {
       throw new BadRequestError({
         message:
           "Sub-organization feature is not available. Please upgrade your instance to Infisical's Enterprise plan."

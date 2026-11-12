@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -95,9 +95,7 @@ export const projectEnvServiceFactory = ({
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
       const plan = await licenseService.getPlan(actorOrgId);
-      if (plan.environmentLimit !== null && envs.length >= plan.environmentLimit) {
-        // case: limit imposed on number of environments allowed
-        // case: number of environments used exceeds the number of environments allowed
+      if (plan.exceeds(PlanLimit.Environments, envs.length)) {
         throw new BadRequestError({
           message:
             "Failed to create environment due to environment limit reached. Upgrade plan to create more environments."
@@ -200,9 +198,8 @@ export const projectEnvServiceFactory = ({
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
       const plan = await licenseService.getPlan(actorOrgId);
-      if (plan.environmentLimit !== null && envs.length > plan.environmentLimit) {
-        // case: limit imposed on number of environments allowed
-        // case: number of environments used exceeds the number of environments allowed
+      // An update adds nothing, so it's refused only once the project is already over the limit.
+      if (plan.exceeds(PlanLimit.Environments, envs.length, 0)) {
         throw new BadRequestError({
           message:
             "Failed to update environment due to environment limit exceeded. To update an environment, please upgrade your plan or remove unused environments."
@@ -399,7 +396,7 @@ export const projectEnvServiceFactory = ({
         // getProjectPermission above guarantees project existence and org membership,
         // so actorOrgId === project.orgId — no separate project lookup needed.
         const plan = await licenseService.getPlan(actorOrgId);
-        if (plan.environmentLimit !== null && activeEnvs.length >= plan.environmentLimit) {
+        if (plan.exceeds(PlanLimit.Environments, activeEnvs.length)) {
           throw new BadRequestError({
             message:
               "Failed to restore environment due to environment limit reached. Upgrade plan or remove an existing environment."

@@ -48,7 +48,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const plan = await readOrgPlan(req, req.params.organizationId, req.query.refreshCache);
-      return { plan };
+      return { plan: plan.toJSON() };
     }
   });
 
@@ -67,7 +67,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return readOrgPlan(req, req.params.organizationId, false);
+      return (await readOrgPlan(req, req.params.organizationId, false)).toJSON();
     }
   });
 };

@@ -7,7 +7,14 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
-import { Meter, Plan, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  Meter,
+  Plan,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
@@ -904,7 +911,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const identityLimit = Plan.restore(licenseService.getInstanceEntitlements().features).enforcedIdentityLimit;
+    const instancePlan = Plan.restore(licenseService.getInstanceEntitlements().features);
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -929,9 +936,9 @@ export const superAdminServiceFactory = ({
       });
     }
 
-    if (identityLimit) {
+    if (instancePlan.isLimited(PlanLimit.Identities)) {
       const { identitiesUsed } = await licenseService.getInstanceSeatUsage();
-      if (identitiesUsed >= identityLimit) {
+      if (instancePlan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           name: "InviteUser",
           message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
@@ -1263,7 +1270,7 @@ export const superAdminServiceFactory = ({
   };
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
-    if (!licenseService.getInstanceEntitlements().features.hsm) {
+    if (!Plan.restore(licenseService.getInstanceEntitlements().features).has(PlanFeature.Hsm)) {
       throw new BadRequestError({
         message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
       });
@@ -1329,8 +1336,9 @@ export const superAdminServiceFactory = ({
 
     const config = getConfig();
     if (!config.isCloud) {
-      const plan = licenseService.getInstanceEntitlements().features;
-      const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
+      const plan = Plan.restore(licenseService.getInstanceEntitlements().features);
+      const canEmailDomainVerification =
+        plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
       if (!canEmailDomainVerification) {
         throw new BadRequestError({
           message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."

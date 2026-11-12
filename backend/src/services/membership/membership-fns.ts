@@ -8,7 +8,7 @@ import {
   ProjectType,
   TableName
 } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
@@ -49,7 +49,7 @@ export const assertSecretsTemporaryAccessAllowed = async ({
   }
 
   const plan = await licenseService.getPlan(orgId);
-  if (typeof plan.secretsTemporaryAccess === "boolean" && !plan.secretsTemporaryAccess) {
+  if (!plan.allows(PlanProduct.SecretsTemporaryAccess)) {
     throw new BadRequestError({
       message: "Temporary access is not available on your current plan. Please upgrade to continue."
     });

@@ -1,7 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
-import { InstanceType, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { InstanceType, PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -287,7 +287,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       const [plan, seatUsage] = await Promise.all([licenseService.getPlan(orgId), licenseService.getSeatUsage(orgId)]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
-      properties.has_secret_scanning = Boolean(plan.secretScanning);
+      properties.has_secret_scanning = plan.has(PlanFeature.SecretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }

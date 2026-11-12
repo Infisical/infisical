@@ -3,7 +3,7 @@ import pLimit from "p-limit";
 import { z } from "zod";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -242,7 +242,7 @@ export const pkiDiscoveryServiceFactory = ({
 
     // Creation only; existing discoveries keep scanning and stay editable.
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiDiscovery) {
+    if (!plan.has(PlanFeature.PkiDiscovery)) {
       throw new BadRequestError({
         message:
           "Failed to create certificate discovery due to plan restriction. Upgrade plan to use certificate discovery."

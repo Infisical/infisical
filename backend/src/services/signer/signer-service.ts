@@ -12,7 +12,7 @@ import {
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCodeSigningActions,
@@ -641,7 +641,7 @@ export const signerServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(dto.actorOrgId);
-    if (!plan.pkiCodeSigning) {
+    if (!plan.has(PlanFeature.PkiCodeSigning)) {
       throw new BadRequestError({
         message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."
       });

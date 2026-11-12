@@ -6,7 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
@@ -239,7 +239,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     const plan = await licenseService.getPlan(project.orgId);
-    return plan.pkiOcsp;
+    return plan.has(PlanFeature.PkiOcsp);
   };
 
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
@@ -1684,7 +1684,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       if (!caProject) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
 
       const plan = await licenseService.getPlan(caProject.orgId);
-      if (!plan.pkiExternalIntermediateCa) {
+      if (!plan.has(PlanFeature.PkiExternalIntermediateCa)) {
         throw new BadRequestError({
           message:
             "Failed to import an externally signed certificate for this intermediate CA due to plan restriction. Upgrade plan to use externally signed intermediate CAs."

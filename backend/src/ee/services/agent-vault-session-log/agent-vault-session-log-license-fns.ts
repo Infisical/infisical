@@ -1,4 +1,4 @@
-import { TLicenseService, TPlanProps } from "@app/domains/platform/license/ce/module";
+import { Plan, PlanFeature, TLicenseService, TPlanProps } from "@app/domains/platform/license/ce/module";
 import { logger } from "@app/lib/logger";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -16,10 +16,8 @@ export const getSessionLogNotOnPlanMessage = (storageType: ObjectStorageType) =>
 
 export type TSessionLogEntitlement = "licensed" | "unlicensed" | "unknown";
 
-const hasStorageOnPlan = (
-  plan: Pick<TPlanProps, "agentVaultManagedStorage" | "agentVaultByoS3">,
-  type: ObjectStorageType
-) => Boolean(type === ObjectStorageType.Default ? plan.agentVaultManagedStorage : plan.agentVaultByoS3);
+const hasStorageOnPlan = (plan: Plan, type: ObjectStorageType) =>
+  plan.has(type === ObjectStorageType.Default ? PlanFeature.AgentVaultManagedStorage : PlanFeature.AgentVaultByoS3);
 
 const FALLBACK_LOG_INTERVAL_MS = 5 * 60_000;
 const fallbackLoggedAt = new Map<string, number>();

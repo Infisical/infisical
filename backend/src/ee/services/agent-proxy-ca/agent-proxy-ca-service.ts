@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
@@ -40,7 +40,7 @@ export const agentProxyCaServiceFactory = ({
 }: TAgentProxyCaServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.secretsBrokering) {
+    if (!plan.has(PlanFeature.SecretsBrokering)) {
       throw new BadRequestError({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use the agent proxy."
       });

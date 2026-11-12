@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, groupByUnique, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -735,7 +736,7 @@ export const secretChangeRequestServiceFactory = ({
     status
   }) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval && status === RequestState.Open) {
+    if (!plan.has(PlanFeature.SecretApproval) && status === RequestState.Open) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."

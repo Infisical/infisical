@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
@@ -255,7 +255,7 @@ export const pkiAlertV2ServiceFactory = ({
     const nonEmailChannel = channels.find((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (nonEmailChannel) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseAlerting) {
+      if (!plan.has(PlanFeature.PkiEnterpriseAlerting)) {
         throw new BadRequestError({
           message: `Failed to create alert with a ${nonEmailChannel.channelType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
         });
@@ -446,7 +446,7 @@ export const pkiAlertV2ServiceFactory = ({
     const addedChannelTypes = channels?.filter((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (addedChannelTypes?.length) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseAlerting) {
+      if (!plan.has(PlanFeature.PkiEnterpriseAlerting)) {
         const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId);
         const existingTypes = new Set(existingChannels.map((channel) => channel.channelType));
         const newChannel = addedChannelTypes.find((channel) => !existingTypes.has(channel.channelType));

@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -101,7 +101,7 @@ export const hsmConnectorServiceFactory = ({
 
   const assertLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.hsm) {
+    if (!plan.has(PlanFeature.Hsm)) {
       throw new BadRequestError({
         message: "Your plan does not include HSM support. Please upgrade to use HSM Connectors."
       });

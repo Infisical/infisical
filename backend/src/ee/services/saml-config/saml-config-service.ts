@@ -14,7 +14,12 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
@@ -364,7 +369,7 @@ export const samlConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.has(PlanFeature.SamlSso))
       throw new BadRequestError({
         message:
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
@@ -389,7 +394,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.has(PlanFeature.Groups)) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
@@ -442,7 +447,7 @@ export const samlConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.has(PlanFeature.SamlSso))
       throw new BadRequestError({
         message:
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -467,7 +472,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.has(PlanFeature.Groups)) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
@@ -697,8 +702,7 @@ export const samlConfigServiceFactory = ({
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
     const plan = await licenseService.getPlan(orgId);
-    const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
-    const identityLimit = plan.enforcedIdentityLimit;
+    const shouldSyncGroups = !!samlConfig?.enableGroupSync && plan.has(PlanFeature.Groups);
 
     let user: TUsers;
     let sendPamCancellations = () => {};
@@ -785,7 +789,7 @@ export const samlConfigServiceFactory = ({
       });
     } else {
       let isNewUser = false;
-      const seatUsage = identityLimit ? await licenseService.getSeatUsage(orgId) : null;
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -832,7 +836,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          seatUsage?.assertAvailable({ identityLimit, via: UserAliasType.SAML });
+          seatUsage?.assertAvailable(plan, UserAliasType.SAML);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 

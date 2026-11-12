@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -107,7 +107,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan?.dynamicSecret) {
+    if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
       });
@@ -281,7 +281,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan?.dynamicSecret) {
+    if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."
       });

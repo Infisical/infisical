@@ -1,10 +1,6 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 
-export type TSeatLimit = {
-  identityLimit: number | null;
-  // Provisioning method, shown in the refusal.
-  via?: string;
-};
+import { Plan, PlanLimit } from "./plan";
 
 // identitiesUsed is members plus machine identities.
 export class SeatUsage {
@@ -22,9 +18,10 @@ export class SeatUsage {
     return new SeatUsage(users, users + identities);
   }
 
-  // Read the usage before opening the transaction that adds the member, then check it inside.
-  assertAvailable({ identityLimit, via }: TSeatLimit): void {
-    if (!identityLimit || this.identitiesUsed < identityLimit) return;
+  // Read the usage before opening the transaction that adds the member, then check it inside. via is the
+  // provisioning method, shown in the refusal.
+  assertAvailable(plan: Plan, via?: string): void {
+    if (!plan.exceeds(PlanLimit.Identities, this.identitiesUsed)) return;
     throw new RuleViolationError({
       message: `Failed to create new member${via ? ` via ${via.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
     });

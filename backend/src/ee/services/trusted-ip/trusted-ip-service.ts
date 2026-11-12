@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -72,7 +72,7 @@ export const trustedIpServiceFactory = ({
       projectDAL.findById(projectId)
     );
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.ipAllowlisting)
+    if (!plan.has(PlanFeature.IpAllowlisting))
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
@@ -120,7 +120,7 @@ export const trustedIpServiceFactory = ({
       projectDAL.findById(projectId)
     );
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.ipAllowlisting)
+    if (!plan.has(PlanFeature.IpAllowlisting))
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
@@ -168,7 +168,7 @@ export const trustedIpServiceFactory = ({
       projectDAL.findById(projectId)
     );
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.ipAllowlisting)
+    if (!plan.has(PlanFeature.IpAllowlisting))
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });

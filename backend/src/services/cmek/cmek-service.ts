@@ -1,7 +1,7 @@
 import { ForbiddenError, MongoAbility, MongoQuery } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCmekActions,
@@ -110,7 +110,7 @@ export const cmekServiceFactory = ({
 
     if (isPqcKeyAlgorithm(dto.encryptionAlgorithm as string)) {
       const plan = await licenseService.getPlan(dto.orgId);
-      if (!plan.kmsPqc) {
+      if (!plan.has(PlanFeature.KmsPqc)) {
         throw new BadRequestError({
           message:
             "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
@@ -737,7 +737,7 @@ export const cmekServiceFactory = ({
     let pqcLicensed = true;
     if (hasPqcKeys) {
       const plan = await licenseService.getPlan(actor.orgId);
-      pqcLicensed = !!plan.kmsPqc;
+      pqcLicensed = plan.has(PlanFeature.KmsPqc);
     }
 
     const results = await Promise.allSettled(

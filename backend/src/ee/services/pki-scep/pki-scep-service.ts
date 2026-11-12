@@ -5,7 +5,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -207,7 +207,7 @@ export const pkiScepServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiScep) {
+    if (!plan.has(PlanFeature.PkiScep)) {
       throw new BadRequestError({
         message: "Failed to perform SCEP operation due to plan restriction. Upgrade to the Enterprise plan."
       });
@@ -1368,7 +1368,7 @@ export const pkiScepServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiScep) {
+    if (!plan.has(PlanFeature.PkiScep)) {
       throw new BadRequestError({
         message: "Failed to generate SCEP challenge due to plan restriction. Upgrade to the Enterprise plan."
       });

@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
@@ -77,7 +77,7 @@ export const gatewayPoolServiceFactory = ({
 
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.gatewayPool) {
+    if (!plan.has(PlanFeature.GatewayPool)) {
       throw new BadRequestError({
         message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
       });

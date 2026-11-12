@@ -13,7 +13,7 @@ import {
   TIdentityKubernetesAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -876,7 +876,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let template: TIdentityAuthTemplates | undefined;
     if (templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -935,7 +935,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -965,7 +965,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const resolvedVerifyTlsCertificate = verifyTlsCertificate ?? Boolean(caCert);
 
     if (gatewayId) {
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -1020,7 +1020,7 @@ export const identityKubernetesAuthServiceFactory = ({
         }
       }
     } else if (gatewayPoolId) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
@@ -1220,7 +1220,7 @@ export const identityKubernetesAuthServiceFactory = ({
     // link CHANGE requires the attach-template permission; a re-assert must stay editable
     // for actors that hold identity EditAuth alone
     if (templateId && templateId !== identityKubernetesAuth.templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -1322,7 +1322,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -1338,7 +1338,7 @@ export const identityKubernetesAuthServiceFactory = ({
     });
 
     if (gatewayId) {
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -1377,7 +1377,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     // Handle gateway pool permission check
     if (gatewayPoolId) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });

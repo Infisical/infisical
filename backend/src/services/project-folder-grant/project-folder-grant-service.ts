@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionProjectFolderGrantActions,
@@ -58,7 +58,7 @@ export const projectFolderGrantServiceFactory = ({
   }: TCreateProjectFolderGrantDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
     const org = await orgDAL.findOrgById(actorOrgId);
-    if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
+    if (!plan.has(PlanFeature.CrossProjectSecretSharing) || !org?.allowCrossProjectSecretSharing) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 

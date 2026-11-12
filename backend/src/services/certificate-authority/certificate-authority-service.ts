@@ -1,7 +1,14 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  PlanProduct,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -87,7 +94,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { assertNoCertificateProfilesUsingCa, deleteCaAndReleaseExternalKey } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
-import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
+import { assertCertificateAuthorityQuota } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -342,13 +349,13 @@ export const certificateAuthorityServiceFactory = ({
 
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (typeof plan.certManager === "boolean" && !plan.certManager) {
+    if (!plan.allows(PlanProduct.CertManager)) {
       throw new BadRequestError({
         message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
       });
     }
 
-    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
       throw new BadRequestError({
         message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
       });
@@ -684,8 +691,11 @@ export const certificateAuthorityServiceFactory = ({
     ]);
 
     return {
-      certificateAuthorities: { used: totalUsed, limit: resolveEffectiveMaxCas(plan) },
-      internalCertificateAuthorities: { used: internalUsed, limit: plan.maxInternalCas ?? null }
+      certificateAuthorities: { used: totalUsed, limit: plan.limit(PlanLimit.CertificateAuthorities) },
+      internalCertificateAuthorities: {
+        used: internalUsed,
+        limit: plan.limit(PlanLimit.InternalCertificateAuthorities)
+      }
     };
   };
 

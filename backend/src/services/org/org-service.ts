@@ -12,7 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -536,7 +536,7 @@ export const orgServiceFactory = ({
     );
 
     if (secretShareBrandConfig !== undefined) {
-      if (!plan.secretShareExternalBranding) {
+      if (!plan.has(PlanFeature.SecretShareExternalBranding)) {
         throw new BadRequestError({
           message:
             "Failed to update secret share branding due to plan restriction. Upgrade plan to configure custom branding."
@@ -545,7 +545,7 @@ export const orgServiceFactory = ({
     }
 
     if (requireGatewayPools) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message:
             "Failed to require gateway pools due to plan restriction. Upgrade to Infisical Enterprise to use gateway pools."
@@ -554,7 +554,7 @@ export const orgServiceFactory = ({
     }
 
     if (enforceMfa !== undefined) {
-      if (!plan.enforceMfa) {
+      if (!plan.has(PlanFeature.EnforceMfa)) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
         });
@@ -571,7 +571,7 @@ export const orgServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
     }
 
-    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.enforceMfa) {
+    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.has(PlanFeature.EnforceMfa)) {
       throw new BadRequestError({
         message:
           "Failed to update MFA for SSO logins due to plan restriction. Upgrade plan to trust identity provider MFA."
@@ -579,7 +579,7 @@ export const orgServiceFactory = ({
     }
 
     if (authEnforced !== undefined) {
-      if (!plan?.samlSSO && !plan.oidcSSO)
+      if (!plan?.has(PlanFeature.SamlSso) && !plan.has(PlanFeature.OidcSso))
         throw new BadRequestError({
           message: "Failed to enforce/un-enforce SSO due to plan restriction. Upgrade plan to enforce/un-enforce SSO."
         });
@@ -587,7 +587,7 @@ export const orgServiceFactory = ({
     }
 
     if (scimEnabled !== undefined) {
-      if (!plan?.scim)
+      if (!plan?.has(PlanFeature.Scim))
         throw new BadRequestError({
           message:
             "Failed to enable/disable SCIM provisioning due to plan restriction. Upgrade plan to enable/disable SCIM provisioning."
@@ -601,7 +601,7 @@ export const orgServiceFactory = ({
     }
 
     if (googleSsoAuthEnforced !== undefined) {
-      if (!plan.enforceGoogleSSO) {
+      if (!plan.has(PlanFeature.EnforceGoogleSso)) {
         throw new BadRequestError({
           message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
         });
@@ -997,7 +997,7 @@ export const orgServiceFactory = ({
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
       const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
         });

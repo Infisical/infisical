@@ -9,7 +9,13 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
@@ -123,10 +129,9 @@ export const identityV2ServiceFactory = ({
     await factory.onCreateIdentityGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    const identityLimit = plan.enforcedIdentityLimit;
-    if (identityLimit) {
+    if (plan.isLimited(PlanLimit.Identities)) {
       const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
-      if (identitiesUsed >= identityLimit) {
+      if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
         throw new BadRequestError({
           message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
@@ -199,7 +204,7 @@ export const identityV2ServiceFactory = ({
 
       const customInputRoles = data.roles.filter((el) => isCustomProjectRole(el.role));
       const hasCustomRole = customInputRoles.length > 0;
-      if (hasCustomRole && !plan?.rbac) {
+      if (hasCustomRole && !plan?.has(PlanFeature.Rbac)) {
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."

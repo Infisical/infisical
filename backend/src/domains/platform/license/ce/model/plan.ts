@@ -1,5 +1,4 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
-import { withProps } from "@app/domains/lib/with-props";
 
 export type TPlanNotice = {
   type: "trial_payment_failed";
@@ -122,83 +121,203 @@ export type TPlanProps = {
   secretsFolderRbac: boolean;
 };
 
-export type TPlanFeature = keyof typeof Plan.featureNames;
+// Each value is the plan field holding that flag.
+export enum PlanFeature {
+  DynamicSecret = "dynamicSecret",
+  SubOrganization = "subOrganization",
+  PitRecovery = "pitRecovery",
+  IpAllowlisting = "ipAllowlisting",
+  Rbac = "rbac",
+  CustomAlerts = "customAlerts",
+  AuditLogs = "auditLogs",
+  AuditLogStreams = "auditLogStreams",
+  GithubOrgSync = "githubOrgSync",
+  SamlSso = "samlSSO",
+  EnforceGoogleSso = "enforceGoogleSSO",
+  Hsm = "hsm",
+  OidcSso = "oidcSSO",
+  SecretAccessInsights = "secretAccessInsights",
+  Scim = "scim",
+  Ldap = "ldap",
+  Groups = "groups",
+  SecretApproval = "secretApproval",
+  SecretRotation = "secretRotation",
+  ExternalKms = "externalKms",
+  KmsPqc = "kmsPqc",
+  EnforceMfa = "enforceMfa",
+  ProjectTemplates = "projectTemplates",
+  Kmip = "kmip",
+  Gateway = "gateway",
+  GatewayPool = "gatewayPool",
+  PamEnterpriseAlerting = "pamEnterpriseAlerting",
+  SecretScanning = "secretScanning",
+  EnterpriseSecretSyncs = "enterpriseSecretSyncs",
+  EnterpriseAppConnections = "enterpriseAppConnections",
+  MachineIdentityAuthTemplates = "machineIdentityAuthTemplates",
+  EventSubscriptions = "eventSubscriptions",
+  SecretShareExternalBranding = "secretShareExternalBranding",
+  HoneyTokens = "honeyTokens",
+  SecretsBrokering = "secretsBrokering",
+  AgentVaultByoS3 = "agentVaultByoS3",
+  AgentVaultManagedStorage = "agentVaultManagedStorage",
+  PkiEst = "pkiEst",
+  PkiScep = "pkiScep",
+  PkiPqc = "pkiPqc",
+  PkiOcsp = "pkiOcsp",
+  PkiAwsKmsSigning = "pkiAwsKmsSigning",
+  PkiEnterpriseCaIntegrations = "pkiEnterpriseCaIntegrations",
+  PkiExternalIntermediateCa = "pkiExternalIntermediateCa",
+  PkiCrossSignedCa = "pkiCrossSignedCa",
+  PkiDiscovery = "pkiDiscovery",
+  PkiEnterpriseAlerting = "pkiEnterpriseAlerting",
+  PkiApprovals = "pkiApprovals",
+  PkiSyncs = "pkiSyncs",
+  PkiCodeSigning = "pkiCodeSigning",
+  CrossProjectSecretSharing = "crossProjectSecretSharing",
+  SecretsFolderRbac = "secretsFolderRbac",
+  CaCrl = "caCrl"
+}
 
-export class Plan extends withProps<TPlanProps>() {
+// Products a plan can switch off. Unlike a feature, a product the plan says nothing about (null) stays available.
+export enum PlanProduct {
+  Pam = "pam",
+  PamEnterpriseAccounts = "enterprisePamAccount",
+  CertManager = "certManager",
+  SecretsTemporaryAccess = "secretsTemporaryAccess"
+}
+
+// Each value is the plan field holding that cap.
+export enum PlanLimit {
+  Projects = "workspaceLimit",
+  Identities = "identityLimit",
+  Environments = "environmentLimit",
+  AuditLogStreams = "auditLogStreamLimit",
+  HoneyTokens = "honeyTokenLimit",
+  SecretSyncs = "secretSyncLimit",
+  PamAccounts = "maxPamAccounts",
+  CertificateAuthorities = "maxCas",
+  InternalCertificateAuthorities = "maxInternalCas",
+  Certificates = "maxCertificates",
+  WildcardCertificates = "maxWildcardCertificates",
+  SansPerCertificate = "maxSansPerCertificate"
+}
+
+const deepFreeze = <T>(value: T): T => {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.values(value).forEach(deepFreeze);
+    Object.freeze(value);
+  }
+  return value;
+};
+
+export class Plan {
   // Names shown to the customer when a feature is refused.
-  static readonly featureNames = {
-    dynamicSecret: "Dynamic Secrets",
-    subOrganization: "Sub-organizations",
-    pitRecovery: "Point-in-time Recovery",
-    ipAllowlisting: "IP Allowlisting",
-    rbac: "Role-based Access Control",
-    customAlerts: "Custom Alerts",
-    auditLogs: "Audit Logs",
-    auditLogStreams: "Audit Log Streams",
-    githubOrgSync: "GitHub Organization Sync",
-    samlSSO: "SAML SSO",
-    enforceGoogleSSO: "Google SSO Enforcement",
-    hsm: "HSM",
-    oidcSSO: "OIDC SSO",
-    secretAccessInsights: "Secret Access Insights",
-    scim: "SCIM",
-    ldap: "LDAP",
-    groups: "Groups",
-    secretApproval: "Secret Approvals",
-    secretRotation: "Secret Rotation",
-    externalKms: "External KMS",
-    kmsPqc: "Post-quantum KMS Keys",
-    enforceMfa: "MFA Enforcement",
-    projectTemplates: "Project Templates",
-    kmip: "KMIP",
-    gateway: "Gateways",
-    gatewayPool: "Gateway Pools",
-    pamEnterpriseAlerting: "PAM Alerting",
-    secretScanning: "Secret Scanning",
-    enterpriseSecretSyncs: "Enterprise Secret Syncs",
-    enterpriseAppConnections: "Enterprise App Connections",
-    machineIdentityAuthTemplates: "Machine Identity Auth Templates",
-    eventSubscriptions: "Event Subscriptions",
-    secretShareExternalBranding: "Secret Sharing Branding",
-    honeyTokens: "Honey Tokens",
-    secretsBrokering: "Secrets Brokering",
-    agentVaultByoS3: "Agent Vault Bring-your-own Storage",
-    agentVaultManagedStorage: "Agent Vault Managed Storage",
-    pkiEst: "EST Enrollment",
-    pkiScep: "SCEP Enrollment",
-    pkiPqc: "Post-quantum Certificates",
-    pkiOcsp: "OCSP",
-    pkiAwsKmsSigning: "AWS KMS Certificate Signing",
-    pkiEnterpriseCaIntegrations: "Enterprise CA Integrations",
-    pkiExternalIntermediateCa: "External Intermediate CAs",
-    pkiCrossSignedCa: "Cross-signed CAs",
-    pkiDiscovery: "Certificate Discovery",
-    pkiEnterpriseAlerting: "Certificate Alerting",
-    pkiApprovals: "Certificate Approvals",
-    pkiSyncs: "Certificate Syncs",
-    pkiCodeSigning: "Code Signing",
-    crossProjectSecretSharing: "Cross-project Secret Sharing",
-    secretsFolderRbac: "Folder-level Access Control"
-  } as const satisfies Partial<Record<keyof TPlanProps, string>>;
+  static readonly featureNames: Record<PlanFeature, string> = {
+    [PlanFeature.DynamicSecret]: "Dynamic Secrets",
+    [PlanFeature.SubOrganization]: "Sub-organizations",
+    [PlanFeature.PitRecovery]: "Point-in-time Recovery",
+    [PlanFeature.IpAllowlisting]: "IP Allowlisting",
+    [PlanFeature.Rbac]: "Role-based Access Control",
+    [PlanFeature.CustomAlerts]: "Custom Alerts",
+    [PlanFeature.AuditLogs]: "Audit Logs",
+    [PlanFeature.AuditLogStreams]: "Audit Log Streams",
+    [PlanFeature.GithubOrgSync]: "GitHub Organization Sync",
+    [PlanFeature.SamlSso]: "SAML SSO",
+    [PlanFeature.EnforceGoogleSso]: "Google SSO Enforcement",
+    [PlanFeature.Hsm]: "HSM",
+    [PlanFeature.OidcSso]: "OIDC SSO",
+    [PlanFeature.SecretAccessInsights]: "Secret Access Insights",
+    [PlanFeature.Scim]: "SCIM",
+    [PlanFeature.Ldap]: "LDAP",
+    [PlanFeature.Groups]: "Groups",
+    [PlanFeature.SecretApproval]: "Secret Approvals",
+    [PlanFeature.SecretRotation]: "Secret Rotation",
+    [PlanFeature.ExternalKms]: "External KMS",
+    [PlanFeature.KmsPqc]: "Post-quantum KMS Keys",
+    [PlanFeature.EnforceMfa]: "MFA Enforcement",
+    [PlanFeature.ProjectTemplates]: "Project Templates",
+    [PlanFeature.Kmip]: "KMIP",
+    [PlanFeature.Gateway]: "Gateways",
+    [PlanFeature.GatewayPool]: "Gateway Pools",
+    [PlanFeature.PamEnterpriseAlerting]: "PAM Alerting",
+    [PlanFeature.SecretScanning]: "Secret Scanning",
+    [PlanFeature.EnterpriseSecretSyncs]: "Enterprise Secret Syncs",
+    [PlanFeature.EnterpriseAppConnections]: "Enterprise App Connections",
+    [PlanFeature.MachineIdentityAuthTemplates]: "Machine Identity Auth Templates",
+    [PlanFeature.EventSubscriptions]: "Event Subscriptions",
+    [PlanFeature.SecretShareExternalBranding]: "Secret Sharing Branding",
+    [PlanFeature.HoneyTokens]: "Honey Tokens",
+    [PlanFeature.SecretsBrokering]: "Secrets Brokering",
+    [PlanFeature.AgentVaultByoS3]: "Agent Vault Bring-your-own Storage",
+    [PlanFeature.AgentVaultManagedStorage]: "Agent Vault Managed Storage",
+    [PlanFeature.PkiEst]: "EST Enrollment",
+    [PlanFeature.PkiScep]: "SCEP Enrollment",
+    [PlanFeature.PkiPqc]: "Post-quantum Certificates",
+    [PlanFeature.PkiOcsp]: "OCSP",
+    [PlanFeature.PkiAwsKmsSigning]: "AWS KMS Certificate Signing",
+    [PlanFeature.PkiEnterpriseCaIntegrations]: "Enterprise CA Integrations",
+    [PlanFeature.PkiExternalIntermediateCa]: "External Intermediate CAs",
+    [PlanFeature.PkiCrossSignedCa]: "Cross-signed CAs",
+    [PlanFeature.PkiDiscovery]: "Certificate Discovery",
+    [PlanFeature.PkiEnterpriseAlerting]: "Certificate Alerting",
+    [PlanFeature.PkiApprovals]: "Certificate Approvals",
+    [PlanFeature.PkiSyncs]: "Certificate Syncs",
+    [PlanFeature.PkiCodeSigning]: "Code Signing",
+    [PlanFeature.CrossProjectSecretSharing]: "Cross-project Secret Sharing",
+    [PlanFeature.SecretsFolderRbac]: "Folder-level Access Control",
+    [PlanFeature.CaCrl]: "Certificate Revocation Lists"
+  };
+
+  // Cloned so freezing never reaches the caller's object (the instance features, a test's fixture).
+  private readonly props: TPlanProps;
 
   private constructor(props: TPlanProps) {
-    super(props);
+    this.props = deepFreeze(structuredClone(props));
   }
 
   static restore(props: TPlanProps): Plan {
     return new Plan(props);
   }
 
+  get slug(): string | null {
+    return this.props.slug;
+  }
+
   // No slug means community edition, or the fallback served while the License Server is down.
   get isPaid(): boolean {
-    return Boolean(this.slug);
+    return Boolean(this.props.slug);
   }
 
-  has(feature: TPlanFeature): boolean {
-    return Boolean(this[feature]);
+  get isOffline(): boolean {
+    return Boolean(this.props.isOffline);
   }
 
-  assert(feature: TPlanFeature): void {
+  get productPlans(): Readonly<TPlanProps["productPlans"]> {
+    return this.props.productPlans;
+  }
+
+  get notices(): Readonly<TPlanProps["notices"]> {
+    return this.props.notices;
+  }
+
+  get rateLimits(): Readonly<TPlanProps["rateLimits"]> {
+    return this.props.rateLimits;
+  }
+
+  // Null keeps logs forever.
+  get auditLogsRetentionDays(): number | null {
+    return this.props.auditLogsRetentionDays;
+  }
+
+  get agentVaultSessionLogRetentionDays(): number | null {
+    return this.props.agentVaultSessionLogRetentionDays;
+  }
+
+  has(feature: PlanFeature): boolean {
+    return Boolean(this.props[feature]);
+  }
+
+  assert(feature: PlanFeature): void {
     if (!this.has(feature)) {
       throw new RuleViolationError({
         message: `Your current plan does not include ${Plan.featureNames[feature]}. Upgrade your plan to use it.`
@@ -206,17 +325,50 @@ export class Plan extends withProps<TPlanProps>() {
     }
   }
 
-  // Enterprise is uncapped unless it opts into enforcement.
-  get enforcedIdentityLimit(): number | null {
-    if (this.slug === "enterprise" && !this.enforceIdentityLimit) return null;
-    return this.identityLimit ?? null;
+  // The cap this plan enforces, or null when it has none.
+  limit(name: PlanLimit): number | null {
+    switch (name) {
+      // Enterprise is uncapped unless it opts into enforcement, and 0 has always meant no cap.
+      case PlanLimit.Identities:
+        if (this.props.slug === "enterprise" && !this.props.enforceIdentityLimit) return null;
+        return this.props.identityLimit || null;
+      // A contract granting more internal CAs than total CAs is a License Server misconfiguration, so the larger
+      // grant wins. Only when both are numbers: the free tier caps maxCas at 1 and leaves maxInternalCas null.
+      case PlanLimit.CertificateAuthorities: {
+        const { maxCas, maxInternalCas } = this.props;
+        return typeof maxCas === "number" && typeof maxInternalCas === "number"
+          ? Math.max(maxCas, maxInternalCas)
+          : (maxCas ?? null);
+      }
+      default: {
+        // Offline v1 licenses carry a frozen feature snapshot, so a limit added since can be missing.
+        const cap = this.props[name] as number | null | undefined;
+        return typeof cap === "number" ? cap : null;
+      }
+    }
+  }
+
+  isLimited(name: PlanLimit): boolean {
+    return this.limit(name) !== null;
+  }
+
+  // Whether `adding` more on top of `used` goes past the cap. adding 0 asks whether usage is already over it.
+  exceeds(name: PlanLimit, used: number, adding = 1): boolean {
+    const cap = this.limit(name);
+    return cap !== null && used + adding > cap;
+  }
+
+  // Whether the plan leaves this product available: only an explicit false switches it off.
+  allows(product: PlanProduct): boolean {
+    return this.props[product] !== false;
   }
 
   withWorkspacesUsed(workspacesUsed: number): Plan {
-    return new Plan({ ...this.toJSON(), workspacesUsed });
+    return new Plan({ ...this.props, workspacesUsed });
   }
 
+  // A mutable copy, for the cache and API responses.
   toJSON(): TPlanProps {
-    return { ...this };
+    return structuredClone(this.props);
   }
 }

@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -615,7 +615,7 @@ export const appConnectionServiceFactory = ({
 
     if (gatewayId) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -858,7 +858,7 @@ export const appConnectionServiceFactory = ({
 
       if (gatewayId) {
         const plan = await licenseService.getPlan(actor.orgId);
-        if (!plan.gateway) {
+        if (!plan.has(PlanFeature.Gateway)) {
           throw new BadRequestError({
             message:
               "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
