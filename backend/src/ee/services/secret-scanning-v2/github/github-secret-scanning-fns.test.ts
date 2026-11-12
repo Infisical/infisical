@@ -138,7 +138,7 @@ describe("getPullRequestScanCheckRunResult", () => {
 
     expect(result.conclusion).toBe("failure");
     expect(result.title).toBe("2 secret(s) found");
-    expect(result.summary).toContain("1 more secret(s) were marked positives or ignored");
+    expect(result.summary).toContain("1 more secret(s) were marked as false positives or ignored");
     expect(result.offerSkipActions).toBe(true);
   });
 
