@@ -59,17 +59,26 @@ import {
 import { Switch } from "@app/components/v4/ui/switch";
 import { Textarea } from "@app/components/v4/ui/textarea";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import type { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import type { ProjectType } from "@app/hooks/api/projects/types";
 import { genericAppConnectionFieldsSchema } from "@app/lib/schemas/app-connections";
 
+import { useOrgId, useOrgPermission } from "../access/permissions";
 import { errorMessage, failed, saved } from "../access/toast";
 import { useV4Adapter } from "../data/adapters";
-import { CONNECTION_PRESETS } from "../data/integrations/connection-presets";
-import { connectionRedirect } from "../data/integrations/connection-redirect";
+import { CONNECTION_GATEWAYS, CONNECTION_PRESETS } from "../data/integrations/connection-presets";
+import {
+  connectionRedirect,
+  startConnectionRedirect
+} from "../data/integrations/connection-redirect";
+import { GatewayPicker, type GatewayPickerValue } from "../networking/gateway-picker";
 import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
 
 export const NOT_IN_V4 = "Not in v4 yet";
@@ -80,12 +89,68 @@ export const methodName = (row: TAppConnection) => getAppConnectionMethodDetails
 const methodPreset = (row: TAppConnection) =>
   CONNECTION_PRESETS[row.app]?.methods.find((entry) => entry.value === row.method);
 
+const customGitHubApp = (row: TAppConnection) =>
+  row.app === AppConnection.GitHub &&
+  Boolean((row.credentials as { gitHubAppId?: string | null } | undefined)?.gitHubAppId);
+
 /** Why the credentials sheet can't open for this connection in v4, or undefined when it can. */
 export const credentialsBlock = (row: TAppConnection) => {
   if (row.isPlatformManagedCredentials) return undefined;
-  const method = methodPreset(row);
-  return method && !method.redirect ? undefined : NOT_IN_V4;
+  if (customGitHubApp(row))
+    return "This connection uses your organization's own GitHub App, which v4 can't reconnect yet";
+  return methodPreset(row) ? undefined : NOT_IN_V4;
 };
+
+const NO_GATEWAY: GatewayPickerValue = { gatewayId: null, gatewayPoolId: null };
+const GATEWAY_REQUIRED = "Select a gateway";
+
+/** The gateway field for an app whose v3 form offers one, while the plan includes gateways. */
+const useGatewaySupport = (app?: AppConnection) => {
+  const orgId = useOrgId();
+  const { data: subscription } = useV4Adapter("networking").useSubscription(orgId);
+  const { permission } = useOrgPermission();
+  const mode = app ? CONNECTION_GATEWAYS[app] : undefined;
+  if (!mode || !subscription?.gateway) return undefined;
+  return {
+    required: mode === "required",
+    disabledReason: permission.can(
+      OrgGatewayPermissionActions.AttachGateways,
+      OrgPermissionSubjects.Gateway
+    )
+      ? undefined
+      : "You don't have permission to attach gateways."
+  };
+};
+
+type GatewaySupport = NonNullable<ReturnType<typeof useGatewaySupport>>;
+
+const GatewayField = ({
+  support,
+  value,
+  onChange,
+  disabled,
+  error
+}: {
+  support: GatewaySupport;
+  value: GatewayPickerValue;
+  onChange: (value: GatewayPickerValue) => void;
+  disabled?: boolean;
+  error?: string;
+}) => (
+  <Field label="Gateway" description={support.disabledReason} error={error}>
+    <GatewayPicker
+      label="Gateway"
+      value={value}
+      onChange={onChange}
+      required={support.required}
+      invalid={Boolean(error)}
+      disabled={disabled || Boolean(support.disabledReason)}
+    />
+  </Field>
+);
+
+const gatewayMissing = (support: GatewaySupport | undefined, value: GatewayPickerValue) =>
+  Boolean(support?.required && !value.gatewayId && !value.gatewayPoolId);
 
 export const RotationBadge = ({ row }: { row: TAppConnection }) => {
   const { rotation } = row;
@@ -196,14 +261,23 @@ export const AddConnectionSheet = ({
   const [pending, setPending] = useState(false);
   const [submitLabel, setSubmitLabel] = useState("Create connection");
   const discardAction = useRef<() => void>(() => undefined);
+  const [gateway, setGateway] = useState(NO_GATEWAY);
+  const [gatewayError, setGatewayError] = useState<string>();
   const preset = selected ? CONNECTION_PRESETS[selected] : undefined;
   const option = options.find((entry) => entry.app === selected);
+  const gatewaySupport = useGatewaySupport(selected);
+  const gatewayValues = gatewaySupport ? gateway : {};
 
   useEffect(() => {
     if (!open) return;
     setSelected(app);
     setDirty(false);
   }, [open, app]);
+
+  useEffect(() => {
+    setGateway(NO_GATEWAY);
+    setGatewayError(undefined);
+  }, [selected]);
 
   const close = () => {
     setDirty(false);
@@ -215,7 +289,7 @@ export const AddConnectionSheet = ({
     setSelected(undefined);
   };
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: dirty,
+    isDirty: dirty || gateway !== NO_GATEWAY,
     onDiscard: () => discardAction.current()
   });
   const request = (action: () => void) => {
@@ -253,14 +327,23 @@ export const AddConnectionSheet = ({
                   redirect={connectionRedirect({
                     returnTo,
                     projectId,
-                    option: option as Record<string, unknown> | undefined
+                    option: option as Record<string, unknown> | undefined,
+                    extras: gatewayValues
                   })}
                   onDirtyChange={setDirty}
                   onPendingChange={setPending}
                   onSubmitLabelChange={setSubmitLabel}
                   onSubmit={async (values: AppConnectionFormValues) => {
+                    if (gatewayMissing(gatewaySupport, gateway)) {
+                      setGatewayError(GATEWAY_REQUIRED);
+                      throw new Error(`${preset.name} is only reachable through a gateway.`);
+                    }
                     await createConnection
-                      .mutateAsync({ ...values, projectId } as TCreateAppConnectionDTO)
+                      .mutateAsync({
+                        ...values,
+                        ...gatewayValues,
+                        projectId
+                      } as TCreateAppConnectionDTO)
                       .catch((error: unknown) => {
                         throw new Error(errorMessage(error));
                       });
@@ -268,6 +351,18 @@ export const AddConnectionSheet = ({
                     close();
                   }}
                 />
+                {gatewaySupport && (
+                  <GatewayField
+                    support={gatewaySupport}
+                    value={gateway}
+                    disabled={pending}
+                    error={gatewayError}
+                    onChange={(next) => {
+                      setGateway(next);
+                      setGatewayError(undefined);
+                    }}
+                  />
+                )}
               </Stack>
             ) : (
               <AppPicker projectType={projectType} onPick={setSelected} />
@@ -486,20 +581,40 @@ const storedCredentials = (row: TAppConnection, keys: readonly string[]) => {
   );
 };
 
+type ReconnectTarget = { returnTo: string; projectId?: string; projectType?: ProjectType };
+
 const CredentialsForm = ({
   connection,
   preset,
   method,
+  reconnect,
   onClose
 }: {
   connection: TAppConnection;
   preset: AppConnectionPreset;
   method: AppConnectionMethodPreset;
+  reconnect: ReconnectTarget;
   onClose: () => void;
 }) => {
-  const updateConnection = useV4Adapter("integrations").useUpdateConnection();
+  const integrations = useV4Adapter("integrations");
+  const updateConnection = integrations.useUpdateConnection();
+  const { data: options = [] } = integrations.useConnectionOptions(reconnect.projectType);
+  const option = options.find((entry) => entry.app === connection.app) as
+    | Record<string, unknown>
+    | undefined;
   const formId = useId();
   const [failure, setFailure] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
+  const initialGateway: GatewayPickerValue = {
+    gatewayId: connection.gatewayId ?? null,
+    gatewayPoolId: connection.gatewayPoolId ?? null
+  };
+  const [gateway, setGateway] = useState(initialGateway);
+  const [gatewayError, setGatewayError] = useState<string>();
+  const gatewaySupport = useGatewaySupport(connection.app);
+  const gatewayDirty =
+    gateway.gatewayId !== initialGateway.gatewayId ||
+    gateway.gatewayPoolId !== initialGateway.gatewayPoolId;
   const form = useForm<FieldValues>({
     resolver: zodResolver(preset.schema),
     defaultValues: {
@@ -515,18 +630,46 @@ const CredentialsForm = ({
     }
   });
   const values = useWatch({ control: form.control });
-  const pending = form.formState.isSubmitting;
+  const { redirect } = method;
+  const redirectHref = redirect?.href({ values, option });
+  const pending = form.formState.isSubmitting || redirecting;
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: form.formState.isDirty,
+    isDirty: form.formState.isDirty || gatewayDirty,
     onDiscard: onClose
   });
   const submit = form.handleSubmit(async (submitted) => {
     setFailure("");
+    if (gatewayMissing(gatewaySupport, gateway)) {
+      setGatewayError(GATEWAY_REQUIRED);
+      return;
+    }
+    const gatewayValues = gatewaySupport ? gateway : {};
+    if (redirect) {
+      const href = redirect.href({ values: submitted, option });
+      if (!href) {
+        setFailure(redirect.unconfigured);
+        return;
+      }
+      setRedirecting(true);
+      startConnectionRedirect(href, {
+        app: connection.app,
+        method: method.value,
+        name: connection.name,
+        description: connection.description,
+        credentials: submitted.credentials ?? {},
+        projectId: reconnect.projectId,
+        returnTo: reconnect.returnTo,
+        connectionId: connection.id,
+        ...gatewayValues
+      });
+      return;
+    }
     try {
       await updateConnection.mutateAsync({
         connectionId: connection.id,
         app: connection.app,
-        credentials: submitted.credentials
+        credentials: submitted.credentials,
+        ...gatewayValues
       });
       saved(`${connection.name} credentials updated`);
       onClose();
@@ -550,6 +693,23 @@ const CredentialsForm = ({
                   .map((spec) => (
                     <CredentialField key={spec.name} control={form.control} spec={spec} />
                   ))}
+                {gatewaySupport && (
+                  <GatewayField
+                    support={gatewaySupport}
+                    value={gateway}
+                    disabled={pending}
+                    error={gatewayError}
+                    onChange={(next) => {
+                      setGateway(next);
+                      setGatewayError(undefined);
+                    }}
+                  />
+                )}
+                {redirect && !redirectHref && !failure && (
+                  <Alert>
+                    <AlertDescription>{redirect.unconfigured}</AlertDescription>
+                  </Alert>
+                )}
                 {failure && (
                   <Alert variant="destructive">
                     <AlertDescription>{failure}</AlertDescription>
@@ -560,7 +720,9 @@ const CredentialsForm = ({
           </SheetBody>
           <SheetFooter>
             <Button variant="primary" type="submit" form={formId} loading={pending}>
-              Update credentials
+              {redirect
+                ? redirect.submitLabel.replace(/^Connect/, "Reconnect")
+                : "Update credentials"}
             </Button>
             <Button variant="outline" onClick={requestDiscard} disabled={pending}>
               Cancel
@@ -631,11 +793,15 @@ const ViewCredentialsSheet = ({
   );
 };
 
-/** Edit credentials for a preset method, or view them when Infisical manages them. */
+/**
+ * Edit credentials for a preset method, reconnect through the provider for a redirect method, or
+ * view them when Infisical manages them. A reconnect returns to returnTo through the v4 callback.
+ */
 export const ConnectionCredentialsSheet = ({
   connection,
-  onClose
-}: {
+  onClose,
+  ...reconnect
+}: ReconnectTarget & {
   connection: TAppConnection;
   onClose: () => void;
 }) => {
@@ -643,9 +809,15 @@ export const ConnectionCredentialsSheet = ({
     return <ViewCredentialsSheet connection={connection} onClose={onClose} />;
   const preset = CONNECTION_PRESETS[connection.app];
   const method = methodPreset(connection);
-  if (!preset || !method || method.redirect) return null;
+  if (!preset || !method || credentialsBlock(connection)) return null;
   return (
-    <CredentialsForm connection={connection} preset={preset} method={method} onClose={onClose} />
+    <CredentialsForm
+      connection={connection}
+      preset={preset}
+      method={method}
+      reconnect={reconnect}
+      onClose={onClose}
+    />
   );
 };
 

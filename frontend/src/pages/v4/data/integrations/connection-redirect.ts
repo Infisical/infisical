@@ -4,13 +4,25 @@ import type {
 } from "@app/components/v4/patterns/app-connection-form";
 import { V4_CONNECTION_REDIRECT_STORAGE_KEY } from "@app/helpers/appConnections";
 
+/** What the v4 flows store beside the shell's record: the gateway, and the connection a reconnect updates. */
+export type ConnectionRedirectExtras = {
+  connectionId?: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+};
+
+export type V4PendingConnectionRedirect = PendingConnectionRedirect & ConnectionRedirectExtras;
+
 export type TakenConnectionRedirect =
-  | { status: "ok"; pending: PendingConnectionRedirect }
+  | { status: "ok"; pending: V4PendingConnectionRedirect }
   | { status: "missing" }
   | { status: "corrupt" }
-  | { status: "mismatch"; pending: PendingConnectionRedirect };
+  | { status: "mismatch"; pending: V4PendingConnectionRedirect };
 
-export const startConnectionRedirect: AppConnectionRedirect["start"] = (href, pending) => {
+export const startConnectionRedirect = (
+  href: string,
+  pending: Omit<V4PendingConnectionRedirect, "state">
+) => {
   const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
     byte.toString(16).padStart(2, "0")
   ).join("");
@@ -31,7 +43,7 @@ export const takeConnectionRedirect = (rawState: string): TakenConnectionRedirec
   const state = stateWithoutAppSuffix(rawState);
   const raw = localStorage.getItem(V4_CONNECTION_REDIRECT_STORAGE_KEY);
   if (raw === null) return { status: "missing" };
-  let pending: PendingConnectionRedirect;
+  let pending: V4PendingConnectionRedirect;
   try {
     pending = JSON.parse(raw);
   } catch {
@@ -43,6 +55,12 @@ export const takeConnectionRedirect = (rawState: string): TakenConnectionRedirec
   return { status: "ok", pending };
 };
 
-export const connectionRedirect = (
-  target: Omit<AppConnectionRedirect, "start">
-): AppConnectionRedirect => ({ ...target, start: startConnectionRedirect });
+export const connectionRedirect = ({
+  extras,
+  ...target
+}: Omit<AppConnectionRedirect, "start"> & {
+  extras?: ConnectionRedirectExtras;
+}): AppConnectionRedirect => ({
+  ...target,
+  start: (href, pending) => startConnectionRedirect(href, { ...pending, ...extras })
+});

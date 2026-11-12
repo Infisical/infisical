@@ -20,7 +20,9 @@ const isV4Return = (href: string) => href.startsWith(v4Path("/"));
 export const AppConnectionCallbackPage = () => {
   const { orgId, appConnection } = useParams({ from: ROUTE });
   const { state, ...callback } = useSearch({ from: ROUTE });
-  const createConnection = useV4Adapter("integrations").useCreateConnection();
+  const integrations = useV4Adapter("integrations");
+  const createConnection = integrations.useCreateConnection();
+  const updateConnection = integrations.useUpdateConnection();
   const navigate = useNavigate();
   const resolve = useResolveV4Href();
   const started = useRef(false);
@@ -69,20 +71,37 @@ export const AppConnectionCallbackPage = () => {
       );
       return;
     }
-    createConnection
-      .mutateAsync({
-        app: pending.app,
-        name: pending.name,
-        method: pending.method as TAppConnection["method"],
-        credentials: redirect.credentials({
-          callback,
-          stored: pending.credentials
-        }) as TAppConnection["credentials"],
-        description: pending.description?.trim() || null,
-        projectId: pending.projectId
-      } as TCreateAppConnectionDTO)
-      .then((connection) => {
-        back(pending.returnTo, connection).then(() => saved(`${appName} connection created`));
+    const credentials = redirect.credentials({
+      callback,
+      stored: pending.credentials
+    }) as TAppConnection["credentials"];
+    const gateway =
+      pending.gatewayId !== undefined || pending.gatewayPoolId !== undefined
+        ? { gatewayId: pending.gatewayId ?? null, gatewayPoolId: pending.gatewayPoolId ?? null }
+        : {};
+    const settled = pending.connectionId
+      ? updateConnection
+          .mutateAsync({
+            connectionId: pending.connectionId,
+            app: pending.app as AppConnection,
+            credentials,
+            ...gateway
+          })
+          .then((connection) => ({ connection, message: `${connection.name} reconnected` }))
+      : createConnection
+          .mutateAsync({
+            app: pending.app,
+            name: pending.name,
+            method: pending.method as TAppConnection["method"],
+            credentials,
+            description: pending.description?.trim() || null,
+            projectId: pending.projectId,
+            ...gateway
+          } as TCreateAppConnectionDTO)
+          .then((connection) => ({ connection, message: `${appName} connection created` }));
+    settled
+      .then(({ connection, message }) => {
+        back(pending.returnTo, connection).then(() => saved(message));
       })
       .catch((error: unknown) => fail("", pending.returnTo, error));
   }, []);

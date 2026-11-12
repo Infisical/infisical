@@ -1,5 +1,14 @@
-import type { AppConnectionPreset } from "@app/components/v4/patterns/app-connection-form";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import type { FieldValues } from "react-hook-form";
+
+import type {
+  AppConnectionFieldPreset,
+  AppConnectionPreset
+} from "@app/components/v4/patterns/app-connection-form";
+import {
+  APP_CONNECTION_MAP,
+  buildGitHubAppUrl,
+  buildGitHubHostUrl
+} from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { GitLabAccessTokenType } from "@app/hooks/api/appConnections/gitlab/types";
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
@@ -11,13 +20,42 @@ import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/po
 import {
   awsConnectionFormSchema,
   bitbucketApiTokenConnectionFormSchema,
-  gitHubPatConnectionFormSchema,
+  gitHubConnectionFormSchema,
   gitHubRadarConnectionFormSchema,
   gitLabConnectionFormSchema,
   postgresConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
 
 import { methodLabel } from "./shared";
+
+const gitHubInstanceFields: AppConnectionFieldPreset[] = [
+  {
+    name: "credentials.instanceType",
+    label: "Instance",
+    kind: "select",
+    options: [
+      { value: "cloud", label: "GitHub Cloud" },
+      { value: "server", label: "GitHub Enterprise Server" }
+    ]
+  },
+  {
+    name: "credentials.host",
+    label: "Host",
+    mono: true,
+    placeholder: "github.example.com",
+    visible: (values) => values.credentials?.instanceType === "server"
+  }
+];
+
+const gitHubHost = (values: FieldValues) =>
+  values.credentials?.instanceType === "server"
+    ? (values.credentials?.host as string | undefined)
+    : undefined;
+
+const gitHubInstance = (stored: Record<string, unknown>) => {
+  const server = stored.instanceType === "server" && typeof stored.host === "string";
+  return server ? { instanceType: "server", host: stored.host } : { instanceType: "cloud" };
+};
 
 export const CORE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> = {
   [AppConnection.GitHubRadar]: {
@@ -87,29 +125,63 @@ export const CORE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> =
   [AppConnection.GitHub]: {
     app: AppConnection.GitHub,
     name: APP_CONNECTION_MAP[AppConnection.GitHub].name,
-    schema: gitHubPatConnectionFormSchema,
+    schema: gitHubConnectionFormSchema,
+    values: { gatewayId: null, gatewayPoolId: null },
     methods: [
+      {
+        value: GitHubConnectionMethod.App,
+        label: methodLabel(GitHubConnectionMethod.App),
+        credentials: { instanceType: "cloud", host: "" },
+        fields: gitHubInstanceFields,
+        redirect: {
+          submitLabel: "Connect to GitHub",
+          href: ({ values, option }) =>
+            typeof option?.appClientSlug === "string" && option.appClientSlug
+              ? `${buildGitHubAppUrl(
+                  option.appClientSlug,
+                  gitHubHost(values),
+                  values.credentials?.instanceType
+                )}/installations/new`
+              : undefined,
+          unconfigured: "This server has no GitHub App configured.",
+          credentials: ({ callback, stored }) => ({
+            code: callback.code ?? "",
+            installationId: callback.installation_id ?? "",
+            ...gitHubInstance(stored)
+          })
+        }
+      },
+      {
+        value: GitHubConnectionMethod.OAuth,
+        label: methodLabel(GitHubConnectionMethod.OAuth),
+        credentials: { instanceType: "cloud", host: "" },
+        fields: gitHubInstanceFields,
+        redirect: {
+          submitLabel: "Connect to GitHub",
+          href: ({ values, option }) => {
+            if (typeof option?.oauthClientId !== "string" || !option.oauthClientId)
+              return undefined;
+            const query = new URLSearchParams({
+              client_id: option.oauthClientId,
+              response_type: "code",
+              scope: "repo,admin:org",
+              redirect_uri: `${window.location.origin}/organization/app-connections/github/oauth/callback`
+            });
+            return `${buildGitHubHostUrl(gitHubHost(values))}/login/oauth/authorize?${query}`;
+          },
+          unconfigured: "This server has no GitHub OAuth application configured.",
+          credentials: ({ callback, stored }) => ({
+            code: callback.code ?? "",
+            ...gitHubInstance(stored)
+          })
+        }
+      },
       {
         value: GitHubConnectionMethod.Pat,
         label: methodLabel(GitHubConnectionMethod.Pat),
         credentials: { instanceType: "cloud", host: "", personalAccessToken: "" },
         fields: [
-          {
-            name: "credentials.instanceType",
-            label: "Instance",
-            kind: "select",
-            options: [
-              { value: "cloud", label: "GitHub Cloud" },
-              { value: "server", label: "GitHub Enterprise Server" }
-            ]
-          },
-          {
-            name: "credentials.host",
-            label: "Host",
-            mono: true,
-            placeholder: "github.example.com",
-            visible: (values) => values.credentials?.instanceType === "server"
-          },
+          ...gitHubInstanceFields,
           {
             name: "credentials.personalAccessToken",
             label: "Personal access token",

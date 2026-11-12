@@ -78,6 +78,10 @@ export const AppConnectionsTab = ({ orgId, projectId }: { orgId: string; project
   const [adding, setAdding] = useState(false);
   const [presetApp, setPresetApp] = useState(addConnectionApp);
   const [dialog, setDialog] = useState<Dialog>();
+  const returnTo = orgHref(
+    orgId,
+    `/projects/secret-management/${projectId}/integrations?selectedTab=${APP_CONNECTIONS_TAB}`
+  );
 
   useEffect(() => {
     if (!addConnectionApp && !connectionId) return;
@@ -394,10 +398,7 @@ export const AppConnectionsTab = ({ orgId, projectId }: { orgId: string; project
           setAdding(open);
           if (!open) setPresetApp(undefined);
         }}
-        returnTo={orgHref(
-          orgId,
-          `/projects/secret-management/${projectId}/integrations?selectedTab=${APP_CONNECTIONS_TAB}`
-        )}
+        returnTo={returnTo}
         projectId={projectId}
         projectType={ProjectType.SecretManager}
         app={presetApp}
@@ -413,6 +414,9 @@ export const AppConnectionsTab = ({ orgId, projectId }: { orgId: string; project
         <ConnectionCredentialsSheet
           key={dialog.connection.id}
           connection={dialog.connection}
+          returnTo={returnTo}
+          projectId={projectId}
+          projectType={ProjectType.SecretManager}
           onClose={() => setDialog(undefined)}
         />
       )}
