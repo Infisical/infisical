@@ -31,6 +31,7 @@ const renewal = ApprovalPolicyType.CertRequest;
 
 const ROWS = {
   revocationPending: { type: revocation, status: pending, certificateId: CERT, shape: "revocation" },
+  revocationPendingAgain: { type: revocation, status: pending, certificateId: CERT, shape: "revocation" },
   revocationOtherCert: { type: revocation, status: pending, certificateId: OTHER_CERT, shape: "revocation" },
   revocationOtherProject: {
     type: revocation,
@@ -64,6 +65,12 @@ const ROWS = {
     shape: "revocation"
   },
   renewalPending: { type: renewal, status: pending, certificateId: CERT, shape: "renewal" },
+  renewalOtherCert: { type: renewal, status: pending, certificateId: OTHER_CERT, shape: "renewal" },
+  renewalOtherProject: { type: renewal, status: pending, certificateId: CERT, inOtherProject: true, shape: "renewal" },
+  renewalApproved: { type: renewal, status: ApprovalRequestStatus.Approved, certificateId: CERT, shape: "renewal" },
+  renewalRejected: { type: renewal, status: ApprovalRequestStatus.Rejected, certificateId: CERT, shape: "renewal" },
+  renewalCancelled: { type: renewal, status: ApprovalRequestStatus.Cancelled, certificateId: CERT, shape: "renewal" },
+  renewalExpired: { type: renewal, status: ApprovalRequestStatus.Expired, certificateId: CERT, shape: "renewal" },
   // Each lookup reads a different JSON path, so these rows put the certificate where the other type's
   // lookup would find it and only the type filter keeps them out.
   renewalTypeRevocationShape: { type: renewal, status: pending, certificateId: CERT, shape: "revocation" },
@@ -91,6 +98,9 @@ const ROWS = {
 type TRowKey = keyof typeof ROWS;
 
 const requestIds = {} as Record<TRowKey, string>;
+
+const keysOf = (ids: string[]) =>
+  ids.map((id) => (Object.keys(requestIds) as TRowKey[]).find((key) => requestIds[key] === id)).sort();
 
 describe("Certificate DAL pending approval request lookups", () => {
   let projectId: string;
@@ -134,22 +144,47 @@ describe("Certificate DAL pending approval request lookups", () => {
     await cleanup();
   });
 
-  test("finds the pending revocation request for the certificate with its expiry", async () => {
-    const request = await dal.findPendingRevocationApprovalRequest({ certificateId: CERT, projectId });
+  test("finds every pending revocation request for the certificate in its project", async () => {
+    const ids = await dal.findPendingApprovalRequestIds(revocation, { certificateId: CERT, projectId });
 
-    expect(request?.id).toBe(requestIds.revocationPending);
-    expect(request?.expiresAt).toBeInstanceOf(Date);
+    expect(keysOf(ids)).toEqual(["revocationPending", "revocationPendingAgain"]);
   });
 
-  test("scopes the revocation lookup to the certificate and the project asked for", async () => {
-    const otherCert = await dal.findPendingRevocationApprovalRequest({ certificateId: OTHER_CERT, projectId });
-    const otherProject = await dal.findPendingRevocationApprovalRequest({
+  test("finds every pending renewal request for the certificate in its project", async () => {
+    const ids = await dal.findPendingApprovalRequestIds(renewal, { certificateId: CERT, projectId });
+
+    expect(keysOf(ids)).toEqual(["renewalPending"]);
+  });
+
+  test("scopes the lookups to the certificate and the project asked for", async () => {
+    const otherCertRevocations = await dal.findPendingApprovalRequestIds(revocation, {
+      certificateId: OTHER_CERT,
+      projectId
+    });
+    const otherProjectRevocations = await dal.findPendingApprovalRequestIds(revocation, {
+      certificateId: CERT,
+      projectId: otherProjectId
+    });
+    const otherCertRenewals = await dal.findPendingApprovalRequestIds(renewal, {
+      certificateId: OTHER_CERT,
+      projectId
+    });
+    const otherProjectRenewals = await dal.findPendingApprovalRequestIds(renewal, {
       certificateId: CERT,
       projectId: otherProjectId
     });
 
-    expect(otherCert?.id).toBe(requestIds.revocationOtherCert);
-    expect(otherProject?.id).toBe(requestIds.revocationOtherProject);
+    expect(keysOf(otherCertRevocations)).toEqual(["revocationOtherCert"]);
+    expect(keysOf(otherProjectRevocations)).toEqual(["revocationOtherProject"]);
+    expect(keysOf(otherCertRenewals)).toEqual(["renewalOtherCert"]);
+    expect(keysOf(otherProjectRenewals)).toEqual(["renewalOtherProject"]);
+  });
+
+  test("finds a pending revocation request for the certificate with its expiry", async () => {
+    const request = await dal.findPendingRevocationApprovalRequest({ certificateId: CERT, projectId });
+
+    expect([requestIds.revocationPending, requestIds.revocationPendingAgain]).toContain(request?.id);
+    expect(request?.expiresAt).toBeInstanceOf(Date);
   });
 
   test("reports whether the certificate has a renewal waiting for approval", async () => {
@@ -159,6 +194,8 @@ describe("Certificate DAL pending approval request lookups", () => {
   test("finds nothing for a certificate whose requests are all decided", async () => {
     const filter = { certificateId: CERT_WITHOUT_PENDING, projectId };
 
+    expect(await dal.findPendingApprovalRequestIds(revocation, filter)).toEqual([]);
+    expect(await dal.findPendingApprovalRequestIds(renewal, filter)).toEqual([]);
     expect(await dal.findPendingRevocationApprovalRequest(filter)).toBeUndefined();
     expect(await dal.hasRenewalAwaitingApproval(filter)).toBe(false);
   });
