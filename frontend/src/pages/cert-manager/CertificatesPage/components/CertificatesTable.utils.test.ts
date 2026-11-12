@@ -88,6 +88,7 @@ describe("getApplicationCertificateAccess", () => {
       canRenew: true,
       canEdit: true,
       canDelete: true,
+      canRevoke: true,
       canManagePkiSyncs: true
     });
   });
@@ -99,7 +100,63 @@ describe("getApplicationCertificateAccess", () => {
       canRenew: false,
       canEdit: false,
       canDelete: false,
+      canRevoke: false,
       canManagePkiSyncs: false
+    });
+  });
+
+  describe("revoke", () => {
+    const operator = abilityAllowing("read", "list", "create", "edit", "request-revocation");
+
+    it("lets an operator request a revocation when a revocation policy covers the certificate", () => {
+      const access = getApplicationCertificateAccess({
+        applicationName,
+        permission: operator,
+        isRevocationApprovalRequired: true
+      });
+
+      expect(access.canRevoke).toBe(true);
+      expect(access.canDelete).toBe(false);
+      expect(access.revokeBlockedReason).toBeUndefined();
+    });
+
+    it("blocks an operator when no revocation policy covers the certificate", () => {
+      const access = getApplicationCertificateAccess({
+        applicationName,
+        permission: operator,
+        isRevocationApprovalRequired: false
+      });
+
+      expect(access.canRevoke).toBe(false);
+      expect(access.revokeBlockedReason).toBe(
+        "You need the Admin role on payments to revoke this certificate."
+      );
+    });
+
+    it("blocks a member who can't request a revocation, even when a policy covers the certificate", () => {
+      const access = getApplicationCertificateAccess({
+        applicationName,
+        permission: abilityAllowing("read", "list"),
+        isRevocationApprovalRequired: true
+      });
+
+      expect(access.canRevoke).toBe(false);
+      expect(access.revokeBlockedReason).toBe(
+        "You need the Operator or Admin role on payments to revoke this certificate."
+      );
+    });
+
+    it("lets an admin revoke whether or not a policy covers the certificate", () => {
+      [true, false].forEach((isRevocationApprovalRequired) => {
+        const access = getApplicationCertificateAccess({
+          applicationName,
+          permission: abilityAllowing("read", "list", "delete"),
+          isRevocationApprovalRequired
+        });
+
+        expect(access.canRevoke).toBe(true);
+        expect(access.revokeBlockedReason).toBeUndefined();
+      });
     });
   });
 });
