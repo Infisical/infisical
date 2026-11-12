@@ -29,28 +29,33 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 `lib/` has `TransactionRunner`, `TTransaction`, `sealKnexTransaction` (`legacy-transaction.ts`), the domain
 errors (`errors.ts`) and in-memory versions under `lib/testing/`.
 
-Each domain has `ce/`, plus `ee/` with the same layout if it has paid features. Nothing else at the root.
+A domain has `ce/`, `ee/`, or both, with the same layout inside. Nothing else at the root. Code moving from
+`src/ee/**` goes to the domain's `ee/`, and a domain may be `ee/` only: everything under an `ee/` path is
+EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer's call, never part of a refactor.
 
 | Path | Holds |
 | --- | --- |
-| `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts` |
+| `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts`, so a `ce/` domain never depends on an `ee/`-only one |
 | `model/` | One class per entity or value, with its rules. A file holds the class and its props type, nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
-| `data-access/` | One class per entity implementing a type from `service/dependencies.ts` and returning models, plus `build<Domain>Store(tx)` grouping them on one connection |
+| `data-access/` | One class per entity implementing a type from `service/dependencies.ts` and returning models, plus `data-access/<domain>-store.ts` exporting `build<Domain>Store(trx, locks)` |
 | `<system>-client/` | Client for an external system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
-| `service/` | Business logic: one class per use case group (`T<Name>Service`), shared helpers, and `dependencies.ts` (the types the services need from data access, EE, or a domain they can't import). Tests sit beside them |
+| `service/` | Business logic: one class per use case group (`T<Name>Service`) with its input types, shared helpers, and `dependencies.ts` (the data access and store types, `T<Domain>Store` included, and what the services need from EE or a domain they can't import). Tests sit beside them |
 | `router/` | Fastify routes: validate, call a service, shape the response |
-| `testing/` | In-memory data access and store, a `Fake<Name>Service` per public service, contract suites |
+| `testing/` | In-memory data access and store, a `Fake<Name>Service` per service another domain or legacy code calls, contract suites |
 
 ## Building blocks
 
 | Piece | Rule |
 | --- | --- |
 | Model | One per entity, even if stored across several tables. Private constructor, static `create()`/`restore()`, `toJSON()`. Props stay private: expose behavior, plus getters for the fields callers need, so nobody reads a raw field the model has a rule for (`plan.has(PlanFeature.Rbac)`, not `plan.rbac`) or mutates it. Never a bare type or function |
+| Entity | Has an id and changes over time. `create()` validates, generates the id and throws `RuleViolationError` for bad input; `restore()` trusts the row. Changes go through intention-revealing methods that enforce the rules and mutate the private props (`trustedIp.changeAddress(...)`, `membership.deactivate()`), never a generic `update(props)` or a setter; data access then persists the instance |
+| Value object | No id, compared by value, immutable (`Plan` is deep-frozen, `Meter` and `SeatUsage` are readonly). A change returns a new instance. Use one for any value with rules attached: a quota, a key, a scope |
 | Data access | One per model. Owns every table storing that model, returns models not rows. A table belongs to exactly one data access class; other domains go through the owner's service. Shared query fragments are private methods |
 | Store | All of a domain's data access, bound to one connection or transaction |
 | Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
-| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) plus `routes`. Never wraps a service method |
-| Router, helpers | Plain functions |
+| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type). Never wraps a service method |
+| Router | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.
+| Helpers | Plain functions |
 
 Children: if there are a few and they're always read with the parent, the parent holds them (`Secret` holds
 its tags). If there are many and they're read separately, the child is its own entity holding the parent id
@@ -79,6 +84,8 @@ export class TransactionRunner<TStore> {
   run<T>(work: (ctx: { store: TStore; tx: TTransaction }) => Promise<T>): Promise<T>;
 }
 ```
+
+The KMS code in this file is a sketch of the shape, not code in the repo; see "Reference code" for real examples.
 
 `run` opens a transaction (or joins the `within(tx)` one) and hands you `store` bound to it and `tx`, a
 sealed token for `afterCommit` and for joining another runner in the same domain. `tx` isn't a Knex handle;
@@ -173,6 +180,42 @@ transaction never sees its own rows.
 
 If something truly has to be atomic across two domains, the boundary is wrong. Move the data into one domain.
 
+## Errors
+
+A domain throws only the kinds in `lib/errors.ts`, never `BadRequestError` and the rest of `@app/lib/errors`: domains
+also run from queues and crons, where a status code means nothing. `toHttpError` (`server/lib/domain-errors.ts`)
+maps them at the HTTP boundary.
+
+| Kind | Throw when | HTTP |
+| --- | --- | --- |
+| `RuleViolationError` | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan, a conflict | 400 |
+| `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404 |
+| `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong | 500 |
+
+Who throws:
+
+- The model throws `RuleViolationError` for its own rules (`create()`, change methods, `plan.assert`,
+  `seatUsage.assertAvailable`). Services don't re-check what the model guarantees.
+- Data access never throws for a missing row: `find*` returns `null`, and the service turns it into
+  `EntityNotFoundError` with the id in the message.
+- A client maps a failed call into an outcome or an `ExternalSystemError`; services never match on status codes.
+- Permission denied has no kind yet. It arrives with the permissions domain; until then a module that checks
+  permissions isn't migrated (see Dependency direction), so don't invent one.
+
+Writing them:
+
+- The message is what the user sees, so say what happened and what to do, in their terms, naming the resource
+  and id: "Trusted IP with ID 'x' not found in project 'y'", "Your current plan does not include IP Allowlisting.
+  Upgrade your plan to use it." Keep a message the legacy code sent unless the PR lists the change.
+- `cause`: the error you caught, so the log keeps it. The user never sees it.
+- `details`: structured data the caller can act on (`{ code }` from the License Server). Only `RuleViolationError`
+  sends it in the response.
+- `name`: only when clients or logs key on a specific error name (`RefreshPlan`); otherwise the HTTP class's
+  name is sent.
+- A new kind needs an arm in `toHttpError` and in `classifyError` (`lib/errors/classify.ts`) and a row here.
+- Legacy code catching `instanceof BadRequestError` or `NotFoundError` won't catch these. When a throw moves into a
+  domain, find those catches and switch them to the domain kind.
+
 ## Dependency direction
 
 ```
@@ -198,10 +241,14 @@ in-memory store and lets EE plug in without `ce/` importing it.
 - `ce/module.ts` and what it imports touch `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with
   `import type`; `domains.ts` passes the runtime pieces in. Those three are in an import cycle with
   `@app/lib/crypto` and break any test that loads them first.
-- No HTTP error classes from `@app/lib/errors` in a domain. Throw `RuleViolationError`, `EntityNotFoundError` or
-  `ExternalSystemError` (`lib/errors.ts`); `toHttpError` (`server/lib/domain-errors.ts`) maps them. A new kind needs
-  an arm there and in `classifyError`. Domains also run from queues and crons where status codes mean nothing.
-  Heads up: legacy code catching `instanceof BadRequestError` won't catch these, so check callers when moving a throw.
+- No HTTP error classes from `@app/lib/errors` in a domain; see Errors.
+- A domain never takes a legacy service or DAL (`src/services/**`, `src/ee/services/**`), and legacy code never
+  feeds one in. If a module needs one, migrate that dependency first. That includes authorization: a module that
+  checks permissions waits for the permissions domain; don't wrap `permissionService` in an adapter or add a second
+  construction phase to get at it. Pure helpers from `@app/lib` (`@app/lib/ip`, the crypto primitives) are fine;
+  `@app/lib/request-context` is not, since domains also run from queues and crons.
+- A domain may read a table no domain owns yet only as a declared exception in its `AGENTS.md`, like
+  `organizations-projects`. Prefer adding the read there over a second domain reading the same table.
 - Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`model/`,
   `service/`, `data-access/`, `*-client/`, `router/`), each repeating the shared patterns because the last matching
   override wins. A new layer folder needs its own override. Test files are exempt from layer order. Imports of
@@ -209,7 +256,7 @@ in-memory store and lets EE plug in without `ce/` importing it.
 
 ## Where new code goes
 
-Inside `ce/` unless it's a paid feature (then same layer in `ee/`).
+Inside `ce/` unless it's a paid feature or comes from `src/ee/**` (then the same layer in `ee/`).
 
 | Adding | Goes in |
 | --- | --- |
@@ -217,11 +264,49 @@ Inside `ce/` unless it's a paid feature (then same layer in `ee/`).
 | A query or write | `data-access/`, plus its in-memory version in `testing/` and a contract suite case |
 | A use case | `service/` |
 | Logic two services share | A helper in `service/` that takes `store` |
-| An endpoint | `router/`, registered in `module.ts` |
+| An endpoint | `router/`, registered beside the legacy routers (see Router above) |
 | Something other domains call | A method on the service type, re-exported from `module.ts` |
 | Something from data access, EE, or a domain that depends on you | A type in `service/dependencies.ts`, passed through the constructor. Anything else from another domain: take its whole service type |
 | Cross-request memory | A state holder built in the module constructor |
-| A capability with its own tables | A new domain folder with `ce/` |
+| A capability with its own tables | A new domain folder with `ce/`, or `ee/` if its code is EE |
+
+## Reference code
+
+Copy these before inventing a shape. Pieces marked "none yet" have no example: the first domain to need one
+sets the pattern from the rules above, and its PR names it here.
+
+| Piece | Copy |
+| --- | --- |
+| Value object with rules | `platform/license/ce/model/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
+| Entity, store, in-memory store, contract suite, router | none yet |
+| Query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-data-access.ts` |
+| Joining a caller's transaction | `platform/organizations-projects/ce/service/organizations-projects-transaction.ts` |
+| Module with async setup, workers and crons | `platform/license/ce/module.ts` |
+| EE implementing a `ce/` type, external client | `platform/license/ee/` |
+| Fake for consumers | `platform/license/ce/testing/fake-license-service.ts` |
+| A product handing a platform domain its implementation | `secrets-manager/secrets/ce/module.ts` (`usageCounters`) |
+| Legacy code calling a domain | any `licenseService: TLicenseService` in `src/services/**` |
+
+## Migrating a legacy module
+
+1. Check its dependencies. Every legacy service or DAL it calls must already be a domain, or be one this module
+   will own (see Dependency direction). Otherwise migrate that first, or stop.
+2. Place it: `<product-area>/<domain>/`, or `platform/` if other domains depend on it, named for the capability.
+   Code from `src/ee/**` goes to `ee/`.
+3. Keep the contract: URLs, methods, status codes, response shapes, error messages, audit event types and
+   metadata, queue and key names (old pods share them during a rolling deploy), and table names (migrations stay
+   in `src/db/migrations`, row types in `@app/db/schemas`). Any change, including a 500 becoming a 404, is listed in
+   the PR for the author to accept (`backend/CODE_QUALITY.md`), never made silently.
+4. Move rules out of the service into the model, queries into data access, and `BadRequestError` /
+   `NotFoundError` into domain errors. A plan check reads the plan before `run` and refuses with
+   `plan.assert(PlanFeature.X)`; never gate a read or a delete.
+5. Wire it: build the module in `domains.ts`, hand its services to legacy callers from `domains.<domain>` in
+   `routes/index.ts`, and replace the legacy factory everywhere. Delete the old service, DAL and types. Point the
+   `server.services` entry and its `@types/fastify.d.ts` type at the domain service (`<name>Service`).
+6. Test it: model and service unit tests on the in-memory store, the data access contract suite, integration
+   specs for SQL and locks, a `Fake<Name>Service` if anything else calls it, and a blackbox plan in `tests/` for
+   every API change.
+7. Add the domain's `AGENTS.md` (what it owns, declared exceptions) and link it from the list at the top of this file.
 
 ## Naming
 
@@ -233,7 +318,7 @@ Inside `ce/` unless it's a paid feature (then same layer in `ee/`).
 | Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |
 | Deps type | `T<Name>Deps`, named, beside the class, never inline | `TKmsCoreDeps` |
 | Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |
-| Store | `data-access/<domain>-store.ts` exporting `T<Domain>Store` and `build<Domain>Store` | `kms-core-store.ts` |
+| Store | `T<Domain>Store` in `service/dependencies.ts` (the service's runner needs it, and `service/` can't import `data-access/`); `build<Domain>Store` in `data-access/<domain>-store.ts` | `kms-core-store.ts` |
 | Transaction arg | `tx: TTransaction` | |
 | Tests | `<file>.test.ts` (unit), `<file>.integration.spec.ts` (integration), beside the code | |
 
@@ -260,7 +345,9 @@ Rules:
 - Each test makes its own data with fresh ids. Per-test state in the test or `beforeEach`, never `beforeAll`.
 - Never sleep.
 - Fakes must behave like the real thing, one class per file in `testing/`. The contract suite enforces it for
-  in-memory data access.
+  in-memory data access: `testing/<entity>-data-access-contract.ts` exports
+  `describe<Entity>DataAccessContract(name, setup)`, run by a unit test against the in-memory class and by an
+  integration spec against Postgres, so both pass the same cases.
 - Break the code and watch the test fail before calling it done.
 
 ### Unit tests

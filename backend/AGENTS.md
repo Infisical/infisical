@@ -244,7 +244,7 @@ site that receives a plain `Buffer`.
 
 ### Domain Modules (new structure)
 
-New backend code goes in domain modules under `src/domains/` (one folder per capability, `ce/` and `ee/` editions, class-based `module.ts`). Read [`src/domains/AGENTS.md`](src/domains/AGENTS.md) before touching one. The sections below cover the older `src/services/` layout, which sticks around until each service moves.
+New backend code goes in domain modules under `src/domains/` (one folder per capability, `ce/` and `ee/` editions, class-based `module.ts`). Read [`src/domains/AGENTS.md`](src/domains/AGENTS.md) before touching one, and follow its "Migrating a legacy module" checklist when moving a service there. The sections below cover the older `src/services/` layout, which sticks around until each service moves.
 
 ### Service Factory + Manual DI
 
