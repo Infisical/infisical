@@ -55,7 +55,7 @@ const COMMIT_FILES_PER_PAGE = 100;
 // GitHub lists at most 3,000 of a commit's files, across pages.
 const COMMIT_MAX_LISTED_FILES = 3000;
 // A file whose patch GitHub leaves out is fetched whole to rebuild it, so its size is capped.
-const MISSING_PATCH_MAX_FILE_BYTES = 50 * 1024 * 1024;
+const MISSING_PATCH_MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MISSING_PATCH_MAX_FILE_MB = MISSING_PATCH_MAX_FILE_BYTES / 1024 / 1024;
 const CHECK_RUN_MAX_LISTED_OVERSIZED_FILES = 10;
 // Files are scanned in batches as they are fetched, so a large scan never holds every patch in memory at once.
@@ -810,10 +810,13 @@ export const completePullRequestCheckRun = async ({
   const octokit = getGitHubRadarInstallationOctokit(installationId);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
+  const findingAnnotations = toCheckRunAnnotations((result.findings ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS));
   const annotations = [
-    ...toCheckRunAnnotations(result.findings ?? []),
-    ...toOversizedFileAnnotations(result.oversizedFiles ?? [])
-  ].slice(0, CHECK_RUN_MAX_ANNOTATIONS);
+    ...findingAnnotations,
+    ...toOversizedFileAnnotations(
+      (result.oversizedFiles ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS - findingAnnotations.length)
+    )
+  ];
   const [firstBatch = [], ...remainingBatches] = chunkArray(annotations, CHECK_RUN_ANNOTATIONS_PER_REQUEST);
 
   await octokit.checks.update({

@@ -158,7 +158,7 @@ describe("getPullRequestScanCheckRunResult", () => {
     expect(result.title).toBe("No secrets found, 12 file(s) not scanned");
     expect(result.summary).toContain("\n\n> [!WARNING]\n> ");
     expect(result.summary).toContain("> 1 commit(s) change more than 3,000 files");
-    expect(result.summary).toContain("didn't scan 12 file(s) larger than 50 MB");
+    expect(result.summary).toContain("didn't scan 12 file(s) larger than 10 MB");
     expect(result.summary).toContain("> aaaaaaa gen-9.go\n> ```");
     expect(result.summary).not.toContain("gen-10.go");
     expect(result.summary).toContain("> 2 more file(s) were not scanned.");
