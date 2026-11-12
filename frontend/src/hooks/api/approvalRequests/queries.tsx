@@ -1,15 +1,13 @@
+import { useEffect, useReducer } from "react";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
 import { ApprovalPolicyScope, ApprovalPolicyType } from "../approvalPolicies/types";
-import {
-  ApprovalRequestStatus,
-  CertRevocationRequestData,
-  TApprovalRequest,
-  TGetApprovalRequestByIdDTO,
-  TListApprovalRequestsDTO
-} from "./types";
+import { getPendingRevocations } from "./pending-revocations";
+import { TApprovalRequest, TGetApprovalRequestByIdDTO, TListApprovalRequestsDTO } from "./types";
+
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 export const approvalRequestQuery = {
   allKey: () => ["approval-requests"] as const,
@@ -44,27 +42,29 @@ export const approvalRequestQuery = {
     })
 };
 
-export const usePendingCertificateRevocations = (applicationId?: string | null) =>
-  useQuery({
+export const usePendingCertificateRevocations = (applicationId?: string | null) => {
+  const [expiryTick, onExpiry] = useReducer((tick: number) => tick + 1, 0);
+  const { data } = useQuery({
     ...approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertRevocation,
       scope: ApprovalPolicyScope.PkiApplication,
       scopeId: applicationId ?? ""
     }),
     enabled: Boolean(applicationId),
-    select: (requests) => {
-      const now = Date.now();
-      return new Map(
-        requests
-          .filter(
-            (request) =>
-              request.status === ApprovalRequestStatus.Pending &&
-              (!request.expiresAt || new Date(request.expiresAt).getTime() > now)
-          )
-          .map((request) => [
-            (request.requestData.requestData as CertRevocationRequestData).certificateId,
-            request.id
-          ])
-      );
-    }
+    select: (requests) => getPendingRevocations(requests, Date.now())
   });
+
+  // A refetch would not drop a lapsed request: the list still returns it unchanged, so the cached
+  // data and the select result stay the same. Re-rendering at the expiry re-runs the select instead.
+  // The tick re-arms the timer if it fires before the request has lapsed.
+  const nextExpiresAt = data?.nextExpiresAt ?? null;
+  useEffect(() => {
+    if (nextExpiresAt === null) return undefined;
+    const remaining = nextExpiresAt - Date.now();
+    if (remaining > MAX_TIMEOUT_MS) return undefined;
+    const timer = setTimeout(onExpiry, Math.max(remaining, 0));
+    return () => clearTimeout(timer);
+  }, [nextExpiresAt, expiryTick]);
+
+  return { data: data?.requestIdByCertificateId };
+};
