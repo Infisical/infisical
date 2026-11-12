@@ -617,7 +617,8 @@ export const secretScanningV2QueueServiceFactory = ({
 
       // Read back rather than counted in the handler: the findings an earlier attempt persisted are
       // part of this scan's total, and a resumed attempt never scanned the batches they came from.
-      const findingsCount = await secretScanningV2DAL.findings.countByScanId(scanId);
+      const { total: findingsCount, unresolved: unresolvedFindingsCount } =
+        await secretScanningV2DAL.findings.countByScanId(scanId);
 
       sendScanTelemetry(dataSource, {
         event: PostHogEventTypes.SecretScanningScanCompleted,
@@ -628,7 +629,8 @@ export const secretScanningV2QueueServiceFactory = ({
         }
       });
 
-      if (findingsCount) {
+      // findings that inherited an ignore or false positive triage need no action, so they don't count as leaked
+      if (unresolvedFindingsCount) {
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -637,7 +639,7 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: false,
             dataSource,
-            numberOfSecrets: findingsCount,
+            numberOfSecrets: unresolvedFindingsCount,
             scanId
           },
           { removeOnFail: true, jobId: `secret-scanning-notification-${scanId}` }
@@ -969,8 +971,11 @@ export const secretScanningV2QueueServiceFactory = ({
         }
       });
 
-      if (newFindings.length) {
-        const finding = newFindings[0] as TSecretScanningFinding;
+      // findings that inherited an ignore or false positive triage need no action, so they don't count as leaked
+      const leakedFindings = newFindings.filter((finding) => finding.status === SecretScanningFindingStatus.Unresolved);
+
+      if (leakedFindings.length) {
+        const finding = leakedFindings[0] as TSecretScanningFinding;
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -979,7 +984,7 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: true,
             dataSource,
-            numberOfSecrets: newFindings.length,
+            numberOfSecrets: leakedFindings.length,
             scanId,
             authorName: finding?.details?.author,
             authorEmail: finding?.details?.email

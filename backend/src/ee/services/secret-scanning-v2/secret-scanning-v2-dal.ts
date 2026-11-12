@@ -779,9 +779,14 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
    */
   const countFindingsByScanId = async (scanId: string, tx?: Knex) => {
     try {
-      const [result] = await (tx || db)(TableName.SecretScanningFinding).where({ scanId }).count({ count: "*" });
+      const [result] = (await (tx || db)(TableName.SecretScanningFinding)
+        .where({ scanId })
+        .select(
+          db.raw("count(*) as total"),
+          db.raw("count(*) filter (where ?? = ?) as unresolved", ["status", SecretScanningFindingStatus.Unresolved])
+        )) as { total: string | number; unresolved: string | number }[];
 
-      return Number(result?.count ?? 0);
+      return { total: Number(result?.total ?? 0), unresolved: Number(result?.unresolved ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "Count By Scan ID - Secret Scanning Finding" });
     }
