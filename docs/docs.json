@@ -360,6 +360,7 @@
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/external-infisical",
+                      "integrations/secret-syncs/jenkins",
                       "integrations/secret-syncs/keeper-password-manager",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
@@ -1093,6 +1094,7 @@
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
                   "integrations/app-connections/imperva",
+                  "integrations/app-connections/jenkins",
                   "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
@@ -2144,6 +2146,18 @@
                           "api-reference/endpoints/app-connections/external-infisical/create",
                           "api-reference/endpoints/app-connections/external-infisical/update",
                           "api-reference/endpoints/app-connections/external-infisical/delete"
+                        ]
+                      },
+                      {
+                        "group": "Jenkins",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/jenkins/list",
+                          "api-reference/endpoints/app-connections/jenkins/available",
+                          "api-reference/endpoints/app-connections/jenkins/get-by-id",
+                          "api-reference/endpoints/app-connections/jenkins/get-by-name",
+                          "api-reference/endpoints/app-connections/jenkins/create",
+                          "api-reference/endpoints/app-connections/jenkins/update",
+                          "api-reference/endpoints/app-connections/jenkins/delete"
                         ]
                       },
                       {
@@ -3744,6 +3758,19 @@
                           "api-reference/endpoints/secret-syncs/external-infisical/sync-secrets",
                           "api-reference/endpoints/secret-syncs/external-infisical/import-secrets",
                           "api-reference/endpoints/secret-syncs/external-infisical/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Jenkins",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/jenkins/list",
+                          "api-reference/endpoints/secret-syncs/jenkins/get-by-id",
+                          "api-reference/endpoints/secret-syncs/jenkins/get-by-name",
+                          "api-reference/endpoints/secret-syncs/jenkins/create",
+                          "api-reference/endpoints/secret-syncs/jenkins/update",
+                          "api-reference/endpoints/secret-syncs/jenkins/delete",
+                          "api-reference/endpoints/secret-syncs/jenkins/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/jenkins/remove-secrets"
                         ]
                       },
                       {
