@@ -185,10 +185,12 @@ export const validateJenkinsConnectionCredentials = async (
   let user: { id?: string } | undefined;
 
   try {
-    // /me needs an authenticated user with Overall/Read, unlike /whoAmI, which answers anonymous requests
+    // /me needs an authenticated user with Overall/Read, unlike /whoAmI, which answers anonymous requests. A POST
+    // is refused without a CSRF crumb unless it is authenticated with an API token, so a password fails here
+    // rather than on the first sync.
     user = await jenkinsRequest<{ id?: string }>(
       config,
-      { method: "GET", path: "/me/api/json", params: { tree: "id" } },
+      { method: "POST", path: "/me/api/json", params: { tree: "id" } },
       { gatewayV2Service }
     );
   } catch (error) {
@@ -196,7 +198,11 @@ export const validateJenkinsConnectionCredentials = async (
 
     logger.error(toLoggableError(error), "Failed to validate Jenkins connection credentials");
     throw new BadRequestError({
-      message: `Unable to validate Jenkins connection: ${getJenkinsErrorMessage(error, "verify the instance URL, username and API token")}`
+      message: `Unable to validate Jenkins connection: ${
+        isAxiosError(error) && error.response?.status === 403
+          ? "Jenkins refused the request. Use an API token, not the user's password, and check that the user has Overall/Read"
+          : getJenkinsErrorMessage(error, "verify the instance URL, username and API token")
+      }`
     });
   }
 
