@@ -32,6 +32,7 @@ import {
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
   AutoApprovalConstraintValue,
   TAutoApprovalConfig,
+  TAutoApprovalConstraint,
   TAutoApprovalContext,
   TAutoApprovalEvidence,
   TAutoApprovalInputValue,
@@ -43,7 +44,7 @@ import {
 
 const RESOLVE_TIMEOUT_MS = 20_000;
 
-type TConstraintDefinition = { label: string; value: AutoApprovalConstraintValue; maxValues?: number };
+type TConstraintDefinition = Pick<TAutoApprovalConstraint<unknown, unknown>, "label" | "value" | "maxValues">;
 
 const UNUSED_CONSTRAINT: TConstraintDefinition = {
   label: AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
