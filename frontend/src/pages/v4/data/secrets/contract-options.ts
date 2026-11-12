@@ -50,9 +50,9 @@ import type { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
 import type { V4QueryResult } from "../contract";
 
-type QueryOptions = { enabled?: boolean };
+export type QueryOptions = { enabled?: boolean };
 
-type ConnectionOptions<TData> = (
+export type ConnectionOptions<TData> = (
   connectionId: string,
   options?: QueryOptions
 ) => V4QueryResult<TData[]>;

@@ -33,7 +33,6 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects, useSubscription } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import { DistinguishedNameRegex, UserPrincipalNameRegex } from "@app/helpers/string";
 import { useScopeVariant } from "@app/hooks";
 import {
   LdapConnectionMethod,
@@ -41,54 +40,16 @@ import {
   TLdapConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ldapConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type Props = {
   appConnection?: TLdapConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.LDAP)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(LdapConnectionMethod.SimpleBind),
-    credentials: z.object({
-      provider: z.nativeEnum(LdapConnectionProvider),
-      url: z
-        .string()
-        .regex(/^ldaps?:\/\//, 'Must start with "ldaps://" or "ldap://"')
-        .url()
-        .trim()
-        .min(1, "LDAP URL required"),
-      dn: z
-        .string()
-        .trim()
-        .min(1, "DN/UPN required")
-        .refine(
-          (value) => DistinguishedNameRegex.test(value) || UserPrincipalNameRegex.test(value),
-          {
-            message: "Invalid DN/UPN format"
-          }
-        ),
-      password: z.string().trim().min(1, "Password required"),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

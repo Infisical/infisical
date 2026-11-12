@@ -25,31 +25,15 @@ import {
   GoDaddyConnectionMethod,
   TGoDaddyConnection
 } from "@app/hooks/api/appConnections/types/godaddy-connection";
+import { goDaddyConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TGoDaddyConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.GoDaddy)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(GoDaddyConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiKey: z.string().trim().min(1, "API Key required"),
-      apiSecret: z.string().trim().min(1, "API Secret required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

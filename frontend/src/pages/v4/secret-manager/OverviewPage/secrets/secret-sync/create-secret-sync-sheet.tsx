@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   Controller,
   type FieldValues,
@@ -26,7 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Combobox } from "@app/components/v4/ui/combobox";
 import { EmptyState } from "@app/components/v4/ui/empty";
@@ -49,11 +48,16 @@ import {
   SECRET_SYNC_MAP
 } from "@app/helpers/secretSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
 
 import { useV4Adapter } from "../../../../data/adapters";
+import {
+  connectionRedirect,
+  startConnectionRedirect
+} from "../../../../data/integrations/connection-redirect";
 import type { Resource } from "../../secrets-model";
 import type { FlowFeedback, FlowScope } from "../flows";
 import {
@@ -66,13 +70,9 @@ import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
 import { NEXT_PHASE } from "../overview-cells";
 import { useCreateBlock } from "../row-actions/permissions";
 import type { RowActionTone } from "../row-actions/types";
-import { SYNC_VIEWS, SyncConnections } from "./destination-fields";
-import {
-  IMPORT_CAPABLE_SYNCS,
-  type LocalSecretSync,
-  type LocalSyncConnection,
-  PORTED_SYNCS
-} from "./sync-model";
+import { enabledBadge, SyncConnections } from "./sync-fields";
+import { IMPORT_CAPABLE_SYNCS, type LocalSecretSync, type LocalSyncConnection } from "./sync-model";
+import { SYNC_VIEWS } from "./sync-views";
 
 import flowStyles from "../flows/flows.module.css";
 import styles from "./secret-sync.module.css";
@@ -129,6 +129,8 @@ const formTabs = (destination: SecretSync, destinationName: string) => [
   }
 ];
 
+export const SYNC_DRAFT_STORAGE_KEY = "v4-secret-sync-draft";
+
 const canImport = (destination: SecretSync) => IMPORT_CAPABLE_SYNCS.includes(destination);
 
 const nameOf = (destination: SecretSync) => SECRET_SYNC_MAP[destination].name;
@@ -147,7 +149,7 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
   });
   const card = (destination: SecretSync) => {
     const { name, image, category } = SECRET_SYNC_MAP[destination];
-    const ported = PORTED_SYNCS.includes(destination);
+    const ported = Boolean(SYNC_VIEWS[destination]);
     return (
       <Gate key={destination} reason={ported ? undefined : NEXT_PHASE}>
         <Tile
@@ -250,7 +252,7 @@ function IncludeSubfoldersSwitch({
   );
 }
 
-function SourceFields({
+export function SourceFields({
   environments,
   conflicts
 }: {
@@ -258,6 +260,7 @@ function SourceFields({
   conflicts: { key: string; paths: string[] }[];
 }) {
   const { destination, syncOptions } = useSyncValues();
+  const Source = SYNC_VIEWS[destination as SecretSync]?.Source;
   return (
     <Stack gap={16}>
       <Controller
@@ -281,54 +284,58 @@ function SourceFields({
         )}
       />
       <TextField name="secretPath" label="Secret path" placeholder="/" />
-      <Controller
-        name="syncOptions.includeAllSubFolders"
-        render={({ field }) => (
-          <Stack gap={12}>
-            <IncludeSubfoldersSwitch checked={Boolean(field.value)} onChange={field.onChange} />
-            {Boolean(field.value) && canImport(destination) && (
-              <Alert tone="warn" title="Initial sync is set to overwrite the destination">
-                A sync that includes subfolders cannot import secrets from the destination into
-                Infisical, because there is no single folder to import them into.
-              </Alert>
-            )}
-            {Boolean(syncOptions?.includeAllSubFolders) && conflicts.length > 0 && (
-              <Alert
-                tone="bad"
-                title={
-                  conflicts.length === 1
-                    ? "1 secret name conflicts across folders"
-                    : `${conflicts.length} secret names conflict across folders`
-                }
-              >
-                <Stack gap={8}>
-                  <span>
-                    This destination stores secrets in a single flat list, so each name can be used
-                    only once. Rename or move one secret in each pair, or point the sync at a
-                    narrower secret path.
-                  </span>
-                  {conflicts.slice(0, MAX_DISPLAYED_CONFLICTS).map((conflict) => (
-                    <span key={conflict.key}>
-                      <code>&quot;{conflict.key}&quot;</code> is used in {conflict.paths.length}{" "}
-                      folders:
-                      <ul className={styles.conflictList}>
-                        {conflict.paths.map((path) => (
-                          <li key={path}>
-                            <code>{path}</code>
-                          </li>
-                        ))}
-                      </ul>
+      {Source ? (
+        <Source />
+      ) : (
+        <Controller
+          name="syncOptions.includeAllSubFolders"
+          render={({ field }) => (
+            <Stack gap={12}>
+              <IncludeSubfoldersSwitch checked={Boolean(field.value)} onChange={field.onChange} />
+              {Boolean(field.value) && canImport(destination) && (
+                <Alert tone="warn" title="Initial sync is set to overwrite the destination">
+                  A sync that includes subfolders cannot import secrets from the destination into
+                  Infisical, because there is no single folder to import them into.
+                </Alert>
+              )}
+              {Boolean(syncOptions?.includeAllSubFolders) && conflicts.length > 0 && (
+                <Alert
+                  tone="bad"
+                  title={
+                    conflicts.length === 1
+                      ? "1 secret name conflicts across folders"
+                      : `${conflicts.length} secret names conflict across folders`
+                  }
+                >
+                  <Stack gap={8}>
+                    <span>
+                      This destination stores secrets in a single flat list, so each name can be
+                      used only once. Rename or move one secret in each pair, or point the sync at a
+                      narrower secret path.
                     </span>
-                  ))}
-                  {conflicts.length > MAX_DISPLAYED_CONFLICTS && (
-                    <span>and {conflicts.length - MAX_DISPLAYED_CONFLICTS} more</span>
-                  )}
-                </Stack>
-              </Alert>
-            )}
-          </Stack>
-        )}
-      />
+                    {conflicts.slice(0, MAX_DISPLAYED_CONFLICTS).map((conflict) => (
+                      <span key={conflict.key}>
+                        <code>&quot;{conflict.key}&quot;</code> is used in {conflict.paths.length}{" "}
+                        folders:
+                        <ul className={styles.conflictList}>
+                          {conflict.paths.map((path) => (
+                            <li key={path}>
+                              <code>{path}</code>
+                            </li>
+                          ))}
+                        </ul>
+                      </span>
+                    ))}
+                    {conflicts.length > MAX_DISPLAYED_CONFLICTS && (
+                      <span>and {conflicts.length - MAX_DISPLAYED_CONFLICTS} more</span>
+                    )}
+                  </Stack>
+                </Alert>
+              )}
+            </Stack>
+          )}
+        />
+      )}
     </Stack>
   );
 }
@@ -534,7 +541,7 @@ function InitialSyncAlerts({
   );
 }
 
-function InitialSyncFields() {
+export function InitialSyncFields() {
   const values = useSyncValues();
   const destination = values.destination as SecretSync;
   const destinationName = nameOf(destination);
@@ -703,29 +710,34 @@ function KeySchemaField({ destinationName }: { destinationName: string }) {
   );
 }
 
-function OptionsFields() {
+export function OptionsFields() {
   const { destination } = useSyncValues();
   const destinationName = nameOf(destination);
   const [confirmAllowDeletion, setConfirmAllowDeletion] = useState<(value: boolean) => void>();
   const Extra = SYNC_VIEWS[destination as SecretSync]?.Options;
+  const support = useV4Adapter("secrets")
+    .useSecretSyncOptions()
+    .data?.find((entry) => entry.destination === destination);
   return (
     <Stack gap={16}>
-      <Controller
-        name="syncOptions.disableSecretDeletion"
-        render={({ field }) => (
-          <Switch
-            ref={field.ref}
-            layout="row"
-            label="Prevent secret deletion"
-            description={`Infisical adds and updates secrets in ${destinationName} but never deletes them.`}
-            checked={Boolean(field.value)}
-            onCheckedChange={(checked) => {
-              if (checked) field.onChange(true);
-              else setConfirmAllowDeletion(() => field.onChange);
-            }}
-          />
-        )}
-      />
+      {support?.supportsDisableSecretDeletion !== false && (
+        <Controller
+          name="syncOptions.disableSecretDeletion"
+          render={({ field }) => (
+            <Switch
+              ref={field.ref}
+              layout="row"
+              label="Prevent secret deletion"
+              description={`Infisical adds and updates secrets in ${destinationName} but never deletes them.`}
+              checked={Boolean(field.value)}
+              onCheckedChange={(checked) => {
+                if (checked) field.onChange(true);
+                else setConfirmAllowDeletion(() => field.onChange);
+              }}
+            />
+          )}
+        />
+      )}
       <Controller
         name="isAutoSyncEnabled"
         render={({ field }) => (
@@ -738,7 +750,7 @@ function OptionsFields() {
           />
         )}
       />
-      <KeySchemaField destinationName={destinationName} />
+      {support?.supportsKeySchema !== false && <KeySchemaField destinationName={destinationName} />}
       {Extra && <Extra />}
       <AlertDialog
         open={Boolean(confirmAllowDeletion)}
@@ -792,7 +804,7 @@ const suggestedNameOf = (values: FieldValues) => {
   return [prefix, environmentSlug].filter(Boolean).join("-");
 };
 
-function DetailsFields() {
+export function DetailsFields() {
   const { setValue, getValues } = useSyncFormContext();
   const suggested = suggestedNameOf(getValues());
   return (
@@ -844,10 +856,6 @@ function DetailsFields() {
     </Stack>
   );
 }
-
-const enabledBadge = (enabled: unknown) => (
-  <Badge tone={enabled ? "ok" : "outline"}>{enabled ? "Enabled" : "Disabled"}</Badge>
-);
 
 function ReviewFields({ duplicateProject }: { duplicateProject?: string }) {
   const values = useSyncValues();
@@ -932,7 +940,10 @@ export function CreateSecretSyncSheet({
   syncs,
   resources,
   onCreate,
-  onToast
+  onToast,
+  destination: requestedDestination,
+  draft,
+  returnTo
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -942,6 +953,9 @@ export function CreateSecretSyncSheet({
   resources?: readonly Resource[];
   onCreate: (sync: LocalSecretSync, feedback: FlowFeedback) => void;
   onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;
+  destination?: SecretSync;
+  draft?: FieldValues;
+  returnTo?: string;
 }) {
   const environments: SyncEnvironment[] = scope.environments.map((environment) => ({
     slug: environment.value,
@@ -1030,6 +1044,32 @@ export function CreateSecretSyncSheet({
     setStep(0);
     setDestination(next);
   };
+  useEffect(() => {
+    if (open && requestedDestination && SYNC_VIEWS[requestedDestination])
+      select(requestedDestination);
+  }, [open, requestedDestination]);
+  useEffect(() => {
+    if (!open || !draft?.destination || !SYNC_VIEWS[draft.destination as SecretSync]) return;
+    const next = draft.destination as SecretSync;
+    if (draft.connection)
+      setAddedConnections((list) => [
+        ...list,
+        { ...draft.connection, app: SECRET_SYNC_CONNECTION_MAP[next] }
+      ]);
+    form.reset(draft, { keepDefaultValues: false });
+    setDestination(next);
+    setStep(1);
+  }, [open, draft]);
+  const connectionOption = useV4Adapter("integrations")
+    .useConnectionOptions(ProjectType.SecretManager)
+    .data?.find((entry) => entry.app === connectionApp);
+  const redirect = returnTo
+    ? connectionRedirect({
+        returnTo,
+        projectId: scope.project,
+        option: connectionOption as Record<string, unknown> | undefined
+      })
+    : undefined;
   const close = () => {
     setDestination(null);
     setStep(0);
@@ -1135,7 +1175,14 @@ export function CreateSecretSyncSheet({
       value={{
         projectId: scope.project,
         connections,
-        addConnection: (connection) => setAddedConnections((list) => [...list, connection])
+        addConnection: (connection) => setAddedConnections((list) => [...list, connection]),
+        redirect: redirect && {
+          ...redirect,
+          start: (href, pending) => {
+            sessionStorage.setItem(SYNC_DRAFT_STORAGE_KEY, JSON.stringify(form.getValues()));
+            startConnectionRedirect(href, pending);
+          }
+        }
       }}
     >
       <FormProvider {...form}>

@@ -37,65 +37,15 @@ import { useScopeVariant } from "@app/hooks";
 import { TPowerDnsConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
+import { powerDnsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TPowerDnsConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.PowerDns)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(PowerDnsConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiUrl: z
-        .string()
-        .trim()
-        .url("API URL must be a valid URL")
-        .max(512, "API URL cannot exceed 512 characters")
-        .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
-          message: "API URL must use http or https"
-        })
-        .refine((value) => !new URL(value).search && !new URL(value).hash, {
-          message: "API URL must not contain a query string or fragment"
-        })
-        .refine((value) => !/\/api(\/v\d+)?\/*$/.test(new URL(value).pathname), {
-          message: "Enter the web server address only, without the /api/v1 path"
-        }),
-      apiKey: z
-        .string()
-        .trim()
-        .min(1, "API key required")
-        .max(512, "API key cannot exceed 512 characters"),
-      serverId: z
-        .string()
-        .trim()
-        .max(64, "Server ID cannot exceed 64 characters")
-        .refine((value) => !value || /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(value), {
-          message: "Server ID may only contain letters, numbers, dots, hyphens and underscores"
-        })
-        .refine((value) => !value.includes(".."), { message: "Server ID cannot contain '..'" })
-        .transform((value) => value || undefined)
-        .optional(),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .max(8192, "SSL certificate cannot exceed 8192 characters")
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

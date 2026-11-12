@@ -21,33 +21,15 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { Auth0ConnectionMethod, TAuth0Connection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { auth0ConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TAuth0Connection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Auth0)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(Auth0ConnectionMethod.ClientCredentials),
-    credentials: z.object({
-      domain: z.string().trim().min(1, "Domain required"),
-      clientId: z.string().trim().min(1, "Client ID required"),
-      clientSecret: z.string().trim().min(1, "Client Secret required"),
-      audience: z.string().url().trim().min(1, "Audience required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

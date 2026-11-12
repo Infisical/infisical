@@ -1,53 +1,19 @@
 import { z } from "zod";
 
+import { isValidEmail } from "@app/helpers/email";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { GitLabAccessTokenType } from "@app/hooks/api/appConnections/gitlab/types";
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
 import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
+import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
 import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/postgres-connection";
 
-import { slugSchema } from "./slugSchema";
-
-export const rotationSchema = z.object({
-  rotationInterval: z
-    .number()
-    .min(1)
-    .max(365 * 2.5),
-  rotateAtUtc: z.object({
-    hours: z.number().min(0).max(23),
-    minutes: z.number().min(0).max(59)
-  })
-});
-
-export const genericAppConnectionFieldsSchema = z.object({
-  name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  description: z.string().trim().max(256, "Description cannot exceed 256 characters").nullish(),
-  gatewayId: z
-    .string()
-    .nullish()
-    .transform((v) => (v === "" ? null : v)),
-  gatewayPoolId: z
-    .string()
-    .nullish()
-    .transform((v) => (v === "" ? null : v)),
-  isAutoRotationEnabled: z.boolean().optional(),
-  rotation: rotationSchema.optional()
-});
-
-export const BaseSqlUsernameAndPasswordConnectionSchema = z.object({
-  host: z.string().trim().min(1, "Host required"),
-  port: z.coerce.number().default(5432),
-  database: z.string().trim().min(1, "Database required").default("default"),
-  username: z.string().trim().min(1, "Username required"),
-  password: z.string().trim().min(1, "Password required"),
-  sslEnabled: z.boolean().default(true),
-  sslRejectUnauthorized: z.boolean().default(true),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
-});
+import {
+  BaseSqlUsernameAndPasswordConnectionSchema,
+  genericAppConnectionFieldsSchema
+} from "./base";
 
 const awsRootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.AWS)
@@ -140,4 +106,43 @@ export const postgresConnectionFormSchema = z.discriminatedUnion("method", [
     method: z.literal(PostgresConnectionMethod.UsernameAndPassword),
     credentials: BaseSqlUsernameAndPasswordConnectionSchema
   })
+]);
+
+export const bitbucketApiTokenConnectionFormSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.Bitbucket),
+  method: z.literal(BitbucketConnectionMethod.ApiToken),
+  credentials: z.object({
+    email: z.string().trim().min(1, "Email required").refine(isValidEmail, "Enter a valid email"),
+    apiToken: z.string().trim().min(1, "API token required")
+  })
+});
+
+const gitLabInstanceUrlSchema = z
+  .string()
+  .trim()
+  .transform((value) => value || undefined)
+  .refine((value) => !value || z.string().url().safeParse(value).success, {
+    message: "Enter a valid URL"
+  })
+  .optional();
+
+const gitLabOAuthConnectionFormSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.GitLab),
+  method: z.literal(GitLabConnectionMethod.OAuth),
+  credentials: z.object({ instanceUrl: gitLabInstanceUrlSchema })
+});
+
+const gitLabAccessTokenConnectionFormSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.GitLab),
+  method: z.literal(GitLabConnectionMethod.AccessToken),
+  credentials: z.object({
+    instanceUrl: gitLabInstanceUrlSchema,
+    accessTokenType: z.nativeEnum(GitLabAccessTokenType),
+    accessToken: z.string().min(1, "Access token required")
+  })
+});
+
+export const gitLabConnectionFormSchema = z.discriminatedUnion("method", [
+  gitLabAccessTokenConnectionFormSchema,
+  gitLabOAuthConnectionFormSchema
 ]);

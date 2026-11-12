@@ -23,30 +23,15 @@ import {
   OpenAIConnectionMethod,
   TOpenAIConnection
 } from "@app/hooks/api/appConnections/types/open-ai-connection";
+import { openAIConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TOpenAIConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.OpenAI)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(OpenAIConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiKey: z.string().trim().min(1, "API Key required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

@@ -17,6 +17,7 @@ export const GatewayPicker = ({
   invalid,
   excludeGatewayId,
   allowIndividualGateways,
+  required,
   noGatewayLabel = "Internet gateway"
 }: {
   value: GatewayPickerValue;
@@ -27,6 +28,8 @@ export const GatewayPicker = ({
   invalid?: boolean;
   excludeGatewayId?: string;
   allowIndividualGateways?: boolean;
+  /** Leaves out the internet option, for apps that can only be reached through a gateway. */
+  required?: boolean;
   noGatewayLabel?: string;
 }) => {
   const orgId = useOrgId();
@@ -47,7 +50,7 @@ export const GatewayPicker = ({
       : undefined;
   const gateways = unlistedSelected ? [unlistedSelected, ...listed] : listed;
 
-  let selected = "internet";
+  let selected = required ? "" : "internet";
   if (value.gatewayPoolId) selected = `pool:${value.gatewayPoolId}`;
   else if (value.gatewayId) selected = `gateway:${value.gatewayId}`;
 
@@ -60,7 +63,7 @@ export const GatewayPicker = ({
       disabled={disabled || gatewaysPending || (showPools && poolsPending)}
       placeholder="Select gateway"
       options={[
-        { value: "internet", label: noGatewayLabel },
+        ...(required ? [] : [{ value: "internet", label: noGatewayLabel }]),
         ...(showPools ? (pools ?? []) : []).map((pool) => ({
           value: `pool:${pool.id}`,
           label: pool.name,

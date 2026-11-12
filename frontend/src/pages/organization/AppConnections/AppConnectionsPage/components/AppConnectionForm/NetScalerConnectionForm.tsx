@@ -36,54 +36,15 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { useScopeVariant } from "@app/hooks";
 import { NetScalerConnectionMethod, TNetScalerConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { netScalerConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TNetScalerConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.NetScaler)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(NetScalerConnectionMethod.BasicAuth),
-    credentials: z.object({
-      hostname: z
-        .string()
-        .trim()
-        .min(1, "Hostname is required")
-        .max(512, "Hostname cannot exceed 512 characters"),
-      port: z
-        .union([z.coerce.number().int().min(1).max(65535), z.literal("")])
-        .optional()
-        .transform((val) => (val === "" ? undefined : val)),
-      username: z
-        .string()
-        .trim()
-        .min(1, "Username is required")
-        .max(256, "Username cannot exceed 256 characters"),
-      password: z
-        .string()
-        .trim()
-        .min(1, "Password is required")
-        .max(512, "Password cannot exceed 512 characters"),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

@@ -18,15 +18,6 @@ export type LocalSecretSync = {
   syncOptions?: Record<string, unknown>;
 };
 
-export const PORTED_SYNCS: readonly SecretSync[] = [
-  SecretSync.AWSParameterStore,
-  SecretSync.AWSSecretsManager,
-  SecretSync.GitHub,
-  SecretSync.GCPSecretManager,
-  SecretSync.AzureKeyVault,
-  SecretSync.Vercel
-];
-
 export const IMPORT_CAPABLE_SYNCS: readonly SecretSync[] = [
   SecretSync.OnePass,
   SecretSync.AWSParameterStore,

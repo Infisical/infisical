@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Empty, EmptyHeader, EmptyTitle } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Loader } from "@app/components/v4/ui/loader";
@@ -13,21 +12,16 @@ import { NATIVE_INTEGRATION_DEPRECATION_DATE } from "@app/const/nativeIntegratio
 import { useProjectScope } from "../../access/project/scope";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { AppConnectionsTab } from "./app-connections";
+import { DocsIntegrationsTab } from "./docs-integrations";
 import { NativeIntegrationsTab } from "./native-integrations";
 import { NATIVE_INTEGRATIONS_TAB, SECRET_SYNCS_TAB } from "./native-model";
+import { SecretSyncsTab } from "./secret-syncs/secret-syncs-tab";
 
 const route = v4Path("/organizations/$orgId/projects/secret-management/$projectId/integrations/");
 const path = v4Path("/organizations/$orgId/projects/secret-management/$projectId/integrations");
 
 const APP_CONNECTIONS_TAB = "app-connections";
-
-const NotPorted = () => (
-  <Empty>
-    <EmptyHeader>
-      <EmptyTitle>This tab isn&apos;t in v4 yet</EmptyTitle>
-    </EmptyHeader>
-  </Empty>
-);
 
 export const IntegrationsPage = () => {
   const { orgId, projectId } = useProjectScope();
@@ -106,14 +100,26 @@ export const IntegrationsPage = () => {
             />
           }
         />
-        {activeTab === NATIVE_INTEGRATIONS_TAB ? (
+        {activeTab === NATIVE_INTEGRATIONS_TAB && (
           <NativeIntegrationsTab
             orgId={orgId}
             projectId={projectId}
             environments={project?.environments ?? []}
           />
-        ) : (
-          <NotPorted />
+        )}
+        {activeTab === APP_CONNECTIONS_TAB && (
+          <AppConnectionsTab orgId={orgId} projectId={projectId} />
+        )}
+        {activeTab === "framework-integrations" && <DocsIntegrationsTab kind="frameworks" />}
+        {activeTab === "infrastructure-integrations" && (
+          <DocsIntegrationsTab kind="infrastructure" />
+        )}
+        {activeTab === SECRET_SYNCS_TAB && (
+          <SecretSyncsTab
+            orgId={orgId}
+            projectId={projectId}
+            environments={project?.environments ?? []}
+          />
         )}
       </Stack>
     </TooltipProvider>
