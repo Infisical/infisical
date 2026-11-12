@@ -1,6 +1,6 @@
 # App connection form
 
-Create an app connection from a preset, on its own or inside a Combobox creation dialog.
+Create an app connection from a preset, on its own or inside a Combobox creation dialog, or edit a stored connection's credentials.
 
 ## Choose this component
 
@@ -14,13 +14,13 @@ Owner: app-connection-form.
 
 When a preset is added for another app.
 
-Do: Export the app's create schema from lib/schemas/app-connections.ts, import it in both the v3 form and the preset, and describe only fields and defaults in the preset.
+Do: Export the app's create schema from lib/schemas/app-connections (a folder whose index re-exports each category file, imported by that path), import it in both the v3 form and the preset, and describe only fields and defaults in the preset.
 
 Avoid: Write a second schema for v4 or validate fields inside the form component.
 
 Why: Two schemas drift, and then v4 accepts a connection the API or v3 rejects.
 
-Checked by: review only. Look for: Search the preset and the form for z. calls; every schema comes from lib/schemas/app-connections.ts.
+Checked by: review only. Look for: Search the preset and the form for z. calls; every schema comes from lib/schemas/app-connections.
 
 Source evidence:
 - src/components/v4/patterns/app-connection-form.tsx
@@ -51,8 +51,9 @@ Exports: AppConnectionForm, AppConnectionFieldPreset, AppConnectionFormProps, Ap
 - A preset carries the app, its display name, its methods and the app's create schema from the shared data layer. The form validates only through that schema (zodResolver), so its rules and messages match the v3 form for the same app. Changing the method swaps in that method's credentials and clears their errors. A field with visible shows only while visible(values) is true.
 - Field kinds map to v4 controls: text and number to Input, secret to SecretInput, textarea to Textarea, select to Select and switch to Switch. Errors show under their field; a rejected onSubmit shows its message, or a retry sentence that names the app, in a destructive Alert under the fields and keeps every value.
 - onDirtyChange and onPendingChange report the form's dirty and submitting state, and every control is disabled while it submits.
+- edit: { method, values } edits a stored connection's credentials. The method is fixed, so Name, Method and Description are left out, and so is any field marked createOnly (a choice the server fixes at creation, such as platform-managed credentials). values are the stored root values: name and description keep the schema satisfied, and the method's own root fields and credentials keys are read from them, skipping null. The submit label is Update credentials, or a redirect method's submitLabel with Connect read as Reconnect, and a rejected onSubmit without a message shows Couldn't update these credentials. Try again. A redirect method stores the record through redirect.start as on create; pass the connection's id in connectionRedirect's extras so the callback updates it.
 - A method with redirect (GitHub App install, OAuth) has no credential fields. It is offered only when the host passes redirect: { returnTo, projectId, option, start }, where returnTo is the calling flow's v4 href, option is the app's connection option from the server and start stores the pending record. In the app, build it with connectionRedirect from pages/v4/data/integrations/connection-redirect.ts. Submit validates through the schema, then calls start with the method's href and the app, method, name, description, credentials, projectId and returnTo; connectionRedirect's start generates a random state, stores the record in localStorage under V4_CONNECTION_REDIRECT_STORAGE_KEY (helpers/appConnections.ts) and sends the person to href with state appended. While href is undefined (the server has no app configured) a neutral Alert shows the method's unconfigured sentence and submit shows it as the failure instead of redirecting.
-- The v4 callback route, /v4/organizations/$orgId/app-connections/$appConnection/callback, calls takeConnectionRedirect(state) from the same data module, which clears the stored record only when the state matches. It builds the credentials with the method's redirect.credentials from the callback parameters, creates the connection through the integrations adapter, shows a success toast and replaces the location with returnTo plus connectionId and connectionName. A missing, corrupt or mismatched record, a different app or a rejected create shows a failed() toast with the reason or the server message and returns to returnTo without the connection, or to Integrations when there is no record.
+- The v4 callback route, /v4/organizations/$orgId/app-connections/$appConnection/callback, calls takeConnectionRedirect(state) from the same data module, which clears the stored record only when the state matches. It builds the credentials with the method's redirect.credentials from the callback parameters, then creates the connection through the integrations adapter, or reconnects it (updates its credentials) when the record carries a connectionId, shows a success toast and replaces the location with returnTo plus connectionId and connectionName. A missing, corrupt or mismatched record, a different app or a rejected create or update shows a failed() toast with the reason or the server message and returns to returnTo without the connection, or to Integrations when there is no record.
 - connectionCreation({ preset, disabledReason, redirect, create }) returns the Combobox creation for a connection picker: mode dialog, the Create connection row, a Create <app> Connection Dialog, the Discard connection setup? prompt and an onSubmit that awaits create and calls complete with the new connection as the option. The submit label follows the selected method: a redirect method's submitLabel, for example Connect to GitLab, and Create connection for a credential method. AppConnectionForm reports it through onSubmitLabelChange. It is not a hook; the Combobox owns the dialog state. It returns undefined without a preset or without a usable method.
 
 ## Accessibility
@@ -61,7 +62,7 @@ Exports: AppConnectionForm, AppConnectionFieldPreset, AppConnectionFormProps, Ap
 
 ## Use cases
 
-- Use AppConnectionForm with a preset wherever a v4 flow creates an app connection, and connectionCreation for a connection picker.
+- Use AppConnectionForm with a preset wherever a v4 flow creates an app connection or edits its credentials (edit), and connectionCreation for a connection picker.
 
 ## Avoid
 
@@ -69,7 +70,7 @@ Exports: AppConnectionForm, AppConnectionFieldPreset, AppConnectionFormProps, Ap
 
 ## Limits
 
-- Presets live with the data layer, in pages/v4/data/integrations/connection-presets.ts: GitHub Radar (GitHub App install, a redirect method), AWS (Assume Role and Access Key), GitHub (Personal Access Token on cloud or Enterprise Server) and PostgreSQL (username and password). Gateways, platform-managed credentials, credential rotation and reconnecting an existing connection are not part of the shell yet.
+- Presets live with the data layer: pages/v4/data/integrations/connection-presets.ts maps each app to its preset, defined by category under pages/v4/data/integrations/presets/. The gateway field is the host's, beside the form, and credential rotation is not part of the shell yet.
 - Providers return to the redirect URI registered for the app, which today is main's /organization/app-connections/<app>/oauth/callback. Main's callback forwards a return whose state matches the stored v4 record to the v4 callback route, so the registered URI does not change.
 - The form does not call the API. The host's create function runs the mutation (the live adapter's useCreateConnection, or a local fixture in demos) and returns the created id and name.
 
@@ -223,6 +224,75 @@ export default function Example() {
         </div>
         <figcaption className="text-muted-foreground text-xs">
           {"Server without a GitHub App configured"}
+        </figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Edit a stored connection's credentials
+
+Save this example at `src/pages/design-system/examples/app-connection-form/edit.tsx`; its relative imports are generated for that exact path. States: default, loading.
+
+Registry items used: @cipher/app-connection-form, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useId, useState } from "react";
+
+import { AppConnectionForm } from "../../../../components/v4/patterns/app-connection-form";
+import { Button } from "../../../../components/v4/ui/button";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { MySqlConnectionMethod } from "@app/hooks/api/appConnections/types/mysql-connection";
+import { CONNECTION_PRESETS } from "@app/pages/v4/data/integrations/connection-presets";
+
+export default function Example() {
+  const preset = CONNECTION_PRESETS[AppConnection.MySql];
+  const formId = useId();
+  const [pending, setPending] = useState(false);
+  const [label, setLabel] = useState("Update credentials");
+  if (!preset) return null;
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <div className="flex flex-col gap-4">
+            <AppConnectionForm
+              id={formId}
+              preset={preset}
+              edit={{
+                method: MySqlConnectionMethod.UsernameAndPassword,
+                values: {
+                  name: "orders-db",
+                  description: null,
+                  credentials: {
+                    host: "orders.db.internal",
+                    port: 3306,
+                    database: "orders",
+                    username: "infisical",
+                    sslEnabled: true
+                  }
+                }
+              }}
+              onPendingChange={setPending}
+              onSubmitLabelChange={setLabel}
+              onSubmit={() =>
+                new Promise((resolve) => {
+                  setTimeout(resolve, 600);
+                })
+              }
+            />
+            <div>
+              <Button type="submit" form={formId} loading={pending}>
+                {label}
+              </Button>
+            </div>
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {
+            "Only the stored method's fields show; platform-managed credentials stay a create-time choice"
+          }
         </figcaption>
       </figure>
     </div>
