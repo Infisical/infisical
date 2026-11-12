@@ -1,7 +1,8 @@
 import {
   useCreateAppConnection,
   useDeleteAppConnection,
-  useRotateAppConnectionCredentials
+  useRotateAppConnectionCredentials,
+  useUpdateAppConnection
 } from "@app/hooks/api/appConnections/mutations";
 import {
   useAppConnectionOptions,
@@ -15,6 +16,7 @@ export const integrationsLive: IntegrationsAdapter = {
   useConnections: useListAppConnections,
   useConnectionOptions: useAppConnectionOptions,
   useCreateConnection: useCreateAppConnection,
+  useUpdateConnection: useUpdateAppConnection,
   useRotateCredentials: useRotateAppConnectionCredentials,
   useDeleteConnection: useDeleteAppConnection,
   useWorkflowIntegrations: useGetWorkflowIntegrations

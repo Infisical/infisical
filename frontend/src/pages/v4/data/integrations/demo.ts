@@ -9,6 +9,7 @@ import { GcpConnectionMethod } from "@app/hooks/api/appConnections/types/gcp-con
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
 import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
 import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
+import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/postgres-connection";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import { VercelConnectionMethod } from "@app/hooks/api/appConnections/types/vercel-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -158,6 +159,70 @@ const store = createFixtureStore<TAppConnection[]>([
       description: "DNS validation for ACME issuance",
       project: project("internal-pki", ProjectType.CertificateManager)
     }
+  ),
+  connection(
+    "4f6b8d0e-2a4c-4e6a-8b0d-2f4a6c8e0b51",
+    AppConnection.AWS,
+    "payments-secrets-manager",
+    AwsConnectionMethod.AccessKey,
+    "2026-06-11T09:12:00Z",
+    {
+      description: "Syncs payment secrets to AWS Secrets Manager in us-east-1",
+      credentials: { accessKeyId: "AKIA4PAYMENTS7EXAMPLE" },
+      isAutoRotationEnabled: true,
+      rotation: rotation(AppConnectionCredentialRotationStatus.Success, 4),
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
+  ),
+  connection(
+    "5a7c9e1b-3d5f-4b7d-9e1a-3c5e7a9b1d42",
+    AppConnection.GitHub,
+    "payments-github-actions",
+    GitHubConnectionMethod.Pat,
+    "2026-07-02T13:40:00Z",
+    {
+      credentials: { instanceType: "cloud" },
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
+  ),
+  connection(
+    "6b8d0f2c-4e6a-4c8e-a0f2-4d6f8b0c2e33",
+    AppConnection.Postgres,
+    "payments-ledger-db",
+    PostgresConnectionMethod.UsernameAndPassword,
+    "2026-08-19T08:05:00Z",
+    {
+      credentials: {
+        host: "ledger.payments.internal",
+        port: 5432,
+        database: "ledger",
+        username: "infisical_rotator",
+        sslEnabled: true,
+        sslRejectUnauthorized: true
+      },
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
+  ),
+  connection(
+    "7c9e1a3d-5f7b-4d9f-b1a3-5e7a9c1d3f24",
+    AppConnection.GitLab,
+    "payments-gitlab",
+    GitLabConnectionMethod.OAuth,
+    "2026-09-27T16:22:00Z",
+    { project: project("payments-api", ProjectType.SecretManager) }
+  ),
+  connection(
+    "8d0f2b4e-6a8c-4e0a-82b4-6f8b0d2e4a15",
+    AppConnection.AzureKeyVault,
+    "payments-key-vault",
+    AzureKeyVaultConnectionMethod.ClientSecret,
+    "2026-10-08T10:48:00Z",
+    {
+      isPlatformManagedCredentials: true,
+      isAutoRotationEnabled: false,
+      rotation: rotation(AppConnectionCredentialRotationStatus.Success, 18),
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
   )
 ]);
 
@@ -179,10 +244,30 @@ export const integrationsDemo: IntegrationsAdapter = {
       input.name,
       input.method,
       new Date().toISOString(),
-      { description: input.description ?? null }
+      {
+        description: input.description ?? null,
+        ...(input.projectId && { project: project(input.projectId, ProjectType.SecretManager) })
+      }
     );
     store.update((entries) => [...entries, created]);
     return created;
+  }),
+  useUpdateConnection: fixtureMutation(({ connectionId, credentials, ...changes }) => {
+    store.update((entries) =>
+      entries.map((entry) =>
+        entry.id === connectionId
+          ? ({
+              ...entry,
+              ...changes,
+              credentials: credentials
+                ? { ...entry.credentials, ...credentials }
+                : entry.credentials,
+              updatedAt: new Date().toISOString()
+            } as TAppConnection)
+          : entry
+      )
+    );
+    return store.get().find((entry) => entry.id === connectionId) as TAppConnection;
   }),
   useRotateCredentials: fixtureMutation(({ connectionId }) => {
     store.update((entries) =>

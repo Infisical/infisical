@@ -13,6 +13,7 @@ import { NATIVE_INTEGRATION_DEPRECATION_DATE } from "@app/const/nativeIntegratio
 import { useProjectScope } from "../../access/project/scope";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { AppConnectionsTab } from "./app-connections";
 import { NativeIntegrationsTab } from "./native-integrations";
 import { NATIVE_INTEGRATIONS_TAB, SECRET_SYNCS_TAB } from "./native-model";
 
@@ -106,13 +107,17 @@ export const IntegrationsPage = () => {
             />
           }
         />
-        {activeTab === NATIVE_INTEGRATIONS_TAB ? (
+        {activeTab === NATIVE_INTEGRATIONS_TAB && (
           <NativeIntegrationsTab
             orgId={orgId}
             projectId={projectId}
             environments={project?.environments ?? []}
           />
-        ) : (
+        )}
+        {activeTab === APP_CONNECTIONS_TAB && (
+          <AppConnectionsTab orgId={orgId} projectId={projectId} />
+        )}
+        {activeTab !== NATIVE_INTEGRATIONS_TAB && activeTab !== APP_CONNECTIONS_TAB && (
           <NotPorted />
         )}
       </Stack>
