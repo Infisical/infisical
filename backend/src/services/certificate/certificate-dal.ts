@@ -180,6 +180,43 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findScepCertsByValidationConnectionsAndSerials = async (
+    validationConnectionIds: string[],
+    serialNumbers: string[]
+  ) => {
+    if (serialNumbers.length === 0 || validationConnectionIds.length === 0) return [];
+    try {
+      const certs = await db
+        .replicaNode()(TableName.Certificate)
+        .leftJoin(TableName.PkiApplicationProfile, (join) => {
+          join
+            .on(`${TableName.PkiApplicationProfile}.applicationId`, `${TableName.Certificate}.applicationId`)
+            .andOn(`${TableName.PkiApplicationProfile}.profileId`, `${TableName.Certificate}.profileId`);
+        })
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.PkiCertificateProfile}.id`,
+          `${TableName.Certificate}.profileId`
+        )
+        .join(TableName.PkiScepEnrollmentConfig, (join) => {
+          join
+            .on(`${TableName.PkiScepEnrollmentConfig}.id`, `${TableName.PkiApplicationProfile}.scepConfigId`)
+            .orOn(`${TableName.PkiScepEnrollmentConfig}.id`, `${TableName.PkiCertificateProfile}.scepConfigId`);
+        })
+        .whereIn(`${TableName.PkiScepEnrollmentConfig}.validationConnectionId`, validationConnectionIds)
+        .whereIn(`${TableName.Certificate}.serialNumber`, serialNumbers)
+        .distinct(
+          `${TableName.Certificate}.id`,
+          `${TableName.Certificate}.serialNumber`,
+          `${TableName.Certificate}.status`
+        );
+
+      return certs as Pick<TCertificates, "id" | "serialNumber" | "status">[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find SCEP certs by validation connections and serial numbers" });
+    }
+  };
+
   const findActiveDigiCertCertsByCaId = async (caId: string) => {
     try {
       const certs = await db
@@ -1642,6 +1679,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findAllActiveCertsForSubscriber,
     findActiveDigiCertCertsByOrderIds,
     findActiveDigiCertCertsByCaId,
+    findScepCertsByValidationConnectionsAndSerials,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
     findActiveCertificatesByIds,

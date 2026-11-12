@@ -51,3 +51,21 @@ export type TIntuneScepValidationResponse = {
   code?: string;
   errorDescription?: string;
 };
+
+export type TIntuneRevocationRequest = {
+  requestContext: string;
+  serialNumber: string;
+  issuerName?: string | null;
+  caConfiguration?: string | null;
+};
+
+export type TIntuneRevocationRequestsResponse = {
+  value?: TIntuneRevocationRequest[];
+};
+
+export type TIntuneRevocationResult = {
+  requestContext: string;
+  succeeded: boolean;
+  errorCode: string;
+  errorMessage: string | null;
+};

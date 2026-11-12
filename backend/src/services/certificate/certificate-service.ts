@@ -2,7 +2,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ResourceType, TCertificates } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -128,6 +128,7 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   CertStatus,
+  CrlReason,
   TAssignCertToApplicationDTO,
   TCertificateBasicConstraints,
   TCertificateFingerprints,
@@ -661,48 +662,7 @@ export const certificateServiceFactory = ({
     }
   };
 
-  const revokeCert = async ({
-    id,
-    serialNumber,
-    thumbprint,
-    revocationReason,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TRevokeCertDTO) => {
-    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
-    if (id) {
-      cert = await certificateDAL.findById(id);
-    } else if (serialNumber) {
-      cert = await certificateDAL.findOne({ serialNumber });
-    } else if (thumbprint) {
-      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
-      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
-
-      const matches = await certificateDAL.findByThumbprintInOrg({
-        orgId: actorOrgId,
-        column,
-        fingerprint,
-        limit: 2
-      });
-      if (matches.length > 1) {
-        throw new BadRequestError({
-          message:
-            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
-        });
-      }
-      [cert] = matches;
-    } else {
-      throw new BadRequestError({
-        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
-      });
-    }
-
-    if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
+  const $getRevocableCa = async (cert: TCertificates) => {
     if (!cert.caId) {
       throw new BadRequestError({
         message: "Cannot revoke imported certificates"
@@ -719,16 +679,20 @@ export const certificateServiceFactory = ({
       });
     }
 
-    await assertCanRevokeCertificate({
-      certificate: { ...cert, projectId: ca.projectId },
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      permissionService,
-      resourceMetadataDAL
-    });
+    return ca;
+  };
 
+  const $revokeCertificate = async ({
+    cert,
+    ca,
+    revocationReason,
+    orgId
+  }: {
+    cert: TCertificates;
+    ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>;
+    revocationReason: CrlReason;
+    orgId?: string;
+  }) => {
     if (cert.status === CertStatus.REVOKED) {
       throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
     }
@@ -802,7 +766,7 @@ export const certificateServiceFactory = ({
       await certificateAlertEventEmitter.notify({
         certificateId: revokedCertId,
         projectId: ca.projectId,
-        orgId: actorOrgId,
+        orgId,
         eventType: CertificateApplicationAlertEvent.Revocation,
         applicationId: revokedCertApplicationId
       });
@@ -874,6 +838,80 @@ export const certificateServiceFactory = ({
       ca: caResult,
       crlWarning
     };
+  };
+
+  const revokeCert = async ({
+    id,
+    serialNumber,
+    thumbprint,
+    revocationReason,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TRevokeCertDTO) => {
+    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
+    if (id) {
+      cert = await certificateDAL.findById(id);
+    } else if (serialNumber) {
+      cert = await certificateDAL.findOne({ serialNumber });
+    } else if (thumbprint) {
+      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
+      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
+
+      const matches = await certificateDAL.findByThumbprintInOrg({
+        orgId: actorOrgId,
+        column,
+        fingerprint,
+        limit: 2
+      });
+      if (matches.length > 1) {
+        throw new BadRequestError({
+          message:
+            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
+        });
+      }
+      [cert] = matches;
+    } else {
+      throw new BadRequestError({
+        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
+      });
+    }
+
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    const ca = await $getRevocableCa(cert);
+
+    await assertCanRevokeCertificate({
+      certificate: { ...cert, projectId: ca.projectId },
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      permissionService,
+      resourceMetadataDAL
+    });
+
+    return $revokeCertificate({ cert, ca, revocationReason, orgId: actorOrgId });
+  };
+
+  const revokeCertAsPlatform = async ({
+    certificateId,
+    revocationReason
+  }: {
+    certificateId: string;
+    revocationReason: CrlReason;
+  }) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+    if (cert.status === CertStatus.REVOKED) return null;
+
+    const ca = await $getRevocableCa(cert);
+    return $revokeCertificate({ cert, ca, revocationReason });
   };
 
   /**
@@ -1875,6 +1913,7 @@ export const certificateServiceFactory = ({
     getCertPrivateKey,
     deleteCert,
     revokeCert,
+    revokeCertAsPlatform,
     getCertBody,
     importCert,
     getCertBundle,
