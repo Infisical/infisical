@@ -6,9 +6,11 @@ import {
   PkiSyncExportFormat,
   PkiSyncStatus
 } from "@app/hooks/api/pkiSyncs";
-// Imported from their defining modules: the pkiSyncs barrel imports this file through queries.
 import { PKI_SYNC_EXPORT_FORMAT_LABELS } from "@app/hooks/api/pkiSyncs/enums";
-import { CLOUDFLARE_BUNDLE_METHOD_LABELS } from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
+import {
+  CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL,
+  CLOUDFLARE_BUNDLE_METHOD_LABELS
+} from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,
@@ -249,8 +251,20 @@ const SYNC_OPTION_VALUE_LABELS: Record<string, Record<string, string>> = {
   bundleMethod: CLOUDFLARE_BUNDLE_METHOD_LABELS
 };
 
-export const getSyncOptionValueLabel = (key: string, value: unknown) =>
-  SYNC_OPTION_VALUE_LABELS[key]?.[String(value)] ?? String(value);
+const UNSET_SYNC_OPTION_LABELS: Partial<Record<PkiSync, Record<string, string>>> = {
+  [PkiSync.CloudflareCustomCertificate]: { bundleMethod: CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL }
+};
+
+export const getSyncOptionDisplayValue = (
+  destination: PkiSync,
+  key: string,
+  value: unknown
+): string | null => {
+  if (value === undefined || value === null || value === "") {
+    return UNSET_SYNC_OPTION_LABELS[destination]?.[key] ?? null;
+  }
+  return SYNC_OPTION_VALUE_LABELS[key]?.[String(value)] ?? String(value);
+};
 
 export const getUnusedExportOptionKeys = (exportFormat?: PkiSyncExportFormat): Set<string> => {
   if (!exportFormat) return new Set();

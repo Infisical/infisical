@@ -8,7 +8,10 @@ import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 // Only exposes user-configurable options
 const CloudflareCustomCertificateSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
-  bundleMethod: z.nativeEnum(CloudflareBundleMethod).optional(),
+  bundleMethod: z
+    .nativeEnum(CloudflareBundleMethod)
+    .nullish()
+    .transform((method) => method ?? undefined),
   certificateNameSchema: z
     .string()
     .trim()

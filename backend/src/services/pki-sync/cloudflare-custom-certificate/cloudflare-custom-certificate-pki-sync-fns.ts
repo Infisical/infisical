@@ -54,8 +54,6 @@ const getCloudflareApiToken = (pkiSync: TPkiSyncWithCredentials) => {
   return credentials.apiToken;
 };
 
-// Without an explicit bundle method, certificates from an Infisical CA use "force" because Cloudflare
-// cannot resolve a private chain; everything else lets Cloudflare build the chain.
 export const buildCloudflareCertificateBundle = ({
   cert,
   certificateChain,
@@ -72,7 +70,6 @@ export const buildCloudflareCertificateBundle = ({
   const leaf = cert.trim();
   let chain = certificateChain?.trim() || "";
 
-  // "force" serves the upload as-is and expects the chain before the leaf; the other methods expect the leaf first.
   if (effectiveBundleMethod !== CloudflareBundleMethod.Force) {
     return { bundleMethod: effectiveBundleMethod, certificate: chain ? `${leaf}\n${chain}` : leaf };
   }

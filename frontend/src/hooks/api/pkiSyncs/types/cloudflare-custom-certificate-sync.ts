@@ -15,6 +15,8 @@ export const CLOUDFLARE_BUNDLE_METHOD_LABELS: Record<CloudflareBundleMethod, str
   [CloudflareBundleMethod.Force]: "User-defined"
 };
 
+export const CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL = "Automatic";
+
 export type TCloudflareCustomCertificatePkiSync = TRootPkiSync & {
   destination: PkiSync.CloudflareCustomCertificate;
   destinationConfig: {

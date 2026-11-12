@@ -15,6 +15,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL,
   CLOUDFLARE_BUNDLE_METHOD_LABELS,
   CloudflareBundleMethod
 } from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
@@ -33,7 +34,7 @@ export const CloudflareCustomCertificateSyncOptions = () => {
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">
           <FieldLabel>
-            Bundle Method
+            Bundle method
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info />
@@ -48,15 +49,13 @@ export const CloudflareCustomCertificateSyncOptions = () => {
           </FieldLabel>
           <Select
             value={value ?? AUTOMATIC}
-            onValueChange={(v) =>
-              onChange(v === AUTOMATIC ? undefined : (v as CloudflareBundleMethod))
-            }
+            onValueChange={(v) => onChange(v === AUTOMATIC ? null : (v as CloudflareBundleMethod))}
           >
             <SelectTrigger className="w-full" isError={Boolean(error)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">
-              <SelectItem value={AUTOMATIC}>Automatic</SelectItem>
+              <SelectItem value={AUTOMATIC}>{CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL}</SelectItem>
               {Object.values(CloudflareBundleMethod).map((method) => (
                 <SelectItem key={method} value={method}>
                   {CLOUDFLARE_BUNDLE_METHOD_LABELS[method]}

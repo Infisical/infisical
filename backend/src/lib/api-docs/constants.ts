@@ -5338,7 +5338,7 @@ export const IMPERVA_PKI_SYNC_DESTINATION_CONFIG = {
 
 export const CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_OPTIONS = {
   bundleMethod:
-    "The Cloudflare bundle method for uploaded certificates: ubiquitous (Compatible), optimal (Modern), or force (User-defined, serves the uploaded chain as-is). When omitted, certificates from an Infisical CA use force and all others use ubiquitous."
+    "The Cloudflare bundle method for uploaded certificates: ubiquitous (Compatible), optimal (Modern), or force (User-defined, Cloudflare serves the uploaded chain as-is; for certificates from an Infisical CA, the CA's root is appended). When omitted, certificates from an Infisical CA use force and all others use ubiquitous."
 };
 
 export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {

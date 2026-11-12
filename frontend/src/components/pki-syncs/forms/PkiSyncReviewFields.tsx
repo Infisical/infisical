@@ -15,7 +15,7 @@ import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
   getPaloAltoNetworksProfileLabel,
-  getSyncOptionValueLabel,
+  getSyncOptionDisplayValue,
   getUnusedExportOptionKeys,
   isPaloAltoNetworksPkiSync,
   KEY_VALUE_SYNC_OPTION_FIELDS,
@@ -272,17 +272,16 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
             );
           })}
           {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
-            const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
-            if (
-              optionValue === undefined ||
-              optionValue === null ||
-              optionValue === "" ||
-              inapplicableOptionKeys.has(key)
-            )
-              return null;
+            if (inapplicableOptionKeys.has(key)) return null;
+            const displayValue = getSyncOptionDisplayValue(
+              destination,
+              key,
+              (syncOptions as Record<string, unknown> | undefined)?.[key]
+            );
+            if (displayValue === null) return null;
             return (
               <ReviewFieldLabel key={key} label={label}>
-                <Badge variant="neutral">{getSyncOptionValueLabel(key, optionValue)}</Badge>
+                <Badge variant="neutral">{displayValue}</Badge>
               </ReviewFieldLabel>
             );
           })}

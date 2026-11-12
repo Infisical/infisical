@@ -12,7 +12,7 @@ import {
 } from "@app/components/v3";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
-  getSyncOptionValueLabel,
+  getSyncOptionDisplayValue,
   getUnusedExportOptionKeys,
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
@@ -56,15 +56,19 @@ export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
               {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
                 if (DESTINATION_OWNED_OPTIONS.has(key) || unusedOptionKeys.has(key)) return null;
 
-                const value = syncOptions?.[key];
-                if (value === undefined || value === null || value === "") return null;
+                const displayValue = getSyncOptionDisplayValue(
+                  pkiSync.destination,
+                  key,
+                  syncOptions?.[key]
+                );
+                if (displayValue === null) return null;
 
                 return (
                   <Detail key={key}>
                     <DetailLabel>{label}</DetailLabel>
                     <DetailValue>
                       <Badge variant="neutral" className="max-w-full truncate">
-                        {getSyncOptionValueLabel(key, value)}
+                        {displayValue}
                       </Badge>
                     </DetailValue>
                   </Detail>
