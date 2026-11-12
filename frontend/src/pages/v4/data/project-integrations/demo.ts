@@ -12,6 +12,7 @@ import {
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { ProjectIntegrationsAdapter } from "./contract";
+import { nativeIntegrationsDemo } from "./demo-native";
 
 const day = (value: string) => new Date(`${value}T09:30:00Z`).toISOString();
 
@@ -298,5 +299,6 @@ export const projectIntegrationsDemo: ProjectIntegrationsAdapter = {
   useSlackChannels: (integrationId) =>
     loaded(integrationId ? (slackChannels[integrationId] ?? []) : []),
   useMicrosoftTeamsTeams: (integrationId) =>
-    loaded(integrationId ? (teamsTeams[integrationId] ?? []) : [])
+    loaded(integrationId ? (teamsTeams[integrationId] ?? []) : []),
+  ...nativeIntegrationsDemo
 };
