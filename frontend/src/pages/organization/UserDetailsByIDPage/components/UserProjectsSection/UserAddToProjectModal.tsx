@@ -64,12 +64,18 @@ export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }
     resolver: zodResolver(schema)
   });
 
-  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(
+  const {
+    data: projectMemberships,
+    isPending: isMembershipsLoading,
+    isError: isMembershipsError
+  } = useGetOrgMembershipProjectMemberships(
     orgId,
     membershipId,
     {},
     { enabled: Boolean(popUp.addUserToProject.isOpen) }
   );
+  // Until the actor's memberships load, the picker cannot leave out projects they already belong to.
+  const isMembershipsReady = !isMembershipsLoading && !isMembershipsError;
 
   const filteredWorkspaces = useMemo(() => {
     const wsWorkspaceIds = new Map();
@@ -138,11 +144,17 @@ export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }
                       ? "This user is already a member of every project you can access."
                       : "No projects found."
                   }
-                  isLoading={isWorkspacesLoading}
+                  isLoading={isWorkspacesLoading || isMembershipsLoading}
+                  isDisabled={!isMembershipsReady}
                   isError={Boolean(error)}
                   modal
                 />
-                <FieldError>{error?.message}</FieldError>
+                <FieldError>
+                  {error?.message ??
+                    (isMembershipsError
+                      ? "Could not load this user's projects. Close and try again."
+                      : undefined)}
+                </FieldError>
               </Field>
             )}
           />
@@ -154,7 +166,7 @@ export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }
               type="submit"
               variant={scopeVariant}
               isPending={isSubmitting}
-              isDisabled={isSubmitting}
+              isDisabled={isSubmitting || !isMembershipsReady}
             >
               Add to Project
             </Button>

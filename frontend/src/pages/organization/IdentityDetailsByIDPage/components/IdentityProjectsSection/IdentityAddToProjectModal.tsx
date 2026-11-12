@@ -67,11 +67,17 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
   });
 
   const projectId = watch("project")?.id;
-  const { data: projectMemberships } = useGetIdentityProjectMemberships(
+  const {
+    data: projectMemberships,
+    isPending: isMembershipsLoading,
+    isError: isMembershipsError
+  } = useGetIdentityProjectMemberships(
     identityId,
     {},
     { enabled: Boolean(popUp.addIdentityToProject.isOpen) }
   );
+  // Until the actor's memberships load, the picker cannot leave out projects they already belong to.
+  const isMembershipsReady = !isMembershipsLoading && !isMembershipsError;
   const { data: roles = [], isPending: isRolesLoading } = useGetProjectRoles(projectId ?? "");
 
   const filteredWorkspaces = useMemo(() => {
@@ -156,11 +162,17 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
                       ? "This identity is already a member of every project you can access."
                       : "No projects found."
                   }
-                  isLoading={isWorkspacesLoading}
+                  isLoading={isWorkspacesLoading || isMembershipsLoading}
+                  isDisabled={!isMembershipsReady}
                   isError={Boolean(error)}
                   modal
                 />
-                <FieldError>{error?.message}</FieldError>
+                <FieldError>
+                  {error?.message ??
+                    (isMembershipsError
+                      ? "Could not load this machine identity's projects. Close and try again."
+                      : undefined)}
+                </FieldError>
               </Field>
             )}
           />
@@ -209,7 +221,7 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
               type="submit"
               variant={scopeVariant}
               isPending={isSubmitting}
-              isDisabled={isSubmitting}
+              isDisabled={isSubmitting || !isMembershipsReady}
             >
               Add to Project
             </Button>
