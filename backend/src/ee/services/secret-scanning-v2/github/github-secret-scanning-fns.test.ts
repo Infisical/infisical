@@ -147,7 +147,10 @@ describe("getPullRequestScanCheckRunResult", () => {
       findings: [],
       scannedCommitCount: 1,
       totalCommitCount: 1,
-      oversizedFiles: Array.from({ length: 12 }, (_, index) => ({ commitSha: "a".repeat(40), filename: `gen-${index}.go` })),
+      oversizedFiles: Array.from({ length: 12 }, (_, index) => ({
+        commitSha: "a".repeat(40),
+        filename: `gen-${index}.go`
+      })),
       truncatedCommitShas: ["b".repeat(40)]
     });
 
