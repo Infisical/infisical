@@ -9,7 +9,9 @@ import {
   getCertificateDeletedBySummary,
   getCertificateDeletionWarning,
   getCertificateDisplayStatus,
-  isRemovedFromSyncDestination
+  getPendingRevocationState,
+  isRemovedFromSyncDestination,
+  PENDING_REVOCATION_REASON
 } from "./CertificatesTable.utils";
 
 // Each rule is "<action>" on certificates, or "<action>:<subject>".
@@ -158,6 +160,50 @@ describe("getApplicationCertificateAccess", () => {
         expect(access.revokeBlockedReason).toBeUndefined();
       });
     });
+  });
+});
+
+describe("getPendingRevocationState", () => {
+  it("blocks Revoke while a revocation policy covers the certificate", () => {
+    expect(
+      getPendingRevocationState({
+        hasPendingRequest: true,
+        isRevoked: false,
+        isRevocationApprovalRequired: true
+      })
+    ).toEqual({ isPending: true, revokeBlockedReason: PENDING_REVOCATION_REASON });
+  });
+
+  it("shows the request but lets Revoke through once no policy covers the certificate", () => {
+    expect(
+      getPendingRevocationState({
+        hasPendingRequest: true,
+        isRevoked: false,
+        isRevocationApprovalRequired: false
+      })
+    ).toEqual({ isPending: true, revokeBlockedReason: undefined });
+  });
+
+  it("ignores a request left on a certificate that is already revoked", () => {
+    [true, false].forEach((isRevocationApprovalRequired) => {
+      expect(
+        getPendingRevocationState({
+          hasPendingRequest: true,
+          isRevoked: true,
+          isRevocationApprovalRequired
+        })
+      ).toEqual({ isPending: false, revokeBlockedReason: undefined });
+    });
+  });
+
+  it("does nothing without a pending request", () => {
+    expect(
+      getPendingRevocationState({
+        hasPendingRequest: false,
+        isRevoked: false,
+        isRevocationApprovalRequired: true
+      })
+    ).toEqual({ isPending: false, revokeBlockedReason: undefined });
   });
 });
 

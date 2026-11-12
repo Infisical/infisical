@@ -95,7 +95,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { getCertManagerLink } from "../../cert-manager-link";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
-import { BlockedActionTooltip, PENDING_REVOCATION_REASON } from "./BlockedActionTooltip";
+import { BlockedActionTooltip } from "./BlockedActionTooltip";
 import {
   canRenewOnExistingKeyPair,
   canRevokeAfterDeletion,
@@ -104,6 +104,7 @@ import {
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
+  getPendingRevocationState,
   isExpiringWithinOneDay,
   isManagedCertificate,
   RENEWAL_UNAVAILABLE_NO_PROFILE
@@ -144,6 +145,7 @@ type Props = {
       hasPrivateKey?: boolean;
       canRevoke?: boolean;
       isRevocableAfterDeletion?: boolean;
+      isRevocationApprovalRequired?: boolean;
       applicationId?: string | null;
     }
   ) => void;
@@ -919,15 +921,16 @@ export const CertificatesTable = ({
                   const canReadCertificate =
                     permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
                     canReadAtApplication;
+                  const isRevocationApprovalRequired = Boolean(
+                    certificate.profileName &&
+                    revocationPolicyProfileNames?.has(certificate.profileName)
+                  );
                   const rowApplicationAccess =
                     applicationId && certificate.applicationId
                       ? getApplicationCertificateAccess({
                           applicationName: applicationName ?? "this application",
                           permission: appPermissionData?.permission,
-                          isRevocationApprovalRequired: Boolean(
-                            certificate.profileName &&
-                            revocationPolicyProfileNames?.has(certificate.profileName)
-                          )
+                          isRevocationApprovalRequired
                         })
                       : undefined;
                   const canEditCertificate = rowApplicationAccess
@@ -951,7 +954,11 @@ export const CertificatesTable = ({
                     certificate,
                     certificateCaType
                   );
-                  const hasPendingRevocation = Boolean(pendingRevocations?.has(certificate.id));
+                  const pendingRevocation = getPendingRevocationState({
+                    hasPendingRequest: Boolean(pendingRevocations?.has(certificate.id)),
+                    isRevoked,
+                    isRevocationApprovalRequired
+                  });
                   const canOfferRevoke =
                     canRevokeCertificate &&
                     !isRevoked &&
@@ -1016,7 +1023,7 @@ export const CertificatesTable = ({
                         <TableCell>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
-                            {hasPendingRevocation && (
+                            {pendingRevocation.isPending && (
                               <Badge variant="warning">Revocation Pending</Badge>
                             )}
                           </div>
@@ -1382,20 +1389,24 @@ export const CertificatesTable = ({
                                 )}
                               {(() => {
                                 if (!canOfferRevoke) return null;
-                                const revokeBlockedReason = hasPendingRevocation
-                                  ? PENDING_REVOCATION_REASON
-                                  : rowApplicationAccess?.revokeBlockedReason;
+                                const revokeBlockedReason =
+                                  pendingRevocation.revokeBlockedReason ??
+                                  rowApplicationAccess?.revokeBlockedReason;
 
                                 return (
                                   <BlockedActionTooltip reason={revokeBlockedReason}>
                                     <DropdownMenuItem
                                       variant="danger"
-                                      isDisabled={!hasRevokePermission || hasPendingRevocation}
+                                      isDisabled={
+                                        !hasRevokePermission ||
+                                        Boolean(pendingRevocation.revokeBlockedReason)
+                                      }
                                       isDisabledFocusable={Boolean(revokeBlockedReason)}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("revokeCertificate", {
-                                          certificateId: certificate.id
+                                          certificateId: certificate.id,
+                                          isRevocationApprovalRequired
                                         });
                                       }}
                                     >

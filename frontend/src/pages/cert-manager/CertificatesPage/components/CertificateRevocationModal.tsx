@@ -46,6 +46,11 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
+type TRevokeCertificatePopUpData = {
+  certificateId: string;
+  isRevocationApprovalRequired?: boolean;
+};
+
 type Props = {
   popUp: UsePopUpState<["revokeCertificate"]>;
   handlePopUpToggle: (
@@ -58,6 +63,8 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
   const revocationReasonId = useId();
   const { currentProject } = useProject();
   const { mutateAsync: revokeCertificate } = useRevokeCert();
+  const popUpData = popUp.revokeCertificate.data as TRevokeCertificatePopUpData | undefined;
+  const isRevocationApprovalRequired = Boolean(popUpData?.isRevocationApprovalRequired);
 
   const {
     control,
@@ -69,12 +76,10 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
   });
 
   const onFormSubmit = async ({ revocationReason }: FormData) => {
-    if (!currentProject?.slug) return;
-
-    const { certificateId } = popUp.revokeCertificate.data as { certificateId: string };
+    if (!currentProject?.slug || !popUpData) return;
 
     const response = await revokeCertificate({
-      id: certificateId,
+      id: popUpData.certificateId,
       revocationReason
     });
 
@@ -115,7 +120,11 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
       <DialogContent isPending={isSubmitting}>
         <DialogHeader>
           <DialogTitle>Revoke Certificate</DialogTitle>
-          <DialogDescription>Mark this certificate as revoked.</DialogDescription>
+          <DialogDescription>
+            {isRevocationApprovalRequired
+              ? "Submitting creates an approval request, and the certificate stays active until it's approved."
+              : "Mark this certificate as revoked."}
+          </DialogDescription>
         </DialogHeader>
         <form className="flex min-h-0 flex-1 flex-col gap-6" onSubmit={handleSubmit(onFormSubmit)}>
           <DialogBody>
@@ -163,7 +172,7 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
               </Button>
             </DialogClose>
             <Button variant="danger" type="submit" isPending={isSubmitting}>
-              Revoke
+              {isRevocationApprovalRequired ? "Request Revocation" : "Revoke"}
             </Button>
           </DialogFooter>
         </form>
