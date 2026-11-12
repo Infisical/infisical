@@ -636,7 +636,7 @@ export type TDynamicSecretProvider =
       inputs: {
         managementKey?: string;
         workspaceId?: string;
-        limit?: number;
+        limit?: string;
         limitReset?: OpenRouterLimitReset;
         includeByokInLimit?: boolean;
       };

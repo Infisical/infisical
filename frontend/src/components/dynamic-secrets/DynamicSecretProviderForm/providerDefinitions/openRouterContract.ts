@@ -30,7 +30,15 @@ type TOpenRouterInputs = Extract<
 
 const openRouterInputFields = {
   workspaceId: z.string().trim().max(100).optional(),
-  limit: z.number().min(0, "Credit limit cannot be negative").optional(),
+  limit: z
+    .string()
+    .trim()
+    .max(32)
+    .refine(
+      (value) => !value || /^\d+(\.\d+)?$/.test(value),
+      "Credit limit must be a non-negative number, such as 10 or 2.5"
+    )
+    .optional(),
   limitReset: z.union([z.nativeEnum(OpenRouterLimitReset), z.literal(OPEN_ROUTER_NO_LIMIT_RESET)]),
   includeByokInLimit: z.boolean()
 };
@@ -59,7 +67,7 @@ export const openRouterEditFormSchema = editDynamicSecretProviderFormSchema(
 const buildInputs = (inputs: TOpenRouterFormValues["inputs"]): TOpenRouterInputs => ({
   ...(inputs.managementKey ? { managementKey: inputs.managementKey } : {}),
   workspaceId: inputs.workspaceId || undefined,
-  limit: inputs.limit,
+  limit: inputs.limit || undefined,
   limitReset: inputs.limitReset === OPEN_ROUTER_NO_LIMIT_RESET ? undefined : inputs.limitReset,
   includeByokInLimit: inputs.includeByokInLimit
 });
@@ -75,7 +83,7 @@ export const getOpenRouterCreateDefaultValues = (
   inputs: {
     managementKey: "",
     workspaceId: "",
-    limit: undefined,
+    limit: "",
     limitReset: OPEN_ROUTER_NO_LIMIT_RESET,
     includeByokInLimit: false
   }
@@ -94,7 +102,7 @@ export const getOpenRouterEditDefaultValues = (
     inputs: {
       managementKey: "",
       workspaceId: inputs.workspaceId ?? "",
-      limit: inputs.limit,
+      limit: inputs.limit ?? "",
       limitReset: inputs.limitReset ?? OPEN_ROUTER_NO_LIMIT_RESET,
       includeByokInLimit: inputs.includeByokInLimit ?? false
     }

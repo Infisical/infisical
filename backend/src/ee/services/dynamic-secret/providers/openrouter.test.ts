@@ -19,7 +19,7 @@ const MANAGEMENT_KEY = "sk-or-v1-management-key-value";
 const inputs = {
   managementKey: MANAGEMENT_KEY,
   workspaceId: "0df9e665-d932-5740-b2c7-b52af166bc11",
-  limit: 5,
+  limit: "2.5",
   limitReset: OpenRouterLimitReset.Daily,
   includeByokInLimit: true
 };
@@ -58,7 +58,7 @@ describe("OpenRouterProvider", () => {
     expect(body).toMatchObject({
       expires_at: "2026-11-12T15:00:00.000Z",
       workspace_id: inputs.workspaceId,
-      limit: 5,
+      limit: 2.5,
       limit_reset: "daily",
       include_byok_in_limit: true
     });
@@ -114,5 +114,25 @@ describe("OpenRouterProvider", () => {
     await expect(OpenRouterProvider().revoke(inputs, "hash-1", { projectId: "proj-1" })).rejects.toThrow(
       "Failed to delete OpenRouter API key: Rate limit exceeded"
     );
+  });
+});
+
+describe("DynamicSecretOpenRouterSchema", () => {
+  test.each(["0", "10", "2.5", " 3.75 "])("accepts the credit limit %j", async (limit) => {
+    await expect(
+      OpenRouterProvider().validateProviderInputs({ ...inputs, limit }, { projectId: "proj-1" })
+    ).resolves.toBeDefined();
+  });
+
+  test.each(["", "-1", "abc", "1e3", "0x10", "1.", ".5"])("rejects the credit limit %j", async (limit) => {
+    await expect(
+      OpenRouterProvider().validateProviderInputs({ ...inputs, limit }, { projectId: "proj-1" })
+    ).rejects.toThrow("Credit limit must be a non-negative number");
+  });
+
+  test("rejects a numeric credit limit", async () => {
+    await expect(
+      OpenRouterProvider().validateProviderInputs({ ...inputs, limit: 2.5 }, { projectId: "proj-1" })
+    ).rejects.toThrow();
   });
 });

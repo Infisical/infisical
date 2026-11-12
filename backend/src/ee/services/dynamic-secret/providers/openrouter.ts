@@ -86,7 +86,7 @@ export const OpenRouterProvider = (): TDynamicProviderFns => {
           // OpenRouter expires the key on its own at the lease expiry, even if the lease revocation never runs
           expires_at: new Date(expireAt).toISOString(),
           workspace_id: providerInputs.workspaceId || undefined,
-          limit: providerInputs.limit,
+          limit: providerInputs.limit === undefined ? undefined : parseFloat(providerInputs.limit),
           limit_reset: providerInputs.limitReset,
           include_byok_in_limit: providerInputs.includeByokInLimit
         },

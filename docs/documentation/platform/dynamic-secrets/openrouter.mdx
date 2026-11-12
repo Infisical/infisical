@@ -51,8 +51,8 @@ Infisical uses the management key only to create and delete API keys. A manageme
       The ID of the OpenRouter workspace to create API keys in. If you leave this blank, OpenRouter creates keys in the default workspace of the management key.
     </ParamField>
 
-    <ParamField path="Credit Limit (USD)" type="number">
-      The most each API key can spend, in US dollars. If you leave this blank, the keys have no spending limit.
+    <ParamField path="Credit Limit (USD)" type="string">
+      The most each API key can spend, in US dollars, as a number such as `10` or `2.5`. If you leave this blank, the keys have no spending limit.
     </ParamField>
 
     <ParamField path="Limit Reset" type="string" default="Never">

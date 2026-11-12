@@ -28,11 +28,9 @@ const keySettingsFields = [
   },
   {
     name: "inputs.limit",
-    type: "number",
+    type: "text",
     label: "Credit Limit (USD)",
     placeholder: "No limit",
-    min: 0,
-    step: "any",
     isOptional: true,
     layout: "half"
   },
