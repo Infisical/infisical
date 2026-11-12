@@ -30,35 +30,17 @@ import {
   MsSqlConnectionMethod,
   TMsSqlConnection
 } from "@app/hooks/api/appConnections/types/mssql-connection";
+import { msSqlConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 import { PlatformManagedConfirmationModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/PlatformManagedConfirmationModal";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
-import {
-  BaseSqlUsernameAndPasswordConnectionSchema,
-  PlatformManagedNoticeBanner,
-  SqlConnectionFields
-} from "./shared";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
+import { PlatformManagedNoticeBanner, SqlConnectionFields } from "./shared";
 
 type Props = {
   appConnection?: TMsSqlConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.MsSql),
-  isPlatformManagedCredentials: z.boolean().optional()
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(MsSqlConnectionMethod.UsernameAndPassword),
-    credentials: BaseSqlUsernameAndPasswordConnectionSchema
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 
