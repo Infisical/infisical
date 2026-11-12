@@ -33,6 +33,7 @@ export async function up(knex: Knex): Promise<void> {
 
 // A session has at most 20 inline services, so a batch passes at most 10,000 service IDs to one query.
 const ROLLBACK_SESSION_BATCH_SIZE = 500;
+const ROLLBACK_BATCH_STATEMENT_TIMEOUT_MS = 60 * 1000;
 
 const restrictedInlineServices = (trx: Knex.Transaction) =>
   trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools");
@@ -47,19 +48,22 @@ const restrictedInlineServices = (trx: Knex.Transaction) =>
  * them can deadlock with it. It sets revokedAt only where revokeIfActive would: a session whose owner or on-behalf-of
  * user was deleted has already ended, and writing it would move the updatedAt that marks when.
  *
- * Sessions go in batches, each its own transaction, so no query's parameter list or transaction grows with history.
- * Every statement in a batch works on the sessions that batch read at its start. A session minted with a tool list
- * after that keeps it, so a later batch or the check in down finds it rather than this clearing its list unrevoked.
- * Returns how many sessions the batch handled; 0 means none are left.
+ * Sessions go in batches, each its own transaction with its own statement timeout, so no query's parameter list or
+ * transaction grows with history. Batches walk sessionId upward from the last one handled. Every statement in a batch
+ * works on the sessions that batch read at its start, so a session minted with a tool list after that, or behind the
+ * cursor, keeps its list and the check in down finds it, rather than this clearing its list without revoking it.
+ * Returns the last session the batch handled, or null when none are left.
  */
-const revokeBatchOfSessionsWithRestrictedInlineServices = (knex: Knex) =>
+const revokeBatchOfSessionsWithRestrictedInlineServices = (knex: Knex, after: string | null) =>
   knex.transaction(async (trx) => {
-    const sessionIds = (
-      (await restrictedInlineServices(trx).distinct("sessionId").limit(ROLLBACK_SESSION_BATCH_SIZE)) as {
-        sessionId: string;
-      }[]
-    ).map((row) => row.sessionId);
-    if (!sessionIds.length) return 0;
+    await trx.raw(`SET LOCAL statement_timeout = ${ROLLBACK_BATCH_STATEMENT_TIMEOUT_MS}`);
+    const query = restrictedInlineServices(trx)
+      .distinct("sessionId")
+      .orderBy("sessionId")
+      .limit(ROLLBACK_SESSION_BATCH_SIZE);
+    if (after) void query.where("sessionId", ">", after);
+    const sessionIds = ((await query) as { sessionId: string }[]).map((row) => row.sessionId);
+    if (!sessionIds.length) return null;
 
     const now = new Date();
     await trx(SESSION)
@@ -93,12 +97,15 @@ const revokeBatchOfSessionsWithRestrictedInlineServices = (knex: Knex) =>
     await trx(TableName.AgentVaultServiceSubstitution)
       .whereIn("serviceId", withSecrets)
       .update({ encryptedValue: null });
-    return sessionIds.length;
+    return sessionIds[sessionIds.length - 1];
   });
 
 export async function down(knex: Knex): Promise<void> {
-  // eslint-disable-next-line no-await-in-loop -- batches run one after another on purpose
-  while ((await revokeBatchOfSessionsWithRestrictedInlineServices(knex)) > 0);
+  let cursor: string | null = null;
+  do {
+    // eslint-disable-next-line no-await-in-loop -- batches run one after another on purpose
+    cursor = await revokeBatchOfSessionsWithRestrictedInlineServices(knex, cursor);
+  } while (cursor);
   await replaceInlineOnlyCheck(
     knex,
     `"sessionId" IS NULL OR ("memberProvidedFields" IS NULL AND "credentialType" <> 'oauth' AND "allowedTools" IS NULL)`,
