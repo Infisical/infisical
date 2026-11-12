@@ -254,7 +254,7 @@ export const preservesFolderStructure = ({
   destination: SecretSync;
   destinationConfig: unknown;
   includeAllSubFolders: boolean;
-  syncOptions?: { preserveFolderStructure?: boolean };
+  syncOptions?: Record<string, unknown>;
 }) =>
   includeAllSubFolders &&
   Boolean(syncOptions?.preserveFolderStructure) &&

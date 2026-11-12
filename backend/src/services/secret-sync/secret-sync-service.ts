@@ -304,6 +304,22 @@ export const secretSyncServiceFactory = ({
     }
   };
 
+  // Checked here rather than in the destination's schema because an update can leave
+  // includeAllSubFolders out, and only the service knows the stored value it falls back to.
+  const $assertPreserveFolderStructureHasSubFolders = ({
+    includeAllSubFolders,
+    syncOptions
+  }: {
+    includeAllSubFolders: boolean;
+    syncOptions?: Record<string, unknown>;
+  }) => {
+    if (!includeAllSubFolders && syncOptions?.preserveFolderStructure)
+      throw new BadRequestError({
+        message:
+          "Preserving folder structure only applies to a sync that includes subfolders. Turn on subfolders, or turn off preserving folder structure."
+      });
+  };
+
   // Lets the frontend check for duplicate-name conflicts while the user is still on the Source
   // step, before a provider or destination is even chosen: the check is destination-agnostic
   // (flatten() never uses the destination or the source folder path to build a key), so nothing
@@ -686,11 +702,7 @@ export const secretSyncServiceFactory = ({
           "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
       });
 
-    if (!includeAllSubFolders && (requestedSyncOptions as { preserveFolderStructure?: boolean })?.preserveFolderStructure)
-      throw new BadRequestError({
-        message:
-          "Preserving folder structure only applies to a sync that includes subfolders. Turn on subfolders, or turn off preserving folder structure."
-      });
+    $assertPreserveFolderStructureHasSubFolders({ includeAllSubFolders, syncOptions: requestedSyncOptions });
 
     await $assertCanReadSyncedFolders(projectPermission, {
       projectId,
@@ -965,11 +977,7 @@ export const secretSyncServiceFactory = ({
           "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
       });
 
-    if (!includeAllSubFolders && (resolvedOptions as { preserveFolderStructure?: boolean }).preserveFolderStructure)
-      throw new BadRequestError({
-        message:
-          "Preserving folder structure only applies to a sync that includes subfolders. Turn on subfolders, or turn off preserving folder structure."
-      });
+    $assertPreserveFolderStructureHasSubFolders({ includeAllSubFolders, syncOptions: resolvedOptions });
 
     // Every update to a sync that includes subfolders re-authorizes the whole subtree, because an
     // actor holding Edit on the source folder can otherwise repoint it at a destination they control
