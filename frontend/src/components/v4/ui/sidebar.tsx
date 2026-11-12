@@ -979,7 +979,9 @@ const RoutedSidebar = ({ links, ...props }: SidebarProps & { links: readonly Sid
     const exact = Boolean(matchRoute({ ...link, fuzzy: false }));
     if (!exact && (item.link?.activeOptions?.exact || !matchRoute({ ...link, fuzzy: true })))
       return;
-    const rank = (exact ? 1e6 : 0) + router.buildLocation(link).pathname.length;
+    const rank =
+      (exact ? 1e6 : 0) +
+      router.buildLocation(link as Parameters<typeof router.buildLocation>[0]).pathname.length;
     if (!routed || rank > routed.rank) routed = { id: item.id, rank };
   });
   return <SidebarView {...props} current={routed?.id ?? props.current} />;

@@ -135,7 +135,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/dropdown-menu/default.tsx`; its relative imports are generated for that exact path. States: default, disabled.
 
-Registry items used: @infisical/button, @infisical/dropdown-menu. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/dropdown-menu. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -215,7 +215,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/dropdown-menu/states.tsx`; its relative imports are generated for that exact path. States: default, disabled.
 
-Registry items used: @infisical/button, @infisical/dropdown-menu. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/dropdown-menu. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -273,7 +273,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/dropdown-menu/placements.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/dropdown-menu. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/dropdown-menu. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -328,7 +328,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/dropdown-menu/disabled-reason.tsx`; its relative imports are generated for that exact path. States: disabled, keyboard.
 
-Registry items used: @infisical/button, @infisical/dropdown-menu, @infisical/icon. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/dropdown-menu, @cipher/icon. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";

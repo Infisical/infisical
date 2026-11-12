@@ -25,6 +25,7 @@
     "ui:check": "node --import tsx scripts/generate-ui.ts --check",
     "ui:lint": "node --import tsx scripts/check-v4.ts",
     "ui:info": "node --import tsx scripts/ui-info.ts",
+    "cipher:release": "npm run ui:generate && node --import tsx scripts/release-cipher.ts",
     "v4:parity": "node --import tsx scripts/v4-route-parity.ts"
   },
   "overrides": {

@@ -22,6 +22,15 @@ import { v4Checks } from "./check-v4";
 
 const root = path.resolve(import.meta.dirname, "..");
 const componentRoot = "src/components/v4";
+const registryName = "cipher";
+const baseItemName = `${registryName}-base`;
+const registryItem = (name: string) => `@${registryName}/${name}`;
+const excludedFromRegistry: Record<string, string> = {
+  "app-connection-form":
+    "Builds Infisical App Connection forms; its presets, schemas and redirect flow live in the Infisical app.",
+  "provider-icon":
+    "Loads integration logos from the Infisical app's /images/integrations assets, which the registry does not ship."
+};
 const check = process.argv.includes("--check");
 const failures: string[] = [];
 const generated = new Set<string>();
@@ -1083,6 +1092,12 @@ const portablePresentation = async (file: string) => {
 
 const portable = async (file: string) =>
   (await portablePresentation(file))
+    .replace(/^@source "\.\.\/\.\.\/pages\/.+";\n/gm, (match) =>
+      file === `${componentRoot}/v4.css` ? "" : match
+    )
+    .replace('@source "./ui";\n', (match) =>
+      file === `${componentRoot}/v4.css` ? `${match}@source "./patterns";\n` : match
+    )
     .replace(/(["'])@app\/components\/v4\/([^"']+)\1/g, (_match, quote, suffix) => {
       let relative = path.posix.relative(path.posix.dirname(file), `${componentRoot}/${suffix}`);
       if (!relative.startsWith(".")) relative = `./${relative}`;
@@ -1116,7 +1131,7 @@ for (const definition of componentCatalog) {
         importsFrom(file).flatMap((specifier) => {
           const local = localFile(file, specifier);
           return local && knownModules.has(local)
-            ? [`@infisical/${path.basename(local, ".tsx")}`]
+            ? [registryItem(path.basename(local, ".tsx"))]
             : [];
         })
       )
@@ -1187,12 +1202,26 @@ const support = [
     !file.endsWith(".woff2") &&
     (!file.includes("/docs/") || generated.has(file))
 );
+const docsOnly = (file: string) =>
+  file === `${componentRoot}/AGENTS.md` ||
+  file.startsWith(`${componentRoot}/skills/`) ||
+  (file.startsWith(`${componentRoot}/docs/`) && file.endsWith(".md"));
+const internalOnly = [
+  `${componentRoot}/required-capabilities.json`,
+  `${componentRoot}/docs/components.json`,
+  `${componentRoot}/docs/coverage.json`
+];
+const docsFiles = support.filter(docsOnly);
+const baseFiles = support.filter(
+  (file) =>
+    !docsOnly(file) && !internalOnly.includes(file) && !file.startsWith(`${componentRoot}/assets/`)
+);
 const fileEntry = (file: string) => ({ path: file, type: "registry:file", target: file });
 const baseDependencies = new Set(["tailwindcss", "tw-animate-css"]);
-support.forEach((file) =>
+baseFiles.forEach((file) =>
   importsFrom(file).forEach((specifier) => {
     const local = localFile(file, specifier);
-    if (local && !support.includes(local))
+    if (local && !baseFiles.includes(local))
       failures.push(`Base support import is not shipped in base: ${file} -> ${local}`);
     else if (!local && (specifier.startsWith(".") || specifier.startsWith("@app/")))
       failures.push(`Unresolved support import: ${file} -> ${specifier}`);
@@ -1202,17 +1231,26 @@ support.forEach((file) =>
 );
 const items: Record<string, unknown>[] = [
   {
-    name: "infisical-base",
+    name: baseItemName,
     type: "registry:base",
-    description: "Infisical tokens, fonts, scoped portal support and contributor guidance.",
+    description:
+      "Cipher tokens, the Lightly Peach, Light and Dark themes, fonts, cn and scoped portal support.",
     dependencies: [...baseDependencies].sort().map(declaredPackage),
-    files: support.map(fileEntry)
+    files: baseFiles.map(fileEntry)
+  },
+  {
+    name: `${registryName}-docs`,
+    type: "registry:file",
+    description:
+      "Cipher usage rules, component guides and the agent skill, for people and coding agents.",
+    files: docsFiles.map(fileEntry)
   }
 ];
 [...knownModules].sort().forEach((file) => {
   const name = path.basename(file, ".tsx");
+  if (name in excludedFromRegistry) return;
   const dependencies = new Set<string>();
-  const registryDependencies = new Set(["@infisical/infisical-base"]);
+  const registryDependencies = new Set([registryItem(baseItemName)]);
   const extras = new Set<string>();
   const scanned = new Set<string>();
   const collect = (current: string) => {
@@ -1223,9 +1261,12 @@ const items: Record<string, unknown>[] = [
       if (local) {
         if (!local.startsWith(`${componentRoot}/`))
           failures.push(`Non-portable product import: ${current} -> ${local}`);
-        else if (knownModules.has(local))
-          registryDependencies.add(`@infisical/${path.basename(local, ".tsx")}`);
-        else if (!support.includes(local)) {
+        else if (knownModules.has(local)) {
+          const dependency = path.basename(local, ".tsx");
+          if (dependency in excludedFromRegistry)
+            failures.push(`Registry item ${name} depends on excluded ${dependency}`);
+          registryDependencies.add(registryItem(dependency));
+        } else if (!support.includes(local)) {
           extras.add(local);
           collect(local);
         }
@@ -1266,8 +1307,8 @@ const registryNames = new Set(items.map((item) => item.name));
 });
 const registry = {
   $schema: "https://ui.shadcn.com/schema/registry.json",
-  name: "infisical",
-  homepage: "https://infisical.com",
+  name: registryName,
+  homepage: "https://github.com/Infisical/infisical/tree/main/frontend/src/components/v4",
   items
 };
 emit("registry.json", json(registry));

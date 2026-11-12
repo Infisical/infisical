@@ -135,7 +135,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/file-tree/variants.tsx`; its relative imports are generated for that exact path. States: default, disabled.
 
-Registry items used: @infisical/file-tree. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/file-tree. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { FileTree, type FileTreeNode } from "../../../../components/v4/ui/file-tree";
@@ -181,7 +181,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/file-tree/states.tsx`; its relative imports are generated for that exact path. States: controlled, empty, keyboard.
 
-Registry items used: @infisical/file-tree. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/file-tree. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -252,7 +252,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/file-tree/picker.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard.
 
-Registry items used: @infisical/button, @infisical/file-tree, @infisical/popover. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/file-tree, @cipher/popover. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";

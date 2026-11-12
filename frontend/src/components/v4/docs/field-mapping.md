@@ -102,7 +102,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/field-mapping/default.tsx`; its relative imports are generated for that exact path. States: default, invalid.
 
-Registry items used: @infisical/badge, @infisical/field-mapping. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/field-mapping. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

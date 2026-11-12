@@ -1,0 +1,29 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "field-mapping",
+  "type": "registry:block",
+  "registryDependencies": [
+    "@cipher/badge",
+    "@cipher/cipher-base",
+    "@cipher/field",
+    "@cipher/icon",
+    "@cipher/input"
+  ],
+  "dependencies": [
+    "lucide-react@^0.544.0"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/patterns/field-mapping.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/patterns/field-mapping.tsx",
+      "content": "import * as React from \"react\";\nimport { ArrowRightIcon } from \"lucide-react\";\n\nimport { Badge } from \"../ui/badge\";\nimport { FieldError } from \"../ui/field\";\nimport { Icon, type IconName } from \"../ui/icon\";\nimport { Input, type InputProps } from \"../ui/input\";\n\nimport styles from \"./field-mapping.module.css\";\n\ntype FieldMappingSize = \"sm\" | \"md\" | \"lg\";\n\nconst FieldMappingContext = React.createContext<{ size: FieldMappingSize; targetHeader: string }>({\n  size: \"sm\",\n  targetHeader: \"Value\"\n});\n\nexport type FieldMappingProps = {\n  legend: string;\n  sourceHeader: string;\n  targetHeader: string;\n  targetHint?: React.ReactNode;\n  size?: FieldMappingSize;\n  children: React.ReactNode;\n};\n\nexport const FieldMapping = ({\n  legend,\n  sourceHeader,\n  targetHeader,\n  targetHint,\n  size = \"sm\",\n  children\n}: FieldMappingProps) => {\n  const context = React.useMemo(() => ({ size, targetHeader }), [size, targetHeader]);\n  return (\n    <fieldset className={styles.fieldMapping}>\n      <legend className={styles.legend}>{legend}</legend>\n      <div className={styles.grid} data-size={size}>\n        <span className={styles.head}>{sourceHeader}</span>\n        <span />\n        <span className={styles.head}>\n          {targetHeader}\n          {targetHint}\n        </span>\n        <FieldMappingContext.Provider value={context}>{children}</FieldMappingContext.Provider>\n      </div>\n    </fieldset>\n  );\n};\n\nexport type FieldMappingRowProps = Omit<InputProps, \"size\" | \"invalid\"> & {\n  source: string;\n  icon?: IconName;\n  error?: React.ReactNode;\n} & { ref?: React.Ref<HTMLInputElement> };\n\nexport const FieldMappingRow = ({ source, icon, error, ...props }: FieldMappingRowProps) => {\n  const { size, targetHeader } = React.useContext(FieldMappingContext);\n  return (\n    <div className={styles.row}>\n      <span className={styles.source}>\n        <Badge tone=\"soft\" size={`control-${size}`}>\n          {icon && <Icon name={icon} />}\n          {source}\n        </Badge>\n      </span>\n      <span className={styles.arrow} aria-hidden=\"true\">\n        <Icon icon={ArrowRightIcon} />\n      </span>\n      <div className={styles.target}>\n        <Input\n          aria-label={`${targetHeader} for ${source}`}\n          {...props}\n          size={size}\n          invalid={Boolean(error)}\n        />\n        {error && <FieldError>{error}</FieldError>}\n      </div>\n    </div>\n  );\n};\n"
+    },
+    {
+      "path": "src/components/v4/patterns/field-mapping.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/patterns/field-mapping.module.css",
+      "content": ".fieldMapping {\n  min-width: 0;\n  margin: 0;\n  padding: 0;\n  border: 0;\n}\n.legend {\n  position: absolute;\n  width: 1px;\n  height: 1px;\n  overflow: hidden;\n  clip-path: inset(50%);\n  white-space: nowrap;\n}\n.grid {\n  --v4-field-mapping-height: var(--v4-size-control-sm);\n  display: grid;\n  grid-template-columns: auto var(--v4-size-icon) minmax(0, 1fr);\n  gap: var(--v4-space-8) var(--v4-space-12);\n  align-items: start;\n}\n.grid[data-size=\"md\"] {\n  --v4-field-mapping-height: var(--v4-size-control-md);\n}\n.grid[data-size=\"lg\"] {\n  --v4-field-mapping-height: var(--v4-size-control-lg);\n}\n.head {\n  display: inline-flex;\n  align-items: center;\n  gap: var(--v4-space-4);\n  color: var(--v4-muted);\n  font-family: var(--v4-type-small-font-family);\n  font-size: var(--v4-type-small-font-size);\n  line-height: var(--v4-type-small-line-height);\n}\n.row {\n  display: contents;\n}\n.source {\n  display: flex;\n  min-width: 0;\n}\n.source > [data-slot=\"badge\"] {\n  width: 100%;\n  justify-content: flex-start;\n}\n.arrow {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  height: var(--v4-field-mapping-height);\n  color: var(--v4-muted);\n}\n.target {\n  display: flex;\n  flex-direction: column;\n  gap: var(--v4-space-field-label);\n  min-width: 0;\n}\n"
+    }
+  ]
+}

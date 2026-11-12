@@ -23,6 +23,8 @@ For the contribution workflow, read [Infisical UI](skills/infisical-ui/SKILL.md)
 
 Read the generated component guides in [docs/README.md](docs/README.md) or run `npm run ui:info -- <name>` from frontend. `npm run ui:generate` refreshes tokens, the catalog, documentation and standard registry payloads; `npm run ui:check` detects stale output and missing contracts. Start `npm run dev` and open `/design-system` in the app. Verification recipes in metadata are not passing evidence.
 
+The registry is published publicly as Cipher (`@cipher/<item>`, base item `cipher-base`); see [cipher/README.md](../../../../cipher/README.md). `npm run cipher:release` regenerates it and copies the payloads to `cipher/r/`, which consumers fetch from raw GitHub URLs, so run it only for a release. Every registry file must work outside this app: an item that needs Infisical data, routes or app assets goes in `excludedFromRegistry` in `scripts/generate-ui.ts` with its reason, and generation fails when a published item depends on an excluded one.
+
 ## Human examples
 
 Use the shared preview frame and ExampleGrid, ExampleCell and ExampleStage presentation components. Compare supported variants, distinct sizes and applicable states as labeled peers. Captions sit 8px below their own specimen and describe its actual state. Specimens and captions align to the start, and specimens in a row share a bottom baseline, so the captions of a row line up. Equal-appearance aliases share one specimen. Keep specimens in one row of similar height; give a much taller one its own row.

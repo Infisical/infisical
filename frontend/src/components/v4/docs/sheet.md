@@ -137,7 +137,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/sheet/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -176,7 +176,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sheet/placements.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -222,7 +222,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sheet/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/field, @infisical/input, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/field, @cipher/input, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -282,7 +282,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sheet/behavior.tsx`; its relative imports are generated for that exact path. States: controlled, overflow.
 
-Registry items used: @infisical/button, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -326,7 +326,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sheet/subheader.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/code, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/code, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -396,7 +396,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sheet/pending.tsx`; its relative imports are generated for that exact path. States: controlled, loading, editing.
 
-Registry items used: @infisical/alert-dialog, @infisical/button, @infisical/field, @infisical/input, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/button, @cipher/field, @cipher/input, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useId, useState } from "react";
@@ -488,7 +488,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sheet/form.tsx`; its relative imports are generated for that exact path. States: controlled, overflow, success.
 
-Registry items used: @infisical/button, @infisical/field, @infisical/input, @infisical/layout, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/field, @cipher/input, @cipher/layout, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -581,7 +581,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sheet/wrapped-sections.tsx`; its relative imports are generated for that exact path. States: overflow.
 
-Registry items used: @infisical/button, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/sheet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";

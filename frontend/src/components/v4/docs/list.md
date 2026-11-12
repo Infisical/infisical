@@ -205,7 +205,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/list/default.tsx`; its relative imports are generated for that exact path. States: default, empty.
 
-Registry items used: @infisical/button, @infisical/empty, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/empty, @cipher/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -272,7 +272,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/list/interactive.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard, disabled.
 
-Registry items used: @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -378,7 +378,7 @@ export default function Interactive() {
 
 Save this example at `src/pages/design-system/examples/list/variants.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { List, ListRow, ListSection } from "../../../../components/v4/ui/list";
@@ -468,7 +468,7 @@ export default function Variants() {
 
 Save this example at `src/pages/design-system/examples/list/segmented-divided.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/item, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/item, @cipher/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -573,7 +573,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/list/density.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/badge, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";

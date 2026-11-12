@@ -198,7 +198,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/loader/default.tsx`; its relative imports are generated for that exact path. States: loading, default.
 
-Registry items used: @infisical/badge, @infisical/button, @infisical/item, @infisical/list, @infisical/loader, @infisical/skeleton. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/item, @cipher/list, @cipher/loader, @cipher/skeleton. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -305,7 +305,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/loader/boot.tsx`; its relative imports are generated for that exact path. States: loading.
 
-Registry items used: @infisical/boot-loader. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/boot-loader. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { BootLoader } from "../../../../components/v4/ui/boot-loader";
@@ -332,7 +332,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/loader/route-progress.tsx`; its relative imports are generated for that exact path. States: loading, default.
 
-Registry items used: @infisical/button, @infisical/route-progress, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/route-progress, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useState } from "react";

@@ -172,7 +172,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/sidebar/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/sidebar. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/sidebar. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -293,7 +293,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sidebar/scopes.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/sidebar. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/sidebar. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -421,7 +421,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sidebar/routes.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
 
-Registry items used: @infisical/sidebar. Additional packages: @tanstack/react-router@^1.95.1. Install every listed item before compiling this example.
+Registry items used: @cipher/sidebar. Additional packages: @tanstack/react-router@^1.95.1. Install every listed item before compiling this example.
 
 ```tsx
 import { linkOptions } from "@tanstack/react-router";

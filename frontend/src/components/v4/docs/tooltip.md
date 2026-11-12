@@ -121,7 +121,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/tooltip/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/tooltip. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -161,7 +161,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/tooltip/placements.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/tooltip. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -200,7 +200,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/tooltip/parts.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard.
 
-Registry items used: @infisical/button, @infisical/command-menu, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/command-menu, @cipher/tooltip. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { type KeyboardEvent, useRef, useState } from "react";
@@ -296,7 +296,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/tooltip/text.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
 
-Registry items used: @infisical/text, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/text, @cipher/tooltip. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { StatusText } from "../../../../components/v4/ui/text";
@@ -337,7 +337,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/tooltip/disabled.tsx`; its relative imports are generated for that exact path. States: disabled, keyboard, loading.
 
-Registry items used: @infisical/button, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/tooltip. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";

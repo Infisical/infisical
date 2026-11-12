@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "detail",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@cipher/cipher-base"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/detail.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/detail.tsx",
+      "content": "import * as React from \"react\";\n\nimport { cn } from \"../lib/utils\";\n\nimport styles from \"./detail.module.css\";\n\nfunction Detail({\n  className,\n  ref,\n  ...props\n}: React.ComponentPropsWithoutRef<\"dl\"> & { ref?: React.Ref<HTMLDListElement> }) {\n  return <dl ref={ref} data-slot=\"detail\" className={cn(styles.detail, className)} {...props} />;\n}\n\nfunction DetailLabel({\n  className,\n  ref,\n  ...props\n}: React.ComponentPropsWithoutRef<\"dt\"> & { ref?: React.Ref<HTMLElement> }) {\n  return (\n    <dt ref={ref} data-slot=\"detail-label\" className={cn(styles.label, className)} {...props} />\n  );\n}\n\nfunction DetailValue({\n  className,\n  ref,\n  ...props\n}: React.ComponentPropsWithoutRef<\"dd\"> & { ref?: React.Ref<HTMLElement> }) {\n  return (\n    <dd ref={ref} data-slot=\"detail-value\" className={cn(styles.value, className)} {...props} />\n  );\n}\n\nfunction DetailGroup({\n  className,\n  ref,\n  ...props\n}: React.ComponentPropsWithoutRef<\"div\"> & { ref?: React.Ref<HTMLDivElement> }) {\n  return (\n    <div ref={ref} data-slot=\"detail-group\" className={cn(styles.group, className)} {...props} />\n  );\n}\n\nfunction DetailGroupHeader({\n  className,\n  level = 3,\n  action,\n  children,\n  ref,\n  ...props\n}: React.ComponentPropsWithoutRef<\"div\"> & {\n  level?: 2 | 3 | 4 | 5 | 6;\n  action?: React.ReactNode;\n  ref?: React.Ref<HTMLDivElement>;\n}) {\n  const Heading = `h${level}` as const;\n  return (\n    <div\n      ref={ref}\n      data-slot=\"detail-group-header\"\n      className={cn(styles.header, className)}\n      {...props}\n    >\n      <Heading className={styles.title}>{children}</Heading>\n      {action && <div className={styles.action}>{action}</div>}\n    </div>\n  );\n}\n\nexport { Detail, DetailGroup, DetailGroupHeader, DetailLabel, DetailValue };\n"
+    },
+    {
+      "path": "src/components/v4/ui/detail.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/detail.module.css",
+      "content": ".detail {\n  display: flex;\n  flex-direction: column;\n  gap: var(--v4-space-4);\n  min-width: 0;\n  margin: 0;\n}\n.label {\n  font-family: var(--v4-type-caption-font-family);\n  font-size: var(--v4-type-caption-font-size);\n  line-height: var(--v4-type-caption-line-height);\n  font-weight: var(--v4-type-caption-font-weight);\n  letter-spacing: var(--v4-type-caption-letter-spacing);\n  color: var(--v4-muted);\n}\n.value {\n  font-family: var(--v4-type-body-font-family);\n  font-size: var(--v4-type-body-font-size);\n  line-height: var(--v4-type-body-line-height);\n  font-weight: var(--v4-type-body-font-weight);\n  letter-spacing: var(--v4-type-body-letter-spacing);\n  min-width: 0;\n  margin: 0;\n  color: var(--v4-ink);\n  overflow-wrap: anywhere;\n}\n.group {\n  display: flex;\n  flex-direction: column;\n  gap: var(--v4-space-16);\n  min-width: 0;\n}\n.header {\n  display: flex;\n  align-items: center;\n  gap: var(--v4-space-8);\n  min-width: 0;\n}\n.title {\n  font-family: var(--v4-type-label-font-family);\n  font-size: var(--v4-type-label-font-size);\n  line-height: var(--v4-type-label-line-height);\n  font-weight: var(--v4-type-label-font-weight);\n  letter-spacing: var(--v4-type-label-letter-spacing);\n  flex: 1 1 auto;\n  min-width: 0;\n  margin: 0;\n  color: var(--v4-ink);\n}\n.action {\n  display: flex;\n  flex: none;\n  align-items: center;\n  gap: var(--v4-space-4);\n}\n"
+    }
+  ]
+}

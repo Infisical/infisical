@@ -108,7 +108,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/settings-card/default.tsx`; its relative imports are generated for that exact path. States: default, editing, loading, success, error, disabled, read-only.
 
-Registry items used: @infisical/alert-dialog, @infisical/badge, @infisical/button, @infisical/field, @infisical/input, @infisical/settings-card, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/badge, @cipher/button, @cipher/field, @cipher/input, @cipher/settings-card, @cipher/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -258,7 +258,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/settings-card/embedded-table.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/data-table, @infisical/field, @infisical/input, @infisical/settings-card. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/data-table, @cipher/field, @cipher/input, @cipher/settings-card. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

@@ -96,7 +96,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/empty-state/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/empty. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -123,7 +123,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/empty-state/secondary-action.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/empty. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -159,7 +159,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/empty-state/bare.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/empty. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { EmptyState } from "../../../../components/v4/ui/empty";
@@ -185,7 +185,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/empty-state/small.tsx`; its relative imports are generated for that exact path. States: empty, controlled.
 
-Registry items used: @infisical/button, @infisical/empty, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/empty, @cipher/list. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -233,7 +233,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/empty-state/parts.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/empty, @infisical/icon. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/empty, @cipher/icon. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
