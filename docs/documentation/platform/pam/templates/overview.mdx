@@ -56,10 +56,10 @@ Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overvie
 
 ### Output masking
 
-Infisical can only mask text, so on accounts that use **Output Masking**, it blocks the data it can't mask:
+On accounts that use **Output Masking**, Infisical blocks the output it can't reliably mask:
 
 - **SSH:** File transfers (SFTP and SCP) and port forwarding
-- **PostgreSQL:** Binary `COPY` output (Infisical masks text and CSV `COPY` output)
+- **PostgreSQL:** `COPY ... TO STDOUT` and replication (use `SELECT` instead of `COPY`)
 
 In PostgreSQL query results, if a number or another value that isn't text matches, the user sees `NULL` instead. Sessions on these accounts fail to start until you update the account's Gateway to the latest version.
 
