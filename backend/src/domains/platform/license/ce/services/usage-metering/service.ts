@@ -1,7 +1,6 @@
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
-import { InstanceType } from "../../models/instance-entitlements";
 import { Meter } from "../../models/meter";
 import { CounterRegistry } from "../helpers/usage-counters";
 import { UsageQueue } from "../helpers/usage-queue";
@@ -27,35 +26,33 @@ export type TUsageMeteringService = {
   syncSeats(orgId: string): Promise<void>;
 };
 
-export type TUsageMeteringServiceDeps = {
-  counters: CounterRegistry;
-  usageQueue: UsageQueue;
-  licenseService: TLicenseService;
-  organizationsProjectsService: TOrganizationsProjectsService;
-};
-
 export class UsageMeteringService implements TUsageMeteringService {
-  constructor(private readonly deps: TUsageMeteringServiceDeps) {}
+  constructor(
+    private readonly counterRegistry: CounterRegistry,
+    private readonly usageQueue: UsageQueue,
+    private readonly licenseService: TLicenseService,
+    private readonly organizationsProjectsService: TOrganizationsProjectsService
+  ) {}
 
   async countUsage(orgId: string, meter: Meter): Promise<number | null> {
-    const counter = this.deps.counters.get(meter);
+    const counter = this.counterRegistry.get(meter);
     if (!counter) return null;
-    return counter.count(this.deps.licenseService.getInstanceType() === InstanceType.Cloud ? orgId : null);
+    return counter.count(this.licenseService.getInstanceEntitlements().isCloud() ? orgId : null);
   }
 
   emit(orgId: string, meter: Meter): void {
-    this.deps.usageQueue.emit(orgId, meter);
+    this.usageQueue.emit(orgId, meter);
   }
 
   recordMeteringEvents(orgId: string, events: TMeteringEventInput[]): void {
-    this.deps.usageQueue.recordMeteringEvents(orgId, events);
+    this.usageQueue.recordMeteringEvents(orgId, events);
   }
 
   async syncSeats(orgId: string): Promise<void> {
     try {
-      const rootOrgId = await this.deps.organizationsProjectsService.resolveRootOrgId(orgId);
-      this.deps.usageQueue.emit(rootOrgId, Meter.UserIdentities);
-      await this.deps.licenseService.refreshPlan(rootOrgId);
+      const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
+      this.usageQueue.emit(rootOrgId, Meter.UserIdentities);
+      await this.licenseService.refreshPlan(rootOrgId);
     } catch (error) {
       logger.error(error, `syncSeats: failed to sync seats [orgId=${orgId}]`);
     }

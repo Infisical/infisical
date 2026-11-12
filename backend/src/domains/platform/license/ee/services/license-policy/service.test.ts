@@ -43,11 +43,11 @@ const resolve = async ({
   const licenseServerClient: TLicenseServerEntitlements = {
     getEntitlements: async () => (onlineFails ? null : (onlineEntitlements ?? null))
   };
-  const policy = new LicensePolicyService({
+  const policy = new LicensePolicyService(
     isCloud,
-    licenseKeyConfig: getLicenseKeyConfig({ LICENSE_KEY: licenseKey, LICENSE_KEY_OFFLINE: licenseKeyOffline }),
+    getLicenseKeyConfig({ LICENSE_KEY: licenseKey, LICENSE_KEY_OFFLINE: licenseKeyOffline }),
     licenseServerClient
-  });
+  );
   return { policy, instance: await policy.resolveInstanceEntitlements() };
 };
 
@@ -213,16 +213,16 @@ const ROOT_ORG: TEntitlementOrg = { id: "root-org", name: "Acme", slug: "acme" }
 // Answers every read with the given entitlements, or null as when the License Server can't be read.
 const cloudPolicy = (answer: TEntitlementsResponse | null) => {
   const asked: TEntitlementOrg[] = [];
-  const policy = new LicensePolicyService({
-    isCloud: true,
-    licenseKeyConfig: { isValid: false },
-    licenseServerClient: {
+  const policy = new LicensePolicyService(
+    true,
+    { isValid: false },
+    {
       getEntitlements: async (org) => {
         asked.push(org);
         return answer;
       }
     }
-  });
+  );
   return { policy, asked };
 };
 

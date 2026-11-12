@@ -1,7 +1,7 @@
 import { InstanceType, TLicenseService } from "@app/domains/platform/license/ce/module";
 
 export const isInstanceWidePkiQuota = (licenseService: TLicenseService) => {
-  const instanceType = licenseService.getInstanceType();
+  const { instanceType } = licenseService.getInstanceEntitlements();
   return instanceType === InstanceType.EnterpriseOnPrem || instanceType === InstanceType.EnterpriseOnPremOffline;
 };
 

@@ -20,25 +20,23 @@ export const UsageQueues = {
 
 export type TMeteringEventPayload = TQueueJobTypes[QueueName.MeteringEvent]["payload"]["events"];
 
-export type TUsageQueueDeps = {
-  queueService: Pick<TQueueServiceFactory, "queue">;
-  licenseServer: TLicenseServer;
-  usageReportCache: TUsageReportCache;
-  counters: CounterRegistry;
-};
-
 const USAGE_DEBOUNCE_MS = 5000;
 
 // Never throws: the metered write already happened, and a lost report gets fixed by the next one or reconcile.
 export class UsageQueue {
-  constructor(private readonly deps: TUsageQueueDeps) {}
+  constructor(
+    private readonly queueService: Pick<TQueueServiceFactory, "queue">,
+    private readonly licenseServer: TLicenseServer,
+    private readonly usageReportCache: TUsageReportCache,
+    private readonly counterRegistry: CounterRegistry
+  ) {}
 
   // Debounced: replaces a pending event for the same org and dimension.
   emit(orgId: string, meter: Meter): void {
-    if (!this.deps.licenseServer.isEnabled()) return;
+    if (!this.licenseServer.isEnabled()) return;
     const dimensionKey = meter.key;
 
-    void this.deps.queueService
+    void this.queueService
       .queue(
         UsageQueues.usageEvent,
         UsageQueues.usageEventJob,
@@ -65,17 +63,17 @@ export class UsageQueue {
   }
 
   emitAll(orgId: string): void {
-    this.deps.counters.all().forEach((counter) => this.emit(orgId, counter.meter));
+    this.counterRegistry.all().forEach((counter) => this.emit(orgId, counter.meter));
   }
 
   // Reports only go out on metered writes, so a lost report (or an expired last-reported value) would stay
   // wrong until the next write. Once per interval per org, the first plan read resends every meter; the
   // worker skips the ones that didn't change.
   reconcile(orgId: string): void {
-    if (!this.deps.licenseServer.isEnabled()) return;
+    if (!this.licenseServer.isEnabled()) return;
 
     void (async () => {
-      if (!(await this.deps.usageReportCache.acquireReconcileMarker(orgId))) return;
+      if (!(await this.usageReportCache.acquireReconcileMarker(orgId))) return;
       this.emitAll(orgId);
     })().catch((error) => {
       logger.error(error, `usage-metering: failed to reconcile org usage [orgId=${orgId}]`);
@@ -85,7 +83,7 @@ export class UsageQueue {
   // Every event must be delivered, so no debounce or replace. The server accepts or rejects a request whole,
   // so one dimension per job: an unpriced dimension gets refused without taking other events down with it.
   recordMeteringEvents(orgId: string, events: TMeteringEventInput[]): void {
-    if (!this.deps.licenseServer.isEnabled() || !events.length) return;
+    if (!this.licenseServer.isEnabled() || !events.length) return;
 
     const byDimension = new Map<string, TMeteringEventPayload>();
     events.forEach((e) => {
@@ -108,7 +106,7 @@ export class UsageQueue {
     });
 
     chunks.forEach((chunk) => {
-      void this.deps.queueService
+      void this.queueService
         .queue(
           UsageQueues.meteringEvent,
           UsageQueues.meteringEventJob,

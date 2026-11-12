@@ -27,7 +27,7 @@ describe("LicenseService.getSeatUsage", () => {
     expect(counted).toEqual([ROOT.id]);
   });
 
-  test("should count every org on the instance for the instance's seat usage, even on cloud", async () => {
+  test("should count every org on the instance when no org is given, even on cloud", async () => {
     // Setup
     const { licenseService } = await buildLicense({
       organizations: {
@@ -36,7 +36,7 @@ describe("LicenseService.getSeatUsage", () => {
     });
 
     // Action
-    const usage = await licenseService.getInstanceSeatUsage();
+    const usage = await licenseService.getSeatUsage(null);
 
     // Assert
     expect(usage.identitiesUsed).toBe(9);

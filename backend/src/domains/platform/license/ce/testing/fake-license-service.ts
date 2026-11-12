@@ -31,10 +31,6 @@ export class FakeLicenseService implements TLicenseService {
 
   getInstanceEntitlements = () => InstanceEntitlements.restore(this.instance);
 
-  getInstanceType = () => this.instance.instanceType;
-
-  getLicenseId = () => this.instance.licenseId ?? "unknown";
-
   getPlan = async (orgId: string) => Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
 
   refreshPlan = async () => undefined;
@@ -49,8 +45,6 @@ export class FakeLicenseService implements TLicenseService {
   };
 
   getSeatUsage: TLicenseService["getSeatUsage"] = async () => noSeatsUsed();
-
-  getInstanceSeatUsage = async () => noSeatsUsed();
 
   getSeatCountScope = (orgId: string) => (this.instance.instanceType === InstanceType.Cloud ? orgId : null);
 

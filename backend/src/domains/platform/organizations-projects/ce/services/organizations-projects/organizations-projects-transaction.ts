@@ -17,17 +17,17 @@ const CountLocks = {
 };
 
 export class OrganizationsProjectsTransaction implements TOrganizationsProjectsTransaction {
-  constructor(private readonly runner: TTransactionRunner<TOrganizationsProjectsStore>) {}
+  constructor(private readonly transactionRunner: TTransactionRunner<TOrganizationsProjectsStore>) {}
 
   lockAndCountWorkspaces(orgId: string): Promise<number> {
-    return this.runner.run(async ({ store }) => {
+    return this.transactionRunner.run(async ({ store }) => {
       await store.locks.acquire(CountLocks.workspaces(orgId));
       return store.organizations.countWorkspaces(orgId);
     });
   }
 
   lockAndCountBillableOrgActors(orgId: string | null) {
-    return this.runner.run(async ({ store }) => {
+    return this.transactionRunner.run(async ({ store }) => {
       const rootOrgId = orgId === null ? null : await store.organizations.findRootOrgId(orgId);
       if (orgId !== null && rootOrgId === null) return null;
       await store.locks.acquire(CountLocks.billableActors(rootOrgId));

@@ -53,20 +53,18 @@ const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitleme
   });
 };
 
-export type TLicensePolicyServiceDeps = {
-  isCloud: boolean;
-  licenseKeyConfig: TLicenseKeyConfig;
-  licenseServerClient: TLicenseServerEntitlements;
-};
-
 // Decides what the instance and each cloud org are entitled to, from license keys and the License Server's answers.
 export class LicensePolicyService implements TLicensePolicyService {
-  constructor(private readonly deps: TLicensePolicyServiceDeps) {}
+  constructor(
+    private readonly isCloud: boolean,
+    private readonly licenseKeyConfig: TLicenseKeyConfig,
+    private readonly licenseServerEntitlements: TLicenseServerEntitlements
+  ) {}
 
   // The service key wins over a license key: it is what makes the instance Infisical Cloud. Anything that
   // fails to resolve leaves the community edition.
   async resolveInstanceEntitlements(): Promise<InstanceEntitlements> {
-    const { isCloud, licenseKeyConfig } = this.deps;
+    const { isCloud, licenseKeyConfig } = this;
     try {
       if (isCloud) return InstanceEntitlements.restore({ ...community().toJSON(), instanceType: InstanceType.Cloud });
       if (this.hasOnlineLicense()) return await this.readOnlineLicense();
@@ -80,8 +78,7 @@ export class LicensePolicyService implements TLicensePolicyService {
   }
 
   hasOnlineLicense(): boolean {
-    const { isCloud, licenseKeyConfig } = this.deps;
-    return !isCloud && licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online;
+    return !this.isCloud && this.licenseKeyConfig.isValid && this.licenseKeyConfig.type === LicenseType.Online;
   }
 
   // Nothing to invalidate first: the License Server answers live.
@@ -91,12 +88,12 @@ export class LicensePolicyService implements TLicensePolicyService {
   }
 
   isOffline(): boolean {
-    return isOfflineLicenseKey(this.deps.licenseKeyConfig);
+    return isOfflineLicenseKey(this.licenseKeyConfig);
   }
 
   // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
   async fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan> {
-    const entitlements = await this.deps.licenseServerClient.getEntitlements(rootOrg);
+    const entitlements = await this.licenseServerEntitlements.getEntitlements(rootOrg);
     if (!entitlements) {
       throw new ExternalSystemError({ message: "License Server entitlements are unavailable" });
     }
@@ -109,7 +106,7 @@ export class LicensePolicyService implements TLicensePolicyService {
   }
 
   private async readOnlineLicense(): Promise<InstanceEntitlements> {
-    const entitlements = await this.deps.licenseServerClient.getEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
+    const entitlements = await this.licenseServerEntitlements.getEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
     if (!entitlements) {
       throw new ExternalSystemError({ message: "License Server v2 entitlements are unavailable" });
     }

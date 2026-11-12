@@ -206,7 +206,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     lastName?: string,
     hubspotUtk?: string
   ) => {
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     if (
       appCfg.isProductionMode &&
       instanceType === InstanceType.Cloud &&
@@ -263,7 +263,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.name = orgName;
     }
 
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     properties.is_cloud = instanceType === InstanceType.Cloud;
     properties.instance_type = instanceType;
     properties.deployment_type = getDeploymentType(instanceType, appCfg);

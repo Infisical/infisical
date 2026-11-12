@@ -19,19 +19,21 @@ export class CertManagerModule {
   readonly usageCounters: TUsageCounter[];
 
   constructor({ db, organizationsProjectsService }: TCertManagerDeps) {
-    const certificateUsage = new CertificateUsageDataAccess(db);
-    this.service = new CertManagerService({ certificateUsage, organizationsProjectsService });
+    const certificateUsageDataAccess = new CertificateUsageDataAccess(db);
+    this.service = new CertManagerService(certificateUsageDataAccess, organizationsProjectsService);
 
     // These count the whole org tree, so report once at the root.
     this.usageCounters = [
-      { meter: Meter.InternalCas, count: (orgId) => certificateUsage.countInternalCas(orgId ?? undefined) },
+      { meter: Meter.InternalCas, count: (orgId) => certificateUsageDataAccess.countInternalCas(orgId ?? undefined) },
       {
         meter: Meter.ActiveCerts,
-        count: async (orgId) => (await certificateUsage.countActiveCertificateQuotaKeys(orgId ?? undefined)).total
+        count: async (orgId) =>
+          (await certificateUsageDataAccess.countActiveCertificateQuotaKeys(orgId ?? undefined)).total
       },
       {
         meter: Meter.WildcardCerts,
-        count: async (orgId) => (await certificateUsage.countActiveCertificateQuotaKeys(orgId ?? undefined)).wildcard
+        count: async (orgId) =>
+          (await certificateUsageDataAccess.countActiveCertificateQuotaKeys(orgId ?? undefined)).wildcard
       }
     ];
   }

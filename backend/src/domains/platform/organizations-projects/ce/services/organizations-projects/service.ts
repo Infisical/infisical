@@ -38,21 +38,19 @@ export type TOrganizationsProjectsService = {
   within(tx: TTransaction): TOrganizationsProjectsTransaction;
 };
 
-export type TOrganizationsProjectsServiceDeps = {
-  organizations: TOrganizationDataAccess;
-  billableActors: TBillableActorDataAccess;
-  runner: TTransactionRunner<TOrganizationsProjectsStore>;
-};
-
 export class OrganizationsProjectsService implements TOrganizationsProjectsService {
   private readonly rootOrgIds = new Map<string, string>();
 
-  constructor(private readonly deps: TOrganizationsProjectsServiceDeps) {}
+  constructor(
+    private readonly organizationDataAccess: TOrganizationDataAccess,
+    private readonly billableActorDataAccess: TBillableActorDataAccess,
+    private readonly transactionRunner: TTransactionRunner<TOrganizationsProjectsStore>
+  ) {}
 
   async findRootOrgId(orgId: string): Promise<string | null> {
     const cached = this.rootOrgIds.get(orgId);
     if (cached) return cached;
-    const root = await this.deps.organizations.findRootOrgId(orgId);
+    const root = await this.organizationDataAccess.findRootOrgId(orgId);
     if (!root) return null;
     if (this.rootOrgIds.size >= ROOT_ORG_CACHE_LIMIT) {
       const oldest = this.rootOrgIds.keys().next().value;
@@ -67,34 +65,34 @@ export class OrganizationsProjectsService implements TOrganizationsProjectsServi
   }
 
   findOrganization(orgId: string): Promise<TOrganization | null> {
-    return this.deps.organizations.findById(orgId);
+    return this.organizationDataAccess.findById(orgId);
   }
 
   countWorkspaces(orgId: string): Promise<number> {
-    return this.deps.organizations.countWorkspaces(orgId);
+    return this.organizationDataAccess.countWorkspaces(orgId);
   }
 
   countBillableOrgActors(orgId: string | null) {
-    return this.deps.billableActors.countBillableOrgActors(orgId);
+    return this.billableActorDataAccess.countBillableOrgActors(orgId);
   }
 
   getBillableIdentityOwnershipBreakdown(orgId: string | null) {
-    return this.deps.billableActors.getBillableIdentityOwnershipBreakdown(orgId);
+    return this.billableActorDataAccess.getBillableIdentityOwnershipBreakdown(orgId);
   }
 
   countProjectIdentities(projectType: ProjectType, orgId?: string) {
-    return this.deps.billableActors.countProjectIdentities(projectType, orgId);
+    return this.billableActorDataAccess.countProjectIdentities(projectType, orgId);
   }
 
   countProjectIdentitiesByKind(projectType: ProjectType, orgId?: string) {
-    return this.deps.billableActors.countProjectIdentitiesByKind(projectType, orgId);
+    return this.billableActorDataAccess.countProjectIdentitiesByKind(projectType, orgId);
   }
 
   getProjectIdentityBreakdown(projectType: ProjectType, orgId?: string) {
-    return this.deps.billableActors.getProjectIdentityOwnershipBreakdown(projectType, orgId);
+    return this.billableActorDataAccess.getProjectIdentityOwnershipBreakdown(projectType, orgId);
   }
 
   within(tx: TTransaction): TOrganizationsProjectsTransaction {
-    return new OrganizationsProjectsTransaction(this.deps.runner.within(tx));
+    return new OrganizationsProjectsTransaction(this.transactionRunner.within(tx));
   }
 }

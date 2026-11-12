@@ -93,10 +93,13 @@ lint keeps `unsealTransaction` inside `data-access/`. `tx` never goes to another
 
 ```ts
 export class KmsKeyService implements TKmsKeyService {
-  constructor(private readonly deps: { runner: TransactionRunner<TKmsCoreStore>; state: TKmsCoreState }) {}
+  constructor(
+    private readonly transactionRunner: TransactionRunner<TKmsCoreStore>,
+    private readonly state: TKmsCoreState
+  ) {}
 
   generateKmsKey(input: TCreateKmsKeyInput) {
-    return this.deps.runner.run(({ store }) => createKmsKey(store, this.deps.state, input));
+    return this.transactionRunner.run(({ store }) => createKmsKey(store, this.state, input));
   }
 }
 
@@ -110,7 +113,7 @@ export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, i
 
 Inside a domain:
 
-- A public service method calls `runner.run(...)` once. That's the one place deciding the transaction.
+- A public service method calls `transactionRunner.run(...)` once. That's the one place deciding the transaction.
 - Never call a public service method (any domain) inside `run`: it opens its own `run` and grabs a second
   connection while you hold the first. Share work through helpers that take `store`. Outside `run`, services
   in the same domain can call each other.
@@ -135,8 +138,8 @@ sequence of short, repeatable calls; the one exception is in "Sharing a transact
 
 ```ts
 async createSecret(input: TCreateSecretInput) {
-  const cipher = await this.deps.kmsKeyService.createCipherPairWithDataKey({ projectId: input.projectId });
-  return this.deps.runner.run(({ store }) =>
+  const cipher = await this.kmsKeyService.createCipherPairWithDataKey({ projectId: input.projectId });
+  return this.transactionRunner.run(({ store }) =>
     store.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
   );
 }
@@ -316,7 +319,9 @@ sets the pattern from the rules above, and its PR names it here.
 | Module | `<Domain>Module` in `ce/module.ts`, `<Domain>EeModule` in `ee/module.ts` | `StaticSecretsModule` |
 | Service | `class <Name>Service implements T<Name>Service`: both the class and its type end in `Service`. That holds for every class in `services/<name>/service.ts`, including one that queue jobs or a cron call and an EE class implementing a CE type. Name it for what it does, not how it is triggered (`UsageReportService`, not `UsageReportWorkerService`) | `LicenseService`, `UsageReportService`, `LicensePolicyService` |
 | Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |
-| Deps type | `T<Name>Deps`, named, beside the class, never inline | `TKmsCoreDeps` |
+| Service deps | Constructor parameter properties (`private readonly planCache: TPlanCache`), one per dependency, never a deps object. Only the module calls `new`, so the order is checked in one place | `LicenseService` |
+| Dependency name | The type's name without the `T`, in camelCase, so a field says what it holds: `counterRegistry: CounterRegistry`, `organizationDataAccess: TOrganizationDataAccess`, `transactionRunner: TTransactionRunner<...>`. Infrastructure handles keep the names the backend uses everywhere (`db`, `knex`, `trx`, `keyStore`, `queueService`) | `instanceEntitlementsHolder: InstanceEntitlementsHolder` |
+| Module deps | `T<Name>Deps`, named, beside the module, never inline: `domains.ts` passes it as an object | `TLicenseDeps` |
 | Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |
 | Store | `T<Domain>Store` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`); `build<Domain>Store` in `data-access/<domain>-store.ts` | `kms-core-store.ts` |
 | Transaction arg | `tx: TTransaction` | |

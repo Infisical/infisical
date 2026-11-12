@@ -19,14 +19,14 @@ export class OrganizationsProjectsModule {
 
   constructor({ db }: TOrganizationsProjectsDeps) {
     const replica = () => db.replicaNode();
-    this.service = new OrganizationsProjectsService({
-      organizations: new OrganizationDataAccess(replica),
-      billableActors: new BillableActorDataAccess(replica),
-      runner: new TransactionRunner<TOrganizationsProjectsStore>(db, (trx, locks) => ({
+    this.service = new OrganizationsProjectsService(
+      new OrganizationDataAccess(replica),
+      new BillableActorDataAccess(replica),
+      new TransactionRunner<TOrganizationsProjectsStore>(db, (trx, locks) => ({
         organizations: new OrganizationDataAccess(() => trx),
         billableActors: new BillableActorDataAccess(() => trx),
         locks
       }))
-    });
+    );
   }
 }

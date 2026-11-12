@@ -937,7 +937,7 @@ export const superAdminServiceFactory = ({
     }
 
     if (instancePlan.isLimited(PlanLimit.Identities)) {
-      const { identitiesUsed } = await licenseService.getInstanceSeatUsage();
+      const { identitiesUsed } = await licenseService.getSeatUsage(null);
       if (instancePlan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           name: "InviteUser",

@@ -27,10 +27,6 @@ export class LicenseEeModule {
       envConfig,
       isOffline: isOfflineLicenseKey(licenseKeyConfig)
     });
-    this.licensePolicyService = new LicensePolicyService({
-      isCloud: envConfig.isCloud,
-      licenseKeyConfig,
-      licenseServerClient: this.licenseServerClient
-    });
+    this.licensePolicyService = new LicensePolicyService(envConfig.isCloud, licenseKeyConfig, this.licenseServerClient);
   }
 }

@@ -60,9 +60,9 @@ export class LicenseModule {
   readonly usageMeteringService: TUsageMeteringService;
 
   // Exposed for the e2e suite's license overrides.
-  readonly instanceEntitlements: InstanceEntitlementsHolder;
+  readonly instanceEntitlementsHolder: InstanceEntitlementsHolder;
 
-  private readonly counters: CounterRegistry;
+  private readonly counterRegistry: CounterRegistry;
 
   private readonly usageReportService: TUsageReportService;
 
@@ -77,44 +77,42 @@ export class LicenseModule {
     instanceEntitlements: InstanceEntitlements
   ) {
     const { keyStore, organizationsProjectsService, licensePolicyService, licenseServer } = deps;
-    this.instanceEntitlements = new InstanceEntitlementsHolder(instanceEntitlements);
+    this.instanceEntitlementsHolder = new InstanceEntitlementsHolder(instanceEntitlements);
     const usageReportCache = new UsageReportCache(keyStore);
-    this.counters = new CounterRegistry([...seatUsageCounters(organizationsProjectsService), ...deps.usageCounters]);
+    this.counterRegistry = new CounterRegistry([
+      ...seatUsageCounters(organizationsProjectsService),
+      ...deps.usageCounters
+    ]);
 
-    const usageQueue = new UsageQueue({
-      queueService: deps.queueService,
-      licenseServer,
-      usageReportCache,
-      counters: this.counters
-    });
+    const usageQueue = new UsageQueue(deps.queueService, licenseServer, usageReportCache, this.counterRegistry);
 
-    this.licenseService = new LicenseService({
-      instance: this.instanceEntitlements,
-      planCache: new PlanCache(keyStore),
+    this.licenseService = new LicenseService(
+      this.instanceEntitlementsHolder,
+      new PlanCache(keyStore),
       usageReportCache,
       usageQueue,
       organizationsProjectsService,
       licensePolicyService,
       licenseServer
-    });
-    this.usageMeteringService = new UsageMeteringService({
-      counters: this.counters,
+    );
+    this.usageMeteringService = new UsageMeteringService(
+      this.counterRegistry,
       usageQueue,
-      licenseService: this.licenseService,
+      this.licenseService,
       organizationsProjectsService
-    });
-    this.usageReportService = new UsageReportService({
-      counters: this.counters,
+    );
+    this.usageReportService = new UsageReportService(
+      this.counterRegistry,
       usageReportCache,
       usageQueue,
-      licenseService: this.licenseService,
+      this.licenseService,
       licenseServer,
       organizationsProjectsService
-    });
+    );
   }
 
   usageDimensions(): string[] {
-    return this.counters.all().map((counter) => counter.meter.key);
+    return this.counterRegistry.all().map((counter) => counter.meter.key);
   }
 
   // Call once at boot.
@@ -135,7 +133,7 @@ export class LicenseModule {
       name: "license-usage-flush",
       pattern: "0 0 * * *",
       runHashTtlS: 60 * 60,
-      enabled: !this.instanceEntitlements.isCloud() && !this.deps.licensePolicyService.isOffline(),
+      enabled: !this.instanceEntitlementsHolder.isCloud() && !this.deps.licensePolicyService.isOffline(),
       handler: async () => this.usageReportService.flushInstanceUsage()
     });
   }
@@ -150,7 +148,7 @@ export class LicenseModule {
       // refresh succeeds.
       task: async () => {
         const refreshed = await this.deps.licensePolicyService.refreshInstanceEntitlements();
-        if (refreshed) this.instanceEntitlements.set(refreshed);
+        if (refreshed) this.instanceEntitlementsHolder.set(refreshed);
       }
     });
   }

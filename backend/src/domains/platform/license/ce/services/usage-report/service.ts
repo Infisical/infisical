@@ -1,7 +1,6 @@
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
-import { InstanceType } from "../../models/instance-entitlements";
 import { Meter } from "../../models/meter";
 import { TLicenseServer, TUsageReportCache, TUsageSource } from "../dependencies";
 import { SELF_HOSTED_LICENSE_ORG_ID } from "../helpers/license-server-types";
@@ -15,28 +14,26 @@ export type TUsageReportService = {
   flushInstanceUsage(): void;
 };
 
-export type TUsageReportServiceDeps = {
-  counters: CounterRegistry;
-  usageReportCache: TUsageReportCache;
-  usageQueue: UsageQueue;
-  licenseService: TLicenseService;
-  licenseServer: TLicenseServer;
-  organizationsProjectsService: TOrganizationsProjectsService;
-};
-
 // Only LicenseModule.start() registers these.
 export class UsageReportService implements TUsageReportService {
-  constructor(private readonly deps: TUsageReportServiceDeps) {}
+  constructor(
+    private readonly counterRegistry: CounterRegistry,
+    private readonly usageReportCache: TUsageReportCache,
+    private readonly usageQueue: UsageQueue,
+    private readonly licenseService: TLicenseService,
+    private readonly licenseServer: TLicenseServer,
+    private readonly organizationsProjectsService: TOrganizationsProjectsService
+  ) {}
 
   async handleUsageEvent(orgId: string, dimensionKey: string): Promise<void> {
-    if (!this.deps.licenseServer.canReportUsage()) return;
+    if (!this.licenseServer.canReportUsage()) return;
 
     const cloud = this.isCloud();
     // On cloud an unpaid org has no license on the server, so a report would just 404.
-    if (cloud && !(await this.deps.licenseService.getPlan(orgId)).isPaid) return;
+    if (cloud && !(await this.licenseService.getPlan(orgId)).isPaid) return;
 
     const meter = Meter.fromKey(dimensionKey);
-    const counter = meter && this.deps.counters.get(meter);
+    const counter = meter && this.counterRegistry.get(meter);
     if (!counter) {
       logger.warn(`usage-metering: unknown metered feature, dropping event [dimensionKey=${dimensionKey}]`);
       return;
@@ -45,9 +42,7 @@ export class UsageReportService implements TUsageReportService {
     let reportOrgId = SELF_HOSTED_LICENSE_ORG_ID;
     if (cloud) {
       reportOrgId =
-        counter.meter.scope === "org-tree"
-          ? await this.deps.organizationsProjectsService.resolveRootOrgId(orgId)
-          : orgId;
+        counter.meter.scope === "org-tree" ? await this.organizationsProjectsService.resolveRootOrgId(orgId) : orgId;
     }
 
     try {
@@ -55,10 +50,10 @@ export class UsageReportService implements TUsageReportService {
       // Stamp at count time, not enqueue: a retry recounts, and a new count sent with the first attempt's time
       // would be dropped by the server as a dupe while recordReported still records it.
       const observedAt = new Date();
-      const lastReported = await this.deps.usageReportCache.lastReported(reportOrgId, dimensionKey);
+      const lastReported = await this.usageReportCache.lastReported(reportOrgId, dimensionKey);
       if (lastReported === value) return;
 
-      const outcome = await this.deps.licenseServer.reportSnapshot(reportOrgId, {
+      const outcome = await this.licenseServer.reportSnapshot(reportOrgId, {
         dimensionKey,
         value,
         observedAt,
@@ -75,7 +70,7 @@ export class UsageReportService implements TUsageReportService {
       logger.info(
         `usage-event-queue: reported usage event [orgId=${reportOrgId}] [dimensionKey=${dimensionKey}] [value=${value}]`
       );
-      await this.deps.usageReportCache.recordReported(reportOrgId, dimensionKey, value);
+      await this.usageReportCache.recordReported(reportOrgId, dimensionKey, value);
     } catch (error) {
       logger.error(
         error,
@@ -88,12 +83,12 @@ export class UsageReportService implements TUsageReportService {
   // No paid-plan check here (unlike handleUsageEvent): during an outage the plan is the slugless fallback,
   // and these events never get resent.
   async handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void> {
-    if (!this.deps.licenseServer.canReportUsage() || !events.length) return;
+    if (!this.licenseServer.canReportUsage() || !events.length) return;
 
     const reportOrgId = this.isCloud() ? orgId : SELF_HOSTED_LICENSE_ORG_ID;
 
     try {
-      const outcome = await this.deps.licenseServer.reportEvents(reportOrgId, events, this.source);
+      const outcome = await this.licenseServer.reportEvents(reportOrgId, events, this.source);
       if (outcome.status === "rejected") {
         logger.warn(
           `usage-event-queue: metering events rejected, dropping [orgId=${reportOrgId}] [count=${events.length}] [reason=${outcome.reason}]`
@@ -112,12 +107,12 @@ export class UsageReportService implements TUsageReportService {
   // Self-hosted true-up: a daily backstop on top of event-driven reports. Each meter is emitted once at the
   // instance identity, where it counts the whole instance and is skipped when unchanged.
   flushInstanceUsage(): void {
-    if (!this.deps.licenseServer.canReportUsage()) return;
-    this.deps.usageQueue.emitAll(SELF_HOSTED_LICENSE_ORG_ID);
+    if (!this.licenseServer.canReportUsage()) return;
+    this.usageQueue.emitAll(SELF_HOSTED_LICENSE_ORG_ID);
   }
 
   private isCloud() {
-    return this.deps.licenseService.getInstanceType() === InstanceType.Cloud;
+    return this.licenseService.getInstanceEntitlements().isCloud();
   }
 
   private get source(): TUsageSource {

@@ -18,35 +18,33 @@ export type TCertManagerService = {
   resolveRootOrgId(orgId: string): Promise<string>;
 };
 
-export type TCertManagerServiceDeps = {
-  certificateUsage: TCertificateUsageDataAccess;
-  organizationsProjectsService: TOrganizationsProjectsService;
-};
-
 export class CertManagerService implements TCertManagerService {
-  constructor(private readonly deps: TCertManagerServiceDeps) {}
+  constructor(
+    private readonly certificateUsageDataAccess: TCertificateUsageDataAccess,
+    private readonly organizationsProjectsService: TOrganizationsProjectsService
+  ) {}
 
   countActiveCertificateQuota(orgId?: string) {
-    return this.deps.certificateUsage.countActiveCertificateQuotaKeys(orgId);
+    return this.certificateUsageDataAccess.countActiveCertificateQuotaKeys(orgId);
   }
 
   isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string) {
-    return this.deps.certificateUsage.isCertificateQuotaKeyActive(orgId, quotaKey);
+    return this.certificateUsageDataAccess.isCertificateQuotaKeyActive(orgId, quotaKey);
   }
 
   getInternalCaOrgBreakdown(orgId?: string) {
-    return this.deps.certificateUsage.getInternalCaOrgBreakdown(orgId);
+    return this.certificateUsageDataAccess.getInternalCaOrgBreakdown(orgId);
   }
 
   getActiveCertificateOrgBreakdown(orgId?: string) {
-    return this.deps.certificateUsage.getActiveCertificateOrgBreakdown(orgId);
+    return this.certificateUsageDataAccess.getActiveCertificateOrgBreakdown(orgId);
   }
 
   getPkiUsageByRootOrg() {
-    return this.deps.certificateUsage.getPkiUsageByRootOrg();
+    return this.certificateUsageDataAccess.getPkiUsageByRootOrg();
   }
 
   resolveRootOrgId(orgId: string) {
-    return this.deps.organizationsProjectsService.resolveRootOrgId(orgId);
+    return this.organizationsProjectsService.resolveRootOrgId(orgId);
   }
 }
