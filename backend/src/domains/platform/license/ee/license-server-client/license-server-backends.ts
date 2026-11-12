@@ -41,7 +41,7 @@ import {
   TUpgradePayload,
   TUpgradeResult,
   upgradeResultSchema
-} from "../../ce/service/license-server-types/license-server-types";
+} from "../../ce/services/helpers/license-server-types";
 import { TLicenseTokenProvider } from "./license-token-provider";
 
 // Every error raised from a license-server interaction is formatted through here, so one grep on

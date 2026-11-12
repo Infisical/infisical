@@ -3,7 +3,7 @@ import { FakeOrganizationsProjectsService } from "@app/domains/platform/organiza
 import { TQueueServiceFactory } from "@app/queue";
 
 import { LicenseModule } from "../module";
-import { TUsageCounter } from "../service/dependencies";
+import { TUsageCounter } from "../services/dependencies";
 import { FakeLicenseServer } from "./fake-license-server";
 import { FakeQueue } from "./fake-queue";
 
@@ -61,7 +61,7 @@ export const buildLicense = async ({
   module.start();
   return {
     module,
-    licenseService: module.service,
+    licenseService: module.licenseService,
     usageMeteringService: module.usageMeteringService,
     licenseServer,
     keyStore,

@@ -11,9 +11,9 @@ Two services, one module. Take only the one you use:
 Owns no tables. Its state is the plan cache in the key store and the usage queues.
 
 **CE is the mechanism, EE is the policy.** CE caches plans, queues and sends usage, counts usage and checks
-features. EE decides the free tier (`getDefaultOnPremFeatures` in `ee/service/license-fns.ts`), parses and
+features. EE decides the free tier (`getDefaultOnPremFeatures` in `ee/services/license-resolver/license-fns.ts`), parses and
 verifies license keys, maps License Server entitlements to a plan, and talks to the License Server. EE plugs in
-through `ce/service/dependencies.ts` (`TLicenseProvider` = `LicenseResolver`, `TLicenseServer` =
+through `ce/services/dependencies.ts` (`TLicenseProvider` = `LicenseResolver`, `TLicenseServer` =
 `LicenseServerClient`). Never add defaults or fallbacks for them in `ce/`: a free tier copy in MIT code is one
 anyone can edit into a paid one.
 
@@ -21,9 +21,9 @@ anyone can edit into a paid one.
 | --- | --- |
 | `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data |
 | `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names |
-| `ce/service/` | `LicenseService`, `UsageMeteringService`, `UsageQueue`, `UsageReportWorker`, `dependencies.ts` |
-| `ce/service/license-server-types/` | License Server billing and entitlement shapes, with `TLicenseServerBilling` |
-| `ee/service/` | `license-fns.ts` (default features, key parsing), the resolver, entitlement projection, feature mapping |
+| `ce/services/` | `license/`, `usage-metering/`, `usage-report-worker/`, `dependencies.ts` |
+| `ce/services/helpers/` | `UsageQueue`, `CounterRegistry`, seat counters, and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
+| `ee/services/license-resolver/` | The resolver, `license-fns.ts` (default features, key parsing), entitlement projection, feature mapping |
 | `ee/license-server-client/` | `LicenseServerClient` (entitlements, billing, usage), HTTP backends, token provider, usage wire shapes |
 
 Rules:
@@ -66,7 +66,7 @@ Rules:
   (`services/org/license-org-deleted-consumer.ts`) calls `closeDeletedOrg`, for root orgs on cloud. It throws so
   the outbox retries; the License Server delete is idempotent.
 - **License knows no product.** It sits on `organizationsProjectsService` and builds the two seat meters
-  (`identities`, `user_identities`) itself (`service/seat-usage-counters.ts`). Every other meter comes in as a
+  (`identities`, `user_identities`) itself (`services/helpers/seat-usage-counters.ts`). Every other meter comes in as a
   `TUsageCounter` from the owning product domain. organizations-projects never imports License. A meter's
   `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).

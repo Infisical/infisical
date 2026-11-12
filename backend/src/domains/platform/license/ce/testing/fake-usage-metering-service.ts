@@ -1,6 +1,6 @@
 import { Meter } from "../model/meter";
-import { TUsageMeteringService } from "../service/usage-metering-service";
-import { TMeteringEventInput } from "../service/usage-queue";
+import { TMeteringEventInput } from "../services/helpers/usage-queue";
+import { TUsageMeteringService } from "../services/usage-metering/service";
 
 // Sends nothing, records calls to assert on.
 export class FakeUsageMeteringService implements TUsageMeteringService {

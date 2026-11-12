@@ -3,12 +3,12 @@ import { TransactionRunner } from "@app/domains/lib/transaction-runner";
 
 import { BillableActorDataAccess } from "./data-access/billable-actor-data-access";
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
-import { TOrganizationsProjectsStore } from "./service/dependencies";
-import { OrganizationsProjectsService, TOrganizationsProjectsService } from "./service/organizations-projects-service";
+import { TOrganizationsProjectsStore } from "./services/dependencies";
+import { OrganizationsProjectsService, TOrganizationsProjectsService } from "./services/organizations-projects/service";
 
-export type { TOrganizationsProjectsService } from "./service/organizations-projects-service";
-export type { TOrganizationsProjectsTransaction } from "./service/organizations-projects-transaction";
-export type { TIdentityOwnership, TOrganization } from "./service/dependencies";
+export type { TOrganizationsProjectsService } from "./services/organizations-projects/service";
+export type { TOrganizationsProjectsTransaction } from "./services/organizations-projects/organizations-projects-transaction";
+export type { TIdentityOwnership, TOrganization } from "./services/dependencies";
 
 export type TOrganizationsProjectsDeps = {
   db: TDbClient;

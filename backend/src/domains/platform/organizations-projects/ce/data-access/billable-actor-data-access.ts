@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { TBillableActorDataAccess, TIdentityOwnership } from "../service/dependencies";
+import { TBillableActorDataAccess, TIdentityOwnership } from "../services/dependencies";
 
 // Billable = org member in a Secret Manager/KMS project or in no project at all (direct or via a group).
 // Actors only in PAM, PKI etc. don't count.

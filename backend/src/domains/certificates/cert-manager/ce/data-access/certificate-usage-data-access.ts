@@ -12,7 +12,7 @@ import {
   TCertificateUsageDataAccess,
   TOrgUnitCount,
   TPkiRootOrgUsage
-} from "../service/dependencies";
+} from "../services/dependencies";
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 

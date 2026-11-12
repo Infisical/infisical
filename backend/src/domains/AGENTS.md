@@ -37,9 +37,9 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | --- | --- |
 | `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts`, so a `ce/` domain never depends on an `ee/`-only one |
 | `model/` | One class per entity or value, with its rules. A file holds the class and its props type, nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
-| `data-access/` | One class per entity implementing a type from `service/dependencies.ts` and returning models, plus `data-access/<domain>-store.ts` exporting `build<Domain>Store(trx, locks)` |
+| `data-access/` | One class per entity implementing a type from `services/dependencies.ts` and returning models, plus `data-access/<domain>-store.ts` exporting `build<Domain>Store(trx, locks)` |
 | `<system>-client/` | Client for an external system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
-| `service/` | Business logic: one class per use case group (`T<Name>Service`) with its input types, shared helpers, and `dependencies.ts` (the data access and store types, `T<Domain>Store` included, and what the services need from EE or a domain they can't import). Tests sit beside them |
+| `services/` | Business logic. One folder per use case group: `services/<name>/service.ts` holds the class (`T<Name>Service`) and its input types, with its unit and integration tests and the helpers only it uses beside it. Helpers two or more services use go in `services/helpers/`. `services/dependencies.ts` holds the data access and store types, `T<Domain>Store` included, and what the services need from EE or a domain they can't import |
 | `router/` | Fastify routes: validate, call a service, shape the response |
 | `testing/` | In-memory data access and store, a `Fake<Name>Service` per service another domain or legacy code calls, contract suites |
 
@@ -224,12 +224,12 @@ router → service → model
        data-access → model
 ```
 
-Arrows mean "imports". Services import nothing that does I/O: they declare needs in `service/dependencies.ts`,
+Arrows mean "imports". Services import nothing that does I/O: they declare needs in `services/dependencies.ts`,
 `data-access/` and clients implement those, and `module.ts` wires them. This is what lets services run on the
 in-memory store and lets EE plug in without `ce/` importing it.
 
-- `data-access/` and clients import from `service/` only `dependencies.ts` and its `*-types/` shapes
-  (`license-server-types/`), never a service class or helper.
+- `data-access/` and clients import from `services/` only `dependencies.ts` and wire shapes
+  (`helpers/license-server-types.ts`), never a service class or helper.
 - `model/` imports no other layer.
 - `module.ts` imports every layer; nothing imports `module.ts` back. Types a module exposes are defined in the
   service and re-exported.
@@ -250,7 +250,7 @@ in-memory store and lets EE plug in without `ce/` importing it.
 - A domain may read a table no domain owns yet only as a declared exception in its `AGENTS.md`, like
   `organizations-projects`. Prefer adding the read there over a second domain reading the same table.
 - Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`model/`,
-  `service/`, `data-access/`, `*-client/`, `router/`), each repeating the shared patterns because the last matching
+  `services/`, `data-access/`, `*-client/`, `router/`), each repeating the shared patterns because the last matching
   override wins. A new layer folder needs its own override. Test files are exempt from layer order. Imports of
   legacy `@app/ee/**` from `ce/` aren't linted, catch them in review.
 
@@ -262,11 +262,11 @@ Inside `ce/` unless it's a paid feature or comes from `src/ee/**` (then the same
 | --- | --- |
 | A rule about one entity | `model/` |
 | A query or write | `data-access/`, plus its in-memory version in `testing/` and a contract suite case |
-| A use case | `service/` |
-| Logic two services share | A helper in `service/` that takes `store` |
+| A use case | `services/` |
+| Logic two services share | A helper in `services/helpers/` that takes `store` |
 | An endpoint | `router/`, registered beside the legacy routers (see Router above) |
 | Something other domains call | A method on the service type, re-exported from `module.ts` |
-| Something from data access, EE, or a domain that depends on you | A type in `service/dependencies.ts`, passed through the constructor. Anything else from another domain: take its whole service type |
+| Something from data access, EE, or a domain that depends on you | A type in `services/dependencies.ts`, passed through the constructor. Anything else from another domain: take its whole service type |
 | Cross-request memory | A state holder built in the module constructor |
 | A capability with its own tables | A new domain folder with `ce/`, or `ee/` if its code is EE |
 
@@ -280,7 +280,7 @@ sets the pattern from the rules above, and its PR names it here.
 | Value object with rules | `platform/license/ce/model/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
 | Entity, store, in-memory store, contract suite, router | none yet |
 | Query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-data-access.ts` |
-| Joining a caller's transaction | `platform/organizations-projects/ce/service/organizations-projects-transaction.ts` |
+| Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
 | Module with async setup, workers and crons | `platform/license/ce/module.ts` |
 | EE implementing a `ce/` type, external client | `platform/license/ee/` |
 | Fake for consumers | `platform/license/ce/testing/fake-license-service.ts` |
@@ -318,9 +318,10 @@ sets the pattern from the rules above, and its PR names it here.
 | Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |
 | Deps type | `T<Name>Deps`, named, beside the class, never inline | `TKmsCoreDeps` |
 | Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |
-| Store | `T<Domain>Store` in `service/dependencies.ts` (the service's runner needs it, and `service/` can't import `data-access/`); `build<Domain>Store` in `data-access/<domain>-store.ts` | `kms-core-store.ts` |
+| Store | `T<Domain>Store` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`); `build<Domain>Store` in `data-access/<domain>-store.ts` | `kms-core-store.ts` |
 | Transaction arg | `tx: TTransaction` | |
-| Tests | `<file>.test.ts` (unit), `<file>.integration.spec.ts` (integration), beside the code | |
+| Service file | `services/<name>/service.ts`; the folder carries the name | `license/service.ts` |
+| Tests | `<file>.test.ts` (unit), `<file>.integration-test.ts` (integration), beside the code | `service.test.ts` |
 
 ## Testing
 
@@ -330,7 +331,7 @@ caller depends on, not line coverage.
 | Layer | Tests | Uses |
 | --- | --- | --- |
 | Unit (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory store and `InMemoryTransactionRunner`, no DB or network |
-| Integration (`*.integration.spec.ts`) | Things only Postgres proves: SQL, data access contract, locks, rollback, `within(tx)`, `afterCommit`, concurrency | Real store on real Postgres via the harness |
+| Integration (`*.integration-test.ts`) | Things only Postgres proves: SQL, data access contract, locks, rollback, `within(tx)`, `afterCommit`, concurrency | Real store on real Postgres via the harness |
 | Not here | HTTP responses, queue/cron effects, the full server | `tests/` and `e2e-test/` |
 
 Rules:
@@ -347,7 +348,7 @@ Rules:
 - Fakes must behave like the real thing, one class per file in `testing/`. The contract suite enforces it for
   in-memory data access: `testing/<entity>-data-access-contract.ts` exports
   `describe<Entity>DataAccessContract(name, setup)`, run by a unit test against the in-memory class and by an
-  integration spec against Postgres, so both pass the same cases.
+  integration test against Postgres, so both pass the same cases.
 - Break the code and watch the test fail before calling it done.
 
 ### Unit tests

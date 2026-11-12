@@ -678,8 +678,7 @@ export const registerRoutes = async (
     envConfig
   });
   domains.license.start();
-  const licenseService = domains.license.service;
-  const { usageMeteringService } = domains.license;
+  const { usageMeteringService, licenseService } = domains.license;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.

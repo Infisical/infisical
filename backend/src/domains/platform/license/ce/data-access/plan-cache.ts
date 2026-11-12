@@ -2,7 +2,7 @@ import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { applyJitter } from "@app/lib/dates";
 
 import { Plan, TPlanProps } from "../model/plan";
-import { TPlanCache } from "../service/dependencies";
+import { TPlanCache } from "../services/dependencies";
 
 // Same key names and TTLs as the old pods so a rolling deploy shares the cache. Always keyed by root org,
 // since the License Server answers for the root.

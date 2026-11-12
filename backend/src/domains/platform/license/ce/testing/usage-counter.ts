@@ -1,5 +1,5 @@
 import { Meter } from "../model/meter";
-import { TUsageCounter } from "../service/dependencies";
+import { TUsageCounter } from "../services/dependencies";
 
 export const usageCounter = (counters: TUsageCounter[], meter: Meter): TUsageCounter => {
   const counter = counters.find((c) => c.meter === meter);

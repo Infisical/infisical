@@ -8,20 +8,20 @@ import type { TQueueServiceFactory } from "@app/queue";
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
 import { InstanceEntitlements } from "./model/instance-entitlements";
-import { CounterRegistry } from "./service/counter-registry";
-import { TLicenseProvider, TLicenseServer, TUsageCounter } from "./service/dependencies";
-import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
-import { LicenseService, TLicenseService } from "./service/license-service";
-import { seatUsageCounters } from "./service/seat-usage-counters";
-import { TUsageMeteringService, UsageMeteringService } from "./service/usage-metering-service";
-import { UsageQueue, UsageQueues } from "./service/usage-queue";
-import { UsageReportWorker } from "./service/usage-report-worker";
+import { TLicenseProvider, TLicenseServer, TUsageCounter } from "./services/dependencies";
+import { CounterRegistry } from "./services/helpers/counter-registry";
+import { seatUsageCounters } from "./services/helpers/seat-usage-counters";
+import { UsageQueue, UsageQueues } from "./services/helpers/usage-queue";
+import { InstanceEntitlementsHolder } from "./services/license/instance-entitlements-holder";
+import { LicenseService, TLicenseService } from "./services/license/service";
+import { TUsageMeteringService, UsageMeteringService } from "./services/usage-metering/service";
+import { UsageReportWorker } from "./services/usage-report-worker/service";
 
 export * from "./model/instance-entitlements";
 export * from "./model/meter";
 export * from "./model/plan";
 export * from "./model/seat-usage";
-export type { TLicenseService, TRefreshPlanOptions } from "./service/license-service";
+export type { TLicenseService, TRefreshPlanOptions } from "./services/license/service";
 export type {
   TCatalogProduct,
   TEntitlementOrg,
@@ -29,16 +29,16 @@ export type {
   TProductLineItem,
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
-} from "./service/license-server-types/license-server-types";
+} from "./services/helpers/license-server-types";
 export type {
   TLicenseProvider,
   TLicenseServer,
   TPlanCache,
   TUsageCounter,
   TUsageReportCache
-} from "./service/dependencies";
-export type { TUsageMeteringService } from "./service/usage-metering-service";
-export type { TMeteringEventInput } from "./service/usage-queue";
+} from "./services/dependencies";
+export type { TUsageMeteringService } from "./services/usage-metering/service";
+export type { TMeteringEventInput } from "./services/helpers/usage-queue";
 
 export type TLicenseDeps = {
   keyStore: TDomainKeyStore;
@@ -56,7 +56,7 @@ export type TLicenseDeps = {
 };
 
 export class LicenseModule {
-  readonly service: TLicenseService;
+  readonly licenseService: TLicenseService;
 
   readonly usageMeteringService: TUsageMeteringService;
 
@@ -89,7 +89,7 @@ export class LicenseModule {
       counters: this.counters
     });
 
-    this.service = new LicenseService({
+    this.licenseService = new LicenseService({
       instance: this.instanceEntitlements,
       planCache: new PlanCache(keyStore),
       usageReportCache,
@@ -101,14 +101,14 @@ export class LicenseModule {
     this.usageMeteringService = new UsageMeteringService({
       counters: this.counters,
       usageQueue,
-      licenseService: this.service,
+      licenseService: this.licenseService,
       organizationsProjectsService
     });
     this.worker = new UsageReportWorker({
       counters: this.counters,
       usageReportCache,
       usageQueue,
-      licenseService: this.service,
+      licenseService: this.licenseService,
       licenseServer,
       organizationsProjectsService
     });

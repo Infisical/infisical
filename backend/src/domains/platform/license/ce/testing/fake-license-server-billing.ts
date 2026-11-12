@@ -1,5 +1,5 @@
 /* eslint-disable class-methods-use-this */
-import { TLicenseServerBilling } from "../service/license-server-types/license-server-types";
+import { TLicenseServerBilling } from "../services/helpers/license-server-types";
 
 const notConfigured = () => Promise.reject(new Error("license client backend is not configured"));
 

@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     globals: true,
-    include: ["./src/**/*.integration.spec.ts"],
+    include: ["./src/**/*.integration-test.ts"],
     globalSetup: ["./src/domains/lib/testing/integration/global-setup.ts"],
     pool: "forks",
     // The first file to need Postgres migrates the template while the others wait on it, and a server

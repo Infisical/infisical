@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { TOrganization, TOrganizationDataAccess } from "../service/dependencies";
+import { TOrganization, TOrganizationDataAccess } from "../services/dependencies";
 
 type TOrganizationRow = { id: string; name: string; slug: string };
 

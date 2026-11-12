@@ -13,4 +13,4 @@ the secrets, pam and agent-vault counters build on.
   `identities`, `groups`, `user_group_membership`, `identity_group_membership`). Those move behind the owning
   domain's service once it exists.
 - **No in-memory twin:** the counters are pure SQL, so they're only tested against Postgres
-  (`*.integration.spec.ts`). Imports no other domain; License uses `FakeOrganizationsProjectsService` in its tests.
+  (`*.integration-test.ts`). Imports no other domain; License uses `FakeOrganizationsProjectsService` in its tests.

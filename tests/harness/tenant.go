@@ -242,7 +242,7 @@ func (t *Tenant) Verify(tt *testing.T, want license.Plan) {
 		if !planMatches(lookup(got, field), expected) {
 			tt.Fatalf("tenant %s: asked for %s=%v, the instance resolved %v.\n"+
 				"Likely a wrong License Server feature key; see "+
-				"backend/src/domains/platform/license/ee/service/feature-mapping.ts",
+				"backend/src/domains/platform/license/ee/services/license-resolver/feature-mapping.ts",
 				t.OrgSlug, field, expected, lookup(got, field))
 		}
 	}

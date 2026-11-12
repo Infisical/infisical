@@ -1,7 +1,7 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { applyJitter } from "@app/lib/dates";
 
-import { TUsageReportCache } from "../service/dependencies";
+import { TUsageReportCache } from "../services/dependencies";
 
 // Same key names and TTLs as the old pods so a rolling deploy reads what they wrote.
 const UsageKeys = {

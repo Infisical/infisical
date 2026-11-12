@@ -1,5 +1,5 @@
 /* eslint-disable class-methods-use-this */
-import { TOrganizationsProjectsService } from "../service/organizations-projects-service";
+import { TOrganizationsProjectsService } from "../services/organizations-projects/service";
 
 // For tests of code that uses organizations-projects: every org is its own root with nothing counted,
 // until a test sets a root or replaces a method.

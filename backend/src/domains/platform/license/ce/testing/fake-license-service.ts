@@ -2,7 +2,7 @@
 import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
 import { Plan, TPlanProps } from "../model/plan";
 import { SeatUsage } from "../model/seat-usage";
-import { TLicenseService } from "../service/license-service";
+import { TLicenseService } from "../services/license/service";
 import { testFeatures } from "./test-features";
 
 const noSeatsUsed = () => SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 });

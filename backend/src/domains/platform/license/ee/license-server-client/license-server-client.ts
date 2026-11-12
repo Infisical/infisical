@@ -8,12 +8,13 @@ import {
   TUsageSnapshot,
   TUsageSnapshotOutcome,
   TUsageSource
-} from "../../ce/service/dependencies";
+} from "../../ce/services/dependencies";
 import {
   TBuyProductPayload,
   TCancelTrialPayload,
   TChangeCommitmentsPayload,
   TConfirmTrialPaymentPayload,
+  MAX_USAGE_EVENTS_PER_REQUEST,
   TCreatePortalPayload,
   TEntitlementOrg,
   TEntitlementsResponse,
@@ -21,9 +22,8 @@ import {
   TStartTrialPayload,
   TSubscriptionPreviewPayload,
   TUpgradePayload
-} from "../../ce/service/license-server-types/license-server-types";
-import { MAX_USAGE_EVENTS_PER_REQUEST } from "../../ce/service/license-server-types/usage-reports";
-import { TLicenseServerEntitlements } from "../service/dependencies";
+} from "../../ce/services/helpers/license-server-types";
+import { TLicenseServerEntitlements } from "../services/dependencies";
 import {
   licenseServerBackend,
   licenseServerSelfHostedBackend,

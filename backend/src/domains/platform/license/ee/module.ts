@@ -1,7 +1,7 @@
 import { TEnvConfig } from "@app/lib/config/env";
 
 import { LicenseServerClient } from "./license-server-client/license-server-client";
-import { getLicenseKeyConfig, isOfflineLicenseKey, LicenseResolver } from "./service/license-resolver";
+import { getLicenseKeyConfig, isOfflineLicenseKey, LicenseResolver } from "./services/license-resolver/service";
 
 export type TLicenseEeDeps = {
   envConfig: Pick<

@@ -1,5 +1,5 @@
 import { Meter } from "../model/meter";
-import { TUsageCounter } from "../service/dependencies";
+import { TUsageCounter } from "../services/dependencies";
 
 // A null org means the whole instance.
 export class FakeUsageCounter implements TUsageCounter {

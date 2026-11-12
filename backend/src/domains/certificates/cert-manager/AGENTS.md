@@ -7,4 +7,4 @@ issuance uses (`countActiveCertificateQuota`, `isCertificateQuotaKeyActive`) and
   `internal_certificate_authorities`, `certificates`, `pki_signers`, `projects`, `organizations`). Those move
   behind the owning domain's service once it exists.
 - **No in-memory twin:** the counters are pure SQL, so they're only tested against Postgres
-  (`*.integration.spec.ts`). License tests its side with `FakeUsageCounter`.
+  (`*.integration-test.ts`). License tests its side with `FakeUsageCounter`.

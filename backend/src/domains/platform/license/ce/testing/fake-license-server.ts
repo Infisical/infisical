@@ -9,8 +9,8 @@ import {
   TMeteringEvent,
   TUsageSnapshot,
   TUsageSnapshotOutcome
-} from "../service/dependencies";
-import { TEntitlementOrg } from "../service/license-server-types/license-server-types";
+} from "../services/dependencies";
+import { TEntitlementOrg } from "../services/helpers/license-server-types";
 import { FakeLicenseServerBilling } from "./fake-license-server-billing";
 import { enterprisePlan, testFeatures } from "./test-features";
 
