@@ -6,8 +6,88 @@ import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offli
 // Only import this as "./license-fns": the e2e suite aliases that path to a mock that grants everything
 // (src/ee/services/license/__mocks__/license-fns.ts).
 
+// Literal so that flipping a default to try a feature locally fails type-check instead of getting committed.
+type TDefaultOnPremFeatures = TInstanceFeatures & {
+  tier: -1;
+  workspaceLimit: null;
+  dynamicSecret: false;
+  memberLimit: null;
+  identityLimit: null;
+  subOrganization: false;
+  environmentLimit: null;
+  secretVersioning: true;
+  pitRecovery: false;
+  ipAllowlisting: false;
+  rbac: false;
+  customAlerts: false;
+  auditLogs: false;
+  auditLogStreams: false;
+  auditLogStreamLimit: 3;
+  githubOrgSync: false;
+  samlSSO: false;
+  enforceGoogleSSO: false;
+  hsm: false;
+  oidcSSO: false;
+  secretAccessInsights: false;
+  scim: false;
+  ldap: false;
+  groups: false;
+  secretApproval: false;
+  secretRotation: false;
+  externalKms: false;
+  kmsPqc: false;
+  enforceMfa: false;
+  projectTemplates: false;
+  kmip: false;
+  gateway: false;
+  gatewayPool: false;
+  pamEnterpriseAlerting: false;
+  secretScanning: false;
+  enterpriseSecretSyncs: false;
+  enterpriseAppConnections: false;
+  machineIdentityAuthTemplates: false;
+  eventSubscriptions: false;
+  secretShareExternalBranding: false;
+  honeyTokens: false;
+  honeyTokenLimit: 0;
+  secretsBrokering: true;
+  agentVaultByoS3: false;
+  agentVaultManagedStorage: false;
+  secretSyncLimit: null;
+  maxPamAccounts: null;
+  pkiAcme: true;
+  pkiEst: false;
+  pkiScep: false;
+  pkiPqc: false;
+  caCrl: true;
+  pkiOcsp: false;
+  pkiAwsKmsSigning: false;
+  pkiEnterpriseCaIntegrations: false;
+  pkiExternalIntermediateCa: false;
+  pkiCrossSignedCa: false;
+  pkiDiscovery: false;
+  pkiEnterpriseAlerting: false;
+  pkiApprovals: false;
+  pkiSyncs: false;
+  pkiLegacyTemplates: false;
+  pkiCodeSigning: false;
+  maxCas: 1;
+  maxInternalCas: null;
+  maxCertificates: null;
+  maxWildcardCertificates: null;
+  maxSansPerCertificate: null;
+  pam: null;
+  certManager: null;
+  secretsTemporaryAccess: null;
+  enterprisePamAccount: null;
+  crossProjectSecretSharing: false;
+  secretsFolderRbac: false;
+  fips: false;
+  instanceUserManagement: false;
+};
+
 // No-license defaults. Lives in EE so nobody can edit the free tier into a paid one.
-export const getDefaultOnPremFeatures = (): TInstanceFeatures => ({
+export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   _id: null,
   slug: null,
   tier: -1,
