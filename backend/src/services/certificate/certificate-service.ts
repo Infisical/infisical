@@ -29,6 +29,7 @@ import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approva
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
+import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
   TCertRevocationPolicy,
   TCertRevocationRequestData
@@ -170,6 +171,7 @@ type TCertificateServiceFactoryDep = {
     | "findByIdForUpdate"
     | "primaryNode"
     | "findPendingRevocationApprovalRequest"
+    | "findPendingRenewalApprovalRequestIds"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
@@ -206,7 +208,10 @@ type TCertificateServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "acquireLock">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
-  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy" | "createRequestFromPolicy">;
+  approvalPolicyService: Pick<
+    TApprovalPolicyServiceFactory,
+    "matchPolicy" | "createRequestFromPolicy" | "cancelPendingRequests"
+  >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "updateById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -1176,18 +1181,63 @@ export const certificateServiceFactory = ({
     }
   };
 
+  // A renewal approved after the revocation would fail at issuance anyway, so close it now rather than leave
+  // approvers a request they can't usefully approve.
+  const $cancelPendingRenewals = async (approvalRequest: TApprovalRequest, cert: TRevocableCertificate) => {
+    const renewalRequestIds = await certificateDAL.findPendingRenewalApprovalRequestIds({
+      certificateId: cert.id,
+      projectId: approvalRequest.projectId
+    });
+    const cancelled = await approvalPolicyService.cancelPendingRequests(
+      ApprovalPolicyType.CertRequest,
+      renewalRequestIds
+    );
+
+    for (const renewalRequest of cancelled) {
+      // eslint-disable-next-line no-await-in-loop
+      await auditLogService.createAuditLog({
+        projectId: approvalRequest.projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.APPROVAL_REQUEST_CANCEL,
+          metadata: {
+            policyType: renewalRequest.type,
+            approvalRequestId: renewalRequest.id,
+            requesterName: renewalRequest.requesterName,
+            requesterEmail: renewalRequest.requesterEmail,
+            ...getApprovalRequestSubjectMetadata(renewalRequest),
+            certificateId: cert.id,
+            revocationApprovalRequestId: approvalRequest.id,
+            reason: `Certificate '${getCertificateDisplayName(cert)}' was revoked under approval request ${approvalRequest.id}, so its pending renewal was cancelled.`
+          }
+        }
+      });
+    }
+  };
+
   // Runs as the approval's post-approval routine after the approval has committed, with no caller waiting on
   // it, so it records its outcome in the audit log and never throws.
   const revokeApprovedCertificate = async (approvalRequest: TApprovalRequest) => {
     const requestData = approvalRequest.requestData.requestData as TCertRevocationRequestData;
     const outcome = await $revokeForApproval(approvalRequest, requestData);
+    const logContext = `[certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`;
 
     try {
       await $recordApprovedRevocation(approvalRequest, requestData, outcome);
     } catch (error) {
       logger.error(
         error,
-        `Failed to record the outcome of an approved revocation [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
+        `Failed to record the outcome of an approved revocation [outcome=${outcome.kind}] ${logContext}`
+      );
+    }
+
+    if (outcome.kind !== "revoked") return;
+    try {
+      await $cancelPendingRenewals(approvalRequest, outcome.cert);
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to cancel the pending renewals of a certificate revoked after approval ${logContext}`
       );
     }
   };
