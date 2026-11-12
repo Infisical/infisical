@@ -354,8 +354,8 @@ export const projectDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
         )
+        .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
         .orderBy([
-          { column: `${TableName.Project}.name`, order: "asc" },
           { column: `${TableName.Project}.id`, order: "asc" },
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
@@ -371,10 +371,8 @@ export const projectDALFactory = (db: TDbClient) => {
         const page = accessibleProjects()
           .select(db.ref("id").withSchema(TableName.Project))
           .groupBy(`${TableName.Project}.id`)
-          .orderBy([
-            { column: `${TableName.Project}.name`, order: "asc" },
-            { column: `${TableName.Project}.id`, order: "asc" }
-          ])
+          .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
+          .orderBy(`${TableName.Project}.id`, "asc")
           .offset(offset);
         if (limit !== undefined) void page.limit(limit);
         void query.whereIn(`${TableName.Project}.id`, page);
