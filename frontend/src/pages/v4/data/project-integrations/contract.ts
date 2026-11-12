@@ -1,3 +1,12 @@
+import type {
+  TGetIntegrationAuthOctopusDeployScopeValuesDTO,
+  TOctopusDeployVariableSetScopeValues
+} from "@app/hooks/api/integrationAuth/types";
+import type {
+  TCloudIntegration,
+  TIntegration,
+  TIntegrationWithEnv
+} from "@app/hooks/api/integrations/types";
 import type { useGetActiveProjectKms } from "@app/hooks/api/kms/queries";
 import type { KmsListEntry, KmsType } from "@app/hooks/api/kms/types";
 import type {
@@ -26,6 +35,14 @@ export type ProjectKmsUpdate =
   | { type: KmsType.Internal }
   | { type: KmsType.External; kmsId: string };
 
+export type TSyncNativeIntegrationDTO = { id: string; projectId: string };
+
+export type TDeleteNativeIntegrationDTO = {
+  id: string;
+  projectId: string;
+  shouldDeleteIntegrationSecrets: boolean;
+};
+
 type ProjectMutation<TVariables> = (projectId: string) => ReturnType<V4Mutation<TVariables>>;
 
 export type ProjectIntegrationsAdapter = {
@@ -51,4 +68,13 @@ export type ProjectIntegrationsAdapter = {
   useMicrosoftTeamsTeams: (
     integrationId?: string
   ) => V4QueryResult<MicrosoftTeamsIntegrationTeam[]>;
+  useNativeIntegrations: (projectId: string) => V4QueryResult<TIntegration[]>;
+  useNativeIntegration: (integrationId: string) => V4QueryResult<TIntegrationWithEnv>;
+  useNativeIntegrationOptions: () => V4QueryResult<TCloudIntegration[]>;
+  useOctopusDeployScopeValues: (
+    params: TGetIntegrationAuthOctopusDeployScopeValuesDTO,
+    options: { enabled: boolean }
+  ) => V4QueryResult<Partial<TOctopusDeployVariableSetScopeValues>>;
+  useSyncNativeIntegration: V4Mutation<TSyncNativeIntegrationDTO>;
+  useDeleteNativeIntegration: V4Mutation<TDeleteNativeIntegrationDTO>;
 };

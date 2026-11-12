@@ -19,7 +19,8 @@ export const AnalyticsEvent = {
   OnboardingResourceClicked: "Onboarding Resource Clicked",
   OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
   SecretScanningOpened: "Secret Scanning Opened",
-  AgentVaultRedirectClicked: "Agent Vault Redirect Clicked"
+  AgentVaultRedirectClicked: "Agent Vault Redirect Clicked",
+  NativeIntegrationCreationBlockedModalViewed: "Native Integration Creation Blocked Modal Viewed"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -212,6 +213,11 @@ type AgentVaultRedirectClickedProperties = {
   action: AgentVaultRedirectAction;
 };
 
+type NativeIntegrationCreationBlockedModalViewedProperties = {
+  projectId: string;
+  projectType: string;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -237,6 +243,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
   [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
   [AnalyticsEvent.AgentVaultRedirectClicked]: AgentVaultRedirectClickedProperties;
+  [AnalyticsEvent.NativeIntegrationCreationBlockedModalViewed]: NativeIntegrationCreationBlockedModalViewedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
