@@ -895,6 +895,27 @@ export const SPIFFE_AUTH = {
   }
 } as const;
 
+export const USERS = {
+  GET_DELETION_ELIGIBILITY: {
+    canDelete:
+      "Whether your account can be deleted now. False while you are the only server admin or the only admin of an organization that has other members.",
+    isOnlyServerAdmin:
+      "Whether you are the only server admin on this instance. Promote another user to server admin before deleting your account.",
+    lastMemberOrganizations:
+      "Organizations where you are the last member who can sign in. Deleting your account deletes them, which cancels their subscriptions, and requires their IDs in lastMemberOrganizationIds.",
+    lastAdminOrganizations:
+      "Organizations that have other members but where you are the only admin. Promote another member to admin in each before deleting your account.",
+    organization: {
+      id: "The ID of the organization.",
+      name: "The name of the organization."
+    }
+  },
+  DELETE: {
+    lastMemberOrganizationIds:
+      "Comma-separated IDs of the organizations where you are the last member who can sign in, as listed in lastMemberOrganizations by GET /api/v2/users/me/deletion-eligibility. They are deleted with your account, which cancels their subscriptions. The request is refused unless this matches that list exactly, and refused without it while any such organization exists."
+  }
+};
+
 export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
