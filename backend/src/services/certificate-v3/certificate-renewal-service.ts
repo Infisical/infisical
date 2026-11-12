@@ -820,6 +820,7 @@ export const certificateRenewalServiceFactory = ({
     keySource,
     originalSignatureAlgorithm,
     originalKeyAlgorithm,
+    csrIssuedSignatureAlgorithm,
     profileCustomExtensions,
     maxTtlDays
   }: {
@@ -831,6 +832,7 @@ export const certificateRenewalServiceFactory = ({
     keySource: CertificateRenewalKeySource;
     originalSignatureAlgorithm?: CertSignatureAlgorithm;
     originalKeyAlgorithm?: CertKeyAlgorithm;
+    csrIssuedSignatureAlgorithm?: CertSignatureAlgorithm;
     profileCustomExtensions?: TProfileCustomExtension[] | null;
     maxTtlDays?: number;
   }) => {
@@ -859,6 +861,7 @@ export const certificateRenewalServiceFactory = ({
     const mergedRequest = csrRenewalRequest
       ? {
           ...keepCertificateFactsInCsrRenewal(csrRenewalRequest, originalRequest),
+          ...(csrIssuedSignatureAlgorithm && { signatureAlgorithm: csrIssuedSignatureAlgorithm }),
           customExtensions:
             attributes?.customExtensions ?? csrRenewalRequest.customExtensions ?? carriedCustomExtensions
         }
@@ -1436,26 +1439,26 @@ export const certificateRenewalServiceFactory = ({
         }
 
         const caKeyAlgorithm = caType === CaType.INTERNAL ? ca?.internalCa?.keyAlgorithm : undefined;
-        const issuableCsrRenewalRequest =
+        // The certificate's own algorithm is preferred, but an imported certificate may have been signed
+        // with one this CA's key can't produce, so the CA key, its key source and the policy decide.
+        const csrIssuedSignatureAlgorithm =
           csrRenewalRequest && ca && caKeyAlgorithm
-            ? {
-                ...csrRenewalRequest,
-                signatureAlgorithm: (await caKeySourceService.resolveCsrSignatureAlgorithm(
-                  {
-                    caId: ca.id,
-                    keyAlgorithm: caKeyAlgorithm as CertKeyAlgorithm,
-                    csrSignatureAlgorithm: csrRenewalRequest.signatureAlgorithm,
-                    policySignatureAlgorithms: policy?.algorithms?.signature
-                  },
-                  tx
-                )) as CertSignatureAlgorithm
-              }
-            : csrRenewalRequest;
+            ? ((await caKeySourceService.resolveCsrSignatureAlgorithm(
+                {
+                  caId: ca.id,
+                  keyAlgorithm: caKeyAlgorithm as CertKeyAlgorithm,
+                  csrSignatureAlgorithm: originalSignatureAlgorithm ?? csrRenewalRequest.signatureAlgorithm,
+                  policySignatureAlgorithms: policy?.algorithms?.signature
+                },
+                tx
+              )) as CertSignatureAlgorithm | undefined)
+            : undefined;
 
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
-          csrRenewalRequest: issuableCsrRenewalRequest,
+          csrRenewalRequest,
+          csrIssuedSignatureAlgorithm,
           issuedFrom: originatingRequest,
           attributes,
           keySource,

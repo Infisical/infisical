@@ -188,7 +188,7 @@ const buildRevalidationRequest = ({
   if (csr) {
     const { keyAlgorithm: csrKeyAlg, signatureAlgorithm: csrSigAlg } = extractAlgorithmsFromCSR(csr);
     mappedRequest.keyAlgorithm = csrKeyAlg;
-    mappedRequest.signatureAlgorithm = (signatureAlgorithm as typeof csrSigAlg | null) || csrSigAlg;
+    mappedRequest.signatureAlgorithm = csrSigAlg;
   }
   // The stored value wins over anything reconstructed from the CSR or profile defaults.
   if (customExtensions?.length) {

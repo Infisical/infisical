@@ -171,4 +171,38 @@ describe("Signing a CSR whose algorithm differs from the CA's", async () => {
 
     expect(issuedSignatureAlgorithm(certificate)).toEqual({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" });
   });
+
+  test("renewing an imported certificate signed with an algorithm the CA can't produce uses the CA's", async () => {
+    const issuer = await createProfile("rsa-ca-import", CertKeyAlgorithm.RSA_2048);
+
+    const ECDSA_P384 = { name: "ECDSA", namedCurve: "P-384", hash: "SHA-384" };
+    const externalRootKeys = (await crypto.subtle.generateKey(ECDSA_P384, true, ["sign", "verify"])) as CryptoKeyPair;
+    const leafKeys = (await crypto.subtle.generateKey(ECDSA_P384, true, ["sign", "verify"])) as CryptoKeyPair;
+    const leaf = await x509.X509CertificateGenerator.create({
+      serialNumber: "01",
+      subject: `CN=${COMMON_NAME}`,
+      issuer: "CN=External ECDSA Root",
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      signingAlgorithm: ECDSA_P384,
+      publicKey: leafKeys.publicKey,
+      signingKey: externalRootKeys.privateKey
+    });
+    const csr = await x509.Pkcs10CertificateRequestGenerator.create({
+      name: `CN=${COMMON_NAME}`,
+      keys: leafKeys,
+      signingAlgorithm: ECDSA_P384
+    });
+
+    const { certificateId } = await post("/api/v1/cert-manager/certificates/import-certificate", {
+      ...issuer,
+      certificatePem: leaf.toString("pem"),
+      csr: csr.toString("pem")
+    });
+    const { certificate } = await post(`/api/v1/cert-manager/certificates/${certificateId}/renew`, {
+      renewalKeySource: "reuse"
+    });
+
+    expect(issuedSignatureAlgorithm(certificate)).toEqual({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" });
+  });
 });
