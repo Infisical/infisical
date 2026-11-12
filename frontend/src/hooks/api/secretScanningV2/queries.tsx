@@ -1,4 +1,9 @@
-import { keepPreviousData, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+  UseQueryOptions
+} from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -11,6 +16,7 @@ import {
   TListSecretScanningBasicResourcesResponse,
   TListSecretScanningDataSourceOptions,
   TListSecretScanningDataSources,
+  TListSecretScanningFindingLocationsResponse,
   TListSecretScanningFindingsDTO,
   TListSecretScanningFindingsResponse,
   TListSecretScanningResourcesDTO,
@@ -78,6 +84,8 @@ export const secretScanningV2Keys = {
     ...secretScanningV2Keys.listFindings(params.projectId),
     params
   ],
+  listFindingLocations: (findingId: string) =>
+    [...secretScanningV2Keys.finding(), "locations", findingId] as const,
   configByProjectId: (projectId: string) =>
     [...secretScanningV2Keys.all, "config", projectId] as const,
   activeProjectId: (orgId: string) => [...secretScanningV2Keys.all, "project", orgId] as const,
@@ -373,6 +381,28 @@ export const useListSecretScanningFindings = (
     },
     placeholderData: keepPreviousData,
     ...options
+  });
+};
+
+const FINDING_LOCATIONS_PAGE_SIZE = 100;
+
+export const useListSecretScanningFindingLocations = (findingId: string) => {
+  return useInfiniteQuery({
+    initialPageParam: 0,
+    queryKey: secretScanningV2Keys.listFindingLocations(findingId),
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiRequest.get<TListSecretScanningFindingLocationsResponse>(
+        `/api/v2/secret-scanning/findings/${findingId}/locations`,
+        { params: { offset: pageParam, limit: FINDING_LOCATIONS_PAGE_SIZE } }
+      );
+
+      return data;
+    },
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.reduce((count, page) => count + page.locations.length, 0);
+      return loaded < lastPage.totalCount ? loaded : undefined;
+    },
+    enabled: Boolean(findingId)
   });
 };
 
