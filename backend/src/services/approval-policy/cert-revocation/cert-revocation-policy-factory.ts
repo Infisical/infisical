@@ -51,12 +51,23 @@ export const certRevocationApprovalResourceFactory = ({
 
   validateConstraints: () => ({ valid: true }),
 
-  buildNotification: async ({ event, request }) => {
-    if (event !== ApprovalNotificationEvent.Requested) return null;
-
+  buildNotification: async ({ event, request, failureReason }) => {
     const { commonName } = (request.requestData as { requestData: TCertRevocationRequestData }).requestData;
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
+
+    if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
+      return {
+        inApp: {
+          type: NotificationType.APPROVED_ACTION_FAILED,
+          title: "Certificate Revocation Failed",
+          body: `The approved revocation of the certificate '${commonName}' didn't complete, so the certificate is still active. Reason: ${failureReason}`,
+          link: approvalUrl
+        }
+      };
+    }
+
+    if (event !== ApprovalNotificationEvent.Requested) return null;
 
     return {
       inApp: {

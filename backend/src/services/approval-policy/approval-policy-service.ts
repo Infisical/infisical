@@ -192,6 +192,7 @@ export const approvalPolicyServiceFactory = ({
     actorId?: string;
     comment?: string;
     bypassReason?: string;
+    failureReason?: string;
   }) =>
     dispatchApprovalNotification(
       { ...args, approvers: args.approvers ?? [], resource: $resource(args.request.type as ApprovalPolicyType) },
@@ -2838,6 +2839,25 @@ export const approvalPolicyServiceFactory = ({
     bypassReason?: string;
   }) => (await $resource(args.request.type as ApprovalPolicyType).buildAuditEvent?.(args)) ?? null;
 
+  // For a caller whose post-approval routine failed after the approval committed. Nothing waits on it,
+  // so it logs instead of throwing.
+  const notifyApprovedActionFailed = async (request: TApprovalRequests, failureReason: string) => {
+    try {
+      const steps = await approvalRequestDAL.findStepsByRequestId(request.id);
+      await $notify({
+        event: ApprovalNotificationEvent.ApprovedActionFailed,
+        request,
+        approvers: steps.flatMap((step) => step.approvers),
+        failureReason
+      });
+    } catch (err) {
+      logger.error(
+        err,
+        `Failed to notify that an approved action failed [requestId=${request.id}] [type=${request.type}]`
+      );
+    }
+  };
+
   const buildTelemetryEvent = async (args: {
     action: ApprovalAuditAction;
     request: TApprovalRequests;
@@ -2875,6 +2895,7 @@ export const approvalPolicyServiceFactory = ({
     rejectRequest,
     cancelRequest,
     cancelPendingRequests,
+    notifyApprovedActionFailed,
     listGrants,
     getGrantById,
     revokeGrant,

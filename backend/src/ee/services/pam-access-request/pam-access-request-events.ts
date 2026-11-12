@@ -12,7 +12,11 @@ export enum PamAccessRequestEvent {
   Bypassed = "pam.folder.access-request-bypassed"
 }
 
-const EVENT_BY_APPROVAL_EVENT: Record<ApprovalNotificationEvent, PamAccessRequestEvent> = {
+// A failed post-approval action has no PAM domain event; every other approval event must map to one.
+const EVENT_BY_APPROVAL_EVENT: Record<
+  Exclude<ApprovalNotificationEvent, ApprovalNotificationEvent.ApprovedActionFailed>,
+  PamAccessRequestEvent
+> = {
   [ApprovalNotificationEvent.Requested]: PamAccessRequestEvent.Requested,
   [ApprovalNotificationEvent.Approved]: PamAccessRequestEvent.Approved,
   [ApprovalNotificationEvent.Rejected]: PamAccessRequestEvent.Denied,
@@ -32,14 +36,19 @@ export const buildPamAccessRequestEvent = ({
   orgId: string;
   projectId: string;
   folderId: string;
-}): TEventInput => ({
-  id: crypto.randomUUID(),
-  type: EVENT_BY_APPROVAL_EVENT[event],
-  data: {
-    orgId,
-    projectId,
-    resourceType: PAM_FOLDER_RESOURCE_TYPE,
-    resourceId: folderId,
-    targetIds: [requestId]
-  }
-});
+}): TEventInput | null => {
+  if (event === ApprovalNotificationEvent.ApprovedActionFailed) return null;
+  const type = EVENT_BY_APPROVAL_EVENT[event];
+
+  return {
+    id: crypto.randomUUID(),
+    type,
+    data: {
+      orgId,
+      projectId,
+      resourceType: PAM_FOLDER_RESOURCE_TYPE,
+      resourceId: folderId,
+      targetIds: [requestId]
+    }
+  };
+};

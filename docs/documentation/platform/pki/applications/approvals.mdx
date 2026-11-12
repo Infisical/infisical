@@ -130,7 +130,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 
 Once all required approvals are obtained, Infisical issues the certificate, or revokes it for a revocation request. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason.
 
-If revocation fails at that point, for example because the CA can't be reached, the certificate stays active and Infisical records a `cert-revocation-failed` audit log event with the reason. To revoke the certificate, revoke it again once the problem is fixed.
+If revocation fails at that point, for example because the CA can't be reached, the certificate stays active and Infisical records a `cert-revocation-failed` audit log event with the reason. Infisical also sends the requester and the request's approvers an in-app notification with the reason and a link to the request. To revoke the certificate, revoke it again once the problem is fixed.
 
 ### Reject a request
 
