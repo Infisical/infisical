@@ -1,6 +1,6 @@
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 
-import { TInstanceFeatures } from "../../../ce/model/instance-entitlements";
+import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
 
 // Only import this as "./license-fns": the e2e suite aliases that path to a mock that grants everything

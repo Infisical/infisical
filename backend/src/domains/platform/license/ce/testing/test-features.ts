@@ -1,4 +1,4 @@
-import { TInstanceFeatures } from "../model/instance-entitlements";
+import { TInstanceFeatures } from "../models/instance-entitlements";
 
 // Test data only. The real defaults live in EE (getDefaultOnPremFeatures) and nothing outside tests reads this.
 export const testFeatures = (): TInstanceFeatures => ({

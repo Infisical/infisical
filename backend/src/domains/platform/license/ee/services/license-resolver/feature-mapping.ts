@@ -1,4 +1,4 @@
-import { Meter } from "../../../ce/model/meter";
+import { Meter } from "../../../ce/models/meter";
 
 export type TFeatureMapping = {
   // Must match a License Server feature registry key (a separate repo); a wrong key means the feature

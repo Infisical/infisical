@@ -1,4 +1,4 @@
-import { InstanceEntitlements } from "../../model/instance-entitlements";
+import { InstanceEntitlements } from "../../models/instance-entitlements";
 
 // Swapped in place by the online license sync and by plan refresh.
 export class InstanceEntitlementsHolder {

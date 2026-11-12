@@ -2,8 +2,8 @@ import { ExternalSystemError } from "@app/domains/lib/errors";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
 
-import { InstanceEntitlements, InstanceType } from "../../../ce/model/instance-entitlements";
-import { Plan } from "../../../ce/model/plan";
+import { InstanceEntitlements, InstanceType } from "../../../ce/models/instance-entitlements";
+import { Plan } from "../../../ce/models/plan";
 import { TLicenseProvider } from "../../../ce/services/dependencies";
 import { SELF_HOSTED_LICENSE_ORG_ID, TEntitlementOrg } from "../../../ce/services/helpers/license-server-types";
 import { TLicenseServerEntitlements } from "../dependencies";

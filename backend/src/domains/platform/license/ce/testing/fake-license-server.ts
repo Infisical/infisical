@@ -1,8 +1,8 @@
 /* eslint-disable class-methods-use-this */
 import { ExternalSystemError } from "@app/domains/lib/errors";
 
-import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
-import { Plan, TPlanProps } from "../model/plan";
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../models/instance-entitlements";
+import { Plan, TPlanProps } from "../models/plan";
 import {
   TLicenseProvider,
   TLicenseServer,

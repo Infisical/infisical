@@ -1,4 +1,4 @@
-import { TInstanceFeatures } from "../../../ce/model/instance-entitlements";
+import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 import { TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
 
 export enum LicenseType {

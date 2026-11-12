@@ -1,8 +1,8 @@
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
-import { InstanceType } from "../../model/instance-entitlements";
-import { Meter } from "../../model/meter";
+import { InstanceType } from "../../models/instance-entitlements";
+import { Meter } from "../../models/meter";
 import { TLicenseServer, TUsageReportCache, TUsageSource } from "../dependencies";
 import { CounterRegistry } from "../helpers/counter-registry";
 import { SELF_HOSTED_LICENSE_ORG_ID } from "../helpers/license-server-types";

@@ -1,4 +1,4 @@
-import { Meter } from "../model/meter";
+import { Meter } from "../models/meter";
 import { TMeteringEventInput } from "../services/helpers/usage-queue";
 import { TUsageMeteringService } from "../services/usage-metering/service";
 

@@ -1,6 +1,6 @@
 import { ExternalSystemError } from "@app/domains/lib/errors";
 
-import { InstanceType } from "../../model/instance-entitlements";
+import { InstanceType } from "../../models/instance-entitlements";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID, WORKSPACES_USED } from "../../testing/build-license";
 import { FakeLicenseServer } from "../../testing/fake-license-server";
 import { enterprisePlan } from "../../testing/test-features";

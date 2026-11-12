@@ -19,7 +19,7 @@ anyone can edit into a paid one.
 
 | Layer | Holds |
 | --- | --- |
-| `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data |
+| `ce/models/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data |
 | `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names |
 | `ce/services/` | `license/`, `usage-metering/`, `usage-report-worker/`, `dependencies.ts` |
 | `ce/services/helpers/` | `UsageQueue`, `CounterRegistry`, seat counters, and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |

@@ -1,5 +1,5 @@
-import { TInstanceFeatures } from "../../../ce/model/instance-entitlements";
-import { TPlanNotice } from "../../../ce/model/plan";
+import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
+import { TPlanNotice } from "../../../ce/models/plan";
 import {
   TEntitlementsResponse,
   trialPaymentFailedNoticeSchema

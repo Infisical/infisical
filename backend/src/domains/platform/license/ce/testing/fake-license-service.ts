@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
-import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
-import { Plan, TPlanProps } from "../model/plan";
-import { SeatUsage } from "../model/seat-usage";
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../models/instance-entitlements";
+import { Plan, TPlanProps } from "../models/plan";
+import { SeatUsage } from "../models/seat-usage";
 import { TLicenseService } from "../services/license/service";
 import { testFeatures } from "./test-features";
 

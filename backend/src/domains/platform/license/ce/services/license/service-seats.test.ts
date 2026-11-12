@@ -1,4 +1,4 @@
-import { InstanceType } from "../../model/instance-entitlements";
+import { InstanceType } from "../../models/instance-entitlements";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../../testing/build-license";
 import { FakeLicenseServer } from "../../testing/fake-license-server";
 

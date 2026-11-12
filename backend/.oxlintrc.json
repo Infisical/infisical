@@ -674,8 +674,8 @@
     },
     {
       "files": [
-        "src/domains/**/ce/model/**",
-        "src/domains/**/ee/model/**"
+        "src/domains/**/ce/models/**",
+        "src/domains/**/ee/models/**"
       ],
       "rules": {
         "eslint/no-restricted-imports": [
@@ -714,7 +714,7 @@
                   "**/clients/**",
                   "**/testing/**"
                 ],
-                "message": "model/ imports no other layer: rules about the data stay pure and testable. See src/domains/AGENTS.md (Dependency direction)."
+                "message": "models/ imports no other layer: rules about the data stay pure and testable. See src/domains/AGENTS.md (Dependency direction)."
               },
               {
                 "group": [

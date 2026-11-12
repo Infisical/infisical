@@ -1,6 +1,6 @@
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 
-import { Meter } from "../../model/meter";
+import { Meter } from "../../models/meter";
 import { TUsageCounter } from "../dependencies";
 
 // Counted the same way as getSeatUsage.

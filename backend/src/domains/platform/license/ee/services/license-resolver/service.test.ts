@@ -1,4 +1,4 @@
-import { InstanceType } from "../../../ce/model/instance-entitlements";
+import { InstanceType } from "../../../ce/models/instance-entitlements";
 import { TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
 import { TLicenseServerEntitlements } from "../dependencies";
 import { getLicenseKeyConfig, LicenseResolver } from "./service";

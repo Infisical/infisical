@@ -1,5 +1,5 @@
-import { InstanceType } from "../../model/instance-entitlements";
-import { Meter } from "../../model/meter";
+import { InstanceType } from "../../models/instance-entitlements";
+import { Meter } from "../../models/meter";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../../testing/build-license";
 import { FakeLicenseServer } from "../../testing/fake-license-server";
 import { enterprisePlan } from "../../testing/test-features";

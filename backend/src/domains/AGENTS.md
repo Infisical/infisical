@@ -36,7 +36,7 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | Path | Holds |
 | --- | --- |
 | `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts`, so a `ce/` domain never depends on an `ee/`-only one |
-| `model/` | One class per entity or value, with its rules. A file holds the class and its props type, nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
+| `models/` | One class per entity or value, with its rules. A file holds the class and its props type, nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
 | `data-access/` | One class per entity implementing a type from `services/dependencies.ts` and returning models, plus `data-access/<domain>-store.ts` exporting `build<Domain>Store(trx, locks)` |
 | `clients/<system>/` | Client for an external system, one folder per system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
 | `services/` | Business logic. One folder per use case group: `services/<name>/service.ts` holds the class (`T<Name>Service`) and its input types, with its unit and integration tests and the helpers only it uses beside it. Helpers two or more services use go in `services/helpers/`. `services/dependencies.ts` holds the data access and store types, `T<Domain>Store` included, and what the services need from EE or a domain they can't import |
@@ -230,7 +230,7 @@ in-memory store and lets EE plug in without `ce/` importing it.
 
 - `data-access/` and clients import from `services/` only `dependencies.ts` and wire shapes
   (`helpers/license-server-types.ts`), never a service class or helper.
-- `model/` imports no other layer.
+- `models/` imports no other layer.
 - `module.ts` imports every layer; nothing imports `module.ts` back. Types a module exposes are defined in the
   service and re-exported.
 - Other domains import only `ce/module.ts`. `ce/` never imports `ee/`; only `domains.ts` imports `ee/` from outside.
@@ -249,7 +249,7 @@ in-memory store and lets EE plug in without `ce/` importing it.
   `@app/lib/request-context` is not, since domains also run from queues and crons.
 - A domain may read a table no domain owns yet only as a declared exception in its `AGENTS.md`, like
   `organizations-projects`. Prefer adding the read there over a second domain reading the same table.
-- Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`model/`,
+- Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`models/`,
   `services/`, `data-access/`, `clients/`, `router/`), each repeating the shared patterns because the last matching
   override wins. A new layer folder needs its own override. Test files are exempt from layer order. Imports of
   legacy `@app/ee/**` from `ce/` aren't linted, catch them in review.
@@ -260,7 +260,7 @@ Inside `ce/` unless it's a paid feature or comes from `src/ee/**` (then the same
 
 | Adding | Goes in |
 | --- | --- |
-| A rule about one entity | `model/` |
+| A rule about one entity | `models/` |
 | A query or write | `data-access/`, plus its in-memory version in `testing/` and a contract suite case |
 | A use case | `services/` |
 | Logic two services share | A helper in `services/helpers/` that takes `store` |
@@ -277,7 +277,7 @@ sets the pattern from the rules above, and its PR names it here.
 
 | Piece | Copy |
 | --- | --- |
-| Value object with rules | `platform/license/ce/model/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
+| Value object with rules | `platform/license/ce/models/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
 | Entity, store, in-memory store, contract suite, router | none yet |
 | Query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-data-access.ts` |
 | Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |

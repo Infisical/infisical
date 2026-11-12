@@ -1,6 +1,6 @@
-import { InstanceEntitlements } from "../model/instance-entitlements";
-import { Meter } from "../model/meter";
-import { Plan } from "../model/plan";
+import { InstanceEntitlements } from "../models/instance-entitlements";
+import { Meter } from "../models/meter";
+import { Plan } from "../models/plan";
 import { TEntitlementOrg, TOrgDeletedResult } from "./helpers/license-server-types";
 
 export type TPlanCache = {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { TInstanceFeatures } from "../../../ce/model/instance-entitlements";
+import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 import { entitlementsResponseSchema, TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
 import { projectV2ToFeatureSet, withCloudPlanDefaults } from "./entitlement-projection";
 import { getDefaultOnPremFeatures } from "./license-fns";

@@ -1,4 +1,4 @@
-import { Meter } from "../../model/meter";
+import { Meter } from "../../models/meter";
 import { TUsageCounter } from "../dependencies";
 
 export class CounterRegistry {

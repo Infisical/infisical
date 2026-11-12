@@ -7,7 +7,7 @@ import type { TQueueServiceFactory } from "@app/queue";
 
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
-import { InstanceEntitlements } from "./model/instance-entitlements";
+import { InstanceEntitlements } from "./models/instance-entitlements";
 import { TLicenseProvider, TLicenseServer, TUsageCounter } from "./services/dependencies";
 import { CounterRegistry } from "./services/helpers/counter-registry";
 import { seatUsageCounters } from "./services/helpers/seat-usage-counters";
@@ -17,10 +17,10 @@ import { LicenseService, TLicenseService } from "./services/license/service";
 import { TUsageMeteringService, UsageMeteringService } from "./services/usage-metering/service";
 import { UsageReportWorker } from "./services/usage-report-worker/service";
 
-export * from "./model/instance-entitlements";
-export * from "./model/meter";
-export * from "./model/plan";
-export * from "./model/seat-usage";
+export * from "./models/instance-entitlements";
+export * from "./models/meter";
+export * from "./models/plan";
+export * from "./models/seat-usage";
 export type { TLicenseService, TRefreshPlanOptions } from "./services/license/service";
 export type {
   TCatalogProduct,

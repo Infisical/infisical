@@ -1,4 +1,4 @@
-import { Meter } from "../model/meter";
+import { Meter } from "../models/meter";
 import { TUsageCounter } from "../services/dependencies";
 
 // A null org means the whole instance.

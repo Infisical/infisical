@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { logger } from "@app/lib/logger";
 import type { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
-import { Meter } from "../../model/meter";
+import { Meter } from "../../models/meter";
 import { TLicenseServer, TUsageReportCache } from "../dependencies";
 import { CounterRegistry } from "./counter-registry";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types";

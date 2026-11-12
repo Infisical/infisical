@@ -1,6 +1,6 @@
 import { QueueName } from "@app/queue";
 
-import { Meter } from "../../model/meter";
+import { Meter } from "../../models/meter";
 import { buildLicense, ROOT } from "../../testing/build-license";
 import { FakeLicenseServer } from "../../testing/fake-license-server";
 

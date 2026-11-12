@@ -2,9 +2,9 @@ import { EntityNotFoundError, ExternalSystemError } from "@app/domains/lib/error
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
-import { InstanceEntitlements, InstanceType } from "../../model/instance-entitlements";
-import { Plan } from "../../model/plan";
-import { SeatUsage } from "../../model/seat-usage";
+import { InstanceEntitlements, InstanceType } from "../../models/instance-entitlements";
+import { Plan } from "../../models/plan";
+import { SeatUsage } from "../../models/seat-usage";
 import { TLicenseProvider, TLicenseServer, TPlanCache, TUsageReportCache } from "../dependencies";
 import { TEntitlementOrg, TOrgDeletedResult } from "../helpers/license-server-types";
 import { UsageQueue } from "../helpers/usage-queue";
