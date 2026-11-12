@@ -540,11 +540,11 @@ export const secretScanningDemo: SecretScanningAdapter = {
   useDataSources: () => ({ data: dataSourceStore.use(), isPending: false, error: null }),
   useDashboardDataSources: () => {
     const findings = store.use();
+    const allResources = resourceStore.use();
     return {
       data: dataSourceStore.use().map((source) => ({
         ...source,
-        resourceCount: resourceStore.use().filter((entry) => entry.dataSourceId === source.id)
-          .length,
+        resourceCount: allResources.filter((entry) => entry.dataSourceId === source.id).length,
         unresolvedFindings: source.lastScannedAt
           ? findings.filter(
               (entry) =>

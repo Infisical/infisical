@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isValidEmail } from "@app/helpers/email";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { GitLabAccessTokenType } from "@app/hooks/api/appConnections/gitlab/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
@@ -10,7 +11,7 @@ export const bitbucketApiTokenConnectionFormSchema = genericAppConnectionFieldsS
   app: z.literal(AppConnection.Bitbucket),
   method: z.literal(BitbucketConnectionMethod.ApiToken),
   credentials: z.object({
-    email: z.string().trim().min(1, "Email required").email("Enter a valid email"),
+    email: z.string().trim().min(1, "Email required").refine(isValidEmail, "Enter a valid email"),
     apiToken: z.string().trim().min(1, "API token required")
   })
 });
