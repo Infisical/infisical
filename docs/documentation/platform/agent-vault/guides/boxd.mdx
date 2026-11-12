@@ -72,7 +72,7 @@ Both machines start from the same [boxd snapshot](https://docs.boxd.sh/guides/sn
 
 <CodeGroup>
 
-```python Python
+```python Python expandable
 # machine_image.py
 import time
 
@@ -119,7 +119,7 @@ def ensure_snapshot(boxd: Boxd) -> None:
         boxd.machines.delete(builder.id)
 ```
 
-```typescript TypeScript
+```typescript TypeScript expandable
 // machineImage.ts
 import { type Boxd, NotFoundError } from "@boxd-sh/sdk";
 
@@ -464,7 +464,7 @@ To check which requests the agent made, [view the session's logs](/documentation
 
 ### Network access from the agent's machine
 
-The agent's machine can only connect to the proxy's machine on the network the two machines share. Under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the agent's requests to any host on the internet. To allow only the hosts of the services in the session's access bundle, set the traffic policy to **Service hosts only**, and add any other hosts the agent needs, such as `registry.npmjs.org`, to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
+The agent's machine can only connect to the proxy's machine on the network the two machines share. Under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the agent's requests to any host the proxy's machine can reach. That includes hosts on the internet, and also [private addresses](/documentation/platform/agent-vault/proxies#requests-to-private-addresses), such as `localhost` on the proxy's machine and the other machines on its network. To allow only the hosts of the services in the session's access bundle, set the traffic policy to **Service hosts only**, and add any other hosts the agent needs, such as `registry.npmjs.org`, to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions). We recommend **Service hosts only** if the proxy's machine can reach anything the agent shouldn't use.
 
 ### Compromised machines
 
