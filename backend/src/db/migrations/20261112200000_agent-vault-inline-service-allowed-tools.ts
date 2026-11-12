@@ -30,14 +30,34 @@ export async function up(knex: Knex): Promise<void> {
   );
 }
 
-// Code without inline tool lists would send a restricted inline MCP server with every tool, so its session loses that
-// server instead. Its custom headers and substitutions go with it through their foreign keys.
+// Code without inline tool lists would send a restricted inline MCP server with every tool, so its session is revoked
+// instead, the way revoking it from the API does: revokedAt set and its inline services' secrets deleted. Deleting only
+// the service would not do: while it exists it hides a bundle service of the same name, which the session would then
+// get. The revoked session keeps its services' names and hosts for the Sessions page, with the tool list cleared.
 export async function down(knex: Knex): Promise<void> {
   await replaceInlineOnlyCheck(
     knex,
     `"sessionId" IS NULL OR ("memberProvidedFields" IS NULL AND "credentialType" <> 'oauth' AND "allowedTools" IS NULL)`,
     async (trx) => {
-      await trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools").delete();
+      const sessionIds = trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools").distinct("sessionId");
+      await trx(TableName.AgentVaultSession)
+        .whereIn("id", sessionIds)
+        .whereNull("revokedAt")
+        .update({ revokedAt: trx.fn.now() });
+
+      const serviceIds = trx(SERVICE).whereIn("sessionId", sessionIds).whereNull("secretsDeletedAt").select("id");
+      await trx(TableName.AgentVaultServiceCustomHeader)
+        .whereIn("serviceId", serviceIds)
+        .update({ encryptedValue: null });
+      await trx(TableName.AgentVaultServiceSubstitution)
+        .whereIn("serviceId", serviceIds)
+        .update({ encryptedValue: null });
+      await trx(SERVICE)
+        .whereIn("sessionId", sessionIds)
+        .whereNull("secretsDeletedAt")
+        .update({ encryptedCredential: null, secretsDeletedAt: trx.fn.now() });
+
+      await trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools").update({ allowedTools: null });
     }
   );
 }
