@@ -61,7 +61,7 @@ export const certRevocationApprovalResourceFactory = ({
         inApp: {
           type: NotificationType.APPROVED_ACTION_FAILED,
           title: "Certificate Revocation Failed",
-          body: `The approved revocation of the certificate '${commonName}' didn't complete, so the certificate is still active. Reason: ${failureReason}`,
+          body: `The approved revocation of the certificate '${commonName}' didn't complete. Reason: ${failureReason}`,
           link: approvalUrl
         }
       };
