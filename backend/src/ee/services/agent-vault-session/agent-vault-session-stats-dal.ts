@@ -18,7 +18,7 @@ export const agentVaultSessionStatsDALFactory = (db: TDbClient) => {
         .merge({
           requests: db.raw(`?? + excluded.requests`, [`${TableName.AgentVaultSessionStats}.requests`]),
           brokered: db.raw(`?? + excluded.brokered`, [`${TableName.AgentVaultSessionStats}.brokered`])
-        } as never);
+        });
     } catch (error) {
       throw new DatabaseError({ error, name: "Add agent vault session chunk counts" });
     }

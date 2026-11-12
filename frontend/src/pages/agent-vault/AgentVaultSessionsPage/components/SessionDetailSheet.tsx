@@ -240,12 +240,14 @@ export const SessionDetailSheet = ({
                         </DetailValue>
                       </Detail>
                     )}
-                    <Detail>
-                      <DetailLabel>Requests</DetailLabel>
-                      <DetailValue>
-                        <SessionRequestCount stats={session.stats} />
-                      </DetailValue>
-                    </Detail>
+                    {session.stats && (
+                      <Detail>
+                        <DetailLabel>Requests</DetailLabel>
+                        <DetailValue>
+                          <SessionRequestCount stats={session.stats} />
+                        </DetailValue>
+                      </Detail>
+                    )}
                     <Detail className="items-start">
                       <DetailLabel>Status</DetailLabel>
                       <SessionStatusBadge status={session.status} />

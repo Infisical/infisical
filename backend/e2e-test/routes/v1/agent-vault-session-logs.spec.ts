@@ -620,6 +620,7 @@ describe("Agent Vault session logs", async () => {
   });
 
   describe("request counts", () => {
+    // The count write isn't awaited by the upload link, so reads poll until it lands.
     const sessionStats = async (sessionId: string) =>
       (await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}`)).json().session.stats as {
         requests: number;
@@ -652,7 +653,7 @@ describe("Agent Vault session logs", async () => {
       await requestUploadUrl(proxy, session.id, counted(10, 7));
       await requestUploadUrl(proxy, session.id, counted(5, 2));
 
-      expect(await sessionStats(session.id)).toEqual({ requests: 15, brokered: 9 });
+      await expect.poll(() => sessionStats(session.id)).toEqual({ requests: 15, brokered: 9 });
       const listed = (await inject("GET", "/api/v1/agent-vault/sessions?scope=all")).json().sessions as {
         id: string;
         stats: unknown;
@@ -665,18 +666,18 @@ describe("Agent Vault session logs", async () => {
       await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(10, 7));
       await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(3));
       await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(2, 2));
-      expect(await sessionStats(splitFirst.session.id)).toEqual({ requests: 15, brokered: null });
+      await expect.poll(() => sessionStats(splitFirst.session.id)).toEqual({ requests: 15, brokered: null });
 
       const unknownFirst = await setUp("unknown-first");
       await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(3));
       await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(10, 7));
-      expect(await sessionStats(unknownFirst.session.id)).toEqual({ requests: 13, brokered: null });
+      await expect.poll(() => sessionStats(unknownFirst.session.id)).toEqual({ requests: 13, brokered: null });
     });
 
     test("chunks that arrive at once are all counted", async () => {
       const { session, proxy } = await setUp("concurrent");
       await Promise.all(Array.from({ length: 8 }, () => requestUploadUrl(proxy, session.id, counted(4, 3))));
-      expect(await sessionStats(session.id)).toEqual({ requests: 32, brokered: 24 });
+      await expect.poll(() => sessionStats(session.id)).toEqual({ requests: 32, brokered: 24 });
     });
 
     test("a chunk without a total counts nothing", async () => {

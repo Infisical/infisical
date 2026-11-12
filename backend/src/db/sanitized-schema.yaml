@@ -159,6 +159,15 @@ tables:
       - createdAt
       - updatedAt
 
+  - name: agent_vault_session_stats
+    source: public.agent_vault_session_stats
+    columns:
+      - sessionId
+      - requests
+      - brokered
+      - createdAt
+      - updatedAt
+
   - name: agent_vault_variables
     source: public.agent_vault_variables
     columns:

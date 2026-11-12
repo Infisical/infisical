@@ -290,16 +290,16 @@ export const agentVaultSessionLogServiceFactory = ({
       );
 
     // The proxy's own counts, unchecked, since Infisical never opens a chunk. A retry that asks for a new link counts
-    // its chunk again; rare enough for a display number. Never fails the upload.
+    // its chunk again; rare enough for a display number. Not awaited, for the same reason as the live feed.
     if (chunk.recordCount !== undefined) {
-      try {
-        await agentVaultSessionStatsDAL.addChunkCounts(session.id, {
+      void agentVaultSessionStatsDAL
+        .addChunkCounts(session.id, {
           requests: chunk.recordCount,
           brokered: getChunkDecisionProperties(chunk).brokered ?? null
-        });
-      } catch (error) {
-        logger.warn(error, `agentVaultSessionLog: could not add a chunk's counts [sessionId=${session.id}]`);
-      }
+        })
+        .catch((error) =>
+          logger.warn(error, `agentVaultSessionLog: could not add a chunk's counts [sessionId=${session.id}]`)
+        );
     }
 
     return {
