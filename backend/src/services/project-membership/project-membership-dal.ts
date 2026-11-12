@@ -1,18 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  OrgMembershipStatus,
-  ProjectType,
-  TableName,
-  TMemberships,
-  TUserEncryptionKeys
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+
+import { TListActorProjectMembershipsFilter } from "./project-membership-types";
 
 export type TProjectMembershipDALFactory = ReturnType<typeof projectMembershipDALFactory>;
 
@@ -268,13 +263,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
       search,
       orderDirection = OrderByDirection.ASC,
       excludeProjectType
-    }: {
-      limit?: number;
-      offset?: number;
-      search?: string;
-      orderDirection?: OrderByDirection;
-      excludeProjectType?: ProjectType;
-    } = {}
+    }: TListActorProjectMembershipsFilter = {}
   ) => {
     try {
       const matchingMemberships = () => {

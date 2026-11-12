@@ -34,8 +34,6 @@ import {
 } from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
-const PROJECT_COLUMNS = Object.keys(ProjectsSchema.shape) as (keyof TProjects)[];
-
 type TDeletedByRow = {
   deletedByUserId: string | null;
   deletedByIdentityId: string | null;
@@ -349,8 +347,8 @@ export const projectDALFactory = (db: TDbClient) => {
             `${TableName.Environment}.deleteAfter`
           );
         })
-        .select<(TProjects & { _id: string; envId: string; envSlug: string; envName: string })[]>(
-          ...PROJECT_COLUMNS.map((column) => db.ref(column).withSchema(TableName.Project)),
+        .select(
+          selectAllTableCols(TableName.Project),
           db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
@@ -385,8 +383,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const projects = sqlNestRelationships({
         data: await query,
         key: "id",
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        parentMapper: ({ envId, envSlug, envName, ...project }) => project,
+        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
           {
             key: "envId",

@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessScope,
-  ProjectType,
   TableName,
   TIdentities,
   TIdentityAlicloudAuths,
@@ -27,6 +26,7 @@ import { OrderByDirection } from "@app/lib/types";
 import { ProjectIdentityOrderBy, TListProjectIdentityDTO } from "@app/services/identity-project/identity-project-types";
 
 import { buildAuthMethods } from "../identity/identity-fns";
+import { TListActorProjectMembershipsFilter } from "../project-membership/project-membership-types";
 
 export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFactory>;
 
@@ -42,13 +42,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
       search,
       orderDirection = OrderByDirection.ASC,
       excludeProjectType
-    }: {
-      limit?: number;
-      offset?: number;
-      search?: string;
-      orderDirection?: OrderByDirection;
-      excludeProjectType?: ProjectType;
-    } = {},
+    }: TListActorProjectMembershipsFilter = {},
     tx?: Knex
   ) => {
     try {

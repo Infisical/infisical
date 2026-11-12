@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import { ProjectType } from "@app/db/schemas";
-import { OrderByDirection, TOrgPermission } from "@app/lib/types";
+import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType, MfaMethod, SsoMfaTrust } from "../auth/auth-type";
+import { TListActorProjectMembershipsFilter } from "../project-membership/project-membership-types";
 import { OrgWithSubOrgsSchema } from "./org-schema";
 
 /** Root org with accessible sub-orgs (basic info only) */
@@ -105,12 +105,8 @@ export type TFindAllOrgMembersDTO = TOrgPermission;
 
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
-  limit?: number;
-  offset?: number;
-  search?: string;
-  orderDirection?: OrderByDirection;
-  excludeProjectType?: ProjectType;
-} & TOrgPermission;
+} & TListActorProjectMembershipsFilter &
+  TOrgPermission;
 
 export enum OrgAuthMethod {
   OIDC = "oidc",

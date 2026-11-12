@@ -1,7 +1,7 @@
-import { ProjectType } from "@app/db/schemas";
 import { IPType } from "@app/lib/ip";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, TOrgPermission } from "@app/lib/types";
+import { TListActorProjectMembershipsFilter } from "@app/services/project-membership/project-membership-types";
 
 export type TCreateIdentityDTO = {
   role: string;
@@ -36,12 +36,8 @@ export interface TIdentityTrustedIp {
 
 export type TListProjectIdentitiesByIdentityIdDTO = {
   identityId: string;
-  limit?: number;
-  offset?: number;
-  search?: string;
-  orderDirection?: OrderByDirection;
-  excludeProjectType?: ProjectType;
-} & Omit<TOrgPermission, "orgId">;
+} & TListActorProjectMembershipsFilter &
+  Omit<TOrgPermission, "orgId">;
 
 export type TListOrgIdentitiesByOrgIdDTO = {
   limit?: number;
