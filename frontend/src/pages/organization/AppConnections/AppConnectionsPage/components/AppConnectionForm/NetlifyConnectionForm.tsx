@@ -23,30 +23,15 @@ import {
   NetlifyConnectionMethod,
   TNetlifyConnection
 } from "@app/hooks/api/appConnections/types/netlify-connection";
+import { netlifyConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TNetlifyConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Netlify)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(NetlifyConnectionMethod.AccessToken),
-    credentials: z.object({
-      accessToken: z.string().trim().min(1, "Netlify Access Token required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

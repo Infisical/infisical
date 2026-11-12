@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, use, useState } from "react";
+import { useState } from "react";
 import { Controller, type FieldValues, useFieldArray, useWatch } from "react-hook-form";
 
 import {
@@ -26,86 +26,24 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v4/ui/table";
-import { APP_CONNECTION_MAP, AWS_REGIONS } from "@app/helpers/appConnections";
-import {
-  GCP_SYNC_SCOPES,
-  SECRET_SYNC_CONNECTION_MAP,
-  SECRET_SYNC_MAP
-} from "@app/helpers/secretSyncs";
+import { AWS_REGIONS } from "@app/helpers/appConnections";
+import { GCP_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 import { useV4Adapter } from "../../../../data/adapters";
-import { useConnectionCreation } from "../flows/connection-creation";
 import {
-  RotationField as SyncField,
+  ConnectionField,
+  type ReviewItems,
   SwitchField,
+  SyncField,
+  type SyncView,
   TextField,
   useConnectionOptions,
-  useRotationForm as useSyncForm
-} from "../flows/secret-rotation/fields";
-import { type LocalSyncConnection } from "./sync-model";
+  useSyncForm,
+  yesNo
+} from "./sync-fields";
 
 import styles from "./secret-sync.module.css";
-
-export type SyncConnectionsContext = {
-  projectId: string;
-  connections: LocalSyncConnection[];
-  addConnection: (connection: LocalSyncConnection) => void;
-};
-
-export const SyncConnections = createContext<SyncConnectionsContext>({
-  projectId: "",
-  connections: [],
-  addConnection: () => undefined
-});
-
-export const appNameOf = (destination: SecretSync) =>
-  APP_CONNECTION_MAP[SECRET_SYNC_CONNECTION_MAP[destination]].name;
-
-function ConnectionField({ onChange }: { onChange?: () => void }) {
-  const { control, getValues, setValue } = useSyncForm();
-  const { projectId, connections, addConnection } = use(SyncConnections);
-  const destination = useWatch({ control, name: "destination" }) as SecretSync;
-  const app = SECRET_SYNC_CONNECTION_MAP[destination];
-  const label = `${appNameOf(destination)} connection`;
-  const available = connections.filter(
-    (connection, index) =>
-      connection.app === app &&
-      connections.findIndex((entry) => entry.id === connection.id) === index
-  );
-  const creation = useConnectionCreation(app, projectId, (connection) => {
-    addConnection(connection);
-    setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
-    onChange?.();
-  });
-  return (
-    <Controller
-      control={control}
-      name="connection"
-      render={({ field, fieldState: { error } }) => (
-        <SyncField label={label} error={error?.message ?? error?.root?.message}>
-          <Combobox
-            label={label}
-            value={field.value?.id ?? ""}
-            onValueChange={(id) => {
-              if (id === getValues("connection")?.id) return;
-              field.onChange(available.find((connection) => connection.id === id) ?? null);
-              onChange?.();
-            }}
-            options={available.map((connection) => ({
-              value: connection.id,
-              label: connection.name
-            }))}
-            placeholder="Select connection..."
-            emptyText={`No ${appNameOf(destination)} connections yet.`}
-            invalid={Boolean(error)}
-            creation={creation}
-          />
-        </SyncField>
-      )}
-    />
-  );
-}
 
 const STS_REGION_TIP =
   "If the connection has a custom STS endpoint, this must match its STS region.";
@@ -1029,8 +967,6 @@ function AzureKeyVaultOptions() {
   );
 }
 
-type ReviewItems = (readonly [string, ReactNode])[];
-
 const regionValue = (slug: string) => {
   const region = AWS_REGIONS.find((entry) => entry.slug === slug);
   return (
@@ -1116,7 +1052,6 @@ function VercelProjectNames({ teamId, ids }: { teamId: string; ids: string[] }) 
 }
 
 const vercelReview = (config: FieldValues): ReviewItems => {
-  const yesNo = (value: unknown) => (value ? "Yes" : "No");
   if (config.scope === "team") {
     return [
       ["Scope", "Team"],
@@ -1149,15 +1084,15 @@ const vercelReview = (config: FieldValues): ReviewItems => {
   ];
 };
 
-export type SyncView = {
-  Destination: () => ReactNode;
-  Options?: () => ReactNode;
-  defaults: FieldValues;
-  destinationReview: (config: FieldValues) => ReviewItems;
-  optionsReview?: (options: FieldValues) => ReviewItems;
-};
-
-export const SYNC_VIEWS: Partial<Record<SecretSync, SyncView>> = {
+export const CORE_SYNC_VIEWS: Record<
+  | SecretSync.AWSParameterStore
+  | SecretSync.AWSSecretsManager
+  | SecretSync.GitHub
+  | SecretSync.GCPSecretManager
+  | SecretSync.AzureKeyVault
+  | SecretSync.Vercel,
+  SyncView
+> = {
   [SecretSync.AWSParameterStore]: {
     Destination: AwsParameterStoreDestination,
     Options: () => <AwsAdvancedOptions destination={SecretSync.AWSParameterStore} />,
@@ -1216,5 +1151,3 @@ export const SYNC_VIEWS: Partial<Record<SecretSync, SyncView>> = {
     destinationReview: vercelReview
   }
 };
-
-export const destinationNameOf = (destination: SecretSync) => SECRET_SYNC_MAP[destination].name;

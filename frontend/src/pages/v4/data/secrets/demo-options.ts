@@ -42,13 +42,13 @@ export const DEMO_ROTATION_CONNECTIONS: ConnectionWithApp[] = ROTATION_CONNECTIO
     names.map((name) => ({ id: `connection-${name}`, name, app, projectId: "payments-api" }))
 );
 
-const ready = <T>(data: T, enabled = true): V4QueryResult<T> => ({
+export const ready = <T>(data: T, enabled = true): V4QueryResult<T> => ({
   data: enabled ? data : undefined,
   isPending: !enabled,
   error: null
 });
 
-const listOf =
+export const listOf =
   <T>(items: T[]) =>
   (_connectionId: string, options?: { enabled?: boolean }) =>
     ready(items, options?.enabled ?? true);

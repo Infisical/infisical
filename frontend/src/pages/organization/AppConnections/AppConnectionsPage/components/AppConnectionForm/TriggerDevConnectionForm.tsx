@@ -24,31 +24,15 @@ import {
   TriggerDevConnectionMethod,
   TTriggerDevConnection
 } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
+import { triggerDevConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TTriggerDevConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.TriggerDev)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(TriggerDevConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiKey: z.string().trim().min(1, "API Key required"),
-      instanceUrl: z.string().url().optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

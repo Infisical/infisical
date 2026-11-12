@@ -18,36 +18,15 @@ import {
   LiteLLMConnectionMethod,
   TLiteLLMConnection
 } from "@app/hooks/api/appConnections/types/litellm-connection";
+import { liteLLMConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TLiteLLMConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.LiteLLM)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(LiteLLMConnectionMethod.ApiKey),
-    credentials: z.object({
-      instanceUrl: z
-        .string()
-        .trim()
-        .url("Invalid Instance URL")
-        .min(1, "Instance URL required")
-        .max(255),
-      apiKey: z.string().trim().min(1, "API Key required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

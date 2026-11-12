@@ -39,53 +39,15 @@ import {
   TPaloAltoNetworksConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { paloAltoNetworksConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TPaloAltoNetworksConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.PaloAltoNetworks)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(PaloAltoNetworksConnectionMethod.BasicAuth),
-    credentials: z.object({
-      hostname: z
-        .string()
-        .trim()
-        .min(1, "Hostname is required")
-        .max(512, "Hostname cannot exceed 512 characters")
-        .refine((val) => !val.includes("/") && !val.includes("@") && !val.includes("?"), {
-          message: "Hostname must not contain /, @, or ? characters"
-        }),
-      port: z.coerce.number().int().min(1).max(65535).optional(),
-      username: z
-        .string()
-        .trim()
-        .min(1, "Username is required")
-        .max(256, "Username cannot exceed 256 characters"),
-      password: z
-        .string()
-        .min(1, "Password is required")
-        .max(512, "Password cannot exceed 512 characters"),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

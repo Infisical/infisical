@@ -33,26 +33,16 @@ import {
   StripeConnectionMethod,
   TStripeConnection
 } from "@app/hooks/api/appConnections/types/stripe-connection";
+import { stripeConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TStripeConnection;
   onSubmit: (formData: FormData) => Promise<void>;
   projectId: string | undefined | null;
 };
-
-const formSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Stripe),
-  method: z.literal(StripeConnectionMethod.OAuth),
-  credentials: z.object({
-    code: z.string().min(1, "Code is required")
-  })
-});
 
 type FormData = z.infer<typeof formSchema>;
 

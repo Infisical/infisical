@@ -31,37 +31,15 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { useScopeVariant } from "@app/hooks";
 import { TVenafiTppConnection, VenafiTppConnectionMethod } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { venafiTppConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TVenafiTppConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.VenafiTpp)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(VenafiTppConnectionMethod.OAuth),
-    credentials: z.object({
-      tppUrl: z
-        .string()
-        .trim()
-        .min(1, "TPP URL required")
-        .refine((value) => value.startsWith("https://"), "TPP URL must use HTTPS"),
-      clientId: z.string().trim().min(1, "Client ID required"),
-      username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().min(1, "Password required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

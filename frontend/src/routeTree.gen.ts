@@ -307,6 +307,7 @@ import { Route as projectAccessControlPageRouteKmsImport } from './pages/project
 import { Route as projectAuditLogsPageRouteAgentVaultImport } from './pages/project/AuditLogsPage/route-agent-vault'
 import { Route as projectAccessControlPageRouteAgentVaultImport } from './pages/project/AccessControlPage/route-agent-vault'
 import { Route as redirectsAgentVaultIndexRedirectImport } from './pages/redirects/agent-vault-index-redirect'
+import { Route as v4SecretManagerSecretSyncDetailsByIDPageRouteImport } from './pages/v4/secret-manager/SecretSyncDetailsByIDPage/route'
 import { Route as secretScanningSecretScanningDataSourceByIdPageRouteImport } from './pages/secret-scanning/SecretScanningDataSourceByIdPage/route'
 import { Route as organizationProductSettingsPageSecretsManagementProjectTemplatesRouteImport } from './pages/organization/ProductSettingsPage/SecretsManagement/project-templates/route'
 import { Route as secretManagerSettingsPageRouteImport } from './pages/secret-manager/SettingsPage/route'
@@ -2946,6 +2947,13 @@ const redirectsAgentVaultIndexRedirectRoute =
     id: '/',
     path: '/',
     getParentRoute: () => agentVaultLayoutRoute,
+  } as any)
+
+const v4SecretManagerSecretSyncDetailsByIDPageRouteRoute =
+  v4SecretManagerSecretSyncDetailsByIDPageRouteImport.update({
+    id: '/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId',
+    path: '/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
 const secretScanningSecretScanningDataSourceByIdPageRouteRoute =
@@ -6211,6 +6219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretScanningSecretScanningDataSourceByIdPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretScanningSecretScanningLayoutDataSourcesImport
     }
+    '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': {
+      id: '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
+      path: '/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
+      fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
+      preLoaderRoute: typeof v4SecretManagerSecretSyncDetailsByIDPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/'
       path: '/'
@@ -7148,6 +7163,7 @@ interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4ProjectMemberDetailsByIDPageRouteRoute: typeof v4ProjectMemberDetailsByIDPageRouteRoute
   v4ProjectRoleDetailsBySlugPageRouteRoute: typeof v4ProjectRoleDetailsBySlugPageRouteRoute
   v4SecretManagerSecretDashboardPageRouteRoute: typeof v4SecretManagerSecretDashboardPageRouteRoute
+  v4SecretManagerSecretSyncDetailsByIDPageRouteRoute: typeof v4SecretManagerSecretSyncDetailsByIDPageRouteRoute
 }
 
 const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRouteChildren =
@@ -7218,6 +7234,8 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
       v4ProjectRoleDetailsBySlugPageRouteRoute,
     v4SecretManagerSecretDashboardPageRouteRoute:
       v4SecretManagerSecretDashboardPageRouteRoute,
+    v4SecretManagerSecretSyncDetailsByIDPageRouteRoute:
+      v4SecretManagerSecretSyncDetailsByIDPageRouteRoute,
   }
 
 const V4OrganizationsOrgIdProjectsRouteWithChildren =
@@ -9103,6 +9121,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-management/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId': typeof organizationProductSettingsPageSecretsManagementProjectTemplatesRouteRoute
   '/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId': typeof secretScanningSecretScanningDataSourceByIdPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': typeof v4SecretManagerSecretSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/': typeof redirectsAgentVaultIndexRedirectRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/access-bundles': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultProjectIdAgentVaultLayoutAccessBundlesRouteWithChildren
   '/organizations/$orgId/projects/agent-vault/$projectId/access-management': typeof projectAccessControlPageRouteAgentVaultRoute
@@ -9504,6 +9523,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-management/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId': typeof organizationProductSettingsPageSecretsManagementProjectTemplatesRouteRoute
   '/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId': typeof secretScanningSecretScanningDataSourceByIdPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': typeof v4SecretManagerSecretSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/access-management': typeof projectAccessControlPageRouteAgentVaultRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/audit-logs': typeof projectAuditLogsPageRouteAgentVaultRoute
   '/organizations/$orgId/projects/kms/$projectId/access-management': typeof projectAccessControlPageRouteKmsRoute
@@ -9949,6 +9969,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/settings': typeof secretManagerSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId': typeof organizationProductSettingsPageSecretsManagementProjectTemplatesRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/data-sources/$type/$dataSourceId': typeof secretScanningSecretScanningDataSourceByIdPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId': typeof v4SecretManagerSecretSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/': typeof redirectsAgentVaultIndexRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/access-bundles': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultProjectIdAgentVaultLayoutAccessBundlesRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/access-management': typeof projectAccessControlPageRouteAgentVaultRoute
@@ -10384,6 +10405,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId'
     | '/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/organizations/$orgId/projects/agent-vault/$projectId/'
     | '/organizations/$orgId/projects/agent-vault/$projectId/access-bundles'
     | '/organizations/$orgId/projects/agent-vault/$projectId/access-management'
@@ -10784,6 +10806,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId'
     | '/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/organizations/$orgId/projects/agent-vault/$projectId/access-management'
     | '/organizations/$orgId/projects/agent-vault/$projectId/audit-logs'
     | '/organizations/$orgId/projects/kms/$projectId/access-management'
@@ -11227,6 +11250,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/data-sources/$type/$dataSourceId'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/access-bundles'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/access-management'
@@ -11986,7 +12010,8 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/roles/$roleSlug",
-        "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId"
       ]
     },
     "/design-system/components/$group/$component": {
@@ -13202,6 +13227,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/data-sources/$type/$dataSourceId": {
       "filePath": "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/data-sources"
+    },
+    "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId": {
+      "filePath": "v4/secret-manager/SecretSyncDetailsByIDPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/": {
       "filePath": "redirects/agent-vault-index-redirect.tsx",
