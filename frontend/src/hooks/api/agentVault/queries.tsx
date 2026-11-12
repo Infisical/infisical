@@ -32,6 +32,8 @@ import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultBundleSkill,
+  TAgentVaultProjectService,
+  TListAgentVaultServicesDTO,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
   TAgentVaultMember,
@@ -151,6 +153,12 @@ export const agentVaultKeys = {
     scope: AgentVaultVariableScope,
     keys: string[]
   ) => [...agentVaultKeys.variables(orgId, projectId), "key-status", scope, keys] as const,
+  services: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.all(orgId, projectId), "services"] as const,
+  serviceList: (orgId: string, projectId: string, params: TListAgentVaultServicesDTO) =>
+    [...agentVaultKeys.services(orgId, projectId), "list", params] as const,
+  service: (orgId: string, projectId: string, serviceId: string) =>
+    [...agentVaultKeys.services(orgId, projectId), "detail", serviceId] as const,
   skills: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "skills"] as const,
   skillLists: (orgId: string, projectId: string) =>
@@ -488,10 +496,6 @@ export const useListAgentVaultAccessBundles = (
 // One page holds them all in practice: it is only the bundles the caller reaches that still require their values.
 export const useListAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
   useListAgentVaultAccessBundles(projectId, { requiresSetup: true, limit: 100 });
-
-// Only the count is read, so one row is enough.
-export const useListGrantedAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
-  useListAgentVaultAccessBundles(projectId, { requiresSetup: true, granted: true, limit: 1 });
 
 export const useGetAgentVaultAccessBundle = (projectId: string, accessBundleId: string) => {
   const { currentOrg } = useOrganization();
@@ -923,6 +927,46 @@ export const useAgentVaultVariableKeyStatus = (
       ) as ReadonlySet<string>
     };
   }, [data, keySignature]);
+};
+
+export const useListAgentVaultServices = (
+  projectId: string,
+  params: TListAgentVaultServicesDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.serviceList(currentOrg.id, projectId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        services: TAgentVaultProjectService[];
+        totalCount: number;
+      }>("/api/v1/agent-vault/services", { params: { ...params, projectId } });
+      return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+// The services in bundles granted to the caller that still need their personal values, for the sidebar and banners.
+export const useListGrantedAgentVaultServicesRequiringSetup = (projectId: string) =>
+  useListAgentVaultServices(projectId, { requiresSetup: true, granted: true, limit: 1 });
+
+export const useGetAgentVaultService = (projectId: string, serviceId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.service(currentOrg.id, projectId, serviceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ service: TAgentVaultProjectService }>(
+        `/api/v1/agent-vault/services/${serviceId}`
+      );
+      return data.service;
+    },
+    enabled: Boolean(serviceId)
+  });
 };
 
 export const useListAgentVaultSkills = (

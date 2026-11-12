@@ -47,6 +47,7 @@ import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSessionStatsDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-stats-dal";
 import { agentVaultSkillBundleDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-bundle-dal";
 import { agentVaultSkillDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-dal";
 import { agentVaultSkillServiceFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-service";
@@ -2002,15 +2003,6 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
-  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
-    certificateAuthorityDAL,
-    certificateAuthorityCrlDAL,
-    projectDAL,
-    kmsService,
-    permissionService
-    // licenseService
-  });
-
   const certificateTemplateService = certificateTemplateServiceFactory({
     certificateTemplateDAL,
     certificateTemplateEstConfigDAL,
@@ -2077,6 +2069,7 @@ export const registerRoutes = async (
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultSessionInlineServiceDAL = agentVaultSessionInlineServiceDALFactory(db);
+  const agentVaultSessionStatsDAL = agentVaultSessionStatsDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
@@ -2090,7 +2083,6 @@ export const registerRoutes = async (
     keyStore,
     kmsService,
     agentVaultServiceDAL,
-    agentVaultAccessBundleDAL,
     agentVaultPersonalValueDAL,
     permissionService,
     membershipDAL
@@ -3470,6 +3462,7 @@ export const registerRoutes = async (
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
+    agentVaultSessionStatsDAL,
     agentVaultProxyDAL,
     appConnectionDAL,
     appConnectionService,
@@ -3848,10 +3841,10 @@ export const registerRoutes = async (
     appConnectionService,
     pkiSyncDAL,
     pkiSyncQueue,
-    internalCertificateAuthorityDAL,
     caKeySourceService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    auditLogService
   });
 
   const certificateAuthorityOcspService = certificateAuthorityOcspServiceFactory({
@@ -3863,6 +3856,21 @@ export const registerRoutes = async (
     kmsService,
     caKeySourceService,
     keyStore
+  });
+
+  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    licenseService,
+    caKeySourceService,
+    keyStore,
+    auditLogService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -3886,7 +3894,9 @@ export const registerRoutes = async (
     licenseService,
     caSigningConfigDAL,
     usageMeteringService,
-    caKeySourceService
+    caKeySourceService,
+    keyStore,
+    auditLogService
   });
 
   const certificateAuthorityCrossSignedCertService = certificateAuthorityCrossSignedCertServiceFactory({

@@ -258,11 +258,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
       )}
 
       <PersonalValuesDialog
-        target={
-          serviceToSetUp && accessBundle
-            ? { service: serviceToSetUp, accessBundleName: accessBundle.name }
-            : null
-        }
+        target={serviceToSetUp && accessBundle ? { service: serviceToSetUp } : null}
         onOpenChange={(open) => {
           if (!open) setServiceToSetUp(null);
         }}

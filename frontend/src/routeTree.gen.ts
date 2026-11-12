@@ -188,6 +188,7 @@ import { Route as agentVaultAgentVaultVariablesPageRouteImport } from './pages/a
 import { Route as agentVaultAgentVaultSkillsPageRouteImport } from './pages/agent-vault/AgentVaultSkillsPage/route'
 import { Route as agentVaultAgentVaultSettingsPageRouteImport } from './pages/agent-vault/AgentVaultSettingsPage/route'
 import { Route as agentVaultAgentVaultSessionsPageRouteImport } from './pages/agent-vault/AgentVaultSessionsPage/route'
+import { Route as agentVaultAgentVaultServicesPageRouteImport } from './pages/agent-vault/AgentVaultServicesPage/route'
 import { Route as agentVaultAgentVaultProxiesPageRouteImport } from './pages/agent-vault/AgentVaultProxiesPage/route'
 import { Route as certManagerInstallationDetailsByIDPageRouteImport } from './pages/cert-manager/InstallationDetailsByIDPage/route'
 import { Route as certManagerSignerDetailPageRouteImport } from './pages/cert-manager/SignerDetailPage/route'
@@ -1980,6 +1981,13 @@ const agentVaultAgentVaultSessionsPageRouteRoute =
   agentVaultAgentVaultSessionsPageRouteImport.update({
     id: '/sessions',
     path: '/sessions',
+    getParentRoute: () => agentVaultLayoutRoute,
+  } as any)
+
+const agentVaultAgentVaultServicesPageRouteRoute =
+  agentVaultAgentVaultServicesPageRouteImport.update({
+    id: '/services',
+    path: '/services',
     getParentRoute: () => agentVaultLayoutRoute,
   } as any)
 
@@ -4080,6 +4088,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof agentVaultAgentVaultProxiesPageRouteImport
       parentRoute: typeof agentVaultLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services'
+      path: '/services'
+      fullPath: '/organizations/$orgId/projects/agent-vault/$projectId/services'
+      preLoaderRoute: typeof agentVaultAgentVaultServicesPageRouteImport
+      parentRoute: typeof agentVaultLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions'
       path: '/sessions'
@@ -4970,6 +4985,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultP
 
 interface agentVaultLayoutRouteChildren {
   agentVaultAgentVaultProxiesPageRouteRoute: typeof agentVaultAgentVaultProxiesPageRouteRoute
+  agentVaultAgentVaultServicesPageRouteRoute: typeof agentVaultAgentVaultServicesPageRouteRoute
   agentVaultAgentVaultSessionsPageRouteRoute: typeof agentVaultAgentVaultSessionsPageRouteRoute
   agentVaultAgentVaultSettingsPageRouteRoute: typeof agentVaultAgentVaultSettingsPageRouteRoute
   agentVaultAgentVaultSkillsPageRouteRoute: typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -4987,6 +5003,8 @@ interface agentVaultLayoutRouteChildren {
 const agentVaultLayoutRouteChildren: agentVaultLayoutRouteChildren = {
   agentVaultAgentVaultProxiesPageRouteRoute:
     agentVaultAgentVaultProxiesPageRouteRoute,
+  agentVaultAgentVaultServicesPageRouteRoute:
+    agentVaultAgentVaultServicesPageRouteRoute,
   agentVaultAgentVaultSessionsPageRouteRoute:
     agentVaultAgentVaultSessionsPageRouteRoute,
   agentVaultAgentVaultSettingsPageRouteRoute:
@@ -6466,6 +6484,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/cert-manager/code-signing/$signerId/': typeof certManagerSignerDetailPageRouteRoute
   '/organizations/$orgId/cert-manager/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
+  '/organizations/$orgId/projects/agent-vault/$projectId/services': typeof agentVaultAgentVaultServicesPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -6739,6 +6758,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/cert-manager/code-signing/$signerId': typeof certManagerSignerDetailPageRouteRoute
   '/organizations/$orgId/cert-manager/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
+  '/organizations/$orgId/projects/agent-vault/$projectId/services': typeof agentVaultAgentVaultServicesPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -7047,6 +7067,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/code-signing/$signerId/': typeof certManagerSignerDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services': typeof agentVaultAgentVaultServicesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -7348,6 +7369,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/cert-manager/code-signing/$signerId/'
     | '/organizations/$orgId/cert-manager/discovery/installations/$installationId'
     | '/organizations/$orgId/projects/agent-vault/$projectId/proxies'
+    | '/organizations/$orgId/projects/agent-vault/$projectId/services'
     | '/organizations/$orgId/projects/agent-vault/$projectId/sessions'
     | '/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/organizations/$orgId/projects/agent-vault/$projectId/skills'
@@ -7620,6 +7642,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/cert-manager/code-signing/$signerId'
     | '/organizations/$orgId/cert-manager/discovery/installations/$installationId'
     | '/organizations/$orgId/projects/agent-vault/$projectId/proxies'
+    | '/organizations/$orgId/projects/agent-vault/$projectId/services'
     | '/organizations/$orgId/projects/agent-vault/$projectId/sessions'
     | '/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/organizations/$orgId/projects/agent-vault/$projectId/skills'
@@ -7926,6 +7949,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/code-signing/$signerId/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/skills'
@@ -9067,6 +9091,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/skills",
@@ -9149,6 +9174,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies": {
       "filePath": "agent-vault/AgentVaultProxiesPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services": {
+      "filePath": "agent-vault/AgentVaultServicesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions": {

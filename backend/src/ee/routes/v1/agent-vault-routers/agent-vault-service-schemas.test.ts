@@ -14,7 +14,7 @@ import {
   AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE,
   AgentVaultCreateServiceBodySchema,
   AgentVaultInlineServiceSchema,
-  AgentVaultServiceSchema,
+  AgentVaultProjectServiceSchema as AgentVaultServiceSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
@@ -229,7 +229,7 @@ const keysOf = (value: unknown) => Object.keys(value as object).sort();
 
 const bundleService = (extra: Record<string, unknown>) => ({
   id: "00000000-0000-4000-8000-000000000001",
-  accessBundleId: "00000000-0000-4000-8000-000000000002",
+  accessBundles: [],
   name: "service",
   description: null,
   allowedTools: null,
@@ -254,7 +254,7 @@ describe("service responses", () => {
       expect(keysOf(parsed)).toEqual(
         [
           "id",
-          "accessBundleId",
+          "accessBundles",
           "name",
           "description",
           "type",
@@ -276,8 +276,12 @@ describe("service responses", () => {
         toInlineServiceSummary({
           ...row,
           id: "00000000-0000-4000-8000-000000000001",
+          projectId: "project-1",
           sessionId: "session-1",
           position: 0,
+          allowedTools: null,
+          memberProvidedFields: null,
+          secretsDeletedAt: null,
           name: "service",
           credentialType: credential.type,
           credentialConfig: credential,
@@ -375,8 +379,12 @@ describe("service responses", () => {
       toInlineServiceSummary({
         ...STORED_TYPES[2],
         id: "00000000-0000-4000-8000-000000000001",
+        projectId: "project-1",
         sessionId: "session-1",
         position: 0,
+        allowedTools: null,
+        memberProvidedFields: null,
+        secretsDeletedAt: null,
         name: "service",
         description: null,
         credentialType: AgentVaultCredentialType.Bearer,

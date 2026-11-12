@@ -1,7 +1,6 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
@@ -11,6 +10,7 @@ import { ObjectStorageType } from "@app/services/object-storage/object-storage-t
 
 import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
 import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
+import { TAgentVaultInlineServiceSecretsRow } from "../agent-vault-session/agent-vault-session-inline-service-dal";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
@@ -81,7 +81,7 @@ const setup = (
       trafficPolicy: "bundle-hosts"
     }
   }: {
-    inlineRows?: TAgentVaultSessionInlineServices[];
+    inlineRows?: TAgentVaultInlineServiceSecretsRow[];
     isOwnerAdmin?: boolean;
     revokedAt?: Date | null;
     label?: string | null;
@@ -701,11 +701,15 @@ describe("resolve with inline services", () => {
     encryptedCredential: null
   });
 
-  const inlineRow = (overrides: Partial<TAgentVaultSessionInlineServices> = {}): TAgentVaultSessionInlineServices => ({
+  const inlineRow = (
+    overrides: Partial<TAgentVaultInlineServiceSecretsRow> = {}
+  ): TAgentVaultInlineServiceSecretsRow => ({
     id: "inline-1",
+    projectId: PROJECT_ID,
     sessionId: "session-1",
     position: 0,
     name: "inline-api",
+    description: null,
     type: AgentVaultServiceType.Http,
     config: {},
     hostPattern: "api.example.com",
@@ -713,12 +717,13 @@ describe("resolve with inline services", () => {
     allowedPathPrefixes: null,
     credentialType: AgentVaultCredentialType.Bearer,
     credentialConfig: { type: AgentVaultCredentialType.Bearer, headerName: "Authorization", headerPrefix: "Bearer" },
+    allowedTools: null,
+    memberProvidedFields: null,
     customHeaders: [],
     substitutions: [],
-    // The test's decryptor hands the blob back as it is.
-    encryptedSecrets: Buffer.from(
-      JSON.stringify({ credential: { value: "inline-token" }, customHeaders: [], substitutions: [] })
-    ),
+    // The test's decryptor hands the sealed bytes back as they are.
+    encryptedCredential: Buffer.from(JSON.stringify({ value: "inline-token" })),
+    secretsDeletedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides
@@ -748,7 +753,7 @@ describe("resolve with inline services", () => {
         inlineRow({
           credentialType: AgentVaultCredentialType.Passthrough,
           credentialConfig: { type: AgentVaultCredentialType.Passthrough },
-          encryptedSecrets: null
+          encryptedCredential: null
         })
       ]
     });

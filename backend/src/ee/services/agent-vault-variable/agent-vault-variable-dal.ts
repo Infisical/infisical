@@ -41,8 +41,8 @@ export type TAgentVaultServiceUsingVariable = {
   serviceName: string;
   serviceType: AgentVaultServiceType;
   hostPattern: string | null;
-  accessBundleId: string;
-  accessBundleName: string;
+  // Every bundle the service is in, by name. Empty for a service no bundle holds yet.
+  accessBundles: { id: string; name: string }[];
 };
 
 const VARIABLE_COLUMNS = [
@@ -144,9 +144,10 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
           .countDistinct("refs.serviceId as count")
           .groupBy("refs.variableId");
         if (accessBundleIds) {
-          void usageCounts
-            .join(TableName.AgentVaultService, "refs.serviceId", `${TableName.AgentVaultService}.id`)
-            .whereIn(`${TableName.AgentVaultService}.accessBundleId`, accessBundleIds);
+          void usageCounts.whereIn(
+            "refs.serviceId",
+            conn(TableName.AgentVaultAccessBundleService).whereIn("accessBundleId", accessBundleIds).select("serviceId")
+          );
         }
 
         void pageQuery.leftJoin(usageCounts.as("uc"), function joinUsageCount() {
@@ -248,27 +249,45 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     if (!variableIds.length) return [];
     const conn = tx || db;
     try {
-      return (await conn
+      const services = (await conn
         .from(referencingServices(conn, variableIds).as("refs"))
         .join(TableName.AgentVaultService, "refs.serviceId", `${TableName.AgentVaultService}.id`)
-        .join(
-          TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultService}.accessBundleId`,
-          `${TableName.AgentVaultAccessBundle}.id`
-        )
         .distinct(
           db.ref("variableId").withSchema("refs"),
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
           db.ref("name").withSchema(TableName.AgentVaultService).as("serviceName"),
           db.ref("type").withSchema(TableName.AgentVaultService).as("serviceType"),
-          db.ref("hostPattern").withSchema(TableName.AgentVaultService),
-          db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
-          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName")
+          db.ref("hostPattern").withSchema(TableName.AgentVaultService)
         )
-        .orderBy([
-          { column: "accessBundleName", order: "asc" },
-          { column: "serviceName", order: "asc" }
-        ])) as TAgentVaultServiceUsingVariable[];
+        .orderBy("serviceName", "asc")) as Omit<TAgentVaultServiceUsingVariable, "accessBundles">[];
+      if (!services.length) return [];
+
+      const links = (await conn(TableName.AgentVaultAccessBundleService)
+        .join(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .whereIn(
+          `${TableName.AgentVaultAccessBundleService}.serviceId`,
+          services.map((service) => service.serviceId)
+        )
+        .select(
+          db.ref("serviceId").withSchema(TableName.AgentVaultAccessBundleService),
+          db.ref("id").withSchema(TableName.AgentVaultAccessBundle),
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle)
+        )
+        .orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc")) as {
+        serviceId: string;
+        id: string;
+        name: string;
+      }[];
+      return services.map((service) => ({
+        ...service,
+        accessBundles: links
+          .filter((link) => link.serviceId === service.serviceId)
+          .map(({ id, name }) => ({ id, name }))
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find services using agent vault variables" });
     }

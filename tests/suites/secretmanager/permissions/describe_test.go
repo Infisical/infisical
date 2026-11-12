@@ -104,7 +104,7 @@ func TestRole_DescribeOnly(t *testing.T) {
 		require.NotContains(t, string(withoutValue.Body), "plaintext")
 	})
 
-	t.Run("should refuse get-by-id for a describe-only role", func(t *testing.T) {
+	t.Run("should refuse get-by-id with the value and return it hidden without", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -114,11 +114,18 @@ func TestRole_DescribeOnly(t *testing.T) {
 		describer := proj.NewMachineIdentity(t, fixture.WithRoles("describer"))
 
 		// Action
-		res, err := describer.API.GetSecretByIdV4WithResponse(t.Context(), created.ID)
+		withValue, err := describer.API.GetSecretByIdV4WithResponse(t.Context(), created.ID, nil)
+		require.NoError(t, err)
+		withoutValue, err := describer.API.GetSecretByIdV4WithResponse(t.Context(), created.ID,
+			&api.GetSecretByIdV4Params{ViewSecretValue: new(api.GetSecretByIdV4ParamsViewSecretValueFalse)})
 
 		// Assert
 		require.NoError(t, err)
-		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "reading by id: %s", res.Body)
-		require.NotContains(t, string(res.Body), "plaintext")
+		require.Equalf(t, http.StatusForbidden, withValue.StatusCode(), "reading by id with the value: %s", withValue.Body)
+		require.NotContains(t, string(withValue.Body), "plaintext")
+		require.NotNilf(t, withoutValue.JSON200, "reading by id without the value returned %d: %s", withoutValue.StatusCode(), withoutValue.Body)
+		require.Equal(t, "API_KEY", withoutValue.JSON200.Secret.SecretKey)
+		require.True(t, withoutValue.JSON200.Secret.SecretValueHidden)
+		require.NotContains(t, string(withoutValue.Body), "plaintext")
 	})
 }

@@ -33,6 +33,8 @@ export const PgSqlLock = {
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
   CreateAgentVaultSkill: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-skill:${projectId}`),
+  // Taken by every write that adds a service name to a bundle or a session, so names checked under it stay unique.
+  AgentVaultServiceNames: (projectId: string) => pgAdvisoryLockHashText(`agent-vault-service-names:${projectId}`),
   CreateAgentVaultPersonalVariable: (projectId: string, ownerId: string) =>
     pgAdvisoryLockHashText(`create-agent-vault-personal-variable:${projectId}:${ownerId}`),
   ClearAgentVaultPersonalValues: (projectId: string) =>
@@ -97,6 +99,7 @@ export const KeyStorePrefixes = {
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
+  CaCrlRebuildLock: (caId: string) => `ca-crl-rebuild-lock-${caId}` as const,
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,

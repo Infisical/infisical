@@ -5,7 +5,10 @@ import { TAwsElasticLoadBalancerPkiSync } from "./aws-elastic-load-balancer-sync
 import { TAwsSecretsManagerPkiSync } from "./aws-secrets-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
-import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
+import {
+  CloudflareBundleMethod,
+  TCloudflareCustomCertificatePkiSync
+} from "./cloudflare-custom-certificate-sync";
 import { TPkiSyncFilters } from "./common";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
 import {
@@ -81,6 +84,7 @@ type TCreatePkiSyncDTOBase = {
     caCertificateNameSchema?: string;
     exportFormat?: PkiSyncExportFormat;
     includePrivateKey?: boolean;
+    bundleMethod?: CloudflareBundleMethod;
     fieldMappings?: {
       certificate: string;
       privateKey: string;

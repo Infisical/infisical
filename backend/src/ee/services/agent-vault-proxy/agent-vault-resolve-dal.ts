@@ -78,11 +78,18 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
   ): Promise<TResolveServiceRow[]> => {
     if (scope.accessBundleIds?.length === 0) return [];
     try {
-      const query = reachableSessionBundles(tx || (onPrimary ? db : db.replicaNode()), scope).join(
-        TableName.AgentVaultService,
-        `${TableName.AgentVaultService}.accessBundleId`,
-        `${TableName.AgentVaultAccessBundle}.id`
-      );
+      const query = reachableSessionBundles(tx || (onPrimary ? db : db.replicaNode()), scope)
+        .join(
+          TableName.AgentVaultAccessBundleService,
+          `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .join(
+          TableName.AgentVaultService,
+          `${TableName.AgentVaultService}.id`,
+          `${TableName.AgentVaultAccessBundleService}.serviceId`
+        )
+        .whereNull(`${TableName.AgentVaultService}.sessionId`);
 
       if (serviceId) void query.where(`${TableName.AgentVaultService}.id`, serviceId);
 
