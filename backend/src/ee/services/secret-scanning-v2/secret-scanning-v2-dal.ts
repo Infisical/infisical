@@ -226,7 +226,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
             })
           )
           .onConflict(["resourceId", "secretFindingBlindIndex"])
-          .merge({ status: SecretScanningFindingStatus.Unresolved, resolvedAt: null, lastDetectedAt: now })
+          .merge({ status: SecretScanningFindingStatus.Unresolved, resolvedAt: null })
           .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Resolved)
           .returning(["id", tx.raw("(xmax = 0) AS inserted")])) as { id: string; inserted: boolean }[];
 
@@ -244,6 +244,15 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         findings.forEach(({ id, status, secretFindingBlindIndex }) =>
           findingByValue.set(secretFindingBlindIndex as string, { id, status })
         );
+      }
+
+      // the upsert above already locked these rows, so this takes no new locks
+      for (const chunk of chunkArray(
+        [...findingByValue.values()].map(({ id }) => id),
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
+        // eslint-disable-next-line no-await-in-loop
+        await tx(TableName.SecretScanningFinding).whereIn("id", chunk).update({ lastDetectedAt: now });
       }
 
       for (const chunk of chunkArray(newRows, FINDINGS_UPSERT_CHUNK_SIZE)) {
