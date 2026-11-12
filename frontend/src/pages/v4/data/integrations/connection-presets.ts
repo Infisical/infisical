@@ -30,6 +30,7 @@ export const CONNECTION_GATEWAYS: Partial<Record<AppConnection, "optional" | "re
   [AppConnection.HCVault]: "optional",
   [AppConnection.HpeIloRedFish]: "optional",
   [AppConnection.Imperva]: "optional",
+  [AppConnection.Jenkins]: "optional",
   [AppConnection.Jira]: "optional",
   [AppConnection.KempLoadMaster]: "optional",
   [AppConnection.LDAP]: "optional",
