@@ -44,7 +44,11 @@ export function App() {
 
 ## Themes
 
-`V4Scope` takes a theme id. Lightly Peach (`peach`) is the default light theme, Light is `pale` and Dark is `dark`. `dark-alt` also ships. Overlays and toasts portal into the scope, so they follow its theme.
+`V4Scope` takes a theme id. Lightly Peach (`peach`) is the default light theme, Light is `pale` and Dark is `dark`. Overlays and toasts portal into the scope, so they follow its theme.
+
+## Links and routing
+
+Link components (RowLink, CardLink, Breadcrumb, Sidebar and others) take a `link` prop. By default it is `{ href: string }` and renders a plain anchor, so Cipher needs no router. To route through your router, wrap the app in `CipherRouterProvider` from `components/v4/lib/link` with your router's `Link` and a match hook, and augment `CipherRegister` to type `link` as your router's link options.
 
 ## Docs for people and agents
 
