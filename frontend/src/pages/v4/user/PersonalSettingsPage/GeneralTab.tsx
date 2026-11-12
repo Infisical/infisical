@@ -288,23 +288,51 @@ const Sessions = () => {
 
 const DELETE_CONFIRMATION = "delete my account";
 
+const OrgList = ({ orgs }: { orgs: { id: string; name: string }[] }) => (
+  <ul className="list-disc pl-5">
+    {orgs.map((org) => (
+      <li key={org.id} className="font-medium text-foreground">
+        {org.name}
+      </li>
+    ))}
+  </ul>
+);
+
 const DeleteAccount = () => {
   const navigate = useNavigate();
   const personal = usePersonalSettings();
   const signedOutHref = useSignedOutHref();
   const deleteMe = personal.useDeleteMe();
+  const eligibility = personal.useDeletionEligibility();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+
+  const lastMemberOrgs = eligibility.data?.lastMemberOrganizations ?? [];
+  const lastAdminOrgs = eligibility.data?.lastAdminOrganizations ?? [];
+  const deletesOrgs = lastMemberOrgs.length > 0;
+  const isBlocked = eligibility.data ? !eligibility.data.canDelete : false;
+
+  const openDialog = async () => {
+    const { isSuccess } = await eligibility.refetch();
+    if (isSuccess) {
+      setOpen(true);
+      return;
+    }
+    toast.error("Couldn't check whether your account can be deleted. Try again.");
+  };
 
   const deleteAccount = async () => {
     setPending(true);
     try {
-      await deleteMe.mutateAsync();
+      await deleteMe.mutateAsync({
+        lastMemberOrganizationIds: lastMemberOrgs.map((org) => org.id)
+      });
       toast.success("Account deleted");
       setOpen(false);
       navigate({ href: signedOutHref });
     } catch (cause) {
       failed("Failed to delete account", cause);
+      await eligibility.refetch();
     } finally {
       setPending(false);
     }
@@ -315,21 +343,82 @@ const DeleteAccount = () => {
       <SettingsCard
         tone="danger"
         title="Delete account"
-        description="Permanently delete your account and revoke its access to Infisical."
+        description="Permanently delete your account and revoke its access to Infisical. Organizations where you are the last member are deleted with it."
         hint="This cannot be undone."
         actions={
-          <Button variant="destructive" size="sm" icon="trash" onClick={() => setOpen(true)}>
+          <Button
+            variant="destructive"
+            size="sm"
+            icon="trash"
+            loading={eligibility.isFetching && !open}
+            onClick={openDialog}
+          >
             Delete account
           </Button>
         }
       />
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent tone="danger" confirmText={DELETE_CONFIRMATION} pending={pending}>
+      <AlertDialog open={open && isBlocked} onOpenChange={setOpen}>
+        <AlertDialogContent icon="alert">
+          <AlertDialogHeader>
+            <AlertDialogTitle>You can&apos;t delete your account yet</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-2">
+                {eligibility.data?.isOnlyServerAdmin && (
+                  <p>
+                    You are the only server admin on this instance. Promote another user to server
+                    admin first.
+                  </p>
+                )}
+                {lastAdminOrgs.length > 0 && (
+                  <>
+                    <p>
+                      You are the only admin of these organizations. Promote another member to admin
+                      in each one first, so the organization keeps someone who can manage it.
+                    </p>
+                    <OrgList orgs={lastAdminOrgs} />
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        key={lastMemberOrgs
+          .map((org) => org.id)
+          .sort()
+          .join(",")}
+        open={open && !isBlocked}
+        onOpenChange={setOpen}
+      >
+        <AlertDialogContent
+          tone="danger"
+          confirmText={DELETE_CONFIRMATION}
+          pending={pending || eligibility.isFetching}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your account will permanently lose access to Infisical. This cannot be undone.
-            </AlertDialogDescription>
+            {deletesOrgs ? (
+              <AlertDialogDescription asChild>
+                <div className="flex flex-col gap-2">
+                  <p>
+                    You are the last member of these organizations, so deleting your account also
+                    permanently deletes them and all of their data. Any subscriptions they have are
+                    canceled immediately, and any remaining prepaid commitment is forfeited without
+                    a refund.
+                  </p>
+                  <OrgList orgs={lastMemberOrgs} />
+                  <p>This cannot be undone.</p>
+                </div>
+              </AlertDialogDescription>
+            ) : (
+              <AlertDialogDescription>
+                Your account will permanently lose access to Infisical. This cannot be undone.
+              </AlertDialogDescription>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -340,7 +429,7 @@ const DeleteAccount = () => {
                 deleteAccount();
               }}
             >
-              Delete account
+              {deletesOrgs ? "Delete account and organizations" : "Delete account"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

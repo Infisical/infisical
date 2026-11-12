@@ -119,6 +119,19 @@ export const personalDemo: PersonalAdapter = {
     sessions.update((current) => current.filter((entry) => entry.id !== id))
   ),
   useRevokeAllSessions: fixtureMutation(() => sessions.update(() => [])),
+  useDeletionEligibility: () => ({
+    data: {
+      canDelete: true,
+      isOnlyServerAdmin: false,
+      lastMemberOrganizations: [
+        { id: "acme-labs-demo", name: "Acme Labs" },
+        { id: "sarah-sandbox-demo", name: "Sarah's sandbox" }
+      ],
+      lastAdminOrganizations: []
+    },
+    isFetching: false,
+    refetch: async () => ({ isSuccess: true })
+  }),
   useDeleteMe: fixtureMutation(() => undefined),
   useRequestEmailChange: fixtureMutation(() => undefined),
   useVerifyCurrentEmail: fixtureMutation(() => undefined),
