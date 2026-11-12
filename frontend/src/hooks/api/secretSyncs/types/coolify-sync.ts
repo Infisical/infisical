@@ -6,6 +6,11 @@ export type TCoolifySync = TRootSecretSync & {
   destination: SecretSync.Coolify;
   destinationConfig: {
     appId: string;
+    appName?: string;
+    projectId?: string;
+    projectName?: string;
+    environmentId?: number;
+    environmentName?: string;
   };
   connection: {
     app: AppConnection.Coolify;

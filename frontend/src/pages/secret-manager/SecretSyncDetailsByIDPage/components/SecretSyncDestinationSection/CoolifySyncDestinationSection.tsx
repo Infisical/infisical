@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TCoolifySync } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 
 type Props = {
@@ -6,9 +6,32 @@ type Props = {
 };
 
 export const CoolifySyncDestinationSection = ({ secretSync }: Props) => {
-  const {
-    destinationConfig: { appId }
-  } = secretSync;
+  const { destinationConfig } = secretSync;
 
-  return <GenericFieldLabel label="Application ID">{appId}</GenericFieldLabel>;
+  return (
+    <>
+      {destinationConfig?.projectName && (
+        <Detail>
+          <DetailLabel>Project</DetailLabel>
+          <DetailValue>{destinationConfig.projectName}</DetailValue>
+        </Detail>
+      )}
+      {destinationConfig?.environmentName && (
+        <Detail>
+          <DetailLabel>Environment</DetailLabel>
+          <DetailValue>{destinationConfig.environmentName}</DetailValue>
+        </Detail>
+      )}
+      <Detail>
+        <DetailLabel>Application</DetailLabel>
+        <DetailValue>{destinationConfig?.appName || destinationConfig?.appId}</DetailValue>
+      </Detail>
+      {destinationConfig?.appName && (
+        <Detail>
+          <DetailLabel>Application ID</DetailLabel>
+          <DetailValue>{destinationConfig.appId}</DetailValue>
+        </Detail>
+      )}
+    </>
+  );
 };
