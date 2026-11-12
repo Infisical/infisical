@@ -1,4 +1,5 @@
 import type { FieldValues } from "react-hook-form";
+import { z } from "zod";
 
 import type {
   AppConnectionFieldPreset,
@@ -17,6 +18,7 @@ import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/gith
 import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
 import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
 import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/postgres-connection";
+import type { TGitHubApp } from "@app/hooks/api/gitHubApps/types";
 import {
   awsConnectionFormSchema,
   bitbucketApiTokenConnectionFormSchema,
@@ -57,7 +59,109 @@ const gitHubInstance = (stored: Record<string, unknown>) => {
   return server ? { instanceType: "server", host: stored.host } : { instanceType: "cloud" };
 };
 
+/** Select value for the instance's shared GitHub App, which has no id. */
+export const INSTANCE_GITHUB_APP = "instance";
+
+export const gitHubPreset = (apps: readonly TGitHubApp[] = []): AppConnectionPreset => {
+  const shared = apps.find((app) => app.id === null);
+  const picked = (values: FieldValues) => {
+    const id = values.credentials?.gitHubAppId;
+    return id === INSTANCE_GITHUB_APP ? shared : apps.find((app) => app.id && app.id === id);
+  };
+  const appField: AppConnectionFieldPreset = {
+    name: "credentials.gitHubAppId",
+    label: "GitHub App",
+    kind: "select",
+    options: apps.map((app) => ({
+      value: app.id ?? INSTANCE_GITHUB_APP,
+      label: app.name,
+      group: app.id ? "Private" : "Instance",
+      description: `${app.id ? (app.owner ?? "Private") : "Server admin"}, used by ${app.connectionCount} connection${app.connectionCount === 1 ? "" : "s"}`
+    }))
+  };
+  return {
+    app: AppConnection.GitHub,
+    name: APP_CONNECTION_MAP[AppConnection.GitHub].name,
+    schema: apps.length
+      ? gitHubConnectionFormSchema.and(
+          z.object({ credentials: z.object({ gitHubAppId: z.string().optional() }) })
+        )
+      : gitHubConnectionFormSchema,
+    values: { gatewayId: null, gatewayPoolId: null },
+    methods: [
+      {
+        value: GitHubConnectionMethod.App,
+        label: methodLabel(GitHubConnectionMethod.App),
+        credentials: {
+          instanceType: "cloud",
+          host: "",
+          ...(apps.length > 0 && { gitHubAppId: shared ? INSTANCE_GITHUB_APP : apps[0].id })
+        },
+        fields: apps.length ? [appField, ...gitHubInstanceFields] : gitHubInstanceFields,
+        redirect: {
+          submitLabel: "Connect to GitHub",
+          href: ({ values, option }) => {
+            const slug =
+              picked(values)?.slug ??
+              (typeof option?.appClientSlug === "string" ? option.appClientSlug : undefined);
+            return slug
+              ? `${buildGitHubAppUrl(slug, gitHubHost(values), values.credentials?.instanceType)}/installations/new`
+              : undefined;
+          },
+          unconfigured: "This server has no GitHub App configured.",
+          credentials: ({ callback, stored }) => ({
+            code: callback.code ?? "",
+            installationId: callback.installation_id ?? "",
+            ...gitHubInstance(stored),
+            ...(typeof stored.gitHubAppId === "string" &&
+              stored.gitHubAppId !== INSTANCE_GITHUB_APP && { gitHubAppId: stored.gitHubAppId })
+          })
+        }
+      },
+      {
+        value: GitHubConnectionMethod.OAuth,
+        label: methodLabel(GitHubConnectionMethod.OAuth),
+        credentials: { instanceType: "cloud", host: "" },
+        fields: gitHubInstanceFields,
+        redirect: {
+          submitLabel: "Connect to GitHub",
+          href: ({ values, option }) => {
+            if (typeof option?.oauthClientId !== "string" || !option.oauthClientId)
+              return undefined;
+            const query = new URLSearchParams({
+              client_id: option.oauthClientId,
+              response_type: "code",
+              scope: "repo,admin:org",
+              redirect_uri: `${window.location.origin}/organization/app-connections/github/oauth/callback`
+            });
+            return `${buildGitHubHostUrl(gitHubHost(values))}/login/oauth/authorize?${query}`;
+          },
+          unconfigured: "This server has no GitHub OAuth application configured.",
+          credentials: ({ callback, stored }) => ({
+            code: callback.code ?? "",
+            ...gitHubInstance(stored)
+          })
+        }
+      },
+      {
+        value: GitHubConnectionMethod.Pat,
+        label: methodLabel(GitHubConnectionMethod.Pat),
+        credentials: { instanceType: "cloud", host: "", personalAccessToken: "" },
+        fields: [
+          ...gitHubInstanceFields,
+          {
+            name: "credentials.personalAccessToken",
+            label: "Personal access token",
+            kind: "secret"
+          }
+        ]
+      }
+    ]
+  };
+};
+
 export const CORE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> = {
+  [AppConnection.GitHub]: gitHubPreset(),
   [AppConnection.GitHubRadar]: {
     app: AppConnection.GitHubRadar,
     name: APP_CONNECTION_MAP[AppConnection.GitHubRadar].name,
@@ -118,75 +222,6 @@ export const CORE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> =
         fields: [
           { name: "credentials.accessKeyId", label: "Access key ID", mono: true },
           { name: "credentials.secretAccessKey", label: "Secret access key", kind: "secret" }
-        ]
-      }
-    ]
-  },
-  [AppConnection.GitHub]: {
-    app: AppConnection.GitHub,
-    name: APP_CONNECTION_MAP[AppConnection.GitHub].name,
-    schema: gitHubConnectionFormSchema,
-    values: { gatewayId: null, gatewayPoolId: null },
-    methods: [
-      {
-        value: GitHubConnectionMethod.App,
-        label: methodLabel(GitHubConnectionMethod.App),
-        credentials: { instanceType: "cloud", host: "" },
-        fields: gitHubInstanceFields,
-        redirect: {
-          submitLabel: "Connect to GitHub",
-          href: ({ values, option }) =>
-            typeof option?.appClientSlug === "string" && option.appClientSlug
-              ? `${buildGitHubAppUrl(
-                  option.appClientSlug,
-                  gitHubHost(values),
-                  values.credentials?.instanceType
-                )}/installations/new`
-              : undefined,
-          unconfigured: "This server has no GitHub App configured.",
-          credentials: ({ callback, stored }) => ({
-            code: callback.code ?? "",
-            installationId: callback.installation_id ?? "",
-            ...gitHubInstance(stored)
-          })
-        }
-      },
-      {
-        value: GitHubConnectionMethod.OAuth,
-        label: methodLabel(GitHubConnectionMethod.OAuth),
-        credentials: { instanceType: "cloud", host: "" },
-        fields: gitHubInstanceFields,
-        redirect: {
-          submitLabel: "Connect to GitHub",
-          href: ({ values, option }) => {
-            if (typeof option?.oauthClientId !== "string" || !option.oauthClientId)
-              return undefined;
-            const query = new URLSearchParams({
-              client_id: option.oauthClientId,
-              response_type: "code",
-              scope: "repo,admin:org",
-              redirect_uri: `${window.location.origin}/organization/app-connections/github/oauth/callback`
-            });
-            return `${buildGitHubHostUrl(gitHubHost(values))}/login/oauth/authorize?${query}`;
-          },
-          unconfigured: "This server has no GitHub OAuth application configured.",
-          credentials: ({ callback, stored }) => ({
-            code: callback.code ?? "",
-            ...gitHubInstance(stored)
-          })
-        }
-      },
-      {
-        value: GitHubConnectionMethod.Pat,
-        label: methodLabel(GitHubConnectionMethod.Pat),
-        credentials: { instanceType: "cloud", host: "", personalAccessToken: "" },
-        fields: [
-          ...gitHubInstanceFields,
-          {
-            name: "credentials.personalAccessToken",
-            label: "Personal access token",
-            kind: "secret"
-          }
         ]
       }
     ]

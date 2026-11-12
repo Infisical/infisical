@@ -8,6 +8,7 @@ import {
   useAppConnectionOptions,
   useListAppConnections
 } from "@app/hooks/api/appConnections/queries";
+import { useListGitHubApps } from "@app/hooks/api/gitHubApps/queries";
 import { useGetWorkflowIntegrations } from "@app/hooks/api/workflowIntegrations/queries";
 
 import type { IntegrationsAdapter } from "./contract";
@@ -19,5 +20,6 @@ export const integrationsLive: IntegrationsAdapter = {
   useUpdateConnection: useUpdateAppConnection,
   useRotateCredentials: useRotateAppConnectionCredentials,
   useDeleteConnection: useDeleteAppConnection,
+  useGitHubApps: useListGitHubApps,
   useWorkflowIntegrations: useGetWorkflowIntegrations
 };
