@@ -4,7 +4,9 @@ sidebarTitle: "Findings"
 description: "Review the secrets Infisical finds in your repositories."
 ---
 
-A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). To see the findings from every data source, go to **Secret Scanning** > **Findings**.
+A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). Infisical creates one finding for each secret value in a repository. If the same value appears in several files or commits, each place is a location of that one finding, so you review the secret once. If the same value appears in another repository, it's a separate finding there.
+
+To see the findings from every data source, go to **Secret Scanning** > **Findings**.
 
 ![findings](/images/platform/secret-scanning/secret-scanning-findings.png)
 
@@ -13,12 +15,10 @@ A finding is a secret that a scan found in one of your [data sources](/documenta
 To see the details of a finding, select its row:
 
 - **Description**: What the matching rule detects, such as a type of API key
-- **File**: The path of the file that contains the secret
-- **Commit**, **Author**, **Email**, and **Commit Message**: The commit that added the secret, and who made it
-- **Start Line**, **End Line**, **Start Column**, and **End Column**: Where the secret is in the file
-- **Link**: A link to the file at that commit, on GitHub, GitLab, or Bitbucket
-
-If a later scan finds the same secret in the same place, Infisical keeps the existing finding and its status instead of adding a new one.
+- **Last Detected**: The last time a scan found the secret in a new place
+- **First Detected**: The first time a scan found the secret
+- **Comment**: The comment left with the finding's current status, if any
+- **Locations**: Every place Infisical found the secret, with the file and line, the commit and its author, and a link to the file at that commit on GitHub, GitLab, or Bitbucket
 
 ## Finding statuses
 
@@ -26,9 +26,19 @@ Every new finding starts as **Unresolved**. After you review a finding, change i
 
 - **Resolved**: You've dealt with the leak, for example by revoking the secret
 - **False Positive**: The value isn't a secret
-- **Ignore**: The value is a secret, but you've decided it's safe to leave, such as a test credential
+- **Ignored**: The value is a secret, but you've decided it's safe to leave, such as a test credential
 
-The status is only a record of your review, and doesn't change how Infisical scans. To stop a value from being reported in the first place, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+A status applies to every location of the finding, including locations that later scans find. To stop Infisical from reporting a value at all, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+
+## When a scan finds the secret again
+
+If a later scan finds the secret in a place Infisical already recorded, the finding doesn't change.
+
+If a later scan finds the secret in a new place, Infisical adds the location to the finding. What happens next depends on the finding's status:
+
+- **Unresolved**: Infisical sends a [notification](#notifications-about-new-findings)
+- **Resolved**: Infisical sets the finding back to **Unresolved** and sends a notification
+- **False Positive** or **Ignored**: The finding keeps its status, and Infisical doesn't send a notification
 
 ## Change a finding's status
 
@@ -37,23 +47,23 @@ The status is only a record of your review, and doesn't change how Infisical sca
     Go to **Secret Scanning** > **Findings**.
   </Step>
   <Step>
-    Select the finding's row, then select **Update Status**.
+    Select the finding's row, then select **Mark Resolved**. For another status, select the arrow next to **Mark Resolved**, then select **Mark False Positive** or **Ignore**.
 
-    To change several findings at once, select the checkbox on each finding's row, then select **Update Status** below the table.
+    To change several findings at once, select the checkbox on each finding's row, then select **Set Status** and a status.
   </Step>
   <Step>
-    Select a **Status**. Optionally, enter a **Comment** that explains your decision.
+    Optionally, enter a **Comment** that explains your decision.
   </Step>
   <Step>
-    Select **Update Status**.
+    Select **Confirm**.
   </Step>
 </Steps>
 
-Your comment appears as **Remarks** in the finding's details, and when you hover over the finding's status.
+To set a finding back to **Unresolved**, select its row, then select **Reopen**.
 
 ## Notifications about new findings
 
-When a scan finds secrets, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
+When a scan finds a secret in a new place and the secret's finding is **Unresolved**, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
 
 If a scan of a new push finds secrets, Infisical also notifies the author of the commit if they're a member. If the push has commits from more than one author, Infisical notifies only one of them.
 

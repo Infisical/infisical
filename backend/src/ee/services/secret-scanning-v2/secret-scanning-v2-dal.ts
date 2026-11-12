@@ -205,7 +205,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       });
       const newRows = [...newRowByFingerprint.values()];
 
-      // a value's first new row gives a new finding its rule and severity
+      // a value's first new row gives a new finding its rule, severity and first location
       const newRowByValue = new Map<string, TFindingLocationRow>();
       newRows.forEach((row) => {
         if (!newRowByValue.has(row.secretFindingBlindIndex)) newRowByValue.set(row.secretFindingBlindIndex, row);
@@ -221,8 +221,18 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         const upserted = (await tx(TableName.SecretScanningFinding)
           .insert(
             chunk.map((secretFindingBlindIndex) => {
-              const { rule, severity } = newRowByValue.get(secretFindingBlindIndex)!;
-              return { resourceId, secretFindingBlindIndex, rule, severity, lastDetectedAt: now };
+              const { rule, severity, fingerprint, details } = newRowByValue.get(secretFindingBlindIndex)!;
+              // the first location is kept on the finding too, for the release before locations existed
+              return {
+                resourceId,
+                secretFindingBlindIndex,
+                rule,
+                severity,
+                lastDetectedAt: now,
+                scanId,
+                fingerprint,
+                details
+              };
             })
           )
           .onConflict(["resourceId", "secretFindingBlindIndex"])

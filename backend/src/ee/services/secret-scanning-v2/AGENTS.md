@@ -32,6 +32,9 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
 - A fingerprint is `commit:file:rule:line:column` with the scanner's own column, and full and diff scans must build
   the same one for the same leak, or a full scan sees a known leak as a new location and reopens it.
 - Findings from before blind indexes existed have a NULL blind index and one location each, and stay that way.
+- `findings.scanId`, `fingerprint` and `details` are deprecated but still written: `persistLocations` stores the
+  finding's first location there, so the release before locations existed keeps working if a deploy is rolled back.
+  Never read them, and drop them only in a release after this one has shipped.
 - A PR check is judged on the finding of every location the scan matched, including locations an earlier push saved,
   never only the new ones. Its counts are distinct findings.
 - Notifications count distinct unresolved findings with a location this scan found first (`findings.countByScanId`),

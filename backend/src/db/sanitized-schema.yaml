@@ -1210,6 +1210,9 @@ tables:
       - triagedByUserId
       - triagedAt
       - resolvedAt
+      - fingerprint
+      - details
+      - scanId
       - lastDetectedAt
       - createdAt
       - updatedAt

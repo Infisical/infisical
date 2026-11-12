@@ -115,7 +115,11 @@ export const GitRepositoryScanFindingDetailsSchema = z.object({
 });
 
 export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit({
-  secretFindingBlindIndex: true
+  secretFindingBlindIndex: true,
+  // where the secret was found is on its locations; these only hold the first one, for older releases
+  fingerprint: true,
+  details: true,
+  scanId: true
 }).extend({
   projectId: z.string(),
   dataSourceId: z.string().uuid(),
