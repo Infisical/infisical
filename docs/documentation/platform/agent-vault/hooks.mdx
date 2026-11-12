@@ -120,7 +120,7 @@ For each check, your server receives one `POST` request, verifies the request's 
 
 ### Verify the signature
 
-The proxy signs requests the way the [Standard Webhooks](https://www.standardwebhooks.com/) specification describes, so you can verify them with any Standard Webhooks library. Load the library in raw-key mode, as in the examples below. In the default mode, the library rejects every signature from the proxy.
+The proxy signs requests the way the [Standard Webhooks](https://www.standardwebhooks.com/) specification describes, so you can verify them with any Standard Webhooks library. Load the library in raw-key mode. In the default mode, the library rejects every signature from the proxy.
 
 Verify the raw request body, before any framework parses it. The libraries also refuse a request whose `webhook-timestamp` differs from your server's clock by more than five minutes.
 
