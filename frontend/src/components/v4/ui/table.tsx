@@ -40,7 +40,7 @@ function Table({
 }: React.ComponentProps<"table"> & {
   /** Layout classes for the scroll container (height caps, flex sizing). ref targets the table element itself. */
   containerClassName?: string;
-  /** The horizontal scroll container, which v3 Table's ref pointed at. */
+  /** The horizontal scroll container. */
   containerRef?: React.Ref<HTMLDivElement>;
 }) {
   const [pins, setPins] = React.useState<PinCounts>({ start: 0, end: 0, viewport: 0 });
