@@ -220,87 +220,64 @@ type AbsoluteFetchOpts struct {
 }
 
 // FetchAbsoluteSecrets retrieves secrets for the given absolute references.
-// Returns all matching secrets - permission filtering should happen in the caller.
+// Relative references inside a fetched value resolve in that value's own board,
+// so the folder's imports are included: direct secrets take precedence, then
+// imports in reverse import order (matching ListSecrets). Imported values are
+// exposed under the requested location and keep their origin in
+// ImportEnvironment/ImportPath for nested-relative resolution.
 func (s *Service) FetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecretRef, opts AbsoluteFetchOpts) []*ProcessedSecret {
 	if len(refs) == 0 {
 		return nil
 	}
 
-	// Build location map
-	type locationKey struct {
-		envID uuid.UUID
-		path  string
+	type location struct {
+		env  string
+		path string
 	}
 
-	locationToKeys := make(map[locationKey]map[string]struct{})
-
-	for i := range refs {
-		ref := &refs[i]
-		envID, ok := opts.FolderLookup.GetEnvIDBySlug(ref.Env)
-		if !ok {
-			continue
+	wanted := make(map[location]map[string]struct{})
+	var order []location
+	for _, ref := range refs {
+		loc := location{env: ref.Env, path: ref.Path}
+		if wanted[loc] == nil {
+			wanted[loc] = make(map[string]struct{})
+			order = append(order, loc)
 		}
-
-		key := locationKey{envID: envID, path: ref.Path}
-		if locationToKeys[key] == nil {
-			locationToKeys[key] = make(map[string]struct{})
-		}
-		locationToKeys[key][ref.Key] = struct{}{}
-	}
-
-	var folderIDs []uuid.UUID
-	folderToLocation := make(map[uuid.UUID]locationKey)
-
-	for loc := range locationToKeys {
-		node, ok := opts.FolderLookup.GetByPath(loc.envID, loc.path)
-		if !ok {
-			continue
-		}
-		folderIDs = append(folderIDs, node.ID)
-		folderToLocation[node.ID] = loc
-	}
-
-	if len(folderIDs) == 0 {
-		return nil
-	}
-
-	rawSecrets, err := s.FindByFolderIds(ctx, folderIDs, opts.UserID, nil)
-	if err != nil {
-		return nil
+		wanted[loc][ref.Key] = struct{}{}
 	}
 
 	var result []*ProcessedSecret
-	for i := range rawSecrets {
-		sec := &rawSecrets[i]
-		loc, ok := folderToLocation[sec.FolderID]
-		if !ok {
-			continue
-		}
-
-		wantedKeys := locationToKeys[loc]
-		if _, wanted := wantedKeys[sec.Key]; !wanted {
-			continue
-		}
-
-		envSlug, _ := opts.FolderLookup.GetEnvSlug(loc.envID)
-
-		rawValue, displayValue, comment, metadata, decryptErrs := DecryptSecretFields(sec, opts.CipherPair, false)
-		if decryptErrs.HasErrors() {
-			s.logger.WarnContext(ctx, "absolute ref decryption errors (fail-open)",
-				slog.String("secretId", sec.ID.String()),
-				slog.Any("valueErr", decryptErrs.ValueErr))
-		}
-
-		result = append(result, &ProcessedSecret{
-			Secret:      sec,
+	for _, loc := range order {
+		list, err := s.ListSecrets(ctx, &ListSecretsOpts{
+			ProjectID:   opts.ProjectID,
+			Environment: loc.env,
 			SecretPath:  loc.path,
-			Environment: envSlug,
-			RawValue:    rawValue,
-			Value:       displayValue,
-			Comment:     comment,
-			Metadata:    metadata,
-			ValueHidden: false,
+			UserID:      opts.UserID,
 		})
+		if err != nil {
+			continue
+		}
+
+		seen := make(map[string]struct{})
+		for _, sec := range list.AllSecrets() {
+			if _, ok := wanted[loc][sec.Secret.Key]; !ok {
+				continue
+			}
+			if _, dup := seen[sec.Secret.Key]; dup {
+				continue
+			}
+			seen[sec.Secret.Key] = struct{}{}
+
+			if sec.IsImported {
+				originEnv, originPath := sec.Environment, sec.SecretPath
+				sec.Environment = loc.env
+				sec.SecretPath = loc.path
+				sec.ImportEnvironment = originEnv
+				sec.ImportPath = originPath
+			}
+
+			result = append(result, sec)
+		}
 	}
 
 	return result

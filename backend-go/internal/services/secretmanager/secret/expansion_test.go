@@ -252,6 +252,60 @@ func TestExpand_AbsoluteReference_NestedRelativeResolvesInReferencedBoard(t *tes
 	assert.Equal(t, "https://prod-host/api", secrets[1].Value)
 }
 
+func TestExpand_AbsoluteReference_MissingNestedRelativeResolves(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	opts := ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var fetched []*ProcessedSecret
+			for _, ref := range refs {
+				if ref.Env == "prod" && ref.Path == "/" && ref.Key == "URL" {
+					fetched = append(fetched, newTestSecret("URL", "https://${staging.HOST}/api", "prod", "/"))
+				}
+			}
+			return fetched
+		},
+	}
+
+	expander := NewSecretExpander(secrets, opts)
+	expander.Expand()
+
+	// staging.HOST never resolves; the outer reference must not stay unresolved.
+	assert.Equal(t, "https:///api", secrets[0].Value)
+}
+
+func TestExpand_AbsoluteReference_ImportedRelativeResolves(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	opts := ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var fetched []*ProcessedSecret
+			for _, ref := range refs {
+				switch {
+				case ref.Env == "prod" && ref.Path == "/" && ref.Key == "URL":
+					fetched = append(fetched, newTestSecret("URL", "https://${HOST}/api", "prod", "/"))
+				case ref.Env == "prod" && ref.Path == "/" && ref.Key == "HOST":
+					imported := newTestSecret("HOST", "shared-host", "prod", "/")
+					imported.IsImported = true
+					imported.ImportEnvironment = "shared"
+					imported.ImportPath = "/"
+					fetched = append(fetched, imported)
+				}
+			}
+			return fetched
+		},
+	}
+
+	expander := NewSecretExpander(secrets, opts)
+	expander.Expand()
+
+	assert.Equal(t, "https://shared-host/api", secrets[0].Value)
+}
+
 func TestExpand_AbsoluteReference_ChainedAbsolute(t *testing.T) {
 	secrets := []*ProcessedSecret{
 		newTestSecret("A", "${prod.KEY1}", "dev", "/"),
