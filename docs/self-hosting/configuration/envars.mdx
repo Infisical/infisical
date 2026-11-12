@@ -128,10 +128,10 @@ Example values:
 </ParamField>
 
 <ParamField query="ALERT_WEBHOOK_ALLOW_INTERNAL_IP" type="bool" default="false" optional>
-  Lets [webhook alert channels](/documentation/platform/pki/applications/alerting/webhook-alerts) send requests to private IP addresses (including IPv6 unique local addresses), carrier-grade NAT addresses in `100.64.0.0/10`, and `localhost`, such as a proxy on the same host. Infisical still refuses link-local addresses, such as a cloud provider's metadata endpoint, and addresses used by its own database and Redis.
+  Determines whether [webhook alert channels](/documentation/platform/pki/applications/alerting/webhook-alerts) are permitted to connect with internal/private IP addresses, such as a proxy on the same host.
 
   <Warning>
-    Relaxes the SSRF protection for webhook alert channels. Only enable it if you trust the users who can configure alerts.
+    Relaxes the SSRF protection for webhook alert channels and turns off their DNS-rebinding pin protection. Only enable it if you trust the users who can configure alerts.
   </Warning>
 </ParamField>
 

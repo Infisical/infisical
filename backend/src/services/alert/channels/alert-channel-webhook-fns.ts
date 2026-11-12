@@ -125,7 +125,7 @@ const triggerWebhook = async (config: TWebhookChannelConfig, payload: TAlertWebh
       headers,
       timeout: ALERT_CHANNEL_HTTP_TIMEOUT,
       signal: AbortSignal.timeout(ALERT_CHANNEL_HTTP_TIMEOUT),
-      allowInternalAddresses: appCfg.ALERT_WEBHOOK_ALLOW_INTERNAL_IP
+      allowPrivateIps: appCfg.ALERT_WEBHOOK_ALLOW_INTERNAL_IP
     });
   } catch (err) {
     if (err instanceof BadRequestError && err.message === PRIVATE_ADDRESS_REFUSED_MESSAGE) {

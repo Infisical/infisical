@@ -16,7 +16,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 ## Prerequisites
 
 - The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
-- An HTTPS endpoint that accepts POST requests. If you self-host Infisical, an admin of your instance can [allow HTTP and internal endpoints](#http-and-internal-endpoints).
+- An HTTPS endpoint that accepts POST requests (if you self-host Infisical, an admin of your instance can [allow HTTP and internal endpoints](#http-and-internal-endpoints))
 
 ## Create the alert
 
@@ -148,7 +148,7 @@ Infisical sends custom headers with each request, such as an `X-Env` header your
 By default, a webhook channel only sends requests to HTTPS URLs on public addresses. If you self-host Infisical, an admin of your instance can relax these rules for webhook channels with two [environment variables](/self-hosting/configuration/envars):
 
 - `ALERT_WEBHOOK_ALLOW_HTTP` lets a channel use an `http://` URL, such as a sidecar proxy that adds TLS before the request leaves your network
-- `ALERT_WEBHOOK_ALLOW_INTERNAL_IP` lets a channel reach a private IP address (including IPv6 unique local addresses), a carrier-grade NAT address in `100.64.0.0/10` (such as a Tailscale node), or `localhost`. Link-local addresses, such as a cloud provider's metadata endpoint, stay blocked.
+- `ALERT_WEBHOOK_ALLOW_INTERNAL_IP` lets a channel reach an internal or private IP address, such as `localhost` or a service inside your cluster
 
 An HTTP sidecar proxy that you reach at `localhost` or another private address needs both variables set to `true`.
 

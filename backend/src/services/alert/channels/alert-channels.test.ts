@@ -548,7 +548,7 @@ describe("webhook alert self-hosting flags", () => {
     post.mockClear();
     configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = true;
     await sendWebhookNotification({ ...baseCtx(), config: { url: "https://example.com/hook" } });
-    expect(post.mock.calls[0][2]).toMatchObject({ allowInternalAddresses: true });
+    expect(post.mock.calls[0][2]).toMatchObject({ allowPrivateIps: true });
   });
 
   test("names ALERT_WEBHOOK_ALLOW_INTERNAL_IP when a private address is refused on self-hosted", async () => {
