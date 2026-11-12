@@ -29,7 +29,6 @@
   flex: none;
   width: var(--v4-size-glyph);
   height: var(--v4-size-glyph);
-  margin-inline-start: auto;
   stroke-width: var(--v4-stroke-icon);
   color: var(--v4-muted);
   transition: color var(--v4-duration-fast) var(--v4-ease-fade);
