@@ -13,5 +13,9 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, or the GitHub
   scan's ID as its `external_id`, which is how re-runs and skip actions find the scan.
 - Every exit of a PR scan closes its check (including the stuck-scan reaper, which also fails realtime scans left
   `queued`), since a check left open blocks merging when it is required.
+- A PR scan that can't finish fails its check, so an outage never lets a secret through. What GitHub's API can't
+  provide (commits past the compare limit, files past the 3,000 a commit lists, a missing patch for a file over
+  `MISSING_PATCH_MAX_FILE_BYTES`) is skipped and listed on the check instead, which concludes `neutral` when nothing
+  else fails it, because re-running never changes those.
 - Fork PRs aren't scanned: they get a `skipped` check under the same name, unless the commit already has one of
   our checks (checks belong to the commit, so it would replace a real result).

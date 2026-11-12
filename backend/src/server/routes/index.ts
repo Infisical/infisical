@@ -1581,9 +1581,32 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+
+  const reminderService = reminderServiceFactory({
+    reminderDAL,
+    eventEmitter: eventOutboxService,
+    alertService,
+    permissionService,
+    secretV2BridgeDAL,
+    folderDAL
+  });
+
+  const orgDeletionService = orgDeletionServiceFactory({
+    orgDAL,
+    projectDAL,
+    secretDAL,
+    folderDAL,
+    projectBotService,
+    reminderService,
+    honeyTokenCleanupService,
+    eventEmitter: eventOutboxService
+  });
+
   const userService = userServiceFactory({
     userDAL,
     orgDAL,
+    orgDeletionService,
     tokenService,
     permissionService,
     groupProjectDAL,
@@ -1732,29 +1755,7 @@ export const registerRoutes = async (
     emailDispatchGuard
   });
 
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
-
-  const reminderService = reminderServiceFactory({
-    reminderDAL,
-    eventEmitter: eventOutboxService,
-    alertService,
-    permissionService,
-    secretV2BridgeDAL,
-    folderDAL
-  });
-
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
-
-  const orgDeletionService = orgDeletionServiceFactory({
-    orgDAL,
-    projectDAL,
-    secretDAL,
-    folderDAL,
-    projectBotService,
-    reminderService,
-    honeyTokenCleanupService,
-    eventEmitter: eventOutboxService
-  });
 
   const orgService = orgServiceFactory({
     auditLogSettingsService,

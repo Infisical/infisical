@@ -25,6 +25,7 @@ import {
   RenameUserDTO,
   TokenVersion,
   TOrgUserAccess,
+  TUserDeletionEligibility,
   TWorkspaceUser,
   UpdateOrgMembershipDTO,
   User,
@@ -74,14 +75,35 @@ export const useGetMyDuplicateAccount = () =>
     })
   });
 
+export const useGetMyDeletionEligibility = ({ enabled = true }: { enabled?: boolean } = {}) => {
+  return useQuery({
+    queryKey: userKeys.myDeletionEligibility,
+    queryFn: async () => {
+      const {
+        data: { deletionEligibility }
+      } = await apiRequest.get<{ deletionEligibility: TUserDeletionEligibility }>(
+        "/api/v2/users/me/deletion-eligibility"
+      );
+      return deletionEligibility;
+    },
+    enabled
+  });
+};
+
 export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      lastMemberOrganizationIds = []
+    }: { lastMemberOrganizationIds?: string[] } = {}) => {
       const {
         data: { user }
-      } = await apiRequest.delete<{ user: User }>("/api/v2/users/me");
+      } = await apiRequest.delete<{ user: User }>("/api/v2/users/me", {
+        params: lastMemberOrganizationIds.length
+          ? { lastMemberOrganizationIds: lastMemberOrganizationIds.join(",") }
+          : undefined
+      });
       return user;
     },
     onSuccess: () => {

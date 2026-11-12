@@ -482,6 +482,86 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Root orgs where nobody but the user can sign in, so they are deleted with the user's account. Anyone else
+  // with an accepted, active membership (direct or via a group, in the org or one of its sub-orgs, since those
+  // go with the root) keeps the org. Ghost users are legacy service accounts and do not count. The user's own
+  // membership has to be active too: a user the org deactivated must not be able to delete it.
+  const findOrgsWhereUserIsLastMember = async (userId: string, tx?: Knex): Promise<{ id: string; name: string }[]> => {
+    try {
+      const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) =>
+        qb
+          .select(db.raw("1"))
+          .from(`${TableName.Membership} as ${alias}`)
+          .join(`${TableName.Organization} as ${alias}Org`, `${alias}Org.id`, `${alias}.scopeOrgId`)
+          .where((orgQb) => {
+            void orgQb
+              .where(`${alias}Org.id`, db.ref(`${TableName.Organization}.id`))
+              .orWhere(`${alias}Org.rootOrgId`, db.ref(`${TableName.Organization}.id`));
+          })
+          .where(`${alias}.scope`, AccessScope.Organization)
+          .where(`${alias}.isActive`, true)
+          .where((statusQb) => {
+            void statusQb.whereNull(`${alias}.status`).orWhereNot(`${alias}.status`, OrgMembershipStatus.Invited);
+          });
+
+      // Primary on purpose: this picks orgs to delete, and replica lag could hide someone who just joined.
+      const orgs = await (tx || db)(TableName.Membership)
+        .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
+        .where(`${TableName.Membership}.actorUserId`, userId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.isActive`, true)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
+        .where((statusQb) => {
+          void statusQb
+            .whereNull(`${TableName.Membership}.status`)
+            .orWhereNot(`${TableName.Membership}.status`, OrgMembershipStatus.Invited);
+        })
+        .whereNotExists((qb) => {
+          void signInMembershipsOfOrgTree(qb, "direct")
+            .join(`${TableName.Users} as directUser`, "directUser.id", "direct.actorUserId")
+            .whereNot("direct.actorUserId", userId)
+            .where("directUser.isGhost", false);
+        })
+        .whereNotExists((qb) => {
+          void signInMembershipsOfOrgTree(qb, "viaGroup")
+            .join(`${TableName.UserGroupMembership} as groupMember`, "groupMember.groupId", "viaGroup.actorGroupId")
+            .join(`${TableName.Users} as groupUser`, "groupUser.id", "groupMember.userId")
+            .whereNot("groupMember.userId", userId)
+            .where("groupUser.isGhost", false);
+        })
+        .distinct(`${TableName.Organization}.id`, `${TableName.Organization}.name`);
+
+      return orgs as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find orgs where user is last member" });
+    }
+  };
+
+  // Takes early the row locks deleting the root org takes anyway, so a last-member check made after this in
+  // the same tx stays true until commit. An accept or reactivation in flight holds its membership row and is
+  // waited on; a new membership or group member needs a key share on the org or group row and waits for us.
+  const lockOrgTreeAccessForDeletion = async (rootOrgId: string, tx: Knex) => {
+    try {
+      const orgs = await tx(TableName.Organization)
+        .where((qb) => {
+          void qb.where({ id: rootOrgId }).orWhere({ rootOrgId });
+        })
+        .orderBy("id")
+        .forUpdate()
+        .select("id");
+      const orgIds = orgs.map((org) => org.id);
+      await tx(TableName.Membership)
+        .whereIn("scopeOrgId", orgIds)
+        .where("scope", AccessScope.Organization)
+        .orderBy("id")
+        .forUpdate()
+        .select("id");
+      await tx(TableName.Groups).whereIn("orgId", orgIds).orderBy("id").forUpdate().select("id");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock org tree access for deletion" });
+    }
+  };
+
   // Membership is required so a removed or deactivated creator is not locked out everywhere. A second
   // account with admin can therefore free the slot; accepted, since that costs an invite cycle per org.
   // Takes the transaction, not an optional one, so the read cannot hit a replica and defeat the lock.
@@ -1472,6 +1552,8 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgById,
     findOrgBySlug,
     findAllOrgsByUserId,
+    findOrgsWhereUserIsLastMember,
+    lockOrgTreeAccessForDeletion,
     countJoinedRootOrgsCreatedByUserId,
     findOrganizationsByFilter,
     findOrgMembersByUsername,
