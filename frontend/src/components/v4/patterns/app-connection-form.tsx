@@ -26,12 +26,28 @@ export type AppConnectionFieldPreset = {
   visible?: (values: FieldValues) => boolean;
 };
 
+export type AppConnectionRedirectPreset = {
+  /** Submit label while this method is the only one, for example Connect to GitHub. */
+  submitLabel: string;
+  /** Provider URL without the state, or undefined while the server has no app configured. */
+  href: (input: { values: FieldValues; option?: Record<string, unknown> }) => string | undefined;
+  /** Shown instead of redirecting while href is undefined. */
+  unconfigured: string;
+  /** Builds the create credentials from the provider's callback parameters and the stored ones. */
+  credentials: (input: {
+    callback: Record<string, string | undefined>;
+    stored: Record<string, unknown>;
+  }) => Record<string, unknown>;
+};
+
 export type AppConnectionMethodPreset = {
   value: string;
   label: string;
   description?: string;
   credentials: Record<string, unknown>;
   fields: readonly AppConnectionFieldPreset[];
+  /** The method sends the person to the provider instead of taking credentials. */
+  redirect?: AppConnectionRedirectPreset;
 };
 
 export type AppConnectionPreset = {
@@ -47,10 +63,36 @@ export type AppConnectionPreset = {
 
 export type AppConnectionFormValues = FieldValues & { app: string; method: string; name: string };
 
+export type AppConnectionRedirect = {
+  /** The calling flow's v4 href. The callback returns here with connectionId and connectionName. */
+  returnTo: string;
+  projectId?: string;
+  /** The app's connection option from the server, for example the GitHub App slug. */
+  option?: Record<string, unknown>;
+  /** Stores the pending record with a fresh state and sends the person to href. */
+  start: (href: string, pending: Omit<PendingConnectionRedirect, "state">) => void;
+};
+
+export type PendingConnectionRedirect = {
+  state: string;
+  app: string;
+  method: string;
+  name: string;
+  description?: string | null;
+  credentials: Record<string, unknown>;
+  projectId?: string;
+  returnTo: string;
+};
+
+const usableMethods = (preset: AppConnectionPreset, redirect?: AppConnectionRedirect) =>
+  redirect ? preset.methods : preset.methods.filter((entry) => !entry.redirect);
+
 export type AppConnectionFormProps = {
   id: string;
   preset: AppConnectionPreset;
   defaultName?: string;
+  /** Needed for redirect methods, which are left out without it. */
+  redirect?: AppConnectionRedirect;
   onSubmit: (values: AppConnectionFormValues) => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
   onPendingChange?: (pending: boolean) => void;
@@ -60,11 +102,13 @@ export function AppConnectionForm({
   id,
   preset,
   defaultName = "",
+  redirect,
   onSubmit,
   onDirtyChange,
   onPendingChange
 }: AppConnectionFormProps) {
-  const [first] = preset.methods;
+  const methods = usableMethods(preset, redirect);
+  const [first] = methods;
   const form = useForm<FieldValues>({
     resolver: zodResolver(preset.schema),
     defaultValues: {
@@ -78,15 +122,33 @@ export function AppConnectionForm({
   });
   const { control, formState } = form;
   const values = useWatch({ control });
-  const method = preset.methods.find((entry) => entry.value === values.method) ?? first;
+  const method = methods.find((entry) => entry.value === values.method) ?? first;
+  const redirectHref = method.redirect?.href({ values, option: redirect?.option });
   const [failure, setFailure] = React.useState("");
+  const [redirecting, setRedirecting] = React.useState(false);
+  const pending = formState.isSubmitting || redirecting;
   React.useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
-  React.useEffect(
-    () => onPendingChange?.(formState.isSubmitting),
-    [formState.isSubmitting, onPendingChange]
-  );
+  React.useEffect(() => onPendingChange?.(pending), [pending, onPendingChange]);
   const submit = form.handleSubmit(async (submitted) => {
     setFailure("");
+    if (method.redirect) {
+      const href = method.redirect.href({ values: submitted, option: redirect?.option });
+      if (!redirect || !href) {
+        setFailure(method.redirect.unconfigured);
+        return;
+      }
+      setRedirecting(true);
+      redirect.start(href, {
+        app: preset.app,
+        method: method.value,
+        name: submitted.name,
+        description: submitted.description,
+        credentials: submitted.credentials ?? {},
+        projectId: redirect.projectId,
+        returnTo: redirect.returnTo
+      });
+      return;
+    }
     try {
       await onSubmit(submitted as AppConnectionFormValues);
     } catch (cause) {
@@ -175,14 +237,14 @@ export function AppConnectionForm({
   );
   return (
     <form id={id} noValidate data-slot="app-connection-form" onSubmit={submit}>
-      <FieldSet disabled={formState.isSubmitting}>
+      <FieldSet disabled={pending}>
         {renderField({
           name: "name",
           label: "Name",
           placeholder: `my-${preset.app}-connection`,
           description: "Lowercase letters, numbers and dashes."
         })}
-        {preset.methods.length > 1 && (
+        {methods.length > 1 && (
           <Controller
             control={control}
             name="method"
@@ -190,14 +252,14 @@ export function AppConnectionForm({
               <Field label="Method" description={method.description}>
                 <Select
                   label="Method"
-                  options={preset.methods.map((entry) => ({
+                  options={methods.map((entry) => ({
                     value: entry.value,
                     label: entry.label
                   }))}
                   value={field.value}
                   onValueChange={(next) => {
                     field.onChange(next);
-                    const chosen = preset.methods.find((entry) => entry.value === next);
+                    const chosen = methods.find((entry) => entry.value === next);
                     form.setValue("credentials", chosen?.credentials ?? {}, { shouldDirty: true });
                     form.clearErrors("credentials");
                   }}
@@ -213,6 +275,11 @@ export function AppConnectionForm({
           kind: "textarea",
           optional: true
         })}
+        {method.redirect && !redirectHref && !failure && (
+          <Alert>
+            <AlertDescription>{method.redirect.unconfigured}</AlertDescription>
+          </Alert>
+        )}
         {failure && (
           <Alert variant="destructive">
             <AlertDescription>{failure}</AlertDescription>
@@ -231,19 +298,23 @@ AppConnectionForm.displayName = "AppConnectionForm";
 export function connectionCreation({
   preset,
   disabledReason,
+  redirect,
   create
 }: {
   preset: AppConnectionPreset | undefined;
   disabledReason?: string;
+  redirect?: AppConnectionRedirect;
   create: (values: AppConnectionFormValues) => Promise<{ id: string; name: string }>;
 }): ComboboxCreation | undefined {
-  if (!preset) return undefined;
+  const methods = preset ? usableMethods(preset, redirect) : [];
+  if (!preset || !methods.length) return undefined;
+  const redirectOnly = methods.every((entry) => entry.redirect);
   return {
     mode: "dialog",
     label: "Create connection",
     title: `Create ${preset.name} connection`,
     description: "The new connection is selected once it is created.",
-    submitLabel: "Create connection",
+    submitLabel: (redirectOnly && methods[0].redirect?.submitLabel) || "Create connection",
     disabledReason,
     discardTitle: "Discard connection setup?",
     discardDescription: "Your progress configuring this connection will be lost.",
@@ -252,6 +323,7 @@ export function connectionCreation({
         id={formId}
         preset={preset}
         defaultName={query}
+        redirect={redirect}
         onDirtyChange={onDirtyChange}
         onPendingChange={onPendingChange}
         onSubmit={async (values) => {

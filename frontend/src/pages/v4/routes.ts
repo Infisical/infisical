@@ -134,6 +134,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/oauth-applications", "v4/organization/OauthApplicationsPage/route.tsx"),
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
     route("/integrations", "v4/organization/IntegrationsPage/route.tsx"),
+    route(
+      "/app-connections/$appConnection/callback",
+      "v4/organization/AppConnectionCallbackPage/route.tsx"
+    ),
     route("/networking/", "v4/organization/NetworkingPage/route.tsx"),
     route("/networking/gateways/$gatewayId", "v4/organization/GatewayDetailsByIDPage/route.tsx"),
     route("/networking/relays/$relayId", "v4/organization/RelayDetailsByIDPage/route.tsx"),
