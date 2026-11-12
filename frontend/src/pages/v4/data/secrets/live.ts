@@ -1,16 +1,6 @@
 import { useGetProjectSecretsOverview, useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { useCreateWsEnvironment } from "@app/hooks/api/projects/queries";
 import {
-  usePerformSecretApprovalRequestMerge,
-  useUpdateSecretApprovalRequestStatus,
-  useUpdateSecretApprovalReviewStatus
-} from "@app/hooks/api/secretApprovalRequest/mutation";
-import {
-  useGetSecretApprovalRequestCount,
-  useGetSecretApprovalRequestDetails,
-  useGetSecretApprovalRequests
-} from "@app/hooks/api/secretApprovalRequest/queries";
-import {
   useCreateFolder,
   useDeleteFolder,
   useUpdateFolder
@@ -31,10 +21,12 @@ import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { withMutationMeta } from "../contract";
 import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
+import { secretsChangeRequestsLive } from "./live-change-requests";
 import { secretsFlowsLive } from "./live-flows";
 
 export const secretsLive: SecretsAdapter = {
   ...secretsFlowsLive,
+  ...secretsChangeRequestsLive,
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,
@@ -50,11 +42,5 @@ export const secretsLive: SecretsAdapter = {
   useDeleteSecretBatch: withMutationMeta(useDeleteSecretBatch),
   useCreateFolder,
   useUpdateFolder,
-  useDeleteFolder,
-  useApprovalRequests: useGetSecretApprovalRequests,
-  useApprovalRequestCount: useGetSecretApprovalRequestCount,
-  useApprovalRequestDetails: useGetSecretApprovalRequestDetails,
-  useReviewApprovalRequest: useUpdateSecretApprovalReviewStatus,
-  useUpdateApprovalRequestStatus: useUpdateSecretApprovalRequestStatus,
-  useMergeApprovalRequest: usePerformSecretApprovalRequestMerge
+  useDeleteFolder
 };

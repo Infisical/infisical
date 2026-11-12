@@ -1,8 +1,11 @@
+import { accessApprovalsLive } from "./access-approvals/live";
 import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
 import { adminLive } from "./admin/live";
 import { agentVaultSettingsLive } from "./agent-vault-settings/live";
 import { agentVaultLive } from "./agent-vault/live";
+import { approvalPoliciesLive } from "./approval-policies/live";
+import { approvalRequestsLive } from "./approval-requests/live";
 import { auditLogsLive } from "./audit-logs/live";
 import { billingLive } from "./billing/live";
 import { certManagerSettingsLive } from "./cert-manager-settings/live";
@@ -38,6 +41,7 @@ export const liveAdapters: V4Adapters = {
   certificates: certificatesLive,
   certManagerSettings: certManagerSettingsLive,
   access: accessLive,
+  accessApprovals: accessApprovalsLive,
   projects: projectsLive,
   projectSettings: projectSettingsLive,
   projectIntegrations: projectIntegrationsLive,
@@ -47,6 +51,8 @@ export const liveAdapters: V4Adapters = {
   auditLogs: auditLogsLive,
   admin: adminLive,
   secretPolicies: secretPoliciesLive,
+  approvalPolicies: approvalPoliciesLive,
   billing: billingLive,
-  sso: ssoLive
+  sso: ssoLive,
+  approvalRequests: approvalRequestsLive
 };

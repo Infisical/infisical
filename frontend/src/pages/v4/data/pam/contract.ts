@@ -1,4 +1,5 @@
 import type {
+  TPamAccessRequest,
   TPamAccountListItem,
   TPamAccountTypeMetadata,
   TPamFolderWithCount,
@@ -12,6 +13,8 @@ import type {
   useRemovePamProductGroupMember,
   useRemovePamProductIdentityMember,
   useRemovePamProductUserMember,
+  useReviewPamAccessRequest,
+  useRevokePamAccessRequest,
   useUpdatePamProductGroupMember,
   useUpdatePamProductIdentityMember,
   useUpdatePamProductUserMember
@@ -47,4 +50,7 @@ export type PamAdapter = {
   useAddProductIdentityMember: MutationOf<typeof useAddPamProductIdentityMember>;
   useUpdateProductIdentityMember: MutationOf<typeof useUpdatePamProductIdentityMember>;
   useRemoveProductIdentityMember: MutationOf<typeof useRemovePamProductIdentityMember>;
+  usePendingMyApproval: () => V4QueryResult<TPamAccessRequest[]>;
+  useReviewAccessRequest: MutationOf<typeof useReviewPamAccessRequest>;
+  useRevokeAccessRequest: MutationOf<typeof useRevokePamAccessRequest>;
 };

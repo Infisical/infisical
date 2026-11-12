@@ -6,10 +6,13 @@ import {
   useListPamAccounts,
   useListPamAccountTypes,
   useListPamFolders,
+  useListPamPendingMyApproval,
   useListPamProductIdentities,
   useRemovePamProductGroupMember,
   useRemovePamProductIdentityMember,
   useRemovePamProductUserMember,
+  useReviewPamAccessRequest,
+  useRevokePamAccessRequest,
   useUpdatePamProductGroupMember,
   useUpdatePamProductIdentityMember,
   useUpdatePamProductUserMember
@@ -31,5 +34,8 @@ export const pamLive: PamAdapter = {
   useRemoveProductGroupMember: useRemovePamProductGroupMember,
   useAddProductIdentityMember: useAddPamProductIdentityMember,
   useUpdateProductIdentityMember: useUpdatePamProductIdentityMember,
-  useRemoveProductIdentityMember: useRemovePamProductIdentityMember
+  useRemoveProductIdentityMember: useRemovePamProductIdentityMember,
+  usePendingMyApproval: () => useListPamPendingMyApproval(),
+  useReviewAccessRequest: useReviewPamAccessRequest,
+  useRevokeAccessRequest: useRevokePamAccessRequest
 };
