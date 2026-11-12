@@ -911,8 +911,8 @@ export const secretScanningV2QueueServiceFactory = ({
       const buildFindingRows = await createFindingRowsBuilder(dataSource.projectId);
       const findingRows = await buildFindingRows(findingsPayload);
 
-      const { scannedLocations, reopenedFindings, closedOutByThisRun } =
-        await secretScanningV2DAL.findings.transaction(async (tx) => {
+      const { scannedLocations, reopenedFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(
+        async (tx) => {
           const persisted = findingRows.length
             ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
             : { scannedLocations: [], reopenedFindings: [] };
@@ -931,7 +931,8 @@ export const secretScanningV2QueueServiceFactory = ({
           );
 
           return { ...persisted, closedOutByThisRun: Boolean(completedScans.length) };
-        });
+        }
+      );
 
       await auditReopenedFindings(dataSource.projectId, resource, reopenedFindings);
 

@@ -238,7 +238,9 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       const now = new Date();
 
       for (const chunk of chunkArray(
-        [...newRowByValue.values()].filter(({ secretFindingBlindIndex }) => !findingByValue.has(secretFindingBlindIndex)),
+        [...newRowByValue.values()].filter(
+          ({ secretFindingBlindIndex }) => !findingByValue.has(secretFindingBlindIndex)
+        ),
         FINDINGS_UPSERT_CHUNK_SIZE
       )) {
         // eslint-disable-next-line no-await-in-loop
