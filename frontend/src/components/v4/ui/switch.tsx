@@ -122,12 +122,14 @@ function Switch({
           data-slot="switch-thumb"
           className={cn("pointer-events-none block", controlStyles.switchThumb)}
           initial={false}
-          animate={{
-            x: checked ? geometry.travel - extra : 0,
+          layout
+          layoutDependency={`${checked},${extra},${shrink}`}
+          style={{
+            marginLeft: checked ? geometry.travel - extra : 0,
             width: geometry.size + extra,
             height: geometry.size - shrink
           }}
-          transition={reduced ? snap : spring.moderate}
+          transition={{ layout: reduced ? snap : spring.moderate }}
         />
       </SwitchPrimitive.Thumb>
     </SwitchPrimitive.Root>

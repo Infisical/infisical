@@ -124,8 +124,9 @@ export const CommandMenu = ({
   const inFlight = React.useRef(new Set<string>());
   const [pendingActions, setPendingActions] = React.useState<readonly string[]>([]);
   const previousOpen = React.useRef(open);
-  const queryListener = React.useRef(onQueryChange);
-  queryListener.current = onQueryChange;
+  const queryListener = React.useEffectEvent((next: string, pageId?: string) =>
+    onQueryChange?.(next, pageId)
+  );
   React.useLayoutEffect(() => {
     if (previousOpen.current !== open) epoch.current += 1;
     if (previousOpen.current && !open && !inline) {
@@ -133,7 +134,7 @@ export const CommandMenu = ({
       setQuery("");
       setActive("");
       setError("");
-      queryListener.current?.("", undefined);
+      queryListener("", undefined);
     }
     previousOpen.current = open;
   }, [inline, open]);

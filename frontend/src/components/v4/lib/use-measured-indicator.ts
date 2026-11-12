@@ -42,7 +42,9 @@ export function useMeasuredIndicator({
   const instant = React.useRef(true);
   const placed = React.useRef(false);
   const latest = React.useRef({ rect, onMeasure });
-  latest.current = { rect, onMeasure };
+  React.useLayoutEffect(() => {
+    latest.current = { rect, onMeasure };
+  });
 
   const measure = React.useCallback(
     (reveal = false) => {

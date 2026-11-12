@@ -57,10 +57,9 @@ export function SecretPathInput({
     onChange
   });
   const { parent, segment } = splitPath(value);
-  const report = React.useRef(onParentPathChange);
-  report.current = onParentPathChange;
+  const report = React.useEffectEvent((next: string) => onParentPathChange?.(next));
   React.useEffect(() => {
-    report.current?.(parent);
+    report(parent);
   }, [parent]);
   const [focused, setFocused] = React.useState(false);
   const [dismissed, setDismissed] = React.useState(false);

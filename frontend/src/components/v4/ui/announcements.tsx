@@ -64,15 +64,15 @@ export const Announcements = ({
   const reduced = useReducedMotion();
   const next = React.useRef<HTMLButtonElement | null>(null);
   const opener = React.useRef<HTMLElement | null>(null);
-  if (isOpen && !opener.current && typeof document !== "undefined")
-    opener.current = document.activeElement as HTMLElement | null;
+  React.useLayoutEffect(() => {
+    if (isOpen && !opener.current) opener.current = document.activeElement as HTMLElement | null;
+  }, [isOpen]);
   const item = items[current];
   const last = current === items.length - 1;
-  const seen = React.useRef(onSeen);
-  seen.current = onSeen;
+  const seen = React.useEffectEvent((id: string) => onSeen?.(id));
   const itemId = item?.id;
   React.useEffect(() => {
-    if (isOpen && itemId) seen.current?.(itemId);
+    if (isOpen && itemId) seen(itemId);
   }, [isOpen, itemId]);
   const go = (target: number) => {
     const wrapped = loop ? (target + items.length) % items.length : target;

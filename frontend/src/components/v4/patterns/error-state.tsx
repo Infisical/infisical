@@ -71,10 +71,9 @@ export function ErrorState({
   const shell = useAppShell();
   const fullPage = layout === "full-page" || (layout === "auto" && !shell);
   const crash = preset === "crash";
-  const report = React.useRef(onReport);
-  report.current = onReport;
+  const report = React.useEffectEvent((reported: unknown) => onReport?.(reported));
   React.useEffect(() => {
-    if (crash && error !== undefined) report.current?.(error);
+    if (crash && error !== undefined) report(error);
   }, [crash, error]);
 
   const name = error instanceof Error ? error.name : "Error";

@@ -79,7 +79,9 @@ export const FilterBar = ({ label, fields, value, onChange, search, actions }: F
   }, [focusTarget]);
 
   const latest = React.useRef(value);
-  latest.current = value;
+  React.useLayoutEffect(() => {
+    latest.current = value;
+  }, [value]);
   const commit = (next: FilterBarFilter[]) => {
     latest.current = next;
     onChange(next);

@@ -18,10 +18,14 @@ export const menuRowContent = (children: React.ReactNode, description?: React.Re
     typeof child === "string" || typeof child === "number";
   const labelIndex = description === undefined || items.some(textual) ? -1 : items.length - 1;
   return items.map((child, index) => {
-    if (index === labelIndex) return withDescription(child, description);
-    if (!textual(child)) return child;
-    if (description === undefined) return <span className={menu.title}>{child}</span>;
-    return withDescription(child, description);
+    if (index !== labelIndex && !textual(child)) return child;
+    const content =
+      index !== labelIndex && description === undefined ? (
+        <span className={menu.title}>{child}</span>
+      ) : (
+        withDescription(child, description)
+      );
+    return <React.Fragment key={index}>{content}</React.Fragment>;
   });
 };
 
