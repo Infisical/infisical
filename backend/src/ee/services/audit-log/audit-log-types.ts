@@ -3400,6 +3400,7 @@ interface RevokeCert {
     applicationName?: string | null;
     revocationReason?: CrlReason;
     approvalRequestId?: string;
+    crlWarning?: string;
   };
 }
 
