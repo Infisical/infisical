@@ -434,6 +434,14 @@ export type TAgentVaultSession = {
   createdAt: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionInlineService[];
+  /** Null until the proxy uploads the session's first log chunk. */
+  stats: TAgentVaultSessionStats | null;
+};
+
+export type TAgentVaultSessionStats = {
+  requests: number;
+  /** Null when a proxy on a CLI older than 0.45.5 uploaded any of the session's logs. */
+  brokered: number | null;
 };
 
 export type TAgentVaultDelegation = {
