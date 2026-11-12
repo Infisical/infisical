@@ -57,7 +57,6 @@ import {
   SignerPermissionSub,
   useSignerPermission
 } from "@app/context/SignerPermissionContext";
-import { useListCasByProjectId } from "@app/hooks/api/ca";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
@@ -128,9 +127,7 @@ export const SignerDetailPage = () => {
   const [isRenewOpen, setIsRenewOpen] = useState(false);
 
   const { data: signer, isLoading } = useGetSigner(signerId);
-  const cas = useListCasByProjectId();
-  const signerCaId = signer?.certificateCaId ?? signer?.caId;
-  const signerCaType = (cas.data ?? []).find((ca) => ca.id === signerCaId)?.type;
+  const signerCaType = signer?.caType;
   const isDigicertSigner = signerCaType === CaType.DIGICERT;
   const { permission } = useSignerPermission();
   const can = (action: SignerPermissionActions) =>
@@ -180,8 +177,8 @@ export const SignerDetailPage = () => {
     signer.status !== SignerStatus.Revoked;
   const canRevokeCertificate =
     hasLiveCertificate &&
-    Boolean(signerCaType) &&
-    caSupportsCapability(signerCaType as CaType, CaCapability.REVOKE_CERTIFICATES);
+    !!signerCaType &&
+    caSupportsCapability(signerCaType, CaCapability.REVOKE_CERTIFICATES);
 
   const pendingExternalOrder =
     signer.pendingCertificateRequest?.externalOrder ??

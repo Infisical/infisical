@@ -5,6 +5,7 @@ import { TableName, TPkiSigners } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
 
@@ -20,6 +21,7 @@ export type TSignerWithCertificate = TPkiSigners & {
   certificateExternalMetadata: unknown;
   certificateStatus: string | null;
   certificateCaId: string | null;
+  caType: CaType | null;
   approvalPolicyName: string | null;
 };
 
@@ -46,8 +48,28 @@ export const signerDALFactory = (db: TDbClient) => {
           `${TableName.PkiSigners}.approvalPolicyId`,
           `${TableName.ApprovalPolicies}.id`
         )
+        .leftJoin(TableName.CertificateAuthority, (join) => {
+          void join
+            .on(`${TableName.Certificate}.caId`, "=", `${TableName.CertificateAuthority}.id`)
+            .orOn((signerCaJoin) => {
+              void signerCaJoin
+                .onNull(`${TableName.Certificate}.caId`)
+                .andOn(`${TableName.PkiSigners}.caId`, "=", `${TableName.CertificateAuthority}.id`);
+            });
+        })
+        .leftJoin(
+          TableName.ExternalCertificateAuthority,
+          `${TableName.ExternalCertificateAuthority}.caId`,
+          `${TableName.CertificateAuthority}.id`
+        )
         .select(selectAllTableCols(TableName.PkiSigners))
         .select(
+          db.raw("CASE WHEN ?? IS NULL THEN NULL ELSE COALESCE(??, ?) END AS ??", [
+            `${TableName.CertificateAuthority}.id`,
+            `${TableName.ExternalCertificateAuthority}.type`,
+            CaType.INTERNAL,
+            "caType"
+          ]),
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),

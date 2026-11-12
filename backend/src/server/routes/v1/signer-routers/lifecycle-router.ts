@@ -8,6 +8,7 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -37,6 +38,7 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateHsmKeyLabel: z.string().nullable().optional(),
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
+  caType: z.nativeEnum(CaType).nullable().optional(),
   approvalPolicyName: z.string().nullable().optional(),
   externalOrder: ExternalOrderResponseSchema.nullable().optional(),
   pendingCertificateRequest: z.object({ externalOrder: ExternalOrderResponseSchema.nullable() }).nullable().optional()
