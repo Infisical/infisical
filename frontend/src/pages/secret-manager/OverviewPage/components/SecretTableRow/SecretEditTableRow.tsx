@@ -417,16 +417,16 @@ export const SecretEditTableRow = ({
     }
     if (annotationType === "tags") {
       const value = (isBatchMode ? getValues("tags") : tags) as { id: string }[] | undefined;
-      return (value ?? []).map(({ id }) => id);
+      return (value ?? []).map(({ id }) => id).sort();
     }
     const value = (isBatchMode ? getValues("metadata") : secretMetadata) as
       | { key: string; value: string; isEncrypted?: boolean }[]
       | undefined;
     return (value ?? []).map((m) => [m.key, m.value, m.isEncrypted ?? false]);
   };
-  const finishAnnotation = (isSavedEmpty?: boolean) => {
+  const finishAnnotation = (isSavedEmpty?: boolean, savedType?: OverviewAnnotationType) => {
     const session = annotationSession.current;
-    if (!session) return;
+    if (!session || (savedType && session.annotationType !== savedType)) return;
     annotationSession.current = null;
     const { annotationType, entryPoint, wasEmpty } = session;
     if (isSavedEmpty !== undefined) {
@@ -486,6 +486,9 @@ export const SecretEditTableRow = ({
       finishAnnotation();
     prevAnnotationOpenState.current = annotationOpenState;
   }, [isCommentOpen, isTagOpen, isMetadataOpen, isReminderOpen]);
+  const finishAnnotationRef = useRef(finishAnnotation);
+  finishAnnotationRef.current = finishAnnotation;
+  useEffect(() => () => finishAnnotationRef.current(), []);
 
   // Multi-env rows pass a fresh callback every render; reading it through a ref keeps the
   // activity effect from re-firing (and re-setting parent state) on each render.
@@ -931,9 +934,9 @@ export const SecretEditTableRow = ({
     if (!isAnnotationSaveRequested) return;
     setIsAnnotationSaveRequested(false);
     const session = annotationSession.current;
-    const isSavedEmpty = session
-      ? getAnnotationValue(session.annotationType).length === 0
-      : undefined;
+    const value = session ? getAnnotationValue(session.annotationType) : [];
+    const isSavedEmpty =
+      session && JSON.stringify(value) !== session.initialValue ? value.length === 0 : undefined;
     savePendingRow()
       .then((isSaved) => {
         if (!isSaved) return;
@@ -1492,7 +1495,7 @@ export const SecretEditTableRow = ({
         secretPath={secretPath}
         environment={environment}
         onClose={() => setIsCommentOpen(false)}
-        onSaved={finishAnnotation}
+        onSaved={(isSavedEmpty) => finishAnnotation(isSavedEmpty, "comment")}
         isBatchMode={isBatchMode}
         onCommentChange={handleCommentChange}
         onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
@@ -1618,7 +1621,7 @@ export const SecretEditTableRow = ({
             environment={environment}
             tags={isBatchMode ? ((watchedTags as WsTag[]) ?? tags) : tags}
             onClose={() => setIsTagOpen(false)}
-            onSaved={finishAnnotation}
+            onSaved={(isSavedEmpty) => finishAnnotation(isSavedEmpty, "tags")}
             isBatchMode={isBatchMode}
             onTagsChange={handleTagsChange}
             onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
@@ -1651,7 +1654,7 @@ export const SecretEditTableRow = ({
             secretPath={secretPath}
             environment={environment}
             onClose={() => setIsMetadataOpen(false)}
-            onSaved={finishAnnotation}
+            onSaved={(isSavedEmpty) => finishAnnotation(isSavedEmpty, "metadata")}
             isBatchMode={isBatchMode}
             onMetadataChange={handleMetadataChange}
             onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
@@ -1675,7 +1678,7 @@ export const SecretEditTableRow = ({
               environment={environment}
               reminder={reminder}
               onClose={() => setIsReminderOpen(false)}
-              onSaved={finishAnnotation}
+              onSaved={(isSavedEmpty) => finishAnnotation(isSavedEmpty, "reminder")}
             />
           )}
         </SheetContent>
