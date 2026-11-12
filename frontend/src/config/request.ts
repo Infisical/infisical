@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosHeaders, AxiosRequestConfig } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
@@ -19,6 +19,17 @@ export const apiRequest = axios.create({
     "Content-Type": "application/json"
   }
 });
+
+const TOKEN_EXPIRED_MESSAGE = "your token has expired. please re-authenticate.";
+
+const getAuthorizationHeader = (config?: AxiosRequestConfig) => {
+  const headers = config?.headers;
+  const header = headers instanceof AxiosHeaders ? headers.get("Authorization") : undefined;
+  if (typeof header === "string") return header;
+  if (typeof headers?.Authorization === "string") return headers.Authorization;
+  if (typeof headers?.authorization === "string") return headers.authorization;
+  return undefined;
+};
 
 apiRequest.interceptors.request.use((config) => {
   const tabProjectId = getTabCertManagerProjectIdForRequest(config.url);
@@ -43,7 +54,7 @@ apiRequest.interceptors.request.use((config) => {
   }
 
   // Skip auto-injection if the caller already set an Authorization header
-  if (config.headers?.Authorization) return config;
+  if (getAuthorizationHeader(config)) return config;
 
   const signupTempToken = getSignupTempToken();
   const mfaTempToken = getMfaTempToken();
@@ -73,21 +84,43 @@ const resetRedirectingFlag = () => {
 
 let refreshPromise: Promise<string> | null = null;
 
-const isTokenExpiredError = (message: string) => {
-  const lower = message.toLowerCase();
-  return lower.includes("token expired") || lower.includes("session is no longer valid");
+export const isTokenExpiredError = (data?: { message?: string; error?: string } | string) => {
+  if (!data) return false;
+
+  if (typeof data === "string") {
+    const lower = data.toLowerCase();
+    return (
+      lower.includes("token expired") ||
+      lower.includes("stalesession") ||
+      lower.includes("session is no longer valid")
+    );
+  }
+
+  if (data.error === "TokenError") return data.message?.toLowerCase() === TOKEN_EXPIRED_MESSAGE;
+  if (data.error === "StaleSession") return true;
+  if (data.error) return false;
+
+  const lower = data.message?.toLowerCase() || "";
+  return (
+    lower.includes("token expired") ||
+    lower.includes("stalesession") ||
+    lower.includes("session is no longer valid")
+  );
 };
 
 apiRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { response, config } = error;
+    const currentToken = getAuthToken();
+    const reqAuthHeader = getAuthorizationHeader(config);
+    const isSessionToken = Boolean(currentToken && reqAuthHeader === `Bearer ${currentToken}`);
 
     if (
       response &&
-      response.status === 401 &&
-      isTokenExpiredError(response.data?.message || "") &&
-      getAuthToken() &&
+      (response.status === 401 || response.status === 403) &&
+      isTokenExpiredError(response.data) &&
+      isSessionToken &&
       !(config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry
     ) {
       (config as AxiosRequestConfig & { infisicalRetry?: boolean }).infisicalRetry = true;
