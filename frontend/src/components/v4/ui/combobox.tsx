@@ -47,6 +47,8 @@ export type ComboboxCreationFormProps = {
   dismiss: () => void;
   onDirtyChange: (dirty: boolean) => void;
   onPendingChange: (pending: boolean) => void;
+  /** Relabel the submit button while this form is open; undefined goes back to submitLabel. */
+  onSubmitLabelChange: (label: string | undefined) => void;
 };
 export type ComboboxCreation =
   | {
@@ -211,6 +213,7 @@ export function Combobox({
   const [session, setSession] = React.useState<{ id: number; query: string; open: boolean }>();
   const [formDirty, setFormDirty] = React.useState(false);
   const [formPending, setFormPending] = React.useState(false);
+  const [formSubmitLabel, setFormSubmitLabel] = React.useState<string>();
   const closeDialog = () => {
     sessionRef.current += 1;
     setSession((current) => current && { ...current, open: false });
@@ -223,6 +226,7 @@ export function Combobox({
     setSession({ id: sessionRef.current, query: query.trim(), open: true });
     setFormDirty(false);
     setFormPending(false);
+    setFormSubmitLabel(undefined);
     changeOpen(false);
   };
   const complete = (id: number, option: ComboboxOption) => {
@@ -458,7 +462,8 @@ export function Combobox({
                   complete: (option) => complete(session.id, option),
                   dismiss: guard.requestDiscard,
                   onDirtyChange: setFormDirty,
-                  onPendingChange: setFormPending
+                  onPendingChange: setFormPending,
+                  onSubmitLabelChange: setFormSubmitLabel
                 })}
               </React.Fragment>
               <DialogFooter>
@@ -466,7 +471,7 @@ export function Combobox({
                   Cancel
                 </Button>
                 <Button type="submit" form={formId} loading={formPending}>
-                  {dialogCreation.submitLabel ?? "Create"}
+                  {formSubmitLabel ?? dialogCreation.submitLabel ?? "Create"}
                 </Button>
               </DialogFooter>
             </DialogContent>

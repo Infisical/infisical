@@ -1074,8 +1074,9 @@
 :global(.v4[data-scheme="dark"])
   .toggleGroup[data-spacing="0"]:not([data-indicator])
   > [data-slot="toggle-group-item"].toggle:is([aria-pressed="true"], [data-state="on"]):hover {
-  background-color: var(--v4-selected-surface);
-  border-color: var(--v4-selected-border);
+  background-color: var(--v4-surface);
+  /* v4-check-ignore line-on-edge -- line-soft vanishes against the dark tint track, so the cut-in thumb takes line */
+  border-color: var(--v4-line);
   box-shadow: none;
 }
 .toggleGroup[data-indicator] {
@@ -1118,8 +1119,9 @@
   border-radius: 0;
 }
 :global(.v4[data-scheme="dark"]) .indicator {
-  background: var(--v4-selected-surface);
-  border-color: var(--v4-selected-border);
+  background: var(--v4-surface);
+  /* v4-check-ignore line-on-edge -- line-soft vanishes against the dark tint track, so the cut-in thumb takes line */
+  border-color: var(--v4-line);
   box-shadow: none;
 }
 .groupText {

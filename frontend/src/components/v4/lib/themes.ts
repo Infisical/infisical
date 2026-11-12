@@ -9,7 +9,11 @@ export interface V4ThemeDefinition {
   overrides: Readonly<Record<string, string>>;
 }
 
-export const legacyV4Themes: Readonly<Record<string, string>> = { light: "peach", dark: "dark" };
+export const legacyV4Themes: Readonly<Record<string, string>> = {
+  light: "peach",
+  dark: "dark",
+  "dark-alt": "dark"
+};
 
 /** The theme and every theme it extends, nearest first, plus the base column the chain ends on. */
 export const v4ThemeChain = (themes: readonly V4ThemeDefinition[], id: string) => {
