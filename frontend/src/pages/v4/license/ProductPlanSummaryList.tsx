@@ -1,21 +1,18 @@
 import type { ProductPlanSummary } from "@app/components/license/product-plan-summary";
 import { Badge } from "@app/components/v4/ui/badge";
-import { Item, ItemGroup } from "@app/components/v4/ui/item";
+
+import styles from "./upgrade-dialog.module.css";
 
 export const ProductPlanSummaryList = ({ plans }: { plans: ProductPlanSummary[] }) => (
-  <ItemGroup aria-label="Product plans">
+  <ul className={styles.plans} aria-label="Product plans">
     {plans.map((plan) => (
-      <Item
-        key={plan.productKey}
-        size="sm"
-        title={plan.productName}
-        badge={
-          <Badge tone="soft">
-            {plan.planLabel}
-            {plan.isTrialing && " trial"}
-          </Badge>
-        }
-      />
+      <li key={plan.productKey} className={styles.plan}>
+        <span>{plan.productName}</span>
+        <Badge tone="soft">
+          {plan.planLabel}
+          {plan.isTrialing && " trial"}
+        </Badge>
+      </li>
     ))}
-  </ItemGroup>
+  </ul>
 );
