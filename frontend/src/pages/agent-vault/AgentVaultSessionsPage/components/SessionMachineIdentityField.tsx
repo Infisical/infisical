@@ -88,13 +88,16 @@ type Props = {
   accessBundle: TAgentVaultAccessBundleListItem | null;
   // From useSnippetClientId in the dialog, which also needs the client ID for its snippets.
   snippet: TSnippetClientId;
+  // Sandbox platform files read the credentials from the environment instead of having them filled in.
+  hasEnvCredentials?: boolean;
 };
 
 export const SessionMachineIdentityField = ({
   identity,
   onIdentityChange,
   accessBundle,
-  snippet
+  snippet,
+  hasEnvCredentials = false
 }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
@@ -247,14 +250,21 @@ export const SessionMachineIdentityField = ({
           <FieldDescription className="min-h-8">
             {snippet.hasNoUniversalAuth ? null : (
               <>
-                {snippet.identity && snippet.hasLoadError && (
+                {hasEnvCredentials && snippet.identity && (
+                  <>
+                    The files below read credentials from environment variables. Set them to{" "}
+                    {snippet.identity.name}&apos;s client ID and one of its{" "}
+                    {renderIdentityPageLink(snippet.identity, "client secrets")}.
+                  </>
+                )}
+                {!hasEnvCredentials && snippet.identity && snippet.hasLoadError && (
                   <>
                     Couldn&apos;t load {snippet.identity.name}&apos;s client ID, so the snippets
                     below show <span className="font-mono">&lt;client-id&gt;</span>. Find it on{" "}
                     {renderIdentityPageLink(snippet.identity)}.
                   </>
                 )}
-                {snippet.identity && !snippet.hasLoadError && (
+                {!hasEnvCredentials && snippet.identity && !snippet.hasLoadError && (
                   <>
                     The snippets below have {snippet.identity.name}&apos;s client ID. Replace{" "}
                     <span className="font-mono">&lt;client-secret&gt;</span> with one of its{" "}
@@ -262,7 +272,9 @@ export const SessionMachineIdentityField = ({
                   </>
                 )}
                 {!snippet.identity &&
-                  "Your code creates sessions as a machine identity. Pick one to fill in its client ID below."}
+                  (hasEnvCredentials
+                    ? "Your code creates sessions as a machine identity. Pick one to see the credentials the files below need."
+                    : "Your code creates sessions as a machine identity. Pick one to fill in its client ID below.")}
               </>
             )}
           </FieldDescription>

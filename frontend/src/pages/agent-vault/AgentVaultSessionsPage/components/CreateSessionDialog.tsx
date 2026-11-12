@@ -296,6 +296,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           onIdentityChange={setIdentity}
           accessBundle={accessBundle}
           snippet={snippet}
+          hasEnvCredentials={!isOwnSandbox}
         />
       )}
       {!isCreateNow && !isAdmin && (
