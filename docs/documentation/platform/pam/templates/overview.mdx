@@ -56,6 +56,10 @@ Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overvie
 
 ### Output masking
 
+<Warning>
+Output masking is best effort. It hides values from accidental exposure, such as an AI agent reading query results, but a user who wants to see them can get around it, for example by encoding the data first.
+</Warning>
+
 On accounts that use **Output Masking**, Infisical blocks the output it can't reliably mask:
 
 - **SSH:** File transfers (SFTP and SCP) and port forwarding

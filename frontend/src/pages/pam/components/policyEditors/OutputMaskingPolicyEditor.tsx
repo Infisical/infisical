@@ -1,4 +1,7 @@
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Combobox,
   Field,
   FieldContent,
@@ -97,6 +100,13 @@ export const OutputMaskingPolicyEditor = ({
           One regex per line, masked in addition to the presets above.
         </FieldDescription>
       </Field>
+      <Alert variant="warning">
+        <AlertTitle>Output Masking is best effort</AlertTitle>
+        <AlertDescription>
+          Masking hides values from accidental exposure, such as an AI agent reading query results.
+          A user who wants to see them can get around it, for example by encoding the data first.
+        </AlertDescription>
+      </Alert>
     </Field>
   );
 };
