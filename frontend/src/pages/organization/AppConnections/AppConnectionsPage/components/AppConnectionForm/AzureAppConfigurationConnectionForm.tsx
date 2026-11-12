@@ -34,44 +34,23 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { azureAppConfigurationConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AzureAppConfigurationFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
-type ClientSecretForm = z.infer<typeof clientSecretSchema>;
+type ClientSecretForm = Extract<
+  FormData,
+  { method: AzureAppConfigurationConnectionMethod.ClientSecret }
+>;
 
 type Props = {
   appConnection?: TAzureAppConfigurationConnection;
   onSubmit: (formData: ClientSecretForm) => Promise<void>;
   projectId: string | undefined | null;
 };
-
-const baseSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.AzureAppConfiguration),
-  method: z.nativeEnum(AzureAppConfigurationConnectionMethod)
-});
-
-const oauthSchema = baseSchema.extend({
-  tenantId: z.string().trim().min(1, "Tenant ID is required"),
-  method: z.literal(AzureAppConfigurationConnectionMethod.OAuth)
-});
-
-const clientSecretSchema = baseSchema.extend({
-  method: z.literal(AzureAppConfigurationConnectionMethod.ClientSecret),
-  credentials: z.object({
-    clientSecret: z.string().trim().min(1, "Client Secret is required"),
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required"),
-    clientSecretKeyId: z.string().trim().optional()
-  })
-});
-
-const formSchema = z.discriminatedUnion("method", [oauthSchema, clientSecretSchema]);
 
 type FormData = z.infer<typeof formSchema>;
 

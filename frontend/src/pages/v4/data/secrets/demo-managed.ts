@@ -1,10 +1,14 @@
+import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { HoneyTokenManagedBy, HoneyTokenStatus } from "@app/hooks/api/honeyTokens/enums";
 import { SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
 import type {
   TSecretRotationV2,
   TViewSecretRotationGeneratedCredentialsResponse
 } from "@app/hooks/api/secretRotationsV2/types";
+import { SecretSync, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
+import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 
+import { IMPORT_CAPABLE_SYNCS } from "../../secret-manager/OverviewPage/secrets/secret-sync/sync-model";
 import type { SecretsManagedAdapter } from "./contract-managed";
 import { DEMO_ROTATION_CONNECTIONS, secretsOptionsDemo } from "./demo-options";
 import {
@@ -15,8 +19,23 @@ import {
   updateSecrets,
   useStore
 } from "./demo-store";
+import { syncAutomationDemo } from "./demo-sync-automation";
+import { syncCloudDemo } from "./demo-sync-cloud";
+import { syncDataDemo } from "./demo-sync-data";
+import { syncDeployDemo } from "./demo-sync-deploy";
+import { syncGitDemo } from "./demo-sync-git";
+import { syncHostingDemo } from "./demo-sync-hosting";
+import { syncVaultsDemo } from "./demo-sync-vaults";
 import { DEMO_SYNC_CONNECTIONS, demoSync } from "./demo-syncs";
 import { type DemoSecret, envOf } from "./fixtures";
+
+const patchSync = (store: DemoStore, syncId: string, patch: Partial<TSecretSync>) =>
+  store.update((state) => ({
+    ...state,
+    secretSyncs: state.secretSyncs.map((sync) =>
+      sync.id === syncId ? ({ ...sync, ...patch } as TSecretSync) : sync
+    )
+  }));
 
 const fakeValue = (key: string) =>
   `fake-${key.toLowerCase().replace(/_/g, "-")}-${crypto.randomUUID().slice(0, 8)}`;
@@ -85,6 +104,13 @@ const valuesOf = (store: DemoStore, rotation: TSecretRotationV2) => {
 
 export const secretsManagedDemo: SecretsManagedAdapter = {
   ...secretsOptionsDemo,
+  ...syncCloudDemo,
+  ...syncDataDemo,
+  ...syncVaultsDemo,
+  ...syncGitDemo,
+  ...syncDeployDemo,
+  ...syncHostingDemo,
+  ...syncAutomationDemo,
   useSecretRotationCredentials: ({ rotationId }, options) => {
     const store = useStore();
     const state = store.use();
@@ -385,6 +411,93 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
       error: null
     };
   },
+  useSecretSync: (_destination, syncId) => {
+    const state = useStore().use();
+    return {
+      data: state.secretSyncs.find((sync) => sync.id === syncId),
+      isPending: false,
+      error: null
+    };
+  },
+  useSecretSyncOptions: () => ({
+    data: (Object.keys(SECRET_SYNC_MAP) as SecretSync[]).map((destination) => ({
+      name: SECRET_SYNC_MAP[destination].name,
+      destination,
+      canImportSecrets: IMPORT_CAPABLE_SYNCS.includes(destination),
+      canRemoveSecretsOnDeletion: true
+    })),
+    isPending: false,
+    error: null
+  }),
+  useSecretSyncDuplicate: () => ({
+    data: { hasDuplicate: false },
+    isPending: false,
+    error: null
+  }),
+  useUpdateSecretSync: demoMutation((store, { syncId, projectId: _projectId, ...dto }) => {
+    const current = store.get().secretSyncs.find((sync) => sync.id === syncId);
+    if (!current) throw new Error("Secret sync not found");
+    if (
+      dto.name &&
+      store.get().secretSyncs.some((sync) => sync.id !== syncId && sync.name === dto.name)
+    )
+      throw new Error(`A secret sync with the name "${dto.name}" already exists in this project.`);
+    const connection = DEMO_SYNC_CONNECTIONS.find((entry) => entry.id === dto.connectionId);
+    const next = {
+      ...current,
+      ...(dto.name !== undefined && { name: dto.name }),
+      ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.isAutoSyncEnabled !== undefined && { isAutoSyncEnabled: dto.isAutoSyncEnabled }),
+      ...(dto.includeAllSubFolders !== undefined && {
+        includeAllSubFolders: dto.includeAllSubFolders
+      }),
+      ...(dto.environment && { environment: envOf(dto.environment) }),
+      ...(dto.secretPath && { folder: { id: dto.secretPath, path: dto.secretPath } }),
+      ...(dto.syncOptions && { syncOptions: dto.syncOptions }),
+      ...(dto.destinationConfig && { destinationConfig: dto.destinationConfig }),
+      ...(connection && {
+        connectionId: connection.id,
+        connection: { app: connection.app, id: connection.id, name: connection.name }
+      }),
+      updatedAt: now()
+    } as TSecretSync;
+    store.update((state) => ({
+      ...state,
+      secretSyncs: state.secretSyncs.map((sync) => (sync.id === syncId ? next : sync))
+    }));
+    return next;
+  }),
+  useDeleteSecretSync: demoMutation((store, { syncId }) => {
+    store.update((state) => ({
+      ...state,
+      secretSyncs: state.secretSyncs.filter((sync) => sync.id !== syncId)
+    }));
+    return {};
+  }),
+  useTriggerSecretSync: demoMutation((store, { syncId }) => {
+    patchSync(store, syncId, {
+      syncStatus: SecretSyncStatus.Succeeded,
+      lastSyncedAt: new Date(),
+      lastSyncMessage: null
+    });
+    return {};
+  }),
+  useImportSecretSyncSecrets: demoMutation((store, { syncId }) => {
+    patchSync(store, syncId, {
+      importStatus: SecretSyncStatus.Succeeded,
+      lastImportedAt: new Date(),
+      lastImportMessage: null
+    });
+    return {};
+  }),
+  useRemoveSecretSyncSecrets: demoMutation((store, { syncId }) => {
+    patchSync(store, syncId, {
+      removeStatus: SecretSyncStatus.Succeeded,
+      lastRemovedAt: new Date(),
+      lastRemoveMessage: null
+    });
+    return {};
+  }),
   useCreateSecretSync: demoMutation((store, dto) => {
     if (store.get().secretSyncs.some((sync) => sync.name === dto.name))
       throw new Error(`A secret sync with the name "${dto.name}" already exists in this project.`);

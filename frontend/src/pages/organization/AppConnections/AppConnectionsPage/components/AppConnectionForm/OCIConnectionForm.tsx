@@ -21,42 +21,15 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { OCIConnectionMethod, TOCIConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ociConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TOCIConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.OCI)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(OCIConnectionMethod.AccessKey),
-    credentials: z.object({
-      userOcid: z
-        .string()
-        .trim()
-        .min(1, "User OCID required")
-        .regex(/^ocid1\.user\.oc1\.\..+$/, "Invalid User OCID format"),
-      tenancyOcid: z
-        .string()
-        .trim()
-        .min(1, "Tenancy OCID required")
-        .regex(/^ocid1\.tenancy\.oc1\.\..+$/, "Invalid Tenancy OCID format"),
-      region: z.string().trim().min(1, "Region required"),
-      fingerprint: z.string().trim().min(1, "Fingerprint required"),
-      privateKey: z.string().trim().min(1, "Private Key required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

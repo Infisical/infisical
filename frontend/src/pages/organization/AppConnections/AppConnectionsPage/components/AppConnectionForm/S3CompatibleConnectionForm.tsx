@@ -29,50 +29,15 @@ import {
 import { TS3CompatibleConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
+import { buildS3CompatibleConnectionFormSchema as buildFormSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TS3CompatibleConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.S3Compatible)
-});
-
-const buildFormSchema = (allowedStorageHostnames: string[]) =>
-  z.discriminatedUnion("method", [
-    rootSchema.extend({
-      method: z.literal(S3CompatibleConnectionMethod.AccessKey),
-      credentials: z.object({
-        endpoint: z
-          .string()
-          .trim()
-          .min(1, "Endpoint required")
-          .refine(
-            (endpoint) => Boolean(getS3CompatibleProviderName(endpoint, allowedStorageHostnames)),
-            "Enter the S3 API endpoint of a supported provider, without the bucket name"
-          ),
-        accessKeyId: z.string().trim().min(1, "Access Key ID required"),
-        secretAccessKey: z.string().trim().min(1, "Secret Access Key required"),
-        region: z
-          .string()
-          .trim()
-          .max(64, "Region cannot exceed 64 characters")
-          .regex(
-            /^[a-zA-Z0-9_-]*$/,
-            "Region can only contain letters, numbers, hyphens and underscores"
-          )
-          .optional()
-          .transform((region) => region || undefined)
-      })
-    })
-  ]);
 
 type FormData = z.infer<ReturnType<typeof buildFormSchema>>;
 

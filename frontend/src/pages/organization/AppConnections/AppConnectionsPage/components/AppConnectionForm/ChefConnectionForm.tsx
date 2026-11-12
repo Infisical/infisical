@@ -25,38 +25,15 @@ import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/t
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { ChefConnectionMethod, TChefConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { chefConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TChefConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Chef)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(ChefConnectionMethod.UserKey),
-    credentials: z.object({
-      serverUrl: z.string().trim().url("Valid Chef Server URL required").optional(),
-      orgName: z.string().trim().min(1, "Organization name required"),
-      userName: z.string().trim().min(1, "User name required"),
-      privateKey: z.string().trim().min(1, "Private key required"),
-      dataBagSecret: z
-        .string()
-        .trim()
-        .optional()
-        .transform((value) => value || undefined)
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

@@ -27,29 +27,16 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { ClickHouseConnectionMethod, TClickHouseConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { clickHouseConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
-import { BaseSqlUsernameAndPasswordConnectionSchema, SqlConnectionFields } from "./shared";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
+import { SqlConnectionFields } from "./shared";
 
 type Props = {
   appConnection?: TClickHouseConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.ClickHouse)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(ClickHouseConnectionMethod.UsernameAndPassword),
-    credentials: BaseSqlUsernameAndPasswordConnectionSchema
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

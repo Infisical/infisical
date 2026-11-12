@@ -25,67 +25,15 @@ import {
   OVHConnectionMethod,
   TOvhConnection
 } from "@app/hooks/api/appConnections/types/ovh-connection";
+import { ovhConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TOvhConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.OVH)
-});
-
-const pemPrivateKey = z
-  .string()
-  .trim()
-  .min(1, "Private key required")
-  .refine((val) => val.startsWith("-----BEGIN "), {
-    message: "Private key must be in PEM format (starts with -----BEGIN ...-----)"
-  });
-
-const pemCertificate = z
-  .string()
-  .trim()
-  .min(1, "Certificate required")
-  .refine((val) => val.startsWith("-----BEGIN CERTIFICATE-----"), {
-    message: "Certificate must be in PEM format (starts with -----BEGIN CERTIFICATE-----)"
-  });
-
-const okmsDomain = z
-  .string()
-  .trim()
-  .min(1, "KMS rest API endpoint required")
-  .url("KMS rest API endpoint must be a valid URL (e.g. https://eu-west-rbx.okms.ovh.net)")
-  .refine((val) => val.startsWith("https://"), {
-    message: "KMS rest API endpoint must use https"
-  });
-const okmsId = z.string().trim().min(1, "KMS ID required");
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(OVHConnectionMethod.Certificate),
-    credentials: z.object({
-      privateKey: pemPrivateKey,
-      certificate: pemCertificate,
-      okmsDomain,
-      okmsId
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(OVHConnectionMethod.Token),
-    credentials: z.object({
-      token: z.string().trim().min(1, "Token required"),
-      okmsDomain,
-      okmsId
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

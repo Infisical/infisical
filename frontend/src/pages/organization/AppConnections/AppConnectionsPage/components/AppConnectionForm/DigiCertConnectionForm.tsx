@@ -25,31 +25,15 @@ import {
   DigiCertRegion,
   TDigiCertConnection
 } from "@app/hooks/api/appConnections/types/digicert-connection";
+import { digiCertConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TDigiCertConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.DigiCert)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(DigiCertConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiKey: z.string().trim().min(1, "API Key required"),
-      region: z.nativeEnum(DigiCertRegion)
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

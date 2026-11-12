@@ -1,9 +1,14 @@
+import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
-import { SecretSync, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
+import {
+  SecretSync,
+  SecretSyncInitialSyncBehavior,
+  SecretSyncStatus
+} from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 
-export const DEMO_SYNC_CONNECTIONS: (TAvailableAppConnection & { app: AppConnection })[] = [
+const CORE_SYNC_CONNECTIONS = [
   { id: "00000000-0000-4000-9000-000000000001", name: "aws-demo-account", app: AppConnection.AWS },
   { id: "00000000-0000-4000-9000-000000000002", name: "aws-demo-staging", app: AppConnection.AWS },
   {
@@ -25,7 +30,32 @@ export const DEMO_SYNC_CONNECTIONS: (TAvailableAppConnection & { app: AppConnect
     id: "00000000-0000-4000-9000-000000000006",
     name: "vercel-demo-token",
     app: AppConnection.Vercel
+  },
+  {
+    id: "00000000-0000-4000-9000-000000000007",
+    name: "render-demo-key",
+    app: AppConnection.Render
+  },
+  {
+    id: "00000000-0000-4000-9000-000000000008",
+    name: "netlify-demo-token",
+    app: AppConnection.Netlify
   }
+];
+
+const coveredApps = new Set<AppConnection>(
+  CORE_SYNC_CONNECTIONS.map((connection) => connection.app)
+);
+
+export const DEMO_SYNC_CONNECTIONS: (TAvailableAppConnection & { app: AppConnection })[] = [
+  ...CORE_SYNC_CONNECTIONS,
+  ...[...new Set(Object.values(SECRET_SYNC_CONNECTION_MAP))]
+    .filter((app) => !coveredApps.has(app))
+    .map((app, index) => ({
+      id: `00000000-0000-4000-9100-${String(index + 1).padStart(12, "0")}`,
+      name: `${app}-demo`,
+      app
+    }))
 ].map((connection) => ({ ...connection, projectId: "payments-api" }));
 
 export const demoSync = (input: {
@@ -37,8 +67,12 @@ export const demoSync = (input: {
   path: string;
   status: SecretSyncStatus | null;
   isAutoSyncEnabled: boolean;
+  includeAllSubFolders?: boolean;
   lastSyncedAt?: string;
   lastSyncMessage?: string;
+  importStatus?: SecretSyncStatus;
+  lastImportMessage?: string;
+  sourceDeleted?: boolean;
   destinationConfig: unknown;
   syncOptions?: unknown;
 }): TSecretSync => {
@@ -53,27 +87,33 @@ export const demoSync = (input: {
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-01T00:00:00.000Z",
     isAutoSyncEnabled: input.isAutoSyncEnabled,
+    includeAllSubFolders: Boolean(input.includeAllSubFolders),
     projectId: "payments-api",
     syncStatus: input.status,
     lastSyncJobId: null,
     lastSyncedAt: input.lastSyncedAt ? new Date(input.lastSyncedAt) : null,
     lastSyncMessage: input.lastSyncMessage ?? null,
-    importStatus: null,
+    importStatus: input.importStatus ?? null,
     lastImportJobId: null,
     lastImportedAt: null,
-    lastImportMessage: null,
+    lastImportMessage: input.lastImportMessage ?? null,
     removeStatus: null,
     lastRemoveJobId: null,
     lastRemovedAt: null,
     lastRemoveMessage: null,
-    syncOptions: (input.syncOptions ?? {}) as TSecretSync["syncOptions"],
+    syncOptions: {
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      disableSecretDeletion: true,
+      ...(input.syncOptions as object),
+      includeAllSubFolders: Boolean(input.includeAllSubFolders)
+    } as TSecretSync["syncOptions"],
     connection: {
       app: connection?.app ?? AppConnection.AWS,
       id: input.connectionId,
       name: connection?.name ?? input.connectionId
     },
-    environment: input.environment,
-    folder: { id: input.path, path: input.path },
+    environment: input.sourceDeleted ? null : input.environment,
+    folder: input.sourceDeleted ? null : { id: input.path, path: input.path },
     destination: input.destination,
     destinationConfig: input.destinationConfig
   } as TSecretSync;
@@ -123,6 +163,73 @@ export const seedSecretSyncs = (
       env: "preview",
       teamId: "team_demo_acme",
       sensitive: false
+    }
+  }),
+  demoSync({
+    name: "aws-secrets-manager-payments-prod",
+    description: "Production secrets for the payments service",
+    destination: SecretSync.AWSSecretsManager,
+    connectionId: DEMO_SYNC_CONNECTIONS[0].id,
+    environment: envOf("prod"),
+    path: "/payments",
+    status: SecretSyncStatus.Succeeded,
+    isAutoSyncEnabled: true,
+    includeAllSubFolders: true,
+    lastSyncedAt: "2026-11-10T08:05:00.000Z",
+    destinationConfig: { region: "us-west-2", mappingBehavior: "one-to-one" },
+    syncOptions: {
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.ImportPrioritizeSource,
+      keySchema: "PAYMENTS_{{secretKey}}",
+      tags: [{ key: "team", value: "payments" }],
+      syncSecretMetadataAsTags: false
+    }
+  }),
+  demoSync({
+    name: "azure-key-vault-payments-staging",
+    destination: SecretSync.AzureKeyVault,
+    connectionId: DEMO_SYNC_CONNECTIONS[4].id,
+    environment: envOf("staging"),
+    path: "/",
+    status: SecretSyncStatus.Running,
+    isAutoSyncEnabled: false,
+    lastSyncedAt: "2026-11-08T12:30:00.000Z",
+    destinationConfig: { vaultBaseUrl: "https://payments-staging.vault.azure.net" },
+    syncOptions: { disableCertificateImport: false }
+  }),
+  demoSync({
+    name: "render-payments-worker",
+    destination: SecretSync.Render,
+    connectionId: DEMO_SYNC_CONNECTIONS[6].id,
+    environment: envOf("prod"),
+    path: "/worker",
+    status: SecretSyncStatus.Succeeded,
+    isAutoSyncEnabled: true,
+    lastSyncedAt: "2026-11-11T22:10:00.000Z",
+    importStatus: SecretSyncStatus.Failed,
+    lastImportMessage: "Render API returned 429: rate limit exceeded",
+    destinationConfig: {
+      scope: "service",
+      type: "env",
+      serviceId: "srv-demo-payments-worker",
+      serviceName: "payments-worker"
+    },
+    syncOptions: { autoRedeployServices: true }
+  }),
+  demoSync({
+    name: "netlify-payments-docs",
+    destination: SecretSync.Netlify,
+    connectionId: DEMO_SYNC_CONNECTIONS[7].id,
+    environment: envOf("dev"),
+    path: "/docs",
+    status: null,
+    isAutoSyncEnabled: true,
+    sourceDeleted: true,
+    destinationConfig: {
+      accountId: "acct_demo",
+      accountName: "Acme",
+      siteId: "site_demo_docs",
+      siteName: "payments-docs",
+      context: "all"
     }
   })
 ];

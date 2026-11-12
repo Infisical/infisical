@@ -26,22 +26,10 @@ import {
   MicrosoftIntuneConnectionMethod,
   TMicrosoftIntuneConnection
 } from "@app/hooks/api/appConnections/types/microsoft-intune-connection";
+import { microsoftIntuneConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
-
-const formSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.MicrosoftIntune),
-  method: z.literal(MicrosoftIntuneConnectionMethod.ClientSecret),
-  credentials: z.object({
-    tenantId: z.string().trim().min(1, "Tenant ID is required"),
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    clientSecret: z.string().trim().min(1, "Client Secret is required")
-  })
-});
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type FormData = z.infer<typeof formSchema>;
 

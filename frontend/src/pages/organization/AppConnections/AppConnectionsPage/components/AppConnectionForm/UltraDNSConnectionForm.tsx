@@ -25,32 +25,15 @@ import {
   UltraDNSConnectionMethod,
   UltraDNSEnvironment
 } from "@app/hooks/api/appConnections/types/ultradns-connection";
+import { ultraDnsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TUltraDNSConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.UltraDNS)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(UltraDNSConnectionMethod.UsernamePassword),
-    credentials: z.object({
-      username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().min(1, "Password required"),
-      environment: z.nativeEnum(UltraDNSEnvironment)
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 
