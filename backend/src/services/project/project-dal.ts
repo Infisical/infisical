@@ -323,17 +323,20 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${groupMembershipTable}.${groupMembershipActorColumn}`, actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
+      const membershipProjectIds = (qb: Knex.QueryBuilder) =>
+        qb.from(TableName.Membership).where("scope", AccessScope.Project).select("scopeProjectId");
+
       const accessibleProjects = () =>
         db
-          .replicaNode()(TableName.Membership)
-          .where(`${TableName.Membership}.scope`, AccessScope.Project)
-          .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+          .replicaNode()(TableName.Project)
           .whereIn(`${TableName.Project}.orgId`, orgIds)
           .whereNull(`${TableName.Project}.deleteAfter`)
-          .andWhere((qb) => {
-            void qb
-              .where(`${TableName.Membership}.${actorColumn}`, actorId)
-              .orWhereIn(`${TableName.Membership}.actorGroupId`, groupSubquery);
+          .whereIn(`${TableName.Project}.id`, (qb) => {
+            void membershipProjectIds(qb)
+              .where(actorColumn, actorId)
+              .union((unionQb) => {
+                void membershipProjectIds(unionQb).whereIn("actorGroupId", groupSubquery);
+              });
           })
           .andWhere((qb) => {
             if (projectType) {
@@ -374,7 +377,6 @@ export const projectDALFactory = (db: TDbClient) => {
             db.ref("id").withSchema(TableName.Project),
             db.raw(`count(*) over () as "totalCount"`)
           )
-          .groupBy(`${TableName.Project}.id`)
           .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
           .orderBy(`${TableName.Project}.id`, "asc")
           .offset(offset);
@@ -384,9 +386,7 @@ export const projectDALFactory = (db: TDbClient) => {
         if (pageRows.length) {
           totalCount = Number(pageRows[0].totalCount);
         } else if (offset > 0) {
-          const countRow = await accessibleProjects()
-            .countDistinct<{ count: string }[]>({ count: `${TableName.Project}.id` })
-            .first();
+          const countRow = await accessibleProjects().count<{ count: string }[]>({ count: "*" }).first();
           totalCount = Number(countRow?.count ?? 0);
         } else {
           totalCount = 0;
