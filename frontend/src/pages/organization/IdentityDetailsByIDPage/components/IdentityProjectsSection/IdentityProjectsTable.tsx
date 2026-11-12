@@ -80,7 +80,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
   };
 
   const projectSearch = debouncedSearch.trim();
-  const { data, isPending } = useGetIdentityProjectMemberships(identityId, {
+  const { data, isPending, isError } = useGetIdentityProjectMemberships(identityId, {
     limit: perPage,
     offset,
     orderDirection,
@@ -106,10 +106,22 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     );
   }
 
+  if (isError) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Could not load projects</EmptyTitle>
+          <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
     <>
       <Input
         className="mb-4"
+        maxLength={255}
         value={search}
         onChange={(e) => {
           setSearch(e.target.value);

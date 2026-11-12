@@ -87,7 +87,7 @@ export const UserProjectsTable = ({
   };
 
   const projectSearch = debouncedSearch.trim();
-  const { data, isPending } = useGetOrgMembershipProjectMemberships(orgId, membershipId, {
+  const { data, isPending, isError } = useGetOrgMembershipProjectMemberships(orgId, membershipId, {
     limit: perPage,
     offset,
     orderDirection,
@@ -112,10 +112,22 @@ export const UserProjectsTable = ({
     );
   }
 
+  if (isError) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Could not load projects</EmptyTitle>
+          <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
     <>
       <Input
         className="mb-4"
+        maxLength={255}
         value={search}
         onChange={(e) => {
           setSearch(e.target.value);
