@@ -20,7 +20,8 @@ import {
   planCommitBatches,
   replaceNonChangesWithNewlines,
   repositoryHasCommits,
-  SecretScanningSizeLimitError
+  SecretScanningSizeLimitError,
+  sortFindingRowsForUpsert
 } from "./secret-scanning-v2-fns";
 
 // getConfig is read lazily inside the functions under test; only the size limit matters here.
@@ -326,6 +327,22 @@ describe("convertPatchLineToFileLineNumber", () => {
     const patch = "--- a/file.txt\n+++ b/file.txt\n@@ -4,0 +5,1 @@\n+secret";
 
     expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "secret"))).toBe(5);
+  });
+});
+
+describe("sortFindingRowsForUpsert", () => {
+  test("orders rows by fingerprint byte by byte, as Postgres orders them with the C collation", () => {
+    const rows = ["b:x", "B:x", "a:x", "_:x", "é:x", "A:x"].map((fingerprint) => ({ fingerprint }));
+
+    expect(sortFindingRowsForUpsert(rows).map(({ fingerprint }) => fingerprint)).toEqual([
+      "A:x",
+      "B:x",
+      "_:x",
+      "a:x",
+      "b:x",
+      "é:x"
+    ]);
+    expect(rows[0].fingerprint).toBe("b:x");
   });
 });
 

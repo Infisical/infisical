@@ -19,9 +19,11 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, or the GitHub
   closes the unresolved findings in the project with that value. A GitHub check skip closes them only in its own
   repository (`sameValueResourceId`), because GitHub lets anyone with write access to that repository skip. Close
   findings only through `closeFindingsWithSameValue` (`secret-scanning-v2-fns.ts`), including from a provider's own
-  triage action. It writes the finding and its siblings together after locking them in id order; updating the finding
-  first and its siblings after deadlocks two concurrent closes of the same value. A newly inserted finding inherits the
-  newest closed triage for its value in the same resource from `createFindingRowsBuilder` (never from another resource,
-  so a GitHub check skip can't pass checks in a repository its author can't write to), unless that triage is `resolved`:
-  a resolved value showing up again is a regression, so the finding starts `unresolved`. Keep triage columns out of the
-  upsert's merge columns, or every rescan overwrites what users triaged.
+  triage action. It writes the finding and its siblings together after locking them in `(resourceId, fingerprint)`
+  order, and every scan upserts its rows in fingerprint order (`sortFindingRowsForUpsert`): two closes, or a close and a
+  rescan, lock the same findings, so any other order on either side deadlocks them. If the upsert's conflict key
+  changes, change both orders with it. A newly inserted finding inherits the newest closed triage for its value in the
+  same resource from `createFindingRowsBuilder` (never from another resource, so a GitHub check skip can't pass checks
+  in a repository its author can't write to), unless that triage is `resolved`: a resolved value showing up again is a
+  regression, so the finding starts `unresolved`. Keep triage columns out of the upsert's merge columns, or every rescan
+  overwrites what users triaged.

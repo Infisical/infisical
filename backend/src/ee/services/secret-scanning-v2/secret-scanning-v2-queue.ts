@@ -12,7 +12,8 @@ import {
   parseScanErrorMessage,
   planCommitBatches,
   repositoryHasCommits,
-  scanGitRepositoryAndGetFindings
+  scanGitRepositoryAndGetFindings,
+  sortFindingRowsForUpsert
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   createTempFolder,
@@ -158,19 +159,21 @@ export const secretScanningV2QueueServiceFactory = ({
       );
       const now = new Date();
 
-      return rows.map((row) => {
-        const latestTriage = triageByBlindIndex.get(row.secretFindingBlindIndex);
-        const triaged = latestTriage?.status === SecretScanningFindingStatus.Resolved ? undefined : latestTriage;
+      return sortFindingRowsForUpsert(
+        rows.map((row) => {
+          const latestTriage = triageByBlindIndex.get(row.secretFindingBlindIndex);
+          const triaged = latestTriage?.status === SecretScanningFindingStatus.Resolved ? undefined : latestTriage;
 
-        return {
-          ...row,
-          status: triaged ? triaged.status : SecretScanningFindingStatus.Unresolved,
-          triageComment: triaged ? (triaged.triageComment ?? null) : null,
-          triagedByUserId: triaged ? (triaged.triagedByUserId ?? null) : null,
-          triagedAt: triaged ? now : null,
-          resolvedAt: null
-        };
-      });
+          return {
+            ...row,
+            status: triaged ? triaged.status : SecretScanningFindingStatus.Unresolved,
+            triageComment: triaged ? (triaged.triageComment ?? null) : null,
+            triagedByUserId: triaged ? (triaged.triagedByUserId ?? null) : null,
+            triagedAt: triaged ? now : null,
+            resolvedAt: null
+          };
+        })
+      );
     };
   };
 

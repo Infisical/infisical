@@ -4,7 +4,7 @@ import { join } from "path";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
-import { TSecretScanningFindings } from "@app/db/schemas";
+import { TSecretScanningFindings, TSecretScanningFindingsInsert } from "@app/db/schemas";
 import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
 import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
@@ -608,6 +608,14 @@ export const scanSecretPolicyViolations = async (
     await deleteTempFolder(tempFolder);
   }
 };
+
+/**
+ * Orders a scan's finding rows by fingerprint, byte by byte, before they are upserted. The upsert locks the rows it
+ * updates in this order, which is the order a close locks them in (`triageWithSameValue`), so the two never deadlock.
+ * Every upsert covers one resource, so the fingerprint alone matches the close's (resourceId, fingerprint) order.
+ */
+export const sortFindingRowsForUpsert = <T extends Pick<TSecretScanningFindingsInsert, "fingerprint">>(rows: T[]) =>
+  [...rows].sort((a, b) => Buffer.compare(Buffer.from(a.fingerprint), Buffer.from(b.fingerprint)));
 
 /**
  * Closes findings and every unresolved finding with the same secret value, across the project or, with

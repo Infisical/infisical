@@ -820,9 +820,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
    * Applies one triage to the given findings and to every unresolved finding that shares a secret value with them,
    * in the project or, with `sameValueResourceId`, only in that resource. Returns all the rows it changed.
    *
-   * The rows are locked in id order before they are written. Two closes of the same value (the batch PATCH runs its
-   * items concurrently) each touch the other's finding, so locking in any other order deadlocks them. The second one
-   * waits on the first row, then Postgres re-checks the filter, and findings the first close already resolved drop out.
+   * The rows are locked in (resourceId, fingerprint) order before they are written, the order scans upsert findings in
+   * (`sortFindingRowsForUpsert`). Two closes of the same value (the batch PATCH runs its items concurrently) each touch
+   * the other's finding, and a rescan updates findings a close may also lock, so locking in any other order deadlocks
+   * them. The second one waits on the first row, then Postgres re-checks the filter, and findings the first close
+   * already resolved drop out. Fingerprints are compared bytewise ("C"), as the upsert sorts them.
    */
   const triageFindingsWithSameValue = async (
     {
@@ -866,7 +868,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
             if (sameValueResourceId) void sameValueQb.where("resourceId", sameValueResourceId);
           });
         })
-        .orderBy("id")
+        .orderBy("resourceId")
+        .orderByRaw('?? COLLATE "C"', ["fingerprint"])
         .forUpdate()) as Pick<TSecretScanningFindings, "id">[];
 
       if (!lockedFindings.length) return [];
