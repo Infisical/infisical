@@ -870,6 +870,7 @@ export const groupServiceFactory = ({
 
     const users = await addUsersToGroupByUserIds({
       group: groupMembership.group,
+      usageMeteringService,
       userIds: [user.id],
       userDAL,
       userGroupMembershipDAL,
@@ -880,10 +881,6 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
-    // The user may now be in a secret-manager or PAM project through this group.
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -978,6 +975,7 @@ export const groupServiceFactory = ({
 
     const identities = await addIdentitiesToGroup({
       group: groupMembership.group,
+      usageMeteringService,
       identityIds: [identityId],
       identityDAL,
       membershipDAL,
@@ -992,10 +990,6 @@ export const groupServiceFactory = ({
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
     }
 
-    // The identity may now be in a secret-manager or PAM project through this group.
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1073,6 +1067,7 @@ export const groupServiceFactory = ({
 
     const { users, sendPamCancellations } = await removeUsersFromGroupByUserIds({
       group: groupMembership.group,
+      usageMeteringService,
       userIds: [user.id],
       actorId,
       userGroupMembershipDAL,
@@ -1088,10 +1083,6 @@ export const groupServiceFactory = ({
     });
     sendPamCancellations();
 
-    // The user may have left a secret-manager or PAM project it only reached through this group.
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1163,6 +1154,7 @@ export const groupServiceFactory = ({
 
     const { identities, sendPamCancellations } = await removeIdentitiesFromGroup({
       group: groupMembership.group,
+      usageMeteringService,
       identityIds: [identityId],
       actorId,
       identityDAL,
@@ -1182,10 +1174,6 @@ export const groupServiceFactory = ({
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
     }
 
-    // The identity may have left a secret-manager or PAM project it only reached through this group.
-    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

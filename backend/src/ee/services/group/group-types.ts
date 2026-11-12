@@ -133,7 +133,7 @@ export type TAddUsersToGroupByUserIds = {
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
   // Optional so SSO/SCIM callers can meter the secret-manager identity count when they sync groups.
-  usageMeteringService?: TUsageMeteringService;
+  usageMeteringService: TUsageMeteringService;
 };
 
 export type TAddIdentitiesToGroup = {
@@ -143,7 +143,7 @@ export type TAddIdentitiesToGroup = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
-  usageMeteringService?: TUsageMeteringService;
+  usageMeteringService: TUsageMeteringService;
 };
 
 // Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
@@ -167,7 +167,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   // Skip the Agent Vault personal value clear and return the group's project ids instead, for a caller that removes
   // the same user from several groups in one transaction and clears once after every group's rows are locked.
   deferPersonalValueClear?: boolean;
-  usageMeteringService?: TUsageMeteringService;
+  usageMeteringService: TUsageMeteringService;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
@@ -191,7 +191,7 @@ export type TRemoveIdentitiesFromGroup = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  usageMeteringService?: TUsageMeteringService;
+  usageMeteringService: TUsageMeteringService;
   eventEmitter: TEventEmitter;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;

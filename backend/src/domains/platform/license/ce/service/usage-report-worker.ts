@@ -3,9 +3,8 @@ import { logger } from "@app/lib/logger";
 
 import { InstanceType } from "../model/instance-entitlements";
 import { CounterRegistry } from "./counter-registry";
-import { TLicenseServer, TUsageReportCache } from "./dependencies";
+import { TLicenseServer, TUsageReportCache, TUsageSource } from "./dependencies";
 import { SELF_HOSTED_LICENSE_ORG_ID } from "./license-server-types/license-server-types";
-import { TUsageEvent, UsageReportError } from "./license-server-types/usage-reports";
 import { TLicenseService } from "./license-service";
 import { TMeteringEventPayload, UsageQueue } from "./usage-queue";
 
@@ -47,42 +46,23 @@ export class UsageReportWorker {
     try {
       const value = await counter.count(cloud ? reportOrgId : null);
       // Stamped at counting, not at enqueue: a retried job counts again, and a new count sent under the
-      // first attempt's key would be dropped by the server as a duplicate while recordReported keeps it.
+      // first attempt's time would be dropped by the server as a duplicate while recordReported keeps it.
       const observedAt = new Date();
       const lastReported = await this.deps.usageReportCache.lastReported(reportOrgId, dimensionKey);
       if (lastReported === value) return;
 
-      try {
-        await this.deps.licenseServer.reportSnapshots(reportOrgId, [
-          {
-            dimension_key: dimensionKey,
-            value,
-            observed_at: observedAt.toISOString(),
-            idempotency_key: `${this.source}:${reportOrgId}:${dimensionKey}:${observedAt.getTime()}`,
-            source: this.source
-          }
-        ]);
-      } catch (error) {
-        // A 404 "license not found" or a 422 "not priced" is the server's final answer for this dimension, so
-        // it is not retried and not recorded as reported.
-        if (error instanceof UsageReportError) {
-          if (error.status === 404 && error.serverMessage.includes("license not found")) {
-            logger.info(
-              `usage-event-queue: license not found, skipping [orgId=${reportOrgId}] [dimensionKey=${dimensionKey}]`
-            );
-            return;
-          }
-          if (
-            error.status === 422 &&
-            error.serverMessage.includes("not priced by any active product on this license")
-          ) {
-            logger.info(
-              `usage-event-queue: dimension not priced on this license, skipping [orgId=${reportOrgId}] [dimensionKey=${dimensionKey}]`
-            );
-            return;
-          }
-        }
-        throw error;
+      const outcome = await this.deps.licenseServer.reportSnapshot(reportOrgId, {
+        dimensionKey,
+        value,
+        observedAt,
+        source: this.source
+      });
+      // The server's final answer for this dimension: not retried, and not recorded as reported.
+      if (outcome !== "reported") {
+        logger.info(
+          `usage-event-queue: ${outcome === "no-license" ? "license not found" : "dimension not priced on this license"}, skipping [orgId=${reportOrgId}] [dimensionKey=${dimensionKey}]`
+        );
+        return;
       }
 
       logger.info(
@@ -99,36 +79,24 @@ export class UsageReportWorker {
   }
 
   // No plan-slug gate as in handleUsageEvent: during an outage the plan is a slugless fallback, which would
-  // drop events nothing sends again. A 404 "license not found" or any 422 is final for the batch.
+  // drop events nothing sends again.
   async handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void> {
     if (!this.deps.licenseServer.canReportUsage() || !events.length) return;
 
     const reportOrgId = this.isCloud() ? orgId : SELF_HOSTED_LICENSE_ORG_ID;
-    const payload: TUsageEvent[] = events.map((e) => ({
-      event_id: e.eventId,
-      dimension_key: e.dimensionKey,
-      quantity: e.quantity,
-      occurred_at: e.occurredAt,
-      source: this.source
-    }));
 
     try {
-      const results = await this.deps.licenseServer.reportEvents(reportOrgId, payload);
-      logger.info(
-        `usage-event-queue: reported metering events [orgId=${reportOrgId}] [count=${results.length}] [deduped=${
-          results.filter((r) => r.status === "deduped").length
-        }]`
-      );
-    } catch (error) {
-      if (
-        error instanceof UsageReportError &&
-        (error.status === 422 || (error.status === 404 && error.serverMessage.includes("license not found")))
-      ) {
+      const outcome = await this.deps.licenseServer.reportEvents(reportOrgId, events, this.source);
+      if (outcome.status === "rejected") {
         logger.warn(
-          `usage-event-queue: metering events rejected, dropping [orgId=${reportOrgId}] [count=${events.length}] [status=${error.status}] [message=${error.serverMessage}]`
+          `usage-event-queue: metering events rejected, dropping [orgId=${reportOrgId}] [count=${events.length}] [reason=${outcome.reason}]`
         );
         return;
       }
+      logger.info(
+        `usage-event-queue: reported metering events [orgId=${reportOrgId}] [count=${outcome.accepted + outcome.deduped}] [deduped=${outcome.deduped}]`
+      );
+    } catch (error) {
       logger.error(error, `usage-event-queue: failed to report metering events [orgId=${reportOrgId}]`);
       throw error;
     }
@@ -145,7 +113,7 @@ export class UsageReportWorker {
     return this.deps.licenseService.getInstanceType() === InstanceType.Cloud;
   }
 
-  private get source() {
+  private get source(): TUsageSource {
     return this.isCloud() ? "cloud" : "self-hosted";
   }
 }

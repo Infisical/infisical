@@ -315,9 +315,9 @@ export const addUsersToGroupByUserIds = async ({
     }
 
     // These users may now be in a secret-manager or PAM project through this group.
-    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -396,9 +396,9 @@ export const addIdentitiesToGroup = async ({
     );
 
     // These identities may now be in a secret-manager or PAM project through this group.
-    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -652,9 +652,9 @@ export const removeUsersFromGroupByUserIds = async ({
     });
 
     // These users may have left a secret-manager or PAM project they only reached through this group.
-    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return {
       users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending),
       sendPamCancellations,
@@ -820,9 +820,9 @@ export const removeIdentitiesFromGroup = async ({
     });
 
     // These identities may have left a secret-manager or PAM project they only reached through this group.
-    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return { identities: identityIdsArray.map((identityId) => ({ id: identityId })), sendPamCancellations };
   });
 };

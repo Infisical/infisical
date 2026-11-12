@@ -6,7 +6,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 describe("createDomains", () => {
-  test("should give License exactly one usage counter for every metered dimension", () => {
+  test("should give License exactly one usage counter for every metered dimension", async () => {
     // Setup
     const deps = {
       db: {},
@@ -17,7 +17,7 @@ describe("createDomains", () => {
     } as unknown as Parameters<typeof createDomains>[0];
 
     // Action
-    const domains = createDomains(deps);
+    const domains = await createDomains(deps);
 
     // Assert
     expect(domains.license.usageDimensions().sort()).toEqual(

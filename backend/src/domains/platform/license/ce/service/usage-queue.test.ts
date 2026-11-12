@@ -3,7 +3,6 @@ import { QueueName } from "@app/queue";
 import { Meter } from "../model/meter";
 import { buildLicense, ROOT } from "../testing/build-license";
 import { FakeLicenseServer } from "../testing/fake-license-server";
-import { UsageReportError } from "./license-server-types/usage-reports";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -81,7 +80,7 @@ describe("UsageQueue.recordMeteringEvents", () => {
     expect((queue.jobs[0].data as { events: unknown[] }).events).toHaveLength(2);
   });
 
-  test("should report events at the triggering org on cloud, and drop a batch the server refuses with a 422", async () => {
+  test("should report events at the triggering org on cloud, and drop a batch the server rejects", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     const { usageMeteringService, queue } = await buildLicense({ licenseServer });
@@ -90,7 +89,7 @@ describe("UsageQueue.recordMeteringEvents", () => {
       { eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at }
     ]);
     await queue.drain();
-    licenseServer.failNextReports.push(new UsageReportError(422, "not metered"));
+    licenseServer.failNextReports.push("rejected");
     usageMeteringService.recordMeteringEvents(ROOT.id, [
       { eventId: "e2", dimensionKey: "a", quantity: 1, occurredAt: at }
     ]);
@@ -99,6 +98,6 @@ describe("UsageQueue.recordMeteringEvents", () => {
     await queue.drain();
 
     // Assert
-    expect(licenseServer.events.map((e) => [e.orgId, e.event.event_id])).toEqual([[ROOT.id, "e1"]]);
+    expect(licenseServer.events.map((e) => [e.orgId, e.event.eventId])).toEqual([[ROOT.id, "e1"]]);
   });
 });

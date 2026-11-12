@@ -9,7 +9,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
-  licenseServer.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
+  licenseServer.snapshots.filter((s) => s.snapshot.dimensionKey === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
 describe("LicenseService.getPlan", () => {
   test("should queue each seat meter once per interval when a paid plan is read, and nothing for a plan with no slug", async () => {

@@ -1,7 +1,14 @@
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-import { TLicenseServer } from "../../ce/service/dependencies";
+import {
+  TLicenseServer,
+  TMeteringEvent,
+  TMeteringEventsOutcome,
+  TUsageSnapshot,
+  TUsageSnapshotOutcome,
+  TUsageSource
+} from "../../ce/service/dependencies";
 import {
   TBuyProductPayload,
   TCancelTrialPayload,
@@ -15,13 +22,7 @@ import {
   TSubscriptionPreviewPayload,
   TUpgradePayload
 } from "../../ce/service/license-server-types/license-server-types";
-import {
-  MAX_USAGE_EVENTS_PER_REQUEST,
-  TUsageEvent,
-  TUsageEventResult,
-  TUsageSnapshot,
-  UsageReportError
-} from "../../ce/service/license-server-types/usage-reports";
+import { MAX_USAGE_EVENTS_PER_REQUEST } from "../../ce/service/license-server-types/usage-reports";
 import { TLicenseServerEntitlements } from "../service/dependencies";
 import {
   licenseServerBackend,
@@ -31,6 +32,14 @@ import {
   TLicenseClientBackend
 } from "./license-server-backends";
 import { createSelfHostedTokenProvider } from "./license-token-provider";
+import {
+  isDimensionNotPriced,
+  isLicenseNotFound,
+  TUsageEventBody,
+  TUsageEventResultBody,
+  TUsageSnapshotBody,
+  UsageReportError
+} from "./usage-wire";
 
 export type TLicenseServerClientConfig = {
   envConfig: Pick<
@@ -133,8 +142,7 @@ const buildUsageEndpoint = (envConfig: TLicenseServerClientConfig["envConfig"]):
   return { serverUrl, getBearerToken: () => Promise.resolve(mintServiceToken(serviceKey)) };
 };
 
-// Throws UsageReportError so callers can tell a final no (404 "license not found", 422 "not priced") from
-// something worth retrying.
+// Throws UsageReportError, which carries the status and message the client reads a final no from.
 const postUsage = async (
   endpoint: TUsageEndpoint,
   orgId: string,
@@ -259,26 +267,56 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     return this.configured().deleteOrganization(orgId);
   }
 
-  async reportSnapshots(orgId: string, snapshots: TUsageSnapshot[]): Promise<void> {
-    if (!this.usageEndpoint || !snapshots.length) return;
-    await postUsage(this.usageEndpoint, orgId, "usage-snapshots", { snapshots });
+  async reportSnapshot(orgId: string, snapshot: TUsageSnapshot): Promise<TUsageSnapshotOutcome> {
+    if (!this.usageEndpoint) return "reported";
+    const body: TUsageSnapshotBody = {
+      dimension_key: snapshot.dimensionKey,
+      value: snapshot.value,
+      observed_at: snapshot.observedAt.toISOString(),
+      idempotency_key: `${snapshot.source}:${orgId}:${snapshot.dimensionKey}:${snapshot.observedAt.getTime()}`,
+      source: snapshot.source
+    };
+    try {
+      await postUsage(this.usageEndpoint, orgId, "usage-snapshots", { snapshots: [body] });
+    } catch (error) {
+      if (error instanceof UsageReportError && isLicenseNotFound(error)) return "no-license";
+      if (error instanceof UsageReportError && isDimensionNotPriced(error)) return "not-priced";
+      throw error;
+    }
+    return "reported";
   }
 
   // The server accepts or rejects each request as a whole, so a chunk that fails stops the rest; chunks
-  // already sent are safe to resend because of event_id dedup.
-  async reportEvents(orgId: string, events: TUsageEvent[]): Promise<TUsageEventResult[]> {
+  // already sent are safe to resend because of event_id dedup. Any 422, or a 404 "license not found", is the
+  // server's final answer for the batch.
+  async reportEvents(orgId: string, events: TMeteringEvent[], source: TUsageSource): Promise<TMeteringEventsOutcome> {
     const endpoint = this.usageEndpoint;
-    if (!endpoint) return [];
-    const results: TUsageEventResult[] = [];
-    for (let i = 0; i < events.length; i += MAX_USAGE_EVENTS_PER_REQUEST) {
-      const chunk = events.slice(i, i + MAX_USAGE_EVENTS_PER_REQUEST);
-      // eslint-disable-next-line no-await-in-loop
-      const body = (await (await postUsage(endpoint, orgId, "usage-events", { events: chunk })).json()) as {
-        results?: TUsageEventResult[];
-      };
-      results.push(...(body.results ?? []));
+    if (!endpoint) return { status: "reported", accepted: 0, deduped: 0 };
+    const payload: TUsageEventBody[] = events.map((e) => ({
+      event_id: e.eventId,
+      dimension_key: e.dimensionKey,
+      quantity: e.quantity,
+      occurred_at: e.occurredAt,
+      source
+    }));
+    const results: TUsageEventResultBody[] = [];
+    try {
+      for (let i = 0; i < payload.length; i += MAX_USAGE_EVENTS_PER_REQUEST) {
+        const chunk = payload.slice(i, i + MAX_USAGE_EVENTS_PER_REQUEST);
+        // eslint-disable-next-line no-await-in-loop
+        const body = (await (await postUsage(endpoint, orgId, "usage-events", { events: chunk })).json()) as {
+          results?: TUsageEventResultBody[];
+        };
+        results.push(...(body.results ?? []));
+      }
+    } catch (error) {
+      if (error instanceof UsageReportError && (error.status === 422 || isLicenseNotFound(error))) {
+        return { status: "rejected", reason: `${error.status} ${error.serverMessage}`.trim() };
+      }
+      throw error;
     }
-    return results;
+    const deduped = results.filter((r) => r.status === "deduped").length;
+    return { status: "reported", accepted: results.length - deduped, deduped };
   }
 
   private configured(): TLicenseClientBackend {

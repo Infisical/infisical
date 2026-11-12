@@ -63,7 +63,7 @@ static-secrets/
 | `module.ts` | The module class that builds everything, and re-exports of the types other code uses (service types, models, and the dependency types other code implements). Other domains import only `ce/module.ts` | `StaticSecretsModule`, `export type { TStaticSecretsService }` |
 | `model/` | Classes that represent the domain's data, one per entity or value, each with the rules about that data. A file holds the class and its own props type, nothing else: no request or response types, no contracts other domains implement, no key or queue names, no helper functions. Knows nothing about the database | `KmsKey.create()`, `kmsKey.assertRotatable()`, `Plan.community()` |
 | `data-access/` | One class per entity, implementing a type from `service/dependencies.ts` and returning models, plus `build<Domain>Store(tx)` that groups them all on one connection | `class KmsKeyDataAccess implements TKmsKeyDataAccess`, `buildKmsCoreStore(tx)` |
-| `<system>-client/` | A client for an external system, named for it, used by that edition's services. A paid system's client lives in `ee/` and implements a type in `ce/`'s `service/dependencies.ts`; `ce/` never holds a second client or a stand-in for it | `ee/license-server-client/LicenseServerClient` |
+| `<system>-client/` | A client for an external system, named for it, used by that edition's services. A paid system's client lives in `ee/` and implements a type in `ce/`'s `service/dependencies.ts`; `ce/` never holds a second client or a stand-in for it. The client speaks the domain's terms at its boundary: it builds the system's request shape and turns its statuses and messages into outcomes the service can act on, so no service matches on a status code | `ee/license-server-client/LicenseServerClient` |
 | `service/` | The business logic: one class per use case group, each implementing its own `T<Name>Service` type, with its input types; plain helper functions shared by those classes; and `dependencies.ts`, the types the services need from outside them (their own data access, EE, and a domain that cannot be imported), which those implement. Tests sit beside them | `class KmsKeyService implements TKmsKeyService`, `createKmsKey(store, ...)` |
 | `router/` | Fastify routes. Validate input, call a service, shape the response | `registerKmsKeyRouter` |
 | `testing/` | In-memory data access and store, a fake of each public service for this domain's consumers, data access contract suites | `InMemoryKmsKeyDataAccess`, `FakeKmsKeyService` |
@@ -95,7 +95,7 @@ domain's service.
 | Model | A class: private constructor, static `create()` and `restore()`, and `toJSON()` for its plain data. Services return models, not their props. A model whose fields callers read extends `withProps<TProps>()` (`lib/with-props.ts`), so `plan.rbac` works and the model still passes where its props type is expected. Never a bare type, constant or function | `KmsKey.create({ ... })`, `class Plan extends withProps<TPlanProps>()` |
 | Data access, service | `class X implements TX`, dependencies in `constructor(deps)`. Write `TX` as a `type` with method syntax (`getPlan(orgId: string): Promise<Plan>`), not arrow properties | `class KmsKeyService implements TKmsKeyService` |
 | Data access queries | Methods on the class; query fragments shared by them are private methods, not `$`-prefixed functions or a factory the class wraps | `private activeCertificates(orgId)` |
-| Module | `new` calls only: builds everything once and exposes the services | `class KmsCoreModule` |
+| Module | `new` calls only: builds everything once and exposes the services. `static async create()` and `start()` when it needs them (see "State and services") | `class KmsCoreModule`, `LicenseModule.create(deps)` |
 | Router, shared helpers | Plain functions | `registerKmsKeyRouter`, `createKmsKey(store, state, input)` |
 
 ### State and services
@@ -109,6 +109,12 @@ A module builds everything once, in its constructor:
 
 - Service constructors only store references. No I/O, no queries, no client creation, no schema
   compilation.
+- A module's constructor does no I/O either. A module with state that must be read before it can answer
+  (the instance's license) has a private constructor and a `static async create(deps)` that reads it and
+  then builds the module, so no service is ever handed out half-initialised
+  (`LicenseModule.create`). Never a holder that throws until some later call fills it.
+- Anything that starts running (queue workers, crons, timers) is registered in `start()`, never in the
+  constructor or `create()`. `routes/index.ts` calls it once at boot, after `createDomains` returns.
 - Mutable state lives in a named holder or inside the one service that owns it. Only its owner writes it.
 - State never touches the database or a transaction. When state must follow a database change, update
   it in `tx.afterCommit(...)`, so a rollback can never leave memory and database disagreeing.

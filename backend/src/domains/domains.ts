@@ -34,7 +34,7 @@ export type TDomainDeps = {
 // License sits on organizations-projects and depends on no product: products build first and hand License
 // their counters. A product that needs License builds after it, so its counters must come from data access,
 // not a service using License.
-export const createDomains = (deps: TDomainDeps) => {
+export const createDomains = async (deps: TDomainDeps) => {
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
   const organizationsProjectsService = organizationsProjects.service;
   const secrets = new SecretsModule({ organizationsProjectsService });
@@ -43,7 +43,7 @@ export const createDomains = (deps: TDomainDeps) => {
   const certManager = new CertManagerModule({ db: deps.db, organizationsProjectsService });
 
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
-  const license = new LicenseModule({
+  const license = await LicenseModule.create({
     keyStore: deps.keyStore,
     queueService: deps.queueService,
     cronJob: deps.cronJob,

@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import {
   AccessScope,
   OrgMembershipRole,
@@ -222,6 +223,7 @@ describe("Identity folder access CRUD", () => {
 
     beforeAll(async () => {
       removalDeps = {
+        usageMeteringService: new FakeUsageMeteringService(),
         identityDAL: identityDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),

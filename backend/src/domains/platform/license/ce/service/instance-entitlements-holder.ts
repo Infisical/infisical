@@ -1,11 +1,10 @@
 import { InstanceEntitlements } from "../model/instance-entitlements";
 
-// Set by start(), swapped later by the online license's background sync.
+// The instance's license. Swapped by the online license's background sync and by a plan refresh.
 export class InstanceEntitlementsHolder {
-  private current: InstanceEntitlements | null = null;
+  constructor(private current: InstanceEntitlements) {}
 
   get(): InstanceEntitlements {
-    if (!this.current) throw new Error("The License domain was read before LicenseModule.start() resolved the license");
     return this.current;
   }
 
@@ -14,6 +13,6 @@ export class InstanceEntitlementsHolder {
   }
 
   isCloud() {
-    return this.get().isCloud();
+    return this.current.isCloud();
   }
 }

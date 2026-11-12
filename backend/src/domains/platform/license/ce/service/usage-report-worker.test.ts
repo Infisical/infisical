@@ -4,14 +4,13 @@ import { buildLicense, ROOT, SUB_ORG_ID } from "../testing/build-license";
 import { FakeLicenseServer } from "../testing/fake-license-server";
 import { FakeUsageCounter } from "../testing/fake-usage-counter";
 import { enterprisePlan } from "../testing/test-features";
-import { UsageReportError } from "./license-server-types/usage-reports";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
 const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
-  licenseServer.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
+  licenseServer.snapshots.filter((s) => s.snapshot.dimensionKey === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
 describe("UsageReportWorker.handleUsageEvent", () => {
   test("should report the counter's value and record it", async () => {
@@ -27,7 +26,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     expect(snapshotsFor(licenseServer, Meter.SecretIdentities.key)).toEqual([[ROOT.id, 4]]);
   });
 
-  test("should send a recount under a new idempotency key when a retry follows a lost reply", async () => {
+  test("should send a recount as a new observation when a retry follows a lost reply", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
@@ -49,7 +48,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     // Assert
     const sent = licenseServer.snapshots.map((s) => s.snapshot);
     expect(sent.map((s) => s.value)).toEqual([9, 8]);
-    expect(new Set(sent.map((s) => s.idempotency_key)).size).toBe(2);
+    expect(sent.map((s) => s.observedAt.getTime())).toEqual([1_700_000_005_000, 1_700_000_015_000]);
   });
 
   test("should not report a value the server already has", async () => {
@@ -130,15 +129,12 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     expect(licenseServer.snapshots).toEqual([]);
   });
 
-  test.each([
-    [404, "license not found"],
-    [422, "dimension is not priced by any active product on this license"]
-  ])(
-    "should drop a %i the server gives as its final answer, and send the value again next time",
-    async (status, message) => {
+  test.each(["no-license", "not-priced"] as const)(
+    "should drop a report the server answers with a final %s, and send the value again next time",
+    async (outcome) => {
       // Setup
       const licenseServer = new FakeLicenseServer();
-      licenseServer.failNextReports.push(new UsageReportError(status, message));
+      licenseServer.failNextReports.push(outcome);
       const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
       const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
       usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
@@ -156,7 +152,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
   test("should fail the job on any other error, so the queue retries it", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
-    licenseServer.failNextReports.push(new UsageReportError(500, "boom"));
+    licenseServer.failNextReports.push(new Error("License Server unavailable"));
     const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
     const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
     usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
@@ -165,7 +161,7 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     const result = queue.drain();
 
     // Assert
-    await expect(result).rejects.toThrow("usage report failed with 500");
+    await expect(result).rejects.toThrow("License Server unavailable");
   });
 
   test("should enable the daily flush on online self-hosted, and not on cloud or an offline license", async () => {
@@ -213,7 +209,7 @@ describe("UsageReportWorker.flushInstanceUsage", () => {
     await queue.drain();
 
     // Assert
-    expect(licenseServer.snapshots.map((s) => [s.orgId, s.snapshot.dimension_key, s.snapshot.value])).toEqual([
+    expect(licenseServer.snapshots.map((s) => [s.orgId, s.snapshot.dimensionKey, s.snapshot.value])).toEqual([
       ["self-hosted", Meter.Identities.key, 7],
       ["self-hosted", Meter.UserIdentities.key, 5],
       ["self-hosted", Meter.SecretIdentities.key, 12],

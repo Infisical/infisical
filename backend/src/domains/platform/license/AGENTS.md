@@ -20,9 +20,9 @@ may edit into a paid one.
 | `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`: classes only, with no feature data. `Plan` exposes its props as read-only fields (`withProps`) |
 | `ce/data-access/` | `PlanCache` and `UsageReportCache`, both in the key store, with their key names; they implement `TPlanCache` and `TUsageReportCache` |
 | `ce/service/` | The mechanism: `LicenseService` (plans, refresh, seats, closing deleted orgs), `UsageMeteringService` (what callers report usage through), `UsageQueue` (putting usage on the queues), `UsageReportWorker` (what the queues and the daily flush run), and `dependencies.ts`: what the services need from their data access, the products (`TUsageCounter`) and EE |
-| `ce/service/license-server-types/` | The License Server's request and response shapes, which `TLicenseServerBilling` and the dependency types expose |
+| `ce/service/license-server-types/` | The License Server's billing and entitlement request and response shapes, with `TLicenseServerBilling`. `module.ts` re-exports by name only the few that code outside the domain uses |
 | `ee/service/` | The policy behind `TLicenseProvider`: default features and license key parsing (`license-fns.ts`), the license resolver, entitlement projection and its feature mapping |
-| `ee/license-server-client/` | `LicenseServerClient`, the only client (entitlements, billing, usage posts), its HTTP backends and token provider |
+| `ee/license-server-client/` | `LicenseServerClient`, the only client (entitlements, billing, usage posts), its HTTP backends and token provider, and the usage API's wire shapes (`usage-wire.ts`) |
 
 - **Cloud plans are cached under the root org.** A sub-org's plan is its root's; the organizations-projects service maps an
   org to its root and caches it for the life of the process. Last-known plan, fallback marker and pass-through marker are keyed by the
@@ -58,6 +58,15 @@ may edit into a paid one.
   the data, which `domains.ts` builds first. organizations-projects never imports License.
   A meter's `scope` decides the report identity: `org-tree` reports at the root, `org` at the org that
   changed. Self-hosted reports everything once, as `self-hosted`, counting the whole instance (`count(null)`).
+- **The module is built with `LicenseModule.create(deps)`**, which reads the instance's license before any
+  service exists, so `getInstanceEntitlements` and `getPlan` can never run without one. `start()` only
+  registers the usage workers and the daily flush.
+- **CE never sees the usage API's wire format.** `TLicenseServer.reportSnapshot` and `reportEvents` take and
+  return domain values (`TUsageSnapshot`, `TUsageSnapshotOutcome`, `TMeteringEventsOutcome`). The EE client
+  builds the snake_case body and the idempotency key, and turns the server's status and message into an
+  outcome: `no-license`, `not-priced` or `rejected` are final and are not retried, anything else is thrown so
+  the queue retries. A new final answer from the server is a new case in the client, not a status check in
+  `UsageReportWorker`.
 - **Workers are on neither service type.** `UsageReportWorker` (`handleUsageEvent`, `handleMeteringEvents`,
   `flushInstanceUsage`) is built by the module and registered only in `LicenseModule.start()`.
 - **Billing is not on `TLicenseService`.** It is the EE `LicenseServerClient`, which `createDomains` returns as

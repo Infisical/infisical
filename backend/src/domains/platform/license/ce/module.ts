@@ -7,6 +7,7 @@ import type { TQueueServiceFactory } from "@app/queue";
 
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
+import { InstanceEntitlements } from "./model/instance-entitlements";
 import { CounterRegistry } from "./service/counter-registry";
 import { TLicenseProvider, TLicenseServer, TUsageCounter } from "./service/dependencies";
 import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
@@ -21,8 +22,15 @@ export * from "./model/meter";
 export * from "./model/plan";
 export * from "./model/seat-usage";
 export type { TLicenseService, TRefreshPlanOptions } from "./service/license-service";
-export * from "./service/license-server-types/license-server-types";
-export * from "./service/license-server-types/usage-reports";
+// The License Server shapes code outside the domain names: billing, and the org a plan fetch sends.
+export type {
+  TCatalogProduct,
+  TEntitlementOrg,
+  TLicenseServerBilling,
+  TProductLineItem,
+  TSubscriptionPreviewPayload,
+  TSubscriptionResponse
+} from "./service/license-server-types/license-server-types";
 export type {
   TLicenseProvider,
   TLicenseServer,
@@ -58,14 +66,25 @@ export class LicenseModule {
   readonly usageMeteringService: TUsageMeteringService;
 
   // Exposed for the e2e suite's license overrides, which replace the instance entitlements in place.
-  readonly instanceEntitlements = new InstanceEntitlementsHolder();
+  readonly instanceEntitlements: InstanceEntitlementsHolder;
 
   private readonly counters: CounterRegistry;
 
   private readonly worker: UsageReportWorker;
 
-  constructor(private readonly deps: TLicenseDeps) {
+  // Reads the instance's license first, so the module never exists without one.
+  static async create(deps: TLicenseDeps): Promise<LicenseModule> {
+    const instanceEntitlements = await deps.provider.resolveInstanceEntitlements();
+    logger.info(`Instance type: ${instanceEntitlements.instanceType}`);
+    return new LicenseModule(deps, instanceEntitlements);
+  }
+
+  private constructor(
+    private readonly deps: TLicenseDeps,
+    instanceEntitlements: InstanceEntitlements
+  ) {
     const { keyStore, organizationsProjectsService, provider, licenseServer } = deps;
+    this.instanceEntitlements = new InstanceEntitlementsHolder(instanceEntitlements);
     const usageReportCache = new UsageReportCache(keyStore);
     this.counters = new CounterRegistry([...seatUsageCounters(organizationsProjectsService), ...deps.usageCounters]);
 
@@ -106,11 +125,8 @@ export class LicenseModule {
     return this.counters.all().map((counter) => counter.meter.key);
   }
 
-  // Reads the instance's license, then starts the usage workers and the timers. Called once at boot.
-  async start(): Promise<void> {
-    this.instanceEntitlements.set(await this.deps.provider.resolveInstanceEntitlements());
-    logger.info(`Instance type: ${this.instanceEntitlements.get().instanceType}`);
-
+  // Starts the usage workers and registers the daily flush. Called once at boot.
+  start(): void {
     this.deps.queueService.start(
       UsageQueues.usageEvent,
       (job) => this.worker.handleUsageEvent(job.data.orgId, job.data.dimensionKey),

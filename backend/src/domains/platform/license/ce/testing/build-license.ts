@@ -41,7 +41,7 @@ export const buildLicense = async ({
   const queue = new FakeQueue();
   const registeredCrons: string[] = [];
   const cronHandlers = new Map<string, () => Promise<void>>();
-  const module = new LicenseModule({
+  const module = await LicenseModule.create({
     keyStore,
     queueService: queue as unknown as Pick<TQueueServiceFactory, "queue" | "start">,
     cronJob: {
@@ -59,7 +59,7 @@ export const buildLicense = async ({
     organizationsProjectsService: buildOrganizations(organizations),
     usageCounters: counters
   });
-  await module.start();
+  module.start();
   return {
     module,
     licenseService: module.service,

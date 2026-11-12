@@ -669,14 +669,14 @@ export const registerRoutes = async (
 
   // Before any service: legacy services depend on the domains, and queue workers read the license as
   // soon as they start.
-  const domains = createDomains({
+  const domains = await createDomains({
     db,
     keyStore,
     queueService,
     cronJob,
     envConfig
   });
-  await domains.license.start();
+  domains.license.start();
   const licenseService = domains.license.service;
   const { usageMeteringService } = domains.license;
 

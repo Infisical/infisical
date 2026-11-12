@@ -2,7 +2,6 @@ import { InstanceEntitlements } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { Plan } from "../model/plan";
 import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/license-server-types";
-import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "./license-server-types/usage-reports";
 
 // Implemented outside the services: by License's data access, by the products (TUsageCounter) and by EE.
 
@@ -48,13 +47,42 @@ export type TLicenseProvider = {
   fallbackPlan(): Plan;
 };
 
+export type TUsageSource = "cloud" | "self-hosted";
+
+export type TUsageSnapshot = {
+  dimensionKey: string;
+  value: number;
+  // When the value was counted. A recount is a new snapshot: the server drops a second one with the same time.
+  observedAt: Date;
+  source: TUsageSource;
+};
+
+// "no-license" and "not-priced" are the server's final answer for the dimension: nothing was recorded, and
+// sending it again would get the same answer.
+export type TUsageSnapshotOutcome = "reported" | "no-license" | "not-priced";
+
+// A metered fact for a sum or count meter. The server dedups on eventId, so a retry resends the same one.
+export type TMeteringEvent = {
+  eventId: string;
+  dimensionKey: string;
+  quantity: number;
+  occurredAt: string;
+};
+
+// "rejected" is the server's final answer for the whole batch, with its reason for the log.
+export type TMeteringEventsOutcome =
+  | { status: "reported"; accepted: number; deduped: number }
+  | { status: "rejected"; reason: string };
+
 export type TLicenseServer = {
   // False when no License Server is configured, so usage is not queued.
   isEnabled(): boolean;
   // Whether usage can be sent: a License Server URL and credentials are configured.
   canReportUsage(): boolean;
-  reportSnapshots(orgId: string, snapshots: TUsageSnapshot[]): Promise<void>;
-  reportEvents(orgId: string, events: TUsageEvent[]): Promise<TUsageEventResult[]>;
+  // Throws when the report failed in a way worth retrying.
+  reportSnapshot(orgId: string, snapshot: TUsageSnapshot): Promise<TUsageSnapshotOutcome>;
+  // Throws when the report failed in a way worth retrying.
+  reportEvents(orgId: string, events: TMeteringEvent[], source: TUsageSource): Promise<TMeteringEventsOutcome>;
   // Cloud: cancels a deleted root org's subscription right away and closes its licenses. Safe to repeat.
   deleteOrganization(orgId: string): Promise<TOrgDeletedResult>;
 };
