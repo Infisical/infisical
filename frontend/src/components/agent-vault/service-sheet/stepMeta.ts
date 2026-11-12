@@ -50,12 +50,12 @@ const HOOK_STEP_COPY: Record<THookStepType, { short: string; right: string }> = 
   database: {
     short: "Your server checks each connection",
     right:
-      "With a hook on, the proxy asks your server once when the agent connects, not before each query, and opens the connection only if your server allows it. If your server refuses, the reason shows in the output of infisical agent-vault connect. If it doesn't give a usable answer, the connection is refused."
+      "With a hook on, the proxy asks your server once when the agent connects, not before each query, and opens the connection only if your server allows it. If your server refuses, its message shows in the output of infisical agent-vault connect. If it doesn't give a usable answer, the connection is refused."
   },
   ssh: {
     short: "Your server checks each connection",
     right:
-      "With a hook on, the proxy asks your server once when the agent connects, not before each command, and opens the connection only if your server allows it. If your server refuses, the reason shows in the output of infisical agent-vault connect. If it doesn't give a usable answer, the connection is refused."
+      "With a hook on, the proxy asks your server once when the agent connects, not before each command, and opens the connection only if your server allows it. If your server refuses, its message shows in the output of infisical agent-vault connect. If it doesn't give a usable answer, the connection is refused."
   }
 };
 

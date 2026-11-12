@@ -174,7 +174,7 @@ When an agent calls a tool you didn't allow, the proxy refuses the call and does
 
 The proxy picks up a changed list within its [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default) and refuses calls to the tools you removed from then on. Most agents fetch the list of tools only when they connect, so a running agent shows the new list after you restart it or reconnect the MCP server. To allow every tool again, edit the service and turn on **All Tools**.
 
-To decide on each call with rules of your own, such as by the tool's arguments, add a [hook](/documentation/platform/agent-vault/hooks) to the service.
+To allow or refuse each call with your own rules, such as rules based on the tool's arguments, add a [hook](/documentation/platform/agent-vault/hooks) to the service.
 
 ## Connect your agent
 
@@ -277,7 +277,7 @@ To decide on each call with rules of your own, such as by the tool's arguments, 
     - The service's credential is [member provided](#leave-the-credential-to-each-member) and you haven't loaded the tools with your own token or sign-in on the **Tools** step
   </Accordion>
   <Accordion title="A tool call fails with a message from your organization's hook">
-    The service has a [hook](/documentation/platform/agent-vault/hooks), and the hook server refused the call or didn't answer. See [Refused requests](/documentation/platform/agent-vault/hooks#refused-requests) and the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
+    The service has a [hook](/documentation/platform/agent-vault/hooks), and the hook server refused the call or didn't give a usable answer. See [Refused requests](/documentation/platform/agent-vault/hooks#refused-requests) and the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
   </Accordion>
   <Accordion title="The agent asks you to sign in to the MCP server">
     The request reached the server without a credential. Check that:

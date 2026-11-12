@@ -212,7 +212,7 @@ HTTP/1.1 403 Forbidden
 service "github" does not allow path "/admin": blocked by service policy
 ```
 
-If the service has a [hook](/documentation/platform/agent-vault/hooks), the proxy also refuses each request that your hook server denies, with a `403` response and the server's message.
+If the service has a [hook](/documentation/platform/agent-vault/hooks), the proxy also refuses each request that your hook server denies, with a `403` response that holds your hook server's message.
 
 ## Custom headers
 
