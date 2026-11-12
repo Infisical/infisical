@@ -1,8 +1,8 @@
 import { TDbClient } from "@app/db";
 import { TransactionRunner } from "@app/domains/lib/transaction-runner";
 
+import { BillableActorDataAccess } from "./data-access/billable-actor-data-access";
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
-import { BillableActorDataAccess } from "./data-access/usage-counter-data-access";
 import { TOrganizationsProjectsStore } from "./service/dependencies";
 import { OrganizationsProjectsService, TOrganizationsProjectsService } from "./service/organizations-projects-service";
 

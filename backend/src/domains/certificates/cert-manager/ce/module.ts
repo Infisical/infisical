@@ -2,7 +2,7 @@ import { TDbClient } from "@app/db";
 import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 
-import { CertificateUsageDataAccess } from "./data-access/usage-counter-data-access";
+import { CertificateUsageDataAccess } from "./data-access/certificate-usage-data-access";
 import { CertManagerService, TCertManagerService } from "./service/cert-manager-service";
 
 export type { TCertManagerService } from "./service/cert-manager-service";
