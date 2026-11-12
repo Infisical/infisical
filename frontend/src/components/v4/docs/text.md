@@ -50,7 +50,7 @@ Owner: text.
 
 When a table cell or record fact reports a state such as locked out or never signed in.
 
-Do: Use StatusText with a line icon and words that name the state, and derive the state only from data the product has.
+Do: Use StatusText with a line icon and words that name the state, and derive the state only from data the product has. Pass loading for a state that is still in progress, such as Submitting or Retrying, instead of a static sync or clock icon.
 
 Avoid: Show the state as a colored dot, a colored word or a brand mark alone, or invent a health score the API does not expose.
 
@@ -89,12 +89,13 @@ Exports: Text, SmallText, Heading, Meta, StatusText, Highlight. Source TypeScrip
 - Heading separates semantic level from visual size. page uses 28/32, explicit display uses 44/44, and section/subsection use the shared section role. Meta uses the 12/16 metadata role with optional monospace.
 - Native attributes and refs are preserved.
 - StatusText reports a state as a required line icon plus words. It inherits the surrounding type role; neutral is muted and ok, warn and bad tint both the icon and the words, so the state still reads in grayscale.
+- StatusText loading swaps the icon for the inline Spinner in the same icon box, for a state that is still in progress such as Submitting or Retrying; icon becomes optional when loading is true, so a status map can keep its icon and pass loading beside it. The Spinner animates like the one in Button and toasts and holds still under prefers-reduced-motion.
 - Highlight renders text with every case-insensitive occurrence of query wrapped in a mark (data-slot highlight), filled with the accent and on-accent text, the search highlight in every theme. The query is literal text, never a pattern, so dots, brackets and other symbols match themselves. Overlapping matches merge into one mark. terms matches each whitespace-separated word on its own, for multi-word filters. An empty or blank query, or no match, returns the text unchanged. It is the one search highlight: Combobox options and CommandMenu items use it, and a search list in a page uses it instead of slicing strings by hand.
 
 ## Accessibility
 
 - Text and SmallText render paragraphs; Heading renders the requested h1-h6 level; Meta renders a span.
-- StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own.
+- StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own. The loading Spinner is hidden too and adds no live region, so a table of loading rows stays quiet.
 - Highlight uses the native mark element and adds no announcement; the surrounding text reads as usual.
 
 ## Use cases
@@ -141,6 +142,11 @@ Source declarations and review criteria only. Generation checks references and c
 - ok: example `status`, visible label "ok".
 - warn: example `status`, visible label "warn".
 - bad: example `status`, visible label "bad".
+
+### StatusText.loading
+
+- false: example `status`, visible label "neutral".
+- true: example `status`, visible label "loading".
 
 ## Executable examples
 
@@ -195,7 +201,7 @@ export default function Example() {
 }
 ```
 
-### StatusText tones
+### StatusText tones and loading
 
 Save this example at `src/pages/design-system/examples/text/status.tsx`; its relative imports are generated for that exact path. States: default.
 
@@ -236,6 +242,12 @@ export default function Status() {
           </StatusText>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <StatusText loading>Submitting</StatusText>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"loading"}</figcaption>
       </figure>
     </div>
   );

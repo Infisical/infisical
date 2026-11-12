@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
+import { Spinner } from "./spinner";
 
 import styles from "./text.module.css";
 
@@ -86,23 +87,26 @@ Meta.displayName = "Meta";
 export function StatusText({
   tone = "neutral",
   icon,
+  loading = false,
   className,
   children,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<"span"> & {
   tone?: "neutral" | "ok" | "warn" | "bad";
-  icon: IconName;
-} & { ref?: React.Ref<HTMLSpanElement> }) {
+} & ({ icon: IconName; loading?: boolean } | { icon?: IconName; loading: true }) & {
+    ref?: React.Ref<HTMLSpanElement>;
+  }) {
   return (
     <span
       ref={ref}
       data-slot="status-text"
       data-tone={tone}
+      data-loading={loading || undefined}
       className={cn(styles.status, className)}
       {...props}
     >
-      <Icon name={icon} />
+      {loading || !icon ? <Spinner /> : <Icon name={icon} />}
       <span>{children}</span>
     </span>
   );

@@ -23,6 +23,9 @@ export default function Status() {
           Universal Auth locked out
         </StatusText>
       </ExampleCell>
+      <ExampleCell label="loading">
+        <StatusText loading>Submitting</StatusText>
+      </ExampleCell>
     </ExampleGrid>
   );
 }
