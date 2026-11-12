@@ -2,9 +2,6 @@ import { ReactElement } from "react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
-export const PENDING_REVOCATION_REASON =
-  "A revocation of this certificate is already waiting for approval.";
-
 type Props = {
   reason?: string;
   children: ReactElement;

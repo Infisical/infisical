@@ -102,6 +102,30 @@ export const getApplicationCertificateAccess = ({
   };
 };
 
+export const PENDING_REVOCATION_REASON =
+  "A revocation of this certificate is already waiting for approval.";
+
+// With no revocation policy covering the certificate, revoking skips approval, so a pending request
+// is no reason to block it. A revoked certificate's request can no longer revoke anything (a DigiCert
+// sync can revoke one while its request is pending), so it is not shown at all.
+export const getPendingRevocationState = ({
+  hasPendingRequest,
+  isRevoked,
+  isRevocationApprovalRequired
+}: {
+  hasPendingRequest: boolean;
+  isRevoked: boolean;
+  isRevocationApprovalRequired: boolean;
+}) => {
+  const isPending = hasPendingRequest && !isRevoked;
+
+  return {
+    isPending,
+    revokeBlockedReason:
+      isPending && isRevocationApprovalRequired ? PENDING_REVOCATION_REASON : undefined
+  };
+};
+
 type TCertificateRenewalPreview = {
   profileId?: string | null;
   source?: string | null;
