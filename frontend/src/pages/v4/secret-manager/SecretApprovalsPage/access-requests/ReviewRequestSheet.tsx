@@ -626,9 +626,21 @@ export const ReviewRequestSheet = ({
                           value="status"
                           label="Delegated approval status"
                           title={
-                            isRetrying
-                              ? `Retrying the submission to ${delegatedName}.`
-                              : DELEGATED_STATUS[request.delegatedApproval!.status](delegatedName)
+                            <StatusText
+                              tone="neutral"
+                              icon="sync"
+                              loading={
+                                isRetrying ||
+                                request.delegatedApproval?.status ===
+                                  DelegatedApprovalRequestStatus.PendingDispatch
+                              }
+                            >
+                              {isRetrying
+                                ? `Retrying the submission to ${delegatedName}.`
+                                : DELEGATED_STATUS[request.delegatedApproval!.status](
+                                    delegatedName
+                                  )}
+                            </StatusText>
                           }
                           description={
                             <Stack gap={4}>

@@ -123,10 +123,10 @@ export const ChangeRequests = ({
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretApproval
   );
-  const { data: policies, isSuccess: policiesLoaded } = secrets.useApprovalPolicies({
-    projectId,
+  const { data: policies } = useV4Adapter("approvalPolicies").useChangePolicies(projectId, {
     enabled: canReadPolicies && canCreatePolicies
   });
+  const policiesLoaded = policies !== undefined;
   const showConfigurePolicy =
     canCreatePolicies && (!canReadPolicies || (policiesLoaded && policies?.length === 0));
 

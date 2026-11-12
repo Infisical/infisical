@@ -1,4 +1,3 @@
-import type { TSecretApprovalPolicy } from "@app/hooks/api/secretApproval/types";
 import type {
   TBulkActOnSecretApprovalRequestsDTO,
   TBulkChangeRequestResult,
@@ -31,10 +30,6 @@ export type SecretsChangeRequestsAdapter = {
     dto: TGetSecretApprovalRequestDetails
   ) => V4QueryResult<TSecretApprovalRequest>;
   useApprovalRequestDetailsList: (ids: string[]) => ApprovalRequestDetailsQuery[];
-  useApprovalPolicies: (dto: {
-    projectId: string;
-    enabled: boolean;
-  }) => V4QueryResult<TSecretApprovalPolicy[]> & { isSuccess: boolean };
   useSecretImports: (dto: {
     projectId: string;
     environment: string;

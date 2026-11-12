@@ -13,8 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
+import { DurationInput } from "@app/components/v4/ui/duration-input";
 import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import {
   Sheet,
@@ -512,14 +512,12 @@ export const RequestAccessSheet = ({
                           : getAccessDurationLabel(true, draft.temporaryRange)
                       }
                     >
-                      <Input
-                        mono
+                      <DurationInput
                         value={draft.temporaryRange}
                         invalid={Boolean(errors.temporaryRange)}
-                        placeholder="1h"
-                        autoComplete="off"
-                        onChange={(event) =>
-                          update({ temporaryRange: event.target.value }, ["temporaryRange"])
+                        placeholder="1"
+                        onChange={(temporaryRange) =>
+                          update({ temporaryRange }, ["temporaryRange"])
                         }
                       />
                     </Field>
