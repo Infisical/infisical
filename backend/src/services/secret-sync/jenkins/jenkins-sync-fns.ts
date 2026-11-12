@@ -54,6 +54,8 @@ const escapeXml = (value: string) =>
 export const buildJenkinsSecretTextCredentialXml = (id: string, secret: string) =>
   [
     "<org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>",
+    // Who can use the credential, not which store holds it: SYSTEM would hide it from builds, and folder
+    // stores accept only GLOBAL
     "<scope>GLOBAL</scope>",
     `<id>${escapeXml(id)}</id>`,
     `<description>${JENKINS_CREDENTIAL_DESCRIPTION}</description>`,
