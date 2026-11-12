@@ -596,6 +596,18 @@
                   "unsealTransaction"
                 ],
                 "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
               }
             ]
           }
@@ -642,6 +654,18 @@
                   "unsealTransaction"
                 ],
                 "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
               }
             ]
           }
@@ -680,6 +704,20 @@
                 ],
                 "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
               }
+            ],
+            "paths": [
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
             ]
           }
         ]
@@ -709,6 +747,20 @@
                   "!@app/domains/*/*/ce/testing/**"
                 ],
                 "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
               }
             ]
           }

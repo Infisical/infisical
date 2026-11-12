@@ -1,5 +1,5 @@
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { withProps } from "@app/domains/lib/with-props";
-import { BadRequestError } from "@app/lib/errors";
 
 export type TPlanNotice = {
   type: "trial_payment_failed";
@@ -202,7 +202,7 @@ export class Plan extends withProps<TPlanProps>() {
 
   assert(feature: TPlanFeature): void {
     if (!this.has(feature)) {
-      throw new BadRequestError({
+      throw new RuleViolationError({
         message: `Your current plan does not include ${Plan.featureNames[feature]}. Upgrade your plan to use it.`
       });
     }

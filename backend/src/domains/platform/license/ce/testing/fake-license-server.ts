@@ -1,5 +1,5 @@
 /* eslint-disable class-methods-use-this */
-import { BadRequestError } from "@app/lib/errors";
+import { ExternalSystemError } from "@app/domains/lib/errors";
 
 import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
 import { Plan, TPlanProps } from "../model/plan";
@@ -70,7 +70,7 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
     this.fetchedOrgs.push(rootOrg);
     if (this.failNextFetches > 0) {
       this.failNextFetches -= 1;
-      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
+      throw new ExternalSystemError({ message: "License Server entitlements are unavailable" });
     }
     return Plan.restore(this.plans.get(rootOrgId) ?? enterprisePlan());
   };

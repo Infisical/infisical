@@ -36,7 +36,7 @@ tables no domain owns yet, tested against Postgres without an in-memory twin.
 | Path | Holds |
 | --- | --- |
 | `domains.ts` | The only wiring file. Builds each module in dependency order and passes services, usage counters and EE implementations between them through constructors |
-| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, `withProps` for models, and their in-memory versions under `lib/testing/` |
+| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, `withProps` for models, the domain error classes (`errors.ts`), and their in-memory versions under `lib/testing/` |
 | `platform/` | Domains used by many products: KMS, billing, access control, audit log |
 | `<product-area>/` | A product, such as secrets. Holds one or more domains |
 
@@ -235,20 +235,29 @@ review and move the data into one domain rather than sharing a transaction.
 ## Dependency direction
 
 ```
-router → service → data-access → model
-              ↘ model
+router → service → model
+            ↑
+       data-access → model
 ```
+
+An arrow means "imports". The service sits in the middle and imports nothing that does I/O: it declares
+what it needs as types in `service/dependencies.ts`, and `data-access/` (like a `<system>-client/`)
+imports those types to implement them. `module.ts` builds the implementations and passes them in.
 
 | Rule | Why |
 | --- | --- |
-| A layer imports only layers to its right | Each layer is readable and testable without the ones above it |
+| `router/` imports `service/`; `service/` imports `model/`; `data-access/` and `<system>-client/` import `model/` and `service/dependencies.ts` | Each layer is readable and testable without the ones that call it |
+| A service never imports `data-access/` or a client. It takes them through its constructor, typed by `service/dependencies.ts` | The service runs unchanged on the in-memory store in tests, and EE can supply an implementation without `ce/` importing it |
+| `data-access/` imports from `service/` only `dependencies.ts`, never a service class or helper | Data access implements what the service asks for; it does not run business logic |
+| `model/` imports no other layer | Rules about the data stay pure and testable |
+| No layer throws an HTTP error class (`BadRequestError`, `NotFoundError`, `InternalServerError`, ...) from `@app/lib/errors`. A domain throws `RuleViolationError`, `EntityNotFoundError` or `ExternalSystemError` (`lib/errors.ts`), and `toHttpError` (`server/lib/domain-errors.ts`) turns each kind into the response in the error handler. A new kind needs an arm there and in `classifyError` | A domain is also called from queues, crons and other domains, where a status code means nothing. Legacy code that catches `instanceof BadRequestError` does not catch a domain error, so check the callers when moving a throw |
 | `module.ts` imports from every layer; no layer imports `module.ts` | Avoids cycles. Types a module exposes are defined in the service and re-exported |
 | Other domains import only `ce/module.ts` | The module is the domain's contract; everything else can change freely |
 | `ce/` never imports `ee/`; only `domains.ts` imports `ee/` from outside the domain | Community code reads and builds alone. EE plugs in by implementing types in `ce/`'s `service/dependencies.ts` |
 | A module that provides something is built before the module that takes it | A provider that needs the taker's service is a cycle: move the boundary |
 | A platform domain that needs something from the products built on it defines the type in its `service/dependencies.ts` and takes the implementations in its constructor (`usageCounters: TUsageCounter[]`). `domains.ts` builds the products first and passes their implementations in | The platform domain stays a base every product depends on; importing product modules would make it depend on all of them |
 | `ce/module.ts` and what it imports reach `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with `import type`; `domains.ts` passes their runtime pieces in | Code all over the backend imports values from a module, and those three sit in an import cycle with `@app/lib/crypto`, which breaks any test that loads them first |
-| Lint enforces the import rules above (`.oxlintrc.json`, `no-restricted-imports`) | A broken boundary fails `npm run lint`, not review |
+| Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces the rules between domains, `ce/` never importing a domain's `ee/`, `unsealTransaction` staying in `data-access/`, and no HTTP error class inside a domain. The layer order inside a domain and imports of legacy `@app/ee/**` from `ce/` are not linted: check them in review | A broken domain boundary fails `npm run lint`; a broken layer inside a domain only shows up in review |
 
 ## Where new code goes
 

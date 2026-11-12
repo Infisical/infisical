@@ -1,5 +1,5 @@
+import { ExternalSystemError } from "@app/domains/lib/errors";
 import { verifyOfflineLicense } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { InstanceEntitlements, InstanceType } from "../../ce/model/instance-entitlements";
@@ -108,7 +108,7 @@ export class LicenseResolver implements TLicenseProvider {
   async fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan> {
     const entitlements = await this.deps.licenseServerClient.getEntitlements(rootOrg);
     if (!entitlements) {
-      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
+      throw new ExternalSystemError({ message: "License Server entitlements are unavailable" });
     }
     return Plan.restore(
       withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements)
@@ -118,7 +118,7 @@ export class LicenseResolver implements TLicenseProvider {
   private async readOnlineLicense(): Promise<InstanceEntitlements> {
     const entitlements = await this.deps.licenseServerClient.getEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
     if (!entitlements) {
-      throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
+      throw new ExternalSystemError({ message: "License Server v2 entitlements are unavailable" });
     }
     return InstanceEntitlements.restore({
       instanceType: InstanceType.EnterpriseOnPrem,

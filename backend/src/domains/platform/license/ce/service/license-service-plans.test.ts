@@ -1,4 +1,4 @@
-import { InternalServerError } from "@app/lib/errors";
+import { ExternalSystemError } from "@app/domains/lib/errors";
 
 import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
@@ -415,7 +415,7 @@ describe("LicenseService.closeDeletedOrg", () => {
     const licenseServer = new FakeLicenseServer();
     const { licenseService } = await buildLicense({ licenseServer });
     await licenseService.getPlan(ROOT.id);
-    licenseServer.deleteFailure = new InternalServerError({ message: "License Server failed" });
+    licenseServer.deleteFailure = new ExternalSystemError({ message: "License Server failed" });
 
     // Action
     const result = licenseService.closeDeletedOrg(ROOT.id);

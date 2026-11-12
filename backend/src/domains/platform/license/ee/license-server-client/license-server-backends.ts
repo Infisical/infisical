@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { ExternalSystemError, RuleViolationError } from "@app/domains/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import {
@@ -168,14 +168,14 @@ const throwIfResponseError = async (res: Response): Promise<void> => {
     const code = body?.details?.code;
     const message = (code && BILLING_ERROR_MESSAGES[code]) || body?.message;
     logger.warn(licenseErrorMessage(requestId, `request rejected [status=${res.status}] [code=${code ?? "none"}]`));
-    throw new BadRequestError({
+    throw new RuleViolationError({
       name: LICENSE_SERVER_ERROR_NAME,
       message: licenseErrorMessage(requestId, message ?? "Billing request failed"),
       details: code ? { code } : undefined
     });
   }
   logger.error(licenseErrorMessage(requestId, `request failed [status=${res.status}]`));
-  throw new InternalServerError({
+  throw new ExternalSystemError({
     name: LICENSE_SERVER_ERROR_NAME,
     message: licenseErrorMessage(requestId, "Billing service error")
   });

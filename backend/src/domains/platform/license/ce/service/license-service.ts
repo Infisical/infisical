@@ -1,4 +1,4 @@
-import { InternalServerError, NotFoundError } from "@app/lib/errors";
+import { EntityNotFoundError, ExternalSystemError } from "@app/domains/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
@@ -126,9 +126,9 @@ export class LicenseService implements TLicenseService {
       try {
         fetched = await this.deps.provider.fetchPlan(rootOrg);
       } catch (error) {
-        throw new InternalServerError({
+        throw new ExternalSystemError({
           name: "RefreshPlan",
-          error,
+          cause: error,
           message:
             "Failed to refresh the plan because the license server could not be reached. Your current plan stays in place; try again in a few minutes."
         });
@@ -162,7 +162,7 @@ export class LicenseService implements TLicenseService {
   async getSeatUsage(orgId: string): Promise<SeatUsage> {
     if (!this.deps.instance.isCloud()) return this.deps.organizations.countSeats(null);
     const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
-    if (!rootOrgId) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    if (!rootOrgId) throw new EntityNotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return this.deps.organizations.countSeats(rootOrgId);
   }
 

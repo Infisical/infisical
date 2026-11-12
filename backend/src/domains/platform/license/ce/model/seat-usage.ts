@@ -1,4 +1,4 @@
-import { BadRequestError } from "@app/lib/errors";
+import { RuleViolationError } from "@app/domains/lib/errors";
 
 export type TSeatLimit = {
   identityLimit: number | null;
@@ -21,7 +21,7 @@ export class SeatUsage {
   // adds the member, and check it inside it.
   assertAvailable({ identityLimit, via }: TSeatLimit): void {
     if (!identityLimit || this.identitiesUsed < identityLimit) return;
-    throw new BadRequestError({
+    throw new RuleViolationError({
       message: `Failed to create new member${via ? ` via ${via.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
     });
   }
