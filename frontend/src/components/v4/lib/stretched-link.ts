@@ -6,7 +6,7 @@ const StretchedLinkContext = React.createContext<PresenceReport | null>(null);
 
 /**
  * A table row or Card whose stretched RowLink or CardLink covers it. Hosts nest: an outer row or Card
- * also counts a link inside an inner one, as the selectors this replaces matched at any depth.
+ * also counts a link inside an inner one.
  */
 export function useStretchedLinkHost() {
   const [hasLink, report] = usePresenceCount();
