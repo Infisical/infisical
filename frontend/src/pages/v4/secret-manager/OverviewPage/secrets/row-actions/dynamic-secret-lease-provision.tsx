@@ -81,14 +81,11 @@ function TotpOutput({
 
   useEffect(() => {
     setRemainingTime(remainingSeconds);
+    let remaining = remainingSeconds;
     const intervalId = window.setInterval(() => {
-      setRemainingTime((previous) => {
-        if (previous <= 1) {
-          window.clearInterval(intervalId);
-          return 0;
-        }
-        return previous - 1;
-      });
+      remaining = Math.max(remaining - 1, 0);
+      setRemainingTime(remaining);
+      if (!remaining) window.clearInterval(intervalId);
     }, 1000);
     return () => window.clearInterval(intervalId);
   }, [totp, remainingSeconds]);

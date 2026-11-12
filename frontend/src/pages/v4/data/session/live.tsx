@@ -1,5 +1,10 @@
-import { type ReactNode, useRef } from "react";
-import { QueryClientProvider, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import {
+  keepPreviousData,
+  QueryClientProvider,
+  useQuery,
+  useSuspenseQuery
+} from "@tanstack/react-query";
 
 import { userKeys } from "@app/hooks/api";
 import {
@@ -27,41 +32,39 @@ export const LiveSessionProvider = ({
   });
   const { data: organization } = useQuery({
     queryKey: organizationKeys.getOrgById(organizationId),
-    queryFn: () => fetchOrganizationById(organizationId)
+    queryFn: () => fetchOrganizationById(organizationId),
+    placeholderData: keepPreviousData
   });
   const { data: organizations } = useQuery({
     queryKey: organizationKeys.getUserOrganizations,
     queryFn: fetchOrganizations
   });
   const { data: projects = [] } = useGetUserProjects();
-  const last = useRef<V4Session>(undefined);
-  if (organization && organizations) {
-    const isSubOrganization =
-      Boolean(organization.rootOrgId) && organization.id !== organization.rootOrgId;
-    last.current = {
-      user: {
-        id: user.id,
-        superAdmin: user.superAdmin,
-        name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
-        email: user.email ?? user.username
-      },
-      organization: { id: organization.id, name: organization.name, isSubOrganization },
-      organizations: organizations.map((entry) => ({
-        id: entry.id,
-        name: entry.name,
-        group: entry.id === organization.id ? "Current organization" : "Other organizations"
-      })),
-      projects: projects.map((project) => ({
-        id: project.id,
-        name: project.name,
-        type: project.type
-      }))
-    };
-  }
-  if (!last.current) return <V4PageLoader />;
+  if (!organization || !organizations) return <V4PageLoader />;
+  const isSubOrganization =
+    Boolean(organization.rootOrgId) && organization.id !== organization.rootOrgId;
+  const session: V4Session = {
+    user: {
+      id: user.id,
+      superAdmin: user.superAdmin,
+      name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
+      email: user.email ?? user.username
+    },
+    organization: { id: organization.id, name: organization.name, isSubOrganization },
+    organizations: organizations.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      group: entry.id === organization.id ? "Current organization" : "Other organizations"
+    })),
+    projects: projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      type: project.type
+    }))
+  };
   return (
     <QueryClientProvider client={liveQueryClient}>
-      <V4SessionContext value={last.current}>{children}</V4SessionContext>
+      <V4SessionContext value={session}>{children}</V4SessionContext>
     </QueryClientProvider>
   );
 };
