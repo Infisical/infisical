@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { EyeOffIcon, HardDriveIcon, RotateCcwIcon, ServerCogIcon } from "lucide-react";
 
+import { Alert } from "@app/components/v4/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -211,27 +212,31 @@ function VersionItem({
           </AlertDialogHeader>
           {confirm === "restore" && valuePending && <Spinner label="Loading version value" />}
           {confirm === "restore" && Boolean(valueError) && (
-            <div role="alert">
-              <p>Could not load this version.</p>
-              <Button
-                disabled={retrying}
-                onClick={async () => {
-                  setRetrying(true);
-                  try {
-                    await refetch();
-                  } finally {
-                    setRetrying(false);
-                  }
-                }}
-              >
-                Retry
-              </Button>
-            </div>
+            <Alert
+              tone="bad"
+              title="Could not load this version"
+              actions={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="sync"
+                  disabled={retrying}
+                  onClick={async () => {
+                    setRetrying(true);
+                    try {
+                      await refetch();
+                    } finally {
+                      setRetrying(false);
+                    }
+                  }}
+                >
+                  Retry
+                </Button>
+              }
+            />
           )}
           {confirm === "restore" && hiddenValue && (
-            <p role="alert">
-              You don&apos;t have access to this version&apos;s value, so it can&apos;t be restored.
-            </p>
+            <Alert tone="bad" title="You don't have access to this version's value" />
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
