@@ -1,6 +1,5 @@
 import { Knex } from "knex";
 
-import { TDbClient } from "@app/db";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
@@ -14,11 +13,12 @@ const toCount = (row: unknown): number => Number((row as { count?: string | numb
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
 export class BillableActorDataAccess implements TBillableActorDataAccess {
-  constructor(private readonly db: TDbClient) {}
+  // A source, not a handle: replicaNode() picks a replica per call, and a store passes its transaction.
+  constructor(private readonly knex: () => Knex) {}
 
   async countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }> {
     try {
-      const knex = this.db.replicaNode();
+      const knex = this.knex();
 
       const row = (await this.withBillableScopes(orgId)
         .with("counted_members", this.countedMembersCte())
@@ -52,7 +52,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
   // projects, but identities.projectId is one column, so the billed total splits exactly once.
   async getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]> {
     try {
-      const knex = this.db.replicaNode();
+      const knex = this.knex();
 
       const rows = (await this.withBillableScopes(orgId)
         .with("counted_members", this.countedMembersCte())
@@ -79,8 +79,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
   async countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number> {
     try {
       // .as() on a union builder is typed as any, so cast before counting.
-      const row = (await this.db
-        .replicaNode()
+      const row = (await this.knex()
         .count("* as count")
         .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
         .first()) as { count?: string | number } | undefined;
@@ -95,8 +94,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     orgId?: string
   ): Promise<{ users: number; identities: number }> {
     try {
-      const rows = (await this.db
-        .replicaNode()
+      const rows = (await this.knex()
         .select("kind")
         .count("* as count")
         .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
@@ -112,12 +110,10 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
   // Attributed by owner (project, or the org when org-owned), not membership, for the same reason as above.
   async getProjectIdentityOwnershipBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]> {
     try {
-      const rows = (await this.db
-        .replicaNode()({ i: TableName.Identity })
+      const rows = (await this.knex()({ i: TableName.Identity })
         .whereIn(
           "i.id",
-          this.db
-            .replicaNode()
+          this.knex()
             .select("entityId")
             .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
             .where("kind", "i")
@@ -133,7 +129,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
   }
 
   private withBillableScopes(orgId: string | null) {
-    const knex = this.db.replicaNode();
+    const knex = this.knex();
     const orgIds = orgId
       ? knex
           .select("id")
@@ -177,7 +173,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
 
   // UNION dedupes across the four sources; kind ('u'/'i') lets the caller split by actor type.
   private countedMembersCte() {
-    const knex = this.db.replicaNode();
+    const knex = this.knex();
     return (qb: Knex.QueryBuilder) => {
       void qb.distinct("kind", "entityId").from(
         knex
@@ -227,7 +223,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
 
   // Org users with no project membership at all (direct or via a group) still count.
   private projectlessUsersCte() {
-    const knex = this.db.replicaNode();
+    const knex = this.knex();
     return (qb: Knex.QueryBuilder) => {
       void qb
         .from({ ou: "org_users" })
@@ -252,7 +248,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
   }
 
   private projectlessIdentitiesCte() {
-    const knex = this.db.replicaNode();
+    const knex = this.knex();
     return (qb: Knex.QueryBuilder) => {
       void qb
         .from({ oi: "org_identities" })
@@ -277,9 +273,9 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
 
   // Shared by the meter and the usage breakdown so the breakdown can't disagree with what gets billed.
   private projectIdentityEntities(projectType: ProjectType, orgId?: string) {
-    const { db } = this;
+    const db = this.knex;
     const scopedOrgIds = () => {
-      const qb = db.replicaNode()(TableName.Organization).select(`${TableName.Organization}.id`);
+      const qb = db()(TableName.Organization).select(`${TableName.Organization}.id`);
       if (orgId) {
         void qb.where((bd) => {
           void bd.where(`${TableName.Organization}.id`, orgId).orWhere(`${TableName.Organization}.rootOrgId`, orgId);
@@ -289,8 +285,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     };
 
     const typedProjectIds = () => {
-      const qb = db
-        .replicaNode()(TableName.Project)
+      const qb = db()(TableName.Project)
         .where(`${TableName.Project}.type`, projectType)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .select(`${TableName.Project}.id`);
@@ -299,8 +294,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     };
 
     const orgMemberUserIds = () => {
-      const qb = db
-        .replicaNode()(TableName.Membership)
+      const qb = db()(TableName.Membership)
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
@@ -312,19 +306,18 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     };
 
     const orgIdentityIds = () => {
-      const qb = db.replicaNode()(TableName.Identity).select(`${TableName.Identity}.id`);
+      const qb = db()(TableName.Identity).select(`${TableName.Identity}.id`);
       if (orgId) void qb.whereIn(`${TableName.Identity}.orgId`, scopedOrgIds());
       return qb;
     };
 
     // Shaped to hit the partial unique indexes.
-    const directUsers = db
-      .replicaNode()(TableName.Membership)
+    const directUsers = db()(TableName.Membership)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .whereNotNull(`${TableName.Membership}.actorUserId`)
       .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
       .whereIn(`${TableName.Membership}.actorUserId`, orgMemberUserIds())
-      .select(db.raw("'u' as kind"))
+      .select(db().raw("'u' as kind"))
       .select(`${TableName.Membership}.actorUserId as entityId`);
 
     return directUsers.union(
@@ -336,7 +329,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
             .whereNotNull(`${TableName.Membership}.actorIdentityId`)
             .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
             .whereIn(`${TableName.Membership}.actorIdentityId`, orgIdentityIds())
-            .select(db.raw("'i' as kind"))
+            .select(db().raw("'i' as kind"))
             .select(`${TableName.Membership}.actorIdentityId as entityId`),
         // A group assigned to a project brings its members in. Pending group members (invited, not
         // joined) don't take a seat.
@@ -352,7 +345,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
             .where(`${TableName.UserGroupMembership}.isPending`, false)
             .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
             .whereIn(`${TableName.UserGroupMembership}.userId`, orgMemberUserIds())
-            .select(db.raw("'u' as kind"))
+            .select(db().raw("'u' as kind"))
             .select(`${TableName.UserGroupMembership}.userId as entityId`),
         (qb) =>
           void qb
@@ -365,7 +358,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
             .where(`${TableName.Membership}.scope`, AccessScope.Project)
             .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
             .whereIn(`${TableName.IdentityGroupMembership}.identityId`, orgIdentityIds())
-            .select(db.raw("'i' as kind"))
+            .select(db().raw("'i' as kind"))
             .select(`${TableName.IdentityGroupMembership}.identityId as entityId`)
       ],
       true

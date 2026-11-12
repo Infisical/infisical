@@ -1,4 +1,6 @@
+import { InstanceType } from "../model/instance-entitlements";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../testing/build-license";
+import { FakeLicenseServer } from "../testing/fake-license-server";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -49,5 +51,31 @@ describe("LicenseService.getSeatUsage", () => {
 
     // Assert
     await expect(result).rejects.toThrow("not found");
+  });
+});
+
+describe("LicenseService.getSeatCountScope", () => {
+  test("should count seats against the org on cloud", async () => {
+    // Setup
+    const { licenseService } = await buildLicense();
+
+    // Action
+    const scope = licenseService.getSeatCountScope(SUB_ORG_ID);
+
+    // Assert
+    expect(scope).toBe(SUB_ORG_ID);
+  });
+
+  test("should count seats against the whole instance on self-hosted", async () => {
+    // Setup
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.instance = { ...licenseServer.instance, instanceType: InstanceType.EnterpriseOnPrem };
+    const { licenseService } = await buildLicense({ licenseServer });
+
+    // Action
+    const scope = licenseService.getSeatCountScope(SUB_ORG_ID);
+
+    // Assert
+    expect(scope).toBeNull();
   });
 });

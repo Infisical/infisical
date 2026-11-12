@@ -17,6 +17,11 @@ export class SeatUsage {
     return new SeatUsage(membersUsed, identitiesUsed);
   }
 
+  // From organizations-projects' billable actor counts: every member also takes an identity seat.
+  static fromBillableActors({ users, identities }: { users: number; identities: number }): SeatUsage {
+    return new SeatUsage(users, users + identities);
+  }
+
   // Read the usage before opening the transaction that adds the member, then check it inside.
   assertAvailable({ identityLimit, via }: TSeatLimit): void {
     if (!identityLimit || this.identitiesUsed < identityLimit) return;

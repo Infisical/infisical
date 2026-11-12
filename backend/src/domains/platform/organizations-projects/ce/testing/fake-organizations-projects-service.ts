@@ -40,4 +40,13 @@ export class FakeOrganizationsProjectsService implements TOrganizationsProjectsS
   countProjectIdentitiesByKind = async () => ({ users: 0, identities: 0 });
 
   getProjectIdentityBreakdown = async () => [];
+
+  within = () => ({
+    lockAndCountWorkspaces: (orgId: string) => this.countWorkspaces(orgId),
+    lockAndCountBillableOrgActors: async (orgId: string | null) => {
+      if (orgId === null) return this.countBillableOrgActors(null);
+      const rootOrgId = await this.findRootOrgId(orgId);
+      return rootOrgId ? this.countBillableOrgActors(rootOrgId) : null;
+    }
+  });
 }

@@ -26,3 +26,13 @@ describe("SeatUsage.assertAvailable", () => {
     expect(checks).not.toThrow();
   });
 });
+
+describe("SeatUsage.fromBillableActors", () => {
+  test("should count every member as an identity seat too", () => {
+    // Action
+    const usage = SeatUsage.fromBillableActors({ users: 3, identities: 4 });
+
+    // Assert
+    expect([usage.membersUsed, usage.identitiesUsed]).toEqual([3, 7]);
+  });
+});

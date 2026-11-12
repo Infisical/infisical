@@ -1,4 +1,5 @@
-import { TDbClient } from "@app/db";
+import { Knex } from "knex";
+
 import { ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
@@ -20,14 +21,14 @@ const UNCOUNTED_WORKSPACE_TYPES = [
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
 export class OrganizationDataAccess implements TOrganizationDataAccess {
-  constructor(private readonly db: TDbClient) {}
+  // A source, not a handle: replicaNode() picks a replica per call, and a store passes its transaction.
+  constructor(private readonly knex: () => Knex) {}
 
   async findRootOrgId(orgId: string): Promise<string | null> {
     try {
-      const row = (await this.db
-        .replicaNode()(TableName.Organization)
+      const row = (await this.knex()(TableName.Organization)
         .where("id", orgId)
-        .select(this.db.raw(`COALESCE("rootOrgId", "id") as "rootOrgId"`))
+        .select(this.knex().raw(`COALESCE("rootOrgId", "id") as "rootOrgId"`))
         .first()) as { rootOrgId?: string } | undefined;
       return row?.rootOrgId ?? null;
     } catch (error) {
@@ -37,8 +38,7 @@ export class OrganizationDataAccess implements TOrganizationDataAccess {
 
   async findById(orgId: string): Promise<TOrganization | null> {
     try {
-      const row = (await this.db
-        .replicaNode()(TableName.Organization)
+      const row = (await this.knex()(TableName.Organization)
         .where("id", orgId)
         .select("id", "name", "slug")
         .first()) as TOrganizationRow | undefined;
@@ -50,7 +50,7 @@ export class OrganizationDataAccess implements TOrganizationDataAccess {
 
   async countWorkspaces(orgId: string): Promise<number> {
     try {
-      const knex = this.db.replicaNode();
+      const knex = this.knex();
       const row = (await knex(TableName.Project)
         .whereNull("deleteAfter")
         .whereNotIn("type", UNCOUNTED_WORKSPACE_TYPES)

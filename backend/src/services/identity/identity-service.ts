@@ -1,7 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import { Meter, SeatUsage, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -51,6 +53,7 @@ type TIdentityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
+  organizationsProjectsService: TOrganizationsProjectsService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
@@ -70,6 +73,7 @@ export const identityServiceFactory = ({
   permissionService,
   licenseService,
   usageMeteringService,
+  organizationsProjectsService,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -133,17 +137,25 @@ export const identityServiceFactory = ({
         });
     }
 
+    // Before the transaction: a plan cache miss calls the License Server.
     const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
-    if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getSeatUsage(orgId);
-      if (identitiesUsed >= identityLimit) {
-        throw new BadRequestError({
-          message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
-        });
-      }
-    }
+
+    const seatCountScope = licenseService.getSeatCountScope(orgId);
 
     const identity = await identityDAL.transaction(async (tx) => {
+      // Counted under the seat lock on this transaction, so concurrent creates can't pass the limit together.
+      if (identityLimit) {
+        const counts = await organizationsProjectsService
+          .within(sealKnexTransaction(tx))
+          .lockAndCountBillableOrgActors(seatCountScope);
+        if (!counts) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+        if (SeatUsage.fromBillableActors(counts).identitiesUsed >= identityLimit) {
+          throw new BadRequestError({
+            message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+          });
+        }
+      }
+
       const newIdentity = await identityDAL.create({ name, hasDeleteProtection, orgId }, tx);
       const membership = await membershipIdentityDAL.create(
         {

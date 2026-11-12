@@ -23,7 +23,10 @@ export type TBuildStore<TStore> = (trx: Knex, locks: TStoreLocks) => TStore;
 
 const knexHandles = new WeakMap<object, Knex.Transaction>();
 
-const sealTransaction = (trx: Knex.Transaction, afterCommit: (fn: () => Promise<void>) => void): TTransaction => {
+export const sealTransaction = (
+  trx: Knex.Transaction,
+  afterCommit: (fn: () => Promise<void>) => void
+): TTransaction => {
   const tx = { afterCommit } as unknown as TTransaction;
   knexHandles.set(tx, trx);
   return tx;

@@ -34,6 +34,10 @@ export type TLicenseService = {
   // this before the transaction and check it with seatUsage.assertAvailable.
   getSeatUsage(orgId: string): Promise<SeatUsage>;
   getInstanceSeatUsage(): Promise<SeatUsage>;
+  // The org whose tree an org's seats count against, or null for the whole instance (self-hosted). For a seat
+  // check that must be atomic with its insert, pass it to organizationsProjectsService.within(tx)
+  // .lockAndCountBillableOrgActors inside the transaction and read the counts with SeatUsage.fromBillableActors.
+  getSeatCountScope(orgId: string): string | null;
 };
 
 export type TLicenseServiceDeps = {
@@ -150,9 +154,12 @@ export class LicenseService implements TLicenseService {
     return this.countSeats(null);
   }
 
+  getSeatCountScope(orgId: string): string | null {
+    return this.deps.instance.isCloud() ? orgId : null;
+  }
+
   private async countSeats(orgId: string | null): Promise<SeatUsage> {
-    const { users, identities } = await this.deps.organizationsProjectsService.countBillableOrgActors(orgId);
-    return SeatUsage.create({ membersUsed: users, identitiesUsed: users + identities });
+    return SeatUsage.fromBillableActors(await this.deps.organizationsProjectsService.countBillableOrgActors(orgId));
   }
 
   // Only a License Server failure caches the fallback. DB or key store errors throw instead, so they can never

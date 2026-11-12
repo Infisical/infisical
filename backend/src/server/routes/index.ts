@@ -2787,6 +2787,7 @@ export const registerRoutes = async (
     identityProjectDAL,
     licenseService,
     usageMeteringService,
+    organizationsProjectsService: domains.organizationsProjects.service,
     identityMetadataDAL,
     keyStore,
     orgDAL,

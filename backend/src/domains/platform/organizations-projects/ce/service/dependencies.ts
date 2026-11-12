@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { TStoreLocks } from "@app/domains/lib/store-locks";
 
 // projectId is null when the identity is org-owned.
 export type TIdentityOwnership = { orgId: string; projectId: string | null; count: number };
@@ -21,4 +22,10 @@ export type TBillableActorDataAccess = {
     orgId?: string
   ): Promise<{ users: number; identities: number }>;
   getProjectIdentityOwnershipBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]>;
+};
+
+export type TOrganizationsProjectsStore = {
+  organizations: TOrganizationDataAccess;
+  billableActors: TBillableActorDataAccess;
+  locks: TStoreLocks;
 };

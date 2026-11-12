@@ -48,9 +48,11 @@ export class FakeLicenseService implements TLicenseService {
     return lastKnown ? { plan: Plan.restore(lastKnown.plan), fetchedAt: lastKnown.fetchedAt } : null;
   };
 
-  getSeatUsage = async () => noSeatsUsed();
+  getSeatUsage: TLicenseService["getSeatUsage"] = async () => noSeatsUsed();
 
   getInstanceSeatUsage = async () => noSeatsUsed();
+
+  getSeatCountScope = (orgId: string) => (this.instance.instanceType === InstanceType.Cloud ? orgId : null);
 
   closeDeletedOrg = async () => ({ licensesClosed: 0, canceledSubscriptionIds: [], commitmentForfeited: false });
 

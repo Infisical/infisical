@@ -26,8 +26,8 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md).
 
-`lib/` has `TransactionRunner`, `TTransaction`, `withProps`, the domain errors (`errors.ts`) and in-memory
-versions under `lib/testing/`.
+`lib/` has `TransactionRunner`, `TTransaction`, `sealKnexTransaction` (`legacy-transaction.ts`), `withProps`,
+the domain errors (`errors.ts`) and in-memory versions under `lib/testing/`.
 
 Each domain has `ce/`, plus `ee/` with the same layout if it has paid features. Nothing else at the root.
 
@@ -121,9 +121,9 @@ Calling another domain is a last resort. Before adding one:
    outbox event in your transaction. Until that event exists, call it after your commit.
 3. If you need a value to write your own data (a cipher, a key id, a plan), call it before your `run`.
 
-Domains never share a transaction. A shared one keeps one domain's row locks held while another works, and
-with a pool of ~10 connections you get deadlocks Postgres can't see. A cross-domain use case is a sequence
-of short, repeatable calls.
+Domains don't share a transaction by default. A shared one keeps one domain's row locks held while another
+works, and with a pool of ~10 connections you get deadlocks Postgres can't see. A cross-domain use case is a
+sequence of short, repeatable calls; the one exception is in "Sharing a transaction" below.
 
 ```ts
 async createSecret(input: TCreateSecretInput) {
@@ -146,9 +146,29 @@ async createSecret(input: TCreateSecretInput) {
 - Create-on-first-use: `INSERT ... ON CONFLICT DO NOTHING` in the owner's own short transaction, loser reads
   the winner's row. No advisory lock held across a caller's transaction.
 - Replacing a value others may change: compare and swap (`UPDATE ... WHERE value = :expected`, no row = conflict).
-- Legacy `src/services/` code never hands its Knex transaction to a domain: read from the domain before
-  opening it, call it after commit. If that code runs inside a caller's transaction, the caller makes the call
-  after its own commit. (A hook on a nested Knex transaction fires on savepoint release, before the real commit.)
+- Legacy `src/services/` code reads from a domain before opening its Knex transaction and calls it after
+  commit. If that code runs inside a caller's transaction, the caller makes the call after its own commit.
+
+### Sharing a transaction
+
+The runner is a unit of work, so a domain can join a caller's transaction, but only when a check and the
+write it guards must be atomic: a plan limit counted under a lock, then the insert. Counting before the
+transaction lets concurrent writers pass the limit together, and an import that writes many rows in one
+transaction never sees its own rows.
+
+- Only the domain that owns the rows being counted joins. It exposes `within(tx)` returning a narrow type
+  with only those methods (`TOrganizationsProjectsTransaction`), never its whole service, so nothing that
+  calls the network or opens a connection can run inside. A domain that only supplies a limit or a scope
+  (License) hands it over as a value before the transaction and never takes `within(tx)` itself, so one
+  transaction never spans two domains.
+- Each method takes its lock with `store.locks.acquire` and reads through the store, so the count runs on the
+  caller's connection (the primary) and sees the caller's uncommitted rows.
+- Legacy code passes `sealKnexTransaction(trx)`. It refuses `afterCommit`, since on a nested Knex
+  transaction the only commit it can see is a savepoint release; the caller runs follow-ups after its commit.
+- Read everything else (the plan, anything from the License Server) before opening the transaction.
+- Every writer of a limit takes the same domain lock. Domain locks hash with `hashtextextended`, legacy
+  `PgSqlLock` with a JS hash, so the same name in both is two different locks.
+- Prove it with an integration test that runs concurrent writers at limit minus one and fails without the lock.
 
 If something truly has to be atomic across two domains, the boundary is wrong. Move the data into one domain.
 

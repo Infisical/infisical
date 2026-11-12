@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { Knex } from "knex";
 import { onTestFinished } from "vitest";
 
+import { sealKnexTransaction } from "./legacy-transaction";
 import { TStoreLocks } from "./store-locks";
 import { setupIntegration } from "./testing/integration";
 import { TransactionRunner } from "./transaction-runner";
@@ -143,5 +144,91 @@ describe("TransactionRunner", () => {
 
     // Assert
     expect(await values()).toEqual(["first", "second saw first"]);
+  });
+});
+
+describe("sealKnexTransaction", () => {
+  const h = setupIntegration();
+
+  const scratch = async () => {
+    const table = `it_legacy_${randomBytes(4).toString("hex")}`;
+    await h.db.schema.createTable(table, (t) => t.string("value"));
+    onTestFinished(() => h.db.schema.dropTableIfExists(table));
+    const runner = new TransactionRunner(h.db, (trx) => ({
+      insert: async (value: string) => {
+        await trx(table).insert({ value });
+      }
+    }));
+    const values = async () => (await h.db(table).select("value")).map((r: { value: string }) => r.value).sort();
+    return { runner, values, table };
+  };
+
+  test("should join a legacy transaction and roll back with it", async () => {
+    // Setup
+    const { runner, values, table } = await scratch();
+
+    // Action
+    const result = h.db.transaction(async (trx) => {
+      await trx(table).insert({ value: "legacy" });
+      await runner.within(sealKnexTransaction(trx)).run(({ store }) => store.insert("domain"));
+      throw new Error("legacy fails");
+    });
+
+    // Assert
+    await expect(result).rejects.toThrow("legacy fails");
+    expect(await values()).toEqual([]);
+  });
+
+  test("should commit with the legacy transaction", async () => {
+    // Setup
+    const { runner, values, table } = await scratch();
+
+    // Action
+    await h.db.transaction(async (trx) => {
+      await trx(table).insert({ value: "legacy" });
+      await runner.within(sealKnexTransaction(trx)).run(({ store }) => store.insert("domain"));
+    });
+
+    // Assert
+    expect(await values()).toEqual(["domain", "legacy"]);
+  });
+
+  test("should join a nested legacy transaction, as a caller passing its transaction to project create does", async () => {
+    // Setup
+    const { runner, values, table } = await scratch();
+
+    // Action
+    const result = h.db.transaction(async (outer) => {
+      await outer.transaction(async (inner) => {
+        await inner(table).insert({ value: "legacy" });
+        await runner.within(sealKnexTransaction(inner)).run(({ store }) => store.insert("domain"));
+      });
+      throw new Error("outer fails");
+    });
+
+    // Assert
+    await expect(result).rejects.toThrow("outer fails");
+    expect(await values()).toEqual([]);
+  });
+
+  test("should refuse afterCommit, since a nested legacy transaction only sees its savepoint", async () => {
+    // Setup
+    const { runner } = await scratch();
+
+    // Action
+    const result = h.db.transaction(async (trx) =>
+      runner.within(sealKnexTransaction(trx)).run(async ({ tx }) => tx.afterCommit(async () => undefined))
+    );
+
+    // Assert
+    await expect(result).rejects.toThrow("afterCommit is not available");
+  });
+
+  test("should refuse the connection pool", () => {
+    // Action
+    const seal = () => sealKnexTransaction(h.db);
+
+    // Assert
+    expect(seal).toThrow("needs a Knex transaction");
   });
 });

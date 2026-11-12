@@ -17,6 +17,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
@@ -339,20 +340,24 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
-    // Outside the transaction so no other domain is called while it holds a connection. Live count, not
-    // the plan's cached workspacesUsed.
+    // Before the transaction: a plan cache miss calls the License Server.
     const plan = await licenseService.getPlan(organization.id);
-    if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-      const currentProjectCount = await organizationsProjectsService.countWorkspaces(organization.id);
-      if (currentProjectCount >= plan.workspaceLimit) {
-        throw new BadRequestError({
-          message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
-        });
-      }
-    }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
+
+      // Counted under the lock on this transaction, so concurrent creates and restores can't pass the limit
+      // together, and an import creating many projects in one transaction counts the ones it already made.
+      if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
+        const currentProjectCount = await organizationsProjectsService
+          .within(sealKnexTransaction(tx))
+          .lockAndCountWorkspaces(organization.id);
+        if (currentProjectCount >= plan.workspaceLimit) {
+          throw new BadRequestError({
+            message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
+          });
+        }
+      }
 
       if (type === ProjectType.SecretScanning) {
         const [existingSecretScanningProject] = await projectDAL.find(
@@ -1062,17 +1067,21 @@ export const projectServiceFactory = ({
           }
         }
 
-        if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
-          const currentProjectCount = await organizationsProjectsService.countWorkspaces(project.orgId);
-          if (currentProjectCount >= plan.workspaceLimit) {
-            throw new BadRequestError({
-              message:
-                "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
-            });
+        const restored = await projectDAL.transaction(async (tx) => {
+          if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
+            const currentProjectCount = await organizationsProjectsService
+              .within(sealKnexTransaction(tx))
+              .lockAndCountWorkspaces(project.orgId);
+            if (currentProjectCount >= plan.workspaceLimit) {
+              throw new BadRequestError({
+                message:
+                  "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
+              });
+            }
           }
-        }
 
-        const restored = await projectDAL.restoreById(project.id);
+          return projectDAL.restoreById(project.id, tx);
+        });
 
         if (!restored) {
           throw new BadRequestError({

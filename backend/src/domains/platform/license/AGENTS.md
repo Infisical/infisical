@@ -37,10 +37,14 @@ Rules:
   throw, so they never clobber a cached paid plan.
 - **`getPlan` returns a `Plan`.** Read fields (`plan.rbac`), use `has`/`assert`/`isPaid`. Never mutate it.
 - **Keep `ce/module.ts` cheap to import.** See the `import type` rule in `src/domains/AGENTS.md`.
-- **No caller's transaction reaches License.** For seat limits, read `getSeatUsage` (or `getInstanceSeatUsage`)
-  before opening your transaction and call `seatUsage.assertAvailable(...)` inside it. `syncSeats` runs after
-  the commit and never throws; code already inside a caller's transaction (org/project create) leaves it to
-  the caller.
+- **License never joins a caller's transaction.** It owns no rows, so it hands out values before the
+  transaction and the domain owning the rows does the locked count. For a seat limit that must hold under
+  concurrency (identity create), read the plan and `getSeatCountScope(orgId)` before your transaction, then
+  call `organizationsProjectsService.within(sealKnexTransaction(trx)).lockAndCountBillableOrgActors(scope)`
+  inside it, before the insert, and compare `SeatUsage.fromBillableActors(counts).identitiesUsed`. Paths
+  that never locked (SSO, SCIM, invites) read `getSeatUsage` before the transaction and call
+  `seatUsage.assertAvailable(...)` inside it. `syncSeats` runs after the commit and never throws; code already
+  inside a caller's transaction (org/project create) leaves it to the caller.
 - **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend an active
   paid org's meters; `UsageReportWorker` and `syncSeats` call `getPlan`/`refreshPlan`.
 - **Deleted orgs close from the outbox.** Only the `license-org-deleted` consumer

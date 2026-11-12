@@ -1,6 +1,17 @@
 import { ProjectType } from "@app/db/schemas";
+import { TTransaction, TTransactionRunner } from "@app/domains/lib/transaction-runner";
 
-import { TBillableActorDataAccess, TIdentityOwnership, TOrganization, TOrganizationDataAccess } from "./dependencies";
+import {
+  TBillableActorDataAccess,
+  TIdentityOwnership,
+  TOrganization,
+  TOrganizationDataAccess,
+  TOrganizationsProjectsStore
+} from "./dependencies";
+import {
+  OrganizationsProjectsTransaction,
+  TOrganizationsProjectsTransaction
+} from "./organizations-projects-transaction";
 
 // An org's root never changes, so cache it for the process. Capped so long-lived pods don't grow forever.
 const ROOT_ORG_CACHE_LIMIT = 10_000;
@@ -23,11 +34,14 @@ export type TOrganizationsProjectsService = {
     orgId?: string
   ): Promise<{ users: number; identities: number }>;
   getProjectIdentityBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]>;
+  // Joins the caller's transaction. Only for a limit check that must be atomic with the write it guards.
+  within(tx: TTransaction): TOrganizationsProjectsTransaction;
 };
 
 export type TOrganizationsProjectsServiceDeps = {
   organizations: TOrganizationDataAccess;
   billableActors: TBillableActorDataAccess;
+  runner: TTransactionRunner<TOrganizationsProjectsStore>;
 };
 
 export class OrganizationsProjectsService implements TOrganizationsProjectsService {
@@ -78,5 +92,9 @@ export class OrganizationsProjectsService implements TOrganizationsProjectsServi
 
   getProjectIdentityBreakdown(projectType: ProjectType, orgId?: string) {
     return this.deps.billableActors.getProjectIdentityOwnershipBreakdown(projectType, orgId);
+  }
+
+  within(tx: TTransaction): TOrganizationsProjectsTransaction {
+    return new OrganizationsProjectsTransaction(this.deps.runner.within(tx));
   }
 }
