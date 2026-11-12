@@ -23,6 +23,7 @@ import { registerClickHouseConnectionRouter } from "./clickhouse-connection-rout
 import { registerCloud66ConnectionRouter } from "./cloud-66-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerConvexConnectionRouter } from "./convex-connection-router";
+import { registerCoolifyConnectionRouter } from "./coolify-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDaytonaConnectionRouter } from "./daytona-connection-router";
@@ -196,5 +197,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
     [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter,
     [AppConnection.Jira]: registerJiraConnectionRouter,
-    [AppConnection.ClickHouse]: registerClickHouseConnectionRouter
+    [AppConnection.ClickHouse]: registerClickHouseConnectionRouter,
+    [AppConnection.Coolify]: registerCoolifyConnectionRouter
   };

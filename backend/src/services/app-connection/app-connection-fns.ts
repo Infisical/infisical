@@ -125,6 +125,7 @@ import {
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
 import { ConvexConnectionMethod, getConvexConnectionListItem, validateConvexConnectionCredentials } from "./convex";
+import { getCoolifyConnectionListItem, validateCoolifyConnectionCredentials } from "./coolify/coolify-connection-fns";
 import { AppConnectionCredentialRotationStatus } from "./credential-rotation";
 import { decryptRotationMessage } from "./credential-rotation/app-connection-credential-rotation-fns";
 import { DatabricksConnectionMethod } from "./databricks";
@@ -527,7 +528,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
     getJiraConnectionListItem(),
-    getClickHouseConnectionListItem()
+    getClickHouseConnectionListItem(),
+    getCoolifyConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -547,13 +549,13 @@ export const encryptAppConnectionCredentials = async ({
   const { encryptor } = await kmsService.createCipherPairWithDataKey(
     projectId
       ? {
-          type: KmsDataKey.SecretManager,
-          projectId
-        }
+        type: KmsDataKey.SecretManager,
+        projectId
+      }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const { cipherTextBlob: encryptedCredentialsBlob } = encryptor({
@@ -578,9 +580,9 @@ export const decryptAppConnectionCredentials = async ({
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const decryptedPlainTextBlob = decryptor({
@@ -606,13 +608,13 @@ export const encryptAppConnectionConfiguration = async ({
   const { encryptor } = await kmsService.createCipherPairWithDataKey(
     projectId
       ? {
-          type: KmsDataKey.SecretManager,
-          projectId
-        }
+        type: KmsDataKey.SecretManager,
+        projectId
+      }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const { cipherTextBlob: encryptedConfigurationBlob } = encryptor({
@@ -639,9 +641,9 @@ export const decryptAppConnectionConfiguration = async ({
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const decryptedPlainTextBlob = decryptor({
@@ -779,7 +781,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Coolify]: validateCoolifyConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -949,16 +952,16 @@ export const decryptAppConnection = async (
     ...connectionWithoutEncrypted,
     rotation: appConnection.rotation
       ? {
-          ...appConnection.rotation,
-          lastRotationMessage: appConnection.rotation.encryptedLastRotationMessage
-            ? await decryptRotationMessage({
-                orgId: appConnection.orgId,
-                projectId: appConnection.projectId,
-                encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
-                kmsService
-              })
-            : null
-        }
+        ...appConnection.rotation,
+        lastRotationMessage: appConnection.rotation.encryptedLastRotationMessage
+          ? await decryptRotationMessage({
+            orgId: appConnection.orgId,
+            projectId: appConnection.projectId,
+            encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
+            kmsService
+          })
+          : null
+      }
       : undefined,
     credentials: await decryptAppConnectionCredentials({
       encryptedCredentials,
@@ -1110,7 +1113,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
-  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported
+  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
+  [AppConnection.Coolify]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

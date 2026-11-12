@@ -23,6 +23,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
+  CoolifyConnectionMethod,
   DatabricksConnectionMethod,
   DaytonaConnectionMethod,
   DbtConnectionMethod,
@@ -717,6 +718,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Jira.svg",
     category: "PRODUCTIVITY",
     description: "Atlassian Jira Cloud and Data Center."
+  },
+  [AppConnection.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "INFRASTRUCTURE",
+    description: "Project and deployment access for Coolify."
   }
 };
 
@@ -830,6 +837,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
     case JiraConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
       return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
@@ -1031,10 +1039,10 @@ export const getConnectionFlowReturnNavigateOptions = ({
     ...(reopenFormApp ? { addConnectionApp: reopenFormApp } : {}),
     ...(returnUrl.includes("integrations")
       ? {
-          selectedTab: reopenFormApp
-            ? IntegrationsListPageTabs.AppConnections
-            : getIntegrationsListTab()
-        }
+        selectedTab: reopenFormApp
+          ? IntegrationsListPageTabs.AppConnections
+          : getIntegrationsListTab()
+      }
       : {})
   };
 

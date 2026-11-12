@@ -19,6 +19,7 @@ import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOpti
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
 import { CloudflarePagesSyncOptionsSection } from "./CloudflarePagesSyncOptionsSection";
 import { CloudflareWorkersSyncOptionsSection } from "./CloudflareWorkersSyncOptionsSection";
+import { CoolifySyncOptionsSection } from "./CoolifySyncOptionsSection";
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { QoverySyncOptionsSection } from "./QoverySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
@@ -69,6 +70,9 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
       AdditionalSyncOptionsComponent = (
         <CloudflareWorkersSyncOptionsSection secretSync={secretSync} />
       );
+      break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsComponent = <CoolifySyncOptionsSection secretSync={secretSync} />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
