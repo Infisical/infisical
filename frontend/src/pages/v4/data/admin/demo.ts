@@ -61,7 +61,7 @@ const config = createFixtureStore<TServerConfig>({
   pkcs12PasswordPolicy: passwordPolicy,
   authConsentContent: "",
   pageFrameContent: "",
-  allowedStorageHostnames: [],
+  allowedStorageHostnames: ["minio.acme.internal"],
   invalidatingCache: false,
   isPublicSecretSharingDisabled: false,
   isClickhouseAuditLogEnabled: false,

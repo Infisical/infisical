@@ -12,7 +12,7 @@ import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/app
 import { useProjectPermission } from "../../../../access/permissions";
 import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
-import { CONNECTION_PRESETS } from "../../../../data/integrations/connection-presets";
+import { INLINE_CONNECTION_PRESETS } from "../../../../data/integrations/connection-presets";
 
 export type CreatedConnection = { id: string; name: string; app: AppConnection };
 
@@ -31,7 +31,7 @@ export const useConnectionCreation = (
       ProjectPermissionSub.AppConnections
     );
   return connectionCreation({
-    preset: CONNECTION_PRESETS[app],
+    preset: INLINE_CONNECTION_PRESETS[app],
     disabledReason: canCreate ? undefined : "No permission to create connections",
     redirect,
     create: async ({ method, name, description, credentials }) => {

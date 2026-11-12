@@ -1,9 +1,11 @@
+import type { FieldValues } from "react-hook-form";
+
 import type {
   AppConnectionFieldPreset,
   AppConnectionMethodPreset,
   AppConnectionPreset
 } from "@app/components/v4/patterns/app-connection-form";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { APP_CONNECTION_MAP, getS3CompatibleProviderName } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AdcsConnectionMethod } from "@app/hooks/api/appConnections/types/adcs-connection";
 import { AzureADCSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-adcs-connection";
@@ -39,13 +41,13 @@ import {
   microsoftIntuneConnectionFormSchema,
   ociConnectionFormSchema,
   ovhConnectionFormSchema,
-  s3CompatibleConnectionFormSchema,
+  buildS3CompatibleConnectionFormSchema,
   salesforceConnectionFormSchema,
   stripeConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
 
 import { appStateSuffix } from "../connection-redirect";
-import { methodLabel } from "./shared";
+import { methodLabel, ROTATION_VALUES, rotationFields, withRotation } from "./shared";
 
 const UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
 
@@ -147,6 +149,56 @@ const okmsFields: readonly AppConnectionFieldPreset[] = [
   { name: "credentials.okmsId", label: "KMS ID", mono: true }
 ];
 
+/** Main builds the S3 Compatible schema from the server's allowed storage hostnames. */
+export const s3CompatiblePreset = (allowedStorageHostnames: string[]): AppConnectionPreset => {
+  const supported = new Intl.ListFormat("en").format([
+    "AWS S3",
+    "Cloudflare R2",
+    "Google Cloud Storage",
+    "OCI Object Storage",
+    ...allowedStorageHostnames
+  ]);
+  const customHost = (values: FieldValues) => {
+    const host = getS3CompatibleProviderName(
+      String(values.credentials?.endpoint ?? ""),
+      allowedStorageHostnames
+    );
+    return Boolean(host && allowedStorageHostnames.includes(host));
+  };
+  return {
+    app: AppConnection.S3Compatible,
+    name: APP_CONNECTION_MAP[AppConnection.S3Compatible].name,
+    schema: buildS3CompatibleConnectionFormSchema(allowedStorageHostnames),
+    methods: [
+      {
+        value: S3CompatibleConnectionMethod.AccessKey,
+        label: methodLabel(S3CompatibleConnectionMethod.AccessKey),
+        credentials: { endpoint: "", accessKeyId: "", secretAccessKey: "" },
+        fields: [
+          {
+            name: "credentials.endpoint",
+            label: "Endpoint",
+            mono: true,
+            placeholder: "https://s3.us-east-1.amazonaws.com",
+            description: `The S3 API endpoint, without the bucket name. Supports ${supported}.`
+          },
+          {
+            name: "credentials.region",
+            label: "Region",
+            mono: true,
+            optional: true,
+            placeholder: "us-east-1",
+            description: "Leave blank unless your server expects a region other than us-east-1.",
+            visible: customHost
+          },
+          { name: "credentials.accessKeyId", label: "Access key ID", mono: true },
+          { name: "credentials.secretAccessKey", label: "Secret access key", kind: "secret" }
+        ]
+      }
+    ]
+  };
+};
+
 export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> = {
   [AppConnection.GCP]: {
     app: AppConnection.GCP,
@@ -173,8 +225,8 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
   [AppConnection.AzureKeyVault]: {
     app: AppConnection.AzureKeyVault,
     name: APP_CONNECTION_MAP[AppConnection.AzureKeyVault].name,
-    schema: azureKeyVaultConnectionFormSchema,
-    values: { gatewayId: null, gatewayPoolId: null },
+    schema: withRotation(azureKeyVaultConnectionFormSchema),
+    values: { gatewayId: null, gatewayPoolId: null, ...ROTATION_VALUES },
     methods: [
       azureOAuthMethod(
         AppConnection.AzureKeyVault,
@@ -185,20 +237,31 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
         value: AzureKeyVaultConnectionMethod.ClientSecret,
         label: methodLabel(AzureKeyVaultConnectionMethod.ClientSecret),
         credentials: { tenantId: "", clientId: "", clientSecret: "" },
-        fields: [tenantIdField, clientIdField, clientSecretField]
+        fields: [tenantIdField, clientIdField, clientSecretField, ...rotationFields(true)]
       },
       {
         value: AzureKeyVaultConnectionMethod.Certificate,
         label: methodLabel(AzureKeyVaultConnectionMethod.Certificate),
         credentials: { tenantId: "", clientId: "", certificateBody: "", privateKey: "" },
         fields: azureCertificateFields
+      },
+      {
+        value: AzureKeyVaultConnectionMethod.ManagedIdentity,
+        label: methodLabel(AzureKeyVaultConnectionMethod.ManagedIdentity),
+        description: "Infisical shows the federated credential to add in Azure once it is created.",
+        credentials: { tenantId: "", clientId: "" },
+        fields: [
+          tenantIdField,
+          { ...clientIdField, description: "The client ID of the user-assigned managed identity." }
+        ]
       }
     ]
   },
   [AppConnection.AzureAppConfiguration]: {
     app: AppConnection.AzureAppConfiguration,
     name: APP_CONNECTION_MAP[AppConnection.AzureAppConfiguration].name,
-    schema: azureAppConfigurationConnectionFormSchema,
+    schema: withRotation(azureAppConfigurationConnectionFormSchema),
+    values: ROTATION_VALUES,
     methods: [
       azureOAuthMethod(
         AppConnection.AzureAppConfiguration,
@@ -209,14 +272,15 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
         value: AzureAppConfigurationConnectionMethod.ClientSecret,
         label: methodLabel(AzureAppConfigurationConnectionMethod.ClientSecret),
         credentials: { tenantId: "", clientId: "", clientSecret: "" },
-        fields: [tenantIdField, clientIdField, clientSecretField]
+        fields: [tenantIdField, clientIdField, clientSecretField, ...rotationFields(true)]
       }
     ]
   },
   [AppConnection.AzureClientSecrets]: {
     app: AppConnection.AzureClientSecrets,
     name: APP_CONNECTION_MAP[AppConnection.AzureClientSecrets].name,
-    schema: azureClientSecretsConnectionFormSchema,
+    schema: withRotation(azureClientSecretsConnectionFormSchema),
+    values: ROTATION_VALUES,
     methods: [
       azureOAuthMethod(
         AppConnection.AzureClientSecrets,
@@ -227,7 +291,7 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
         value: AzureClientSecretsConnectionMethod.ClientSecret,
         label: methodLabel(AzureClientSecretsConnectionMethod.ClientSecret),
         credentials: { tenantId: "", clientId: "", clientSecret: "" },
-        fields: [tenantIdField, clientIdField, clientSecretField]
+        fields: [tenantIdField, clientIdField, clientSecretField, ...rotationFields(true)]
       },
       {
         value: AzureClientSecretsConnectionMethod.Certificate,
@@ -261,7 +325,8 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
   [AppConnection.AzureDevOps]: {
     app: AppConnection.AzureDevOps,
     name: APP_CONNECTION_MAP[AppConnection.AzureDevOps].name,
-    schema: azureDevOpsConnectionFormSchema,
+    schema: withRotation(azureDevOpsConnectionFormSchema),
+    values: ROTATION_VALUES,
     methods: [
       azureOAuthMethod(
         AppConnection.AzureDevOps,
@@ -286,7 +351,8 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
           tenantIdField,
           { name: "credentials.orgName", label: "Organization name", mono: true },
           clientIdField,
-          clientSecretField
+          clientSecretField,
+          ...rotationFields(true)
         ]
       }
     ]
@@ -371,7 +437,8 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
   [AppConnection.AzureDNS]: {
     app: AppConnection.AzureDNS,
     name: APP_CONNECTION_MAP[AppConnection.AzureDNS].name,
-    schema: azureDnsConnectionFormSchema,
+    schema: withRotation(azureDnsConnectionFormSchema),
+    values: ROTATION_VALUES,
     methods: [
       {
         value: AzureDNSConnectionMethod.ClientSecret,
@@ -386,7 +453,8 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
             label: "Subscription ID",
             mono: true,
             placeholder: UUID_PLACEHOLDER
-          }
+          },
+          ...rotationFields(true)
         ]
       }
     ]
@@ -394,13 +462,14 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
   [AppConnection.AzureEntraId]: {
     app: AppConnection.AzureEntraId,
     name: APP_CONNECTION_MAP[AppConnection.AzureEntraId].name,
-    schema: azureEntraIdConnectionFormSchema,
+    schema: withRotation(azureEntraIdConnectionFormSchema),
+    values: ROTATION_VALUES,
     methods: [
       {
         value: AzureEntraIdConnectionMethod.ClientSecret,
         label: methodLabel(AzureEntraIdConnectionMethod.ClientSecret),
         credentials: { tenantId: "", clientId: "", clientSecret: "" },
-        fields: [tenantIdField, clientIdField, clientSecretField]
+        fields: [tenantIdField, clientIdField, clientSecretField, ...rotationFields(true)]
       }
     ]
   },
@@ -512,30 +581,7 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
       }
     ]
   },
-  [AppConnection.S3Compatible]: {
-    app: AppConnection.S3Compatible,
-    name: APP_CONNECTION_MAP[AppConnection.S3Compatible].name,
-    schema: s3CompatibleConnectionFormSchema,
-    methods: [
-      {
-        value: S3CompatibleConnectionMethod.AccessKey,
-        label: methodLabel(S3CompatibleConnectionMethod.AccessKey),
-        credentials: { endpoint: "", accessKeyId: "", secretAccessKey: "" },
-        fields: [
-          {
-            name: "credentials.endpoint",
-            label: "Endpoint",
-            mono: true,
-            placeholder: "https://s3.us-east-1.amazonaws.com",
-            description:
-              "The S3 API endpoint without the bucket name: AWS S3, Cloudflare R2, Google Cloud Storage or OCI Object Storage."
-          },
-          { name: "credentials.accessKeyId", label: "Access key ID", mono: true },
-          { name: "credentials.secretAccessKey", label: "Secret access key", kind: "secret" }
-        ]
-      }
-    ]
-  },
+  [AppConnection.S3Compatible]: s3CompatiblePreset([]),
   [AppConnection.DigitalOcean]: {
     app: AppConnection.DigitalOcean,
     name: APP_CONNECTION_MAP[AppConnection.DigitalOcean].name,

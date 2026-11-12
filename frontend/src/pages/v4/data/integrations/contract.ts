@@ -6,6 +6,7 @@ import type {
   TUpdateAppConnectionDTO
 } from "@app/hooks/api/appConnections/types";
 import type { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-options";
+import type { TGitHubApp } from "@app/hooks/api/gitHubApps/types";
 import type { ProjectType } from "@app/hooks/api/projects/types";
 import type { WorkflowIntegration } from "@app/hooks/api/workflowIntegrations/types";
 
@@ -18,5 +19,6 @@ export type IntegrationsAdapter = {
   useUpdateConnection: V4Mutation<TUpdateAppConnectionDTO, TAppConnection>;
   useRotateCredentials: V4Mutation<TRotateAppConnectionCredentialsDTO, TAppConnection>;
   useDeleteConnection: V4Mutation<TDeleteAppConnectionDTO, TAppConnection>;
+  useGitHubApps: (orgId?: string, projectId?: string | null) => V4QueryResult<TGitHubApp[]>;
   useWorkflowIntegrations: (orgId?: string) => V4QueryResult<WorkflowIntegration[]>;
 };
