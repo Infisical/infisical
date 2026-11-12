@@ -259,6 +259,7 @@ export const AddDataSourceSheet = ({
 }) => {
   const scanning = useV4Adapter("secretScanning");
   const navigate = useNavigate();
+  const draftKey = `${DRAFT_STORAGE_KEY}:${orgId}:${projectId}`;
   const { connectionId, connectionName } = useSearch({ strict: false }) as {
     connectionId?: string;
     connectionName?: string;
@@ -298,7 +299,7 @@ export const AddDataSourceSheet = ({
   };
 
   const close = () => {
-    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    sessionStorage.removeItem(draftKey);
     reset(initialDraft(SecretScanningDataSource.GitHub));
     setStep(0);
     onOpenChange(false);
@@ -307,8 +308,8 @@ export const AddDataSourceSheet = ({
   useEffect(() => {
     const returned = Boolean(connectionId && connectionName);
     if (returned) navigate({ to: ".", search: {}, replace: true });
-    const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    const stored = sessionStorage.getItem(draftKey);
+    sessionStorage.removeItem(draftKey);
     if (!stored) return;
     let saved: Draft;
     try {
@@ -430,7 +431,7 @@ export const AddDataSourceSheet = ({
                 draft={draft}
                 errors={fieldErrors}
                 onChange={change}
-                onRedirect={() => sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))}
+                onRedirect={() => sessionStorage.setItem(draftKey, JSON.stringify(draft))}
               />
             )
           },
