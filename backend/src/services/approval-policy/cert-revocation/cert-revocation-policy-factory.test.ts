@@ -21,7 +21,15 @@ const makePolicy = (overrides: Record<string, unknown>) => ({
 
 const setup = (policies: unknown[]) => {
   const deps = {
-    approvalPolicyDAL: { findByProjectId: vi.fn().mockResolvedValue(policies) },
+    approvalPolicyDAL: {
+      findByProjectId: vi
+        .fn()
+        .mockImplementation(async (_type: unknown, _projectId: string, scope: { scopeType: string; scopeId: string }) =>
+          (policies as { scopeType: string | null; scopeId: string | null }[]).filter(
+            (p) => p.scopeType === scope.scopeType && p.scopeId === scope.scopeId
+          )
+        )
+    },
     certificateService: { revokeApprovedCertificate: vi.fn().mockResolvedValue(undefined) }
   };
   return { deps, resource: certRevocationApprovalResourceFactory(deps as never) };
@@ -29,7 +37,7 @@ const setup = (policies: unknown[]) => {
 
 describe("certRevocationApprovalResourceFactory.matchPolicy", () => {
   it("matches the Application's active policy that lists the certificate's profile", async () => {
-    const { resource } = setup([
+    const { deps, resource } = setup([
       makePolicy({ id: "other-app", scopeId: otherApplicationId }),
       makePolicy({ id: "inactive", isActive: false }),
       makePolicy({ id: "legacy", scopeType: null, scopeId: null }),
@@ -40,6 +48,10 @@ describe("certRevocationApprovalResourceFactory.matchPolicy", () => {
     const policy = await resource.matchPolicy("project", { profileName: "prod-tls", applicationId });
 
     expect(policy?.id).toBe("match");
+    expect(deps.approvalPolicyDAL.findByProjectId).toHaveBeenCalledWith(expect.anything(), "project", {
+      scopeType: ApprovalPolicyScope.PkiApplication,
+      scopeId: applicationId
+    });
   });
 
   it("matches nothing when no policy lists the certificate's profile", async () => {

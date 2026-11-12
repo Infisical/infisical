@@ -55,9 +55,7 @@ export const CertRevocationPolicySchema = BaseApprovalPolicySchema.extend({
 
 export const CreateCertRevocationPolicySchema = BaseCreateApprovalPolicySchema.extend({
   conditions: CertRevocationPolicyConditionsSchema,
-  constraints: CertRevocationPolicyConstraintsSchema.optional()
-    .default({})
-    .transform((val) => val ?? {}),
+  constraints: CertRevocationPolicyConstraintsSchema.optional().default({}),
   bypassForMachineIdentities: NoMachineIdentityBypassSchema.optional().default(false)
 });
 

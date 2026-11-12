@@ -44,7 +44,6 @@ export const approvalRequestQuery = {
     })
 };
 
-// Maps each certificate in an Application to its revocation request that is still waiting for approval.
 export const usePendingCertificateRevocations = (applicationId?: string | null) =>
   useQuery({
     ...approvalRequestQuery.list({

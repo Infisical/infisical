@@ -24,7 +24,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
@@ -174,7 +173,7 @@ type TCertificateServiceFactoryDep = {
     | "findPendingRenewalApprovalRequestIds"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
-  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   digicertFns: Pick<ReturnType<typeof DigiCertCertificateAuthorityFns>, "assertOrderMatchesCertificate">;
@@ -212,7 +211,6 @@ type TCertificateServiceFactoryDep = {
     TApprovalPolicyServiceFactory,
     "matchPolicy" | "createRequestFromPolicy" | "cancelPendingRequests"
   >;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "updateById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -257,7 +255,6 @@ export const certificateServiceFactory = ({
   userDAL,
   identityDAL,
   approvalPolicyService,
-  approvalPolicyDAL,
   approvalRequestDAL,
   telemetryService
 }: TCertificateServiceFactoryDep) => {
@@ -889,23 +886,10 @@ export const certificateServiceFactory = ({
     return { revokedAt, crlWarning };
   };
 
-  const $toRevocationCaResult = (ca: TRevocationCa) =>
-    ca.externalCa?.id
-      ? {
-          id: ca.id,
-          name: ca.name,
-          projectId: ca.projectId,
-          status: ca.status,
-          enableDirectIssuance: ca.enableDirectIssuance,
-          type: ca.externalCa.type,
-          externalCa: ca.externalCa
-        }
-      : expandInternalCa(ca);
-
   const $matchRevocationApprovalPolicy = async (cert: TRevocableCertificate, projectId: string) => {
     if (!cert.applicationId || !cert.profileId) return null;
 
-    const profile = await certificateProfileDAL.findByIdWithConfigs(cert.profileId);
+    const profile = await certificateProfileDAL.findById(cert.profileId);
     if (!profile) return null;
 
     const policy = (await approvalPolicyService.matchPolicy(ApprovalPolicyType.CertRevocation, projectId, {
@@ -914,7 +898,7 @@ export const certificateServiceFactory = ({
     })) as TCertRevocationPolicy | null;
     if (!policy) return null;
 
-    return { policy, profile, applicationId: cert.applicationId };
+    return { policy, profile };
   };
 
   const $resolveRevocationRequester = async (actor: ActorType, actorId: string) => {
@@ -967,20 +951,29 @@ export const certificateServiceFactory = ({
     await $assertCertificateRevocable(cert, ca);
 
     const applicationName = await $resolveApplicationName(cert.applicationId);
-    const caResult = $toRevocationCaResult(ca);
+    const caResult = ca.externalCa?.id
+      ? {
+          id: ca.id,
+          name: ca.name,
+          projectId: ca.projectId,
+          status: ca.status,
+          enableDirectIssuance: ca.enableDirectIssuance,
+          type: ca.externalCa.type,
+          externalCa: ca.externalCa
+        }
+      : expandInternalCa(ca);
 
     const approval = await $matchRevocationApprovalPolicy(cert, ca.projectId);
-    if (approval) {
-      const { policy, profile, applicationId } = approval;
+    if (approval && cert.applicationId) {
+      const { policy, profile } = approval;
       const requester = await $resolveRevocationRequester(actor, actorId);
-      const steps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
       const requestData: TCertRevocationRequestData = {
         certificateId: cert.id,
         serialNumber: cert.serialNumber,
         commonName: cert.commonName,
         profileId: profile.id,
         profileName: profile.slug,
-        applicationId,
+        applicationId: cert.applicationId,
         revocationReason
       };
 
@@ -1006,7 +999,7 @@ export const certificateServiceFactory = ({
         return approvalPolicyService.createRequestFromPolicy({
           projectId: ca.projectId,
           organizationId: actorOrgId,
-          policy: { ...policy, steps },
+          policy,
           requestData,
           justification: null,
           expiresAt: policy.maxRequestTtl ? new Date(Date.now() + ms(policy.maxRequestTtl)) : null,

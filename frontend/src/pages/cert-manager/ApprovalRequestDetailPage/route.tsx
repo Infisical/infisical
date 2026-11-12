@@ -13,44 +13,38 @@ const ApprovalRequestSearchSchema = z.object({
   from: z.enum(["root-requests"]).optional()
 });
 
+// Revocation requests only exist in Applications, so they live in Application Requests, not the
+// legacy Approvals page.
+const REQUESTS_TAB_BY_POLICY_TYPE: Partial<
+  Record<ApprovalPolicyType, "signing-requests" | "application-requests">
+> = {
+  [ApprovalPolicyType.CertCodeSigning]: "signing-requests",
+  [ApprovalPolicyType.CertRevocation]: "application-requests"
+};
+
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/approvals/$approvalRequestId"
 )({
   component: ApprovalRequestDetailPage,
   validateSearch: zodValidator(ApprovalRequestSearchSchema),
   beforeLoad: ({ context, params, search }) => {
-    const getParent = () => {
-      if (search.policyType === ApprovalPolicyType.CertCodeSigning) {
-        return {
+    const requestsTab = search.policyType && REQUESTS_TAB_BY_POLICY_TYPE[search.policyType];
+    const parent = requestsTab
+      ? {
           label: "Requests",
           link: linkOptions({
             to: "/organizations/$orgId/cert-manager/requests",
             params: { orgId: params.orgId },
-            search: { selectedTab: "signing-requests" as const }
+            search: { selectedTab: requestsTab }
           })
-        };
-      }
-      // Revocation requests only exist in Applications, so they live in Application Requests, not the
-      // legacy Approvals page.
-      if (search.policyType === ApprovalPolicyType.CertRevocation) {
-        return {
-          label: "Requests",
+        }
+      : {
+          label: "Approvals",
           link: linkOptions({
-            to: "/organizations/$orgId/cert-manager/requests",
-            params: { orgId: params.orgId },
-            search: { selectedTab: "application-requests" as const }
+            to: "/organizations/$orgId/cert-manager/approvals",
+            params: { orgId: params.orgId }
           })
         };
-      }
-      return {
-        label: "Approvals",
-        link: linkOptions({
-          to: "/organizations/$orgId/cert-manager/approvals",
-          params: { orgId: params.orgId }
-        })
-      };
-    };
-    const parent = getParent();
     return {
       breadcrumbs: [
         ...context.breadcrumbs,

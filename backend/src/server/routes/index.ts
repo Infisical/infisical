@@ -4085,7 +4085,6 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     approvalPolicyService,
-    approvalPolicyDAL,
     approvalRequestDAL,
     telemetryService
   });

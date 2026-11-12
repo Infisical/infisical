@@ -415,13 +415,12 @@ describe("certificate revocation behind an approval policy", () => {
       auditLogService,
       approvalPolicyService,
       approvalRequestDAL,
-      approvalPolicyDAL: { findStepsByPolicyId: vi.fn().mockResolvedValue([]) },
       certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) },
       certificateAuthorityCrlDAL: { primaryNode: vi.fn() },
       internalCertificateAuthorityDAL: { update: vi.fn().mockResolvedValue([]) },
       keyStore: { acquireLock: vi.fn().mockRejectedValue(new Error("redis unavailable")) },
       certificateProfileDAL: {
-        findByIdWithConfigs: vi.fn().mockResolvedValue({ id: "profile-1", slug: "web-servers" })
+        findById: vi.fn().mockResolvedValue({ id: "profile-1", slug: "web-servers" })
       },
       certificateSyncDAL: { findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]) },
       pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },

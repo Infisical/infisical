@@ -34,14 +34,15 @@ export const certRevocationApprovalResourceFactory = ({
   scopeType: ApprovalPolicyScope.PkiApplication,
 
   matchPolicy: async (projectId, inputs) => {
-    const policies = await approvalPolicyDAL.findByProjectId(ApprovalPolicyType.CertRevocation, projectId);
-
-    const candidates = (policies as TCertRevocationPolicy[]).filter(
-      (p) => p.isActive && p.scopeType === ApprovalPolicyScope.PkiApplication && p.scopeId === inputs.applicationId
-    );
+    const policies = (await approvalPolicyDAL.findByProjectId(ApprovalPolicyType.CertRevocation, projectId, {
+      scopeType: ApprovalPolicyScope.PkiApplication,
+      scopeId: inputs.applicationId
+    })) as TCertRevocationPolicy[];
 
     return (
-      candidates.find((p) => p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))) ?? null
+      policies.find(
+        (p) => p.isActive && p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))
+      ) ?? null
     );
   },
 

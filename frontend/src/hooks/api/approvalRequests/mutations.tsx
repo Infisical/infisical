@@ -7,6 +7,7 @@ import { ApprovalPolicyType } from "../approvalPolicies/types";
 import { invalidateRevokedCertificate } from "../certificates/mutations";
 import { approvalRequestQuery } from "./queries";
 import {
+  ApprovalRequestStatus,
   CertRevocationRequestData,
   TApprovalRequest,
   TApproveApprovalRequestDTO,
@@ -46,7 +47,10 @@ export const useApproveApprovalRequest = () => {
     },
     onSuccess: (request) => {
       invalidateApprovalRequests(queryClient);
-      if (request.type === ApprovalPolicyType.CertRevocation) {
+      if (
+        request.type === ApprovalPolicyType.CertRevocation &&
+        request.status !== ApprovalRequestStatus.Pending
+      ) {
         invalidateRevokedCertificate(
           queryClient,
           (request.requestData.requestData as CertRevocationRequestData).certificateId
