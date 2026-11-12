@@ -114,6 +114,7 @@ export const AwsConnectionForm = ({
 }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [provisioning, setProvisioning] = useState<TAwsProvisioningMetadata | null>(null);
+  const [isStackSaving, setIsStackSaving] = useState(false);
   const recordedProvisioning = appConnection?.configuration?.provisioning;
   const stackProvisioning =
     appConnection?.method === AwsConnectionMethod.AssumeRole &&
@@ -196,6 +197,7 @@ export const AwsConnectionForm = ({
                 connectionId={appConnection.id}
                 provisioning={stackProvisioning}
                 preselectedUseCases={preselectedUseCases}
+                onSavingChange={setIsStackSaving}
               />
             )}
             <Controller
@@ -299,7 +301,10 @@ export const AwsConnectionForm = ({
             />
           </>
         )}
-        <AppConnectionFormFooter submitLabel={isUpdate ? "Update Credentials" : "Connect to AWS"} />
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to AWS"}
+          isLocked={isStackSaving}
+        />
       </form>
     </FormProvider>
   );

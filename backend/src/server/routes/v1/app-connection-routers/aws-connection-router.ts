@@ -42,7 +42,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
     schema: {
       operationId: "getAwsProvisioningTemplate",
       querystring: z.object({
-        projectId: z.string().uuid().optional(),
+        projectId: z.string().trim().min(1).max(36).optional(),
         partition: z
           .string()
           .regex(/^aws(-[a-z0-9]+)*$/, "Partition must look like aws, aws-us-gov or aws-cn")

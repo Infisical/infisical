@@ -91,14 +91,34 @@ export const AWS_USE_CASE_COMPANION_PARAMETERS: Record<string, string[]> = {
   "acm-public-ca": ["Route53HostedZoneId"],
   "acme-route53": ["Route53HostedZoneId"],
   "pam-recording": ["PamRecordingBucket"],
-  "agent-vault-session-logs": ["AgentVaultSessionLogsBucket", "AgentVaultSessionLogsKeyPrefix"]
+  "agent-vault-session-logs": ["AgentVaultSessionLogsBucket"]
 };
 
-const getCompanionParameters = (recorded: string[], added: string[]) => {
-  const alreadyFilled = new Set(recorded.flatMap((useCase) => AWS_USE_CASE_COMPANION_PARAMETERS[useCase] ?? []));
-  const needed = added.flatMap((useCase) => AWS_USE_CASE_COMPANION_PARAMETERS[useCase] ?? []);
+// Parameters a newly enabled use case may need, depending on the user's setup.
+export const AWS_USE_CASE_OPTIONAL_COMPANION_PARAMETERS: Record<string, string[]> = {
+  "agent-vault-session-logs": ["AgentVaultSessionLogsKeyPrefix"]
+};
+
+// The KMS toggle of a use case is separate from its enable toggle and defaults to false, so it is
+// named for every use case the role keeps, not only added ones: a sync that starts using a customer
+// managed key needs it turned on even when the use case itself is already recorded.
+export const AWS_USE_CASE_KMS_PARAMETERS: Record<string, string> = {
+  "secrets-manager": "EnableSecretsManagerKms",
+  "parameter-store": "EnableParameterStoreKms"
+};
+
+const getNewParameters = (map: Record<string, string[]>, recorded: string[], added: string[]) => {
+  const alreadyFilled = new Set(recorded.flatMap((useCase) => map[useCase] ?? []));
+  const needed = added.flatMap((useCase) => map[useCase] ?? []);
   return [...new Set(needed)].filter((parameter) => !alreadyFilled.has(parameter));
 };
+
+const getOptionalParameters = (recorded: string[], requested: string[], added: string[]) => [
+  ...requested.flatMap((useCase) =>
+    AWS_USE_CASE_KMS_PARAMETERS[useCase] ? [AWS_USE_CASE_KMS_PARAMETERS[useCase]] : []
+  ),
+  ...getNewParameters(AWS_USE_CASE_OPTIONAL_COMPANION_PARAMETERS, recorded, added)
+];
 
 export const awsProvisioningTemplateProvider: TProvisioningTemplateProvider<
   TAwsProvisioningTemplateQuery,
@@ -149,7 +169,8 @@ export const awsProvisioningTemplateProvider: TProvisioningTemplateProvider<
       templateUrl,
       templateVersion: AWS_PROVISIONING_TEMPLATE_VERSION,
       parameterChanges,
-      companionParameters: getCompanionParameters(recorded.useCases, added)
+      companionParameters: getNewParameters(AWS_USE_CASE_COMPANION_PARAMETERS, recorded.useCases, added),
+      optionalParameters: getOptionalParameters(recorded.useCases, requested, added)
     };
   },
 

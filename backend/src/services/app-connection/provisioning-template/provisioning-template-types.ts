@@ -27,7 +27,8 @@ export const CloudFormationUpdateSchema = z.object({
   partition: z.string(),
   templateVersion: z.string(),
   parameterChanges: z.array(z.object({ useCase: z.string(), parameter: z.string(), value: z.enum(["true", "false"]) })),
-  companionParameters: z.array(z.string())
+  companionParameters: z.array(z.string()),
+  optionalParameters: z.array(z.string())
 });
 
 export const ProvisioningTemplateSchema = z.discriminatedUnion("kind", [

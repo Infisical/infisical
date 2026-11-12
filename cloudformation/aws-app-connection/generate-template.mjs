@@ -30,8 +30,12 @@ const PLACEHOLDER_PARAMETERS = {
   "key-prefix": {
     name: "AgentVaultSessionLogsKeyPrefix",
     label: "Agent Vault session logs key prefix",
-    description: "Key prefix Agent Vault session logs are written under, without a trailing slash",
-    pattern: "([\\w!.*()=+@,:;-]+(/[\\w!.*()=+@,:;-]+)*)?"
+    description:
+      "Key prefix Agent Vault session logs are written under, without a leading or trailing slash. Leave empty if session logs are written at the bucket root",
+    // Mirrors keyPrefixSchema (object-storage-path-fns.ts), so every prefix Session Logs accepts can be provisioned.
+    pattern: "((?!(.*/)?\\.{1,2}(/|$))[A-Za-z0-9!_.'()-]+(/[A-Za-z0-9!_.'()-]+)*)?",
+    maxLength: 256,
+    optional: true
   },
   "hosted-zone-id": {
     name: "Route53HostedZoneId",
@@ -60,11 +64,34 @@ const ref = (name) => ({ Ref: name });
 const equalsTrue = (name) => ({ "Fn::Equals": [ref(name), "true"] });
 const anyOf = (conditions) => (conditions.length === 1 ? conditions[0] : { "Fn::Or": conditions });
 
-const convertString = (value, usedParameters) => {
+const hasValueCondition = (name) => `Has${name}`;
+
+const optionalPlaceholderIn = (value) => {
+  const key = Object.keys(PLACEHOLDER_PARAMETERS).find(
+    (placeholder) => PLACEHOLDER_PARAMETERS[placeholder].optional && JSON.stringify(value).includes(`<${placeholder}>`)
+  );
+  return key && { key, parameter: PLACEHOLDER_PARAMETERS[key] };
+};
+
+// An optional placeholder may be left empty, so a string that uses it becomes an Fn::If between the
+// string with the value and the string without it. `<key-prefix>/` is dropped along with its slash,
+// or an empty prefix would leave `bucket//*` in the policy.
+const convertString = (value, usedParameters, isOptionalSet = false) => {
   const whole = WHOLE_ARN_PARAMETERS.find((entry) => entry.match.test(value));
   if (whole) {
     usedParameters.set(whole.name, whole);
     return ref(whole.name);
+  }
+
+  const optional = isOptionalSet ? undefined : optionalPlaceholderIn(value);
+  if (optional) {
+    return {
+      "Fn::If": [
+        hasValueCondition(optional.parameter.name),
+        convertString(value, usedParameters, true),
+        convertString(value.replace(new RegExp(`<${optional.key}>/?`, "g"), ""), usedParameters, true)
+      ]
+    };
   }
 
   if (!value.startsWith("arn:aws:") && !/<[\w-]+>/.test(value)) return value;
@@ -78,11 +105,29 @@ const convertString = (value, usedParameters) => {
   return { "Fn::Sub": substituted };
 };
 
-const convertValue = (value, usedParameters) => {
-  if (typeof value === "string") return convertString(value, usedParameters);
-  if (Array.isArray(value)) return value.map((item) => convertValue(item, usedParameters));
+// A statement Condition on an optional placeholder (an s3:prefix match) only holds when the value is
+// set: with no prefix the request carries no s3:prefix, so the condition would deny every listing.
+// The whole Condition is dropped instead.
+const convertValue = (value, usedParameters, isOptionalSet = false) => {
+  if (typeof value === "string") return convertString(value, usedParameters, isOptionalSet);
+  if (Array.isArray(value)) return value.map((item) => convertValue(item, usedParameters, isOptionalSet));
   if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, convertValue(item, usedParameters)]));
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => {
+        const optional = !isOptionalSet && key === "Condition" ? optionalPlaceholderIn(item) : undefined;
+        if (!optional) return [key, convertValue(item, usedParameters, isOptionalSet)];
+        return [
+          key,
+          {
+            "Fn::If": [
+              hasValueCondition(optional.parameter.name),
+              convertValue(item, usedParameters, true),
+              ref("AWS::NoValue")
+            ]
+          }
+        ];
+      })
+    );
   }
   return value;
 };
@@ -182,10 +227,20 @@ export const buildTemplate = () => {
 
   const resourceGroup = { Label: { default: "Resources for the selected use cases" }, Parameters: [] };
   for (const [name, toggles] of resourceParameterToggles) {
-    const { label, description, pattern } = resourceParameterDefinitions.get(name);
-    parameters[name] = { Type: "String", Default: "", Description: description, AllowedPattern: pattern };
+    const { label, description, pattern, maxLength, optional } = resourceParameterDefinitions.get(name);
+    parameters[name] = {
+      Type: "String",
+      Default: "",
+      Description: description,
+      AllowedPattern: pattern,
+      ...(maxLength && { MaxLength: maxLength })
+    };
     resourceGroup.Parameters.push(name);
     labels[name] = label;
+    if (optional) {
+      conditions[hasValueCondition(name)] = { "Fn::Not": [{ "Fn::Equals": [ref(name), ""] }] };
+      continue;
+    }
     rules[`Require${name}`] = {
       RuleCondition: anyOf(toggles.map(equalsTrue)),
       Assertions: [

@@ -45,3 +45,39 @@ test("resource parameters are required only when a toggle is on", () => {
   assert.deepEqual(rule.Assertions[0].Assert, { "Fn::Not": [{ "Fn::Equals": [{ Ref: "PamRecordingBucket" }, ""] }] });
   assert.equal(template.Parameters.PamRecordingBucket.Default, "");
 });
+
+test("the session logs key prefix is optional and an empty one leaves no stray slash", () => {
+  assert.ok(!template.Rules.RequireAgentVaultSessionLogsKeyPrefix);
+  assert.ok(template.Rules.RequireAgentVaultSessionLogsBucket);
+  assert.deepEqual(template.Conditions.HasAgentVaultSessionLogsKeyPrefix, {
+    "Fn::Not": [{ "Fn::Equals": [{ Ref: "AgentVaultSessionLogsKeyPrefix" }, ""] }]
+  });
+
+  const [objects, bucket] = template.Resources.AgentVaultSessionLogsPolicy.Properties.PolicyDocument.Statement;
+  assert.deepEqual(objects.Resource, {
+    "Fn::If": [
+      "HasAgentVaultSessionLogsKeyPrefix",
+      { "Fn::Sub": "arn:${AWS::Partition}:s3:::${AgentVaultSessionLogsBucket}/${AgentVaultSessionLogsKeyPrefix}/*" },
+      { "Fn::Sub": "arn:${AWS::Partition}:s3:::${AgentVaultSessionLogsBucket}/*" }
+    ]
+  });
+  assert.deepEqual(bucket.Condition, {
+    "Fn::If": [
+      "HasAgentVaultSessionLogsKeyPrefix",
+      { StringLike: { "s3:prefix": { "Fn::Sub": "${AgentVaultSessionLogsKeyPrefix}/*" } } },
+      { Ref: "AWS::NoValue" }
+    ]
+  });
+});
+
+test("the session logs key prefix accepts what Session Logs accepts", () => {
+  const { AllowedPattern, MaxLength } = template.Parameters.AgentVaultSessionLogsKeyPrefix;
+  const pattern = new RegExp(`^${AllowedPattern}$`);
+  assert.equal(MaxLength, 256);
+  for (const prefix of ["", "logs", "team's-logs", "a/b_c/(d).e!", "logs/agent-vault", "..x/y."]) {
+    assert.ok(pattern.test(prefix), prefix);
+  }
+  for (const prefix of ["/logs", "logs/", "a//b", "logs*", "a@b", "a b", ".", "..", "a/./b", "a/.."]) {
+    assert.ok(!pattern.test(prefix), prefix);
+  }
+});

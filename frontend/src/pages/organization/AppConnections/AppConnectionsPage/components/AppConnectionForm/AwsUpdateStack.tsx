@@ -25,7 +25,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { AWS_COMPANION_PARAMETER_LABELS, getAwsUseCaseLabel } from "@app/helpers/awsUseCases";
+import {
+  AWS_COMPANION_PARAMETER_LABELS,
+  AWS_OPTIONAL_PARAMETERS,
+  getAwsUseCaseLabel
+} from "@app/helpers/awsUseCases";
 import { useScopeVariant } from "@app/hooks";
 import {
   TAwsConnection,
@@ -40,6 +44,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import { AwsPartition, MANUAL_DOCS_URL, PARTITION_REGIONS } from "./AwsLaunchStack";
 import { AwsUseCasesSheet } from "./AwsUseCasesSheet";
 
@@ -48,6 +53,7 @@ type Props = {
   connectionId: string;
   provisioning: TAwsConnectionProvisioning;
   preselectedUseCases?: string[];
+  onSavingChange?: (isSaving: boolean) => void;
 };
 
 const isSameSelection = (a: string[], b: string[]) =>
@@ -116,6 +122,20 @@ const UpdateInstructions = ({
         />
       ))}
     </ul>
+    {(template.optionalParameters?.length ?? 0) > 0 && (
+      <>
+        <p className="text-xs text-accent">Depending on your setup, also check:</p>
+        <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+          {template.optionalParameters.map((name) => (
+            <ParameterRow
+              key={name}
+              title={AWS_OPTIONAL_PARAMETERS[name]?.label ?? name}
+              action={AWS_OPTIONAL_PARAMETERS[name]?.action ?? "Optional"}
+            />
+          ))}
+        </ul>
+      </>
+    )}
     {hasRemovals && (
       <p className="text-xs text-warning">Features that use removed permissions will fail.</p>
     )}
@@ -126,9 +146,11 @@ export const AwsUpdateStack = ({
   projectId,
   connectionId,
   provisioning,
-  preselectedUseCases
+  preselectedUseCases,
+  onSavingChange
 }: Props) => {
   const queryClient = useQueryClient();
+  const { onPendingChange } = useAppConnectionForm();
   const { currentOrg } = useOrganization();
   const scopeVariant = useScopeVariant();
   const updateAppConnection = useUpdateAppConnection();
@@ -182,6 +204,11 @@ export const AwsUpdateStack = ({
     setHasOpenedAws(true);
   };
 
+  const setSaving = (isSaving: boolean) => {
+    onPendingChange?.(isSaving);
+    onSavingChange?.(isSaving);
+  };
+
   const handleMarkAsUpdated = () => {
     if (!template || hasNoUseCases) return;
 
@@ -195,6 +222,7 @@ export const AwsUpdateStack = ({
       roleName: recorded.roleName
     };
 
+    setSaving(true);
     updateAppConnection.mutate(
       {
         connectionId,
@@ -216,7 +244,8 @@ export const AwsUpdateStack = ({
             text: "Updated the recorded use cases for this AWS connection",
             type: "success"
           });
-        }
+        },
+        onSettled: () => setSaving(false)
       }
     );
   };
@@ -253,6 +282,7 @@ export const AwsUpdateStack = ({
           <Button
             type="button"
             variant={hasOpenedAws ? "outline" : scopeVariant}
+            isDisabled={updateAppConnection.isPending}
             onClick={handleOpenAws}
           >
             Update stack in AWS
@@ -287,7 +317,13 @@ export const AwsUpdateStack = ({
         <CardTitle className="text-base leading-snug">Role permissions</CardTitle>
         <CardDescription>Use cases this role covers.</CardDescription>
         <CardAction>
-          <Button type="button" variant="outline" size="xs" onClick={() => setIsSheetOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            isDisabled={updateAppConnection.isPending}
+            onClick={() => setIsSheetOpen(true)}
+          >
             Customize
           </Button>
         </CardAction>

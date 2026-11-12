@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@app/components/v3";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 
@@ -17,11 +19,16 @@ export const EditAppConnectionCredentialsModal = ({
   appConnection,
   preselectedUseCases
 }: Props) => {
+  const [isPending, setIsPending] = useState(false);
+
   if (!appConnection) return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl">
+      <SheetContent
+        isPending={isPending}
+        className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl"
+      >
         <SheetHeader className="border-b">
           <SheetTitle>
             <AppConnectionHeader app={appConnection.app} isConnected />
@@ -31,6 +38,7 @@ export const EditAppConnectionCredentialsModal = ({
           <AppConnectionForm
             appConnection={appConnection}
             preselectedUseCases={preselectedUseCases}
+            onPendingChange={setIsPending}
             onComplete={() => onOpenChange(false)}
             onCancel={() => onOpenChange(false)}
           />

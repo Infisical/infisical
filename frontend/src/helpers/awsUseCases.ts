@@ -51,6 +51,22 @@ export const AWS_COMPANION_PARAMETER_LABELS: Record<string, string> = {
   AgentVaultSessionLogsKeyPrefix: "Agent Vault session logs key prefix"
 };
 
+// Parameters a setup may need. The action says when to set each one.
+export const AWS_OPTIONAL_PARAMETERS: Record<string, { label: string; action: string }> = {
+  EnableSecretsManagerKms: {
+    label: "AWS Secrets Manager sync: customer managed KMS key",
+    action: "Set to true if a sync uses one"
+  },
+  EnableParameterStoreKms: {
+    label: "AWS Parameter Store sync: customer managed KMS key",
+    action: "Set to true if a sync uses one"
+  },
+  AgentVaultSessionLogsKeyPrefix: {
+    label: "Agent Vault session logs key prefix",
+    action: "Enter it if Session Logs uses one"
+  }
+};
+
 export const getAwsUpdateStackHint = ({
   recordedUseCases,
   neededUseCases,

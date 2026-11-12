@@ -491,6 +491,7 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
             configurationUpdated: configuration !== undefined,
             ...(useCaseIds && { useCaseIds }),
             connectionId,
+            connectionName: appConnection.name,
             isPlatformManagedCredentials
           }
         }

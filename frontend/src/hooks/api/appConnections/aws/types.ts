@@ -72,6 +72,7 @@ export type TAwsUpdateProvisioningTemplate = {
   templateVersion: string;
   parameterChanges: { useCase: string; parameter: string; value: "true" | "false" }[];
   companionParameters: string[];
+  optionalParameters: string[];
 };
 
 export type TAwsConnectionProvisioningTemplateResponse = {

@@ -8,7 +8,12 @@ import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connec
 
 import { ProvisioningTemplateKind } from "../provisioning-template-types";
 import { AWS_PROVISIONING_TEMPLATE_VERSION } from "./aws-provisioning-template-constants";
-import { awsProvisioningTemplateProvider, AWS_USE_CASE_COMPANION_PARAMETERS } from "./aws-provisioning-template-fns";
+import {
+  AWS_USE_CASE_COMPANION_PARAMETERS,
+  AWS_USE_CASE_KMS_PARAMETERS,
+  AWS_USE_CASE_OPTIONAL_COMPANION_PARAMETERS,
+  awsProvisioningTemplateProvider
+} from "./aws-provisioning-template-fns";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ INF_APP_CONNECTION_AWS_TEMPLATE_BASE_URL: "https://mirror.test/cfn" })
@@ -51,7 +56,8 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
       templateUrl: `https://mirror.test/cfn/aws-app-connection/v${AWS_PROVISIONING_TEMPLATE_VERSION}/infisical-aws-app-connection.yaml`,
       templateVersion: AWS_PROVISIONING_TEMPLATE_VERSION,
       parameterChanges: [],
-      companionParameters: []
+      companionParameters: [],
+      optionalParameters: ["EnableSecretsManagerKms"]
     });
   });
 
@@ -104,13 +110,37 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
     ]);
 
     expect(template).toMatchObject({
-      companionParameters: [
-        "AgentVaultSessionLogsBucket",
-        "AgentVaultSessionLogsKeyPrefix",
-        "PamRecordingBucket",
-        "PrivateCaArn"
-      ]
+      companionParameters: ["AgentVaultSessionLogsBucket", "PamRecordingBucket", "PrivateCaArn"],
+      optionalParameters: ["EnableSecretsManagerKms", "AgentVaultSessionLogsKeyPrefix"]
     });
+  });
+
+  it("names the KMS toggle of every kept use case that has one, including recorded ones", async () => {
+    const template = await update(provisioning({ useCases: ["secrets-manager", "acm-sync"] }), [
+      "secrets-manager",
+      "parameter-store"
+    ]);
+
+    expect(template).toMatchObject({
+      optionalParameters: ["EnableSecretsManagerKms", "EnableParameterStoreKms"]
+    });
+  });
+
+  it("does not name a KMS toggle for a removed use case", async () => {
+    const template = await update(provisioning({ useCases: ["secrets-manager", "parameter-store"] }), [
+      "parameter-store"
+    ]);
+
+    expect(template).toMatchObject({ optionalParameters: ["EnableParameterStoreKms"] });
+  });
+
+  it("does not name the session logs key prefix again once that use case is recorded", async () => {
+    const template = await update(provisioning({ useCases: ["agent-vault-session-logs"] }), [
+      "agent-vault-session-logs",
+      "pam-recording"
+    ]);
+
+    expect(template).toMatchObject({ companionParameters: ["PamRecordingBucket"], optionalParameters: [] });
   });
 
   it("does not ask again for a parameter an already enabled use case filled in", async () => {
@@ -186,10 +216,12 @@ describe("AWS_USE_CASE_COMPANION_PARAMETERS", () => {
   );
 
   it("names parameters the template defines", () => {
-    Object.values(AWS_USE_CASE_COMPANION_PARAMETERS)
-      .flat()
-      .forEach((parameter) => {
-        expect(template).toContain(`\n  ${parameter}:`);
-      });
+    [
+      ...Object.values(AWS_USE_CASE_COMPANION_PARAMETERS).flat(),
+      ...Object.values(AWS_USE_CASE_OPTIONAL_COMPANION_PARAMETERS).flat(),
+      ...Object.values(AWS_USE_CASE_KMS_PARAMETERS)
+    ].forEach((parameter) => {
+      expect(template).toContain(`\n  ${parameter}:`);
+    });
   });
 });

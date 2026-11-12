@@ -79,17 +79,24 @@ export const AwsUpdateStackHint = ({ connectionId, useCases, className }: Props)
     setEdit({ isOpen: true, useCases: missing });
   };
 
+  // Opening the sheet loads the connection by ID, which needs Read as well as Edit.
   const canEdit = (() => {
     if (!connection) return false;
     if (connection.projectId) {
-      return projectPermission.can(
-        ProjectPermissionAppConnectionActions.Edit,
-        subject(ProjectPermissionSub.AppConnections, { connectionId: connection.id })
+      const projectSubject = subject(ProjectPermissionSub.AppConnections, {
+        connectionId: connection.id
+      });
+      return (
+        projectPermission.can(ProjectPermissionAppConnectionActions.Read, projectSubject) &&
+        projectPermission.can(ProjectPermissionAppConnectionActions.Edit, projectSubject)
       );
     }
-    return orgPermission.can(
-      OrgPermissionAppConnectionActions.Edit,
-      subject(OrgPermissionSubjects.AppConnections, { connectionId: connection.id })
+    const orgSubject = subject(OrgPermissionSubjects.AppConnections, {
+      connectionId: connection.id
+    });
+    return (
+      orgPermission.can(OrgPermissionAppConnectionActions.Read, orgSubject) &&
+      orgPermission.can(OrgPermissionAppConnectionActions.Edit, orgSubject)
     );
   })();
 

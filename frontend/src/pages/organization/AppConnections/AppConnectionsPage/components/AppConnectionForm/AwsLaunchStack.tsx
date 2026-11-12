@@ -62,14 +62,21 @@ const PARTITIONS = [
   { slug: AwsPartition.China, name: "AWS China" }
 ];
 
+// Kept out of AWS_REGIONS: that list feeds sync, rotation and session log forms whose APIs accept
+// only AWSRegion, which has no China or European Sovereign Cloud regions.
+const PARTITION_ONLY_REGIONS: typeof AWS_REGIONS = [
+  { name: "China (Beijing)", slug: "cn-north-1" },
+  { name: "China (Ningxia)", slug: "cn-northwest-1" },
+  { name: "Europe (Germany) - European Sovereign Cloud", slug: "eusc-de-east-1" }
+];
+
 export const PARTITION_REGIONS: Record<string, typeof AWS_REGIONS> = {
-  [AwsPartition.Commercial]: AWS_REGIONS.filter(
-    ({ slug }) =>
-      !slug.startsWith("us-gov-") && !slug.startsWith("cn-") && !slug.startsWith("eusc-")
-  ),
+  [AwsPartition.Commercial]: AWS_REGIONS.filter(({ slug }) => !slug.startsWith("us-gov-")),
   [AwsPartition.GovCloud]: AWS_REGIONS.filter(({ slug }) => slug.startsWith("us-gov-")),
-  [AwsPartition.China]: AWS_REGIONS.filter(({ slug }) => slug.startsWith("cn-")),
-  [AwsPartition.EuropeanSovereignCloud]: AWS_REGIONS.filter(({ slug }) => slug.startsWith("eusc-"))
+  [AwsPartition.China]: PARTITION_ONLY_REGIONS.filter(({ slug }) => slug.startsWith("cn-")),
+  [AwsPartition.EuropeanSovereignCloud]: PARTITION_ONLY_REGIONS.filter(({ slug }) =>
+    slug.startsWith("eusc-")
+  )
 };
 
 const DEFAULT_REGIONS: Record<string, string> = {
@@ -261,18 +268,21 @@ export const AwsLaunchStack = ({ projectId, defaultUseCases, onLaunch }: Props) 
       {(isAllowed) =>
         isAllowed ? (
           <div className="mb-4 flex flex-col gap-6">
-            <button
+            <Button
               type="button"
-              className="inline-flex items-center gap-1 self-start text-xs text-muted hover:text-foreground"
+              variant="text"
+              size="xs"
+              className="self-start"
+              aria-expanded={showAdvanced}
               onClick={() => setShowAdvanced((v) => !v)}
             >
               <ChevronRightIcon
-                className={`size-3 transition-transform ${showAdvanced ? "rotate-90" : ""}`}
+                className={`transition-transform ${showAdvanced ? "rotate-90" : ""}`}
               />
               Advanced: {PARTITIONS.find(({ slug }) => slug === partition)?.name}
               {partition === AwsPartition.Commercial &&
                 `, ${PARTITION_REGIONS[partition].find(({ slug }) => slug === region)?.name ?? region} (${region})`}
-            </button>
+            </Button>
             <div className={showAdvanced ? "flex flex-col gap-6" : "hidden"}>
               <Field>
                 <FieldLabel>Partition</FieldLabel>
@@ -320,13 +330,15 @@ export const AwsLaunchStack = ({ projectId, defaultUseCases, onLaunch }: Props) 
                     ) : (
                       <p className="text-muted">Select at least one use case.</p>
                     )}
-                    <button
+                    <Button
                       type="button"
-                      className="mt-1 inline-flex items-center text-xs text-muted underline hover:text-foreground"
+                      variant="link"
+                      size="xs"
+                      className="mt-1"
                       onClick={() => openSheet("list")}
                     >
                       Customize
-                    </button>
+                    </Button>
                   </div>
                   <Button
                     type="button"

@@ -69,7 +69,7 @@ export const AwsUseCasesSheet = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="sm:max-w-lg">
+      <SheetContent side="right" size="form">
         {policyView ? (
           <>
             <SheetHeader>

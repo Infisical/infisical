@@ -233,8 +233,9 @@ Parameters:
   AgentVaultSessionLogsKeyPrefix:
     Type: "String"
     Default: ""
-    Description: "Key prefix Agent Vault session logs are written under, without a trailing slash"
-    AllowedPattern: "([\\w!.*()=+@,:;-]+(/[\\w!.*()=+@,:;-]+)*)?"
+    Description: "Key prefix Agent Vault session logs are written under, without a leading or trailing slash. Leave empty if session logs are written at the bucket root"
+    AllowedPattern: "((?!(.*/)?\\.{1,2}(/|$))[A-Za-z0-9!_.'()-]+(/[A-Za-z0-9!_.'()-]+)*)?"
+    MaxLength: 256
 Rules:
   RequirePrivateCaArn:
     RuleCondition:
@@ -288,18 +289,6 @@ Rules:
                 - Ref: "AgentVaultSessionLogsBucket"
                 - ""
         AssertDescription: "AgentVaultSessionLogsBucket is required when a use case that needs it is enabled"
-  RequireAgentVaultSessionLogsKeyPrefix:
-    RuleCondition:
-      "Fn::Equals":
-        - Ref: "EnableAgentVaultSessionLogs"
-        - "true"
-    Assertions:
-      - Assert:
-          "Fn::Not":
-            - "Fn::Equals":
-                - Ref: "AgentVaultSessionLogsKeyPrefix"
-                - ""
-        AssertDescription: "AgentVaultSessionLogsKeyPrefix is required when a use case that needs it is enabled"
 Conditions:
   UseSecretsManager:
     "Fn::Equals":
@@ -361,6 +350,11 @@ Conditions:
     "Fn::Equals":
       - Ref: "EnableAgentVaultSessionLogs"
       - "true"
+  HasAgentVaultSessionLogsKeyPrefix:
+    "Fn::Not":
+      - "Fn::Equals":
+          - Ref: "AgentVaultSessionLogsKeyPrefix"
+          - ""
 Resources:
   Role:
     Type: "AWS::IAM::Role"
@@ -694,7 +688,10 @@ Resources:
               - "s3:PutObject"
               - "s3:GetObject"
             Resource:
-              "Fn::Sub": "arn:${AWS::Partition}:s3:::${AgentVaultSessionLogsBucket}/${AgentVaultSessionLogsKeyPrefix}/*"
+              "Fn::If":
+                - "HasAgentVaultSessionLogsKeyPrefix"
+                - "Fn::Sub": "arn:${AWS::Partition}:s3:::${AgentVaultSessionLogsBucket}/${AgentVaultSessionLogsKeyPrefix}/*"
+                - "Fn::Sub": "arn:${AWS::Partition}:s3:::${AgentVaultSessionLogsBucket}/*"
           - Sid: "AllowAgentVaultSessionLogBucket"
             Effect: "Allow"
             Action:
@@ -702,9 +699,12 @@ Resources:
             Resource:
               "Fn::Sub": "arn:${AWS::Partition}:s3:::${AgentVaultSessionLogsBucket}"
             Condition:
-              StringLike:
-                "s3:prefix":
-                  "Fn::Sub": "${AgentVaultSessionLogsKeyPrefix}/*"
+              "Fn::If":
+                - "HasAgentVaultSessionLogsKeyPrefix"
+                - StringLike:
+                    "s3:prefix":
+                      "Fn::Sub": "${AgentVaultSessionLogsKeyPrefix}/*"
+                - Ref: "AWS::NoValue"
 Outputs:
   RoleArn:
     Description: "Paste this value into the Role ARN field in Infisical"

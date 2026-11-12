@@ -14,12 +14,15 @@ type Props = {
    * out secrets on edit and must allow re-submitting an unchanged form (e.g. OAuth reconnects).
    */
   allowPristineSubmit?: boolean;
+  /** Disables Cancel and submit while a save the form started outside its submit is in flight. */
+  isLocked?: boolean;
 };
 
 export const AppConnectionFormFooter = ({
   submitLabel,
   isDisabled,
-  allowPristineSubmit
+  allowPristineSubmit,
+  isLocked = false
 }: Props) => {
   const { onCancel, layout } = useAppConnectionForm();
   const {
@@ -29,12 +32,14 @@ export const AppConnectionFormFooter = ({
 
   useAppConnectionFormDirtyState(isDirty);
 
-  const isSubmitDisabled = isSubmitting || (!isDirty && !allowPristineSubmit) || isDisabled;
+  const isSubmitDisabled =
+    isSubmitting || (!isDirty && !allowPristineSubmit) || isDisabled || isLocked;
+  const isCancelDisabled = isSubmitting || isLocked;
 
   if (layout === "dialog")
     return (
       <DialogFooter>
-        <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isSubmitting}>
+        <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isCancelDisabled}>
           Cancel
         </Button>
         <Button
@@ -50,7 +55,7 @@ export const AppConnectionFormFooter = ({
 
   return (
     <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
-      <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isSubmitting}>
+      <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isCancelDisabled}>
         Cancel
       </Button>
       <Button
