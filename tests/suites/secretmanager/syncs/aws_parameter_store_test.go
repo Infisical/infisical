@@ -308,9 +308,27 @@ func TestAwsParameterStoreSync_PreserveFolderStructure(t *testing.T) {
 		status, body := createAWSSync(t, proj, conn, dest, preserveFolders())
 
 		// Assert
-		require.Equal(t, http.StatusUnprocessableEntity, status)
+		require.Equal(t, http.StatusBadRequest, status)
 		require.Contains(t, message(body), "Preserving folder structure only applies to a sync that includes subfolders")
 		require.Zero(t, awsSyncCount(t, proj, dest))
+	})
+
+	t.Run("should refuse an update that turns off subfolders while the stored option preserves folder structure", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The update carries no syncOptions, so the stored option stays on. Accepting it
+			would store an option the sync ignores, and the edit form would refuse every later save.`)
+
+		// Setup
+		proj, conn, _ := setupAWS(t)
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		status, body := s.update(t, map[string]any{"includeAllSubFolders": false})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, message(body), "Preserving folder structure only applies to a sync that includes subfolders")
 	})
 }
 

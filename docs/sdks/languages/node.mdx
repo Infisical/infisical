@@ -801,7 +801,7 @@ What the client can do with sessions depends on the [role](/documentation/platfo
 | **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
 </Note>
 
 #### List sessions
@@ -907,7 +907,7 @@ const session = await client.agentVault().sessions.create({
 });
 ```
 
-- Each service is an HTTP API (`type: "http"`) or an MCP server (`type: "mcp"`)
+- Each service is an HTTP API (`type: "http"`), an MCP server (`type: "mcp"`), or a [database or SSH server](/documentation/platform/agent-vault/databases-and-ssh) (`type: "postgres"`, `"mysql"`, or `"ssh"`)
 - Credentials, custom header values, and substitution values can't contain text in double braces, such as `{{GITHUB_TOKEN}}`, because inline services can't use [variables](/documentation/platform/agent-vault/variables)
 - A session can have up to 20 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
 - If a machine identity creates the session on behalf of a user, the machine identity needs the **Admin** role and the user doesn't, and the inline services don't use the user's personal values
@@ -966,7 +966,7 @@ try {
 To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
 </Note>
 
 #### List proxies
@@ -1104,7 +1104,7 @@ const proxy = await client.agentVault().proxies.revoke("<proxy-id>");
 To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
 </Note>
 
 #### List access bundles
@@ -1152,7 +1152,7 @@ const accessBundle = await client.agentVault().accessBundles.get("<access-bundle
 - `accessBundleId` (string): the ID of the access bundle
 
 **Returns:**
-- `AgentVaultAccessBundleWithServices`: the access bundle, with its services in `services`
+- `AgentVaultAccessBundleWithServices`: the access bundle, with its services in `services` (each service has only the fields of its `type`, so check `type` before you read a field such as `hostPattern`)
 
 #### Create access bundle
 
@@ -1317,7 +1317,7 @@ const { members, skipped } = await client.agentVault().accessBundles.revoke("<ac
 To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
 
 <Note>
-  `agentVault` requires `@infisical/sdk` version 5.2.0 or newer.
+  `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
 </Note>
 
 #### List delegations

@@ -1,9 +1,11 @@
 import { createMongoAbility } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { certificateServiceFactory } from "./certificate-service";
 import { CertStatus } from "./certificate-types";
@@ -138,5 +140,148 @@ describe("certificateService.deleteCert", () => {
       "Cannot delete certificate because it is currently in use by a code signing signer"
     );
     expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("certificateService.importCert with a CSR", () => {
+  const ALG = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+  const CUSTOM_EKU_OID = "1.3.6.1.4.1.99999.1";
+
+  const buildImportMaterial = async (csrExtensions: x509.Extension[] = []) => {
+    const keys = await crypto.subtle.generateKey(ALG, true, ["sign", "verify"]);
+    const [certificate, csr] = await Promise.all([
+      x509.X509CertificateGenerator.createSelfSigned({
+        serialNumber: "0a1b2c",
+        name: "CN=web.example.com",
+        notBefore: new Date("2026-01-01"),
+        notAfter: new Date("2026-04-01"),
+        keys,
+        signingAlgorithm: ALG
+      }),
+      x509.Pkcs10CertificateRequestGenerator.create({
+        name: "CN=web.example.com",
+        keys,
+        signingAlgorithm: ALG,
+        extensions: csrExtensions
+      })
+    ]);
+    return { certificatePem: certificate.toString("pem"), csr: csr.toString("pem") };
+  };
+
+  const buildImportService = () => {
+    const certificateDAL = { transaction: vi.fn(), findOne: vi.fn().mockResolvedValue(undefined) };
+    const certificatePolicyService = { validateCertificateRequest: vi.fn() };
+    const deps = {
+      certificateDAL,
+      certificatePolicyService,
+      certificateProfileDAL: {
+        findByIdWithConfigs: vi.fn().mockResolvedValue({
+          id: "profile-1",
+          projectId: "project-1",
+          slug: "web-servers",
+          caId: "ca-1",
+          issuerType: IssuerType.CA,
+          certificatePolicyId: "policy-1",
+          apiConfig: null,
+          certificateAuthority: { externalType: null, name: "my-root-ca" }
+        })
+      },
+      permissionService: {
+        getProjectPermission: vi
+          .fn()
+          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+      }
+    } as unknown as TDeps;
+
+    return { service: certificateServiceFactory(deps), certificateDAL, certificatePolicyService };
+  };
+
+  it("refuses a CSR the profile's policy would refuse at renewal, before storing anything", async () => {
+    const { service, certificateDAL, certificatePolicyService } = buildImportService();
+    certificatePolicyService.validateCertificateRequest.mockResolvedValue({
+      isValid: false,
+      errors: ["common name web.example.com is not allowed"],
+      warnings: []
+    });
+    const { certificatePem, csr } = await buildImportMaterial();
+
+    await expect(
+      service.importCert({ ...actor, projectId: "project-1", profileId: "profile-1", certificatePem, csr })
+    ).rejects.toThrow(/does not satisfy the policy of certificate profile 'web-servers'/);
+    expect(certificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
+      "policy-1",
+      expect.objectContaining({ commonName: "web.example.com", validity: { ttl: "90d" } })
+    );
+    expect(certificateDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  it("checks the CSR with the algorithm the CA signed the certificate with and the certificate's usages", async () => {
+    const { service, certificatePolicyService } = buildImportService();
+    certificatePolicyService.validateCertificateRequest.mockResolvedValue({
+      isValid: false,
+      errors: ["stop after the check"],
+      warnings: []
+    });
+    const RSA_ALG = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048
+    };
+    const [caKeys, leafKeys] = await Promise.all([
+      crypto.subtle.generateKey(RSA_ALG, true, ["sign", "verify"]),
+      crypto.subtle.generateKey(ALG, true, ["sign", "verify"])
+    ]);
+    const [certificate, csr] = await Promise.all([
+      x509.X509CertificateGenerator.create({
+        serialNumber: "0a1b2d",
+        subject: "CN=web.example.com",
+        issuer: "CN=rsa-root",
+        notBefore: new Date("2026-01-01"),
+        notAfter: new Date("2026-04-01"),
+        publicKey: leafKeys.publicKey,
+        signingKey: caKeys.privateKey,
+        signingAlgorithm: RSA_ALG,
+        extensions: [
+          new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature),
+          new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage.serverAuth])
+        ]
+      }),
+      x509.Pkcs10CertificateRequestGenerator.create({
+        name: "CN=web.example.com",
+        keys: leafKeys,
+        signingAlgorithm: ALG
+      })
+    ]);
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        profileId: "profile-1",
+        certificatePem: certificate.toString("pem"),
+        csr: csr.toString("pem")
+      })
+    ).rejects.toThrow(/does not satisfy the policy/);
+    expect(certificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
+      "policy-1",
+      expect.objectContaining({
+        keyAlgorithm: "EC_prime256v1",
+        signatureAlgorithm: "RSA-SHA256",
+        keyUsages: ["digital_signature"],
+        extendedKeyUsages: ["server_auth"]
+      })
+    );
+  });
+
+  it("refuses a CSR with an extended key usage renewal can't carry, before storing anything", async () => {
+    const { service, certificateDAL, certificatePolicyService } = buildImportService();
+    const { certificatePem, csr } = await buildImportMaterial([new x509.ExtendedKeyUsageExtension([CUSTOM_EKU_OID])]);
+
+    await expect(
+      service.importCert({ ...actor, projectId: "project-1", profileId: "profile-1", certificatePem, csr })
+    ).rejects.toThrow(`Unsupported extended key usage in CSR: ${CUSTOM_EKU_OID}`);
+    expect(certificatePolicyService.validateCertificateRequest).not.toHaveBeenCalled();
+    expect(certificateDAL.transaction).not.toHaveBeenCalled();
   });
 });

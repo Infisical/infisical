@@ -12,7 +12,8 @@ type Props = {
 export const AwsSecretsManagerSyncDestinationSection = ({ secretSync }: Props) => {
   const {
     destinationConfig,
-    syncOptions: { includeAllSubFolders, preserveFolderStructure }
+    includeAllSubFolders,
+    syncOptions: { preserveFolderStructure }
   } = secretSync;
 
   const awsRegion = AWS_REGIONS.find((r) => r.slug === destinationConfig.region);

@@ -29,34 +29,30 @@ describe("preserveFolderStructure", () => {
       connectionId: "c9d6b6a2-3c1e-4c2c-9f1e-0d5f3c1c2b7a",
       environment: "dev",
       secretPath: "/backend",
+      includeAllSubFolders: true,
       destinationConfig: { region: AWSRegion.US_EAST_1, path: "/test/" },
       syncOptions: { initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination, ...syncOptions }
     });
 
-  test("accepts preserving folder structure on a sync that includes subfolders", () => {
-    expect(createSync({ includeAllSubFolders: true, preserveFolderStructure: true }).success).toBe(true);
-  });
-
-  test("rejects preserving folder structure without subfolders", () => {
-    expect(createSync({ preserveFolderStructure: true }).success).toBe(false);
+  test("accepts preserving folder structure", () => {
+    expect(createSync({ preserveFolderStructure: true }).success).toBe(true);
   });
 
   test("rejects a key schema containing a slash when preserving folder structure", () => {
-    expect(
-      createSync({ includeAllSubFolders: true, preserveFolderStructure: true, keySchema: "dev/{{secretKey}}" }).success
-    ).toBe(false);
+    expect(createSync({ preserveFolderStructure: true, keySchema: "dev/{{secretKey}}" }).success).toBe(false);
   });
 
   test("still accepts a key schema containing a slash on a flattened sync", () => {
-    expect(createSync({ includeAllSubFolders: true, keySchema: "dev/{{secretKey}}" }).success).toBe(true);
+    expect(createSync({ keySchema: "dev/{{secretKey}}" }).success).toBe(true);
   });
 
-  test("rejects an update that preserves folder structure without subfolders", () => {
+  test("rejects an update that preserves folder structure with a key schema containing a slash", () => {
     expect(
       UpdateAwsParameterStoreSyncSchema.safeParse({
         syncOptions: {
           initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-          preserveFolderStructure: true
+          preserveFolderStructure: true,
+          keySchema: "dev/{{secretKey}}"
         }
       }).success
     ).toBe(false);

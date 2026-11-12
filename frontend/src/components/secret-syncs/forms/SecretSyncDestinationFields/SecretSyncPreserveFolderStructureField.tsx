@@ -42,7 +42,7 @@ export const SecretSyncPreserveFolderStructureField = ({
   const environment = watch("environment");
   const secretPath = watch("secretPath");
   const keySchema = watch("syncOptions.keySchema");
-  const includeAllSubFolders = Boolean(watch("syncOptions.includeAllSubFolders"));
+  const includeAllSubFolders = Boolean(watch("includeAllSubFolders"));
   const preserveFolderStructure = Boolean(watch("syncOptions.preserveFolderStructure"));
 
   const { conflicts, folders } = useRecursiveConflictsCheck({

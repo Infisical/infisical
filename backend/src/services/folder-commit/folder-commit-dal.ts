@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  SecretType,
   TableName,
   TFolderCommitChanges,
   TFolderCommits,
@@ -12,6 +13,8 @@ import {
 import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
+
+import { filterToSharedSecretVersions } from "../secret-v2-bridge/secret-version-dal";
 
 export type TFolderCommitDALFactory = ReturnType<typeof folderCommitDALFactory>;
 
@@ -26,6 +29,59 @@ export type TFolderCommitChangeCount = {
 export const folderCommitDALFactory = (db: TDbClient) => {
   const folderCommitOrm = ormify(db, TableName.FolderCommit);
   const { delete: deleteOp, deleteById, ...restOfOrm } = folderCommitOrm;
+
+  // Commits whose only changes are personal override versions, written by older code. They are not part of the
+  // folder's history, so the commit list and count leave them out. The set is found from the folder's personal
+  // versions, so its cost follows those legacy rows rather than the folder's whole history. It runs as its own
+  // query: inlined as a subquery it raises the plan cost of every list and search enough to trigger JIT.
+  const findPersonalOnlyCommitIds = async (trx: Knex, folderId: string): Promise<string[]> => {
+    const rows = await trx(TableName.SecretVersionV2)
+      .join(
+        TableName.FolderCommitChanges,
+        `${TableName.FolderCommitChanges}.secretVersionId`,
+        `${TableName.SecretVersionV2}.id`
+      )
+      .where(`${TableName.SecretVersionV2}.folderId`, folderId)
+      .where((qb) => {
+        void qb
+          .whereNot(`${TableName.SecretVersionV2}.type`, SecretType.Shared)
+          .orWhereNotNull(`${TableName.SecretVersionV2}.userId`);
+      })
+      .whereNotExists((subQuery) => {
+        void subQuery
+          .select(trx.raw("1"))
+          .from(`${TableName.FolderCommitChanges} as sharedChange`)
+          .leftJoin(`${TableName.SecretVersionV2} as sharedVersion`, "sharedChange.secretVersionId", "sharedVersion.id")
+          .whereRaw(`?? = ??`, ["sharedChange.folderCommitId", `${TableName.FolderCommitChanges}.folderCommitId`])
+          .where((qb) => {
+            void qb.whereNull("sharedVersion.id").orWhere((sharedQb) => {
+              void sharedQb.where("sharedVersion.type", SecretType.Shared).whereNull("sharedVersion.userId");
+            });
+          });
+      })
+      .distinct<{ folderCommitId: string }[]>(`${TableName.FolderCommitChanges}.folderCommitId`);
+    return rows.map((row) => row.folderCommitId);
+  };
+
+  const excludeCommitIds = (commitIds: string[]) => (qb: Knex.QueryBuilder) => {
+    if (commitIds.length)
+      void qb.whereRaw(`?? NOT IN (SELECT unnest(?::uuid[]))`, [`${TableName.FolderCommit}.id`, commitIds]);
+  };
+
+  const countByFolderId = async (folderId: string, tx?: Knex): Promise<number> => {
+    try {
+      const trx = tx || db.replicaNode();
+      const personalOnlyCommitIds = await findPersonalOnlyCommitIds(trx, folderId);
+      const result = await trx(TableName.FolderCommit)
+        .where(`${TableName.FolderCommit}.folderId`, folderId)
+        .where(excludeCommitIds(personalOnlyCommitIds))
+        .count("*", { as: "count" })
+        .first();
+      return Number(result?.count || 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountByFolderId" });
+    }
+  };
 
   const findByFolderId = async (folderId: string, tx?: Knex): Promise<TFolderCommits[]> => {
     try {
@@ -248,6 +304,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
           `${TableName.FolderCommitChanges}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .where(filterToSharedSecretVersions)
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
@@ -436,7 +493,10 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       const trx = tx || db.replicaNode();
 
       // Build base query
-      let baseQuery = trx(TableName.FolderCommit).where(`${TableName.FolderCommit}.folderId`, folderId);
+      const personalOnlyCommitIds = await findPersonalOnlyCommitIds(trx, folderId);
+      let baseQuery = trx(TableName.FolderCommit)
+        .where(`${TableName.FolderCommit}.folderId`, folderId)
+        .where(excludeCommitIds(personalOnlyCommitIds));
 
       if (actorType) {
         baseQuery = baseQuery.where(`${TableName.FolderCommit}.actorType`, actorType);
@@ -481,6 +541,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
                   `${TableName.FolderCommitChanges}.folderCommitId`,
                   `${TableName.FolderCommit}.id`
                 ])
+                .where(filterToSharedSecretVersions)
                 .where((resourceQb) => {
                   void resourceQb
                     .whereILike(`${TableName.SecretVersionV2}.key`, pattern)
@@ -511,8 +572,18 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       // tens of thousands of changes (a bulk import, a folder delete), and the caller only
       // needs the totals. Grouping caps this at one row per change kind per commit.
       const countRows = await trx(TableName.FolderCommitChanges)
-        .whereIn("folderCommitId", commitIds)
-        .groupBy("folderCommitId", "changeType", "isUpdate")
+        .leftJoin(
+          TableName.SecretVersionV2,
+          `${TableName.FolderCommitChanges}.secretVersionId`,
+          `${TableName.SecretVersionV2}.id`
+        )
+        .whereIn(`${TableName.FolderCommitChanges}.folderCommitId`, commitIds)
+        .where(filterToSharedSecretVersions)
+        .groupBy(
+          `${TableName.FolderCommitChanges}.folderCommitId`,
+          `${TableName.FolderCommitChanges}.changeType`,
+          `${TableName.FolderCommitChanges}.isUpdate`
+        )
         .select<
           {
             folderCommitId: string;
@@ -523,11 +594,15 @@ export const folderCommitDALFactory = (db: TDbClient) => {
             totalCount: string;
           }[]
         >(
-          "folderCommitId",
-          "changeType",
-          "isUpdate",
-          trx.raw(`COUNT(*) FILTER (WHERE "secretVersionId" IS NOT NULL) AS "secretCount"`),
-          trx.raw(`COUNT(*) FILTER (WHERE "folderVersionId" IS NOT NULL) AS "folderCount"`),
+          `${TableName.FolderCommitChanges}.folderCommitId`,
+          `${TableName.FolderCommitChanges}.changeType`,
+          `${TableName.FolderCommitChanges}.isUpdate`,
+          trx.raw(`COUNT(*) FILTER (WHERE ?? IS NOT NULL) AS "secretCount"`, [
+            `${TableName.FolderCommitChanges}.secretVersionId`
+          ]),
+          trx.raw(`COUNT(*) FILTER (WHERE ?? IS NOT NULL) AS "folderCount"`, [
+            `${TableName.FolderCommitChanges}.folderVersionId`
+          ]),
           trx.raw(`COUNT(*) AS "totalCount"`)
         );
 
@@ -572,18 +647,24 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
       // DISTINCT ON keeps the name from each author's most recent commit, so a renamed
       // user or identity is labelled with what it is called now rather than at first commit
-      const { rows } = await trx.raw<{
-        rows: { actorId: string | null; actorType: string; name: string | null }[];
-      }>(
-        `SELECT DISTINCT ON ("actorType", "actorMetadata" ->> 'id')
-           "actorType",
-           "actorMetadata" ->> 'id' AS "actorId",
-           "actorMetadata" ->> 'name' AS "name"
-         FROM ??
-         WHERE "folderId" = ?
-         ORDER BY "actorType", "actorMetadata" ->> 'id', "createdAt" DESC`,
-        [TableName.FolderCommit, folderId]
-      );
+      const personalOnlyCommitIds = await findPersonalOnlyCommitIds(trx, folderId);
+      const rows = await trx(TableName.FolderCommit)
+        .where(`${TableName.FolderCommit}.folderId`, folderId)
+        .where(excludeCommitIds(personalOnlyCommitIds))
+        .select<{ actorId: string | null; actorType: string; name: string | null }[]>(
+          trx.raw(`DISTINCT ON (??, ?? ->> 'id') ?? AS "actorType"`, [
+            `${TableName.FolderCommit}.actorType`,
+            `${TableName.FolderCommit}.actorMetadata`,
+            `${TableName.FolderCommit}.actorType`
+          ]),
+          trx.raw(`?? ->> 'id' AS "actorId"`, [`${TableName.FolderCommit}.actorMetadata`]),
+          trx.raw(`?? ->> 'name' AS "name"`, [`${TableName.FolderCommit}.actorMetadata`])
+        )
+        .orderByRaw(`??, ?? ->> 'id', ?? DESC`, [
+          `${TableName.FolderCommit}.actorType`,
+          `${TableName.FolderCommit}.actorMetadata`,
+          `${TableName.FolderCommit}.createdAt`
+        ]);
 
       return rows.map((row) => ({
         actorId: row.actorId ?? null,
@@ -629,6 +710,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     findPreviousCommitTo,
     findById,
     findByFolderIdPaginated,
+    countByFolderId,
     findCommitAuthorsByFolderId,
     findCommitBefore
   };

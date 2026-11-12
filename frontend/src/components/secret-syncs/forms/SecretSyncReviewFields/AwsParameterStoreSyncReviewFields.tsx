@@ -87,9 +87,10 @@ export const AwsParameterStoreDestinationReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
 
-  const [{ region, path }, { includeAllSubFolders, preserveFolderStructure }] = watch([
+  const [{ region, path }, includeAllSubFolders, preserveFolderStructure] = watch([
     "destinationConfig",
-    "syncOptions"
+    "includeAllSubFolders",
+    "syncOptions.preserveFolderStructure"
   ]);
 
   const awsRegion = AWS_REGIONS.find((r) => r.slug === region);

@@ -7,8 +7,12 @@ export const userKeys = {
   getOrgMembership: (orgId: string, orgMembershipId: string) =>
     [{ orgId, orgMembershipId }, "org-membership"] as const,
   allOrgMembershipProjectMemberships: (orgId: string) => [orgId, "all-user-memberships"] as const,
-  forOrgMembershipProjectMemberships: (orgId: string, orgMembershipId: string) =>
-    [...userKeys.allOrgMembershipProjectMemberships(orgId), { orgMembershipId }] as const,
+  forOrgMembershipProjectMemberships: (
+    orgId: string,
+    orgMembershipId: string,
+    params: object = {}
+  ) =>
+    [...userKeys.allOrgMembershipProjectMemberships(orgId), { orgMembershipId }, params] as const,
   getOrgMembershipProjectMemberships: (orgId: string, username: string) =>
     [{ orgId, username }, "org-membership-project-memberships"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],

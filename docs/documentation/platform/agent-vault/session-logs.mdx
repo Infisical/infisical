@@ -1,14 +1,14 @@
 ---
 title: "Session logs"
 sidebarTitle: "Logs"
-description: "Keep an encrypted record of every request an AI agent makes, stored by Infisical or in your own Amazon S3 bucket."
+description: "Keep an encrypted record of every request, statement, and command an AI agent makes, stored by Infisical or in your own Amazon S3 bucket."
 ---
 
 import SelfHostedInstance from "/snippets/app-connections/aws/self-hosted-instance.mdx";
 import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
 import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
 
-A session log is a record of every request an agent makes during a [session](/documentation/platform/agent-vault/sessions): the method, host, path, status code, whether the proxy attached a credential, and for an [MCP server](/documentation/platform/agent-vault/mcp-servers), the tool the agent called. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
+A session log is a record of what an agent does during a [session](/documentation/platform/agent-vault/sessions). For each HTTP request, it holds the method, host, path, status code, whether the proxy attached a credential, and for an [MCP server](/documentation/platform/agent-vault/mcp-servers), the tool the agent called. For a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh), it holds each statement, command, and file transfer. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
 
 The proxy encrypts the records before they leave your network, and Infisical stores them for you. If you self-host Infisical, session logs need an enterprise license, and your server administrator [sets up where Infisical stores them](/self-hosting/guides/session-log-storage).
 
@@ -18,7 +18,7 @@ You can view a session's logs if you created the session or you're an admin of i
 
 <Tabs>
 <Tab title="In Infisical">
-  Go to **Sessions** and select **View Session Logs** on the session's row. You can filter the requests by outcome and search them by host, path, method, tool, or service. While the session is active, new requests appear as the proxy uploads them.
+  Go to **Sessions** and select **View Session Logs** on the session's row. You can filter the rows by outcome and search them by host, path, method, tool, or service, or by the text of a database or SSH row, such as a statement or a command's output. While the session is active, new rows appear as the proxy uploads them.
 
   <Frame>
     <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for the Review PR #1486 session, listing each request's time, method, host, path, upstream status, and outcome: brokered requests to GitHub, Anthropic, and Slack, a DELETE blocked by the service's method rules, and requests to registry.npmjs.org and pastebin.com blocked by the proxy's traffic policy" />
@@ -42,7 +42,7 @@ You can view a session's logs if you created the session or you're an admin of i
       Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey`, base64 decoded. The first 12 bytes of the chunk are the IV, and the last 16 bytes are the authentication tag. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`.
     </Step>
     <Step>
-      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase:
+      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase (`discovery` for **Listed Services**, and `skills` for **Fetched Skills**):
 
       ```json
       {
@@ -72,10 +72,41 @@ You can view a session's logs if you created the session or you're an admin of i
       }
       ```
 
-      - `serviceType`: `http` or `mcp`, or `null` if no service matched the request
+      - `serviceType`: `http`, `mcp`, `postgres`, `mysql`, or `ssh`, or `null` if no service matched the request
       - `mcp`: left out for other requests to an MCP service, such as the `GET` that opens an event stream
       - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body, or if a method or tool name holds characters other than letters, digits, and `_ . : / -` or is longer than 128 characters
       - `mcp.truncated`: `true` if the request held more than 8 calls and the rest weren't recorded (left out otherwise)
+
+      If a record is for a database or SSH service, `method` is `POSTGRES`, `MYSQL`, or `SSH`, `path` is empty, `status` is `0`, and the record has a `native` object with what the connection did:
+
+      ```json
+      {
+        "method": "POSTGRES",
+        "host": "analytics-db.internal",
+        "port": "5432",
+        "path": "",
+        "status": 0,
+        "decision": "brokered",
+        "service": "analytics",
+        "serviceType": "postgres",
+        "native": {
+          "statement": "SELECT count(*) FROM orders",
+          "result": "SELECT 1"
+        }
+      }
+      ```
+
+      Each field of `native` is left out if it's empty:
+
+      - `native.statement`: A PostgreSQL or MySQL statement
+      - `native.result`: The statement's result, such as `SELECT 1`, or the error PostgreSQL returned
+      - `native.command`: An SSH command, in the record written when the command starts
+      - `native.stdin`: Input the agent piped into an SSH command
+      - `native.output`: Output from an SSH command or shell
+      - `native.file`: An `scp` or `sftp` file operation
+      - `native.shell`: `true` for output from an interactive SSH shell
+      - `native.note`: A message from the proxy, such as that the agent forwarded a port, or how many records the proxy dropped because the session log was full
+      - `native.truncated`: `true` if the proxy cut the text short
     </Step>
   </Steps>
 
@@ -121,17 +152,17 @@ You can view a session's logs if you created the session or you're an admin of i
 
 ## What gets recorded
 
-Each request produces one record with:
+Each HTTP request produces one record with:
 
 | Field | What it holds |
 | --- | --- |
 | **Time** | When the request was made |
 | **Method**, **Host**, **Path** | Where the request went, for example `POST api.github.com/repos/acme/web/issues` |
-| **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code the proxy returned, such as `403` or `502` |
+| **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code the proxy returned, such as `403` or `502`. For **Listed Services** and **Fetched Skills** requests, it's the status code Infisical returned |
 | **Outcome** | What the proxy did with the request |
 | **Service** | The service that matched the request, if any |
 
-The outcome is one of four:
+The outcome is one of six:
 
 | Outcome | What happened |
 | --- | --- |
@@ -139,8 +170,12 @@ The outcome is one of four:
 | **Passthrough** | No service matched, or the matching service has no credential. The proxy forwarded the request without a credential |
 | **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests) |
 | **Error** | The proxy couldn't reach the destination host |
+| **Listed Services** | The agent asked the proxy for the [services the session can use](/documentation/platform/agent-vault/service-discovery), and the proxy got the list from Infisical |
+| **Fetched Skills** | The proxy got the session's [skills](/documentation/platform/agent-vault/skills) from Infisical, such as when `infisical agent-vault run` installs them |
 
-Request and response bodies, headers, and query strings aren't recorded. For a request to an MCP server, the proxy reads only the method and tool name of each call from the request body.
+For HTTP requests, the proxy doesn't record bodies, headers, or query strings. For a request to an MCP server, the proxy reads only the method and tool name of each call from the request body.
+
+If the session log fills up before the proxy uploads it, the proxy drops rows, then adds a row that says how many it dropped.
 
 ### MCP tool calls
 
@@ -152,6 +187,25 @@ If a request matched an MCP service, its row shows an **MCP** badge and the call
 The proxy never records a tool's arguments or results.
 
 If the agent sent several calls in one request, the row shows the first one. If the proxy can't read the calls, such as from a compressed body, the row shows the request path.
+
+### Database and SSH connections
+
+For a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh), each row is one thing the connection did, shown with the service type, such as **PostgreSQL**, in place of the method. Select a row to see everything it recorded and copy it.
+
+- **PostgreSQL and MySQL:** A statement and its result, such as `SELECT 42` when PostgreSQL returns 42 rows, but never the rows themselves
+- **SSH commands:** A row with the command when it starts, then rows with the input the agent piped into it and its output, written every minute while it runs
+- **SSH file transfers:** One `scp` or `sftp` file operation
+- **SSH shells:** What the shell printed, in rows of up to 64 KB or one minute
+
+Each statement and command is recorded up to 8 KB, its result or output up to 64 KB, and an SSH command's piped input up to 8 KB. A row that was cut short says so. If an agent forwards a port through an SSH service, a row says so, but the forwarded traffic isn't recorded.
+
+#### Sensitive values in the log
+
+The proxy records statements, commands, and piped input as the agent wrote them, without hiding anything:
+
+- If the agent puts a password in a statement or command, such as in `ALTER USER`, `IDENTIFIED BY`, or input piped to `sudo -S`, the log holds the password
+- In an SSH shell, the log holds typed input only if the shell didn't echo it, so a password typed at a prompt is recorded
+- For PostgreSQL, the values bound to a prepared statement are recorded with the statement, so the log can hold values from your database (MySQL records the statement without them)
 
 ## Storing session logs in your own S3 bucket
 

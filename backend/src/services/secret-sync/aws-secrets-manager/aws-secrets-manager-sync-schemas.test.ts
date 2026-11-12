@@ -25,7 +25,6 @@ describe("AwsSecretsManagerSyncOptionsSchema", () => {
 describe("preserveFolderStructure", () => {
   const syncOptions = {
     initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-    includeAllSubFolders: true,
     preserveFolderStructure: true
   };
 
@@ -36,6 +35,7 @@ describe("preserveFolderStructure", () => {
       connectionId: "c9d6b6a2-3c1e-4c2c-9f1e-0d5f3c1c2b7a",
       environment: "dev",
       secretPath: "/backend",
+      includeAllSubFolders: true,
       destinationConfig: { region: AWSRegion.US_EAST_1, ...destinationConfig },
       syncOptions
     });

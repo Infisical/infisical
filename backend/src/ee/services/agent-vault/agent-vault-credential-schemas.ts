@@ -26,6 +26,9 @@ export const AGENT_VAULT_NO_CONTROL_CHARS_RE = new RE2(/^[^\x00-\x1f\x7f]*$/);
 export const AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
+// jsonb refuses a lone surrogate and the write 500s. RE2 reads one as U+FFFD, so the regex checks can't see it.
+export const hasLoneSurrogate = (value: string) => !value.isWellFormed();
+
 const AGENT_VAULT_DEFAULT_HEADER_NAME = "Authorization";
 const AGENT_VAULT_DEFAULT_HEADER_PREFIX = "Bearer";
 
@@ -65,10 +68,16 @@ export const AgentVaultBasicConfigSchema = z.object({});
 
 export const AgentVaultPassthroughConfigSchema = z.object({});
 
+// The username, key and certificate are sealed; the plaintext half only says whether a certificate is stored.
+export const AgentVaultSshKeyConfigSchema = z.object({ hasCertificate: z.boolean() });
+
+export const AGENT_VAULT_SSH_KEY_MAX_LENGTH = 8192;
+
 export const AgentVaultCredentialConfigSchema = z.discriminatedUnion("type", [
   z.object({ ...AgentVaultBearerConfigFields, type: z.literal(AgentVaultCredentialType.Bearer) }),
   AgentVaultBasicConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Basic) }),
-  AgentVaultPassthroughConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+  AgentVaultPassthroughConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Passthrough) }),
+  AgentVaultSshKeyConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.SshKey) })
 ]);
 
 // OAuth's config is written whole from a completed authorization (or, when each member signs in, from discovery) and
@@ -84,6 +93,12 @@ export const AgentVaultSecretSchema = z.discriminatedUnion("type", [
     type: z.literal(AgentVaultCredentialType.Basic),
     username: z.string().max(256),
     password: z.string().max(8192)
+  }),
+  z.object({
+    type: z.literal(AgentVaultCredentialType.SshKey),
+    username: z.string().min(1).max(256),
+    privateKey: z.string().min(1).max(AGENT_VAULT_SSH_KEY_MAX_LENGTH),
+    certificate: z.string().max(AGENT_VAULT_SSH_KEY_MAX_LENGTH).optional()
   })
 ]);
 

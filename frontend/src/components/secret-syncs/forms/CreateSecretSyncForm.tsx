@@ -85,8 +85,8 @@ const getFormTabs = (
 ): FormTab[] => {
   const sourceFields: (keyof TSecretSyncForm)[] =
     destination === SecretSync.AzureEntraIdScim
-      ? ["secretPath", "environment", "syncOptions"]
-      : ["secretPath", "environment"];
+      ? ["secretPath", "environment", "includeAllSubFolders", "syncOptions"]
+      : ["secretPath", "environment", "includeAllSubFolders"];
 
   const mirroredPrefix = destination === SecretSync.AWSParameterStore ? "/prod/" : "";
 
@@ -303,8 +303,7 @@ export const CreateSecretSyncForm = ({
     environment: watch("environment")?.slug,
     secretPath: watch("secretPath"),
     keySchema,
-    includeAllSubFolders:
-      Boolean(watch("syncOptions.includeAllSubFolders")) && !importsFromDestination
+    includeAllSubFolders: Boolean(watch("includeAllSubFolders")) && !importsFromDestination
   });
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);

@@ -31,7 +31,7 @@ export const AwsSecretsManagerSyncReviewFields = () => {
       "destinationConfig.region",
       "destinationConfig.mappingBehavior",
       "destinationConfig.secretName",
-      "syncOptions.includeAllSubFolders",
+      "includeAllSubFolders",
       "syncOptions.preserveFolderStructure"
     ]);
 

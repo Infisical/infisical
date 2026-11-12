@@ -248,13 +248,16 @@ const FOLDER_STRUCTURE_DESTINATION_MAP: Partial<
 export const preservesFolderStructure = ({
   destination,
   destinationConfig,
+  includeAllSubFolders,
   syncOptions
 }: {
   destination: SecretSync;
   destinationConfig: unknown;
-  syncOptions?: { includeAllSubFolders?: boolean; preserveFolderStructure?: boolean };
+  includeAllSubFolders: boolean;
+  syncOptions?: { preserveFolderStructure?: boolean };
 }) =>
-  Boolean(syncOptions?.includeAllSubFolders && syncOptions?.preserveFolderStructure) &&
+  includeAllSubFolders &&
+  Boolean(syncOptions?.preserveFolderStructure) &&
   Boolean(FOLDER_STRUCTURE_DESTINATION_MAP[destination]?.(destinationConfig as Record<string, unknown>));
 
 // Checks if a key matches a schema

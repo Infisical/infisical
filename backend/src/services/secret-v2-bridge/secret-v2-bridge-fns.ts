@@ -15,11 +15,11 @@ import {
 } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
+import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import {
   InternalMetadataType,
   TInternalMetadata
-} from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+} from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -1010,11 +1010,13 @@ export const fnUpdateSecretLinkedReferences = async ({
       tx
     );
 
-    const changes = secretVersions.map((sv) => ({
-      type: CommitType.ADD,
-      isUpdate: true,
-      secretVersionId: sv.id
-    }));
+    const changes = secretVersions
+      .filter(({ type }) => type === SecretType.Shared)
+      .map((sv) => ({
+        type: CommitType.ADD,
+        isUpdate: true,
+        secretVersionId: sv.id
+      }));
 
     if (changes.length > 0) {
       await folderCommitService.createCommit(
@@ -1424,11 +1426,13 @@ export const fnUpdateMovedSecretReferences = async ({
       tx
     );
 
-    const changes = secretVersions.map((sv) => ({
-      type: CommitType.ADD,
-      isUpdate: true,
-      secretVersionId: sv.id
-    }));
+    const changes = secretVersions
+      .filter(({ type }) => type === SecretType.Shared)
+      .map((sv) => ({
+        type: CommitType.ADD,
+        isUpdate: true,
+        secretVersionId: sv.id
+      }));
 
     if (changes.length > 0) {
       await folderCommitService.createCommit(
@@ -1690,8 +1694,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     resourceMetadataDAL,
     folderCommitService,
     eventEmitter,
-    secretApprovalPolicyService,
-    secretApprovalRequestCreationFns,
+    secretChangePolicyService,
+    secretChangeRequestService,
     secretQueueService,
     reminderService,
     secretValidationRuleService
@@ -1788,7 +1792,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
   // Looked up before the destination is written, because how the reminders' alerts are carried over
   // depends on whether the source keeps its secrets.
-  const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+  const sourceFolderPolicy = await secretChangePolicyService.getSecretApprovalPolicy(
     projectId,
     sourceFolder.environment.slug,
     sourceFolder.path
@@ -1917,7 +1921,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     });
   }
 
-  const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+  const destinationFolderPolicy = await secretChangePolicyService.getSecretApprovalPolicy(
     projectId,
     destinationFolder.environment.slug,
     destinationFolder.path,
@@ -1966,7 +1970,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
           : {})
       };
     });
-    await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge(
+    await secretChangeRequestService.createSecretApprovalRequestV2Bridge(
       { policy: destinationFolderPolicy, folderId: destinationFolder.id, actor, actorId, commits },
       tx
     );
@@ -2117,7 +2121,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       };
     });
 
-    await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge(
+    await secretChangeRequestService.createSecretApprovalRequestV2Bridge(
       { policy: sourceFolderPolicy, folderId: sourceFolder.id, actor, actorId, commits },
       tx
     );

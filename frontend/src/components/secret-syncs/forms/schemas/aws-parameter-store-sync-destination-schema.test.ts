@@ -8,8 +8,7 @@ import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sy
 const syncOptionsSchema = AwsParameterStoreSyncDestinationSchema.shape.syncOptions;
 
 const options = {
-  initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-  includeAllSubFolders: true
+  initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination
 };
 
 describe("AWS Parameter Store sync form schema", () => {

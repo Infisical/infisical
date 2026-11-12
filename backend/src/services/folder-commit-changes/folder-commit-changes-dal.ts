@@ -13,6 +13,8 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { filterToSharedSecretVersions } from "../secret-v2-bridge/secret-version-dal";
+
 export type TFolderCommitChangesDALFactory = ReturnType<typeof folderCommitChangesDALFactory>;
 
 // Base type with common fields
@@ -106,6 +108,7 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Environment}.projectId`, "=", projectId);
           }
         })
+        .where(filterToSharedSecretVersions)
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
           db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),

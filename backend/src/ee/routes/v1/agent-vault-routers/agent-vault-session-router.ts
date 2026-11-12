@@ -31,7 +31,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import {
+  actorContext,
+  resolveRequestedProjectId,
+  serviceTransformationNamesOf,
+  serviceTypeReportFieldsOf
+} from "./agent-vault-router-fns";
 import {
   AgentVaultInlineServiceSchema,
   AgentVaultInlineServicesInputSchema,
@@ -60,9 +65,15 @@ const SessionInlineServicesSchema = AgentVaultInlineServiceSchema.array().descri
   AGENT_VAULT.SESSION.inlineServicesRead
 );
 
+const SessionStatsSchema = z.object({
+  requests: z.number().describe(AGENT_VAULT.SESSION.statsRequests),
+  brokered: z.number().nullable().describe(AGENT_VAULT.SESSION.statsBrokered)
+});
+
 const SessionWithAccessBundleSchema = SessionSchema.extend({
   accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
-  services: SessionInlineServicesSchema
+  services: SessionInlineServicesSchema,
+  stats: SessionStatsSchema.nullable().describe(AGENT_VAULT.SESSION.stats)
 });
 
 // CLI 0.43.132+ and the Python SDK send the list form. Keep until 2027-01-04, then remove.
@@ -95,7 +106,8 @@ const EXAMPLE_SESSION = {
   revokedAt: null,
   createdAt: "2026-10-31T18:00:00.000Z",
   accessBundle: EXAMPLE_ACCESS_BUNDLE,
-  services: []
+  services: [],
+  stats: { requests: 1284, brokered: 1102 }
 };
 
 const docsExample = (example: unknown) => JSON.stringify({ example });
@@ -332,22 +344,31 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             accessBundleName: session.accessBundle?.name ?? null,
             expiresAt: session.expiresAt?.toISOString() ?? null,
             ...(session.services.length > 0 && {
-              services: session.services.map((service) => ({
-                serviceId: service.id,
-                name: service.name,
-                serviceType: service.type,
-                serverUrl: service.serverUrl ?? undefined,
-                hostPattern: service.hostPattern,
-                credentialType: service.credential.type,
-                headerName:
-                  service.credential.type === AgentVaultCredentialType.Bearer
-                    ? service.credential.headerName
-                    : undefined,
-                allowedMethods: service.allowedMethods,
-                allowedPathPrefixes: service.allowedPathPrefixes,
-                customHeaderNames: service.customHeaders.map((header) => header.name),
-                substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder)
-              }))
+              services: session.services.map((service) => {
+                const fields = serviceTypeReportFieldsOf(service);
+                return {
+                  serviceId: service.id,
+                  name: service.name,
+                  description: service.description,
+                  serviceType: service.type,
+                  serverUrl: fields.serverUrl,
+                  hostPattern: fields.hostPattern,
+                  host: fields.host,
+                  port: fields.port,
+                  database: fields.database,
+                  tlsEnabled: fields.tlsEnabled,
+                  tlsVerify: fields.tlsVerify,
+                  hasTlsCa: fields.hasTlsCa,
+                  credentialType: service.credential.type,
+                  headerName:
+                    service.credential.type === AgentVaultCredentialType.Bearer
+                      ? service.credential.headerName
+                      : undefined,
+                  allowedMethods: fields.allowedMethods ?? null,
+                  allowedPathPrefixes: fields.allowedPathPrefixes ?? null,
+                  ...serviceTransformationNamesOf(service)
+                };
+              })
             }),
             ...(onBehalfOf && {
               onBehalfOfUserId: onBehalfOf.userId,
