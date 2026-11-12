@@ -1,13 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
+import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -19,7 +18,6 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -32,7 +30,6 @@ import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TWebhookDALFactory } from "@app/services/webhook/webhook-dal";
@@ -46,6 +43,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
+import { emitHoneyTokenTriggered } from "./honey-token-events";
 import {
   getHoneyTokenProviderDefinition,
   getHoneyTokenServiceHooksByType,
@@ -96,9 +94,7 @@ export type THoneyTokenServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  smtpService: Pick<TSmtpService, "sendMail">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds"
@@ -149,9 +145,7 @@ export const honeyTokenServiceFactory = ({
   kmsService,
   appConnectionDAL,
   appConnectionService,
-  orgDAL,
   projectDAL,
-  smtpService,
   folderDAL,
   projectBotService,
   secretDAL,
@@ -967,49 +961,6 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
-  const $sendTriggerNotification = async ({ orgId, honeyToken, eventMetadata }: TSendTriggerNotificationInput) => {
-    try {
-      const [project, orgAdmins] = await Promise.all([
-        projectDAL.findById(honeyToken.projectId),
-        orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)
-      ]);
-      const adminEmails = orgAdmins.map((admin) => admin.user.email).filter(Boolean) as string[];
-      if (adminEmails.length === 0 || !project) return;
-
-      const [folderInfo] = await folderDAL.findSecretPathByFolderIds(project.id, [honeyToken.folderId]);
-
-      const cfg = getAppConfig();
-      const siteUrl = cfg.SITE_URL || "https://app.infisical.com";
-      const honeyTokenUrlSearch = new URLSearchParams({ honeyTokenId: honeyToken.id });
-
-      if (folderInfo?.path) {
-        honeyTokenUrlSearch.set("secretPath", folderInfo.path);
-      }
-
-      const honeyTokenUrl = `${siteUrl}/organizations/${orgId}/projects/secret-management/${project.id}/overview?${honeyTokenUrlSearch.toString()}`;
-
-      await smtpService.sendMail({
-        recipients: adminEmails,
-        subjectLine: `Security Alert: Honey Token "${honeyToken.name}" Triggered`,
-        template: SmtpTemplates.HoneyTokenTriggered,
-        substitutions: {
-          honeyTokenName: honeyToken.name,
-          projectName: project.name,
-          eventName: eventMetadata.eventName,
-          eventTime: eventMetadata.eventTime,
-          sourceIp: eventMetadata.sourceIp || "Unknown",
-          awsRegion: eventMetadata.awsRegion,
-          honeyTokenUrl
-        }
-      });
-    } catch (err) {
-      logger.error(
-        { err, orgId, honeyTokenId: honeyToken.id },
-        `Failed to send honey token trigger notification [orgId=${orgId}] [honeyTokenId=${honeyToken.id}]`
-      );
-    }
-  };
-
   const $triggerWebhookNotification = async ({ orgId, honeyToken, eventMetadata }: TSendTriggerNotificationInput) => {
     try {
       const [project, folderInfo] = await Promise.all([
@@ -1121,10 +1072,32 @@ export const honeyTokenServiceFactory = ({
       eventType: HoneyTokenEventType.AWS,
       metadata: eventMetadata
     });
-    const updatedToken = await honeyTokenDAL.tryMarkTriggered(
-      eventMetadata.accessKeyId,
-      TRIGGER_NOTIFICATION_COOLDOWN_MS
-    );
+    // The cooldown is what keeps a burst of calls with the decoy key from flooding every channel, since
+    // event-triggered alerts are never deduplicated.
+    const updatedToken = await honeyTokenDAL.transaction(async (tx) => {
+      const markedToken = await honeyTokenDAL.tryMarkTriggered(
+        eventMetadata.accessKeyId,
+        TRIGGER_NOTIFICATION_COOLDOWN_MS,
+        tx
+      );
+      if (markedToken) {
+        await emitHoneyTokenTriggered(
+          eventEmitter,
+          {
+            orgId: honeyToken.orgId,
+            projectId: honeyToken.projectId,
+            honeyTokenId: honeyToken.id,
+            triggeredAt: markedToken.lastTriggeredAt ?? new Date(),
+            eventName: eventMetadata.eventName,
+            eventTime: eventMetadata.eventTime,
+            sourceIp: eventMetadata.sourceIp,
+            awsRegion: eventMetadata.awsRegion
+          },
+          tx
+        );
+      }
+      return markedToken;
+    });
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.HoneyTokenTriggered,
@@ -1137,11 +1110,6 @@ export const honeyTokenServiceFactory = ({
       })
       .catch(() => {});
     if (updatedToken) {
-      void $sendTriggerNotification({
-        orgId: honeyToken.orgId,
-        honeyToken: honeyTokenWithFolder,
-        eventMetadata
-      });
       void $triggerWebhookNotification({
         orgId: honeyToken.orgId,
         honeyToken: honeyTokenWithFolder,
