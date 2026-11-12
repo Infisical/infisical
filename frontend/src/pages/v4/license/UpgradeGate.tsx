@@ -58,7 +58,7 @@ import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
 import { ProductIcon } from "./product-icon";
 import { ProductUpgradeDialog } from "./ProductUpgradeDialog";
 import { ProductUpgradeSuccessDialog } from "./ProductUpgradeSuccessDialog";
-import { focusUpgradeContinuation } from "./UpgradeDialogLayout";
+import { focusUpgradeDialog } from "./UpgradeDialogLayout";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
@@ -102,7 +102,7 @@ const ProductNoticeDialog = ({
   footer
 }: NoticeDialogProps) => (
   <Dialog open onOpenChange={onOpenChange}>
-    <DialogContent showCloseButton={false} onOpenAutoFocus={focusUpgradeContinuation}>
+    <DialogContent showCloseButton={false} onOpenAutoFocus={focusUpgradeDialog}>
       <DialogHeader>
         <div className="flex items-center gap-3">
           {product && (
@@ -314,7 +314,7 @@ const ProductUpgradeGate = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button data-upgrade-cta variant="primary" onClick={openRootBilling}>
+            <Button variant="primary" onClick={openRootBilling}>
               Continue to root billing
             </Button>
           </>
@@ -335,7 +335,7 @@ const ProductUpgradeGate = ({
         productName={productName}
         onOpenChange={onOpenChange}
         footer={
-          <Button data-upgrade-cta variant="primary" onClick={() => onOpenChange(false)}>
+          <Button variant="primary" onClick={() => onOpenChange(false)}>
             Close
           </Button>
         }
@@ -421,7 +421,7 @@ const ProductUpgradeGate = ({
                 <Button variant="ghost" onClick={retry}>
                   Retry
                 </Button>
-                <Button data-upgrade-cta variant="primary" asChild>
+                <Button variant="primary" asChild>
                   <a
                     href={CONTACT_SALES_URL}
                     target="_blank"
@@ -434,7 +434,7 @@ const ProductUpgradeGate = ({
                 </Button>
               </>
             ) : (
-              <Button data-upgrade-cta variant="primary" onClick={retry}>
+              <Button variant="primary" onClick={retry}>
                 Try again
               </Button>
             )}
@@ -471,7 +471,6 @@ const ProductUpgradeGate = ({
               Close
             </Button>
             <Button
-              data-upgrade-cta
               variant="primary"
               loading={isRefreshing}
               onClick={() => {
@@ -515,7 +514,6 @@ const ProductUpgradeGate = ({
               Close
             </Button>
             <Button
-              data-upgrade-cta
               variant="primary"
               onClick={
                 honeyTokenQuota
@@ -619,20 +617,19 @@ const ProductUpgradeGate = ({
   };
 
   let productUpgradeAction = (
-    <Button data-upgrade-cta variant="primary" className="w-full" onClick={openRootBilling}>
+    <Button variant="primary" className="w-full" onClick={openRootBilling}>
       View billing options
     </Button>
   );
   if (requiredPlan && !planMeetsRequirement) {
     productUpgradeAction = (
-      <Button data-upgrade-cta variant="primary" className="w-full" disabled>
+      <Button variant="primary" className="w-full" disabled>
         Select {requiredPlan?.name ?? intent.planKey} or higher
       </Button>
     );
   } else if (requiredPlan && canManageBilling && (plan.salesLed || !selfServe)) {
     productUpgradeAction = (
       <Button
-        data-upgrade-cta
         variant="primary"
         className="w-full"
         onClick={() => {
@@ -645,14 +642,13 @@ const ProductUpgradeGate = ({
     );
   } else if (requiredPlan && canManageBilling && checkoutFrozen) {
     productUpgradeAction = (
-      <Button data-upgrade-cta variant="primary" className="w-full" disabled>
+      <Button variant="primary" className="w-full" disabled>
         Billing changes paused
       </Button>
     );
   } else if (trialAvailable) {
     productUpgradeAction = (
       <Button
-        data-upgrade-cta
         variant="primary"
         className="w-full"
         loading={startTrial.isPending}

@@ -10,7 +10,7 @@ import {
 import type { BillingCatalogPlan, BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
 import { ProductIcon } from "./product-icon";
-import { focusUpgradeContinuation } from "./UpgradeDialogLayout";
+import { focusUpgradeDialog } from "./UpgradeDialogLayout";
 
 type Props = {
   product: BillingCatalogProduct;
@@ -28,7 +28,7 @@ export const ProductUpgradeSuccessDialog = ({
   onOpenChange
 }: Props) => (
   <Dialog open onOpenChange={onOpenChange}>
-    <DialogContent showCloseButton={false} onOpenAutoFocus={focusUpgradeContinuation}>
+    <DialogContent showCloseButton={false} onOpenAutoFocus={focusUpgradeDialog}>
       <DialogHeader role="status">
         <div className="flex items-center gap-3">
           <span aria-hidden="true" className="flex shrink-0">
@@ -46,12 +46,7 @@ export const ProductUpgradeSuccessDialog = ({
         </DialogDescription>
       </DialogHeader>
       <DialogFooter>
-        <Button
-          data-upgrade-cta
-          variant="primary"
-          className="w-full"
-          onClick={() => onOpenChange(false)}
-        >
+        <Button variant="primary" className="w-full" onClick={() => onOpenChange(false)}>
           Continue
         </Button>
       </DialogFooter>

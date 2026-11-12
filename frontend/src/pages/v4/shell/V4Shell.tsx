@@ -21,7 +21,7 @@ import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
-import { resolveShellLocation } from "./location";
+import { resolveShellLocation, type ShellLocation } from "./location";
 import {
   orgSections,
   products,
@@ -58,11 +58,17 @@ export const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: st
   go(anchor.pathname + anchor.search + anchor.hash);
 };
 
-export const V4Shell = ({ children }: { children: ReactNode }) => {
-  const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
+export type V4ShellNav = {
+  levels?: readonly SidebarLevel[];
+  current?: string;
+  crumbs: readonly BreadcrumbCrumb[];
+};
+
+export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellNav }) => {
+  const session = useV4Session();
+  const { orgId = session.organization.id } = useParams({ strict: false });
   const location = useRouterState({ select: (state) => state.location });
   const navigate = useNavigate();
-  const session = useV4Session();
   const chrome = useShellChrome();
   const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -77,11 +83,13 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     session.organization;
   const base = orgHref(orgId);
   const { selectedTab } = location.search as { selectedTab?: string };
-  const at = resolveShellLocation(
-    location.pathname.slice(base.length),
-    selectedTab,
-    session.organization.isSubOrganization
-  );
+  const at: ShellLocation = nav
+    ? { level: "org", sections: orgSections(session.organization.isSubOrganization) }
+    : resolveShellLocation(
+        location.pathname.slice(base.length),
+        selectedTab,
+        session.organization.isSubOrganization
+      );
   const go = (href: string) => navigate({ href: resolve(href) });
   const toSidebar = (
     level: string,
@@ -160,6 +168,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       sections: toSidebar("project-settings", at.settings)
     });
   }
+  if (nav?.levels) levels.push(...nav.levels);
   const currentLevel = at.inSettings ? "project-settings" : at.level;
 
   const orgCrumb: BreadcrumbCrumb = {
@@ -236,14 +245,18 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
           }
         }
       : undefined;
-  const breadcrumb = [
-    orgCrumb,
-    ...(at.level === "settings" ? [{ label: "Settings", href: resolve(`${base}/settings`) }] : []),
-    ...(productCrumb ? [productCrumb] : []),
-    ...(projectCrumb ? [projectCrumb] : []),
-    ...(at.inSettings ? [{ label: "Settings", href: resolve(location.pathname) }] : []),
-    ...(at.current ? [{ label: at.current.label }] : [])
-  ];
+  const breadcrumb = nav
+    ? [orgCrumb, ...nav.crumbs]
+    : [
+        orgCrumb,
+        ...(at.level === "settings"
+          ? [{ label: "Settings", href: resolve(`${base}/settings`) }]
+          : []),
+        ...(productCrumb ? [productCrumb] : []),
+        ...(projectCrumb ? [projectCrumb] : []),
+        ...(at.inSettings ? [{ label: "Settings", href: resolve(location.pathname) }] : []),
+        ...(at.current ? [{ label: at.current.label }] : [])
+      ];
 
   const classicHref =
     orgId !== V4_DEMO_ORG_ID && readiness === "partial" ? toV3Href(location.href) : undefined;
@@ -285,7 +298,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       <Sidebar
         label="Main"
         levels={levels}
-        current={sidebarCurrent ? `${currentLevel}:${sidebarCurrent.id}` : undefined}
+        current={nav ? nav.current : sidebarCurrent && `${currentLevel}:${sidebarCurrent.id}`}
         help={chrome.help}
         announcements={chrome.announcements}
       />

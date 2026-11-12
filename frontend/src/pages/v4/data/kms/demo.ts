@@ -1,5 +1,6 @@
 import {
   AsymmetricKeyAlgorithm,
+  type HmacAlgorithm as THmacAlgorithm,
   HmacAlgorithm,
   KmsKeyUsage,
   SymmetricKeyAlgorithm,
@@ -101,6 +102,42 @@ const store = createFixtureStore<TCmek[]>([
   )
 ]);
 
+const material = (seed: string, bytes: number) => {
+  let hash = 7;
+  const out = new Uint8Array(bytes);
+  for (let index = 0; index < bytes; index += 1) {
+    for (const char of `${seed}:${index}`) {
+      hash = (hash * 31 + char.charCodeAt(0)) % 2147483647;
+    }
+    out[index] = hash % 256;
+  }
+  return Buffer.from(out).toString("base64");
+};
+
+const encode = (data: string, isBase64Encoded?: boolean) =>
+  isBase64Encoded ? data : Buffer.from(data).toString("base64");
+
+const findKey = (keyId: string) => {
+  const found = store.get().find((entry) => entry.id === keyId);
+  if (!found) throw new Error("Key not found");
+  return found;
+};
+
+const isAsymmetric = (entry: TCmek) =>
+  (Object.values(AsymmetricKeyAlgorithm) as string[]).includes(entry.algorithm);
+
+const privateKeyOf = (entry: TCmek) => {
+  if (entry.algorithm === SymmetricKeyAlgorithm.AES_GCM_128) return material(entry.id, 16);
+  if (entry.keyUsage === KmsKeyUsage.SIGN_VERIFY) return material(`${entry.id}:private`, 120);
+  return material(entry.id, 32);
+};
+const publicKeyOf = (entry: TCmek) => material(`${entry.id}:public`, 91);
+
+const ciphertextPrefix = (keyId: string) => `demo:${keyId}:`;
+const signatureOf = (keyId: string, algorithm: string, data: string) =>
+  material(`${keyId}:${algorithm}:${data}`, 64);
+const macOf = (keyId: string, data: string) => material(`${keyId}:mac:${data}`, 32);
+
 const change = (keyId: string, patch: (current: TCmek) => Partial<TCmek>) =>
   store.update((keys) =>
     keys.map((entry) => (entry.id === keyId ? { ...entry, ...patch(entry) } : entry))
@@ -142,7 +179,103 @@ export const kmsDemo: KmsAdapter = {
   ),
   useDeleteKey: fixtureMutation(({ keyId }) =>
     store.update((keys) => keys.filter((entry) => entry.id !== keyId))
-  )
+  ),
+  useEncrypt: fixtureMutation(({ keyId, plaintext, isBase64Encoded }) => {
+    findKey(keyId);
+    return {
+      ciphertext: Buffer.from(
+        `${ciphertextPrefix(keyId)}${encode(plaintext, isBase64Encoded)}`
+      ).toString("base64")
+    };
+  }),
+  useDecrypt: fixtureMutation(({ keyId, ciphertext }) => {
+    findKey(keyId);
+    const decoded = Buffer.from(ciphertext.trim(), "base64").toString("utf8");
+    if (!decoded.startsWith(ciphertextPrefix(keyId)))
+      throw new Error("The ciphertext was not encrypted with this key");
+    return { plaintext: decoded.slice(ciphertextPrefix(keyId).length) };
+  }),
+  useSign: fixtureMutation(({ keyId, data, signingAlgorithm, isBase64Encoded }) => {
+    findKey(keyId);
+    return {
+      keyId,
+      signingAlgorithm,
+      signature: signatureOf(keyId, signingAlgorithm, encode(data, isBase64Encoded))
+    };
+  }),
+  useVerify: fixtureMutation(({ keyId, data, signature, signingAlgorithm, isBase64Encoded }) => {
+    findKey(keyId);
+    return {
+      keyId,
+      signingAlgorithm,
+      signatureValid:
+        signature.trim() === signatureOf(keyId, signingAlgorithm, encode(data, isBase64Encoded))
+    };
+  }),
+  useGenerateMac: fixtureMutation(({ keyId, data, isBase64Encoded }) => ({
+    keyId,
+    macAlgorithm: findKey(keyId).algorithm as THmacAlgorithm,
+    mac: macOf(keyId, encode(data, isBase64Encoded))
+  })),
+  useVerifyMac: fixtureMutation(({ keyId, data, mac, isBase64Encoded }) => ({
+    keyId,
+    macAlgorithm: findKey(keyId).algorithm as THmacAlgorithm,
+    macValid: mac.trim() === macOf(keyId, encode(data, isBase64Encoded))
+  })),
+  usePublicKey: (keyId, { enabled }) => {
+    const entry = store.use().find((candidate) => candidate.id === keyId);
+    return {
+      data: enabled && entry && isAsymmetric(entry) ? { publicKey: publicKeyOf(entry) } : undefined,
+      isPending: false,
+      error: null
+    };
+  },
+  usePrivateKey: (keyId, { enabled }) => {
+    const entry = store.use().find((candidate) => candidate.id === keyId);
+    return {
+      data: enabled && entry?.isExportable ? { privateKey: privateKeyOf(entry) } : undefined,
+      isPending: false,
+      error: null
+    };
+  },
+  useBulkExport: fixtureMutation(({ keyIds }) => ({
+    keys: keyIds.map((keyId) => {
+      const entry = findKey(keyId);
+      return {
+        keyId,
+        name: entry.name,
+        keyUsage: entry.keyUsage,
+        algorithm: entry.algorithm,
+        privateKey: privateKeyOf(entry),
+        publicKey: isAsymmetric(entry) ? publicKeyOf(entry) : undefined
+      };
+    })
+  })),
+  useBulkImport: fixtureMutation(({ keys: entries }) => {
+    const imported: { id: string; name: string }[] = [];
+    const errors: { name: string; message: string }[] = [];
+    entries.forEach((entry) => {
+      if (store.get().some((existing) => existing.name === entry.name)) {
+        errors.push({ name: entry.name, message: "A key with this name already exists" });
+        return;
+      }
+      const created = key(
+        crypto.randomUUID(),
+        entry.name,
+        "",
+        entry.keyUsage,
+        entry.algorithm,
+        new Date().toISOString(),
+        {
+          isExportable: entry.isExportable ?? true,
+          hasDeleteProtection: entry.hasDeleteProtection ?? false
+        }
+      );
+      store.update((current) => [...current, created]);
+      imported.push({ id: created.id, name: created.name });
+    });
+    return { keys: imported, errors };
+  })
 };
 
 export const kmsDemoKeyCount = () => store.get().length;

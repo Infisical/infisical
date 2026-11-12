@@ -3,21 +3,29 @@ import { useGitLabConnectionListGroups } from "@app/hooks/api/appConnections/git
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
   useCreateSecretScanningDataSource,
+  useAddAllSecretScanningResources,
+  useAddSecretScanningResource,
   useDeleteSecretScanningDataSource,
+  useRemoveSecretScanningResource,
+  useTriggerSecretScanningDataSource,
   useUpdateMultipleSecretScanningFinding,
   useUpdateSecretScanningConfig,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2/mutations";
 import {
   useGetSecretScanningConfig,
+  useGetSecretScanningDataSource,
   useGetSecretScanningInstanceState,
   useGetSecretScanningProjectId,
   useGetSecretScanningUnresolvedFindingCount,
+  useListSecretScanningAvailableResources,
   useListSecretScanningBasicDataSources,
   useListSecretScanningBasicResources,
   useListSecretScanningDataSources,
   useListSecretScanningFindings,
-  useSecretScanningDataSourceOptions
+  useSecretScanningDataSourceOptions,
+  useListSecretScanningResources,
+  useListSecretScanningScans
 } from "@app/hooks/api/secretScanningV2/queries";
 
 import type { SecretScanningAdapter } from "./contract";
@@ -38,8 +46,16 @@ export const secretScanningLive: SecretScanningAdapter = {
   useCreateDataSource: useCreateSecretScanningDataSource,
   useConfig: (projectId) => useGetSecretScanningConfig(projectId),
   useUpdateConfig: useUpdateSecretScanningConfig,
+  useDataSource: useGetSecretScanningDataSource,
   useUpdateDataSource: useUpdateSecretScanningDataSource,
   useDeleteDataSource: useDeleteSecretScanningDataSource,
+  useTriggerScan: useTriggerSecretScanningDataSource,
   useResources: useListSecretScanningBasicResources,
+  useResourcesWithDetails: useListSecretScanningResources,
+  useAvailableResources: useListSecretScanningAvailableResources,
+  useAddResource: useAddSecretScanningResource,
+  useAddAllResources: useAddAllSecretScanningResources,
+  useRemoveResource: useRemoveSecretScanningResource,
+  useScans: useListSecretScanningScans,
   useUpdateFindings: useUpdateMultipleSecretScanningFinding
 };

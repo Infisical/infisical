@@ -6,14 +6,18 @@ import {
   SecretScanningFindingOrderBy,
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus,
-  SecretScanningScanStatus
+  SecretScanningResourceOrderBy,
+  SecretScanningScanStatus,
+  SecretScanningScanType
 } from "@app/hooks/api/secretScanningV2/enums";
 import type {
   TSecretScanningDataSource,
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
-  TSecretScanningResource
+  TSecretScanningResource,
+  TSecretScanningResourceWithDetails,
+  TSecretScanningScanWithDetails
 } from "@app/hooks/api/secretScanningV2/types";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
@@ -127,6 +131,15 @@ const resources: TSecretScanningResource[] = seeded.flatMap((source, sourceIndex
 );
 
 const dataSourceStore = createFixtureStore(seeded);
+const resourceStore = createFixtureStore(resources);
+
+const unlisted: Record<string, string[]> = {
+  "acme-corp": ["acme-corp/mobile-app", "acme-corp/docs-site"],
+  "acme-labs": ["acme-labs/llm-evals"],
+  "acme-oss": [],
+  "acme-platform": ["acme-platform/observability"],
+  "acme-legacy": ["acme-legacy/batch-jobs"]
+};
 
 type Seed = [
   repo: string,
@@ -400,6 +413,97 @@ const configStore = createFixtureStore({
 });
 
 let created = 0;
+const scanSeed: TSecretScanningScanWithDetails[] = resources.flatMap((resource, index) => {
+  const source = seeded.find((entry) => entry.id === resource.dataSourceId) ?? seeded[0];
+  const failed = source.lastScanStatus === SecretScanningScanStatus.Failed;
+  const lastAt = new Date(source.lastScannedAt ?? ago(60)).getTime();
+  const at = (offsetMinutes: number) => new Date(lastAt - offsetMinutes * 60_000).toISOString();
+  return [
+    {
+      id: uuid("a6", index * 2 + 1),
+      resourceId: resource.id,
+      resourceName: resource.name,
+      type: SecretScanningScanType.Realtime,
+      createdAt: at(index * 7),
+      startedAt: at(index * 7),
+      completedAt: failed ? null : at(index * 7 - 1),
+      status: failed ? SecretScanningScanStatus.Failed : SecretScanningScanStatus.Completed,
+      statusMessage: failed ? source.lastScanStatusMessage : null,
+      unresolvedFindings: index % 3 === 0 ? 1 : 0,
+      resolvedFindings: index % 4 === 0 ? 1 : 0
+    },
+    {
+      id: uuid("a6", index * 2 + 2),
+      resourceId: resource.id,
+      resourceName: resource.name,
+      type: SecretScanningScanType.Historical,
+      createdAt: at(60 * 24 * 30 + index * 11),
+      startedAt: at(60 * 24 * 30 + index * 11),
+      completedAt: at(60 * 24 * 30 + index * 11 - 4),
+      status: SecretScanningScanStatus.Completed,
+      statusMessage: null,
+      unresolvedFindings: 1 + (index % 2),
+      resolvedFindings: index % 3
+    }
+  ];
+});
+const scanStore = createFixtureStore(scanSeed);
+
+const resourceSortKey: Record<
+  SecretScanningResourceOrderBy,
+  (entry: TSecretScanningResourceWithDetails) => string | number
+> = {
+  [SecretScanningResourceOrderBy.Name]: (entry) => entry.name.toLowerCase(),
+  [SecretScanningResourceOrderBy.Status]: (entry) => -entry.unresolvedFindings,
+  [SecretScanningResourceOrderBy.LastScanned]: (entry) => entry.lastScannedAt ?? ""
+};
+
+const queueScans = (dataSourceId: string, resourceId?: string) => {
+  const targets = resourceStore
+    .get()
+    .filter(
+      (entry) => entry.dataSourceId === dataSourceId && (!resourceId || entry.id === resourceId)
+    );
+  const now = new Date().toISOString();
+  scanStore.update((entries) => [
+    ...targets.map((entry) => ({
+      id: crypto.randomUUID(),
+      resourceId: entry.id,
+      resourceName: entry.name,
+      type: SecretScanningScanType.Historical,
+      createdAt: now,
+      startedAt: null,
+      completedAt: null,
+      status: SecretScanningScanStatus.Queued,
+      statusMessage: null,
+      unresolvedFindings: 0,
+      resolvedFindings: 0
+    })),
+    ...entries
+  ]);
+};
+
+const addResources = (dataSourceId: string, names: string[]) => {
+  const now = new Date().toISOString();
+  const added = names.map((name) => ({
+    id: crypto.randomUUID(),
+    dataSourceId,
+    externalId: String(Math.floor(Math.random() * 1_000_000)),
+    name,
+    createdAt: now,
+    updatedAt: now
+  }));
+  resourceStore.update((entries) => [...entries, ...added]);
+  return added.map(({ id, name }) => ({ id, name }));
+};
+
+const availableFor = (dataSourceId: string, included: TSecretScanningResource[]) => {
+  const source = dataSourceStore.get().find((entry) => entry.id === dataSourceId);
+  const names = new Set(included.map((entry) => entry.name));
+  return [...(repos[source?.name ?? ""] ?? []), ...(unlisted[source?.name ?? ""] ?? [])].map(
+    (name, index) => ({ externalId: String(5_100_000 + index), name, isIncluded: names.has(name) })
+  );
+};
 
 export const secretScanningDemo: SecretScanningAdapter = {
   useProjectId: () => ({ data: projectId, isPending: false, error: null }),
@@ -438,7 +542,8 @@ export const secretScanningDemo: SecretScanningAdapter = {
     return {
       data: dataSourceStore.use().map((source) => ({
         ...source,
-        resourceCount: resources.filter((entry) => entry.dataSourceId === source.id).length,
+        resourceCount: resourceStore.use().filter((entry) => entry.dataSourceId === source.id)
+          .length,
         unresolvedFindings: source.lastScannedAt
           ? findings.filter(
               (entry) =>
@@ -540,11 +645,100 @@ export const secretScanningDemo: SecretScanningAdapter = {
     store.update((entries) => entries.filter((entry) => entry.dataSourceId !== dataSourceId));
     return removed;
   }),
-  useResources: ({ dataSourceId }) => ({
-    data: resources.filter((entry) => entry.dataSourceId === dataSourceId),
+  useDataSource: ({ dataSourceId }) => ({
+    data: dataSourceStore.use().find((entry) => entry.id === dataSourceId),
     isPending: false,
     error: null
   }),
+  useTriggerScan: fixtureMutation(({ dataSourceId, resourceId }) => {
+    queueScans(dataSourceId, resourceId);
+    return dataSourceStore
+      .get()
+      .find((entry) => entry.id === dataSourceId) as TSecretScanningDataSource;
+  }),
+  useResources: ({ dataSourceId }) => ({
+    data: resourceStore.use().filter((entry) => entry.dataSourceId === dataSourceId),
+    isPending: false,
+    error: null
+  }),
+  useResourcesWithDetails: ({ dataSourceId, search, orderBy, orderDirection, offset, limit }) => {
+    const findings = store.use();
+    const scans = scanStore.use();
+    const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
+    const query = search?.toLowerCase() ?? "";
+    const matched = resourceStore
+      .use()
+      .filter(
+        (entry) => entry.dataSourceId === dataSourceId && entry.name.toLowerCase().includes(query)
+      )
+      .map((entry) => {
+        const last = scans.find((scan) => scan.resourceId === entry.id);
+        return {
+          ...entry,
+          lastScannedAt: last?.createdAt ?? "",
+          lastScanStatus: last?.status ?? SecretScanningScanStatus.Queued,
+          lastScanStatusMessage: last?.statusMessage ?? null,
+          unresolvedFindings: findings.filter(
+            (item) =>
+              item.resourceId === entry.id && item.status === SecretScanningFindingStatus.Unresolved
+          ).length
+        } as TSecretScanningResourceWithDetails;
+      })
+      .sort((a, b) => {
+        const left = resourceSortKey[orderBy](a);
+        const right = resourceSortKey[orderBy](b);
+        if (left === right) return 0;
+        return (left < right ? -1 : 1) * direction;
+      });
+    return {
+      data: { resources: matched.slice(offset, offset + limit), totalCount: matched.length },
+      isPending: false,
+      error: null
+    };
+  },
+  useAvailableResources: ({ dataSourceId }) => ({
+    data: availableFor(
+      dataSourceId,
+      resourceStore.use().filter((entry) => entry.dataSourceId === dataSourceId)
+    ),
+    isPending: false,
+    error: null,
+    refetch: () => undefined
+  }),
+  useAddResource: fixtureMutation(({ dataSourceId, resourceName }) =>
+    addResources(dataSourceId, [resourceName])
+  ),
+  useAddAllResources: fixtureMutation(({ dataSourceId }) =>
+    addResources(
+      dataSourceId,
+      availableFor(
+        dataSourceId,
+        resourceStore.get().filter((entry) => entry.dataSourceId === dataSourceId)
+      )
+        .filter((entry) => !entry.isIncluded)
+        .map((entry) => entry.name)
+    )
+  ),
+  useRemoveResource: fixtureMutation(({ resourceId }) => {
+    const removed = resourceStore.get().find((entry) => entry.id === resourceId);
+    resourceStore.update((entries) => entries.filter((entry) => entry.id !== resourceId));
+    scanStore.update((entries) => entries.filter((entry) => entry.resourceId !== resourceId));
+    store.update((entries) => entries.filter((entry) => entry.resourceId !== resourceId));
+    return { id: resourceId, name: removed?.name ?? "" };
+  }),
+  useScans: ({ dataSourceId }) => {
+    const ids = new Set(
+      resourceStore
+        .use()
+        .filter((entry) => entry.dataSourceId === dataSourceId)
+        .map((entry) => entry.id)
+    );
+    return {
+      data: scanStore.use().filter((entry) => ids.has(entry.resourceId)),
+      isPending: false,
+      error: null
+    };
+  },
   useUpdateFindings: fixtureMutation((updates) => {
     store.update((entries) =>
       entries.map((entry) => {
@@ -562,7 +756,7 @@ export const secretScanningDemo: SecretScanningAdapter = {
 
 export const secretScanningDemoCounts = () => ({
   dataSourcesCount: dataSourceStore.get().length,
-  resourcesCount: resources.length,
+  resourcesCount: resourceStore.get().length,
   findingsCount: store.get().length,
   projectsCount: 1
 });

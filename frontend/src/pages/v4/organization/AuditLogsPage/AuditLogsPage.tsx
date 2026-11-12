@@ -47,6 +47,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, v4Path } from "../../links";
+import { AuditLogStreamsTab } from "./streams/streams";
 
 const PAGE_SIZE = 500;
 const rowHeight = 48;
@@ -607,7 +608,7 @@ export const AuditLogsPage = () => {
             onValueChange={(next) =>
               navigate({
                 to:
-                  mode === "live" && next !== "audit-logs"
+                  mode === "live" && next === "settings"
                     ? "/organizations/$orgId/audit-logs"
                     : v4Path("/organizations/$orgId/audit-logs"),
                 params: { orgId },
@@ -618,9 +619,9 @@ export const AuditLogsPage = () => {
           />
         }
       />
-      {activeTab === "audit-logs" ? (
-        <AuditLogsTab />
-      ) : (
+      {activeTab === "audit-logs" && <AuditLogsTab />}
+      {activeTab === "streams" && <AuditLogStreamsTab />}
+      {activeTab === "settings" && (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>This tab isn&apos;t in v4 yet</EmptyTitle>
