@@ -61,7 +61,11 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
   // closing a finding also closes the project's other unresolved findings with the same secret value
   const isClosing = Boolean(status && status !== SecretScanningFindingStatus.Unresolved);
 
-  const { data: sameValueData } = useListSecretScanningFindings(
+  const {
+    data: sameValueData,
+    isLoading: isLoadingSameValue,
+    isError: isSameValueError
+  } = useListSecretScanningFindings(
     {
       projectId: findings[0]?.projectId ?? "",
       status: SecretScanningFindingStatus.Unresolved,
@@ -86,6 +90,9 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
   const sameValueFindings = isClosing ? (sameValueData?.findings ?? []) : [];
   const sameValueCount = isClosing ? (sameValueData?.totalCount ?? 0) : 0;
   const unlistedCount = sameValueCount - sameValueFindings.length;
+  // the warning is only useful if it is seen before confirming, so confirming waits for the check
+  const isCheckingSameValue = isClosing && isLoadingSameValue;
+  const hasSameValueError = isClosing && isSameValueError;
 
   const onSubmit = ({ comment }: TFormData) => {
     const triageComment = comment || null;
@@ -122,7 +129,16 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          {sameValueCount > 0 && (
+          {hasSameValueError && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Could not check for findings with the same secret value</AlertTitle>
+              <AlertDescription>
+                Other unresolved findings with the same secret value may also be marked as {name}.
+              </AlertDescription>
+            </Alert>
+          )}
+          {!hasSameValueError && sameValueCount > 0 && (
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertTitle>
@@ -178,8 +194,8 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
             <Button
               variant="ss"
               type="submit"
-              isPending={updateFindings.isPending}
-              isDisabled={updateFindings.isPending}
+              isPending={updateFindings.isPending || isCheckingSameValue}
+              isDisabled={updateFindings.isPending || isCheckingSameValue}
             >
               Confirm
             </Button>
