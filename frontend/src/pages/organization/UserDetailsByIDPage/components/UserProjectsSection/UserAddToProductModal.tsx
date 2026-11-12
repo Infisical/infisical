@@ -177,7 +177,7 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
 
   return (
     <Dialog open={popUp?.addUserToProduct?.isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent isPending={isSubmitting}>
         <DialogHeader>
           <DialogTitle>Add User to Product</DialogTitle>
           <DialogDescription>
@@ -285,7 +285,12 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
             />
           )}
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              isDisabled={isSubmitting}
+              onClick={() => handleOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
