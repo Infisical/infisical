@@ -20,6 +20,7 @@ import {
   ApprovalRequestStatus
 } from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
+import { pkiApplicationPolicyHooksFactory, TPkiApplicationPolicyHooksDep } from "../pki-application-policy-hooks";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
@@ -32,7 +33,7 @@ type TCertRequestApprovalResourceDep = {
     "renewApprovedCertificate" | "recordRejectedRenewal"
   >;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-};
+} & TPkiApplicationPolicyHooksDep;
 
 export const certRequestApprovalResourceFactory = ({
   approvalPolicyDAL,
@@ -40,12 +41,17 @@ export const certRequestApprovalResourceFactory = ({
   certificateRequestDAL,
   certificateRequestService,
   certificateRenewalService,
-  telemetryService
+  telemetryService,
+  membershipDAL,
+  pkiApplicationProfileDAL,
+  certificateProfileDAL
 }: TCertRequestApprovalResourceDep): TApprovalResource<
   TCertRequestPolicyInputs,
   TCertRequestPolicy,
   TCertRequestRequestData
 > => ({
+  ...pkiApplicationPolicyHooksFactory({ membershipDAL, pkiApplicationProfileDAL, certificateProfileDAL }),
+
   matchPolicy: async (projectId, inputs) => {
     const policies = await approvalPolicyDAL.findByProjectId(ApprovalPolicyType.CertRequest, projectId);
 

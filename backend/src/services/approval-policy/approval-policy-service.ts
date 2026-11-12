@@ -56,6 +56,7 @@ import {
   ApproverType,
   EnforcementLevel
 } from "./approval-policy-enums";
+import { assertPolicyStepsCanApprove } from "./approval-policy-fns";
 import {
   ApprovalAccessStatus,
   BreakGlassBypassMetadata,
@@ -705,6 +706,15 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
+    $assertSupportsAutoApproval(policyType, autoApproval);
+    assertPolicyStepsCanApprove({
+      steps,
+      hasAutoApprovalRules: Boolean(autoApproval?.rules.length),
+      supportsAutoApproval: Boolean(resources[policyType]?.supportsAutoApproval)
+    });
+
+    await resources[policyType]?.validateConditions?.({ projectId, scopeId: dbScopeId, conditions });
+
     await $verifyPolicyActors({
       policyType,
       projectId,
@@ -715,7 +725,6 @@ export const approvalPolicyServiceFactory = ({
       bypassers: bypassers ?? []
     });
 
-    $assertSupportsAutoApproval(policyType, autoApproval);
     const autoApprovalConfig = autoApproval
       ? await autoApprovalService.validateConfig({ projectId, config: autoApproval, actor })
       : undefined;
@@ -907,6 +916,33 @@ export const approvalPolicyServiceFactory = ({
       });
     }
 
+    $assertSupportsAutoApproval(policy.type as ApprovalPolicyType, autoApproval);
+
+    // Either one can leave the policy unable to approve anything: new steps, or new rules on a policy with no steps.
+    if (steps !== undefined || autoApproval !== undefined) {
+      const [effectiveSteps, hasAutoApprovalRules] = await Promise.all([
+        steps ?? approvalPolicyDAL.findStepsByPolicyId(policyId),
+        autoApproval
+          ? autoApproval.rules.length > 0
+          : autoApprovalService
+              .findByPolicyIds([policyId])
+              .then((stored) => Boolean(stored.get(policyId)?.rules.length))
+      ]);
+      assertPolicyStepsCanApprove({
+        steps: effectiveSteps,
+        hasAutoApprovalRules,
+        supportsAutoApproval: Boolean(resources[policy.type as ApprovalPolicyType]?.supportsAutoApproval)
+      });
+    }
+
+    if (conditions !== undefined) {
+      await resources[policy.type as ApprovalPolicyType]?.validateConditions?.({
+        projectId: policy.projectId,
+        scopeId: policyScopeId,
+        conditions
+      });
+    }
+
     await $verifyPolicyActors({
       policyType: policy.type as ApprovalPolicyType,
       projectId: policy.projectId,
@@ -917,7 +953,6 @@ export const approvalPolicyServiceFactory = ({
       bypassers: bypassers ?? []
     });
 
-    $assertSupportsAutoApproval(policy.type as ApprovalPolicyType, autoApproval);
     const autoApprovalConfig = autoApproval
       ? await autoApprovalService.validateConfig({ projectId: policy.projectId, config: autoApproval, actor })
       : undefined;

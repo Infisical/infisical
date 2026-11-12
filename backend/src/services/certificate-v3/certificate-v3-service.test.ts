@@ -309,7 +309,9 @@ describe("CertificateV3Service", () => {
     mockCertificateIssuanceQueue.queueCertificateIssuance.mockResolvedValue(undefined);
     mockCertificateRequestService.createCertificateRequest.mockResolvedValue({ id: "cert-req-123" });
     mockApprovalPolicyDAL.findByProjectId.mockResolvedValue([]);
-    mockApprovalPolicyDAL.findStepsByPolicyId.mockResolvedValue([]);
+    mockApprovalPolicyDAL.findStepsByPolicyId.mockResolvedValue([
+      { id: "policy-step-1", stepNumber: 1, requiredApprovals: 1, approvers: [{ type: "user", id: "approver-1" }] }
+    ]);
     mockCertificateRequestDAL.updateById.mockResolvedValue({ id: "cert-req-123" });
     mockCertificateRequestDAL.findById.mockResolvedValue({ id: "cert-req-123" });
     mockCertificateRequestDAL.create.mockResolvedValue({ id: "cert-req-123", createdAt: new Date() });
