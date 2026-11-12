@@ -264,7 +264,7 @@ For an MCP server, `request` describes the HTTP request, and `mcp` lists the cal
 }
 ```
 
-`parsed` is `false` if the proxy couldn't read the calls from the body, for example because the body was cut short or compressed.
+`parsed` is `false` if the proxy couldn't read the calls from the body, for example because the body was cut short, compressed, or declared in a character set other than UTF-8.
 
 For a database or SSH service, `request` is `null`, and `connection` describes the server the agent is connecting to:
 
