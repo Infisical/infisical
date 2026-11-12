@@ -16,19 +16,32 @@ export const bitbucketApiTokenConnectionFormSchema = genericAppConnectionFieldsS
   })
 });
 
-export const gitLabAccessTokenConnectionFormSchema = genericAppConnectionFieldsSchema.extend({
+const gitLabInstanceUrlSchema = z
+  .string()
+  .trim()
+  .transform((value) => value || undefined)
+  .refine((value) => !value || z.string().url().safeParse(value).success, {
+    message: "Enter a valid URL"
+  })
+  .optional();
+
+const gitLabOAuthConnectionFormSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.GitLab),
+  method: z.literal(GitLabConnectionMethod.OAuth),
+  credentials: z.object({ instanceUrl: gitLabInstanceUrlSchema })
+});
+
+const gitLabAccessTokenConnectionFormSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GitLab),
   method: z.literal(GitLabConnectionMethod.AccessToken),
   credentials: z.object({
-    instanceUrl: z
-      .string()
-      .trim()
-      .transform((value) => value || undefined)
-      .refine((value) => !value || z.string().url().safeParse(value).success, {
-        message: "Enter a valid URL"
-      })
-      .optional(),
+    instanceUrl: gitLabInstanceUrlSchema,
     accessTokenType: z.nativeEnum(GitLabAccessTokenType),
     accessToken: z.string().min(1, "Access token required")
   })
 });
+
+export const gitLabConnectionFormSchema = z.discriminatedUnion("method", [
+  gitLabAccessTokenConnectionFormSchema,
+  gitLabOAuthConnectionFormSchema
+]);

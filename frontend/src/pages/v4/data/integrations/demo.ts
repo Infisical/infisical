@@ -3,10 +3,12 @@ import type { TAppConnection } from "@app/hooks/api/appConnections/types";
 import type { TAppConnectionOption } from "@app/hooks/api/appConnections/types/app-options";
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
 import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { GcpConnectionMethod } from "@app/hooks/api/appConnections/types/gcp-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
 import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
+import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import { VercelConnectionMethod } from "@app/hooks/api/appConnections/types/vercel-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -26,6 +28,12 @@ const options = [
     app: AppConnection.GitHubRadar,
     methods: [GitHubRadarConnectionMethod.App],
     appClientSlug: "infisical-radar-demo"
+  },
+  { app: AppConnection.Bitbucket, methods: [BitbucketConnectionMethod.ApiToken] },
+  {
+    app: AppConnection.GitLab,
+    methods: [GitLabConnectionMethod.AccessToken, GitLabConnectionMethod.OAuth],
+    oauthClientId: "infisical-gitlab-demo"
   },
   { app: AppConnection.Vercel, methods: [VercelConnectionMethod.ApiToken] },
   { app: AppConnection.GCP, methods: [GcpConnectionMethod.ServiceAccountImpersonation] },
