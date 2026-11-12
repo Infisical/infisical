@@ -48,10 +48,20 @@ To use the template, choose it when you [add an account](/documentation/platform
 | **Require Reason** | Users must give a reason before they connect |
 | **Max Session Duration** | Infisical ends the session after this many seconds (60 to 86,400, or 900 to 3,600 for AWS IAM) |
 | **Command Blocking** | Infisical rejects commands or SQL statements that match one of these regular expressions (SSH, Snowflake, and ClickHouse only) |
+| **Output Masking** | Infisical replaces text that matches the selected presets or your regular expressions with `[MASKED]` before the user sees it (SSH and PostgreSQL only) |
 
 **Allow Auto-Approval** and **Allow Break-Glass** only work together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns off **Allow Break-Glass**.
 
 Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overview) can't complete an MFA challenge, so they can't connect to accounts whose template has **Require MFA** on. If an agent needs an account, use **Require Approval** instead.
+
+### Output masking
+
+Infisical can only mask text, so on accounts that use **Output Masking**, it blocks the data it can't mask:
+
+- **SSH:** File transfers (SFTP and SCP) and port forwarding
+- **PostgreSQL:** Binary `COPY` output (Infisical masks text and CSV `COPY` output)
+
+In PostgreSQL query results, if a number or another value that isn't text matches, the user sees `NULL` instead. Sessions on these accounts fail to start until you update the account's Gateway to the latest version.
 
 ## System settings
 

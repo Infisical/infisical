@@ -10,8 +10,28 @@ export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
-  CommandBlocking = "command-blocking"
+  CommandBlocking = "command-blocking",
+  OutputMasking = "output-masking"
 }
+
+export enum PamOutputMaskingPreset {
+  Jwt = "jwt",
+  CreditCard = "credit-card",
+  Ssn = "ssn",
+  Email = "email",
+  IpAddress = "ip-address",
+  PhoneNumber = "phone-number"
+}
+
+// Most specific first, so a broader pattern can't split a value a narrower one would mask whole.
+export const PAM_OUTPUT_MASKING_PRESET_PATTERNS: Record<PamOutputMaskingPreset, string> = {
+  [PamOutputMaskingPreset.Jwt]: String.raw`\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*`,
+  [PamOutputMaskingPreset.CreditCard]: String.raw`\b(?:\d{4}[ -]?){3}\d{4}\b|\b3[47]\d{2}[ -]?\d{6}[ -]?\d{5}\b`,
+  [PamOutputMaskingPreset.Ssn]: String.raw`\b\d{3}-\d{2}-\d{4}\b`,
+  [PamOutputMaskingPreset.Email]: String.raw`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`,
+  [PamOutputMaskingPreset.IpAddress]: String.raw`\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b`,
+  [PamOutputMaskingPreset.PhoneNumber]: String.raw`(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,4}\)|\b\d{2,4})[ .-]\d{3,4}[ .-]\d{3,4}\b`
+};
 
 export enum PamSettingType {
   SessionLogMasking = "session-log-masking"
@@ -51,6 +71,11 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
       },
       { message: "One or more patterns are not valid regular expressions" }
     );
+
+const PamOutputMaskingSchema = z.object({
+  presets: z.array(z.nativeEnum(PamOutputMaskingPreset)).default([]),
+  patterns: patternsStringSchema().default("")
+});
 
 type TPamPolicyTypeOverride = {
   description?: string;
@@ -121,6 +146,18 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
       },
       [PamAccountType.ClickHouse]: {
         description: "Matching SQL statements will be rejected (one regex per line)."
+      }
+    }
+  },
+  [PamPolicyType.OutputMasking]: {
+    label: "Output Masking",
+    description: "Matching output is replaced with [MASKED] before the user sees it.",
+    appliesTo: [PamAccountType.SSH, PamAccountType.Postgres],
+    schema: PamOutputMaskingSchema,
+    typeOverrides: {
+      [PamAccountType.Postgres]: {
+        description:
+          "Matching text in query results is replaced with [MASKED], and other matching values are returned as NULL."
       }
     }
   }
@@ -211,6 +248,7 @@ const PamSessionLogMaskingRuleSchema = PamPolicyRulePatternSchema.extend({
 export const PamPolicyRulesSchema = z
   .object({
     [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
+    [PamPolicyType.OutputMasking]: PamPolicyRulePatternSchema.optional(),
     [PamSettingType.SessionLogMasking]: PamSessionLogMaskingRuleSchema.optional()
   })
   .nullable()
@@ -226,10 +264,12 @@ export type TPamPolicyRules = z.infer<typeof PamPolicyRulesSchema>;
  */
 export const buildPamPolicyRules = ({
   commandBlockingPatterns,
+  outputMaskingPatterns = [],
   maskingPatterns,
   maskingBuiltInDetection
 }: {
   commandBlockingPatterns: string[];
+  outputMaskingPatterns?: string[];
   maskingPatterns: string[];
   maskingBuiltInDetection: boolean;
 }): TPamPolicyRules => {
@@ -237,6 +277,10 @@ export const buildPamPolicyRules = ({
 
   if (commandBlockingPatterns.length > 0) {
     rules[PamPolicyType.CommandBlocking] = { patterns: commandBlockingPatterns };
+  }
+
+  if (outputMaskingPatterns.length > 0) {
+    rules[PamPolicyType.OutputMasking] = { patterns: outputMaskingPatterns };
   }
 
   if (maskingBuiltInDetection || maskingPatterns.length > 0) {
@@ -247,6 +291,18 @@ export const buildPamPolicyRules = ({
   }
 
   return Object.keys(rules).length > 0 ? (rules as TPamPolicyRules) : null;
+};
+
+export const resolveOutputMaskingPatterns = (policyMap: unknown): string[] => {
+  const masking = resolvePolicy(policyMap, PamPolicyType.OutputMasking) as z.infer<
+    typeof PamOutputMaskingSchema
+  > | null;
+  if (!masking) return [];
+
+  const presets = (Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS) as PamOutputMaskingPreset[])
+    .filter((preset) => masking.presets.includes(preset))
+    .map((preset) => PAM_OUTPUT_MASKING_PRESET_PATTERNS[preset]);
+  return [...presets, ...splitPatternString(masking.patterns)];
 };
 
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {

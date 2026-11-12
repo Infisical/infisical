@@ -124,7 +124,17 @@ export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
-  CommandBlocking = "command-blocking"
+  CommandBlocking = "command-blocking",
+  OutputMasking = "output-masking"
+}
+
+export enum PamOutputMaskingPreset {
+  Email = "email",
+  PhoneNumber = "phone-number",
+  Ssn = "ssn",
+  CreditCard = "credit-card",
+  IpAddress = "ip-address",
+  Jwt = "jwt"
 }
 
 export enum SessionChannelType {

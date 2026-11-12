@@ -1,6 +1,7 @@
 import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
@@ -58,6 +59,7 @@ import {
   PamPolicyType,
   policyAppliesTo,
   resolveAccessControls,
+  resolveOutputMaskingPatterns,
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
@@ -104,6 +106,7 @@ type TPamSessionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   userDAL: Pick<TUserDALFactory, "findById">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
@@ -130,6 +133,7 @@ export const pamSessionServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayV2DAL,
   gatewayPoolService,
   userDAL,
   pamSessionExpirationService,
@@ -209,6 +213,16 @@ export const pamSessionServiceFactory = ({
     await checkSession(session, ResourcePermissionPamResourceActions.ViewSessions, ctx);
 
     return session;
+  };
+
+  // An older gateway ignores rules it does not know, which would show the user unmasked data.
+  const assertGatewayEnforcesOutputMasking = async (gatewayId: string) => {
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if ((gateway?.capabilities as { outputMasking?: boolean } | null)?.outputMasking !== true) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway?.name ?? gatewayId}' must be updated to the latest version before it can enforce this account's output masking`
+      });
+    }
   };
 
   // Called by the gateway
@@ -382,6 +396,9 @@ export const pamSessionServiceFactory = ({
 
     const policyRules = buildPamPolicyRules({
       commandBlockingPatterns,
+      outputMaskingPatterns: policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType)
+        ? resolveOutputMaskingPatterns(account.templatePolicies)
+        : [],
       maskingPatterns: parsedSettings.success ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns) : [],
       // Never send a rule the gateway has no way to honour.
       maskingBuiltInDetection:
@@ -389,6 +406,10 @@ export const pamSessionServiceFactory = ({
         parsedSettings.success &&
         parsedSettings.data.sessionLogMaskingBuiltInDetection
     });
+
+    if (policyRules?.[PamPolicyType.OutputMasking]) {
+      await assertGatewayEnforcesOutputMasking(gatewayId);
+    }
 
     const normalizedConnectionDetails = buildSessionGatewayConnectionDetails(
       account.accountType as PamAccountType,
@@ -718,6 +739,13 @@ export const pamSessionServiceFactory = ({
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });
+    }
+
+    if (
+      policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType) &&
+      resolveOutputMaskingPatterns(account.templatePolicies).length > 0
+    ) {
+      await assertGatewayEnforcesOutputMasking(effectiveGatewayId);
     }
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
