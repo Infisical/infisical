@@ -1,16 +1,16 @@
 import { describe, expect, test } from "vitest";
 
-import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
-
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultInlineServiceSecretsRow } from "./agent-vault-session-inline-service-dal";
 import {
   assertNoAccessBundleConflicts,
   inlineServiceDisplayName,
+  openInlineServiceSecrets,
   prepareInlineServices,
   toInlineServiceSummary,
   toResolvedInlineService
@@ -24,11 +24,15 @@ const httpBearer = (overrides: Partial<TAgentVaultInlineServiceInput> = {}): TAg
   ...overrides
 });
 
-const storedRow = (overrides: Partial<TAgentVaultSessionInlineServices> = {}): TAgentVaultSessionInlineServices => ({
+const storedRow = (
+  overrides: Partial<TAgentVaultInlineServiceSecretsRow> = {}
+): TAgentVaultInlineServiceSecretsRow => ({
   id: "inline-1",
+  projectId: "project-1",
   sessionId: "session-1",
   position: 0,
   name: null,
+  description: null,
   type: AgentVaultServiceType.Http,
   config: {},
   hostPattern: "api.example.com",
@@ -36,9 +40,12 @@ const storedRow = (overrides: Partial<TAgentVaultSessionInlineServices> = {}): T
   allowedPathPrefixes: null,
   credentialType: AgentVaultCredentialType.Bearer,
   credentialConfig: { type: AgentVaultCredentialType.Bearer, headerName: "Authorization", headerPrefix: "Bearer" },
+  allowedTools: null,
+  memberProvidedFields: null,
   customHeaders: [],
   substitutions: [],
-  encryptedSecrets: null,
+  encryptedCredential: null,
+  secretsDeletedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides
@@ -246,7 +253,7 @@ describe("inline service reads", () => {
   test("the summary carries no secret, nor anything else stored beside the credential", () => {
     const summary = toInlineServiceSummary(
       storedRow({
-        encryptedSecrets: Buffer.from("sealed"),
+        encryptedCredential: Buffer.from("sealed"),
         credentialConfig: {
           type: AgentVaultCredentialType.Bearer,
           headerName: "Authorization",
@@ -255,7 +262,7 @@ describe("inline service reads", () => {
         }
       })
     );
-    expect(summary).not.toHaveProperty("encryptedSecrets");
+    expect(summary).not.toHaveProperty("encryptedCredential");
     expect(summary.credential).toEqual({
       type: AgentVaultCredentialType.Bearer,
       headerName: "Authorization",
@@ -287,7 +294,7 @@ describe("toResolvedInlineService", () => {
         storedRow({
           credentialType: AgentVaultCredentialType.Passthrough,
           credentialConfig: { type: AgentVaultCredentialType.Passthrough },
-          customHeaders: [{ name: "X-Team", prefix: "" }]
+          customHeaders: [{ name: "X-Team", prefix: "", encryptedValue: null }]
         }),
         null
       )
@@ -308,7 +315,7 @@ describe("toResolvedInlineService", () => {
 
   test("leaves out a service whose sealed values don't line up with its stored names", () => {
     expect(
-      toResolvedInlineService(storedRow({ customHeaders: [{ name: "X-Team", prefix: "" }] }), {
+      toResolvedInlineService(storedRow({ customHeaders: [{ name: "X-Team", prefix: "", encryptedValue: null }] }), {
         credential: { value: "token" },
         customHeaders: [],
         substitutions: []
@@ -316,7 +323,11 @@ describe("toResolvedInlineService", () => {
     ).toBeNull();
     expect(
       toResolvedInlineService(
-        storedRow({ substitutions: [{ placeholder: "ACME_KEY", surfaces: [AgentVaultSubstitutionSurface.Header] }] }),
+        storedRow({
+          substitutions: [
+            { placeholder: "ACME_KEY", surfaces: [AgentVaultSubstitutionSurface.Header], encryptedValue: null }
+          ]
+        }),
         { credential: { value: "token" }, customHeaders: [], substitutions: [] }
       )
     ).toBeNull();
@@ -463,5 +474,48 @@ describe("database and SSH services sent with a session", () => {
         substitutions: []
       })
     ).toBeNull();
+  });
+});
+
+describe("openInlineServiceSecrets", () => {
+  // Stands in for the project cipher: the "sealed" bytes are the JSON itself.
+  const seal = (value: unknown) => Buffer.from(JSON.stringify(value));
+  const open = (sealed: Buffer) => JSON.parse(sealed.toString()) as unknown;
+
+  test("opens each sealed value, in the order of the names beside them", () => {
+    const row = storedRow({
+      encryptedCredential: seal({ value: "sk-live" }),
+      customHeaders: [
+        { name: "X-Team", prefix: "", encryptedValue: seal({ value: "payments" }) },
+        { name: "X-Run", prefix: "", encryptedValue: seal({ value: "7" }) }
+      ],
+      substitutions: [{ placeholder: "__ORG__", surfaces: ["path"], encryptedValue: seal({ value: "acme" }) }]
+    });
+    expect(openInlineServiceSecrets(row, open)).toEqual({
+      credential: { value: "sk-live" },
+      customHeaders: ["payments", "7"],
+      substitutions: ["acme"]
+    });
+  });
+
+  test("is null once the session ended, or when any value is missing", () => {
+    const sealed = storedRow({ encryptedCredential: seal({ value: "sk-live" }) });
+    expect(openInlineServiceSecrets({ ...sealed, secretsDeletedAt: new Date() }, open)).toBeNull();
+    expect(openInlineServiceSecrets({ ...sealed, encryptedCredential: null }, open)).toBeNull();
+    expect(
+      openInlineServiceSecrets(
+        { ...sealed, customHeaders: [{ name: "X-Team", prefix: "", encryptedValue: null }] },
+        open
+      )
+    ).toBeNull();
+  });
+
+  test("a pass-through service with nothing to seal has no secrets and still goes out", () => {
+    const row = storedRow({
+      credentialType: AgentVaultCredentialType.Passthrough,
+      credentialConfig: { type: AgentVaultCredentialType.Passthrough }
+    });
+    expect(openInlineServiceSecrets(row, open)).toBeNull();
+    expect(toResolvedInlineService(row, null)?.credential).toEqual({ type: AgentVaultCredentialType.Passthrough });
   });
 });

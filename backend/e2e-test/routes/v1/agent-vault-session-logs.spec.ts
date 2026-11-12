@@ -678,7 +678,8 @@ describe("Agent Vault session logs", async () => {
     test("a session log key that can't be opened turns logs off for the session, and its services still resolve", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-resolve-badkey-${Date.now()}`);
-      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+      const created = await inject("POST", "/api/v1/agent-vault/services", {
+        accessBundleIds: [bundle.id],
         type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",

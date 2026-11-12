@@ -501,6 +501,8 @@ export enum EventType {
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD = "agent-vault-access-bundle-service-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_REMOVE = "agent-vault-access-bundle-service-remove",
   AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",

@@ -388,11 +388,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
         </form>
 
         <PersonalValuesDialog
-          target={
-            serviceToSetUp && selectedBundle
-              ? { service: serviceToSetUp, accessBundleName: selectedBundle.name }
-              : null
-          }
+          target={serviceToSetUp && selectedBundle ? { service: serviceToSetUp } : null}
           onOpenChange={(open) => {
             if (!open) setServiceToSetUp(null);
           }}

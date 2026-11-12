@@ -105,6 +105,7 @@ export enum ApiDocsTags {
   PamDiscovery = "PAM Discovery",
   AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultServices = "Agent Vault Services",
   AgentVaultVariables = "Agent Vault Variables",
   AgentVaultSkills = "Agent Vault Skills",
   AgentVaultSessions = "Agent Vault Sessions",
@@ -4727,7 +4728,27 @@ export const AGENT_VAULT = {
   },
   SERVICE: {
     serviceId: "The ID of the service.",
-    name: "The name of the service.",
+    addServiceIds:
+      "The IDs of the services to add, all in the same Agent Vault project. If any is missing or conflicts with a service in the bundle, none are added.",
+    addedServices: "The services the request added to the access bundle.",
+    addSkippedServices:
+      "The services the request named that were already in the access bundle. They're left as they are.",
+    name: "The name of the service, unique in the Agent Vault project.",
+    accessBundles: "The access bundles the service is in, by name. A member sees only the ones they have been granted.",
+    accessBundleId: "The ID of the access bundle.",
+    accessBundleName: "The name of the access bundle.",
+    createAccessBundleIds:
+      "The access bundles to add the service to, all in the same Agent Vault project. Leave out to create it in no bundle and add it later.",
+    search: "Only services whose name, description or host pattern contains this text.",
+    limit: "The number of services to return.",
+    offset: "The number of services to skip.",
+    totalCount: "The number of services that match, across every page.",
+    requiresSetup:
+      "true lists only the services that still need your personal values; false leaves them out. Leave it out to list both.",
+    granted:
+      "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
+    orderBy: "What to sort services by: name, type, or createdAt.",
+    orderDirection: "The sort direction, asc or desc.",
     description:
       "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it.",
     updateDescription:
@@ -4809,7 +4830,7 @@ export const AGENT_VAULT = {
     updateUsername: `The username half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username; send an empty string to remove it, which requires a password.`,
     updateValue: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored secret.`,
     updatePassword: `The password half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it, which requires a username.`,
-    createdAt: "When the service was added to the access bundle.",
+    createdAt: "When the service was created.",
     updatedAt: "When the service was last changed.",
     value: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     password: `The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
@@ -4908,7 +4929,6 @@ export const AGENT_VAULT = {
   OAUTH: {
     authorization: "The OAuth authorization, or null when an OAuth client must be registered first.",
     authorizationId: "The ID of the OAuth authorization.",
-    accessBundleId: "The access bundle the service is in, or will be created in.",
     serverUrl: "The MCP server's URL. Must match the server URL of the service the authorization is saved to.",
     serviceId:
       "The ID of the MCP service to reauthorize. Leave it out when connecting a new service. When set, the sign-in asks for the scopes the service already has, and can only be saved to that service.",
@@ -4918,7 +4938,7 @@ export const AGENT_VAULT = {
     registration:
       "Send `dynamic` to register a new client with the server, even when the service being reauthorized uses your own OAuth app.",
     personal:
-      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only access to the service's access bundle. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
+      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only access to an access bundle the service is in. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
     registrationRequired:
       "True when the server can't register Infisical as a client by itself, or refused to. Send `clientId` (and `clientSecret`) of your own OAuth app.",
     redirectUri:
@@ -4969,8 +4989,10 @@ export const AGENT_VAULT = {
     usedByServiceName: "The name of the service.",
     usedByServiceType: "The service's type: `http`, `mcp`, `postgres`, `mysql` or `ssh`.",
     usedByServiceHostPattern: "The host pattern of the service. Null for a `postgres`, `mysql` or `ssh` service.",
-    usedByServiceAccessBundleId: "The ID of the access bundle the service belongs to.",
-    usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
+    usedByServiceAccessBundleId: "The ID of the access bundle.",
+    usedByServiceAccessBundleName: "The name of the access bundle.",
+    usedByServiceAccessBundles:
+      "The access bundles the service is in. A member sees only the ones they have been granted.",
     createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
   },
@@ -5004,7 +5026,10 @@ export const AGENT_VAULT = {
       "The version these files were edited from. If a newer version has been saved since, nothing is saved and the request fails with 409. Omit it to update regardless.",
     restoreUnchanged:
       "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
-    addSkillId: "The ID of the skill to add to the access bundle.",
+    addSkillIds:
+      "The IDs of the skills to add to the access bundle. If any is missing, or the bundle would hold more than 25 skills, none are added.",
+    addedSkills: "The skills the request added to the access bundle.",
+    addSkippedSkills: "The skills the request named that were already in the access bundle. They're left as they are.",
     search: "Match skills whose name or description contains this text.",
     nameFilter: "Return only the skill with exactly this name.",
     limit: "The maximum number of skills to return. Defaults to 20.",

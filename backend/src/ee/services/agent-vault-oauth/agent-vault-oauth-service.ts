@@ -17,7 +17,6 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
-import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import {
@@ -103,9 +102,12 @@ type TAgentVaultOauthServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
-    "findByIdInAccessBundle" | "findByIdPrimary" | "compareAndSwapCredential" | "addRequiredScopes"
+    | "findByIdInProject"
+    | "findBundlesForServices"
+    | "findByIdPrimary"
+    | "compareAndSwapCredential"
+    | "addRequiredScopes"
   >;
-  agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findByIdInProject">;
   agentVaultPersonalValueDAL: Pick<
     TAgentVaultPersonalValueDALFactory,
     "findOauthForOwner" | "compareAndSwapOauth" | "addRequiredScopes"
@@ -248,7 +250,6 @@ export const agentVaultOauthServiceFactory = ({
   keyStore,
   kmsService,
   agentVaultServiceDAL,
-  agentVaultAccessBundleDAL,
   agentVaultPersonalValueDAL,
   permissionService,
   membershipDAL,
@@ -318,7 +319,6 @@ export const agentVaultOauthServiceFactory = ({
   const createAuthorization = async ({
     projectId,
     ctx,
-    accessBundleId,
     serverUrl,
     serviceId,
     clientId: requestedClientId,
@@ -338,10 +338,6 @@ export const agentVaultOauthServiceFactory = ({
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const bundle = await agentVaultAccessBundleDAL.findByIdInProject({ id: accessBundleId, projectId });
-    if (!bundle || (accessBundleIds && !accessBundleIds.includes(accessBundleId.toLowerCase()))) {
-      throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
-    }
     if (ctx.actor !== ActorType.USER) {
       throw new BadRequestError({
         message: "Only a user can authorize an OAuth connection, since it needs a browser."
@@ -373,8 +369,14 @@ export const agentVaultOauthServiceFactory = ({
     let memberConfig: TAgentVaultOauthMemberConfig | null = null;
     let memberSetup: string | undefined;
     if (serviceId) {
-      const service = await agentVaultServiceDAL.findByIdInAccessBundle({ id: serviceId, accessBundleId: bundle.id });
-      if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+      const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId });
+      // A member reaches a service through any bundle it is in. One they can't reach reads like one that doesn't exist.
+      const reachable =
+        service &&
+        (!accessBundleIds ||
+          ((await agentVaultServiceDAL.findBundlesForServices([service.id], accessBundleIds)).get(service.id) ?? [])
+            .length > 0);
+      if (!service || !reachable) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
       if (service.type !== AgentVaultServiceType.Mcp) {
         throw new BadRequestError({
           message: `The service '${service.name}' is an HTTP service. Only MCP services use OAuth.`
@@ -526,7 +528,6 @@ export const agentVaultOauthServiceFactory = ({
     const record: TAgentVaultOauthAuthorization = {
       id,
       projectId,
-      accessBundleId: bundle.id,
       serviceId: serviceId ?? null,
       ...(personal ? { personal: true, memberSetup } : {}),
       actorUserId: ctx.actorId,
@@ -687,7 +688,7 @@ export const agentVaultOauthServiceFactory = ({
   });
 
   const loadUsableAuthorization = async (
-    { authorizationId, projectId, accessBundleId, serviceId, ctx, serverUrl, personal }: TClaimAuthorizationDTO,
+    { authorizationId, projectId, serviceId, ctx, serverUrl, personal }: TClaimAuthorizationDTO,
     action: string,
     { anyIntent = false }: { anyIntent?: boolean } = {}
   ) => {
@@ -699,11 +700,6 @@ export const agentVaultOauthServiceFactory = ({
         message: personal
           ? "This authorization was started to connect the service itself, not your own account. Connect your account again."
           : "This authorization connects your own account, so it can't set the service's credential. Authorize the service again."
-      });
-    }
-    if (record.accessBundleId.toLowerCase() !== accessBundleId.toLowerCase()) {
-      throw new BadRequestError({
-        message: "This authorization was started for a different access bundle. Authorize again here."
       });
     }
     assertAuthorizationServerUrl(record.serverUrl, serverUrl);

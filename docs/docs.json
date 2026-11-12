@@ -4576,12 +4576,19 @@
                       "api-reference/endpoints/agent-vault-access-bundles/get",
                       "api-reference/endpoints/agent-vault-access-bundles/create",
                       "api-reference/endpoints/agent-vault-access-bundles/update",
-                      "api-reference/endpoints/agent-vault-access-bundles/delete"
+                      "api-reference/endpoints/agent-vault-access-bundles/delete",
+                      "api-reference/endpoints/agent-vault-access-bundles/add-services",
+                      "api-reference/endpoints/agent-vault-access-bundles/remove-service",
+                      "api-reference/endpoints/agent-vault-access-bundles/list-skills",
+                      "api-reference/endpoints/agent-vault-access-bundles/add-skills",
+                      "api-reference/endpoints/agent-vault-access-bundles/remove-skill"
                     ]
                   },
                   {
                     "group": "Services",
                     "pages": [
+                      "api-reference/endpoints/agent-vault-services/list",
+                      "api-reference/endpoints/agent-vault-services/get",
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
                       "api-reference/endpoints/agent-vault-services/delete",
@@ -4611,10 +4618,7 @@
                       "api-reference/endpoints/agent-vault-skills/get-version",
                       "api-reference/endpoints/agent-vault-skills/update",
                       "api-reference/endpoints/agent-vault-skills/restore-version",
-                      "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
-                      "api-reference/endpoints/agent-vault-skills/list-session-skills",
-                      "api-reference/endpoints/agent-vault-skills/add",
-                      "api-reference/endpoints/agent-vault-skills/remove"
+                      "api-reference/endpoints/agent-vault-skills/list-session-skills"
                     ]
                   },
                   {
@@ -5049,6 +5053,18 @@
     }
   },
   "redirects": [
+    {
+      "source": "/api-reference/endpoints/agent-vault-skills/add",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundles/add-skills"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-skills/remove",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundles/remove-skill"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-skills/list-bundle-skills",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundles/list-skills"
+    },
     {
       "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",
       "destination": "/api-reference/endpoints/agent-vault-proxies/rotate-token"

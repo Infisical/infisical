@@ -77,7 +77,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
 
   const addCreated = async (skill: TAgentVaultSkillSummary) => {
     try {
-      await addSkill.mutateAsync({ accessBundleId, skillId: skill.id });
+      await addSkill.mutateAsync({ accessBundleId, skillIds: [skill.id] });
       createNotification({
         text: `Skill "${skill.name}" created and added to this access bundle`,
         type: "success"

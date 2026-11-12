@@ -70,7 +70,6 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
 const storedOAuthService = (serverUrl = SERVER_URL) =>
   ({
     id: "service-1",
-    accessBundleId: "bundle-1",
     name: "linear-mcp",
     description: null,
     hostPattern: "mcp.linear.app",
