@@ -115,12 +115,17 @@ import { Reminder } from "@app/hooks/api/reminders/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
+import { OverviewAnnotationEntryPoint, OverviewAnnotationType } from "@app/lib/analytics/events";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
-import { OverviewFlowHandle, useOverviewTelemetry } from "../../OverviewTelemetry";
+import {
+  OverviewFlowHandle,
+  overviewAnnotationChange,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 import { CreateSecretForm, TSecretEditChanges } from "../CreateSecretForm/CreateSecretForm";
 import {
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
@@ -210,6 +215,7 @@ type Props = {
   timestampField?: "createdAt" | "updatedAt";
   nameCellContent?: ReactNode;
   initialAction?: EnvironmentSecretAction;
+  initialActionEntryPoint: Extract<OverviewAnnotationEntryPoint, "quick-add" | "name-cell-icon">;
   onInitialActionHandled?: () => void;
 };
 
@@ -257,6 +263,7 @@ export const SecretEditTableRow = ({
   onExpandedChange,
   nameCellContent,
   initialAction,
+  initialActionEntryPoint,
   onInitialActionHandled
 }: Props) => {
   const telemetry = useOverviewTelemetry();
@@ -395,6 +402,90 @@ export const SecretEditTableRow = ({
   const commentPopover = useDraggablePopover(isCommentOpen);
   const tagPopover = useDraggablePopover(isTagOpen);
   const metadataPopover = useDraggablePopover(isMetadataOpen);
+
+  const annotationSession = useRef<{
+    annotationType: OverviewAnnotationType;
+    entryPoint: OverviewAnnotationEntryPoint;
+    initialValue: string;
+    wasEmpty: boolean;
+  } | null>(null);
+  const getAnnotationValue = (annotationType: OverviewAnnotationType): unknown[] => {
+    if (annotationType === "reminder") return reminder ? [reminder.id] : [];
+    if (annotationType === "comment") {
+      const value = (isBatchMode ? getValues("comment") : comment) as string | undefined;
+      return value ? [value] : [];
+    }
+    if (annotationType === "tags") {
+      const value = (isBatchMode ? getValues("tags") : tags) as { id: string }[] | undefined;
+      return (value ?? []).map(({ id }) => id);
+    }
+    const value = (isBatchMode ? getValues("metadata") : secretMetadata) as
+      | { key: string; value: string; isEncrypted?: boolean }[]
+      | undefined;
+    return (value ?? []).map((m) => [m.key, m.value, m.isEncrypted ?? false]);
+  };
+  const finishAnnotation = (isSavedEmpty?: boolean) => {
+    const session = annotationSession.current;
+    if (!session) return;
+    annotationSession.current = null;
+    const { annotationType, entryPoint, wasEmpty } = session;
+    if (isSavedEmpty !== undefined) {
+      telemetry.annotation({
+        annotationType,
+        entryPoint,
+        phase: "submitted",
+        change: overviewAnnotationChange(wasEmpty, isSavedEmpty)
+      });
+      return;
+    }
+    const value = getAnnotationValue(annotationType);
+    const isStaged =
+      isBatchMode &&
+      annotationType !== "reminder" &&
+      JSON.stringify(value) !== session.initialValue;
+    telemetry.annotation({
+      annotationType,
+      entryPoint,
+      phase: isStaged ? "staged" : "canceled",
+      change: isStaged ? overviewAnnotationChange(wasEmpty, value.length === 0) : undefined
+    });
+  };
+  const openAnnotation = (
+    annotationType: OverviewAnnotationType,
+    entryPoint: OverviewAnnotationEntryPoint
+  ) => {
+    if (annotationType === "comment") setIsCommentOpen(true);
+    else if (annotationType === "tags") setIsTagOpen(true);
+    else if (annotationType === "reminder") setIsReminderOpen(true);
+    else setIsMetadataOpen(true);
+    if (annotationSession.current?.annotationType === annotationType) return;
+    finishAnnotation();
+    const value = getAnnotationValue(annotationType);
+    annotationSession.current = {
+      annotationType,
+      entryPoint,
+      initialValue: JSON.stringify(value),
+      wasEmpty: value.length === 0
+    };
+    telemetry.annotation({ annotationType, entryPoint, phase: "opened" });
+  };
+  const annotationOpenState: Record<OverviewAnnotationType, boolean> = {
+    comment: isCommentOpen,
+    tags: isTagOpen,
+    reminder: isReminderOpen,
+    metadata: isMetadataOpen
+  };
+  const prevAnnotationOpenState = useRef(annotationOpenState);
+  useEffect(() => {
+    const session = annotationSession.current;
+    if (
+      session &&
+      prevAnnotationOpenState.current[session.annotationType] &&
+      !annotationOpenState[session.annotationType]
+    )
+      finishAnnotation();
+    prevAnnotationOpenState.current = annotationOpenState;
+  }, [isCommentOpen, isTagOpen, isMetadataOpen, isReminderOpen]);
 
   // Multi-env rows pass a fresh callback every render; reading it through a ref keeps the
   // activity effect from re-firing (and re-setting parent state) on each render.
@@ -839,9 +930,14 @@ export const SecretEditTableRow = ({
   useEffect(() => {
     if (!isAnnotationSaveRequested) return;
     setIsAnnotationSaveRequested(false);
+    const session = annotationSession.current;
+    const isSavedEmpty = session
+      ? getAnnotationValue(session.annotationType).length === 0
+      : undefined;
     savePendingRow()
       .then((isSaved) => {
         if (!isSaved) return;
+        if (session && annotationSession.current === session) finishAnnotation(isSavedEmpty);
         setIsCommentOpen(false);
         setIsTagOpen(false);
         setIsMetadataOpen(false);
@@ -1171,10 +1267,7 @@ export const SecretEditTableRow = ({
   useEffect(() => {
     if (!initialAction) return;
     if (initialAction === "value") setFocus("value", { shouldSelect: true });
-    else if (initialAction === "comment") setIsCommentOpen(true);
-    else if (initialAction === "tags") setIsTagOpen(true);
-    else if (initialAction === "reminder") setIsReminderOpen(true);
-    else if (initialAction === "metadata") setIsMetadataOpen(true);
+    else openAnnotation(initialAction, initialActionEntryPoint);
     onInitialActionHandled?.();
   }, [initialAction, onInitialActionHandled, setFocus]);
 
@@ -1399,6 +1492,7 @@ export const SecretEditTableRow = ({
         secretPath={secretPath}
         environment={environment}
         onClose={() => setIsCommentOpen(false)}
+        onSaved={finishAnnotation}
         isBatchMode={isBatchMode}
         onCommentChange={handleCommentChange}
         onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
@@ -1450,10 +1544,7 @@ export const SecretEditTableRow = ({
         className="min-w-[185px] [&_[data-variant=default]]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
         onCloseAutoFocus={(e) => {
           e.preventDefault();
-          if (pendingAnnotation === "comment") setIsCommentOpen(true);
-          else if (pendingAnnotation === "tags") setIsTagOpen(true);
-          else if (pendingAnnotation === "reminder") setIsReminderOpen(true);
-          else if (pendingAnnotation === "metadata") setIsMetadataOpen(true);
+          if (pendingAnnotation) openAnnotation(pendingAnnotation, "annotate-menu");
           setPendingAnnotation(null);
         }}
       >
@@ -1527,6 +1618,7 @@ export const SecretEditTableRow = ({
             environment={environment}
             tags={isBatchMode ? ((watchedTags as WsTag[]) ?? tags) : tags}
             onClose={() => setIsTagOpen(false)}
+            onSaved={finishAnnotation}
             isBatchMode={isBatchMode}
             onTagsChange={handleTagsChange}
             onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
@@ -1559,6 +1651,7 @@ export const SecretEditTableRow = ({
             secretPath={secretPath}
             environment={environment}
             onClose={() => setIsMetadataOpen(false)}
+            onSaved={finishAnnotation}
             isBatchMode={isBatchMode}
             onMetadataChange={handleMetadataChange}
             onBatchSave={canSaveAnnotationsDirectly ? requestAnnotationSave : undefined}
@@ -1582,6 +1675,7 @@ export const SecretEditTableRow = ({
               environment={environment}
               reminder={reminder}
               onClose={() => setIsReminderOpen(false)}
+              onSaved={finishAnnotation}
             />
           )}
         </SheetContent>
@@ -1594,7 +1688,7 @@ export const SecretEditTableRow = ({
               variant="ghost-muted"
               size="2xs"
               onClick={() => {
-                if (!isPendingDelete) setIsCommentOpen(true);
+                if (!isPendingDelete) openAnnotation("comment", "name-cell-icon");
               }}
             >
               <MessageSquareIcon />
@@ -1613,7 +1707,7 @@ export const SecretEditTableRow = ({
               variant="ghost-muted"
               size="2xs"
               onClick={() => {
-                if (!isPendingDelete) setIsTagOpen(true);
+                if (!isPendingDelete) openAnnotation("tags", "name-cell-icon");
               }}
             >
               <TagsIcon />
@@ -1632,7 +1726,7 @@ export const SecretEditTableRow = ({
               variant="ghost-muted"
               size="2xs"
               onClick={() => {
-                if (!isPendingDelete) setIsReminderOpen(true);
+                if (!isPendingDelete) openAnnotation("reminder", "name-cell-icon");
               }}
             >
               <BellIcon />
@@ -1649,7 +1743,7 @@ export const SecretEditTableRow = ({
               variant="ghost-muted"
               size="2xs"
               onClick={() => {
-                if (!isPendingDelete) setIsMetadataOpen(true);
+                if (!isPendingDelete) openAnnotation("metadata", "name-cell-icon");
               }}
             >
               <CodeXmlIcon />
