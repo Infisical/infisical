@@ -3378,6 +3378,12 @@ export const AppConnections = {
       instanceUrl: "The Portainer instance URL to connect to.",
       apiToken: "The API token used to authenticate with Portainer."
     },
+    JENKINS: {
+      instanceUrl:
+        "The Jenkins instance URL to connect to, including any context path (e.g., 'https://ci.example.com/jenkins').",
+      username: "The username of the Jenkins user that owns the API token.",
+      apiToken: "The Jenkins API token used to authenticate."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },
@@ -3888,6 +3894,11 @@ export const SecretSyncs = {
     PORTAINER: {
       environmentId: "The ID of the Portainer environment (endpoint) that hosts the stack.",
       stackId: "The ID of the Portainer stack to sync secrets to."
+    },
+    JENKINS: {
+      scope:
+        "The Jenkins credential store to sync secrets to. Either 'global' for the system store or 'folder' for a folder's store.",
+      folderPath: "The full name of the Jenkins folder to sync secrets to (e.g., 'team/app')."
     }
   }
 };
