@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
+import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
@@ -24,7 +26,10 @@ import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
 const route = v4Path("/organizations/$orgId/secret-scanning/settings");
-const MAX_LENGTH = 5000;
+
+const configSchema = z.object({
+  content: z.string().max(5000, "Cannot exceed 5000 characters")
+});
 
 const ConfigForm = ({
   config,
@@ -34,9 +39,17 @@ const ConfigForm = ({
   canUpdate: boolean;
 }) => {
   const update = useV4Adapter("secretScanning").useUpdateConfig();
-  const [savedContent, setSavedContent] = useState(config.content ?? "");
-  const [content, setContent] = useState(savedContent);
-  const error = content.length > MAX_LENGTH ? `Cannot exceed ${MAX_LENGTH} characters` : undefined;
+  const {
+    register,
+    reset,
+    handleSubmit,
+    formState: { errors, isDirty }
+  } = useForm<z.infer<typeof configSchema>>({
+    resolver: zodResolver(configSchema),
+    defaultValues: { content: config.content ?? "" },
+    mode: "onChange"
+  });
+  const error = errors.content?.message;
   return (
     <SettingsCard
       title={
@@ -45,32 +58,39 @@ const ConfigForm = ({
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/configuration" />
         </Inline>
       }
-      dirty={content !== savedContent}
+      dirty={isDirty}
       saveDisabledReason={
         canUpdate ? undefined : "You don't have permission to update the configuration"
       }
-      onDiscard={() => setContent(savedContent)}
-      onSave={async () => {
-        if (error) throw new Error(error);
-        try {
-          await update.mutateAsync({ projectId: config.projectId, content: content || null });
-        } catch (cause) {
-          failed("Failed to save scanning configuration", cause);
-          throw cause;
-        }
-        setSavedContent(content);
-        saved("Scanning configuration saved");
-      }}
+      onDiscard={() => reset()}
+      onSave={() =>
+        new Promise<void>((resolve, reject) => {
+          handleSubmit(
+            async ({ content }) => {
+              try {
+                await update.mutateAsync({ projectId: config.projectId, content: content || null });
+              } catch (cause) {
+                failed("Failed to save scanning configuration", cause);
+                reject(cause);
+                return;
+              }
+              reset({ content });
+              saved("Scanning configuration saved");
+              resolve();
+            },
+            () => reject(new Error("Fix the highlighted field, then save again."))
+          )();
+        })
+      }
     >
       <Field label="Rules and exceptions" description="Gitleaks TOML." error={error} wide>
         <Textarea
           mono
           rows={18}
-          value={content}
           disabled={!canUpdate}
           aria-invalid={Boolean(error) || undefined}
           placeholder={"[extend]\nuseDefault = true"}
-          onChange={(event) => setContent(event.target.value)}
+          {...register("content")}
         />
       </Field>
     </SettingsCard>
@@ -114,15 +134,19 @@ const ScanningConfig = ({ orgId, projectId }: { orgId: string; projectId: string
 export const SettingsPage = () => {
   const { orgId } = useParams({ from: route });
   const { data: projectId, isPending } = useV4Adapter("secretScanning").useProjectId(orgId);
-  if (isPending) return <Loader size="page" label="Loading settings" />;
-  if (!projectId) return <EmptyState icon="search" title="Secret Scanning is not set up" />;
   return (
     <TooltipProvider>
       <PageTitle title="Settings" />
-      <Stack gap={24}>
-        <PageHeader title="Settings" />
-        <ScanningConfig orgId={orgId} projectId={projectId} />
-      </Stack>
+      {isPending && <Loader size="page" label="Loading settings" />}
+      {!isPending && !projectId && (
+        <EmptyState icon="search" title="Secret Scanning is not set up" />
+      )}
+      {projectId && (
+        <Stack gap={24}>
+          <PageHeader title="Settings" />
+          <ScanningConfig orgId={orgId} projectId={projectId} />
+        </Stack>
+      )}
     </TooltipProvider>
   );
 };

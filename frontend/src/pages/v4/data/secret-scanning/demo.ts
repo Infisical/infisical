@@ -22,6 +22,7 @@ import type {
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
+import { demoConnections, integrationsDemo } from "../integrations/demo";
 import type { SecretScanningAdapter } from "./contract";
 
 export const SECRET_SCANNING_DEMO_PROJECT_ID = "secret-scanning";
@@ -569,11 +570,20 @@ export const secretScanningDemo: SecretScanningAdapter = {
     isPending: false,
     error: null
   }),
-  useAvailableConnections: (app) => ({
-    data: (connections[app] ?? []).map((entry) => ({ ...entry, projectId })),
-    isPending: false,
-    error: null
-  }),
+  useAvailableConnections: (app) => {
+    const fromIntegrations = integrationsDemo
+      .useConnections()
+      .data?.filter((entry) => entry.app === app)
+      .map(({ id, name }) => ({ id, name, projectId }));
+    return {
+      data: [
+        ...(connections[app] ?? []).map((entry) => ({ ...entry, projectId })),
+        ...(fromIntegrations ?? [])
+      ],
+      isPending: false,
+      error: null
+    };
+  },
   useBitbucketWorkspaces: (connectionId, search) => ({
     data: connectionId
       ? workspaces
@@ -592,9 +602,9 @@ export const secretScanningDemo: SecretScanningAdapter = {
   }),
   useCreateDataSource: fixtureMutation(({ connectionId, ...dto }) => {
     created += 1;
-    const connection = Object.values(connections)
-      .flat()
-      .find((entry) => entry?.id === connectionId);
+    const connection = [...Object.values(connections).flat(), ...demoConnections()].find(
+      (entry) => entry?.id === connectionId
+    );
     const now = new Date().toISOString();
     const entry = {
       ...dto,
@@ -617,6 +627,7 @@ export const secretScanningDemo: SecretScanningAdapter = {
       unresolvedFindings: null,
       resourceCount: 0
     } as TSecretScanningDataSourceWithDetails;
+    unlisted[entry.name] = ["api", "web", "infra"].map((repo) => `${entry.name}/${repo}`);
     dataSourceStore.update((entries) => [...entries, entry]);
     return entry;
   }),

@@ -1,6 +1,9 @@
 import { useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
 import { Combobox } from "@app/components/v4/ui/combobox";
 import { Field } from "@app/components/v4/ui/field";
@@ -54,11 +57,32 @@ const initialDraft = (type: SecretScanningDataSource): Draft => ({
   description: ""
 });
 
+const ALL_PROJECTS = "all";
+
 const nameSchema = slugSchema({ field: "Name" });
 const descriptionSchema = z.string().trim().max(256, "Cannot exceed 256 characters");
 
-const issue = (schema: z.ZodTypeAny, value: unknown) =>
-  schema.safeParse(value).error?.issues[0]?.message;
+const draftSchema = z
+  .object({
+    type: z.nativeEnum(SecretScanningDataSource),
+    connection: z.object({ id: z.string(), name: z.string() }).optional(),
+    workspaceSlug: z.string(),
+    group: z.object({ id: z.number(), name: z.string() }).optional(),
+    isHistoricalScanEnabled: z.boolean(),
+    isScanNewCommitsEnabled: z.boolean(),
+    isDiscoveryEnabled: z.boolean(),
+    name: z.string(),
+    description: z.string()
+  })
+  .superRefine((draft, ctx) => {
+    const fail = (path: keyof Draft, message?: string) =>
+      message && ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+    if (!draft.connection) fail("connection", "Select a connection");
+    if (draft.type === SecretScanningDataSource.Bitbucket && !draft.workspaceSlug)
+      fail("workspaceSlug", "Select a workspace");
+    fail("name", nameSchema.safeParse(draft.name).error?.issues[0]?.message);
+    fail("description", descriptionSchema.safeParse(draft.description).error?.issues[0]?.message);
+  });
 
 const supportsDiscovery = (draft: Draft) =>
   draft.type !== SecretScanningDataSource.GitLab || Boolean(draft.group);
@@ -115,6 +139,7 @@ const ConnectionFields = ({
     debounced || undefined
   );
   const groupOptions = [
+    { value: ALL_PROJECTS, label: "All accessible projects" },
     ...(draft.group && !groups.data?.some((group) => Number(group.id) === draft.group?.id)
       ? [{ value: String(draft.group.id), label: draft.group.name }]
       : []),
@@ -187,7 +212,7 @@ const ConnectionFields = ({
         >
           <Combobox
             label="Group"
-            value={draft.group ? String(draft.group.id) : ""}
+            value={draft.group ? String(draft.group.id) : ALL_PROJECTS}
             loading={Boolean(connectionId) && groups.isPending}
             disabled={!connectionId}
             options={groupOptions}
@@ -195,7 +220,10 @@ const ConnectionFields = ({
             placeholder="All accessible projects"
             emptyText="No groups found."
             onValueChange={(value) => {
-              const group = groupOptions.find((option) => option.value === value);
+              const group =
+                value === ALL_PROJECTS
+                  ? undefined
+                  : groupOptions.find((option) => option.value === value);
               onChange({
                 group: group && { id: Number(group.value), name: group.label },
                 isDiscoveryEnabled: Boolean(group)
@@ -222,39 +250,48 @@ export const AddDataSourceSheet = ({
   const scanning = useV4Adapter("secretScanning");
   const { data: options, isPending: optionsPending } = scanning.useDataSourceOptions();
   const create = scanning.useCreateDataSource();
-  const [draft, setDraft] = useState(() => initialDraft(SecretScanningDataSource.GitHub));
-  const [errors, setErrors] = useState<Errors>({});
+  const {
+    watch,
+    setValue,
+    trigger,
+    clearErrors,
+    reset,
+    formState: { errors, isDirty }
+  } = useForm<Draft>({
+    resolver: zodResolver(draftSchema),
+    defaultValues: initialDraft(SecretScanningDataSource.GitHub)
+  });
+  const draft = watch();
   const [step, setStep] = useState(0);
-  const [discarding, setDiscarding] = useState(false);
   const completed = useRef(false);
+  const fieldErrors: Errors = {
+    connection: errors.connection?.message,
+    workspaceSlug: errors.workspaceSlug?.message,
+    name: errors.name?.message,
+    description: errors.description?.message
+  };
 
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[draft.type];
   const resource = RESOURCE_DESCRIPTION_HELPER[draft.type];
   const discovery = supportsDiscovery(draft);
-  const dirty = step > 0 || Boolean(draft.name || draft.description);
 
   const change = (changes: Partial<Draft>) => {
-    setDraft((current) => ({ ...current, ...changes }));
-    setErrors((current) => {
-      const next = { ...current };
-      (Object.keys(changes) as (keyof Errors)[]).forEach((key) => {
-        next[key] = undefined;
-      });
-      return next;
-    });
-  };
-
-  const check = (next: Errors) => {
-    setErrors(next);
-    return !Object.values(next).some(Boolean);
+    (Object.keys(changes) as (keyof Draft)[]).forEach((key) =>
+      setValue(key, changes[key] as never, { shouldDirty: true })
+    );
+    clearErrors(Object.keys(changes) as (keyof Draft)[]);
   };
 
   const close = () => {
-    setDraft(initialDraft(SecretScanningDataSource.GitHub));
-    setErrors({});
+    reset(initialDraft(SecretScanningDataSource.GitHub));
     setStep(0);
     onOpenChange(false);
   };
+
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty,
+    onDiscard: close
+  });
 
   return (
     <>
@@ -275,12 +312,7 @@ export const AddDataSourceSheet = ({
             close();
             return;
           }
-          if (dirty) {
-            setStep(step);
-            setDiscarding(true);
-            return;
-          }
-          close();
+          requestDiscard();
         }}
         completeLabel="Add data source"
         onComplete={async () => {
@@ -315,12 +347,17 @@ export const AddDataSourceSheet = ({
                 value={draft.type}
                 onValueChange={(value) => {
                   const type = value as SecretScanningDataSource;
-                  if (type !== draft.type)
-                    setDraft({
-                      ...initialDraft(type),
-                      name: draft.name,
-                      description: draft.description
-                    });
+                  if (type === draft.type) return;
+                  const defaults = initialDraft(type);
+                  change({
+                    type,
+                    connection: undefined,
+                    workspaceSlug: defaults.workspaceSlug,
+                    group: undefined,
+                    isHistoricalScanEnabled: defaults.isHistoricalScanEnabled,
+                    isScanNewCommitsEnabled: defaults.isScanNewCommitsEnabled,
+                    isDiscoveryEnabled: defaults.isDiscoveryEnabled
+                  });
                 }}
               >
                 {options?.map(({ type }) => {
@@ -343,20 +380,13 @@ export const AddDataSourceSheet = ({
             summary: draft.connection?.name,
             description:
               "The connection and scope can't be changed after the data source is added.",
-            validate: () =>
-              check({
-                connection: draft.connection ? undefined : "Select a connection",
-                workspaceSlug:
-                  draft.type === SecretScanningDataSource.Bitbucket && !draft.workspaceSlug
-                    ? "Select a workspace"
-                    : undefined
-              }),
+            validate: () => trigger(["connection", "workspaceSlug"]),
             content: (
               <ConnectionFields
                 orgId={orgId}
                 projectId={projectId}
                 draft={draft}
-                errors={errors}
+                errors={fieldErrors}
                 onChange={change}
               />
             )
@@ -397,32 +427,28 @@ export const AddDataSourceSheet = ({
           {
             title: "Details",
             summary: draft.name || undefined,
-            validate: () =>
-              check({
-                name: issue(nameSchema, draft.name),
-                description: issue(descriptionSchema, draft.description)
-              }),
+            validate: () => trigger(["name", "description"]),
             content: (
               <Stack gap={16}>
                 <Field
                   label="Name"
                   description="Lowercase letters, numbers and dashes."
-                  error={errors.name}
+                  error={fieldErrors.name}
                   wide
                 >
                   <Input
                     value={draft.name}
-                    invalid={Boolean(errors.name)}
+                    invalid={Boolean(fieldErrors.name)}
                     placeholder="acme-corp"
                     autoComplete="off"
                     onChange={(event) => change({ name: event.target.value })}
                   />
                 </Field>
-                <Field label="Description" optional error={errors.description} wide>
+                <Field label="Description" optional error={fieldErrors.description} wide>
                   <Textarea
                     rows={3}
                     value={draft.description}
-                    aria-invalid={Boolean(errors.description) || undefined}
+                    aria-invalid={Boolean(fieldErrors.description) || undefined}
                     onChange={(event) => change({ description: event.target.value })}
                   />
                 </Field>
@@ -460,12 +486,7 @@ export const AddDataSourceSheet = ({
         ]}
       />
       <DiscardChangesAlertDialog
-        open={discarding}
-        onOpenChange={setDiscarding}
-        onDiscard={() => {
-          setDiscarding(false);
-          close();
-        }}
+        {...discardDialogProps}
         description="Your data source setup will be lost."
       />
     </>
