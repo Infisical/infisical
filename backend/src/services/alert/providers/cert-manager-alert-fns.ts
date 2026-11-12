@@ -5,6 +5,7 @@ import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -297,7 +298,8 @@ export const buildCertificateAlertPayload = ({
           profileName: certificate.profileName,
           applicationId: certificate.applicationId,
           applicationName: certificate.applicationName
-        }
+        },
+        url: `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager/certificates/${certificate.id}`
       };
     })
   };

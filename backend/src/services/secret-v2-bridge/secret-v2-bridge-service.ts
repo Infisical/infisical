@@ -69,6 +69,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -1880,7 +1881,14 @@ export const secretV2BridgeServiceFactory = ({
     return { ...payload, etag: computedEtag };
   };
 
-  const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secretId }: TGetASecretByIdDTO) => {
+  const getSecretById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretId,
+    viewSecretValue
+  }: TGetASecretByIdDTO) => {
     const secret = await secretDAL.findOneWithTags({
       [`${TableName.SecretV2}.id` as "id"]: secretId
     });
@@ -1910,12 +1918,16 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment: folderWithPath.environmentSlug,
-      secretPath: folderWithPath.path,
-      secretName: secret.key,
-      secretTags: secret.tags.map((i) => i.slug)
-    });
+    throwIfMissingSecretReadValueOrDescribePermission(
+      permission,
+      viewSecretValue ? ProjectPermissionSecretActions.ReadValue : ProjectPermissionSecretActions.DescribeSecret,
+      {
+        environment: folderWithPath.environmentSlug,
+        secretPath: folderWithPath.path,
+        secretName: secret.key,
+        secretTags: secret.tags.map((i) => i.slug)
+      }
+    );
 
     if (secret.type === SecretType.Personal && secret.userId !== actorId) {
       throw new ForbiddenRequestError({
@@ -1929,9 +1941,12 @@ export const secretV2BridgeServiceFactory = ({
       projectId: secret.projectId
     });
 
-    const secretValue = secret.encryptedValue
-      ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-      : "";
+    let secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+    if (viewSecretValue) {
+      secretValue = secret.encryptedValue
+        ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+        : "";
+    }
 
     const secretComment = secret.encryptedComment
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
@@ -1953,7 +1968,7 @@ export const secretV2BridgeServiceFactory = ({
         value: secretValue,
         comment: secretComment
       },
-      false
+      !viewSecretValue
     );
   };
 

@@ -208,7 +208,7 @@ You don't give services to an agent directly. You add services to an access bund
 
 ### Access bundles
 
-An access bundle groups a set of services under one name. A **code-review** bundle might hold services for GitHub, Slack, and Anthropic. An **on-call** bundle might hold services for PagerDuty, Datadog, and Slack.
+An access bundle groups a set of services under one name. A **code-review** bundle might hold services for GitHub, Slack, and Anthropic. An **on-call** bundle might hold services for PagerDuty, Datadog, and Slack. Both bundles can hold the same Slack service, because you define each service once in the project and add it to any number of bundles.
 
 You grant a bundle to a user, group, or machine identity. Anyone with that grant can create sessions that reference it.
 

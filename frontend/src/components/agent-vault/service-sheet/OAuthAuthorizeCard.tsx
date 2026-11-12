@@ -103,7 +103,7 @@ export const Scopes = ({ granted, requested }: { granted: string[]; requested: s
 );
 
 type Props = {
-  accessBundleId: string;
+  projectId: string;
   service?: TAgentVaultService | null;
   onSignInChange?: (isSigningIn: boolean) => void;
   isMemberProvided: boolean;
@@ -111,7 +111,7 @@ type Props = {
 };
 
 export const OAuthAuthorizeCard = ({
-  accessBundleId,
+  projectId,
   service,
   onSignInChange,
   isMemberProvided,
@@ -260,7 +260,7 @@ export const OAuthAuthorizeCard = ({
     // A failed or cancelled replacement must not leave the previous sign-in in the form to be saved.
     setValue("oauthAuthorizationId", "");
     authorize({
-      accessBundleId,
+      projectId,
       serverUrl: trimmedUrl,
       ...(service ? { serviceId: service.id } : {}),
       ...(wantsOwnApp

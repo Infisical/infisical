@@ -63,17 +63,24 @@ export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
                 <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm">{service.name}</span>
-                  <Link
-                    to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      accessBundleId: service.accessBundleId
-                    }}
-                    className="truncate text-xs text-muted underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    {service.accessBundleName}
-                  </Link>
+                  {service.accessBundles?.length ? (
+                    <span className="truncate text-xs text-muted">
+                      {service.accessBundles.map((bundle, index) => (
+                        <span key={bundle.id}>
+                          {index > 0 && ", "}
+                          <Link
+                            to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                            params={{ orgId: currentOrg.id, projectId, accessBundleId: bundle.id }}
+                            className="underline-offset-4 hover:text-foreground hover:underline"
+                          >
+                            {bundle.name}
+                          </Link>
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="truncate text-xs text-muted">Not in an access bundle</span>
+                  )}
                 </div>
               </li>
             ))}

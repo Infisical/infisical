@@ -295,6 +295,20 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // no flag filters or joins: the change policy guards treat any import row as protected content, so a NULL
+  // isReplication or a source environment pending deletion must not hide one.
+  const findFolderIdsWithImports = async (folderIds: string[], tx?: Knex) => {
+    try {
+      if (!folderIds.length) return [];
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .whereIn("folderId", folderIds)
+        .distinct("folderId");
+      return (docs as { folderId: string }[]).map((doc) => doc.folderId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find folder ids with imports" });
+    }
+  };
+
   const getFolderImports = async (secretPath: string, environmentId: string, tx?: Knex) => {
     try {
       const folderImports = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -619,6 +633,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findIncludingExpired,
     findByFolderIds,
     findImportByFolderIds,
+    findFolderIdsWithImports,
     findLastImportPosition,
     updateAllPosition,
     bulkUpdatePosition,

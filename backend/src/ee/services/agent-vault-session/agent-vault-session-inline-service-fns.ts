@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
@@ -31,6 +30,10 @@ import {
   TAgentVaultServiceConfig,
   toServiceTypeFields
 } from "../agent-vault/agent-vault-service-type-fns";
+import {
+  TAgentVaultInlineServiceRow,
+  TAgentVaultInlineServiceSecretsRow
+} from "./agent-vault-session-inline-service-dal";
 import {
   TAgentVaultInlineCredentialSummary,
   TAgentVaultInlineCustomHeaderSummary,
@@ -87,6 +90,20 @@ export const inlineServiceDisplayName = ({
   name?: string | null;
   hostPattern?: string | null;
 }) => name || (hostPattern ?? "").split(",")[0].trim().toLowerCase().replace(/:443$/, "");
+
+/**
+ * A session's own service wins over a bundle service of the same name: the bundle's is left out of that session, so
+ * the agent, the proxy and its logs each see one service per name. Admins can add or rename bundle services freely
+ * while sessions are live, and only the sessions that sent a service by that name keep their own.
+ */
+export const withoutShadowedBundleServices = <T extends { name: string }>(
+  bundleServices: T[],
+  inlineServices: { name?: string | null; hostPattern?: string | null }[]
+) => {
+  if (!inlineServices.length) return bundleServices;
+  const inlineNames = new Set(inlineServices.map(inlineServiceDisplayName));
+  return bundleServices.filter((service) => !inlineNames.has(service.name));
+};
 
 const toInlineCredential = (
   credential: Exclude<TAgentVaultInlineServiceInput["credential"], { type: AgentVaultCredentialType.OAuth }>
@@ -302,7 +319,7 @@ export const assertNoAccessBundleConflicts = (
   });
 };
 
-export type TAgentVaultSessionInlineServiceSummaryRow = Omit<TAgentVaultSessionInlineServices, "encryptedSecrets">;
+export type TAgentVaultSessionInlineServiceSummaryRow = TAgentVaultInlineServiceRow;
 
 const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCredentialConfig => {
   switch (config.type) {
@@ -359,7 +376,32 @@ export const toInlineServiceSummary = (
   }
 };
 
-export const parseInlineServiceSecrets = (decrypted: unknown) => InlineServiceSecretsSchema.parse(decrypted);
+// Whether the service needs a sealed value to go out. One that does and has none had its session end.
+const needsSecrets = (row: TAgentVaultInlineServiceRow) =>
+  (row.credentialConfig as TInlineCredentialConfig).type !== AgentVaultCredentialType.Passthrough ||
+  row.customHeaders.length > 0 ||
+  row.substitutions.length > 0;
+
+/**
+ * The service's sealed values, opened, in the order of the names and placeholders beside them. Null once its session
+ * ended and they were deleted, or when one is missing, so resolve never sends a half-built service.
+ */
+export const openInlineServiceSecrets = (
+  row: TAgentVaultInlineServiceSecretsRow,
+  decryptJson: (encrypted: Buffer) => unknown
+): TInlineServiceSecrets | null => {
+  if (row.secretsDeletedAt || !needsSecrets(row)) return null;
+  const isPassthrough = (row.credentialConfig as TInlineCredentialConfig).type === AgentVaultCredentialType.Passthrough;
+  if (!isPassthrough && !row.encryptedCredential) return null;
+  const values = [...row.customHeaders, ...row.substitutions].map((entry) => entry.encryptedValue);
+  if (values.some((value) => !value)) return null;
+  const valueOf = (encrypted: Buffer | null) => (decryptJson(encrypted!) as { value: string }).value;
+  return InlineServiceSecretsSchema.parse({
+    credential: row.encryptedCredential ? decryptJson(row.encryptedCredential) : null,
+    customHeaders: row.customHeaders.map((header) => valueOf(header.encryptedValue)),
+    substitutions: row.substitutions.map((substitution) => valueOf(substitution.encryptedValue))
+  });
+};
 
 /**
  * Null when the service can't go out: it needs secrets and none are stored, which means its session ended and they
@@ -370,15 +412,10 @@ export const parseInlineServiceSecrets = (decrypted: unknown) => InlineServiceSe
  * An inline service as the list an agent reads describes it, built without decrypting anything. Left out when resolve
  * would leave it out: a service whose credential, custom headers or substitutions have no stored secrets to send.
  */
-export const toInlineServiceFacts = (row: TAgentVaultSessionInlineServices): TSessionServiceFacts | null => {
+export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): TSessionServiceFacts | null => {
   const credentialConfig = row.credentialConfig as TInlineCredentialConfig;
-  const customHeaders = row.customHeaders as TInlineCustomHeader[];
-  const substitutions = row.substitutions as TInlineSubstitution[];
-  const needsSecrets =
-    credentialConfig.type !== AgentVaultCredentialType.Passthrough ||
-    customHeaders.length > 0 ||
-    substitutions.length > 0;
-  if (needsSecrets && !row.encryptedSecrets) return null;
+  const { customHeaders, substitutions } = row;
+  if (needsSecrets(row) && row.secretsDeletedAt) return null;
 
   let credential: TSessionServiceCredential = { type: "none" };
   if (credentialConfig.type === AgentVaultCredentialType.Bearer) {
@@ -408,12 +445,11 @@ export const toInlineServiceFacts = (row: TAgentVaultSessionInlineServices): TSe
 };
 
 export const toResolvedInlineService = (
-  row: TAgentVaultSessionInlineServices,
+  row: TAgentVaultInlineServiceRow,
   secrets: TInlineServiceSecrets | null
 ): TResolvedService | null => {
   const credentialConfig = row.credentialConfig as TInlineCredentialConfig;
-  const customHeaders = row.customHeaders as TInlineCustomHeader[];
-  const substitutions = row.substitutions as TInlineSubstitution[];
+  const { customHeaders, substitutions } = row;
 
   let credential: TResolvedService["credential"];
   if (credentialConfig.type === AgentVaultCredentialType.Passthrough) {

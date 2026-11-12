@@ -262,15 +262,19 @@ const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativ
   ...(hasDatabase(serviceType) ? { database: data.database.trim(), tls: buildNativeTls(data) } : {})
 });
 
+// A service created from a bundle's page goes into that bundle in the same request.
+const intoBundle = (accessBundleId?: string) =>
+  accessBundleId ? { accessBundleIds: [accessBundleId] } : {};
+
 const buildNativeCreateRequest = (
-  accessBundleId: string,
+  accessBundleId: string | undefined,
   data: TServiceForm,
   serviceType: TAgentVaultNativeServiceType
 ): TCreateAgentVaultServiceDTO => {
   const connection = buildNativeConnection(data, serviceType);
   if (serviceType === AgentVaultServiceType.Ssh) {
     return {
-      accessBundleId,
+      ...intoBundle(accessBundleId),
       type: serviceType,
       ...connection,
       credential:
@@ -280,7 +284,7 @@ const buildNativeCreateRequest = (
     };
   }
   return {
-    accessBundleId,
+    ...intoBundle(accessBundleId),
     type: serviceType,
     ...connection,
     database: data.database.trim(),
@@ -296,7 +300,7 @@ const buildNativeCredentialPatch = (
     : buildHttpCredentialPatch(data);
 
 export const buildCreateServiceRequest = (
-  accessBundleId: string,
+  accessBundleId: string | undefined,
   data: TServiceForm
 ): TCreateAgentVaultServiceDTO => {
   const description = data.description.trim() || undefined;
@@ -305,14 +309,14 @@ export const buildCreateServiceRequest = (
   }
   return data.serviceType === AgentVaultServiceType.Mcp
     ? {
-        accessBundleId,
+        ...intoBundle(accessBundleId),
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
         description,
         credential: buildMcpCredential(data)
       }
     : {
-        accessBundleId,
+        ...intoBundle(accessBundleId),
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
         description,
@@ -321,7 +325,6 @@ export const buildCreateServiceRequest = (
 };
 
 export const buildUpdateServiceRequest = (
-  accessBundleId: string,
   service: TAgentVaultService,
   data: TServiceForm
 ): TUpdateAgentVaultServiceDTO => {
@@ -329,7 +332,6 @@ export const buildUpdateServiceRequest = (
   const description = data.description.trim() || null;
   if (isNativeServiceType(data.serviceType)) {
     return {
-      accessBundleId,
       serviceId: service.id,
       type: data.serviceType,
       ...buildNativeConnection(data, data.serviceType),
@@ -339,7 +341,6 @@ export const buildUpdateServiceRequest = (
   }
   return data.serviceType === AgentVaultServiceType.Mcp
     ? {
-        accessBundleId,
         serviceId: service.id,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
@@ -347,7 +348,6 @@ export const buildUpdateServiceRequest = (
         ...withCredential(buildMcpCredentialPatch(data, service))
       }
     : {
-        accessBundleId,
         serviceId: service.id,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
@@ -376,12 +376,12 @@ const ownToolsCredential = (
 // The credential and headers go as an update sends them, so on edit a value left untouched falls back to
 // the saved service's.
 export const buildListMcpToolsRequest = (
-  accessBundleId: string,
+  projectId: string,
   serviceId: string | undefined,
   data: TServiceForm,
   own?: TMcpToolsOwnCredential
 ): TListAgentVaultMcpToolsDTO => ({
-  accessBundleId,
+  projectId,
   ...(serviceId ? { serviceId } : {}),
   ...buildMcpConnection(data),
   ...withCredential(own ? ownToolsCredential(data, own) : buildMcpCredentialPatch(data, null))

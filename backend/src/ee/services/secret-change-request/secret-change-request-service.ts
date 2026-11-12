@@ -151,22 +151,8 @@ export const secretChangeRequestServiceFactory = ({
       telemetryService
     });
 
-  const findFolderIdsWithOpenRequests = async (folderIds: string[], tx?: Knex) => {
-    if (!folderIds.length) return [];
-
-    const secretChangeRequests = await secretChangeRequestDAL.find({ $in: { folderId: folderIds } }, { tx });
-    if (!secretChangeRequests.length) return [];
-
-    const openRequests = await approvalRequestDAL.find(
-      { $in: { id: secretChangeRequests.map((request) => request.approvalRequestId) }, status: RequestState.Open },
-      { tx }
-    );
-    const openRequestIds = new Set(openRequests.map((request) => request.id));
-
-    return secretChangeRequests
-      .filter((request) => openRequestIds.has(request.approvalRequestId))
-      .map((request) => request.folderId);
-  };
+  const findFolderIdsWithOpenRequests = (folderIds: string[], tx?: Knex) =>
+    secretChangeRequestDAL.findFolderIdsWithOpenRequests(folderIds, tx);
 
   const $findSecretChangeRequestOrThrow = async (requestId: string, tx?: Knex) => {
     const approvalRequest = await approvalRequestDAL.findById(requestId, tx);
@@ -765,6 +751,33 @@ export const secretChangeRequestServiceFactory = ({
       const lockedChangeRequest = await secretChangeRequestDAL.findOne({ approvalRequestId: approvalRequest.id }, tx);
       if (!lockedChangeRequest || lockedChangeRequest.hasMerged) {
         throw new BadRequestError({ message: "Approval request has been merged" });
+      }
+
+      // a closed request does not block folder renames, so its folder may now sit under a path its policy no longer
+      // covers. the folder lock makes a concurrent rename wait, so the path checked here is the one the request keeps.
+      if (status === RequestState.Open) {
+        await folderDAL.lockFoldersForUpdate([lockedChangeRequest.folderId], tx);
+        const [folder] = await folderDAL.findSecretPathByFolderIds(
+          approvalRequest.projectId,
+          [lockedChangeRequest.folderId],
+          tx
+        );
+        const currentPolicy = folder
+          ? await secretChangePolicyService.getSecretApprovalPolicy(
+              approvalRequest.projectId,
+              folder.environmentSlug,
+              folder.path,
+              tx
+            )
+          : undefined;
+        if (currentPolicy?.id !== policy.id) {
+          throw new BadRequestError({
+            message: folder
+              ? `This change request cannot be reopened because its folder is now at path "${folder.path}", which the change policy "${policy.name}" no longer covers. Create a new change request instead.`
+              : "This change request cannot be reopened because its folder no longer exists. Create a new change request instead.",
+            name: "ReopenChangeRequestPolicyChanged"
+          });
+        }
       }
 
       const updatedApprovalRequest = await approvalRequestDAL.updateById(approvalRequest.id, { status }, tx);

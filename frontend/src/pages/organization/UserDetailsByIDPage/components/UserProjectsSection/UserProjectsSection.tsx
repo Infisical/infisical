@@ -20,7 +20,7 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { UserAddToProjectModal } from "./UserAddToProjectModal";
-import { UserProjectsTable } from "./UserProjectsTable";
+import { getUserProjectsFirstPageParams, UserProjectsTable } from "./UserProjectsTable";
 
 type Props = {
   membershipId: string;
@@ -34,7 +34,11 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: membership } = useGetOrgMembership(orgId, membershipId);
-  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(orgId, membershipId);
+  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(
+    orgId,
+    membershipId,
+    getUserProjectsFirstPageParams()
+  );
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
 
@@ -64,7 +68,7 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
         <CardHeader>
           <CardTitle>Projects</CardTitle>
           <CardDescription>Manage user project memberships</CardDescription>
-          {canAddToProject && Boolean(projectMemberships?.length) && (
+          {canAddToProject && Boolean(projectMemberships?.totalCount) && (
             <CardAction>
               <Button
                 onClick={() => {
