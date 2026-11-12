@@ -24,6 +24,8 @@ export type AppConnectionFieldPreset = {
   options?: readonly SelectOption[];
   /** Show the field only while this returns true for the current values. */
   visible?: (values: FieldValues) => boolean;
+  /** Left out of edit mode, for a choice the server fixes when it creates the connection. */
+  createOnly?: boolean;
 };
 
 export type AppConnectionRedirectPreset = {
@@ -98,7 +100,38 @@ export type AppConnectionFormProps = {
   onPendingChange?: (pending: boolean) => void;
   /** Called with the selected method's submit label: its redirect submitLabel, or Create connection. */
   onSubmitLabelChange?: (label: string) => void;
+  /**
+   * Edits the credentials of a stored connection. The method is fixed and only its fields show;
+   * values are the stored root values, such as name, description and credentials.
+   */
+  edit?: { method: string; values: Record<string, unknown> };
 };
+
+const storedKeys = (stored: unknown, keys: readonly string[]) => {
+  const record = (stored ?? {}) as Record<string, unknown>;
+  return Object.fromEntries(
+    keys
+      .filter((key) => record[key] !== undefined && record[key] !== null)
+      .map((key) => [key, record[key]])
+  );
+};
+
+const editDefaults = (method: AppConnectionMethodPreset, values: Record<string, unknown>) => ({
+  ...storedKeys(values, [
+    "name",
+    "description",
+    ...method.fields.map((spec) => spec.name).filter((name) => !name.includes("."))
+  ]),
+  credentials: {
+    ...method.credentials,
+    ...storedKeys(values.credentials, [
+      ...Object.keys(method.credentials),
+      ...method.fields
+        .filter((spec) => spec.name.startsWith("credentials."))
+        .map((spec) => spec.name.slice("credentials.".length))
+    ])
+  }
+});
 
 export function AppConnectionForm({
   id,
@@ -108,9 +141,11 @@ export function AppConnectionForm({
   onSubmit,
   onDirtyChange,
   onPendingChange,
-  onSubmitLabelChange
+  onSubmitLabelChange,
+  edit
 }: AppConnectionFormProps) {
-  const methods = usableMethods(preset, redirect);
+  const editing = edit && preset.methods.find((entry) => entry.value === edit.method);
+  const methods = editing ? [editing] : usableMethods(preset, redirect);
   const [first] = methods;
   const form = useForm<FieldValues>({
     resolver: zodResolver(preset.schema),
@@ -120,7 +155,8 @@ export function AppConnectionForm({
       name: defaultName,
       description: "",
       method: first.value,
-      credentials: first.credentials
+      credentials: first.credentials,
+      ...(editing && edit ? editDefaults(editing, edit.values) : {})
     }
   });
   const { control, formState } = form;
@@ -131,7 +167,11 @@ export function AppConnectionForm({
   const [redirecting, setRedirecting] = React.useState(false);
   const pending = formState.isSubmitting || redirecting;
   React.useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
-  const submitLabel = method.redirect?.submitLabel ?? "Create connection";
+  let submitLabel = method.redirect?.submitLabel ?? "Create connection";
+  if (editing)
+    submitLabel = method.redirect
+      ? method.redirect.submitLabel.replace(/^Connect/, "Reconnect")
+      : "Update credentials";
   React.useEffect(() => onSubmitLabelChange?.(submitLabel), [submitLabel, onSubmitLabelChange]);
   React.useEffect(() => onPendingChange?.(pending), [pending, onPendingChange]);
   const submit = form.handleSubmit(async (submitted) => {
@@ -157,11 +197,12 @@ export function AppConnectionForm({
     try {
       await onSubmit(submitted as AppConnectionFormValues);
     } catch (cause) {
-      setFailure(
-        cause instanceof Error && cause.message
-          ? cause.message
-          : `Could not create this ${preset.name} connection. Check the details and try again.`
-      );
+      if (cause instanceof Error && cause.message) setFailure(cause.message);
+      else if (editing) setFailure("Couldn't update these credentials. Try again.");
+      else
+        setFailure(
+          `Could not create this ${preset.name} connection. Check the details and try again.`
+        );
     }
   });
   const renderField = (spec: AppConnectionFieldPreset) => (
@@ -192,6 +233,7 @@ export function AppConnectionForm({
               onBlur={field.onBlur}
               invalid={Boolean(error)}
               placeholder={spec.placeholder}
+              autoComplete="new-password"
             />
           );
         else if (spec.kind === "textarea")
@@ -243,12 +285,13 @@ export function AppConnectionForm({
   return (
     <form id={id} noValidate data-slot="app-connection-form" onSubmit={submit}>
       <FieldSet disabled={pending}>
-        {renderField({
-          name: "name",
-          label: "Name",
-          placeholder: `my-${preset.app}-connection`,
-          description: "Lowercase letters, numbers and dashes."
-        })}
+        {!editing &&
+          renderField({
+            name: "name",
+            label: "Name",
+            placeholder: `my-${preset.app}-connection`,
+            description: "Lowercase letters, numbers and dashes."
+          })}
         {methods.length > 1 && (
           <Controller
             control={control}
@@ -273,13 +316,16 @@ export function AppConnectionForm({
             )}
           />
         )}
-        {method.fields.filter((spec) => spec.visible?.(values) ?? true).map(renderField)}
-        {renderField({
-          name: "description",
-          label: "Description",
-          kind: "textarea",
-          optional: true
-        })}
+        {method.fields
+          .filter((spec) => !(editing && spec.createOnly) && (spec.visible?.(values) ?? true))
+          .map(renderField)}
+        {!editing &&
+          renderField({
+            name: "description",
+            label: "Description",
+            kind: "textarea",
+            optional: true
+          })}
         {method.redirect && !redirectHref && !failure && (
           <Alert>
             <AlertDescription>{method.redirect.unconfigured}</AlertDescription>

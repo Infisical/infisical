@@ -101,7 +101,8 @@ const platformManagedField: AppConnectionFieldPreset = {
   name: "isPlatformManagedCredentials",
   label: "Let Infisical manage credentials",
   kind: "switch",
-  description: "Infisical rotates the password on creation, and you can no longer view it."
+  description: "Infisical rotates the password on creation, and you can no longer view it.",
+  createOnly: true
 };
 
 const isLdaps: Visible = (values) =>

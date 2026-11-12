@@ -83,6 +83,8 @@ type SharedComboboxProps = {
   defaultOpen?: boolean;
   closeOnFocusOutside?: boolean;
   onCreate?: OptionCreateHandler;
+  /** Lets the person empty the value: Clear all after the chips, or Clear selection atop a single list. */
+  clearable?: boolean;
   className?: string;
 };
 export type ComboboxProps = SharedComboboxProps &
@@ -103,7 +105,6 @@ export type ComboboxProps = SharedComboboxProps &
         defaultValue?: string[];
         onChange?: (value: string[]) => void;
         onValueChange?: (value: string[]) => void;
-        clearable?: boolean;
         onSearch?: never;
         loading?: never;
         creation?: never;
@@ -368,6 +369,24 @@ export function Combobox({
             trailing={loading ? <Spinner /> : undefined}
           />
           <CommandList aria-busy={loading || undefined}>
+            {props.clearable && !query && selected[0] && !isLocked(selected[0]) && (
+              <>
+                <CommandGroup>
+                  <CommandItem
+                    value="combobox-clear"
+                    data-slot="combobox-clear"
+                    onSelect={() => {
+                      apply([]);
+                      changeOpen(false);
+                    }}
+                  >
+                    <Icon name="x" />
+                    <span className={menu.title}>Clear selection</span>
+                  </CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
             {!onSearch && !dialogCreation && <CommandEmpty>{emptyText}</CommandEmpty>}
             {(onSearch || dialogCreation) && !filtered.length && (
               <p role="status" data-slot="combobox-status" className={menu.empty}>

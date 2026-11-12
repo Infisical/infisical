@@ -19,6 +19,7 @@ export default function Example() {
           ]}
           value={value}
           onChange={setValue}
+          clearable
           placeholder="Choose"
         />
       </Field>
