@@ -25,14 +25,12 @@ export enum PamOutputMaskingPreset {
   AccountCredentials = "account-credentials"
 }
 
-// Most specific first, so a broader pattern can't split a value a narrower one would mask whole.
 export const PAM_OUTPUT_MASKING_PRESET_PATTERNS: Record<
-  Exclude<PamOutputMaskingPreset, PamOutputMaskingPreset.AccountCredentials>,
+  Exclude<PamOutputMaskingPreset, PamOutputMaskingPreset.AccountCredentials | PamOutputMaskingPreset.CreditCard>,
   string
 > = {
   [PamOutputMaskingPreset.Jwt]: String.raw`\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*`,
   [PamOutputMaskingPreset.ConnectionString]: String.raw`[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]*:\S*@`,
-  [PamOutputMaskingPreset.CreditCard]: String.raw`\b(?:\d{4}[ -]?){3}\d{4}\b|\b3[47]\d{2}[ -]?\d{6}[ -]?\d{5}\b`,
   [PamOutputMaskingPreset.Ssn]: String.raw`\b\d{3}-\d{2}-\d{4}\b`,
   [PamOutputMaskingPreset.Email]: String.raw`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`,
   [PamOutputMaskingPreset.IpAddress]: String.raw`\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b`,
@@ -258,7 +256,10 @@ const PamSessionLogMaskingRuleSchema = PamPolicyRulePatternSchema.extend({
 export const PamPolicyRulesSchema = z
   .object({
     [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
-    [PamPolicyType.OutputMasking]: PamPolicyRulePatternSchema.extend({ accountCredentials: z.boolean() }).optional(),
+    [PamPolicyType.OutputMasking]: PamPolicyRulePatternSchema.extend({
+      accountCredentials: z.boolean(),
+      creditCards: z.boolean()
+    }).optional(),
     [PamSettingType.SessionLogMasking]: PamSessionLogMaskingRuleSchema.optional()
   })
   .nullable()
@@ -303,9 +304,9 @@ export const buildPamPolicyRules = ({
   return Object.keys(rules).length > 0 ? (rules as TPamPolicyRules) : null;
 };
 
-type TPamOutputMaskingRule = { patterns: string[]; accountCredentials: boolean };
+type TPamOutputMaskingRule = { patterns: string[]; accountCredentials: boolean; creditCards: boolean };
 
-// The gateway masks the account's own credentials itself, since it already holds them.
+// The gateway handles account credentials (it already holds them) and card numbers (a Luhn check isn't a regex).
 export const resolveOutputMasking = (policyMap: unknown): TPamOutputMaskingRule | null => {
   const masking = resolvePolicy(policyMap, PamPolicyType.OutputMasking) as z.infer<
     typeof PamOutputMaskingSchema
@@ -319,7 +320,10 @@ export const resolveOutputMasking = (policyMap: unknown): TPamOutputMaskingRule 
     .map((preset) => PAM_OUTPUT_MASKING_PRESET_PATTERNS[preset]);
   const patterns = [...presets, ...splitPatternString(masking.patterns)];
   const accountCredentials = masking.presets.includes(PamOutputMaskingPreset.AccountCredentials);
-  return patterns.length > 0 || accountCredentials ? { patterns, accountCredentials } : null;
+  const creditCards = masking.presets.includes(PamOutputMaskingPreset.CreditCard);
+  return patterns.length > 0 || accountCredentials || creditCards
+    ? { patterns, accountCredentials, creditCards }
+    : null;
 };
 
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {

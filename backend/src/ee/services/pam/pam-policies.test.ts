@@ -255,9 +255,6 @@ describe("output masking presets", () => {
     [PamOutputMaskingPreset.PhoneNumber, "+44 20 7946 0958"],
     [PamOutputMaskingPreset.PhoneNumber, "+14155552671"],
     [PamOutputMaskingPreset.Ssn, "123-45-6789"],
-    [PamOutputMaskingPreset.CreditCard, "4111 1111 1111 1111"],
-    [PamOutputMaskingPreset.CreditCard, "4111111111111111"],
-    [PamOutputMaskingPreset.CreditCard, "3782 822463 10005"],
     [PamOutputMaskingPreset.IpAddress, "10.20.30.40"],
     [PamOutputMaskingPreset.Jwt, "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln"],
     [PamOutputMaskingPreset.ConnectionString, "postgres://app:hunter2@db:5432/app"],
@@ -290,11 +287,19 @@ describe("output masking presets", () => {
 });
 
 describe("resolveOutputMasking", () => {
+  test("sends the card preset as a flag, since the gateway checks the Luhn checksum", () => {
+    expect(
+      resolveOutputMasking({
+        [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.CreditCard], patterns: "" }
+      })
+    ).toEqual({ patterns: [], accountCredentials: false, creditCards: true });
+  });
+
   test("sends the account credentials preset as a flag for the gateway, not a pattern", () => {
     expect(
       resolveOutputMasking({
         [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.AccountCredentials], patterns: "" }
       })
-    ).toEqual({ patterns: [], accountCredentials: true });
+    ).toEqual({ patterns: [], accountCredentials: true, creditCards: false });
   });
 });
