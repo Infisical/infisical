@@ -312,7 +312,10 @@ export const personalLive: PersonalAdapter = {
   useUpdateAuthMethods: useUpdateUserAuthMethods,
   useRevokeSession: useRevokeMySessionById,
   useRevokeAllSessions: useRevokeMySessions,
-  useDeleteMe,
+  useDeleteMe: () => {
+    const deleteMe = useDeleteMe();
+    return { mutateAsync: () => deleteMe.mutateAsync({}), isPending: deleteMe.isPending };
+  },
   useRequestEmailChange: useRequestEmailChangeOTP,
   useVerifyCurrentEmail: useVerifyCurrentEmailOTP,
   useUpdateEmail: useUpdateUserEmail,

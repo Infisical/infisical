@@ -193,7 +193,8 @@ const store = createFixtureStore<(TAgentVaultSession & { projectId: string })[]>
     expiresAt: expires === null ? null : at(expires),
     revokedAt: status === Revoked ? at(-created + 30) : null,
     accessBundle: bundleRef(bundle, index),
-    services
+    services,
+    stats: null
   }))
 );
 

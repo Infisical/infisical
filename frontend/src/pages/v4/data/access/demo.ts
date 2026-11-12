@@ -652,9 +652,10 @@ export const accessDemo: AccessAdapter = {
     (state, _orgId: string, membershipId: string) => {
       const membership = state.orgMemberships.find((entry) => entry.id === membershipId);
       if (!membership) return undefined;
-      return membershipsOf(state, "user")
+      const memberships = membershipsOf(state, "user")
         .filter((entry) => entry.userId === membership.userId)
         .map((entry) => workspaceUser(state, entry));
+      return { memberships, totalCount: memberships.length };
     }
   ),
   useUserGroupMemberships: demoQuery("user-groups", (state, username: string) => {
@@ -814,11 +815,12 @@ export const accessDemo: AccessAdapter = {
   useOrgIdentity: demoQuery("org-identity", (state, identityId: string) =>
     identityOrgDetail(state, identityId)
   ),
-  useIdentityProjectMemberships: demoQuery("identity-projects", (state, identityId: string) =>
-    membershipsOf(state, "identity")
+  useIdentityProjectMemberships: demoQuery("identity-projects", (state, identityId: string) => {
+    const identityMemberships = membershipsOf(state, "identity")
       .filter((entry) => entry.identityId === identityId)
-      .map((entry) => identityProjectMembership(state, entry))
-  ),
+      .map((entry) => identityProjectMembership(state, entry));
+    return { identityMemberships, totalCount: identityMemberships.length };
+  }),
   useCreateOrgIdentity: demoMutation((dto, state) => {
     const identity = {
       id: newId(),

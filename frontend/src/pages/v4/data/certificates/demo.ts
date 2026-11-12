@@ -616,7 +616,14 @@ export const certificatesDemo: CertificatesAdapter = {
   useDeleteCertificate: fixtureMutation(({ id }) =>
     change(id, { deletedAt: new Date().toISOString() })
   ),
-  useRevokeCertificate: fixtureMutation(({ id }) => change(id, { status: CertStatus.REVOKED }))
+  useRevokeCertificate: fixtureMutation(({ id }) => {
+    const cert = change(id, { status: CertStatus.REVOKED });
+    return {
+      message: "Successfully revoked certificate",
+      serialNumber: cert.serialNumber,
+      revokedAt: new Date().toISOString()
+    };
+  })
 };
 
 export const certificatesDemoCounts = () => ({
