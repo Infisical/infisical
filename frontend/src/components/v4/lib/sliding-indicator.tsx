@@ -22,15 +22,12 @@ export function SlidingIndicator({
       aria-hidden
       className={className}
       initial={false}
-      animate={{
-        x: state.x,
-        y: state.y,
-        width: state.width,
-        height: state.height,
-        opacity: state.visible ? 1 : 0
-      }}
+      layout
+      layoutDependency={`${state.x},${state.y},${state.width},${state.height}`}
+      style={{ left: state.x, top: state.y, width: state.width, height: state.height }}
+      animate={{ opacity: state.visible ? 1 : 0 }}
       transition={{
-        default: travel,
+        layout: travel,
         opacity: state.instant ? snap : appear
       }}
     />

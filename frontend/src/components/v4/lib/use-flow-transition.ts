@@ -1,11 +1,4 @@
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState
-} from "react";
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 export const useFlowTransition = (index: number) => {
   const [reduced, setReduced] = useState(
@@ -20,13 +13,10 @@ export const useFlowTransition = (index: number) => {
     index,
     direction: "forward"
   });
-  const intendedDirection = useRef<"forward" | "back" | undefined>(undefined);
+  const [intended, setIntended] = useState<"forward" | "back">();
   if (travel.index !== index) {
-    setTravel({
-      index,
-      direction: intendedDirection.current ?? (index > travel.index ? "forward" : "back")
-    });
-    intendedDirection.current = undefined;
+    setTravel({ index, direction: intended ?? (index > travel.index ? "forward" : "back") });
+    setIntended(undefined);
   }
   useEffect(() => {
     const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -62,8 +52,6 @@ export const useFlowTransition = (index: number) => {
     ready,
     reduced,
     direction: travel.direction,
-    intend: (direction: "forward" | "back") => {
-      intendedDirection.current = direction;
-    }
+    intend: setIntended
   };
 };

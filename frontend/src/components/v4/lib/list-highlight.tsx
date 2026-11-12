@@ -182,15 +182,13 @@ export function ListHighlight() {
     list.addEventListener("transitionend", schedule);
     document.addEventListener("keydown", key, true);
     const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
-    const watchItems = () => {
-      if (!resize) return;
-      resize.disconnect();
-      resize.observe(list);
-      items().forEach((item) => resize.observe(item));
-    };
-    watchItems();
+    const sized = () => [list, ...items()];
+    sized().forEach((item) => resize?.observe(item));
     const mutations = new MutationObserver((records) => {
-      if (records.some((record) => record.type === "childList")) watchItems();
+      if (resize && records.some((record) => record.type === "childList")) {
+        resize.disconnect();
+        sized().forEach((item) => resize.observe(item));
+      }
       schedule();
     });
     mutations.observe(list, {
@@ -233,16 +231,18 @@ export function ListHighlight() {
       data-target={state.target}
       data-danger={state.danger || undefined}
       initial={false}
-      style={{ borderRadius: state.radius }}
-      animate={{
-        x: state.x,
-        y: state.y,
+      layout
+      layoutDependency={`${state.x},${state.y},${state.width},${state.height}`}
+      style={{
+        left: state.x,
+        top: state.y,
         width: state.width,
         height: state.height,
-        opacity: state.visible ? 1 : 0
+        borderRadius: state.radius
       }}
+      animate={{ opacity: state.visible ? 1 : 0 }}
       transition={{
-        default: state.jump || reduced ? snap : spring.moderate,
+        layout: state.jump || reduced ? snap : spring.moderate,
         opacity: reduced || state.first ? snap : fade.enter
       }}
     />

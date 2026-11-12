@@ -189,22 +189,20 @@ function SharedTooltipHost({ store }: { store: SharedStore }) {
       element.current = null;
       setActiveId(null);
     };
-    const listeners = [
-      ["pointermove", onPointerMove],
-      ["pointerout", onPointerOut],
-      ["pointerdown", onPointerDown],
-      ["focusin", onFocusIn],
-      ["focusout", onFocusOut],
-      ["click", onClick]
-    ] as const;
-    listeners.forEach(([type, listener]) =>
-      document.addEventListener(type, listener as EventListener, true)
-    );
+    document.addEventListener("pointermove", onPointerMove, true);
+    document.addEventListener("pointerout", onPointerOut, true);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("focusin", onFocusIn, true);
+    document.addEventListener("focusout", onFocusOut, true);
+    document.addEventListener("click", onClick, true);
     return () => {
       store.listener = null;
-      listeners.forEach(([type, listener]) =>
-        document.removeEventListener(type, listener as EventListener, true)
-      );
+      document.removeEventListener("pointermove", onPointerMove, true);
+      document.removeEventListener("pointerout", onPointerOut, true);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("focusin", onFocusIn, true);
+      document.removeEventListener("focusout", onFocusOut, true);
+      document.removeEventListener("click", onClick, true);
     };
   }, [store]);
 
