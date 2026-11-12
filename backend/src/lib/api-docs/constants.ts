@@ -2539,7 +2539,7 @@ export const CERTIFICATES = {
     revokedAt: "The date and time when the certificate was revoked.",
     serialNumberRes: "The serial number of the certificate.",
     status:
-      "revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when the certificate's Application requires approval to revoke it: an approval request was created, and the certificate stays active until the request is approved.",
+      "revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate stays active until the request is approved.",
     approvalRequestId: "The ID of the approval request created for the revocation.",
     crlWarning: "Set when the certificate was revoked but the CRL could not be regenerated. Contains the reason."
   },

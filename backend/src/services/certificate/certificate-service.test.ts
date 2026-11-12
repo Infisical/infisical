@@ -346,21 +346,50 @@ describe("certificate revocation behind an approval policy", () => {
 
   type TAuditLog = { event: { type: EventType; metadata: Record<string, unknown> } };
 
-  type TPendingRenewal = {
+  type TPendingRequest = {
     id: string;
+    type: ApprovalPolicyType.CertRequest | ApprovalPolicyType.CertRevocation;
     certificateId: string;
     status: ApprovalRequestStatus;
     requesterName: string;
     requesterEmail: string;
   };
 
+  const pendingRenewal = (id: string, certificateId: string): TPendingRequest => ({
+    id,
+    type: ApprovalPolicyType.CertRequest,
+    certificateId,
+    status: ApprovalRequestStatus.Pending,
+    requesterName: "Grace Hopper",
+    requesterEmail: "grace@example.com"
+  });
+
+  const pendingRevocation = (id: string, certificateId: string): TPendingRequest => ({
+    id,
+    type: ApprovalPolicyType.CertRevocation,
+    certificateId,
+    status: ApprovalRequestStatus.Pending,
+    requesterName: "Alan Turing",
+    requesterEmail: "alan@example.com"
+  });
+
+  const requestDataOf = ({ id, type, certificateId }: TPendingRequest) =>
+    type === ApprovalPolicyType.CertRequest
+      ? {
+          certificateRequestId: `cert-request-${id}`,
+          profileName: "web-servers",
+          certificateRequest: { commonName: "web.example.com" },
+          renewal: { certificateId }
+        }
+      : { certificateId, commonName: "web.example.com", profileName: "web-servers" };
+
   const buildRevocationService = ({
     ca = externalCa as object,
-    renewals = [] as TPendingRenewal[],
+    pending = [] as TPendingRequest[],
     applicationPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[]
   } = {}) => {
     let stored: Record<string, unknown> = { ...applicationCertificate };
-    const renewalRequests = new Map(renewals.map((renewal) => [renewal.id, { ...renewal }]));
+    const pendingRequests = new Map(pending.map((request) => [request.id, { ...request }]));
     const certificateDAL = {
       findById: vi.fn().mockImplementation(async () => stored),
       findByIdForUpdate: vi.fn().mockImplementation(async () => stored),
@@ -370,11 +399,13 @@ describe("certificate revocation behind an approval policy", () => {
       }),
       transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(tx)),
       findPendingRevocationApprovalRequest: vi.fn().mockResolvedValue(undefined),
-      findPendingRenewalApprovalRequestIds: vi
+      findPendingApprovalRequestIds: vi
         .fn()
-        .mockImplementation(async ({ certificateId }: { certificateId: string }) =>
-          [...renewalRequests.values()]
-            .filter((r) => r.certificateId === certificateId && r.status === ApprovalRequestStatus.Pending)
+        .mockImplementation(async (type: ApprovalPolicyType, { certificateId }: { certificateId: string }) =>
+          [...pendingRequests.values()]
+            .filter(
+              (r) => r.type === type && r.certificateId === certificateId && r.status === ApprovalRequestStatus.Pending
+            )
             .map((r) => r.id)
         )
     };
@@ -388,30 +419,27 @@ describe("certificate revocation behind an approval policy", () => {
         notifyApprovers: vi.fn().mockResolvedValue(undefined)
       }),
       notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined),
-      cancelPendingRequests: vi.fn().mockImplementation(async (_type: unknown, requestIds: string[]) =>
-        requestIds.map((id) => {
-          const renewal = renewalRequests.get(id) as TPendingRenewal;
-          renewal.status = ApprovalRequestStatus.Cancelled;
-          return {
-            id,
-            type: ApprovalPolicyType.CertRequest,
-            status: ApprovalRequestStatus.Cancelled,
-            requesterName: renewal.requesterName,
-            requesterEmail: renewal.requesterEmail,
-            requestData: {
-              version: 1,
-              requestData: {
-                certificateRequestId: `cert-request-${id}`,
-                profileName: "web-servers",
-                certificateRequest: { commonName: "web.example.com" },
-                renewal: { certificateId: renewal.certificateId }
-              }
-            }
-          };
-        })
+      cancelPendingRequests: vi.fn().mockImplementation(async (type: ApprovalPolicyType, requestIds: string[]) =>
+        requestIds
+          .map((id) => pendingRequests.get(id))
+          .filter(
+            (request): request is TPendingRequest =>
+              request?.type === type && request.status === ApprovalRequestStatus.Pending
+          )
+          .map((request) => {
+            request.status = ApprovalRequestStatus.Cancelled;
+            return {
+              id: request.id,
+              type: request.type,
+              status: request.status,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
+              requestData: { version: 1, requestData: requestDataOf(request) }
+            };
+          })
       )
     };
-    const approvalRequestDAL = { updateById: vi.fn().mockResolvedValue({}) };
+    const approvalRequestDAL = { update: vi.fn().mockResolvedValue([{ id: "approval-request-0" }]) };
 
     const deps = {
       certificateDAL,
@@ -451,7 +479,7 @@ describe("certificate revocation behind an approval policy", () => {
       approvalRequestDAL,
       auditLogService,
       storedCertificate: () => stored,
-      renewalStatus: (id: string) => renewalRequests.get(id)?.status,
+      requestStatus: (id: string) => pendingRequests.get(id)?.status,
       auditEvents: () => auditLogService.createAuditLog.mock.calls.map(([log]) => (log as TAuditLog).event)
     };
   };
@@ -490,7 +518,7 @@ describe("certificate revocation behind an approval policy", () => {
 
       await expect(ctx.service.revokeCert(revokeRequest)).rejects.toBeInstanceOf(BadRequestError);
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
-      expect(ctx.approvalRequestDAL.updateById).not.toHaveBeenCalled();
+      expect(ctx.approvalRequestDAL.update).not.toHaveBeenCalled();
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
     });
 
@@ -503,13 +531,29 @@ describe("certificate revocation behind an approval policy", () => {
 
       const result = await ctx.service.revokeCert(revokeRequest);
 
-      expect(ctx.approvalRequestDAL.updateById).toHaveBeenCalledWith(
-        "approval-request-0",
+      expect(ctx.approvalRequestDAL.update).toHaveBeenCalledWith(
+        { id: "approval-request-0", status: ApprovalRequestStatus.Pending },
         { status: ApprovalRequestStatus.Expired },
         tx
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledTimes(1);
       expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
+    });
+
+    it("refuses to open a request when the lapsed one was decided while it was being expired", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findPendingRevocationApprovalRequest.mockResolvedValue({
+        id: "approval-request-0",
+        expiresAt: new Date(Date.now() - 60_000)
+      });
+      ctx.approvalRequestDAL.update.mockResolvedValue([]);
+
+      const error = await ctx.service.revokeCert(revokeRequest).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BadRequestError);
+      expect((error as Error).message).toContain(`'${applicationCertificate.friendlyName}'`);
+      expect((error as Error).message).toContain("Check the certificate's status and try again");
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
     });
 
     it("revokes immediately when no policy matches", async () => {
@@ -524,6 +568,54 @@ describe("certificate revocation behind an approval policy", () => {
         expect.objectContaining({ serialNumber: applicationCertificate.serialNumber })
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+    });
+
+    it("cancels the certificate's other pending revocation requests once it is revoked, and says why", async () => {
+      const ctx = buildRevocationService({ pending: [pendingRevocation("revocation-0", "cert-1")] });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
+      expect(ctx.requestStatus("revocation-0")).toBe(ApprovalRequestStatus.Cancelled);
+      expect(ctx.auditEvents()).toEqual([
+        {
+          type: EventType.APPROVAL_REQUEST_CANCEL,
+          metadata: expect.objectContaining({
+            policyType: ApprovalPolicyType.CertRevocation,
+            approvalRequestId: "revocation-0",
+            requesterName: "Alan Turing",
+            requesterEmail: "alan@example.com",
+            certificateId: "cert-1",
+            reason: `Certificate '${applicationCertificate.friendlyName}' was revoked, so this other request to revoke it was cancelled.`
+          }) as unknown
+        }
+      ]);
+    });
+
+    it("leaves pending renewals and other certificates' revocation requests alone", async () => {
+      const ctx = buildRevocationService({
+        pending: [pendingRevocation("revocation-2", "cert-2"), pendingRenewal("renewal-1", "cert-1")]
+      });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      await ctx.service.revokeCert(revokeRequest);
+
+      expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
+      expect(ctx.requestStatus("revocation-2")).toBe(ApprovalRequestStatus.Pending);
+      expect(ctx.requestStatus("renewal-1")).toBe(ApprovalRequestStatus.Pending);
+      expect(ctx.auditEvents()).toEqual([]);
+    });
+
+    it("still revokes when the pending revocation requests can't be cancelled", async () => {
+      const ctx = buildRevocationService({ pending: [pendingRevocation("revocation-0", "cert-1")] });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.approvalPolicyService.cancelPendingRequests.mockRejectedValue(new Error("connection terminated"));
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
+      expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
     });
   });
 
@@ -619,10 +711,37 @@ describe("certificate revocation behind an approval policy", () => {
           type: EventType.CERT_REVOCATION_FAILED,
           metadata: expect.objectContaining({
             approvalRequestId: "approval-request-1",
-            error: expect.stringMatching(/unexpected error stopped the revocation/) as unknown
+            error: "An unexpected error stopped the revocation. The certificate is still active."
           }) as unknown
         })
       ]);
+    });
+
+    it("passes on why the revocation was refused and that the certificate is still active", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(
+        new BadRequestError({ message: "The CA doesn't accept this revocation reason." })
+      );
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        "The CA doesn't accept this revocation reason. The certificate is still active."
+      );
+    });
+
+    it("doesn't say the certificate is still active when it's gone after the failure", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
+      ctx.certificateDAL.findById.mockResolvedValueOnce(applicationCertificate).mockResolvedValueOnce(undefined);
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        "An unexpected error stopped the revocation."
+      );
     });
 
     it("tells the requester and approvers once why the revocation failed", async () => {
@@ -706,21 +825,13 @@ describe("certificate revocation behind an approval policy", () => {
     });
 
     describe("renewals waiting for approval", () => {
-      const pendingRenewal = (id: string, certificateId: string): TPendingRenewal => ({
-        id,
-        certificateId,
-        status: ApprovalRequestStatus.Pending,
-        requesterName: "Grace Hopper",
-        requesterEmail: "grace@example.com"
-      });
-
       it("cancels the revoked certificate's pending renewal and says why in the audit log", async () => {
-        const ctx = buildRevocationService({ renewals: [pendingRenewal("renewal-1", "cert-1")] });
+        const ctx = buildRevocationService({ pending: [pendingRenewal("renewal-1", "cert-1")] });
 
         await ctx.service.revokeApprovedCertificate(approvedRevocation);
 
         expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
-        expect(ctx.renewalStatus("renewal-1")).toBe(ApprovalRequestStatus.Cancelled);
+        expect(ctx.requestStatus("renewal-1")).toBe(ApprovalRequestStatus.Cancelled);
         expect(ctx.approvalPolicyService.cancelPendingRequests).toHaveBeenCalledWith(ApprovalPolicyType.CertRequest, [
           "renewal-1"
         ]);
@@ -743,28 +854,28 @@ describe("certificate revocation behind an approval policy", () => {
       });
 
       it("leaves another certificate's pending renewal alone", async () => {
-        const ctx = buildRevocationService({ renewals: [pendingRenewal("renewal-2", "cert-2")] });
+        const ctx = buildRevocationService({ pending: [pendingRenewal("renewal-2", "cert-2")] });
 
         await ctx.service.revokeApprovedCertificate(approvedRevocation);
 
         expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
-        expect(ctx.renewalStatus("renewal-2")).toBe(ApprovalRequestStatus.Pending);
+        expect(ctx.requestStatus("renewal-2")).toBe(ApprovalRequestStatus.Pending);
         expect(ctx.auditEvents().map((event) => event.type)).toEqual([EventType.REVOKE_CERT]);
       });
 
       it("cancels nothing when the revocation fails", async () => {
-        const ctx = buildRevocationService({ renewals: [pendingRenewal("renewal-1", "cert-1")] });
+        const ctx = buildRevocationService({ pending: [pendingRenewal("renewal-1", "cert-1")] });
         ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
 
         await ctx.service.revokeApprovedCertificate(approvedRevocation);
 
         expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
-        expect(ctx.renewalStatus("renewal-1")).toBe(ApprovalRequestStatus.Pending);
+        expect(ctx.requestStatus("renewal-1")).toBe(ApprovalRequestStatus.Pending);
         expect(ctx.auditEvents().map((event) => event.type)).toEqual([EventType.CERT_REVOCATION_FAILED]);
       });
 
       it("still records the revocation and doesn't throw when cancelling the renewal fails", async () => {
-        const ctx = buildRevocationService({ renewals: [pendingRenewal("renewal-1", "cert-1")] });
+        const ctx = buildRevocationService({ pending: [pendingRenewal("renewal-1", "cert-1")] });
         ctx.approvalPolicyService.cancelPendingRequests.mockRejectedValue(new Error("connection terminated"));
 
         await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
@@ -776,6 +887,27 @@ describe("certificate revocation behind an approval policy", () => {
             metadata: expect.objectContaining({ approvalRequestId: "approval-request-1" }) as unknown
           })
         ]);
+      });
+    });
+
+    it("cancels the certificate's other pending revocation requests and names the approved one", async () => {
+      const ctx = buildRevocationService({
+        pending: [pendingRevocation("revocation-2", "cert-1"), pendingRevocation("revocation-3", "cert-2")]
+      });
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.requestStatus("revocation-2")).toBe(ApprovalRequestStatus.Cancelled);
+      expect(ctx.requestStatus("revocation-3")).toBe(ApprovalRequestStatus.Pending);
+      expect(ctx.auditEvents()).toContainEqual({
+        type: EventType.APPROVAL_REQUEST_CANCEL,
+        metadata: expect.objectContaining({
+          policyType: ApprovalPolicyType.CertRevocation,
+          approvalRequestId: "revocation-2",
+          certificateId: "cert-1",
+          revocationApprovalRequestId: "approval-request-1",
+          reason: `Certificate '${applicationCertificate.friendlyName}' was revoked under approval request approval-request-1, so this other request to revoke it was cancelled.`
+        }) as unknown
       });
     });
 

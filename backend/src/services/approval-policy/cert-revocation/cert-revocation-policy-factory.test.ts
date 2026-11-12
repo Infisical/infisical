@@ -94,7 +94,7 @@ describe("certRevocationApprovalResourceFactory.buildNotification", () => {
     expect(notification?.email?.substitutions.requestType).toBe("certificate revocation request");
   });
 
-  it("tells everyone involved that an approved revocation didn't complete, and why", async () => {
+  it("tells everyone involved that an approved revocation didn't complete, and why, without guessing the certificate's state", async () => {
     const { resource } = setup([]);
 
     const notification = await resource.buildNotification!({
@@ -103,9 +103,9 @@ describe("certRevocationApprovalResourceFactory.buildNotification", () => {
       failureReason: "AWS PCA timed out"
     });
 
-    expect(notification?.inApp?.body).toContain("api.example.com");
-    expect(notification?.inApp?.body).toContain("still active");
-    expect(notification?.inApp?.body).toContain("AWS PCA timed out");
+    expect(notification?.inApp?.body).toBe(
+      "The approved revocation of the certificate 'api.example.com' didn't complete. Reason: AWS PCA timed out"
+    );
     expect(notification?.inApp?.link).toContain("/cert-manager/approvals/approval-1?policyType=cert-revocation");
   });
 
