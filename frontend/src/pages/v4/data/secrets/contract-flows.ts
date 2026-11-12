@@ -93,7 +93,7 @@ export type SecretsFlowsAdapter = SecretsManagedAdapter &
     useSecretVersionValue: (
       dto: TGetSecretVersionValue,
       options?: { enabled?: boolean }
-    ) => V4QueryResult<string>;
+    ) => V4QueryResult<string> & { refetch: () => Promise<unknown> };
     useRedactSecretVersion: V4Mutation<{ versionId: string; secretId: string }>;
     useSecretAccessList: (dto: TGetSecretAccessListDTO) => V4QueryResult<TSecretAccessList>;
     useCreateSharedSecret: V4Mutation<TCreateSharedSecretRequest, TCreatedSharedSecret>;

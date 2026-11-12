@@ -31,6 +31,7 @@ export type SecretVersion = {
   actor: string;
   actorType: "user" | "identity" | "platform";
   redacted?: boolean;
+  secretValueHidden?: boolean;
 };
 type ResourceBase = Scope & { id: string; name: string; createdAt: string; updatedAt: string };
 export type Secret = ResourceBase & {

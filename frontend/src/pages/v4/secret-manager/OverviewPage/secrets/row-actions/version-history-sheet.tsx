@@ -13,6 +13,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
+import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
 import {
@@ -35,6 +36,7 @@ import flowStyles from "../flows/flows.module.css";
 import styles from "./row-actions.module.css";
 
 const mask = "••••••••••••••••••••";
+const HIDDEN_VALUE = "<hidden-by-infisical>";
 const actorIcons = { user: undefined, identity: HardDriveIcon, platform: ServerCogIcon };
 const actorName = (version: SecretVersion) =>
   version.actorType === "platform" ? "System" : version.actor;
@@ -67,28 +69,37 @@ function VersionItem({
   const [wanted, setWanted] = useState(false);
   const copyRequested = useRef(false);
   const restoreSubmitted = useRef(false);
+  const [retrying, setRetrying] = useState(false);
+  const hidden = Boolean(version.secretValueHidden);
   const {
     data: loaded,
     isPending: valuePending,
-    error: valueError
+    error: valueError,
+    refetch
   } = useV4Adapter("secrets").useSecretVersionValue(
     { secretId, version: version.version },
-    { enabled: canRead && !version.redacted && (wanted || visible || confirm === "restore") }
+    {
+      enabled:
+        canRead && !hidden && !version.redacted && (wanted || visible || confirm === "restore")
+    }
   );
   const value = loaded ?? "";
+  const hiddenValue = hidden || loaded === HIDDEN_VALUE;
   const canRestore =
     canRead &&
     !editBlock &&
     !managed &&
     !current &&
     !version.redacted &&
+    !hiddenValue &&
+    !retrying &&
     !valuePending &&
     !valueError &&
     loaded !== undefined;
   useEffect(() => {
     if (!copyRequested.current || loaded === undefined) return;
     copyRequested.current = false;
-    onCopy(loaded);
+    if (loaded !== HIDDEN_VALUE) onCopy(loaded);
   }, [loaded]);
   return (
     <li className={styles.version} data-last={last || undefined}>
@@ -113,14 +124,14 @@ function VersionItem({
           </span>
           {canRead && (
             <span className={styles.versionActions}>
-              {!version.redacted && (
+              {!version.redacted && !hidden && (
                 <>
                   <ActionButton
                     label="Copy value"
                     name="copy"
                     onClick={() => {
                       if (loaded !== undefined) {
-                        onCopy(loaded);
+                        if (loaded !== HIDDEN_VALUE) onCopy(loaded);
                         return;
                       }
                       copyRequested.current = true;
@@ -134,7 +145,7 @@ function VersionItem({
                   />
                 </>
               )}
-              {!managed && !version.redacted && !current && (
+              {!managed && !version.redacted && !hidden && !current && (
                 <ActionButton
                   label="Restore version"
                   icon={RotateCcwIcon}
@@ -162,10 +173,10 @@ function VersionItem({
             <span className="sr-only">Redacted value</span>
           </div>
         ) : (
-          <Tooltip content={canRead ? undefined : "Access denied"}>
+          <Tooltip content={canRead && !hiddenValue ? undefined : "Access denied"}>
             <div className={styles.versionValue}>
-              {visible && (value || <span className={styles.muted}>EMPTY</span>)}
-              {!visible && mask}
+              {visible && !hiddenValue && (value || <span className={styles.muted}>EMPTY</span>)}
+              {(!visible || hiddenValue) && mask}
             </div>
           </Tooltip>
         )}
@@ -200,7 +211,27 @@ function VersionItem({
           </AlertDialogHeader>
           {confirm === "restore" && valuePending && <Spinner label="Loading version value" />}
           {confirm === "restore" && Boolean(valueError) && (
-            <p role="alert">Could not load this version. Close this dialog and try again.</p>
+            <div role="alert">
+              <p>Could not load this version.</p>
+              <Button
+                disabled={retrying}
+                onClick={async () => {
+                  setRetrying(true);
+                  try {
+                    await refetch();
+                  } finally {
+                    setRetrying(false);
+                  }
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          {confirm === "restore" && hiddenValue && (
+            <p role="alert">
+              You don&apos;t have access to this version&apos;s value, so it can&apos;t be restored.
+            </p>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -269,7 +300,8 @@ export function VersionHistorySheet({
       createdAt: entry.createdAt,
       actor: entry.actor?.name ?? "Unknown actor",
       actorType: actorType === "identity" || actorType === "platform" ? actorType : "user",
-      redacted: entry.isRedacted
+      redacted: entry.isRedacted,
+      secretValueHidden: entry.secretValueHidden
     };
   });
   return (
