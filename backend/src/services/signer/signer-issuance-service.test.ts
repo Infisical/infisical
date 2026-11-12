@@ -177,7 +177,7 @@ describe("signerIssuanceService attaching an issued certificate", () => {
   it("revokes a certificate that comes back after its signer was deleted", async () => {
     const { service, deps } = buildService({ signerStatus: SignerStatus.Active });
     deps.signerIssuanceJobDAL.completeIfPending.mockResolvedValue(null);
-    const signer = await deps.signerDAL.findById(SIGNER_ID);
+    const signer = (await deps.signerDAL.findById(SIGNER_ID)) as TPkiSigners;
     deps.signerDAL.findById.mockImplementation(async (_id: string, trx?: Knex) => (trx ? undefined : signer));
 
     await service.processJob(JOB_ID);
@@ -190,7 +190,7 @@ describe("signerIssuanceService attaching an issued certificate", () => {
   it("leaves the certificate alone when it was imported into another signer after its signer was deleted", async () => {
     const { service, deps } = buildService({ signerStatus: SignerStatus.Active });
     deps.signerIssuanceJobDAL.completeIfPending.mockResolvedValue(null);
-    const signer = await deps.signerDAL.findById(SIGNER_ID);
+    const signer = (await deps.signerDAL.findById(SIGNER_ID)) as TPkiSigners;
     deps.signerDAL.findById.mockImplementation(async (_id: string, trx?: Knex) => (trx ? undefined : signer));
     deps.signerDAL.findOne.mockResolvedValue({ id: "replacement-signer", certificateId: NEW_CERT_ID } as TPkiSigners);
 
