@@ -101,6 +101,8 @@ To require sign-off in Jira, use **is approved in Jira** rather than **has statu
 | --- | --- |
 | **is on call in incident.io schedule** | The requester is on call in one of the schedules, including through an override, and has the same email address in incident.io as in Infisical |
 
+Infisical only checks the schedule when the request is submitted, so the access lasts for the full duration the requester asked for, even after their shift ends.
+
 ## Request access with a linked record
 
 If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#request-access) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
