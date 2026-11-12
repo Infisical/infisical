@@ -305,10 +305,10 @@ export const AddDataSourceSheet = ({
   };
 
   useEffect(() => {
-    if (!connectionId || !connectionName) return;
+    const returned = Boolean(connectionId && connectionName);
+    if (returned) navigate({ to: ".", search: {}, replace: true });
     const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
     sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-    navigate({ to: ".", search: {}, replace: true });
     if (!stored) return;
     let saved: Draft;
     try {
@@ -319,10 +319,12 @@ export const AddDataSourceSheet = ({
     reset(initialDraft(saved.type));
     change({
       ...saved,
-      connection: { id: connectionId, name: connectionName },
-      workspaceSlug: "",
-      group: undefined,
-      isDiscoveryEnabled: saved.type !== SecretScanningDataSource.GitLab
+      ...(returned && {
+        connection: { id: connectionId as string, name: connectionName as string },
+        workspaceSlug: "",
+        group: undefined,
+        ...(saved.type === SecretScanningDataSource.GitLab && { isDiscoveryEnabled: false })
+      })
     });
     setStep(1);
     onOpenChange(true);
