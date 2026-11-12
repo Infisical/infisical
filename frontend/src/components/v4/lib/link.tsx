@@ -2,7 +2,8 @@ import * as React from "react";
 
 /**
  * Augment this interface to type the link target every Cipher component takes, for example
- * `interface CipherRegister { link: LinkOptions }` for a TanStack Router app.
+ * `interface CipherRegister { link: LinkOptions }` for a TanStack Router app. A target with
+ * `disabled: true` renders RowLink and CardLink as unavailable.
  */
 // oxlint-disable-next-line typescript/no-empty-object-type
 export interface CipherRegister {}

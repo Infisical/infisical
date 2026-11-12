@@ -17,7 +17,8 @@ function RowLink({
   disabled?: boolean;
   chevron?: boolean;
 }) {
-  useStretchedLink(!disabled);
+  const off = disabled ?? (props.link as { disabled?: boolean }).disabled;
+  useStretchedLink(!off);
   const content = chevron ? (
     <>
       <span className={styles.label}>{children}</span>
@@ -26,7 +27,7 @@ function RowLink({
   ) : (
     children
   );
-  if (disabled)
+  if (off)
     return (
       <span
         role="link"

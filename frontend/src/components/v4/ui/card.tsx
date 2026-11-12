@@ -243,8 +243,9 @@ function CardLink({
 }: CipherLinkProps & {
   disabled?: boolean;
 }) {
-  useStretchedLink(!disabled);
-  if (disabled)
+  const off = disabled ?? (props.link as { disabled?: boolean }).disabled;
+  useStretchedLink(!off);
+  if (off)
     return (
       <span
         role="link"
