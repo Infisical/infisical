@@ -131,6 +131,9 @@ export const alertChannelServiceFactory = ({
     if (!scope.allowEmailAddresses && recipients.some((r) => r.principalType === AlertPrincipalType.EMAIL)) {
       throw new BadRequestError({ message: "This alert type doesn't accept email address recipients" });
     }
+    if (!scope.allowProjectAdmins && recipients.some((r) => r.principalType === AlertPrincipalType.PROJECT_ADMINS)) {
+      throw new BadRequestError({ message: "This alert type doesn't accept project admins as recipients" });
+    }
   };
 
   // Confirms every recipient principal (user/group) actually belongs to the channel's scope so an

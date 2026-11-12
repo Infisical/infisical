@@ -154,5 +154,6 @@ export const getRecipientScope = (
   projectId?: string | null
 ): TAlertRecipientScope => ({
   projectId: provider.recipientPolicy?.atOrgScope ? null : (projectId ?? null),
-  allowEmailAddresses: Boolean(provider.recipientPolicy?.allowEmailAddresses)
+  allowEmailAddresses: Boolean(provider.recipientPolicy?.allowEmailAddresses),
+  allowProjectAdmins: Boolean(provider.recipientPolicy?.allowProjectAdmins)
 });

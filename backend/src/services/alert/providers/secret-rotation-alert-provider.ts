@@ -243,6 +243,7 @@ export const secretRotationAlertProviderFactory = ({
     targetId: (target) => target.rotationId,
     assertPermission,
     assertResourceInScope,
+    recipientPolicy: { allowProjectAdmins: true },
     resolveProjectId: async ({ orgId, resourceId }) => {
       if (!resourceId) {
         throw new BadRequestError({ message: "Secret rotation alerts must be managed within a project" });

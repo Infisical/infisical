@@ -43,12 +43,6 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
 // Resource types whose provider accepts plain email addresses as email channel recipients
 export const ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES: string[] = [AlertResourceType.PamFolder];
 
-// Only secrets have a project-wide audience, so other resource types don't offer project recipients
-export const ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS: string[] = [
-  AlertResourceType.SecretReminder,
-  AlertResourceType.SecretRotation
-];
-
 export enum AlertChannelType {
   Email = "email",
   Slack = "slack",
@@ -106,6 +100,17 @@ export const ALERT_PROJECT_RECIPIENT_LABELS = {
   [AlertPrincipalType.ProjectMembers]: "All Project Members",
   [AlertPrincipalType.ProjectAdmins]: "Project Admins"
 } as const;
+
+// Only secrets have a project-wide audience, so other resource types don't offer project recipients.
+// Project Admins is the audience of the rotation failure email it replaced, and the API accepts it there only.
+export const ALERT_RESOURCE_PROJECT_RECIPIENT_TYPES: Partial<Record<string, AlertPrincipalType[]>> =
+  {
+    [AlertResourceType.SecretReminder]: [AlertPrincipalType.ProjectMembers],
+    [AlertResourceType.SecretRotation]: [
+      AlertPrincipalType.ProjectMembers,
+      AlertPrincipalType.ProjectAdmins
+    ]
+  };
 
 export enum AlertRunStatus {
   Success = "success",

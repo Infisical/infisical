@@ -162,9 +162,13 @@ const OrgRecipientSelect = ({ orgId, ...props }: SelectProps & { orgId: string }
 const ProjectRecipientSelect = ({
   projectId,
   orgId,
-  allowProjectRecipients,
+  projectRecipientTypes = [],
   ...props
-}: SelectProps & { projectId: string; orgId: string; allowProjectRecipients?: boolean }) => {
+}: SelectProps & {
+  projectId: string;
+  orgId: string;
+  projectRecipientTypes?: AlertPrincipalType[];
+}) => {
   const { data: users = [] } = useGetWorkspaceUsers(projectId, true);
   const { data: orgUsers = [] } = useGetOrgUsers(orgId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
@@ -184,7 +188,7 @@ const ProjectRecipientSelect = ({
   return (
     <RecipientSelect
       options={[
-        ...(allowProjectRecipients ? projectWide : []),
+        ...projectWide.filter((option) => projectRecipientTypes.includes(option.principalType)),
         ...buildOptions(eligibleUsers, groupOptions)
       ]}
       labelledOptions={[...projectWide, ...buildOptions(users, groupOptions)]}
@@ -193,16 +197,16 @@ const ProjectRecipientSelect = ({
   );
 };
 
-type Props = SelectProps & { projectId?: string; allowProjectRecipients?: boolean };
+type Props = SelectProps & { projectId?: string; projectRecipientTypes?: AlertPrincipalType[] };
 
-export const ChannelRecipientsField = ({ projectId, allowProjectRecipients, ...props }: Props) => {
+export const ChannelRecipientsField = ({ projectId, projectRecipientTypes, ...props }: Props) => {
   const { currentOrg } = useOrganization();
 
   return projectId ? (
     <ProjectRecipientSelect
       projectId={projectId}
       orgId={currentOrg.id}
-      allowProjectRecipients={allowProjectRecipients}
+      projectRecipientTypes={projectRecipientTypes}
       {...props}
     />
   ) : (

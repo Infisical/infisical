@@ -65,11 +65,13 @@ export const toAlertActor = (dto: TGenericPermission): TGenericPermission => ({
 type TAlertRecipientPolicy = {
   atOrgScope?: boolean;
   allowEmailAddresses?: boolean;
+  allowProjectAdmins?: boolean;
 };
 
 export type TAlertRecipientScope = {
   projectId: string | null;
   allowEmailAddresses: boolean;
+  allowProjectAdmins?: boolean;
 };
 
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
