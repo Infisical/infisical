@@ -39,7 +39,8 @@ export type TAutoApprovalConstraint<TConn, TFacts> = {
   // Picker values, filtered by search and by the values picked in the rule's other conditions
   listOptions?: (
     conn: TConn,
-    args: { search?: string; siblings: Record<string, string[]> },
+    // selected holds this condition's own picked values, which the options include so they keep their labels
+    args: { search?: string; siblings: Record<string, string[]>; selected: string[] },
     deps: TAutoApprovalProviderDeps
   ) => Promise<TAutoApprovalOption[]>;
   // Pure; the reason is shown to requesters and approvers

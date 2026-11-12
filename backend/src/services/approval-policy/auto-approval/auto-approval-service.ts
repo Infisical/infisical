@@ -586,7 +586,8 @@ export const autoApprovalServiceFactory = ({
     subject: subjectId,
     constraint: constraintId,
     search,
-    siblings
+    siblings,
+    selected
   }: {
     projectId: string;
     actor: TApprovalActor;
@@ -595,6 +596,7 @@ export const autoApprovalServiceFactory = ({
     constraint: string;
     search?: string;
     siblings: Record<string, string[]>;
+    selected: string[];
   }) => {
     const connection = await appConnectionService.validateAppConnectionUsageById(
       AUTO_APPROVAL_APPS,
@@ -612,7 +614,11 @@ export const autoApprovalServiceFactory = ({
     if (!constraint.listOptions) return { options: [] };
 
     return {
-      options: await constraint.listOptions(connection, { search: search?.trim() || undefined, siblings }, providerDeps)
+      options: await constraint.listOptions(
+        connection,
+        { search: search?.trim() || undefined, siblings, selected },
+        providerDeps
+      )
     };
   };
 

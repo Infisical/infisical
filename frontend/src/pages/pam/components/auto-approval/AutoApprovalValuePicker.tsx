@@ -82,7 +82,8 @@ export const AutoApprovalValuePicker = ({
       subject,
       constraint: constraint.id,
       search: "",
-      siblings: { ...siblings, [constraint.id]: unlabelled }
+      siblings,
+      selected: unlabelled
     }),
     enabled: constraint.hasOptions && !isFetching && options.length > 0 && unlabelled.length > 0,
     staleTime: 30_000,

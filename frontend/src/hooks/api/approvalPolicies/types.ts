@@ -154,6 +154,7 @@ export type TListAutoApprovalOptionsDTO = TGetAutoApprovalCatalogDTO & {
   constraint: string;
   search?: string;
   siblings?: Record<string, string[]>;
+  selected?: string[];
 };
 
 export type TApprovalPolicy = {

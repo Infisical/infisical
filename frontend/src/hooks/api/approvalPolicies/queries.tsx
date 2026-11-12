@@ -50,7 +50,8 @@ export const approvalPolicyQuery = {
               siblings:
                 params.siblings && Object.keys(params.siblings).length
                   ? JSON.stringify(params.siblings)
-                  : undefined
+                  : undefined,
+              selected: params.selected?.length ? JSON.stringify(params.selected) : undefined
             }
           }
         );

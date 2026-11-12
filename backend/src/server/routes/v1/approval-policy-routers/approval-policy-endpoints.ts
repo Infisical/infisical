@@ -24,6 +24,7 @@ import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy
 import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
 import {
   AutoApprovalCatalogSchema,
+  AutoApprovalSelectedSchema,
   AutoApprovalSiblingsSchema
 } from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import {
@@ -392,7 +393,8 @@ export const registerApprovalPolicyEndpoints = ({
           subject: z.string().trim().min(1).max(64).describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsSubject),
           constraint: z.string().trim().min(1).max(64).describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsConstraint),
           search: z.string().trim().max(255).optional().describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsSearch),
-          siblings: AutoApprovalSiblingsSchema
+          siblings: AutoApprovalSiblingsSchema,
+          selected: AutoApprovalSelectedSchema
         }),
         response: {
           200: z.object({

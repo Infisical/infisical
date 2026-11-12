@@ -162,3 +162,27 @@ export const AutoApprovalSiblingsSchema = z
     return result.data;
   })
   .describe(DOCS.optionsSiblings);
+
+export const AutoApprovalSelectedSchema = z
+  .string()
+  .max(MAX_SIBLINGS_LENGTH)
+  .optional()
+  .transform((raw, ctx) => {
+    if (!raw) return [] as string[];
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "selected must be a JSON array" });
+      return z.NEVER;
+    }
+
+    const result = ConditionValueSchema.array().max(50).safeParse(parsed);
+    if (!result.success) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "selected must be a list of at most 50 values" });
+      return z.NEVER;
+    }
+    return result.data;
+  })
+  .describe(DOCS.optionsSelected);

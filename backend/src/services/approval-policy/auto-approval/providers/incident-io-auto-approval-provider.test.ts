@@ -127,7 +127,7 @@ describe("incident.io on-call check", () => {
   test("the picker saves schedule IDs, labelled by name", async () => {
     const options = await listOptions?.(
       {} as Parameters<typeof resolve>[0],
-      { siblings: {} },
+      { siblings: {}, selected: [] },
       {} as Parameters<typeof resolve>[4]
     );
     expect(options).toContainEqual({ value: PRIMARY, label: "Primary" });
@@ -137,7 +137,7 @@ describe("incident.io on-call check", () => {
   test("the picker returns saved schedules first, whatever the search", async () => {
     const options = await listOptions?.(
       {} as Parameters<typeof resolve>[0],
-      { search: "secondary", siblings: { [IncidentIoRequesterConstraint.OnCall]: [PRIMARY] } },
+      { search: "secondary", siblings: {}, selected: [PRIMARY] },
       {} as Parameters<typeof resolve>[4]
     );
     expect(options).toEqual([

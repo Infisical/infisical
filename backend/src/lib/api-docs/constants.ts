@@ -5218,6 +5218,8 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   optionsSubject: "The subject the condition checks.",
   optionsConstraint: "The check to list values for.",
   optionsSearch: "Filters the values by this text.",
+  optionsSelected:
+    "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };
