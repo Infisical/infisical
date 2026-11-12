@@ -20,7 +20,7 @@ const PRESETS: { key: PamOutputMaskingPreset; label: string; example: string }[]
     label: "Credit Card Numbers",
     example: "4111 1111 1111 1111"
   },
-  { key: PamOutputMaskingPreset.IpAddress, label: "IP Addresses", example: "192.168.1.10" },
+  { key: PamOutputMaskingPreset.IpAddress, label: "IPv4 Addresses", example: "192.168.1.10" },
   { key: PamOutputMaskingPreset.Jwt, label: "JSON Web Tokens", example: "eyJhbGciOiJIUzI1NiJ9…" }
 ];
 

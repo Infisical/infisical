@@ -1,9 +1,12 @@
+import RE2 from "re2";
 import { describe, expect, test } from "vitest";
 
 import { accountTypeSupportsSessionLogMasking, PamAccountType } from "./pam-enums";
 import {
   buildPamPolicyRules,
   getApplicablePolicies,
+  PAM_OUTPUT_MASKING_PRESET_PATTERNS,
+  PamOutputMaskingPreset,
   PamPolicyType,
   PamSettingType,
   resolveAccessControls,
@@ -238,5 +241,40 @@ describe("accountTypeSupportsSessionLogMasking", () => {
   test("is true for everything else", () => {
     const rest = Object.values(PamAccountType).filter((type) => !unmaskable.includes(type));
     expect(rest.every(accountTypeSupportsSessionLogMasking)).toBe(true);
+  });
+});
+
+describe("output masking presets", () => {
+  const masks = (preset: PamOutputMaskingPreset, value: string) =>
+    new RE2(PAM_OUTPUT_MASKING_PRESET_PATTERNS[preset]).test(value);
+
+  test.each([
+    [PamOutputMaskingPreset.Email, "jane.doe+billing@corp.example.co.uk"],
+    [PamOutputMaskingPreset.PhoneNumber, "(555) 123-4567"],
+    [PamOutputMaskingPreset.PhoneNumber, "+44 20 7946 0958"],
+    [PamOutputMaskingPreset.PhoneNumber, "+14155552671"],
+    [PamOutputMaskingPreset.Ssn, "123-45-6789"],
+    [PamOutputMaskingPreset.CreditCard, "4111 1111 1111 1111"],
+    [PamOutputMaskingPreset.CreditCard, "4111111111111111"],
+    [PamOutputMaskingPreset.CreditCard, "3782 822463 10005"],
+    [PamOutputMaskingPreset.IpAddress, "10.20.30.40"],
+    [PamOutputMaskingPreset.Jwt, "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln"]
+  ])("%s masks %s", (preset, value) => {
+    expect(masks(preset, value)).toBe(true);
+  });
+
+  // A broader pattern would also hit these, blanking ordinary query output.
+  test.each(["2026-11-10", "1731300000000", "ORD-2026-000123", "10.0.1", "12:30:45"])("no preset masks %s", (value) => {
+    expect(Object.values(PamOutputMaskingPreset).some((preset) => masks(preset, value))).toBe(false);
+  });
+
+  test("dedupes presets and caps the list at the number of presets", () => {
+    expect(
+      validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: ["email", "email"] } })
+    ).toEqual({ ok: true, data: { [PamPolicyType.OutputMasking]: { presets: ["email"], patterns: "" } } });
+    expect(
+      validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: Array(7).fill("email") } })
+        .ok
+    ).toBe(false);
   });
 });

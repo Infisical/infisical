@@ -30,7 +30,7 @@ export const PAM_OUTPUT_MASKING_PRESET_PATTERNS: Record<PamOutputMaskingPreset, 
   [PamOutputMaskingPreset.Ssn]: String.raw`\b\d{3}-\d{2}-\d{4}\b`,
   [PamOutputMaskingPreset.Email]: String.raw`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`,
   [PamOutputMaskingPreset.IpAddress]: String.raw`\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b`,
-  [PamOutputMaskingPreset.PhoneNumber]: String.raw`(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,4}\)|\b\d{2,4})[ .-]\d{3,4}[ .-]\d{3,4}\b`
+  [PamOutputMaskingPreset.PhoneNumber]: String.raw`(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,4}\)|\b\d{2,4})[ .-]\d{3,4}[ .-]\d{3,4}\b|\+\d{10,15}\b`
 };
 
 export enum PamSettingType {
@@ -73,7 +73,11 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
     );
 
 const PamOutputMaskingSchema = z.object({
-  presets: z.array(z.nativeEnum(PamOutputMaskingPreset)).default([]),
+  presets: z
+    .array(z.nativeEnum(PamOutputMaskingPreset))
+    .max(Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS).length)
+    .transform((presets) => [...new Set(presets)])
+    .default([]),
   patterns: patternsStringSchema().default("")
 });
 

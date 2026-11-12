@@ -216,7 +216,16 @@ export const pamSessionServiceFactory = ({
   };
 
   // An older gateway ignores rules it does not know, which would show the user unmasked data.
-  const assertGatewayEnforcesOutputMasking = async (gatewayId: string) => {
+  const assertGatewayEnforcesOutputMasking = async (
+    gatewayId: string,
+    account: { accountType: string; templatePolicies: unknown }
+  ) => {
+    if (
+      !policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType) ||
+      resolveOutputMaskingPatterns(account.templatePolicies).length === 0
+    ) {
+      return;
+    }
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if ((gateway?.capabilities as { outputMasking?: boolean } | null)?.outputMasking !== true) {
       throw new BadRequestError({
@@ -244,6 +253,9 @@ export const pamSessionServiceFactory = ({
     if (!account) {
       throw new NotFoundError({ message: "Account not found" });
     }
+
+    // Before activating the session or claiming recording secrets, so a refused fetch leaves nothing behind.
+    await assertGatewayEnforcesOutputMasking(gatewayId, account);
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
@@ -406,10 +418,6 @@ export const pamSessionServiceFactory = ({
         parsedSettings.success &&
         parsedSettings.data.sessionLogMaskingBuiltInDetection
     });
-
-    if (policyRules?.[PamPolicyType.OutputMasking]) {
-      await assertGatewayEnforcesOutputMasking(gatewayId);
-    }
 
     const normalizedConnectionDetails = buildSessionGatewayConnectionDetails(
       account.accountType as PamAccountType,
@@ -741,12 +749,7 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Gateway not configured for this account" });
     }
 
-    if (
-      policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType) &&
-      resolveOutputMaskingPatterns(account.templatePolicies).length > 0
-    ) {
-      await assertGatewayEnforcesOutputMasking(effectiveGatewayId);
-    }
+    await assertGatewayEnforcesOutputMasking(effectiveGatewayId, account);
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
