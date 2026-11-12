@@ -269,8 +269,19 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         [...findingByValue.values()].map(({ id }) => id),
         FINDINGS_UPSERT_CHUNK_SIZE
       )) {
+        // Triage doesn't take the advisory lock, so a status read above can predate one. This update locks the findings
+        // until commit, so the status it returns is the one the pull request check has to see.
         // eslint-disable-next-line no-await-in-loop
-        await tx(TableName.SecretScanningFinding).whereIn("id", chunk).update({ lastDetectedAt: now });
+        const locked = await tx(TableName.SecretScanningFinding)
+          .whereIn("id", chunk)
+          .update({ lastDetectedAt: now })
+          .returning(["id", "status"]);
+
+        const statusById = new Map(locked.map(({ id, status }) => [id, status]));
+        findingByValue.forEach((finding, value) => {
+          const status = statusById.get(finding.id);
+          if (status) findingByValue.set(value, { ...finding, status });
+        });
 
         // eslint-disable-next-line no-await-in-loop
         const reopened = await tx(TableName.SecretScanningFinding)
