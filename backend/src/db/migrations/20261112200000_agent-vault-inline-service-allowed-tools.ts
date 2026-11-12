@@ -30,13 +30,14 @@ export async function up(knex: Knex): Promise<void> {
   );
 }
 
-// Code without inline tool lists sends every inline MCP server with all of its tools, so clearing them loses nothing.
+// Code without inline tool lists would send a restricted inline MCP server with every tool, so its session loses that
+// server instead. Its custom headers and substitutions go with it through their foreign keys.
 export async function down(knex: Knex): Promise<void> {
   await replaceInlineOnlyCheck(
     knex,
     `"sessionId" IS NULL OR ("memberProvidedFields" IS NULL AND "credentialType" <> 'oauth' AND "allowedTools" IS NULL)`,
     async (trx) => {
-      await trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools").update({ allowedTools: null });
+      await trx(SERVICE).whereNotNull("sessionId").whereNotNull("allowedTools").delete();
     }
   );
 }
