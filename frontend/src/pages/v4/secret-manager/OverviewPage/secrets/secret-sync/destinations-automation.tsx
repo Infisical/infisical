@@ -3,7 +3,10 @@ import { Controller, useWatch } from "react-hook-form";
 
 import { Combobox } from "@app/components/v4/ui/combobox";
 import { Stack } from "@app/components/v4/ui/layout";
+import { Select } from "@app/components/v4/ui/select";
+import { JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import {
@@ -304,6 +307,76 @@ function TriggerDevOptions() {
   );
 }
 
+const JENKINS_SCOPE_HELP: Record<JenkinsSyncScope, string> = {
+  [JenkinsSyncScope.Global]:
+    "Secrets are stored as Secret text credentials in the Jenkins global credentials store.",
+  [JenkinsSyncScope.Folder]:
+    "Secrets are stored as Secret text credentials in the selected folder's credentials store."
+};
+
+function JenkinsDestination() {
+  const { control, setValue } = useSyncForm();
+  const connectionId = useConnectionId();
+  const scope = useWatch({ control, name: "destinationConfig.scope" }) as
+    | JenkinsSyncScope
+    | undefined;
+  const folders = useV4Adapter("secrets").useJenkinsFolders(connectionId ?? "", {
+    enabled: Boolean(connectionId) && scope === JenkinsSyncScope.Folder
+  });
+  return (
+    <Stack gap={16}>
+      <ConnectionField
+        onChange={() => {
+          setValue("destinationConfig.scope", JenkinsSyncScope.Global);
+          setValue("destinationConfig.folderPath", "");
+        }}
+      />
+      <Controller
+        control={control}
+        name="destinationConfig.scope"
+        render={({ field, fieldState: { error } }) => (
+          <SyncField
+            label="Scope"
+            description={scope ? JENKINS_SCOPE_HELP[scope] : undefined}
+            error={error?.message}
+          >
+            <Select
+              label="Scope"
+              value={field.value ?? ""}
+              onValueChange={(next) => {
+                field.onChange(next);
+                setValue("destinationConfig.folderPath", "");
+              }}
+              options={Object.values(JenkinsSyncScope).map((value) => ({
+                value,
+                label: JENKINS_SYNC_SCOPE_LABELS[value]
+              }))}
+              invalid={Boolean(error)}
+            />
+          </SyncField>
+        )}
+      />
+      {scope === JenkinsSyncScope.Folder && (
+        <ComboField
+          name="destinationConfig.folderPath"
+          label="Folder"
+          options={(folders.data ?? []).map(({ fullName }) => ({
+            value: fullName,
+            label: fullName
+          }))}
+          placeholder="Select a folder..."
+          loading={folders.isPending && Boolean(connectionId)}
+          emptyText={
+            folders.error
+              ? "Unable to load Jenkins folders. Check the connection's credentials and that its user has Job/Read on the folders."
+              : undefined
+          }
+        />
+      )}
+    </Stack>
+  );
+}
+
 export const AUTOMATION_SYNC_VIEWS: Record<
   | SecretSync.Rundeck
   | SecretSync.Windmill
@@ -311,7 +384,8 @@ export const AUTOMATION_SYNC_VIEWS: Record<
   | SecretSync.Devin
   | SecretSync.Daytona
   | SecretSync.Ona
-  | SecretSync.TriggerDev,
+  | SecretSync.TriggerDev
+  | SecretSync.Jenkins,
   SyncView
 > = {
   [SecretSync.Rundeck]: {
@@ -365,5 +439,13 @@ export const AUTOMATION_SYNC_VIEWS: Record<
       ["Environment", config.environment]
     ],
     optionsReview: (options) => [["Mark variables as secret", enabledBadge(options.markAsSecret)]]
+  },
+  [SecretSync.Jenkins]: {
+    Destination: JenkinsDestination,
+    defaults: { destinationConfig: { scope: JenkinsSyncScope.Global, folderPath: "" } },
+    destinationReview: (config) => [
+      ["Scope", JENKINS_SYNC_SCOPE_LABELS[config.scope as JenkinsSyncScope] ?? config.scope],
+      ...(config.scope === JenkinsSyncScope.Folder ? [["Folder", config.folderPath] as const] : [])
+    ]
   }
 };

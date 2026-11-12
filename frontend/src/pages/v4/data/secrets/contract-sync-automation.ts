@@ -1,4 +1,5 @@
 import type { TChecklyAccount } from "@app/hooks/api/appConnections/checkly/types";
+import type { TJenkinsFolder } from "@app/hooks/api/appConnections/jenkins/types";
 import type { TOnaProject } from "@app/hooks/api/appConnections/ona/types";
 import type { TRundeckProject } from "@app/hooks/api/appConnections/rundeck/types";
 import type {
@@ -24,4 +25,5 @@ export type SyncAutomationLookups = {
     dto: { connectionId: string; projectRef: string },
     options?: QueryOptions
   ) => V4QueryResult<TTriggerDevEnvironment[]>;
+  useJenkinsFolders: ConnectionOptions<TJenkinsFolder>;
 };

@@ -41,5 +41,6 @@ export const syncAutomationDemo: SyncAutomationLookups = {
         { id: "env_demo_prod", slug: "prod", type: "PRODUCTION" }
       ],
       options?.enabled ?? true
-    )
+    ),
+  useJenkinsFolders: listOf([{ fullName: "payments-demo" }, { fullName: "payments-demo/api" }])
 };

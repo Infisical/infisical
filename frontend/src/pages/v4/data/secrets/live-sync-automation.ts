@@ -2,6 +2,7 @@ import {
   useChecklyConnectionListAccounts,
   useChecklyConnectionListGroups
 } from "@app/hooks/api/appConnections/checkly";
+import { useJenkinsConnectionListFolders } from "@app/hooks/api/appConnections/jenkins";
 import { useOnaConnectionListProjects } from "@app/hooks/api/appConnections/ona";
 import { useRundeckConnectionListProjects } from "@app/hooks/api/appConnections/rundeck";
 import {
@@ -25,5 +26,7 @@ export const syncAutomationLive: SyncAutomationLookups = {
   useTriggerDevProjects: (connectionId, options) =>
     useTriggerDevConnectionListProjects(connectionId, options),
   useTriggerDevEnvironments: ({ connectionId, projectRef }, options) =>
-    useTriggerDevConnectionListEnvironments(connectionId, projectRef, options)
+    useTriggerDevConnectionListEnvironments(connectionId, projectRef, options),
+  useJenkinsFolders: (connectionId, options) =>
+    useJenkinsConnectionListFolders(connectionId, options)
 };
