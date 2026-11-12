@@ -11,6 +11,7 @@ import { validateSecretMovePermissions } from "@app/ee/services/permission/permi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -360,6 +361,7 @@ export const secretFolderServiceFactory = ({
   const $assertNoOpenChangeRequests = async (
     folders: { id: string; path: string }[],
     action: TFolderChangeAction,
+    permission: MongoAbility<ProjectPermissionSet>,
     tx: Knex
   ) => {
     const folderIdsWithOpenRequests = await secretChangeRequestService.findFolderIdsWithOpenRequests(
@@ -367,6 +369,15 @@ export const secretFolderServiceFactory = ({
       tx
     );
     if (!folderIdsWithOpenRequests.length) return;
+
+    if (
+      !permission.can(ProjectPermissionSecretApprovalRequestActions.Read, ProjectPermissionSub.SecretApprovalRequest)
+    ) {
+      throw new BadRequestError({
+        message: `You cannot ${action} the selected folder because it contains resources that are protected by a change policy. Contact a project admin and try again.`,
+        name: action === "delete" ? "DeleteFolderProtectedByPolicy" : "RenameFolderProtectedByPolicy"
+      });
+    }
 
     const blockedPaths = folders
       .filter((folder) => folderIdsWithOpenRequests.includes(folder.id))
@@ -407,6 +418,7 @@ export const secretFolderServiceFactory = ({
     await $assertNoOpenChangeRequests(
       subtree.map((folder) => ({ id: folder.id, path: toOldPath(folder.path) })),
       "rename",
+      permission,
       tx
     );
     const content = await findFoldersWithContent(subtreeIds, { secretV2BridgeDAL, secretImportDAL }, tx);
@@ -864,7 +876,7 @@ export const secretFolderServiceFactory = ({
     const folderIds = folderPolicyPaths.map((p) => p.id);
     await folderDAL.lockFoldersForUpdate(folderIds, tx);
 
-    await $assertNoOpenChangeRequests(folderPolicyPaths, "delete", tx);
+    await $assertNoOpenChangeRequests(folderPolicyPaths, "delete", permission, tx);
 
     const content = await findFoldersWithContent(folderIds, { secretV2BridgeDAL, secretImportDAL }, tx);
     const protectedFolder = await findPolicyProtectedFolder(

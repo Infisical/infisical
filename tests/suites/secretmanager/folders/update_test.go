@@ -290,6 +290,39 @@ func TestFolder_Update(t *testing.T) {
 		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
 	})
 
+	t.Run("should refuse renaming a folder with an open change request without naming it to an actor who cannot read change requests", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		proj.NewRole(t, "folder-editor", fixture.Permission{Subject: "secret-folders", Action: []string{"edit"}})
+		editor := proj.NewUser(t, fixture.WithPrincipalName("editor"), fixture.WithRoles("folder-editor"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app/api")
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app/api"}, reviewer)
+		held, err := committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/app/api"), SecretValue: "value",
+		})
+		require.NoError(t, err)
+		require.Containsf(t, string(held.Body), `"approval"`, "the write was not held: %s", held.Body)
+
+		// Action
+		res, err := editor.API.UpdateSecretFolderWithResponse(t.Context(), folderID.String(), api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), Name: "service",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			`You cannot rename the selected folder because it contains resources that are protected by a change policy. Contact a project admin and try again.`,
+			res.JSON400.Message)
+		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
+	})
+
 	t.Run("should refuse a rename when a policy protects a secret import in a subfolder and keep the folder", func(t *testing.T) {
 		t.Parallel()
 

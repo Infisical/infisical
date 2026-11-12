@@ -119,6 +119,38 @@ func TestFolder_Delete(t *testing.T) {
 		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
 	})
 
+	t.Run("should refuse deleting a folder with an open change request without naming it to an actor who cannot read change requests", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		proj.NewRole(t, "folder-deleter", fixture.Permission{Subject: "secret-folders", Action: []string{"delete"}})
+		deleter := proj.NewUser(t, fixture.WithPrincipalName("deleter"), fixture.WithRoles("folder-deleter"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app"}, reviewer)
+		held, err := committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/app"), SecretValue: "value",
+		})
+		require.NoError(t, err)
+		require.Containsf(t, string(held.Body), `"approval"`, "the write was not held: %s", held.Body)
+
+		// Action
+		res, err := deleter.API.DeleteSecretFolderWithResponse(t.Context(), folderID.String(), api.DeleteSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), ForceDelete: new(true),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			`You cannot delete the selected folder because it contains resources that are protected by a change policy. Contact a project admin and try again.`,
+			res.JSON400.Message)
+		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
+	})
+
 	t.Run("should refuse deleting a folder whose secrets a policy protects, naming the policy, and keep them", func(t *testing.T) {
 		t.Parallel()
 
