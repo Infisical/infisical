@@ -132,7 +132,6 @@ export const identityV2ServiceFactory = ({
     if (plan.isLimited(PlanLimit.Identities)) {
       const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
       if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
-        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
         throw new BadRequestError({
           message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
         });

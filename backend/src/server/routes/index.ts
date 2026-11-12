@@ -911,8 +911,7 @@ export const registerRoutes = async (
 
   const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
 
-  // Billing surface. Drives the catalog, subscription, and entitlement reads off the real license
-  // server via the license billing client; no new tables.
+  // Billing surface: catalog, subscription and entitlement reads through the License Server billing client.
   const licenseV2Service = licenseV2ServiceFactory({
     envConfig,
     orgDAL,

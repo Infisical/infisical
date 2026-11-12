@@ -948,8 +948,7 @@ export const projectServiceFactory = ({
         throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
       }
 
-      // refresh the cached plan so the freed workspace slot is reflected immediately
-      // (countOfOrgProjects now excludes soft-deleted projects)
+      // The plan caches the project count, which leaves out soft-deleted projects, so drop it.
       await licenseService.invalidatePlan(actorOrgId);
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);

@@ -203,8 +203,8 @@ func (t *Tenant) signUpAdmin(tt *testing.T, orgName string) *Principal {
 
 // SetPlan changes this tenant's entitlements, and proves the change took effect.
 //
-// A stub on its own does nothing: getPlan caches per organization in Redis for 900
-// seconds. Verify reads the plan back with refreshCache=true, which busts that cache
+// A stub on its own does nothing: getPlan caches per root organization in Redis for
+// about 900 seconds. Verify reads the plan back with refreshCache=true, which busts that cache
 // through the API and asserts the stub produced what was asked for in one call.
 func (t *Tenant) SetPlan(tt *testing.T, p license.Plan) {
 	tt.Helper()

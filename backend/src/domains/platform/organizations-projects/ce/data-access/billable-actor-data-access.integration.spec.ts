@@ -6,7 +6,7 @@ import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { OrganizationsProjectsModule } from "../module";
 import { seedBillableActors } from "../testing/billable-actor-fixture";
 
-describe("OrganizationsProjectsModule usage counters", () => {
+describe("OrganizationsProjectsService billable actor counts", () => {
   const h = setupIntegration();
 
   const build = () => ({ module: new OrganizationsProjectsModule({ db: h.db }) });

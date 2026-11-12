@@ -34,7 +34,7 @@ export type TLicenseProvider = {
   refreshInstanceEntitlements(): Promise<InstanceEntitlements | null>;
   // Whether refreshInstanceEntitlements should run on a timer.
   hasOnlineLicense(): boolean;
-  // Whether LICENSE_KEY holds an offline key, whether or not it verifies.
+  // Whether LICENSE_KEY or LICENSE_KEY_OFFLINE holds an offline key, whether or not it verifies.
   isOffline(): boolean;
   // Cloud only. Throws when the License Server can't be read.
   fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan>;

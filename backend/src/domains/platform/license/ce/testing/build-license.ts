@@ -20,7 +20,7 @@ export type TBuildLicenseOptions = {
   organizations?: Partial<FakeOrganizationsProjectsService>;
 };
 
-// resolveRootOrgId reads findRootOrgId, so overriding one overrides both.
+// resolveRootOrgId reads findRootOrgId, so overriding findRootOrgId changes both.
 const buildOrganizations = (overrides: Partial<FakeOrganizationsProjectsService> = {}) => {
   const organizations = new FakeOrganizationsProjectsService()
     .setRoot(ROOT.id, ROOT.id)

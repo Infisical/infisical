@@ -83,4 +83,4 @@ Rules:
 - **Tests:** `ce/testing/build-license.ts` builds the module on an in-memory key store and queue, with
   `FakeLicenseServer` (provider and License Server) and `FakeOrganizationsProjectsService`. `testFeatures()` is
   test data, not product defaults. Consumers use `FakeLicenseService` / `FakeUsageMeteringService`; product
-  domains read their counters with `usageCounter(module.usageCounters, key)`.
+  domains read their counters with `usageCounter(module.usageCounters, Meter.X)`.

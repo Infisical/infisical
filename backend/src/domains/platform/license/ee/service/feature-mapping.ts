@@ -388,8 +388,8 @@ export const FEATURE_MAPPINGS: TFeatureMapping[] = [
   ...agentVaultMappings
 ];
 
-// v1 TInstanceFeatures keys intentionally not compared: live usage counters, plan metadata, and v1 fields
-// with no License Server v2 feature (v2 never returns them, so a mapping would be permanently v2_missing).
+// TInstanceFeatures keys the completeness test skips: live usage counters, plan metadata, and fields with no
+// License Server v2 feature.
 export const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   "_id",
   "slug",

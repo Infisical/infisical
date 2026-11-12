@@ -132,7 +132,6 @@ export type TAddUsersToGroupByUserIds = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
-  // Optional so SSO/SCIM callers can meter the secret-manager identity count when they sync groups.
   usageMeteringService: TUsageMeteringService;
 };
 

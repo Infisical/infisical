@@ -58,7 +58,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     ]
   });
 
-  // Subscriptions are managed on the EE client itself; License never calls it.
+  // Subscriptions are managed on the EE client itself; License never calls its billing methods.
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
 
   return { license, licenseBilling, organizationsProjects, certManager };

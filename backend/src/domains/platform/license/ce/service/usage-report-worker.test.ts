@@ -167,29 +167,6 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     // Assert
     await expect(result).rejects.toThrow("License Server unavailable");
   });
-
-  test("should enable the daily flush on online self-hosted, and not on cloud or an offline license", async () => {
-    // Setup
-    const online = new FakeLicenseServer();
-    online.instance = { ...online.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
-    const offline = new FakeLicenseServer();
-    offline.instance = { ...online.instance, instanceType: InstanceType.EnterpriseOnPremOffline };
-    offline.offline = true;
-
-    // Action
-    const enabled = await Promise.all(
-      [online, offline, new FakeLicenseServer()].map(
-        async (licenseServer) => (await buildLicense({ licenseServer })).registeredCrons
-      )
-    );
-
-    // Assert
-    expect(enabled).toEqual([
-      ["license-usage-flush:true"],
-      ["license-usage-flush:false"],
-      ["license-usage-flush:false"]
-    ]);
-  });
 });
 
 describe("UsageReportWorker.flushInstanceUsage", () => {
@@ -223,6 +200,29 @@ describe("UsageReportWorker.flushInstanceUsage", () => {
 });
 
 describe("LicenseModule", () => {
+  test("should enable the daily flush on online self-hosted, and not on cloud or an offline license", async () => {
+    // Setup
+    const online = new FakeLicenseServer();
+    online.instance = { ...online.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
+    const offline = new FakeLicenseServer();
+    offline.instance = { ...online.instance, instanceType: InstanceType.EnterpriseOnPremOffline };
+    offline.offline = true;
+
+    // Action
+    const enabled = await Promise.all(
+      [online, offline, new FakeLicenseServer()].map(
+        async (licenseServer) => (await buildLicense({ licenseServer })).registeredCrons
+      )
+    );
+
+    // Assert
+    expect(enabled).toEqual([
+      ["license-usage-flush:true"],
+      ["license-usage-flush:false"],
+      ["license-usage-flush:false"]
+    ]);
+  });
+
   test("should refuse two counters for one dimension", async () => {
     // Setup
     const counters = [new FakeUsageCounter(Meter.SecretIdentities), new FakeUsageCounter(Meter.SecretIdentities)];

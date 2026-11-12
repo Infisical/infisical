@@ -44,10 +44,10 @@ func (service) Scope(r *http.Request) (string, bool) {
 
 // New returns a fully entitled organization.
 //
-// Entitled by default, and that is not a convenience. On any failure getPlan writes
-// the OSS defaults into the plan cache for the full TTL rather than leaving it
-// empty, so a single unanswered call poisons that organization for about fifteen
-// minutes. With the default in the fake there is nothing to install and no window in
+// Entitled by default, and that is not a convenience. When the License Server call
+// fails, getPlan writes the OSS defaults into the plan cache for the full TTL
+// rather than leaving it empty, so a single unanswered call poisons that
+// organization for about fifteen minutes. With the default in the fake there is nothing to install and no window in
 // which an organization can be asked about before the answer exists.
 func (service) New(events fakenet.Emitter) fakenet.Fake {
 	return &Org{state: State{Plan: Enterprise()}, events: events}

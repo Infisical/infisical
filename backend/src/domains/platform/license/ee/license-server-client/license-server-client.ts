@@ -62,7 +62,6 @@ const buildBackend = (envConfig: TLicenseServerClientConfig["envConfig"]): TLice
     return licenseServerSelfHostedBackend(envConfig.LICENSE_SERVER_URL, tokenProvider, envConfig.INTERNAL_REGION);
   }
 
-  // One host serves both the self-hosted token endpoint and the entitlement API.
   const serverUrl = envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
     logger.warn("license-client: LICENSE_SERVER_URL is not set; serving feature fallbacks");

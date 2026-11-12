@@ -33,9 +33,9 @@ func SelfHostedEnv(licenseKey string) map[string]string {
 	}
 }
 
-// Stub on the ROOT organization id: fetchAndCacheCloudPlan resolves
-// findRootOrgDetails and sends the root organization to the license server, so a
-// sub-org resolves its parent's plan. Self-hosted scopes by license key instead.
+// Stub on the ROOT organization id: the instance fetches and caches a cloud plan
+// under the root organization, so a sub-org resolves its parent's plan.
+// Self-hosted scopes by license key instead.
 func Open(tt *testing.T, adminURL, scope string) *fakenet.Scope[State] {
 	tt.Helper()
 	fakenet.Track(tt, adminURL, Host, scope)

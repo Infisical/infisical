@@ -90,7 +90,7 @@ export type TLicenseClientBackend = {
 };
 
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so
-// no org_id is carried. The global catalog is org-independent and shared by both backends.
+// no org_id is carried.
 const ENTITLEMENTS_PATH = "/v1/entitlements";
 const PRODUCTS_PATH = "/v1/products";
 const SUBSCRIPTION_PATH = "/v1/subscription";
@@ -117,10 +117,6 @@ export const mintServiceToken = (signingKey: string): string =>
     expiresIn: "2m"
   });
 
-// Surface the license server's message on 4xx (caller-actionable, e.g. "cannot remove the last
-// product; cancel the subscription instead"); when it has none, fall back to the generic error
-// default rather than a status code the customer can't act on. 5xx bodies may carry internal detail,
-// so those stay generic.
 // Friendly, action-oriented copy for the license server's machine error codes (details.code). Resolved
 // here so the whole billing surface throws a user-facing message the frontend just renders (no per-code
 // branching in the UI). Falls back to the server's own message when the code is unknown/absent.
@@ -152,6 +148,10 @@ const BILLING_ERROR_MESSAGES: Record<string, string> = {
   lock_held: "Another billing change is in progress. Please try again in a moment."
 };
 
+// Surface the license server's message on 4xx (caller-actionable, e.g. "cannot remove the last
+// product; cancel the subscription instead"); when it has none, fall back to the generic error
+// default rather than a status code the customer can't act on. 5xx bodies may carry internal detail,
+// so those stay generic.
 const throwIfResponseError = async (res: Response): Promise<void> => {
   if (res.ok) {
     return;
@@ -465,9 +465,8 @@ const notSupportedOnSelfHosted = (operation: string) => (): Promise<never> =>
 
 // Backend for a self-hosted License Server v2 license. Unlike the cloud backend (which mints an RS256
 // service JWT), it exchanges the license key for a short-lived JWT at the token endpoint and sends that
-// as the bearer, same as both self-hosted key formats. Single-tenant: the key
-// identifies the license, so entitlement/subscription reads carry no org_id. Only the read + usage +
-// refresh endpoints the self-hosted contract exposes are implemented; everything billing-related throws.
+// as the bearer. Single-tenant: the key identifies the license, so reads carry no org_id. Only the
+// entitlement, catalog and subscription reads exist; everything billing-related rejects.
 export const licenseServerSelfHostedBackend = (
   serverUrl: string,
   tokenProvider: TLicenseTokenProvider,

@@ -239,7 +239,7 @@ const subscriptionItemSchema = z
     quantities: z.record(z.string(), z.number()).default({}),
     limits: z.record(z.string(), z.number()).default({}),
     amount: z.number().optional(),
-    // Trial state for the product line (from the self-serve trial work).
+    // Trial state for the product line.
     status: z.string().optional(),
     isTrialing: z.boolean().default(false),
     trialEndsAt: z.number().nullish(),
@@ -515,8 +515,7 @@ export type TBuyProductPayload = {
   // Present actual usage per per_resource dimension (sizes a monthly line, seeds the usage reading).
   declaredUsage?: Record<string, number>;
   email?: string;
-  // Absolute return URL; its origin must be in the license server's CUSTOMER_PORTAL_ORIGINS allowlist
-  // (the multi-region fix).
+  // Absolute return URL; its origin must be in the license server's CUSTOMER_PORTAL_ORIGINS allowlist.
   returnUrl?: string;
 };
 

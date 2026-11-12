@@ -8,7 +8,7 @@ import { setupIntegration } from "@app/domains/lib/testing/integration";
 
 import { OrganizationsProjectsModule } from "../module";
 
-// The limit checks project and identity create run on their own transaction (see ../../AGENTS.md).
+// The limit checks project and identity create run on the caller's transaction (see ../../AGENTS.md).
 describe("OrganizationsProjectsService.within", () => {
   const h = setupIntegration();
 

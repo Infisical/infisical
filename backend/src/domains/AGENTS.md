@@ -65,7 +65,8 @@ its tags). If there are many and they're read separately, the child is its own e
   constructor and `static async create(deps)` (`LicenseModule.create`). Never a holder that throws until
   something fills it later.
 - Anything that runs on its own (workers, crons, timers) goes in `start()`, which `routes/index.ts` calls
-  once after `createDomains`.
+  once after `createDomains`. A refresh of this process's own cache, which every pod runs whatever its run mode,
+  gets its own method returning a handle that `routes/index.ts` stops on shutdown (`LicenseModule.startBackgroundSync`).
 - State never touches the DB. If it must follow a DB change, update it in `tx.afterCommit(...)` so a
   rollback can't leave them out of sync.
 
@@ -73,7 +74,7 @@ its tags). If there are many and they're read separately, the child is its own e
 
 ```ts
 export class TransactionRunner<TStore> {
-  constructor(db: TDbClient, buildStore: (tx: Knex.Transaction) => TStore, parent?: TTransaction);
+  constructor(db: TDbClient, buildStore: (trx: Knex, locks: TStoreLocks) => TStore, parent?: TTransaction);
   within(tx: TTransaction): TransactionRunner<TStore>; // joins tx instead of opening one
   run<T>(work: (ctx: { store: TStore; tx: TTransaction }) => Promise<T>): Promise<T>;
 }

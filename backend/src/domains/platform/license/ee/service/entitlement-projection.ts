@@ -25,11 +25,9 @@ const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>
     ];
   });
 
-// Builds a plan-shaped TInstanceFeatures from the License Server entitlement set so getPlan can serve it
-// without changing its callers. Starts from the passed base (free-tier defaults) and overlays each
-// mapped feature; a key v2 omits keeps the base value, while a null is written through because that is
-// how v2 says "no limit" (eg unlimited audit log retention). Base is passed in (not
-// imported from license-fns) to avoid a license-service <-> license-fns import cycle.
+// Overlays the License Server's entitlements on the given base. A key v2 omits keeps the base value, while a null
+// is written through because that is how v2 says "no limit" (eg unlimited audit log retention). The base is
+// passed in because self-hosted and cloud start from different defaults.
 export const projectV2ToFeatureSet = (
   base: TInstanceFeatures,
   entitlements: TEntitlementsResponse
@@ -69,8 +67,7 @@ export const projectV2ToFeatureSet = (
 // Every cloud plan includes default storage for session logs, free orgs included, unless the org's plan or an override
 // turns it off. The License Server's default for the key is off, which is what self-hosted licenses get, so only a
 // value a plan or override set is taken here. Without entitlements (the stand-in plan while the License Server can't
-// be reached) it's on. getFeature() reads the License Server directly and skips this rule, so session logs have to
-// read the flag from the plan.
+// be reached) it's on.
 export const withCloudPlanDefaults = (
   plan: TInstanceFeatures,
   entitlements: TEntitlementsResponse | null

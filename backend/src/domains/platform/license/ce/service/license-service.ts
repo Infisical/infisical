@@ -20,7 +20,7 @@ export type TLicenseService = {
   getInstanceEntitlements(): TInstanceEntitlementsProps;
   getInstanceType(): InstanceType;
   getLicenseId(): string;
-  // Whether LICENSE_KEY holds an offline key, whether or not it verifies.
+  // Whether LICENSE_KEY or LICENSE_KEY_OFFLINE holds an offline key, whether or not it verifies.
   hasOfflineLicenseKey(): boolean;
   getPlan(orgId: string): Promise<Plan>;
   refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void>;
@@ -34,8 +34,8 @@ export type TLicenseService = {
   // this before the transaction and check it with seatUsage.assertAvailable.
   getSeatUsage(orgId: string): Promise<SeatUsage>;
   getInstanceSeatUsage(): Promise<SeatUsage>;
-  // The org whose tree an org's seats count against, or null for the whole instance (self-hosted). For a seat
-  // check that must be atomic with its insert, pass it to organizationsProjectsService.within(tx)
+  // The org to count seats for (lockAndCountBillableOrgActors resolves its root), or null for the whole instance
+  // (self-hosted). For a seat check that must be atomic with its insert, pass it to organizationsProjectsService.within(tx)
   // .lockAndCountBillableOrgActors inside the transaction and read the counts with SeatUsage.fromBillableActors.
   getSeatCountScope(orgId: string): string | null;
 };

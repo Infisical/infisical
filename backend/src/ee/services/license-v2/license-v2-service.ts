@@ -64,8 +64,8 @@ type TLicenseV2ServiceFactoryDep = {
   organizationsProjectsService: TOrganizationsProjectsService;
   certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
-  // Seeds per_resource quantities with what's provisioned now, so preview and charge match reality.
   licenseService: TLicenseService;
+  // Seeds per_resource quantities with what's provisioned now, so preview and charge match reality.
   usageMeteringService: TUsageMeteringService;
   licenseBilling: TLicenseServerBilling;
 };
@@ -561,7 +561,7 @@ export const licenseV2ServiceFactory = ({
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
 
-          // The license server reports usage for every dimension now: metered dims carry the period
+          // The license server reports usage for every dimension: metered dims carry the period
           // reading, per_resource dims the latest reported snapshot. Use it directly so the figure
           // matches what the customer is billed on (no separate live count that could diverge).
           const used = dimension.used ?? 0;
