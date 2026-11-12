@@ -22,6 +22,7 @@ import {
   TUsageSnapshot,
   UsageReportError
 } from "../../ce/service/license-server-types/usage-reports";
+import { TLicenseServerEntitlements } from "../service/dependencies";
 import {
   licenseServerBackend,
   licenseServerSelfHostedBackend,
@@ -162,7 +163,7 @@ const postUsage = async (
 };
 
 // Dormant when unconfigured or on an offline license: reads return nothing, changes throw.
-export class LicenseServerClient implements TLicenseServer, TLicenseServerBilling {
+export class LicenseServerClient implements TLicenseServer, TLicenseServerBilling, TLicenseServerEntitlements {
   constructor(
     private readonly backend: TLicenseClientBackend | null,
     private readonly usageEndpoint: TUsageEndpoint | null

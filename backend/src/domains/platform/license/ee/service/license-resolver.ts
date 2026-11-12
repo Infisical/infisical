@@ -9,7 +9,7 @@ import {
   SELF_HOSTED_LICENSE_ORG_ID,
   TEntitlementOrg
 } from "../../ce/service/license-server-types/license-server-types";
-import { LicenseServerClient } from "../license-server-client/license-server-client";
+import { TLicenseServerEntitlements } from "./dependencies";
 import { projectV2ToFeatureSet, withCloudPlanDefaults, withSelfHostedLicenseBase } from "./entitlement-projection";
 // Keep this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
 import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
@@ -62,7 +62,7 @@ export const isOfflineLicenseKey = (licenseKeyConfig: TLicenseKeyConfig) =>
 export type TLicenseResolverDeps = {
   isCloud: boolean;
   licenseKeyConfig: TLicenseKeyConfig;
-  licenseServerClient: LicenseServerClient;
+  licenseServerClient: TLicenseServerEntitlements;
 };
 
 export class LicenseResolver implements TLicenseProvider {
