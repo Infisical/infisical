@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -11,16 +9,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { CodeBlock } from "@app/components/v4/ui/code-block";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { CodeBlock } from "@infisical/cipher/ui/code-block";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -29,8 +27,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/sheet";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { z } from "zod";
+
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 
 import { useOrgId } from "../../../access/permissions";

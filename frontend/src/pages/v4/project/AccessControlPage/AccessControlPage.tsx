@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useSearch } from "@tanstack/react-router";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tabs } from "@app/components/v4/ui/tabs";
 import {
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,

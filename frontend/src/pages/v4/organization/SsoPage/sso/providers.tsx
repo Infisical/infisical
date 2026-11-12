@@ -1,12 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { ArrowLeftRightIcon, PencilIcon } from "lucide-react";
-
-import {
-  LdapUpgradeIntent,
-  OidcSsoUpgradeIntent,
-  SamlSsoUpgradeIntent
-} from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -15,9 +8,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -25,26 +18,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
+} from "@infisical/cipher/ui/dialog";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+} from "@infisical/cipher/ui/dropdown-menu";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
   FieldTitle
-} from "@app/components/v4/ui/field";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { RadioGroup, RadioGroupItem } from "@app/components/v4/ui/radio-group";
-import { Switch } from "@app/components/v4/ui/switch";
+} from "@infisical/cipher/ui/field";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { ArrowLeftRightIcon, PencilIcon } from "lucide-react";
+
+import {
+  LdapUpgradeIntent,
+  OidcSsoUpgradeIntent,
+  SamlSsoUpgradeIntent
+} from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { OrgPermissionActions, OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/context";
 import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
 

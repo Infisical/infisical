@@ -1,27 +1,27 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
-import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+import { PencilIcon } from "lucide-react";
+
 import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects

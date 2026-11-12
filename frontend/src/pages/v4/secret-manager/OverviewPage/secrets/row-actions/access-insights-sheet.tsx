@@ -1,19 +1,17 @@
 import { useState } from "react";
-import { BanIcon, FilterIcon, HardDriveIcon, UserPlusIcon, UsersIcon } from "lucide-react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { FieldLabel } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FieldLabel } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
 import {
   Sheet,
   SheetBody,
@@ -22,9 +20,9 @@ import {
   SheetHeader,
   SheetSubheader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Switch } from "@app/components/v4/ui/switch";
+} from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Switch } from "@infisical/cipher/ui/switch";
 import {
   RowActions,
   RowContextMenu,
@@ -36,8 +34,10 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/table";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { BanIcon, FilterIcon, HardDriveIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 
 import { useV4Adapter } from "../../../../data/adapters";

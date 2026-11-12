@@ -1,6 +1,7 @@
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+
 import { PageTitle } from "@app/components/PageTitle";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
 
 import { RootKeysSection } from "./RootKeysSection";
 import { StrategyCard } from "./StrategyCard";

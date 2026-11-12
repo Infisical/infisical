@@ -1,6 +1,6 @@
+import { Empty, EmptyHeader, EmptyTitle } from "@infisical/cipher/ui/empty";
 import { useLocation } from "@tanstack/react-router";
 
-import { Empty, EmptyHeader, EmptyTitle } from "@app/components/v4/ui/empty";
 import { hasV3Page, toV3Href } from "@app/helpers/v4Bridge";
 
 import { useV4Mode } from "../../data/adapters";

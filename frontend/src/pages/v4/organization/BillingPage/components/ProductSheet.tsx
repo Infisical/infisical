@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,20 +9,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Separator } from "@app/components/v4/ui/separator";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Separator } from "@infisical/cipher/ui/separator";
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetFooter,
   SheetSections
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
 import {
   Table,
   TableBody,
@@ -31,9 +30,10 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
-import { Heading, SmallText, Text } from "@app/components/v4/ui/text";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
+} from "@infisical/cipher/ui/table";
+import { Heading, SmallText, Text } from "@infisical/cipher/ui/text";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+
 import type {
   BillingBands,
   BillingCadence,

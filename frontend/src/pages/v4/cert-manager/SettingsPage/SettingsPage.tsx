@@ -1,6 +1,6 @@
+import { Loader } from "@infisical/cipher/ui/loader";
 import { useParams, useSearch } from "@tanstack/react-router";
 
-import { Loader } from "@app/components/v4/ui/loader";
 import {
   ProjectPermissionActions,
   ProjectPermissionAppConnectionActions,

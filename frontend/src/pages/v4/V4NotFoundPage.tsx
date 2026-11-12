@@ -1,5 +1,6 @@
+import { ErrorState } from "@infisical/cipher/patterns/error-state";
+
 import { PageTitle } from "@app/components/PageTitle";
-import { ErrorState } from "@app/components/v4/patterns/error-state";
 
 import { useErrorContext } from "./errorDetails";
 

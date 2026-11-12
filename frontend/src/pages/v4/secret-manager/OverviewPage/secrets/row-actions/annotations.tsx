@@ -1,16 +1,13 @@
 import { useState } from "react";
-import { format } from "date-fns";
-import { MailIcon } from "lucide-react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Calendar } from "@app/components/v4/ui/calendar";
-import { Field, FieldError, FieldLabel } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { Select } from "@app/components/v4/ui/select";
+import { Button } from "@infisical/cipher/ui/button";
+import { Calendar } from "@infisical/cipher/ui/calendar";
+import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -19,10 +16,13 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { format } from "date-fns";
+import { MailIcon } from "lucide-react";
+
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import type { Secret, SecretReminder } from "../../secrets-model";

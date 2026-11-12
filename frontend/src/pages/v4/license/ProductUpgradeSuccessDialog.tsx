@@ -1,4 +1,4 @@
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
+} from "@infisical/cipher/ui/dialog";
+
 import type { BillingCatalogPlan, BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
 import { ProductIcon } from "./product-icon";

@@ -1,10 +1,10 @@
+import { Badge } from "@infisical/cipher/ui/badge";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
 import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub

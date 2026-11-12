@@ -1,19 +1,19 @@
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,

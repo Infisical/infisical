@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
-import { MailIcon } from "lucide-react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Label } from "@app/components/v4/ui/label";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { RadioGroup, RadioGroupItem } from "@app/components/v4/ui/radio-group";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Label } from "@infisical/cipher/ui/label";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { MailIcon } from "lucide-react";
+
 import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS, formatProjectRoleName } from "@app/helpers/roles";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type {

@@ -1,4 +1,10 @@
 import { type MouseEvent, type ReactNode, useState } from "react";
+import type { BreadcrumbCrumb } from "@infisical/cipher/ui/breadcrumb";
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { Sidebar, type SidebarLevel, type SidebarSection } from "@infisical/cipher/ui/sidebar";
+import { AppInset, AppShell, PageGutter, TopBar } from "@infisical/cipher/ui/top-bar";
 import {
   type LinkOptions,
   useMatches,
@@ -7,12 +13,6 @@ import {
   useRouterState
 } from "@tanstack/react-router";
 
-import type { BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
-import { Button } from "@app/components/v4/ui/button";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Loader } from "@app/components/v4/ui/loader";
-import { Sidebar, type SidebarLevel, type SidebarSection } from "@app/components/v4/ui/sidebar";
-import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 
 import { useV4Session } from "../data/session/contract";
@@ -197,17 +197,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
           label: "Organization settings",
           icon: "settings",
           onSelect: () => go(`${base}/settings`)
-        },
-        ...(orgId === V4_DEMO_ORG_ID
-          ? [
-              { type: "separator" as const },
-              {
-                label: "Design system",
-                icon: "apps" as const,
-                link: { to: "/design-system" as const }
-              }
-            ]
-          : [])
+        }
       ]
     }
   };

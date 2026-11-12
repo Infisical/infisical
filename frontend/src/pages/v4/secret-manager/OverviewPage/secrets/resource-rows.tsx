@@ -1,4 +1,32 @@
 import { memo, type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from "@infisical/cipher/ui/sheet";
+import {
+  type RowActionList,
+  RowActions,
+  RowContextMenu,
+  Table,
+  TableActionsCell,
+  TableActionsHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowIndicators
+} from "@infisical/cipher/ui/table";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -15,34 +43,6 @@ import {
   XIcon
 } from "lucide-react";
 
-import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { Icon } from "@app/components/v4/ui/icon";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger
-} from "@app/components/v4/ui/sheet";
-import {
-  type RowActionList,
-  RowActions,
-  RowContextMenu,
-  Table,
-  TableActionsCell,
-  TableActionsHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowIndicators
-} from "@app/components/v4/ui/table";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,

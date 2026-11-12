@@ -1,18 +1,18 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSub

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tabs } from "@app/components/v4/ui/tabs";
 import { PolicyType } from "@app/hooks/api/policies/enums";
 
 import { useV4Adapter } from "../../data/adapters";

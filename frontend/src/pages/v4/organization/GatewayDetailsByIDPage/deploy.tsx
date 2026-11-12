@@ -1,23 +1,23 @@
 import { useRef, useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { CodeBlock } from "@app/components/v4/ui/code-block";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { CodeBlock } from "@infisical/cipher/ui/code-block";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
   FieldTitle
-} from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { RadioGroup, RadioGroupItem } from "@app/components/v4/ui/radio-group";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { SmallText } from "@infisical/cipher/ui/text";
+
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects

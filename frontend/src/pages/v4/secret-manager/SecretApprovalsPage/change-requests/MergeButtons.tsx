@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,9 +7,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
 
 import { failed, toast } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";

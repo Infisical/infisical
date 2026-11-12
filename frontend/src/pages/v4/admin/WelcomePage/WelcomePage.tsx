@@ -1,7 +1,6 @@
+import { Media, Tile } from "@infisical/cipher/ui/item";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { useRouteContext } from "@tanstack/react-router";
-
-import { Media, Tile } from "@app/components/v4/ui/item";
-import { Stack } from "@app/components/v4/ui/layout";
 
 import { AuthPage } from "../../auth/components/AuthPage";
 import { orgHref, useGo, v4Path } from "../../links";

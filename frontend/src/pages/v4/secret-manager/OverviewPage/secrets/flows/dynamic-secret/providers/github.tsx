@@ -1,4 +1,7 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import {
   getGithubCreateDefaultValues,
@@ -9,9 +12,6 @@ import {
   githubEditFormSchema,
   TGithubFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/githubContract";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, ProviderGroup } from "../fields";

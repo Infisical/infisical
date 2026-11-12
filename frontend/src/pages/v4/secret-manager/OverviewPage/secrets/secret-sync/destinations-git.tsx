@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Controller, type FieldValues, useWatch } from "react-hook-form";
+import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
 import axios, { HttpStatusCode } from "axios";
 
-import { Combobox, type ComboboxOption } from "@app/components/v4/ui/combobox";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
 import { useDebounce } from "@app/hooks";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";

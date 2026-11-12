@@ -1,4 +1,10 @@
 import { useEffect, useRef } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Separator } from "@infisical/cipher/ui/separator";
+import { Heading, Text } from "@infisical/cipher/ui/text";
 import { useLocation, useRouterState } from "@tanstack/react-router";
 import { Server, Shield, Vault } from "lucide-react";
 
@@ -8,12 +14,6 @@ import {
   type CapabilityUpgradeIntent,
   CONTACT_SALES_URL
 } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Separator } from "@app/components/v4/ui/separator";
-import { Heading, Text } from "@app/components/v4/ui/text";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects

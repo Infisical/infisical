@@ -1,15 +1,15 @@
 import { useState } from "react";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { StatusText } from "@infisical/cipher/ui/text";
 import { format } from "date-fns";
 import { z } from "zod";
 
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Switch } from "@app/components/v4/ui/switch";
-import { StatusText } from "@app/components/v4/ui/text";
 import type { TCertificateCleanupConfig } from "@app/hooks/api/certificateCleanup/types";
 
 import { saved } from "../../access/toast";

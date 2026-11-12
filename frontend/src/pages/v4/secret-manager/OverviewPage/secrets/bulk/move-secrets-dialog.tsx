@@ -1,8 +1,7 @@
 import { type ReactNode, useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -10,14 +9,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { FieldError } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { FieldError } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub

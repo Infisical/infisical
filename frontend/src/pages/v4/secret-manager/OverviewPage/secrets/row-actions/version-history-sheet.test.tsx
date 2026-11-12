@@ -30,7 +30,7 @@ vi.mock("../../../../data/adapters", () => ({
   })
 }));
 
-vi.mock("@app/components/v4/ui/alert-dialog", () => {
+vi.mock("@infisical/cipher/ui/alert-dialog", () => {
   const Section = ({ children }: React.PropsWithChildren) => <div>{children}</div>;
   return {
     AlertDialog: ({ open, children }: React.PropsWithChildren<{ open: boolean }>) =>
@@ -48,7 +48,7 @@ vi.mock("@app/components/v4/ui/alert-dialog", () => {
     )
   };
 });
-vi.mock("@app/components/v4/ui/sheet", () => {
+vi.mock("@infisical/cipher/ui/sheet", () => {
   const Section = ({ children }: React.PropsWithChildren) => <div>{children}</div>;
   return {
     Sheet: Section,
@@ -60,14 +60,14 @@ vi.mock("@app/components/v4/ui/sheet", () => {
     SheetTitle: Section
   };
 });
-vi.mock("@app/components/v4/ui/badge", () => ({
+vi.mock("@infisical/cipher/ui/badge", () => ({
   Badge: ({ children }: React.PropsWithChildren) => <span>{children}</span>
 }));
-vi.mock("@app/components/v4/ui/icon", () => ({ Icon: () => null }));
-vi.mock("@app/components/v4/ui/loader", () => ({
+vi.mock("@infisical/cipher/ui/icon", () => ({ Icon: () => null }));
+vi.mock("@infisical/cipher/ui/loader", () => ({
   Loader: ({ label }: { label: string }) => <span role="status">{label}</span>
 }));
-vi.mock("@app/components/v4/ui/tooltip", () => ({
+vi.mock("@infisical/cipher/ui/tooltip", () => ({
   Tooltip: ({ children }: React.PropsWithChildren) => children
 }));
 vi.mock("../overview-cells", () => ({

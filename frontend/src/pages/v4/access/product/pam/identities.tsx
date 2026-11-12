@@ -1,23 +1,20 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { PencilIcon } from "lucide-react";
-
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { RowLink } from "@app/components/v4/ui/row-link";
+} from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { RowLink } from "@infisical/cipher/ui/row-link";
 import {
   Sheet,
   SheetBody,
@@ -25,8 +22,11 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Tabs } from "@app/components/v4/ui/tabs";
+} from "@infisical/cipher/ui/sheet";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { useQueryClient } from "@tanstack/react-query";
+import { PencilIcon } from "lucide-react";
+
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub

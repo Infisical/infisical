@@ -1,6 +1,6 @@
+import type { IconName } from "@infisical/cipher/ui/icon";
 import ms from "ms";
 
-import type { IconName } from "@app/components/v4/ui/icon";
 import {
   PamAccessGrantStatus,
   PamAccessRequestStatus,

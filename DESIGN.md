@@ -151,7 +151,7 @@ Typography uses three intentional families:
 
 ### v4 type families
 
-The v4 foundation (`frontend/src/components/v4`) uses Archivo as the sans and
+The v4 foundation (Cipher, `@infisical/cipher`) uses Archivo as the sans and
 Geist Mono as the mono, through its type role tokens. Mono is only for
 machine-readable values a person copies or compares character by character:
 secret keys, IDs and UUIDs, hashes, fingerprints, serials, IPs and hosts, paths,
@@ -164,7 +164,7 @@ only where it is shown or edited as the slug (a slug field, column or inline
 code reference), never as the display name. Never set a font family on html,
 body, `V4Scope`, the shell or a theme; reach mono only through a primitive's
 `mono` prop or the mono type role on a machine value. See
-rule/mono-machine-values and the `mono-named-entity` ui:lint check.
+rule/mono-machine-values and the `mono-named-entity` v4:lint check.
 
 On brand-forward surfaces, a short phrase may use the `text-highlight`
 utility to create the solid project-yellow text block. Keep the phrase short,

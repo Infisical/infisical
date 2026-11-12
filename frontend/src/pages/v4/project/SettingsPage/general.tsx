@@ -1,8 +1,4 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { addDays, format } from "date-fns";
-import { z } from "zod";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,16 +8,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useQueryClient } from "@tanstack/react-query";
+import { addDays, format } from "date-fns";
+import { z } from "zod";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSub

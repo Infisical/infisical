@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { useParams, useSearch } from "@tanstack/react-router";
-import { format } from "date-fns";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,10 +8,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,17 +19,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
-import { type DataListItem, DataList, List, ListRow } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { StatusText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { type DataListItem, DataList, List, ListRow } from "@infisical/cipher/ui/list";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useParams, useSearch } from "@tanstack/react-router";
+import { format } from "date-fns";
+
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,

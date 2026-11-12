@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,10 +8,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Inline } from "@app/components/v4/ui/layout";
-import { Steps } from "@app/components/v4/ui/multi-step";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { Steps } from "@infisical/cipher/ui/multi-step";
 import {
   Sheet,
   SheetBody,
@@ -20,8 +19,9 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/sheet";
+import { SmallText } from "@infisical/cipher/ui/text";
+
 import {
   ProjectPermissionProxiedServiceActions,
   ProjectPermissionSub

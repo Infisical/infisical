@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { type DataListItem, DataList } from "@infisical/cipher/ui/list";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
+import { Separator } from "@infisical/cipher/ui/separator";
+import { Heading } from "@infisical/cipher/ui/text";
 import ms from "ms";
 
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { type DataListItem, DataList } from "@app/components/v4/ui/list";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { MultiStep } from "@app/components/v4/ui/multi-step";
-import { Separator } from "@app/components/v4/ui/separator";
-import { Heading } from "@app/components/v4/ui/text";
 import {
   ApprovalPolicyType,
   ApproverType,

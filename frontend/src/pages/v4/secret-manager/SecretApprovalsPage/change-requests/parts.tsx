@@ -1,5 +1,6 @@
-import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
-import { Inline } from "@app/components/v4/ui/layout";
+import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
+import { Inline } from "@infisical/cipher/ui/layout";
+
 import { ApprovalStatus, CommitType } from "@app/hooks/api/secretApprovalRequest/types";
 import type { TSecretApprovalRequest } from "@app/hooks/api/secretApprovalRequest/types";
 import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/string";

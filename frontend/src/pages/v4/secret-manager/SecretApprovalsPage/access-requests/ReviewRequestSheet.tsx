@@ -1,8 +1,5 @@
 import { useMemo, useState } from "react";
-import ms from "ms";
-import picomatch from "picomatch";
-
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,16 +9,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { Field } from "@app/components/v4/ui/field";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList, List, ListRow } from "@app/components/v4/ui/list";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { Field } from "@infisical/cipher/ui/field";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import {
   Sheet,
   SheetBody,
@@ -29,10 +26,13 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Heading, Meta, StatusText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Heading, Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import ms from "ms";
+import picomatch from "picomatch";
+
 import {
   PermissionConditionOperators,
   ProjectPermissionActions,

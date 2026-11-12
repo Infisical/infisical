@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Separator } from "@app/components/v4/ui/separator";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Separator } from "@infisical/cipher/ui/separator";
 import {
   Sheet,
   SheetBody,
@@ -12,12 +11,13 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
 import {
   BulkChangeRequestAction,
   type TBulkChangeRequestResult

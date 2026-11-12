@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,25 +8,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
+} from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { RowLink } from "@app/components/v4/ui/row-link";
+} from "@infisical/cipher/ui/dialog";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { useV4Adapter } from "../../data/adapters";

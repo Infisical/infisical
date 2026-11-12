@@ -1,23 +1,23 @@
 import { useState } from "react";
-
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { StatusText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/dialog";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { StatusText } from "@infisical/cipher/ui/text";
+
 import type { AdminEmailDomain } from "@app/hooks/api/admin/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 

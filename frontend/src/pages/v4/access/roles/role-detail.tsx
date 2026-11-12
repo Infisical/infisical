@@ -1,7 +1,4 @@
 import { useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { LayersIcon, PencilIcon, SaveIcon } from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,19 +8,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { useParams } from "@tanstack/react-router";
+import { LayersIcon, PencilIcon, SaveIcon } from "lucide-react";
+
 import {
   OrgPermissionActions,
   OrgPermissionSubjects

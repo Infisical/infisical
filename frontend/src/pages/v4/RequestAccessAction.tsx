@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
 
-import { Button } from "@app/components/v4/ui/button";
 import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects

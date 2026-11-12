@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { addSeconds, formatISO } from "date-fns";
 
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { SmallText, Text } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import { SessionStorageKeys } from "@app/const";
 import type { TBrandingConfig } from "@app/hooks/api/secretSharing/types";
 

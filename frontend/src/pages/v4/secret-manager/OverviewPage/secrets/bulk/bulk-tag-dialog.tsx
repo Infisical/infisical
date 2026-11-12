@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { TagsIcon } from "lucide-react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +8,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Switch } from "@app/components/v4/ui/switch";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Switch } from "@infisical/cipher/ui/switch";
 import {
   Table,
   TableBody,
@@ -21,7 +19,9 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
+} from "@infisical/cipher/ui/table";
+import { TagsIcon } from "lucide-react";
+
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import type { Secret } from "../../secrets-model";

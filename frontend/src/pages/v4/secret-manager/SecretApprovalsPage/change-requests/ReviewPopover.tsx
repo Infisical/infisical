@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import { ApprovalStatus } from "@app/hooks/api/secretApprovalRequest/types";
 
 import { failed, toast } from "../../../access/toast";

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { CommitType } from "@app/hooks/api/secretApprovalRequest/types";
 
 import {

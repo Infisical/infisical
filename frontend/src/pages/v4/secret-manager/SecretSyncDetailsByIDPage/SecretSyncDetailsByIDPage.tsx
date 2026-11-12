@@ -1,24 +1,23 @@
 import { type ReactNode, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { useParams } from "@tanstack/react-router";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList, type DataListItem } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
-import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList, type DataListItem } from "@infisical/cipher/ui/list";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+
 import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
@@ -29,6 +28,7 @@ import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
 import type { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
 import { SecretSync, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { CopyButton, Dash } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";

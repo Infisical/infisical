@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { type Announcement, Announcements } from "@infisical/cipher/ui/announcements";
+import type { SidebarHelp } from "@infisical/cipher/ui/sidebar";
+import type { ShellMenuEntry, TopBarAccount } from "@infisical/cipher/ui/top-bar";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { BookOpen, Github, LogOut, Mail, MessagesSquare } from "lucide-react";
 
-import { type Announcement, Announcements } from "@app/components/v4/ui/announcements";
-import type { SidebarHelp } from "@app/components/v4/ui/sidebar";
-import type { ShellMenuEntry, TopBarAccount } from "@app/components/v4/ui/top-bar";
 import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects

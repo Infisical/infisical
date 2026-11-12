@@ -1,4 +1,14 @@
 import { type ReactNode, useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "@infisical/cipher/ui/accordion";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { CircleCheckIcon, CircleXIcon, EyeOffIcon } from "lucide-react";
 
 import {
@@ -24,16 +34,6 @@ import {
   isSingleLine,
   splitChangeIntoLines
 } from "@app/components/utilities/diff";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { ActionButton } from "../overview-cells";
 

@@ -1,5 +1,5 @@
-import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -8,11 +8,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Snippet } from "@app/components/v4/ui/snippet";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Snippet } from "@infisical/cipher/ui/snippet";
 
 export type TOauthClientSecretData = {
   clientName: string;

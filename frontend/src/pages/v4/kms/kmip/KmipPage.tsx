@@ -1,8 +1,4 @@
 import { useEffect, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
-
-import { KmipUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,19 +8,23 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+import { PencilIcon } from "lucide-react";
+
+import { KmipUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   ProjectPermissionKmipActions,
   ProjectPermissionSub

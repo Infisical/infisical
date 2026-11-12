@@ -1,4 +1,4 @@
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
+} from "@infisical/cipher/ui/dialog";
 
 type Props = { open: boolean; onOpenChange: (open: boolean) => void };
 

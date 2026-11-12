@@ -1,9 +1,10 @@
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
-import { Json, type JsonValue } from "@app/components/v4/ui/json";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
+import { Json, type JsonValue } from "@infisical/cipher/ui/json";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+
 import { formatDateTime } from "@app/helpers/datetime";
 import { ScimEvent, type ScimEventData } from "@app/hooks/api/scim/types";
 

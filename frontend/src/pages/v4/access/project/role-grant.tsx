@@ -1,9 +1,8 @@
 import { useId, useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -11,7 +10,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
 
 import { DurationPicker, type GrantDraft, permanent } from "./temporary-access";
 

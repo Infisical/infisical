@@ -7,6 +7,13 @@ import {
   useRef,
   useState
 } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { type RowContextMenu, TableCell, TableHead } from "@infisical/cipher/ui/table";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { replaceEqualDeep } from "@tanstack/react-query";
 import {
   BanIcon,
@@ -20,14 +27,6 @@ import {
   SaveIcon,
   Undo2Icon
 } from "lucide-react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { type RowContextMenu, TableCell, TableHead } from "@app/components/v4/ui/table";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { type Resource, type ResourceKind, selectionKey } from "../secrets-model";
 import type { PendingType } from "./batch/pending";

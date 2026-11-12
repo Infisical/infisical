@@ -1,12 +1,13 @@
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { Heading } from "@infisical/cipher/ui/text";
+
 import {
   getSelfHostedLicenseState,
   SELF_HOSTED_LICENSE_COPY
 } from "@app/components/license/self-hosted-license";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { Inline } from "@app/components/v4/ui/layout";
-import { Heading } from "@app/components/v4/ui/text";
 import type { BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
 import { ProductIcon, useBillingSubscription } from "./shared";

@@ -1,18 +1,18 @@
 import { useState } from "react";
-
 import {
   FilterBar,
   type FilterBarField,
   type FilterBarFilter
-} from "@app/components/v4/patterns/filter-bar";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { StatusText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/patterns/filter-bar";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { StatusText } from "@infisical/cipher/ui/text";
+
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import {
   ApprovalRequestStatus,

@@ -8,17 +8,8 @@ import {
   useWatch
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { formatDistanceToNowStrict } from "date-fns";
-
-import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
-import {
-  AppConnectionForm,
-  type AppConnectionFieldPreset,
-  type AppConnectionFormValues,
-  type AppConnectionMethodPreset,
-  type AppConnectionPreset
-} from "@app/components/v4/patterns/app-connection-form";
-import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,9 +20,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   DiscardChangesAlertDialog
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -39,14 +30,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field, FieldSet } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList, List, ListRow } from "@app/components/v4/ui/list";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { Select } from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/dialog";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field, FieldSet } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -55,10 +46,12 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { formatDistanceToNowStrict } from "date-fns";
+
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -70,6 +63,13 @@ import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/typ
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import type { ProjectType } from "@app/hooks/api/projects/types";
 import { genericAppConnectionFieldsSchema } from "@app/lib/schemas/app-connections";
+import {
+  AppConnectionForm,
+  type AppConnectionFieldPreset,
+  type AppConnectionFormValues,
+  type AppConnectionMethodPreset,
+  type AppConnectionPreset
+} from "@app/pages/v4/components/app-connection-form";
 
 import { useOrgId, useOrgPermission } from "../access/permissions";
 import { errorMessage, failed, saved } from "../access/toast";

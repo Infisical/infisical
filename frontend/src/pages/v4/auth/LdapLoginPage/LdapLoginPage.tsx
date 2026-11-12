@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { toast } from "@infisical/cipher/ui/sonner";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { toast } from "@app/components/v4/ui/sonner";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";

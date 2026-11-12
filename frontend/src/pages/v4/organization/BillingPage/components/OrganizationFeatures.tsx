@@ -1,6 +1,7 @@
-import { Card } from "@app/components/v4/ui/card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Grid } from "@app/components/v4/ui/layout";
+import { Card } from "@infisical/cipher/ui/card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Grid } from "@infisical/cipher/ui/layout";
+
 import type { SubscriptionPlan } from "@app/hooks/api/types";
 
 import { useBillingSubscription } from "./shared";

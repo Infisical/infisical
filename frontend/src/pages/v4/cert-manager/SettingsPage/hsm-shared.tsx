@@ -1,9 +1,9 @@
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Select } from "@infisical/cipher/ui/select";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Select } from "@app/components/v4/ui/select";
 import type { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import type { THsmConnector } from "@app/hooks/api/hsmConnectors/types";

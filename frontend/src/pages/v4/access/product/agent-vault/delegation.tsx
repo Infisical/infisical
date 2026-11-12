@@ -1,13 +1,13 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { UserCogIcon, UsersRoundIcon } from "lucide-react";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline } from "@app/components/v4/ui/layout";
 import { AgentVaultDelegationScope } from "@app/hooks/api/agentVault/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 

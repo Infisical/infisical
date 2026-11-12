@@ -8,24 +8,24 @@ import {
 } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
-} from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { z } from "zod";
+
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useOrgId } from "../access/permissions";
 import { Gate } from "../access/ui";

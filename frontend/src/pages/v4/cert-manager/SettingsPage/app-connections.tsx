@@ -1,14 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { formatDistanceToNowStrict } from "date-fns";
-import { PencilIcon } from "lucide-react";
-
-import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
-import {
-  AppConnectionForm,
-  type AppConnectionFormValues
-} from "@app/components/v4/patterns/app-connection-form";
-import { Alert } from "@app/components/v4/ui/alert";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,11 +12,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   DiscardChangesAlertDialog
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogClose,
@@ -32,19 +25,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Media } from "@app/components/v4/ui/item";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { Select } from "@app/components/v4/ui/select";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Media } from "@infisical/cipher/ui/item";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Select } from "@infisical/cipher/ui/select";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { formatDistanceToNowStrict } from "date-fns";
+import { PencilIcon } from "lucide-react";
+
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
@@ -55,6 +50,11 @@ import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/app
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { genericAppConnectionFieldsSchema } from "@app/lib/schemas/app-connections";
+import {
+  AppConnectionForm,
+  type AppConnectionFormValues
+} from "@app/pages/v4/components/app-connection-form";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { saved } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";

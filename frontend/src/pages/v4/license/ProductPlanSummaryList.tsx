@@ -1,5 +1,6 @@
+import { Badge } from "@infisical/cipher/ui/badge";
+
 import type { ProductPlanSummary } from "@app/components/license/product-plan-summary";
-import { Badge } from "@app/components/v4/ui/badge";
 
 import styles from "./upgrade-dialog.module.css";
 

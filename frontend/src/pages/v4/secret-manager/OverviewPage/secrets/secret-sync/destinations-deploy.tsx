@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { Controller, type FieldValues, useWatch } from "react-hook-form";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
+} from "@infisical/cipher/ui/accordion";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
+
 import { HUMANITEC_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
   TERRAFORM_CLOUD_SYNC_SCOPES,

@@ -1,10 +1,8 @@
 import { useState } from "react";
-import slugify from "@sindresorhus/slugify";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -13,7 +11,9 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
+import slugify from "@sindresorhus/slugify";
+
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 import { slugSchema } from "@app/lib/schemas";
 import { sanitizeDuplicateRolePermissions } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal.utils";

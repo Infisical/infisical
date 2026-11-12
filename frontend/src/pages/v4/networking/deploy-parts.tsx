@@ -1,7 +1,8 @@
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Field } from "@app/components/v4/ui/field";
-import { Select } from "@app/components/v4/ui/select";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Field } from "@infisical/cipher/ui/field";
+import { Select } from "@infisical/cipher/ui/select";
+
 import { useTimeRemaining } from "@app/hooks/useTimeRemaining";
 
 import { useV4Adapter } from "../data/adapters";

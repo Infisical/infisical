@@ -1,12 +1,12 @@
 import { type ComponentProps, createContext, type ReactNode, use } from "react";
 import { Controller, type FieldValues, useWatch } from "react-hook-form";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 
-import type { AppConnectionRedirect } from "@app/components/v4/patterns/app-connection-form";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Combobox, type ComboboxOption } from "@app/components/v4/ui/combobox";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
 import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import type { AppConnectionRedirect } from "@app/pages/v4/components/app-connection-form";
 
 import { useConnectionCreation } from "../flows/connection-creation";
 import {

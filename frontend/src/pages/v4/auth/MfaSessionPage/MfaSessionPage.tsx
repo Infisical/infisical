@@ -1,8 +1,8 @@
 import { useEffect } from "react";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { Toaster, toast } from "@infisical/cipher/ui/sonner";
 import { useParams } from "@tanstack/react-router";
 
-import { Loader } from "@app/components/v4/ui/loader";
-import { Toaster, toast } from "@app/components/v4/ui/sonner";
 import { stashMfaLockoutError } from "@app/helpers/mfaSession";
 import { MfaSessionStatus, useMfaSessionStatus } from "@app/hooks/api/mfaSession";
 

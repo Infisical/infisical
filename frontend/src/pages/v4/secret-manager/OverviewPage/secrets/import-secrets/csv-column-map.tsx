@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { AsteriskIcon, CodeXmlIcon, MessageSquareIcon, TagsIcon, WrapTextIcon } from "lucide-react";
 
 import type { CsvDelimiter } from "@app/components/utilities/parseSecrets";
-import { Icon } from "@app/components/v4/ui/icon";
 import type { TParsedEnv } from "@app/pages/secret-manager/OverviewPage/components/SecretDropzone/types";
 
 import styles from "./import-secrets.module.css";

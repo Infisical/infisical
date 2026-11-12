@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,12 +8,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Select } from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Select } from "@infisical/cipher/ui/select";
+
 import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, type CaType } from "@app/hooks/api/ca/enums";

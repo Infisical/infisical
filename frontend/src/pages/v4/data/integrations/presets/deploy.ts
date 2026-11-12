@@ -1,4 +1,3 @@
-import type { AppConnectionPreset } from "@app/components/v4/patterns/app-connection-form";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
@@ -41,6 +40,7 @@ import {
   cloud66ConnectionFormSchema,
   spaceliftConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
+import type { AppConnectionPreset } from "@app/pages/v4/components/app-connection-form";
 
 import { methodLabel } from "./shared";
 

@@ -1,13 +1,13 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Button } from "@app/components/v4/ui/button";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
   OrgPermissionActions,
   OrgPermissionSecretShareAction,

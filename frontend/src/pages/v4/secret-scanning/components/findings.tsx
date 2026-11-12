@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { format, formatDistanceToNowStrict } from "date-fns";
-
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
-import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -12,16 +10,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem, DropdownMenuLabel } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { Select } from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/dialog";
+import { DropdownMenuItem, DropdownMenuLabel } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -31,9 +28,11 @@ import {
   SheetHeader,
   SheetSubheader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Meta } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/sheet";
+import { Meta } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { format, formatDistanceToNowStrict } from "date-fns";
+
 import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
@@ -53,6 +52,7 @@ import type {
   TSecretScanningDataSource,
   TSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";

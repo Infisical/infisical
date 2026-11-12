@@ -1,8 +1,0 @@
-.boot {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-}
-.boot[data-fill="container"] {
-  height: 100%;
-}

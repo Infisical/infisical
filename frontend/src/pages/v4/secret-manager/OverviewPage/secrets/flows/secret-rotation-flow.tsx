@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { Controller, type FieldValues, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import { useV4Scheme } from "@app/components/v4/scope";
-import { Alert } from "@app/components/v4/ui/alert";
+import { useV4Scheme } from "@infisical/cipher/scope";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,16 +12,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { FieldError } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Media, Tile } from "@app/components/v4/ui/item";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Steps } from "@app/components/v4/ui/multi-step";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FieldError } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Media, Tile } from "@infisical/cipher/ui/item";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Steps } from "@infisical/cipher/ui/multi-step";
 import {
   Sheet,
   SheetContent,
@@ -30,9 +29,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Heading, SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Heading, SmallText } from "@infisical/cipher/ui/text";
+
 import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub

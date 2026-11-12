@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
+import { Loader } from "@infisical/cipher/ui/loader";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { Loader } from "@app/components/v4/ui/loader";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import type { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";

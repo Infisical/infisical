@@ -1,15 +1,11 @@
 import { type ReactNode, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams } from "@tanstack/react-router";
-import { format, formatDistanceToNowStrict } from "date-fns";
-import { LayersIcon, LayoutGridIcon, ListIcon, StarIcon } from "lucide-react";
-
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
+} from "@infisical/cipher/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,11 +15,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card, CardLink } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card, CardLink } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -31,28 +27,32 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
+} from "@infisical/cipher/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Select } from "@app/components/v4/ui/select";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Select } from "@infisical/cipher/ui/select";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { Navigate, useNavigate, useParams } from "@tanstack/react-router";
+import { format, formatDistanceToNowStrict } from "date-fns";
+import { LayersIcon, LayoutGridIcon, ListIcon, StarIcon } from "lucide-react";
+
 import {
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,

@@ -1,8 +1,7 @@
 import { useState } from "react";
+import type { ErrorStateDetail } from "@infisical/cipher/patterns/error-state";
 import { useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
-
-import type { ErrorStateDetail } from "@app/components/v4/patterns/error-state";
 
 import { orgHref } from "./links";
 

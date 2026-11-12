@@ -1,9 +1,8 @@
 import { type FormEvent, type ReactNode, useState } from "react";
-
-import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Detail, DetailGroup, DetailLabel, DetailValue } from "@app/components/v4/ui/detail";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Detail, DetailGroup, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
 import {
   Dialog,
   DialogContent,
@@ -11,15 +10,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { CopyButton } from "@app/components/v4/ui/sensitive-editor";
-import { Snippet } from "@app/components/v4/ui/snippet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { StatusText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { CopyButton } from "@infisical/cipher/ui/sensitive-editor";
+import { Snippet } from "@infisical/cipher/ui/snippet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+
 import { getAllowedSigningAlgorithms, getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import type { SigningAlgorithm, TCmek } from "@app/hooks/api/cmeks/types";
 

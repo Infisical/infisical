@@ -1,16 +1,16 @@
 import { useState } from "react";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Empty, EmptyHeader, EmptyTitle } from "@infisical/cipher/ui/empty";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
 
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Empty, EmptyHeader, EmptyTitle } from "@app/components/v4/ui/empty";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
 import frameworks from "@app/const/integrationDocs/frameworkIntegrations.json";
 import infrastructure from "@app/const/integrationDocs/infrastructureIntegrations.json";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 type DocsEntry = {
   name: string;

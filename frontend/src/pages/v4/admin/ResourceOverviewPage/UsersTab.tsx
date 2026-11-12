@@ -1,21 +1,21 @@
 import { useState } from "react";
-import { UserCogIcon } from "lucide-react";
-
-import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
-import { Badge } from "@app/components/v4/ui/badge";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { UserCogIcon } from "lucide-react";
+
+import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import type { User } from "@app/hooks/api/users/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 

@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { getLastLoginIdentifier, useLastLogin } from "@app/hooks/useLastLogin";
 

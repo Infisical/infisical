@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { format, formatDistanceToNow } from "date-fns";
-import { ActivityIcon, BanIcon, HexagonIcon, MapPinIcon, RotateCcwIcon } from "lucide-react";
-
-import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,14 +10,14 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline } from "@app/components/v4/ui/layout";
-import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { SecretValue } from "@infisical/cipher/ui/sensitive-editor";
 import {
   Sheet,
   SheetBody,
@@ -28,7 +25,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
 import {
   Table,
   TableBody,
@@ -36,9 +33,12 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/table";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { format, formatDistanceToNow } from "date-fns";
+import { ActivityIcon, BanIcon, HexagonIcon, MapPinIcon, RotateCcwIcon } from "lucide-react";
+
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub

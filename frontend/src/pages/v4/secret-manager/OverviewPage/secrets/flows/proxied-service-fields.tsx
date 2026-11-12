@@ -1,15 +1,8 @@
 import { useMemo, useState } from "react";
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  BotIcon,
-  ChevronsLeftRightEllipsisIcon
-} from "lucide-react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -17,17 +10,23 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Tile } from "@app/components/v4/ui/item";
-import { Grid, Stack } from "@app/components/v4/ui/layout";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v4/ui/tabs";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Tile } from "@infisical/cipher/ui/item";
+import { Grid, Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  BotIcon,
+  ChevronsLeftRightEllipsisIcon
+} from "lucide-react";
 
 import { ProxiedServiceSubstitutionSurface } from "./managed-proxy-enums";
 import {

@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
+import { FieldMapping, FieldMappingRow } from "@infisical/cipher/patterns/field-mapping";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { Field, FieldError } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { FieldMapping, FieldMappingRow } from "@app/components/v4/patterns/field-mapping";
-import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { Field, FieldError } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import {
   OrgPermissionHoneyTokenActions,
   OrgPermissionSubjects

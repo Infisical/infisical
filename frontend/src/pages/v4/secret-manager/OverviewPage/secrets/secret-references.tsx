@@ -17,14 +17,14 @@ import {
   useRef,
   useState
 } from "react";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Popover, PopoverAnchor, PopoverContent } from "@infisical/cipher/ui/popover";
+import { CopyButton } from "@infisical/cipher/ui/sensitive-editor";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { AxiosError } from "axios";
 import { LayersIcon } from "lucide-react";
 
-import { Icon } from "@app/components/v4/ui/icon";
-import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v4/ui/popover";
-import { CopyButton } from "@app/components/v4/ui/sensitive-editor";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 
 import { useV4Adapter } from "../../../data/adapters";

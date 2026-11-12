@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import type {
   BillingBreakdownScopeKind,
   BillingCatalogProduct,

@@ -1,4 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { Field } from "@infisical/cipher/ui/field";
 
 import {
   getIbmApiConnectCreateDefaultValues,
@@ -11,8 +13,6 @@ import {
   type TIbmApiConnectFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/ibmApiConnectContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { Field } from "@app/components/v4/ui/field";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { useV4Adapter } from "../../../../../../data/adapters";

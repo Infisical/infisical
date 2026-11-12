@@ -1,7 +1,5 @@
 import { useState } from "react";
-import slugify from "@sindresorhus/slugify";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,10 +7,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack, Inline } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack, Inline } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -21,7 +19,9 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
+import slugify from "@sindresorhus/slugify";
+
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import styles from "./roles.module.css";

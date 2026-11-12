@@ -1,8 +1,8 @@
+import { V4_CONNECTION_REDIRECT_STORAGE_KEY } from "@app/helpers/appConnections";
 import type {
   AppConnectionRedirect,
   PendingConnectionRedirect
-} from "@app/components/v4/patterns/app-connection-form";
-import { V4_CONNECTION_REDIRECT_STORAGE_KEY } from "@app/helpers/appConnections";
+} from "@app/pages/v4/components/app-connection-form";
 
 /** What the v4 flows store beside the shell's record: the gateway, and the connection a reconnect updates. */
 export type ConnectionRedirectExtras = {

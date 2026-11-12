@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { ClipboardCheckIcon } from "lucide-react";
-
-import { Badge, Count } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline } from "@app/components/v4/ui/layout";
+import { Badge, Count } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -14,7 +12,8 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
+import { ClipboardCheckIcon } from "lucide-react";
 
 import { readableValue } from "../../secrets-model";
 import { type DiffViewItem, SecretVersionDiffView } from "../commits/diff-view";

@@ -1,6 +1,4 @@
 import { useMemo, useState } from "react";
-import { PencilIcon } from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,21 +8,23 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline } from "@app/components/v4/ui/layout";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
+} from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { PencilIcon } from "lucide-react";
+
 import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub

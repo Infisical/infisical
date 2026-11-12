@@ -1,17 +1,16 @@
 import { useState } from "react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
-} from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -19,9 +18,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+
 import { kmsKeyUsageOptions, keyUsageDefaultOption } from "@app/helpers/kms";
 import {
   AsymmetricKeyAlgorithm,

@@ -1,13 +1,13 @@
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Card, CardLink } from "@infisical/cipher/ui/card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Item } from "@infisical/cipher/ui/item";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { TooltipProvider, TooltipText } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { Card, CardLink } from "@app/components/v4/ui/card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Item } from "@app/components/v4/ui/item";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { TooltipProvider, TooltipText } from "@app/components/v4/ui/tooltip";
 import type { TOrgProductStats } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 

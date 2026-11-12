@@ -1,10 +1,11 @@
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Grid } from "@app/components/v4/ui/layout";
-import { type DataListItem, DataList, List, ListRow } from "@app/components/v4/ui/list";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Grid } from "@infisical/cipher/ui/layout";
+import { type DataListItem, DataList, List, ListRow } from "@infisical/cipher/ui/list";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+
 import type { TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 import {
   certKeyAlgorithmToNameMap,

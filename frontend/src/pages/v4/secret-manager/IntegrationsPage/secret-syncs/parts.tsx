@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { EraserIcon } from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,8 +8,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -19,14 +17,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
-import { StatusText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { EraserIcon } from "lucide-react";
+
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_IMPORT_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
 import { SecretSyncImportBehavior, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";

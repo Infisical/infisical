@@ -1,22 +1,22 @@
 import { type ReactNode, useState } from "react";
-import { format } from "date-fns";
-import ms from "ms";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Button } from "@app/components/v4/ui/button";
-import { Field, FieldLabel } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/accordion";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field, FieldLabel } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { format } from "date-fns";
+import ms from "ms";
+
 import { EMAIL_LIST_DELIMITER, isValidEmail } from "@app/helpers/email";
 import type {
   TCreatedSharedSecret,

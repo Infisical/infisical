@@ -1,8 +1,5 @@
 import { useState } from "react";
-
-import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { PageTitle } from "@app/components/PageTitle";
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,19 +9,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
+import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   getUserTablePreference,
   PreferenceKey,

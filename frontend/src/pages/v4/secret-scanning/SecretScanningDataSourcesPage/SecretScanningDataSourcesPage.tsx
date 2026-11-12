@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { formatDistanceToNowStrict } from "date-fns";
-
-import { SecretScanningUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,20 +9,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { RowLink } from "@app/components/v4/ui/row-link";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
 import {
   Sheet,
   SheetBody,
@@ -35,11 +30,15 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+import { formatDistanceToNowStrict } from "date-fns";
+
+import { SecretScanningUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub
@@ -53,6 +52,7 @@ import {
   SecretScanningScanStatus
 } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";

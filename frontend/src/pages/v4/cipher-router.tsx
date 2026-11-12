@@ -1,13 +1,12 @@
 import * as React from "react";
-import { createLink, type LinkOptions, useMatchRoute, useRouter } from "@tanstack/react-router";
-
 import {
   type CipherLinkProps,
   type CipherRouter,
   CipherRouterProvider
-} from "@app/components/v4/lib/link";
+} from "@infisical/cipher/lib/link";
+import { createLink, type LinkOptions, useMatchRoute, useRouter } from "@tanstack/react-router";
 
-declare module "@app/components/v4/lib/link" {
+declare module "@infisical/cipher/lib/link" {
   interface CipherRegister {
     link: LinkOptions;
   }

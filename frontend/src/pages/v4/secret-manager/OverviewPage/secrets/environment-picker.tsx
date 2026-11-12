@@ -1,7 +1,6 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Command,
   CommandEmpty,
@@ -10,20 +9,21 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator
-} from "@app/components/v4/ui/command";
+} from "@infisical/cipher/ui/command";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSub

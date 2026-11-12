@@ -1,9 +1,5 @@
 import { useId, useState } from "react";
-import { format } from "date-fns";
-import { ShieldCheckIcon } from "lucide-react";
-import { z } from "zod";
-
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,12 +9,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { Detail, DetailGroup, DetailLabel, DetailValue } from "@app/components/v4/ui/detail";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { Detail, DetailGroup, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
 import {
   Dialog,
   DialogClose,
@@ -27,15 +23,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Snippet } from "@app/components/v4/ui/snippet";
+} from "@infisical/cipher/ui/dialog";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Snippet } from "@infisical/cipher/ui/snippet";
+import { format } from "date-fns";
+import { ShieldCheckIcon } from "lucide-react";
+import { z } from "zod";
+
 import {
   OrgPermissionEmailDomainActions,
   OrgPermissionSubjects

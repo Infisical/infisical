@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
 import type { Project } from "@app/hooks/api/projects/types";
 
 import { saved } from "../../../access/toast";

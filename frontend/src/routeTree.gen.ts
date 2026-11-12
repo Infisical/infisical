@@ -17,12 +17,9 @@ import { Route as publicShareSecretPageLegacyRouteImport } from './pages/public/
 import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
 import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
 import { Route as v4RouteImport } from './pages/v4/route'
-import { Route as designSystemRouteImport } from './pages/design-system/route'
 import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
 import { Route as indexImport } from './pages/index'
-import { Route as designSystemRoutesFallbackImport } from './pages/design-system/routes/fallback'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
-import { Route as designSystemRoutesOverviewImport } from './pages/design-system/routes/overview'
 import { Route as v4UserRouteImport } from './pages/v4/user/route'
 import { Route as v4AuthPasswordSetupPageRouteImport } from './pages/v4/auth/PasswordSetupPage/route'
 import { Route as v4AdminRouteImport } from './pages/v4/admin/route'
@@ -35,9 +32,6 @@ import { Route as authEmailNotVerifiedPageRouteImport } from './pages/auth/Email
 import { Route as authAccountRecoveryResetPageRouteImport } from './pages/auth/AccountRecoveryResetPage/route'
 import { Route as authAccountRecoveryEmailPageRouteImport } from './pages/auth/AccountRecoveryEmailPage/route'
 import { Route as authPasswordSetupPageRouteImport } from './pages/auth/PasswordSetupPage/route'
-import { Route as designSystemRoutesPatternImport } from './pages/design-system/routes/pattern'
-import { Route as designSystemRoutesFoundationImport } from './pages/design-system/routes/foundation'
-import { Route as designSystemRoutesComparisonImport } from './pages/design-system/routes/comparison'
 import { Route as userLayoutImport } from './pages/user/layout'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
 import { Route as v4AuthOrgOnboardingPageRouteImport } from './pages/v4/auth/OrgOnboardingPage/route'
@@ -68,7 +62,6 @@ import { Route as MfaSessionPageRouteImport } from './pages/MfaSessionPage/route
 import { Route as v4UserPersonalSettingsPageRouteImport } from './pages/v4/user/PersonalSettingsPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
-import { Route as designSystemRoutesComponentImport } from './pages/design-system/routes/component'
 import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as v4OrganizationSsoPageRouteImport } from './pages/v4/organization/SsoPage/route'
@@ -591,12 +584,6 @@ const v4RouteRoute = v4RouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const designSystemRouteRoute = designSystemRouteImport.update({
-  id: '/design-system',
-  path: '/design-system',
-  getParentRoute: () => rootRoute,
-} as any)
-
 const authCliRedirectPageRouteRoute = authCliRedirectPageRouteImport.update({
   id: '/cli-redirect',
   path: '/cli-redirect',
@@ -608,14 +595,6 @@ const indexRoute = indexImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
-
-const designSystemRoutesFallbackRoute = designSystemRoutesFallbackImport.update(
-  {
-    id: '/$',
-    path: '/$',
-    getParentRoute: () => designSystemRouteRoute,
-  } as any,
-)
 
 const RestrictLoginSignupSignupRoute = RestrictLoginSignupSignupImport.update({
   id: '/signup',
@@ -641,14 +620,6 @@ const middlewaresInjectOrgDetailsRoute =
     id: '/_inject-org-details',
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any)
-
-const designSystemRoutesOverviewRoute = designSystemRoutesOverviewImport.update(
-  {
-    id: '/',
-    path: '/',
-    getParentRoute: () => designSystemRouteRoute,
-  } as any,
-)
 
 const v4UserRouteRoute = v4UserRouteImport.update({
   id: '/personal-settings',
@@ -742,26 +713,6 @@ const V4V4AuthLoginRoute = V4V4AuthLoginImport.update({
   path: '/login',
   getParentRoute: () => v4AuthRouteRoute,
 } as any)
-
-const designSystemRoutesPatternRoute = designSystemRoutesPatternImport.update({
-  id: '/patterns/$pattern',
-  path: '/patterns/$pattern',
-  getParentRoute: () => designSystemRouteRoute,
-} as any)
-
-const designSystemRoutesFoundationRoute =
-  designSystemRoutesFoundationImport.update({
-    id: '/foundations/$page',
-    path: '/foundations/$page',
-    getParentRoute: () => designSystemRouteRoute,
-  } as any)
-
-const designSystemRoutesComparisonRoute =
-  designSystemRoutesComparisonImport.update({
-    id: '/comparisons/$comparison',
-    path: '/comparisons/$comparison',
-    getParentRoute: () => designSystemRouteRoute,
-  } as any)
 
 const userLayoutRoute = userLayoutImport.update({
   id: '/_layout',
@@ -959,13 +910,6 @@ const authLoginPageRouteRoute = authLoginPageRouteImport.update({
   path: '/',
   getParentRoute: () => RestrictLoginSignupLoginRoute,
 } as any)
-
-const designSystemRoutesComponentRoute =
-  designSystemRoutesComponentImport.update({
-    id: '/components/$group/$component',
-    path: '/components/$group/$component',
-    getParentRoute: () => designSystemRouteRoute,
-  } as any)
 
 const V4OrganizationsOrgIdProjectsRoute =
   V4OrganizationsOrgIdProjectsImport.update({
@@ -3862,13 +3806,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authCliRedirectPageRouteImport
       parentRoute: typeof rootRoute
     }
-    '/design-system': {
-      id: '/design-system'
-      path: '/design-system'
-      fullPath: '/design-system'
-      preLoaderRoute: typeof designSystemRouteImport
-      parentRoute: typeof rootRoute
-    }
     '/v4': {
       id: '/v4'
       path: '/v4'
@@ -3981,13 +3918,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4UserRouteImport
       parentRoute: typeof v4RouteImport
     }
-    '/design-system/': {
-      id: '/design-system/'
-      path: '/'
-      fullPath: '/design-system/'
-      preLoaderRoute: typeof designSystemRoutesOverviewImport
-      parentRoute: typeof designSystemRouteImport
-    }
     '/_authenticate/_inject-org-details': {
       id: '/_authenticate/_inject-org-details'
       path: ''
@@ -4015,13 +3945,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup'
       preLoaderRoute: typeof RestrictLoginSignupSignupImport
       parentRoute: typeof middlewaresRestrictLoginSignupImport
-    }
-    '/design-system/$': {
-      id: '/design-system/$'
-      path: '/$'
-      fullPath: '/design-system/$'
-      preLoaderRoute: typeof designSystemRoutesFallbackImport
-      parentRoute: typeof designSystemRouteImport
     }
     '/_restrict-login-signup/login/': {
       id: '/_restrict-login-signup/login/'
@@ -4239,27 +4162,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/personal-settings'
       preLoaderRoute: typeof userLayoutImport
       parentRoute: typeof AuthenticatePersonalSettingsImport
-    }
-    '/design-system/comparisons/$comparison': {
-      id: '/design-system/comparisons/$comparison'
-      path: '/comparisons/$comparison'
-      fullPath: '/design-system/comparisons/$comparison'
-      preLoaderRoute: typeof designSystemRoutesComparisonImport
-      parentRoute: typeof designSystemRouteImport
-    }
-    '/design-system/foundations/$page': {
-      id: '/design-system/foundations/$page'
-      path: '/foundations/$page'
-      fullPath: '/design-system/foundations/$page'
-      preLoaderRoute: typeof designSystemRoutesFoundationImport
-      parentRoute: typeof designSystemRouteImport
-    }
-    '/design-system/patterns/$pattern': {
-      id: '/design-system/patterns/$pattern'
-      path: '/patterns/$pattern'
-      fullPath: '/design-system/patterns/$pattern'
-      preLoaderRoute: typeof designSystemRoutesPatternImport
-      parentRoute: typeof designSystemRouteImport
     }
     '/v4/_v4-auth/login': {
       id: '/v4/_v4-auth/login'
@@ -4512,13 +4414,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/v4/organizations/$orgId/projects'
       preLoaderRoute: typeof V4OrganizationsOrgIdProjectsImport
       parentRoute: typeof v4OrganizationRouteImport
-    }
-    '/design-system/components/$group/$component': {
-      id: '/design-system/components/$group/$component'
-      path: '/components/$group/$component'
-      fullPath: '/design-system/components/$group/$component'
-      preLoaderRoute: typeof designSystemRoutesComponentImport
-      parentRoute: typeof designSystemRouteImport
     }
     '/_authenticate/_inject-org-details/admin/_admin-layout/': {
       id: '/_authenticate/_inject-org-details/admin/_admin-layout/'
@@ -6975,27 +6870,6 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-interface designSystemRouteRouteChildren {
-  designSystemRoutesOverviewRoute: typeof designSystemRoutesOverviewRoute
-  designSystemRoutesFallbackRoute: typeof designSystemRoutesFallbackRoute
-  designSystemRoutesComparisonRoute: typeof designSystemRoutesComparisonRoute
-  designSystemRoutesFoundationRoute: typeof designSystemRoutesFoundationRoute
-  designSystemRoutesPatternRoute: typeof designSystemRoutesPatternRoute
-  designSystemRoutesComponentRoute: typeof designSystemRoutesComponentRoute
-}
-
-const designSystemRouteRouteChildren: designSystemRouteRouteChildren = {
-  designSystemRoutesOverviewRoute: designSystemRoutesOverviewRoute,
-  designSystemRoutesFallbackRoute: designSystemRoutesFallbackRoute,
-  designSystemRoutesComparisonRoute: designSystemRoutesComparisonRoute,
-  designSystemRoutesFoundationRoute: designSystemRoutesFoundationRoute,
-  designSystemRoutesPatternRoute: designSystemRoutesPatternRoute,
-  designSystemRoutesComponentRoute: designSystemRoutesComponentRoute,
-}
-
-const designSystemRouteRouteWithChildren =
-  designSystemRouteRoute._addFileChildren(designSystemRouteRouteChildren)
-
 interface V4V4AuthLoginRouteChildren {
   v4AuthLoginPageRouteRoute: typeof v4AuthLoginPageRouteRoute
   v4AuthLoginPageAdminRouteRoute: typeof v4AuthLoginPageAdminRouteRoute
@@ -8816,7 +8690,6 @@ const middlewaresRestrictLoginSignupRouteWithChildren =
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
-  '/design-system': typeof designSystemRouteRouteWithChildren
   '/v4': typeof v4SecretSharingPublicRouteRouteWithChildren
   '': typeof organizationLayoutRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
@@ -8830,11 +8703,9 @@ export interface FileRoutesByFullPath {
   '/v4/admin': typeof v4AdminAdminShellRouteRouteWithChildren
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/v4/personal-settings': typeof v4UserRouteRouteWithChildren
-  '/design-system/': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userLayoutRouteWithChildren
   '/login': typeof RestrictLoginSignupLoginRouteWithChildren
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
-  '/design-system/$': typeof designSystemRoutesFallbackRoute
   '/login/': typeof authLoginPageRouteRoute
   '/signup/': typeof authSignUpPageRouteRoute
   '/v4/personal-settings/': typeof v4UserPersonalSettingsPageRouteRoute
@@ -8863,9 +8734,6 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/none': typeof v4AuthNoOrgPageRouteRoute
   '/v4/organizations/onboarding': typeof v4AuthOrgOnboardingPageRouteRoute
   '/admin': typeof adminLayoutRouteWithChildren
-  '/design-system/comparisons/$comparison': typeof designSystemRoutesComparisonRoute
-  '/design-system/foundations/$page': typeof designSystemRoutesFoundationRoute
-  '/design-system/patterns/$pattern': typeof designSystemRoutesPatternRoute
   '/v4/login': typeof V4V4AuthLoginRouteWithChildren
   '/v4/signup': typeof V4V4AuthSignupRouteWithChildren
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
@@ -8901,7 +8769,6 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/v4/organizations/$orgId/projects': typeof V4OrganizationsOrgIdProjectsRouteWithChildren
-  '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/admin/': typeof adminGeneralPageRouteRoute
   '/v4/organizations/$orgId/cert-manager': typeof v4CertManagerIndexPageRouteRoute
   '/v4/organizations/$orgId/networking': typeof v4OrganizationNetworkingPageRouteRoute
@@ -9263,9 +9130,7 @@ export interface FileRoutesByTo {
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/admin': typeof v4AdminGeneralPageRouteRoute
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
-  '/design-system': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
-  '/design-system/$': typeof designSystemRoutesFallbackRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
   '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
@@ -9294,9 +9159,6 @@ export interface FileRoutesByTo {
   '/v4/organizations/none': typeof v4AuthNoOrgPageRouteRoute
   '/v4/organizations/onboarding': typeof v4AuthOrgOnboardingPageRouteRoute
   '/admin': typeof adminGeneralPageRouteRoute
-  '/design-system/comparisons/$comparison': typeof designSystemRoutesComparisonRoute
-  '/design-system/foundations/$page': typeof designSystemRoutesFoundationRoute
-  '/design-system/patterns/$pattern': typeof designSystemRoutesPatternRoute
   '/v4/login': typeof v4AuthLoginPageRouteRoute
   '/v4/signup': typeof v4AuthSignUpPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
@@ -9327,7 +9189,6 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/sso': typeof v4OrganizationSsoPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
-  '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/v4/organizations/$orgId/cert-manager': typeof v4CertManagerIndexPageRouteRoute
   '/v4/organizations/$orgId/networking': typeof v4OrganizationNetworkingPageRouteRoute
   '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
@@ -9652,7 +9513,6 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
-  '/design-system': typeof designSystemRouteRouteWithChildren
   '/v4': typeof v4RouteRouteWithChildren
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
@@ -9669,12 +9529,10 @@ export interface FileRoutesById {
   '/v4/admin': typeof v4AdminRouteRouteWithChildren
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/v4/personal-settings': typeof v4UserRouteRouteWithChildren
-  '/design-system/': typeof designSystemRoutesOverviewRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
   '/_restrict-login-signup/login': typeof RestrictLoginSignupLoginRouteWithChildren
   '/_restrict-login-signup/signup': typeof RestrictLoginSignupSignupRouteWithChildren
-  '/design-system/$': typeof designSystemRoutesFallbackRoute
   '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
   '/v4/personal-settings/': typeof v4UserPersonalSettingsPageRouteRoute
@@ -9706,9 +9564,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout': typeof organizationLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/admin': typeof AuthenticateInjectOrgDetailsAdminRouteWithChildren
   '/_authenticate/personal-settings/_layout': typeof userLayoutRouteWithChildren
-  '/design-system/comparisons/$comparison': typeof designSystemRoutesComparisonRoute
-  '/design-system/foundations/$page': typeof designSystemRoutesFoundationRoute
-  '/design-system/patterns/$pattern': typeof designSystemRoutesPatternRoute
   '/v4/_v4-auth/login': typeof V4V4AuthLoginRouteWithChildren
   '/v4/_v4-auth/signup': typeof V4V4AuthSignupRouteWithChildren
   '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
@@ -9745,7 +9600,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/pam/access': typeof redirectsPamAccessRedirectRoute
   '/v4/organizations/$orgId/projects': typeof V4OrganizationsOrgIdProjectsRouteWithChildren
-  '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/': typeof adminGeneralPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/': typeof v4CertManagerIndexPageRouteRoute
   '/v4/organizations/$orgId/networking/': typeof v4OrganizationNetworkingPageRouteRoute
@@ -10103,7 +9957,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cli-redirect'
-    | '/design-system'
     | '/v4'
     | ''
     | '/share-secret'
@@ -10117,11 +9970,9 @@ export interface FileRouteTypes {
     | '/v4/admin'
     | '/v4/password-setup'
     | '/v4/personal-settings'
-    | '/design-system/'
     | '/personal-settings'
     | '/login'
     | '/signup'
-    | '/design-system/$'
     | '/login/'
     | '/signup/'
     | '/v4/personal-settings/'
@@ -10150,9 +10001,6 @@ export interface FileRouteTypes {
     | '/v4/organizations/none'
     | '/v4/organizations/onboarding'
     | '/admin'
-    | '/design-system/comparisons/$comparison'
-    | '/design-system/foundations/$page'
-    | '/design-system/patterns/$pattern'
     | '/v4/login'
     | '/v4/signup'
     | '/personal-settings/'
@@ -10188,7 +10036,6 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/pam/access'
     | '/v4/organizations/$orgId/projects'
-    | '/design-system/components/$group/$component'
     | '/admin/'
     | '/v4/organizations/$orgId/cert-manager'
     | '/v4/organizations/$orgId/networking'
@@ -10549,9 +10396,7 @@ export interface FileRouteTypes {
     | '/shared/new'
     | '/v4/admin'
     | '/v4/password-setup'
-    | '/design-system'
     | '/personal-settings'
-    | '/design-system/$'
     | '/login'
     | '/signup'
     | '/v4/personal-settings'
@@ -10580,9 +10425,6 @@ export interface FileRouteTypes {
     | '/v4/organizations/none'
     | '/v4/organizations/onboarding'
     | '/admin'
-    | '/design-system/comparisons/$comparison'
-    | '/design-system/foundations/$page'
-    | '/design-system/patterns/$pattern'
     | '/v4/login'
     | '/v4/signup'
     | '/admin/setup'
@@ -10613,7 +10455,6 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/sso'
     | '/integrations'
     | '/pam/access'
-    | '/design-system/components/$group/$component'
     | '/v4/organizations/$orgId/cert-manager'
     | '/v4/organizations/$orgId/networking'
     | '/v4/organizations/$orgId/projects'
@@ -10936,7 +10777,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/cli-redirect'
-    | '/design-system'
     | '/v4'
     | '/_authenticate'
     | '/_restrict-login-signup'
@@ -10953,12 +10793,10 @@ export interface FileRouteTypes {
     | '/v4/admin'
     | '/v4/password-setup'
     | '/v4/personal-settings'
-    | '/design-system/'
     | '/_authenticate/_inject-org-details'
     | '/_authenticate/personal-settings'
     | '/_restrict-login-signup/login'
     | '/_restrict-login-signup/signup'
-    | '/design-system/$'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
     | '/v4/personal-settings/'
@@ -10990,9 +10828,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout'
     | '/_authenticate/_inject-org-details/admin'
     | '/_authenticate/personal-settings/_layout'
-    | '/design-system/comparisons/$comparison'
-    | '/design-system/foundations/$page'
-    | '/design-system/patterns/$pattern'
     | '/v4/_v4-auth/login'
     | '/v4/_v4-auth/signup'
     | '/_authenticate/personal-settings/_layout/'
@@ -11029,7 +10864,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
     | '/_authenticate/_inject-org-details/pam/access'
     | '/v4/organizations/$orgId/projects'
-    | '/design-system/components/$group/$component'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/'
     | '/v4/organizations/$orgId/cert-manager/'
     | '/v4/organizations/$orgId/networking/'
@@ -11386,7 +11220,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   indexRoute: typeof indexRoute
   authCliRedirectPageRouteRoute: typeof authCliRedirectPageRouteRoute
-  designSystemRouteRoute: typeof designSystemRouteRouteWithChildren
   v4RouteRoute: typeof v4RouteRouteWithChildren
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
@@ -11399,7 +11232,6 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
   authCliRedirectPageRouteRoute: authCliRedirectPageRouteRoute,
-  designSystemRouteRoute: designSystemRouteRouteWithChildren,
   v4RouteRoute: v4RouteRouteWithChildren,
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
@@ -11424,7 +11256,6 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/cli-redirect",
-        "/design-system",
         "/v4",
         "/_authenticate",
         "/_restrict-login-signup",
@@ -11439,17 +11270,6 @@ export const routeTree = rootRoute
     },
     "/cli-redirect": {
       "filePath": "auth/CliRedirectPage/route.tsx"
-    },
-    "/design-system": {
-      "filePath": "design-system/route.tsx",
-      "children": [
-        "/design-system/",
-        "/design-system/$",
-        "/design-system/comparisons/$comparison",
-        "/design-system/foundations/$page",
-        "/design-system/patterns/$pattern",
-        "/design-system/components/$group/$component"
-      ]
     },
     "/v4": {
       "filePath": "v4/route.tsx",
@@ -11564,10 +11384,6 @@ export const routeTree = rootRoute
         "/v4/personal-settings/"
       ]
     },
-    "/design-system/": {
-      "filePath": "design-system/routes/overview.tsx",
-      "parent": "/design-system"
-    },
     "/_authenticate/_inject-org-details": {
       "filePath": "middlewares/inject-org-details.tsx",
       "parent": "/_authenticate",
@@ -11608,10 +11424,6 @@ export const routeTree = rootRoute
         "/_restrict-login-signup/signup/",
         "/_restrict-login-signup/signup/sso"
       ]
-    },
-    "/design-system/$": {
-      "filePath": "design-system/routes/fallback.tsx",
-      "parent": "/design-system"
     },
     "/_restrict-login-signup/login/": {
       "filePath": "auth/LoginPage/route.tsx",
@@ -11808,18 +11620,6 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/personal-settings/_layout/"
       ]
-    },
-    "/design-system/comparisons/$comparison": {
-      "filePath": "design-system/routes/comparison.tsx",
-      "parent": "/design-system"
-    },
-    "/design-system/foundations/$page": {
-      "filePath": "design-system/routes/foundation.tsx",
-      "parent": "/design-system"
-    },
-    "/design-system/patterns/$pattern": {
-      "filePath": "design-system/routes/pattern.tsx",
-      "parent": "/design-system"
     },
     "/v4/_v4-auth/login": {
       "filePath": "",
@@ -12038,10 +11838,6 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId"
       ]
-    },
-    "/design-system/components/$group/$component": {
-      "filePath": "design-system/routes/component.tsx",
-      "parent": "/design-system"
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/": {
       "filePath": "admin/GeneralPage/route.tsx",

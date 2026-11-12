@@ -1,22 +1,22 @@
 import { useState } from "react";
-import { useBlocker } from "@tanstack/react-router";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Code } from "@app/components/v4/ui/code";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
+} from "@infisical/cipher/ui/accordion";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Code } from "@infisical/cipher/ui/code";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { useBlocker } from "@tanstack/react-router";
+
 import type { TGetEnvOverrides } from "@app/hooks/api/admin/types";
 
 import { failed, toast } from "../../access/toast";

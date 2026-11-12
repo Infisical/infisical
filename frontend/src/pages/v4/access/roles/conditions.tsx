@@ -1,15 +1,14 @@
 import { useId, useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Select } from "@infisical/cipher/ui/select";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import picomatch from "picomatch";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { Select } from "@app/components/v4/ui/select";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { Gate, RESTRICTED } from "../ui";
 import {

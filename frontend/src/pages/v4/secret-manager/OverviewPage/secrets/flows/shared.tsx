@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +7,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { environments, type Resource, type Secret } from "../../secrets-model";
 

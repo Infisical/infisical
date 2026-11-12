@@ -1,14 +1,13 @@
 import { type ReactNode, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useWatch } from "react-hook-form";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { FieldError, FieldLabel } from "@app/components/v4/ui/field";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select, type SelectOption } from "@app/components/v4/ui/select";
-import { SmallText } from "@app/components/v4/ui/text";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { FieldError, FieldLabel } from "@infisical/cipher/ui/field";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select, type SelectOption } from "@infisical/cipher/ui/select";
+import { SmallText } from "@infisical/cipher/ui/text";
 
 import { useV4Adapter } from "../../../../../../data/adapters";
 import {

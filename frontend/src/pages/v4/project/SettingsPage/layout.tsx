@@ -1,10 +1,10 @@
 import type { ComponentType } from "react";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@infisical/cipher/ui/empty";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@app/components/v4/ui/empty";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 
 export type ProjectSettingsTab = {
   key: string;

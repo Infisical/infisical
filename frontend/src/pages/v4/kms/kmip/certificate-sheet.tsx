@@ -1,12 +1,11 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { Select } from "@app/components/v4/ui/select";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -15,8 +14,9 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/sheet";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import type { KmipClientCertificate, TKmipClient } from "@app/hooks/api/kmip/types";
 

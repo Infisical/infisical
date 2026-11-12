@@ -1,4 +1,7 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Field, FieldDescription } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Select } from "@infisical/cipher/ui/select";
 
 import {
   getTotpCreateDefaultValues,
@@ -11,9 +14,6 @@ import {
   totpEditFormSchema,
   TTotpFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/totpContract";
-import { Field, FieldDescription } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Select } from "@app/components/v4/ui/select";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, numberInput, ProviderGroup } from "../fields";

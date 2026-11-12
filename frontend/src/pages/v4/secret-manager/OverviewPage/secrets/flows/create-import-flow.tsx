@@ -1,7 +1,6 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +8,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Select } from "@app/components/v4/ui/select";
-import { SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Select } from "@infisical/cipher/ui/select";
+import { SmallText } from "@infisical/cipher/ui/text";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSub

@@ -1,16 +1,16 @@
 import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
 
 import {
   LdapUpgradeIntent,
   OidcSsoUpgradeIntent,
   SamlSsoUpgradeIntent
 } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
 import {
   OrgPermissionEmailDomainActions,
   OrgPermissionSsoActions,

@@ -1,4 +1,5 @@
-import type { IconName } from "@app/components/v4/ui/icon";
+import type { IconName } from "@infisical/cipher/ui/icon";
+
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export type ShellLevel =

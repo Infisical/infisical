@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -11,9 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 
 import { useV4Adapter } from "../../../data/adapters";

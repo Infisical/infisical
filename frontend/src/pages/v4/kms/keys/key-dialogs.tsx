@@ -1,7 +1,5 @@
 import { useState } from "react";
-import FileSaver from "file-saver";
-
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,8 +9,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +18,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { Snippet } from "@app/components/v4/ui/snippet";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { Snippet } from "@infisical/cipher/ui/snippet";
+import FileSaver from "file-saver";
+
 import type { TCmek } from "@app/hooks/api/cmeks/types";
 
 import { failed, saved } from "../../access/toast";

@@ -1,4 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Field } from "@infisical/cipher/ui/field";
+import { Select } from "@infisical/cipher/ui/select";
 
 import {
   getLdapCreateDefaultValues,
@@ -11,8 +13,6 @@ import {
   TLdapCreateFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/ldapContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Field } from "@app/components/v4/ui/field";
-import { Select } from "@app/components/v4/ui/select";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import {

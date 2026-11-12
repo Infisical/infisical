@@ -1,8 +1,8 @@
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Label } from "@app/components/v4/ui/label";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Label } from "@infisical/cipher/ui/label";
+import { Stack } from "@infisical/cipher/ui/layout";
 
 import css from "./org.module.css";
 

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { SheetBody, SheetFooter, SheetSections } from "@infisical/cipher/ui/sheet";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
 
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { SheetBody, SheetFooter, SheetSections } from "@app/components/v4/ui/sheet";
-import { SmallText, Text } from "@app/components/v4/ui/text";
 import {
   type BillingCatalogPlan,
   type BillingCatalogProduct,

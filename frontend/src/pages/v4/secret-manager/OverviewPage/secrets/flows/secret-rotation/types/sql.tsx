@@ -1,7 +1,6 @@
 import { useWatch } from "react-hook-form";
-
-import { Grid, Stack } from "@app/components/v4/ui/layout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v4/ui/tabs";
+import { Grid, Stack } from "@infisical/cipher/ui/layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 
 import {
   CreateUserStatementAlert,

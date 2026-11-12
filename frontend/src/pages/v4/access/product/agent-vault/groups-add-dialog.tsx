@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { ArrowRightIcon } from "lucide-react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { ArrowRightIcon } from "lucide-react";
+
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { OrgAccessControlTabSections } from "@app/types/org";
 

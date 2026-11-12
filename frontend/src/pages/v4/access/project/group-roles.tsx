@@ -1,7 +1,5 @@
 import { type KeyboardEvent, type MouseEvent, useState } from "react";
-import { ClockAlertIcon, PencilIcon } from "lucide-react";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -9,10 +7,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList
-} from "@app/components/v4/ui/command";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/command";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { ClockAlertIcon, PencilIcon } from "lucide-react";
+
 import type { TGroupMembership } from "@app/hooks/api/groups/types";
 
 import { useV4Adapter } from "../../data/adapters";

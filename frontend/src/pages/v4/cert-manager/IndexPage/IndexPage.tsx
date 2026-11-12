@@ -1,6 +1,5 @@
+import { Loader } from "@infisical/cipher/ui/loader";
 import { Navigate, useParams } from "@tanstack/react-router";
-
-import { Loader } from "@app/components/v4/ui/loader";
 
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";

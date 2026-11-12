@@ -1,16 +1,15 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import { MAX_DESCRIPTION_LINES, nameSchema } from "../flows/create-folder-flow";
 

@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { Navigate, useParams } from "@tanstack/react-router";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger
-} from "@app/components/v4/ui/collapsible";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Heading } from "@app/components/v4/ui/text";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/collapsible";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Heading } from "@infisical/cipher/ui/text";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { Navigate, useParams } from "@tanstack/react-router";
+
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub

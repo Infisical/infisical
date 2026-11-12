@@ -1,16 +1,13 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { Cell, Pie, PieChart } from "recharts";
-
-import { Card } from "@app/components/v4/ui/card";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent
-} from "@app/components/v4/ui/chart";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Inline } from "@app/components/v4/ui/layout";
-import { RowLink } from "@app/components/v4/ui/row-link";
+} from "@infisical/cipher/ui/chart";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { RowLink } from "@infisical/cipher/ui/row-link";
 import {
   Table,
   TableBody,
@@ -19,7 +16,9 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
+} from "@infisical/cipher/ui/table";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { Cell, Pie, PieChart } from "recharts";
 
 import { v4Path } from "../../../links";
 import { formatShare, type InventoryFilters } from "./dashboard.utils";

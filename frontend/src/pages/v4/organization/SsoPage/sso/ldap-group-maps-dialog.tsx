@@ -1,8 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -11,24 +9,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
+} from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { z } from "zod";
+
 import type { LDAPGroupMap } from "@app/hooks/api/ldapConfig/types";
 
 import { useOrgId } from "../../../access/permissions";

@@ -1,21 +1,20 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
   buildPamAccountCan,
   PamAccessStatus,
@@ -29,6 +28,7 @@ import {
   type TPamFolderWithCount
 } from "@app/hooks/api/pam";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";

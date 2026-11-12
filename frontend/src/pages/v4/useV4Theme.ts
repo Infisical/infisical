@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { defaultV4Theme, toV4Theme, v4ThemeScheme } from "@infisical/cipher/lib/theme-registry";
+import type { V4Scheme } from "@infisical/cipher/lib/themes";
 import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 
 import {
   type ThemeChangeSource,
   useTheme
 } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
-import { defaultV4Theme, toV4Theme, v4ThemeScheme } from "@app/components/v4/lib/theme-registry";
-import type { V4Scheme } from "@app/components/v4/lib/themes";
 
 import { V4_DEMO_ORG_ID } from "./mode";
 

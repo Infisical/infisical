@@ -1,9 +1,9 @@
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { Link } from "@tanstack/react-router";
 import { PackageIcon } from "lucide-react";
 
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline } from "@app/components/v4/ui/layout";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type {
   TAgentVaultDelegationDetail,

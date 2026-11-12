@@ -1,4 +1,27 @@
 import { useMemo, useState } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@infisical/cipher/ui/dialog";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { Inline } from "@infisical/cipher/ui/layout";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@infisical/cipher/ui/sheet";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import {
   LayoutGridIcon,
   ListIcon,
@@ -9,30 +32,6 @@ import {
   TagIcon,
   UsersIcon
 } from "lucide-react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { Inline } from "@app/components/v4/ui/layout";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { POLICY_TEMPLATES, type PolicyTemplate } from "./catalog";
 import { type RolePermissions, ruleId } from "./permissions-model";

@@ -1,9 +1,9 @@
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tabs } from "@app/components/v4/ui/tabs";
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,

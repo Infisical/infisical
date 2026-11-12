@@ -1,8 +1,7 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Inline } from "@app/components/v4/ui/layout";
-import { SmallText } from "@app/components/v4/ui/text";
+import { Button } from "@infisical/cipher/ui/button";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { SmallText } from "@infisical/cipher/ui/text";
 
 import {
   hasAtLeastOneCredential,

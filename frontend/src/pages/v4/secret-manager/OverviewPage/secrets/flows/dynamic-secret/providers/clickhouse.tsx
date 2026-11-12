@@ -1,4 +1,9 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Button } from "@infisical/cipher/ui/button";
+import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 
 import {
   clickHouseCreateFormSchema,
@@ -10,11 +15,6 @@ import {
   type TClickHouseFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/clickHouseContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Button } from "@app/components/v4/ui/button";
-import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, GatewayPicker, ProviderFields, ProviderGroup } from "../fields";

@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Field } from "@infisical/cipher/ui/field";
 
 import {
   getVerticaCreateDefaultValues,
@@ -12,7 +13,6 @@ import {
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/verticaContract";
 import { normalizeDynamicSecretGatewayValueForMode } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/schemas";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Field } from "@app/components/v4/ui/field";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, GatewayPicker, ProviderFields, ProviderGroup } from "../fields";

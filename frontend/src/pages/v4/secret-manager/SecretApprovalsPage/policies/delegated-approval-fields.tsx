@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Field } from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 
 import { EnterpriseAppConnectionsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Field } from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { DELEGATED_APPROVAL_DOCS_MAP } from "@app/helpers/delegatedApprovals";
 import type { TDelegatedApprovalOption } from "@app/hooks/api/delegatedApprovals/types";

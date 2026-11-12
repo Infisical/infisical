@@ -1,12 +1,4 @@
 import { type ReactNode, useState } from "react";
-import { format } from "date-fns";
-import {
-  ArrowDownWideNarrowIcon,
-  ArrowUpWideNarrowIcon,
-  MaximizeIcon,
-  MinimizeIcon
-} from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,20 +8,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
 import {
   Sheet,
   SheetBody,
@@ -39,8 +31,16 @@ import {
   SheetHeader,
   SheetSubheader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { format } from "date-fns";
+import {
+  ArrowDownWideNarrowIcon,
+  ArrowUpWideNarrowIcon,
+  MaximizeIcon,
+  MinimizeIcon
+} from "lucide-react";
+
 import type { Commit } from "@app/hooks/api/folderCommits/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
 

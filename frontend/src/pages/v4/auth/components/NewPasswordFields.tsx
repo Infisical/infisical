@@ -1,9 +1,9 @@
 import type { FieldErrors, UseFormRegister } from "react-hook-form";
+import { AnimatedCollapse } from "@infisical/cipher/ui/animated-collapse";
+import { Field } from "@infisical/cipher/ui/field";
+import { StatusText } from "@infisical/cipher/ui/text";
 
 import type { PasswordBreachCheckStatus } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
-import { AnimatedCollapse } from "@app/components/v4/ui/animated-collapse";
-import { Field } from "@app/components/v4/ui/field";
-import { StatusText } from "@app/components/v4/ui/text";
 import type { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
 import { PasswordField } from "./PasswordField";

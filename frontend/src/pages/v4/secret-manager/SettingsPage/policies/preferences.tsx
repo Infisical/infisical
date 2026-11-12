@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { Card } from "@infisical/cipher/ui/card";
+import { Switch } from "@infisical/cipher/ui/switch";
 
-import { Card } from "@app/components/v4/ui/card";
-import { Switch } from "@app/components/v4/ui/switch";
 import type { Project, UpdateProjectDTO } from "@app/hooks/api/projects/types";
 
 import { saved } from "../../../access/toast";

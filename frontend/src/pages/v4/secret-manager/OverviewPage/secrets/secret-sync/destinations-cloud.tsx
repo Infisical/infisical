@@ -1,10 +1,10 @@
 import { use, useEffect, useState } from "react";
 import { Controller, type FieldValues, useWatch } from "react-hook-form";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 
-import { Alert } from "@app/components/v4/ui/alert";
-import { Combobox, type ComboboxOption } from "@app/components/v4/ui/combobox";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
 import {
   CLOUDFLARE_PAGES_VARIABLE_TYPE_LABELS,
   CLOUDFLARE_SECRETS_STORE_SCOPE_LABELS,

@@ -1,8 +1,6 @@
-import { SlidersHorizontalIcon } from "lucide-react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Icon } from "@app/components/v4/ui/icon";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Icon } from "@infisical/cipher/ui/icon";
 import {
   Popover,
   PopoverContent,
@@ -10,7 +8,9 @@ import {
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger
-} from "@app/components/v4/ui/popover";
+} from "@infisical/cipher/ui/popover";
+import { SlidersHorizontalIcon } from "lucide-react";
+
 import type { CopySecretsAttributes } from "@app/pages/secret-manager/OverviewPage/components/CopySecretsSheet/copySecrets.types";
 
 import styles from "./copy-secrets.module.css";

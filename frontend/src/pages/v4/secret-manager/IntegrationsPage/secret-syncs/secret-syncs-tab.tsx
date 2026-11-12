@@ -1,21 +1,20 @@
 import { useEffect, useState } from "react";
 import type { FieldValues } from "react-hook-form";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { StatusText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
@@ -23,6 +22,7 @@ import {
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
 import type { TCreateSecretSyncDTO, TSecretSync } from "@app/hooks/api/secretSyncs/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { failed, toast } from "../../../access/toast";

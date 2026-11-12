@@ -1,11 +1,5 @@
 import type { ReactNode } from "react";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle
-} from "@app/components/v4/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@infisical/cipher/ui/dialog";
 
 import styles from "./upgrade-dialog.module.css";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Select } from "@infisical/cipher/ui/select";
 
-import { Select } from "@app/components/v4/ui/select";
 import { SigningOperationStatus, type TSigningOperation } from "@app/hooks/api/signers/types";
 
 import { useV4Adapter } from "../../../data/adapters";

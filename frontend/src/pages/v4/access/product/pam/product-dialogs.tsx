@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,18 +8,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Label } from "@app/components/v4/ui/label";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { RadioGroup, RadioGroupItem } from "@app/components/v4/ui/radio-group";
+} from "@infisical/cipher/ui/dialog";
+import { Label } from "@infisical/cipher/ui/label";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
+
 import { PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 
 import { failed, saved } from "../../toast";

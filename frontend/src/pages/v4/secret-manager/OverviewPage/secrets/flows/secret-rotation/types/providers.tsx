@@ -1,6 +1,6 @@
 import { useWatch } from "react-hook-form";
+import { Stack } from "@infisical/cipher/ui/layout";
 
-import { Stack } from "@app/components/v4/ui/layout";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 
 import { useV4Adapter } from "../../../../../../data/adapters";

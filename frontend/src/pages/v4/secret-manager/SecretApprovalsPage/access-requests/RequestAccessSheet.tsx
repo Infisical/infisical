@@ -1,21 +1,19 @@
 import { useId, useState } from "react";
-import ms from "ms";
-
-import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Combobox } from "@app/components/v4/ui/combobox";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { DurationInput } from "@app/components/v4/ui/duration-input";
-import { Field } from "@app/components/v4/ui/field";
-import { Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { DurationInput } from "@infisical/cipher/ui/duration-input";
+import { Field } from "@infisical/cipher/ui/field";
+import { Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -23,10 +21,12 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import ms from "ms";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,

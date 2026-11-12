@@ -1,29 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useRouteContext } from "@tanstack/react-router";
-import { z } from "zod";
-
-import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { toast } from "@app/components/v4/ui/sonner";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Text } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { toast } from "@infisical/cipher/ui/sonner";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Text } from "@infisical/cipher/ui/text";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
+import { z } from "zod";
+
+import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
+import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 import { AuthMethod } from "@app/hooks/api/users/types";

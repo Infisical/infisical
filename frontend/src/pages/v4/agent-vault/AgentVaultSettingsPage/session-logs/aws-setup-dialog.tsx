@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Code } from "@app/components/v4/ui/code";
-import { CodeBlock } from "@app/components/v4/ui/code-block";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Code } from "@infisical/cipher/ui/code";
+import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +10,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/dialog";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { SmallText } from "@infisical/cipher/ui/text";
 
 import { useProjectScope } from "../../../access/project/scope";
 import { useV4Adapter } from "../../../data/adapters";

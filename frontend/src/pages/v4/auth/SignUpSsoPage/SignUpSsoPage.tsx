@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { toast } from "@infisical/cipher/ui/sonner";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
-import { Button } from "@app/components/v4/ui/button";
-import { toast } from "@app/components/v4/ui/sonner";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendEmailVerificationCode } from "@app/hooks/api";

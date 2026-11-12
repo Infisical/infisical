@@ -1,9 +1,10 @@
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { Text } from "@infisical/cipher/ui/text";
+
 import { SIGNUP_PRODUCTS, SignupProductType } from "@app/components/auth/signupProducts";
-import { Button } from "@app/components/v4/ui/button";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { Text } from "@app/components/v4/ui/text";
 import { getProjectHomePage } from "@app/helpers/project";
 import { toV4Href } from "@app/helpers/v4Bridge";
 import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";

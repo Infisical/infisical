@@ -1,9 +1,9 @@
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { StatusText } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { Inline } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { StatusText } from "@app/components/v4/ui/text";
 import type { TDashboardStats } from "@app/hooks/api/certificates/types";
 
 import { v4Path } from "../../../links";

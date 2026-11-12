@@ -1,8 +1,8 @@
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
 
 import { EmailDomainsTab } from "./EmailDomainsTab";
 import { IdentitiesTab } from "./IdentitiesTab";

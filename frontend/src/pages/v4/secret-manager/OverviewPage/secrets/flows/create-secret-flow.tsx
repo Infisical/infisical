@@ -1,18 +1,16 @@
 import { type ClipboardEvent, useMemo, useRef, useState } from "react";
-
-import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Button } from "@app/components/v4/ui/button";
-import { Field, FieldError, FieldLabel } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
+} from "@infisical/cipher/ui/accordion";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import {
   Sheet,
   SheetBody,
@@ -20,11 +18,13 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
+import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 

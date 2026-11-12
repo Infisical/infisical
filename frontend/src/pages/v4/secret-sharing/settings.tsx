@@ -1,6 +1,4 @@
 import { useRef, useState } from "react";
-import ms from "ms";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,18 +8,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText, Text } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import ms from "ms";
+
 import { getObjectFromSeconds } from "@app/helpers/datetime";
 import type { Organization } from "@app/hooks/api/organization/types";
 

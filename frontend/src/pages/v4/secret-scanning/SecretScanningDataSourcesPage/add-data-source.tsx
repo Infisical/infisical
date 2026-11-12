@@ -1,22 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
+import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
-import { MultiStep } from "@app/components/v4/ui/multi-step";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { RadioGroup, RadioGroupCard } from "@app/components/v4/ui/radio-group";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   RESOURCE_DESCRIPTION_HELPER,
@@ -28,6 +27,7 @@ import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2/enums"
 import type { TCreateSecretScanningDataSourceDTO } from "@app/hooks/api/secretScanningV2/types";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 import { slugSchema } from "@app/lib/schemas";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useDebounced } from "../../access/org/use-debounced";
 import { failed, toast } from "../../access/toast";

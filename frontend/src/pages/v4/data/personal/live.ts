@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "@infisical/cipher/ui/sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
-import { toast } from "@app/components/v4/ui/sonner";
 import { apiRequest } from "@app/config/request";
 import { useServerConfig } from "@app/context";
 import { consumeMfaLockoutError } from "@app/helpers/mfaSession";

@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
 
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { SmallText, Text } from "@app/components/v4/ui/text";
 import { SessionStorageKeys } from "@app/const";
 import type { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing/types";
 

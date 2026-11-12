@@ -1,4 +1,8 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Button } from "@infisical/cipher/ui/button";
+import { FieldError } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 
 import {
   awsIamCreateFormSchema,
@@ -11,10 +15,6 @@ import {
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/awsIamContract";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/schemas";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Button } from "@app/components/v4/ui/button";
-import { FieldError } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
 import {
   DynamicSecretAwsIamAuth,
   DynamicSecretAwsIamCredentialType,

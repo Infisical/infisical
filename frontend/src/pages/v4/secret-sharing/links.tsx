@@ -1,7 +1,7 @@
-import { Button } from "@app/components/v4/ui/button";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { SmallText } from "@app/components/v4/ui/text";
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { SmallText } from "@infisical/cipher/ui/text";
 
 import { toast } from "../access/toast";
 

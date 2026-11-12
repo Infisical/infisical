@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Detail, DetailLabel, DetailValue } from "@app/components/v4/ui/detail";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Detail, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -13,7 +12,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
 import {
   Table,
   TableBody,
@@ -21,7 +20,8 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
+} from "@infisical/cipher/ui/table";
+
 import type { BillingOverview } from "@app/hooks/api/billing/types";
 
 import { fmtMoneyCents, formatAddressLines, taxTypeLabel } from "../billing-format";

@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Snippet } from "@infisical/cipher/ui/snippet";
+import { toast } from "@infisical/cipher/ui/sonner";
+import { Text } from "@infisical/cipher/ui/text";
 import QRCode from "qrcode";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Snippet } from "@app/components/v4/ui/snippet";
-import { toast } from "@app/components/v4/ui/sonner";
-import { Text } from "@app/components/v4/ui/text";
 import { getMfaStepUpChallenge, TMfaStepUpChallenge } from "@app/helpers/mfaSession";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useEnrollMfa, useGetUserTotpRegistration } from "@app/hooks/api/users";

@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -9,10 +8,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Stack } from "@infisical/cipher/ui/layout";
+
 import type { TEncryptionRootKey } from "@app/hooks/api/admin/types";
 
 import { saved } from "../../access/toast";

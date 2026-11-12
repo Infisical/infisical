@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
 import { JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";

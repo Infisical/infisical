@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { formatRelative } from "date-fns";
-
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -13,15 +10,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { formatRelative } from "date-fns";
+
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions

@@ -1,34 +1,34 @@
 import { type MouseEvent, type ReactNode, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { BanIcon, PencilIcon, UserRoundXIcon } from "lucide-react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
+} from "@infisical/cipher/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+import { BanIcon, PencilIcon, UserRoundXIcon } from "lucide-react";
+
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects

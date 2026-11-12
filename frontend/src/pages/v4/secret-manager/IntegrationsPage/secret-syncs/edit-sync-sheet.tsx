@@ -7,14 +7,11 @@ import {
   useWatch
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import { UpdateSecretSyncFormSchema } from "@app/components/secret-syncs/forms/schemas";
-import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
-import { Alert } from "@app/components/v4/ui/alert";
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Inline } from "@app/components/v4/ui/layout";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Inline } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -22,9 +19,12 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
+
+import { UpdateSecretSyncFormSchema } from "@app/components/secret-syncs/forms/schemas";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { failed, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";

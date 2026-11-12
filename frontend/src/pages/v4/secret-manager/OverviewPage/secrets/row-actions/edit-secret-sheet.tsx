@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,12 +8,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline } from "@app/components/v4/ui/layout";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import {
   Sheet,
   SheetBody,
@@ -23,7 +22,8 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
+
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import { readableValue, type Secret } from "../../secrets-model";

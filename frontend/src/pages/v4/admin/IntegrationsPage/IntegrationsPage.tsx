@@ -1,12 +1,12 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
 import type { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
 import { failed, toast } from "../../access/toast";
