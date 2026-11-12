@@ -37,7 +37,10 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import {
+  ApprovalPolicyType,
+  useRevocationPolicyProfileNames
+} from "@app/hooks/api/approvalPolicies";
 import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
@@ -123,6 +126,9 @@ const Page = () => {
     ? pendingRevocations?.get(certificate.id)
     : undefined;
   const hasPendingRevocation = Boolean(pendingRevocationRequestId);
+  const { data: revocationPolicyProfileNames } = useRevocationPolicyProfileNames(
+    certificate?.applicationId
+  );
 
   const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
     certificateId: certificate?.id,
@@ -256,7 +262,10 @@ const Page = () => {
   const applicationAccess = certificate?.applicationId
     ? getApplicationCertificateAccess({
         applicationName: certificate.applicationName ?? "this application",
-        permission: appPermissionData?.permission
+        permission: appPermissionData?.permission,
+        isRevocationApprovalRequired: Boolean(
+          certificate.profileName && revocationPolicyProfileNames?.has(certificate.profileName)
+        )
       })
     : undefined;
   const canEditCertificate = applicationAccess
@@ -268,6 +277,9 @@ const Page = () => {
     : Boolean(
         certSubject && permission.can(ProjectPermissionCertificateActions.Delete, certSubject)
       );
+  const canRevokeCertificate = applicationAccess
+    ? applicationAccess.canRevoke
+    : canDeleteCertificate;
   const canEditPkiSyncs = applicationAccess
     ? applicationAccess.canManagePkiSyncs
     : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
@@ -515,7 +527,7 @@ const Page = () => {
                 {canOfferRevoke && (
                   <BlockedActionTooltip reason={revokeBlockedReason}>
                     <DropdownMenuItem
-                      isDisabled={!canDeleteCertificate || hasPendingRevocation}
+                      isDisabled={!canRevokeCertificate || hasPendingRevocation}
                       isDisabledFocusable={Boolean(revokeBlockedReason)}
                       onClick={() =>
                         handlePopUpOpen("revokeCertificate", {

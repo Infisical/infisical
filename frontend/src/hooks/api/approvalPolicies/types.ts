@@ -161,6 +161,7 @@ export type TApprovalPolicy = {
   id: string;
   projectId: string;
   name: string;
+  isActive?: boolean | null;
   maxRequestTtl?: string | null;
   type: ApprovalPolicyType;
   conditions: {
