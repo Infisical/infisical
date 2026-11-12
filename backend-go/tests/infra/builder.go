@@ -16,9 +16,8 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 )
 
-// licenseFeaturePaths are where the compiled license-fns module can sit inside the Node.js container. The
-// container runs the published image, which has the module at the first path until a release ships it at
-// the second, so the one that exists is edited.
+// The published image has license-fns at the first path until a release moves it to the second, so we
+// edit whichever exists.
 var licenseFeaturePaths = []string{
 	"/backend/dist/ee/services/license/license-fns.mjs",
 	"/backend/dist/domains/platform/license/ee/service/license-fns.mjs",

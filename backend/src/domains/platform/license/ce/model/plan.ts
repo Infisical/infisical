@@ -126,7 +126,7 @@ export type TPlanProps = {
 export type TPlanFeature = keyof typeof Plan.featureNames;
 
 export class Plan extends withProps<TPlanProps>() {
-  // The plan features that gate a capability, with the name a refusal shows the customer.
+  // Names shown to the customer when a feature is refused.
   static readonly featureNames = {
     dynamicSecret: "Dynamic Secrets",
     subOrganization: "Sub-organizations",
@@ -190,8 +190,7 @@ export class Plan extends withProps<TPlanProps>() {
     return new Plan(props);
   }
 
-  // A plan with a License Server answer on it. A plan with no slug is the community edition, or the
-  // fallback served while the License Server cannot be reached.
+  // No slug means community edition, or the fallback served while the License Server is down.
   get isPaid(): boolean {
     return Boolean(this.slug);
   }
@@ -208,14 +207,12 @@ export class Plan extends withProps<TPlanProps>() {
     }
   }
 
-  // The member and identity cap that applies, or null when there is none. An enterprise plan is uncapped
-  // unless it opts into enforcement.
+  // Enterprise is uncapped unless it opts into enforcement.
   get enforcedIdentityLimit(): number | null {
     if (this.slug === "enterprise" && !this.enforceIdentityLimit) return null;
     return this.identityLimit ?? null;
   }
 
-  // The plan as shown to an org: the License Server's answer plus the workspaces the org uses now.
   withWorkspacesUsed(workspacesUsed: number): Plan {
     return new Plan({ ...this.toJSON(), workspacesUsed });
   }

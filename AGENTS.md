@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
 - `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/AGENTS.md` for why running `npm run test:e2e` directly can destroy your dev data.
-- `make test-api-integration`: run the `src/domains/` integration tests against real Postgres (and any server a test asks for) through Testcontainers; needs Docker on the host. Narrow with `SPEC=<pattern>`.
+- `make test-api-integration`: run the `src/domains/` integration tests on real Postgres via Testcontainers (needs Docker). Narrow with `SPEC=<pattern>`.
 - `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.

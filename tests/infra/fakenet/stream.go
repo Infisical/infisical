@@ -45,8 +45,8 @@ var (
 //
 // prefix filters to this binary's credentials. wholeHosts are scoped by product ids
 // instead, so they come through unfiltered and only tracked scopes are kept. Returns
-// once the first connection is up, so
-// an unreachable fakenet fails in TestMain rather than as a timeout in some test.
+// once the first connection is up, so an unreachable fakenet fails in TestMain rather
+// than as a timeout in some test.
 func Listen(ctx context.Context, adminURL, prefix string, wholeHosts ...string) error {
 	adminURL = strings.TrimSuffix(adminURL, "/")
 	st := &stream{adminURL: adminURL, prefix: prefix, wholeHosts: wholeHosts, buffers: map[scopeID]*buffer{}}

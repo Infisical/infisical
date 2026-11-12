@@ -339,8 +339,8 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
-    // Read before the transaction, so no other domain is called while it holds a connection. The count is
-    // live rather than the plan's cached workspacesUsed.
+    // Outside the transaction so no other domain is called while it holds a connection. Live count, not
+    // the plan's cached workspacesUsed.
     const plan = await licenseService.getPlan(organization.id);
     if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
       const currentProjectCount = await organizationsProjectsService.countWorkspaces(organization.id);
@@ -823,11 +823,9 @@ export const projectServiceFactory = ({
       };
     });
 
-    // The plan carries the project count, so it is dropped once the project commits. A caller that passed its own
-    // transaction does this after that transaction commits.
+    // The plan caches the project count, so drop it after commit (the caller's commit, if it passed a tx).
     if (!trx) await licenseService.invalidatePlan(actorOrgId);
-    // A new project seeds its creator (plus any template members/identities); emit so a new secret-manager,
-    // PAM or Agent Vault project's seats are metered. The counters filter by project type.
+    // New projects seed members, so re-meter seats. The counters filter by project type.
     usageMeteringService.emit(results.orgId, Meter.SecretIdentities.key);
     usageMeteringService.emit(results.orgId, Meter.PamIdentities.key);
     usageMeteringService.emit(results.orgId, Meter.AgentVaultIdentities.key);

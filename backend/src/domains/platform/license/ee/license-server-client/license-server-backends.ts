@@ -237,7 +237,7 @@ export const licenseServerBackend = (
     const body: unknown = await res.json();
     const parsed = subscriptionResponseSchema.safeParse(body);
     if (!parsed.success) {
-      // A schema mismatch must NOT be silently read as "no subscription" — that hides a real (often
+      // A schema mismatch must NOT be silently read as "no subscription": that hides a real (often
       // paid) subscription behind the free state. Log it so contract drift is visible, then degrade.
       logger.error(
         { err: parsed.error },
@@ -459,13 +459,13 @@ export const licenseServerBackend = (
 // Stripe-backed billing (checkout, portal, subscription mutations, cloud plan, billing profile) does
 // not exist for self-hosted licenses; the license is managed out-of-band. These reject so a caller
 // never silently no-ops.
-// No request is made, so there is no license request id to carry — only the shared prefix.
+// No request is made, so there is no license request id to carry, only the shared prefix.
 const notSupportedOnSelfHosted = (operation: string) => (): Promise<never> =>
   Promise.reject(new Error(`license-client: operation "${operation}" is not supported for self-hosted licenses`));
 
 // Backend for a self-hosted License Server v2 license. Unlike the cloud backend (which mints an RS256
 // service JWT), it exchanges the license key for a short-lived JWT at the token endpoint and sends that
-// as the bearer — the same convention both self-hosted key formats now follow. Single-tenant: the key
+// as the bearer, same as both self-hosted key formats. Single-tenant: the key
 // identifies the license, so entitlement/subscription reads carry no org_id. Only the read + usage +
 // refresh endpoints the self-hosted contract exposes are implemented; everything billing-related throws.
 export const licenseServerSelfHostedBackend = (

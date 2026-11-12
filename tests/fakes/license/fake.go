@@ -56,18 +56,16 @@ func (service) New(events fakenet.Emitter) fakenet.Fake {
 type State struct {
 	Plan
 
-	// EntitlementFetches is every entitlements read, oldest first, with the query the
-	// instance sent.
+	// Oldest first, with the query the instance sent.
 	EntitlementFetches []EntitlementFetch `json:"entitlementFetches"`
 
-	// Snapshots is every usage snapshot received, oldest first.
+	// Oldest first.
 	Snapshots []UsageSnapshot `json:"snapshots"`
 
-	// UsageEvents is every metered usage event accepted, oldest first, without
-	// duplicates of an event id.
+	// Oldest first, deduped by event id.
 	UsageEvents []UsageEvent `json:"usageEvents"`
 
-	// Logins counts license key exchanges.
+	// License key exchanges.
 	Logins int `json:"logins"`
 }
 
@@ -187,8 +185,8 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, http.StatusOK, map[string]any{"results": results})
 	})
 
-	// A self-hosted instance exchanges its license key for a short-lived token, and
-	// sends that token on every later call. Scope has already resolved the key.
+	// Self-hosted swaps its license key for a short-lived token it sends on every later
+	// call. Scope already resolved the key.
 	mux.HandleFunc("POST /api/auth/v1/license-login", func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("X-API-KEY")
 		o.mu.Lock()
@@ -197,8 +195,7 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, http.StatusOK, map[string]any{"token": issueToken(key, time.Now().Add(time.Hour))})
 	})
 
-	// The usage reporter authenticates against the same server. Nothing asserts on
-	// these, but an unanswered call is a failed request path and noise in the logs.
+	// Nothing asserts on these, but unanswered they'd fail requests and spam the logs.
 	for _, p := range []string{"GET /v1/products", "GET /v1/subscription"} {
 		mux.HandleFunc(p, func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(w, http.StatusOK, map[string]any{})
@@ -244,7 +241,7 @@ func issueToken(key string, exp time.Time) string {
 	return header + "." + enc.EncodeToString(payload) + ".fake"
 }
 
-// Cloud service tokens don't carry the key, those resolve by path instead.
+// Cloud service tokens don't carry the key; those resolve by path.
 func licenseKeyFromBearer(authorization string) string {
 	token, ok := strings.CutPrefix(authorization, "Bearer ")
 	if !ok {

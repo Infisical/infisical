@@ -50,9 +50,8 @@ const withLock = async <T>(name: string, work: () => Promise<T>): Promise<T> => 
   }
 };
 
-// Starts something once per test run, across all workers. The first caller runs start and records the
-// address; everyone else waits and reuses it. If start throws, nothing's recorded and the next caller
-// retries. The address crosses processes, so plain JSON only, never a live client.
+// Once per run across all workers. If start throws, the next caller retries. The address crosses
+// processes, so plain JSON only, never a live client.
 export const startOnce = async <T>(name: string, start: () => Promise<T>): Promise<T> => {
   if (!/^[a-z0-9-]+$/.test(name)) {
     throw new Error(`startOnce name "${name}" must be lowercase letters, digits and dashes`);
@@ -69,8 +68,7 @@ export const startOnce = async <T>(name: string, start: () => Promise<T>): Promi
   });
 };
 
-// Not tied to the worker's process since other workers may still use it after that worker exits;
-// global teardown removes every container with this run's label.
+// Other workers may still use it after this one exits, so global teardown removes it by label instead.
 export const container = (image: string) => {
   const runId = getRunId();
   // Recorded before the container exists, so teardown still runs if a start fails halfway.

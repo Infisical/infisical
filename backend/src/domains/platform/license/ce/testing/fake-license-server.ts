@@ -33,7 +33,6 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
 
   fetches: string[] = [];
 
-  // The org each fetch named, as the License Server received it.
   fetchedOrgs: TEntitlementOrg[] = [];
 
   failNextFetches = 0;
@@ -46,10 +45,10 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
 
   events: { orgId: string; event: TMeteringEvent }[] = [];
 
-  // Each entry answers the next report: an outcome the server gives as final, or a failure worth retrying.
+  // Each entry answers the next report: a final outcome, or an Error to retry.
   failNextReports: (Exclude<TUsageSnapshotOutcome, "reported"> | "rejected" | Error)[] = [];
 
-  // Reports the License Server receives but whose reply never reaches the instance.
+  // Reports the server receives but whose reply never comes back.
   loseNextReplies = 0;
 
   deletedOrgs: string[] = [];

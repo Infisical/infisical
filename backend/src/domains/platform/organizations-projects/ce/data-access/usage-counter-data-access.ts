@@ -6,8 +6,8 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { TBillableActorDataAccess, TIdentityOwnership } from "../service/dependencies";
 
-// A user/identity takes a billable seat only if it's an org member AND either in a Secret Manager/KMS
-// project or in no project at all (direct or via a group). Actors only in PAM, PKI etc. don't count.
+// Billable = org member in a Secret Manager/KMS project or in no project at all (direct or via a group).
+// Actors only in PAM, PKI etc. don't count.
 const COUNTED_PROJECT_TYPES = [ProjectType.SecretManager, ProjectType.KMS];
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
@@ -317,8 +317,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
       return qb;
     };
 
-    // scope = project + non-null actor column + whereIn on the typed project ids lines up with the
-    // partial unique indexes; each project-scope row has exactly one actor column.
+    // Shaped to hit the partial unique indexes.
     const directUsers = db
       .replicaNode()(TableName.Membership)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)

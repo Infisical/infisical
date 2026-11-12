@@ -24,8 +24,7 @@ const PublicKeyPath = "/app/dist/lib/crypto/license_public_key.pem"
 type Signer struct {
 	key *rsa.PrivateKey
 
-	// PublicKeyFile is the PKCS#1 public key, written to a temporary file for the
-	// harness to copy into the container.
+	// Temp file with the PKCS#1 public key, for the harness to copy into the container.
 	PublicKeyFile string
 }
 
@@ -73,8 +72,8 @@ func V2(licenseID string, p Plan) OfflineLicense {
 	}
 }
 
-// The instance verifies against JSON.stringify of the parsed license, so we sign
-// compact JSON with HTML escaping off to match it byte for byte.
+// The instance verifies against JSON.stringify of the parsed license, so sign compact
+// JSON with HTML escaping off to match byte for byte.
 func (s *Signer) Key(l OfflineLicense) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

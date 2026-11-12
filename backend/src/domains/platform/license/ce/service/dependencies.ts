@@ -3,9 +3,6 @@ import { Meter } from "../model/meter";
 import { Plan } from "../model/plan";
 import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/license-server-types";
 
-// Implemented outside the services: by License's data access, by the products (TUsageCounter) and by EE.
-
-// Keys are always the root org's.
 export type TPlanCache = {
   read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean }>;
   write(rootOrgId: string, plan: Plan): Promise<void>;
@@ -30,20 +27,18 @@ export type TUsageCounter = {
   count(orgId: string | null): Promise<number>;
 };
 
-// Every licensing decision goes through EE. No CE fallback on purpose, so the free tier's features stay
-// EE-licensed.
+// All licensing decisions go through EE. No CE fallback on purpose, so the free tier stays EE-licensed.
 export type TLicenseProvider = {
-  // The instance's own license, read once at boot.
   resolveInstanceEntitlements(): Promise<InstanceEntitlements>;
-  // Reads an online license again. Null when the instance has none; throws when the License Server fails.
+  // Null when there's no online license; throws when the License Server fails.
   refreshInstanceEntitlements(): Promise<InstanceEntitlements | null>;
-  // Whether refreshInstanceEntitlements should also run on a timer.
+  // Whether refreshInstanceEntitlements should run on a timer.
   hasOnlineLicense(): boolean;
   // Whether LICENSE_KEY holds an offline key, whether or not it verifies.
   isOffline(): boolean;
-  // Cloud: a root org's plan from the License Server. Throws when it cannot be read.
+  // Cloud only. Throws when the License Server can't be read.
   fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan>;
-  // Cloud: what an org gets while the License Server cannot be reached.
+  // Cloud only: what an org gets while the License Server is down.
   fallbackPlan(): Plan;
 };
 
@@ -52,13 +47,12 @@ export type TUsageSource = "cloud" | "self-hosted";
 export type TUsageSnapshot = {
   dimensionKey: string;
   value: number;
-  // When the value was counted. A recount is a new snapshot: the server drops a second one with the same time.
+  // When it was counted. The server drops a second snapshot with the same time, so a recount needs a new one.
   observedAt: Date;
   source: TUsageSource;
 };
 
-// "no-license" and "not-priced" are the server's final answer for the dimension: nothing was recorded, and
-// sending it again would get the same answer.
+// "no-license" and "not-priced" are final: nothing was recorded and resending won't change that.
 export type TUsageSnapshotOutcome = "reported" | "no-license" | "not-priced";
 
 // A metered fact for a sum or count meter. The server dedups on eventId, so a retry resends the same one.
@@ -69,20 +63,20 @@ export type TMeteringEvent = {
   occurredAt: string;
 };
 
-// "rejected" is the server's final answer for the whole batch, with its reason for the log.
+// "rejected" is final for the whole batch; reason is for the log.
 export type TMeteringEventsOutcome =
   | { status: "reported"; accepted: number; deduped: number }
   | { status: "rejected"; reason: string };
 
 export type TLicenseServer = {
-  // False when no License Server is configured, so usage is not queued.
+  // False when no License Server is configured, so usage isn't queued.
   isEnabled(): boolean;
-  // Whether usage can be sent: a License Server URL and credentials are configured.
+  // True when a License Server URL and credentials are configured.
   canReportUsage(): boolean;
-  // Throws when the report failed in a way worth retrying.
+  // Throws only when worth retrying.
   reportSnapshot(orgId: string, snapshot: TUsageSnapshot): Promise<TUsageSnapshotOutcome>;
-  // Throws when the report failed in a way worth retrying.
+  // Throws only when worth retrying.
   reportEvents(orgId: string, events: TMeteringEvent[], source: TUsageSource): Promise<TMeteringEventsOutcome>;
-  // Cloud: cancels a deleted root org's subscription right away and closes its licenses. Safe to repeat.
+  // Cloud only. Cancels the subscription right away and closes the licenses. Safe to repeat.
   deleteOrganization(orgId: string): Promise<TOrgDeletedResult>;
 };

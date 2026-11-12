@@ -1,6 +1,6 @@
 import { InstanceEntitlements } from "../model/instance-entitlements";
 
-// The instance's license. Swapped by the online license's background sync and by a plan refresh.
+// Swapped in place by the online license sync and by plan refresh.
 export class InstanceEntitlementsHolder {
   constructor(private current: InstanceEntitlements) {}
 

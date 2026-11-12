@@ -1,8 +1,7 @@
 import path from "path";
 import { defineConfig } from "vitest/config";
 
-// Integration tests for src/domains: real Postgres (and any server a test asks for), no Fastify server.
-// Files run in parallel, one database per worker. See src/domains/AGENTS.md, "Integration tests".
+// See src/domains/AGENTS.md, "Integration tests".
 export default defineConfig({
   test: {
     globals: true,
@@ -19,8 +18,7 @@ export default defineConfig({
       ENCRYPTION_KEY: "4bnfe4e407b8921c104518903515b218",
       AUTH_SECRET: "something-random",
       TELEMETRY_ENABLED: "false",
-      // The worker that starts a container may exit while others still use it; global teardown
-      // removes this run's containers by label instead of Testcontainers' per-process reaper.
+      // A worker can exit while others still use its container, so global teardown cleans up by label.
       TESTCONTAINERS_RYUK_DISABLED: "true"
     }
   },

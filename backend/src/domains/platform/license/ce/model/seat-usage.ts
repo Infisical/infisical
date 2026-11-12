@@ -2,7 +2,7 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 
 export type TSeatLimit = {
   identityLimit: number | null;
-  // The provisioning method, named in the refusal.
+  // Provisioning method, shown in the refusal.
   via?: string;
 };
 
@@ -17,8 +17,7 @@ export class SeatUsage {
     return new SeatUsage(membersUsed, identitiesUsed);
   }
 
-  // Refuses a new member once the plan's cap is reached. Read the usage before opening the transaction that
-  // adds the member, and check it inside it.
+  // Read the usage before opening the transaction that adds the member, then check it inside.
   assertAvailable({ identityLimit, via }: TSeatLimit): void {
     if (!identityLimit || this.identitiesUsed < identityLimit) return;
     throw new RuleViolationError({

@@ -63,8 +63,7 @@ type TLicenseV2ServiceFactoryDep = {
   organizationsProjectsService: TOrganizationsProjectsService;
   certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
-  // countUsage seeds a purchase's initial per_resource quantities with the org's present provisioned count,
-  // so the previewed and charged figures are truthful.
+  // Seeds per_resource quantities with what's provisioned now, so preview and charge match reality.
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   licenseBilling: TLicenseServerBilling;
@@ -1190,8 +1189,7 @@ export const licenseV2ServiceFactory = ({
     return { organizations: orgs, totalCount };
   };
 
-  // The manual refresh button: fetches the plan again and replaces the cached one only when the fetch
-  // succeeds, so an outage keeps the org's current plan instead of the fallback.
+  // Only replaces the cached plan on success, so an outage keeps the current plan instead of the fallback.
   const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
     await ensureBillingRead(orgId, actor);
     await licenseService.refreshPlan(orgId);

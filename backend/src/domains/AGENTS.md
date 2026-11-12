@@ -1,163 +1,89 @@
 # Domains AGENTS.md
 
-The backend is moving from `src/services/` (factory functions wired in `src/server/routes/index.ts`) to
-domain modules under this folder. New capabilities go here; existing services move over one domain at a
-time. Background: the Notion pages "Domain Mapping", "NodeJS Folder Structure" and "EE domain".
+The backend is moving from `src/services/` to domain modules here. New capabilities go here; old services
+move over one domain at a time.
 
-A domain owns one business capability end to end: its tables, rules, API and tests. Other code reaches
-it only through its module.
+A domain owns one business capability end to end (tables, rules, API, tests). Other code only reaches it
+through its module. Domain-specific notes go in that domain's own `AGENTS.md`.
 
-This file is the reference for building a domain from scratch. Notes specific to one domain go in an
-`AGENTS.md` inside that domain.
-
-## Top level
+## Layout
 
 ```
 src/domains/
-├── domains.ts                  # Builds every module in dependency order
-├── lib/                        # Shared building blocks with no business logic
-├── platform/                   # Domains other products depend on
+├── domains.ts                  # the only wiring file, builds every module in dependency order
+├── lib/                        # shared building blocks, no business logic
+├── platform/                   # domains other products depend on
 │   ├── license/
 │   └── organizations-projects/
-├── secrets-manager/            # A product area
-│   └── secrets/                # A domain inside it
+├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
 ├── agent-vault/agent-vault/
 └── certificates/cert-manager/
 ```
 
-Read a domain's own `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
+Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
 [organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
-[cert-manager](certificates/cert-manager/AGENTS.md). The organizations-projects and cert-manager domains are a
-declared exception to "a table belongs to one data access class": they hold only counting queries that read
-tables no domain owns yet, tested against Postgres without an in-memory twin.
+[cert-manager](certificates/cert-manager/AGENTS.md).
+
+`lib/` has `TransactionRunner`, `TTransaction`, `withProps`, the domain errors (`errors.ts`) and in-memory
+versions under `lib/testing/`.
+
+Each domain has `ce/`, plus `ee/` with the same layout if it has paid features. Nothing else at the root.
 
 | Path | Holds |
 | --- | --- |
-| `domains.ts` | The only wiring file. Builds each module in dependency order and passes services, usage counters and EE implementations between them through constructors |
-| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, `withProps` for models, the domain error classes (`errors.ts`), and their in-memory versions under `lib/testing/` |
-| `platform/` | Domains used by many products: KMS, billing, access control, audit log |
-| `<product-area>/` | A product, such as secrets. Holds one or more domains |
+| `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts` |
+| `model/` | One class per entity or value, with its rules. A file holds the class and its props type, nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
+| `data-access/` | One class per entity implementing a type from `service/dependencies.ts` and returning models, plus `build<Domain>Store(tx)` grouping them on one connection |
+| `<system>-client/` | Client for an external system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
+| `service/` | Business logic: one class per use case group (`T<Name>Service`), shared helpers, and `dependencies.ts` (the types the services need from data access, EE, or a domain they can't import). Tests sit beside them |
+| `router/` | Fastify routes: validate, call a service, shape the response |
+| `testing/` | In-memory data access and store, a `Fake<Name>Service` per public service, contract suites |
 
-## Inside a domain
+## Building blocks
 
-Every domain has `ce/` (community edition). A domain with paid features also has `ee/` (enterprise
-edition) with the same layout. Nothing else sits at the domain root.
-
-```
-static-secrets/
-├── ce/
-│   ├── module.ts     # The edition's public surface: the module class and re-exported service types
-│   ├── model/        # Entities: classes only
-│   ├── data-access/  # Database and key store reads and writes, grouped into the domain's store
-│   ├── <system>-client/  # A client for an external system the domain calls
-│   ├── service/      # Use cases: the business logic, built on data access and clients
-│   ├── router/       # HTTP endpoints
-│   └── testing/      # In-memory store, fakes, contract suites
-└── ee/               # Same layout as ce/
-```
-
-| Path | Holds | Example |
-| --- | --- | --- |
-| `module.ts` | The module class that builds everything, and re-exports of the types other code uses (service types, models, and the dependency types other code implements). Other domains import only `ce/module.ts` | `StaticSecretsModule`, `export type { TStaticSecretsService }` |
-| `model/` | Classes that represent the domain's data, one per entity or value, each with the rules about that data. A file holds the class and its own props type, nothing else: no request or response types, no contracts other domains implement, no key or queue names, no helper functions. Knows nothing about the database | `KmsKey.create()`, `kmsKey.assertRotatable()`, `Plan.community()` |
-| `data-access/` | One class per entity, implementing a type from `service/dependencies.ts` and returning models, plus `build<Domain>Store(tx)` that groups them all on one connection | `class KmsKeyDataAccess implements TKmsKeyDataAccess`, `buildKmsCoreStore(tx)` |
-| `<system>-client/` | A client for an external system, named for it, used by that edition's services. A paid system's client lives in `ee/` and implements a type in `ce/`'s `service/dependencies.ts`; `ce/` never holds a second client or a stand-in for it. The client speaks the domain's terms at its boundary: it builds the system's request shape and turns its statuses and messages into outcomes the service can act on, so no service matches on a status code | `ee/license-server-client/LicenseServerClient` |
-| `service/` | The business logic: one class per use case group, each implementing its own `T<Name>Service` type, with its input types; plain helper functions shared by those classes; and `dependencies.ts`, the types the services need from outside them (their own data access, EE, and a domain that cannot be imported), which those implement. Tests sit beside them | `class KmsKeyService implements TKmsKeyService`, `createKmsKey(store, ...)` |
-| `router/` | Fastify routes. Validate input, call a service, shape the response | `registerKmsKeyRouter` |
-| `testing/` | In-memory data access and store, a fake of each public service for this domain's consumers, data access contract suites | `InMemoryKmsKeyDataAccess`, `FakeKmsKeyService` |
-
-## Entities, data access and services
-
-| Piece | Maps to | Rule | Example |
-| --- | --- | --- | --- |
-| Model | One entity | An entity stored across several tables is still one model | `KmsKey` (tables `kms_keys` and `internal_kms`) |
-| Data access | One model | Owns every table that stores the model. Returns models, never rows | `KmsKeyDataAccess`, `KmsKeyVersionDataAccess` |
-| Store | One domain | All the domain's data access classes, bound to one connection or transaction | `TKmsCoreStore` |
-| Service | A group of use cases | Start with one per entity. Split when a group of use cases needs different dependencies, or when callers use one group without the other (`LicenseService` and `UsageMeteringService`) | `KmsKeyService` writes a `KmsKey` and a `KmsKeyVersion` in one transaction |
-| Module | One domain | Builds the domain's state, data access and services once, and exposes the services as they are, typed by their service type, plus `routes`. It never wraps a service method | `KmsCoreModule` |
-
-When one entity holds another:
-
-| Relationship | Model shape | Example |
-| --- | --- | --- |
-| A few children, always read with the parent | The parent holds them | `Secret` holds its tags |
-| Many children, read separately | The child is its own entity and holds the parent's id. The parent has no list | `SecretVersion` holds `secretId`; versions load through `SecretVersionDataAccess.listBySecretId()` |
-
-A table belongs to exactly one data access class. Another domain that needs the data calls that
-domain's service.
-
-## Classes
-
-| Piece | Shape | Example |
-| --- | --- | --- |
-| Model | A class: private constructor, static `create()` and `restore()`, and `toJSON()` for its plain data. Services return models, not their props. A model whose fields callers read extends `withProps<TProps>()` (`lib/with-props.ts`), so `plan.rbac` works and the model still passes where its props type is expected. Never a bare type, constant or function | `KmsKey.create({ ... })`, `class Plan extends withProps<TPlanProps>()` |
-| Data access, service | `class X implements TX`, dependencies in `constructor(deps)`. Write `TX` as a `type` with method syntax (`getPlan(orgId: string): Promise<Plan>`), not arrow properties | `class KmsKeyService implements TKmsKeyService` |
-| Data access queries | Methods on the class; query fragments shared by them are private methods, not `$`-prefixed functions or a factory the class wraps | `private activeCertificates(orgId)` |
-| Module | `new` calls only: builds everything once and exposes the services. `static async create()` and `start()` when it needs them (see "State and services") | `class KmsCoreModule`, `LicenseModule.create(deps)` |
-| Router, shared helpers | Plain functions | `registerKmsKeyRouter`, `createKmsKey(store, state, input)` |
-
-### State and services
-
-A module builds everything once, in its constructor:
-
-| Kind | Examples |
+| Piece | Rule |
 | --- | --- |
-| **State**: anything the domain remembers for the life of the process | In-memory root key holder, cache wrappers, HSM or provider clients |
-| **Services**: classes holding references to state, data access, their runner and other domains' services | `KmsKeyService`, `ScopeKeyService` |
+| Model | One per entity, even if stored across several tables. Private constructor, static `create()`/`restore()`, `toJSON()`. If callers read its fields, extend `withProps<TProps>()` so `plan.rbac` works. Never a bare type or function |
+| Data access | One per model. Owns every table storing that model, returns models not rows. A table belongs to exactly one data access class; other domains go through the owner's service. Shared query fragments are private methods |
+| Store | All of a domain's data access, bound to one connection or transaction |
+| Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
+| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) plus `routes`. Never wraps a service method |
+| Router, helpers | Plain functions |
 
-- Service constructors only store references. No I/O, no queries, no client creation, no schema
-  compilation.
-- A module's constructor does no I/O either. A module with state that must be read before it can answer
-  (the instance's license) has a private constructor and a `static async create(deps)` that reads it and
-  then builds the module, so no service is ever handed out half-initialised
-  (`LicenseModule.create`). Never a holder that throws until some later call fills it.
-- Anything that starts running (queue workers, crons, timers) is registered in `start()`, never in the
-  constructor or `create()`. `routes/index.ts` calls it once at boot, after `createDomains` returns.
-- Mutable state lives in a named holder or inside the one service that owns it. Only its owner writes it.
-- State never touches the database or a transaction. When state must follow a database change, update
-  it in `tx.afterCommit(...)`, so a rollback can never leave memory and database disagreeing.
+Children: if there are a few and they're always read with the parent, the parent holds them (`Secret` holds
+its tags). If there are many and they're read separately, the child is its own entity holding the parent id
+(`SecretVersion.secretId`).
+
+### State and lifecycle
+
+- State is anything kept for the process lifetime (root key holder, caches, HSM clients). The module builds
+  it once in its constructor. Only its owner writes mutable state.
+- Constructors (service and module) only store references. No I/O, queries or client creation.
+- If a module needs to read something before it can answer (the instance license), give it a private
+  constructor and `static async create(deps)` (`LicenseModule.create`). Never a holder that throws until
+  something fills it later.
+- Anything that runs on its own (workers, crons, timers) goes in `start()`, which `routes/index.ts` calls
+  once after `createDomains`.
+- State never touches the DB. If it must follow a DB change, update it in `tx.afterCommit(...)` so a
+  rollback can't leave them out of sync.
 
 ## Transactions
 
-`lib/` provides one mechanism for transactions inside a domain. Domains never share one (see "Across
-domains").
-
 ```ts
-// lib/transaction-runner.ts
-export type TTransaction = { readonly [sealed]: true; afterCommit(fn: () => Promise<void>): void };
-
 export class TransactionRunner<TStore> {
   constructor(db: TDbClient, buildStore: (tx: Knex.Transaction) => TStore, parent?: TTransaction);
-  within(tx: TTransaction): TransactionRunner<TStore>;                       // joins tx instead of opening one
+  within(tx: TTransaction): TransactionRunner<TStore>; // joins tx instead of opening one
   run<T>(work: (ctx: { store: TStore; tx: TTransaction }) => Promise<T>): Promise<T>;
 }
 ```
 
-- `run` opens a transaction, or joins the one the runner was bound to with `within(tx)`, and hands
-  the work two things:
-  - `store`: this domain's data access, pointed at that transaction;
-  - `tx`: the same transaction as a sealed token, for `afterCommit` and for joining another runner of
-    this domain with `within(tx)`. It never goes to another domain (see "Across domains" below).
-- `tx` is not a Knex handle. Nothing outside `data-access/` can run SQL with it; lint bans unsealing it
-  anywhere else.
-- `tx.afterCommit(fn)` runs `fn` only if the whole transaction commits. Cache invalidation and other
-  side effects outside the database go here.
-
-### Inside a domain
+`run` opens a transaction (or joins the `within(tx)` one) and hands you `store` bound to it and `tx`, a
+sealed token for `afterCommit` and for joining another runner in the same domain. `tx` isn't a Knex handle;
+lint keeps `unsealTransaction` inside `data-access/`. `tx` never goes to another domain.
 
 ```ts
-export class KmsCoreModule {
-  readonly service: TKmsKeyService;
-
-  constructor(deps: TKmsCoreDeps) {
-    const runner = new TransactionRunner(deps.db, buildKmsCoreStore);
-    const state = { rootKey: new RootKeyHolder(), cache: new ProjectKeyCache(deps.keyStore) };
-    this.service = new KmsKeyService({ runner, state });
-  }
-}
-
 export class KmsKeyService implements TKmsKeyService {
   constructor(private readonly deps: { runner: TransactionRunner<TKmsCoreStore>; state: TKmsCoreState }) {}
 
@@ -166,7 +92,7 @@ export class KmsKeyService implements TKmsKeyService {
   }
 }
 
-// shared helper: takes the store, never a runner, so it cannot open a transaction
+// takes the store, never a runner, so it can't open a transaction
 export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, input: TCreateKmsKeyInput) => {
   const key = KmsKey.create({ ...input, encryptedKeyMaterial: wrapNewKeyMaterial(input, state.rootKey.get()) });
   await store.kmsKeys.create(key);
@@ -174,69 +100,57 @@ export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, i
 };
 ```
 
-| Rule | Why |
-| --- | --- |
-| A public service method calls `this.deps.runner.run(...)` once; calls to other services, in this domain or another, come before it or after it commits | One place decides the transaction |
-| Work shared between services goes into a helper that takes `store` | A helper cannot open a second transaction by accident |
-| Inside `run`, never call a public service method, of this domain or another; share the work as a helper that takes `store`. Outside `run`, services in the same domain may call each other (`UsageReportWorker` reads `licenseService.getPlan`) | A public method runs its own `run`, so calling it inside yours takes a second connection while the first is held |
-| Data access never opens a transaction. Writes that span tables (`kms_keys` + `internal_kms`) rely on the caller's | The service owns the boundary |
-| Locks exist only on the store handed out by `run` (`store.locks.*`) | A lock outside a transaction does not compile |
-| Models never see a store or a transaction | Rules stay pure and testable |
+Inside a domain:
+
+- A public service method calls `runner.run(...)` once. That's the one place deciding the transaction.
+- Never call a public service method (any domain) inside `run`: it opens its own `run` and grabs a second
+  connection while you hold the first. Share work through helpers that take `store`. Outside `run`, services
+  in the same domain can call each other.
+- Data access never opens a transaction; multi-table writes rely on the caller's.
+- Locks only exist on the store from `run` (`store.locks.*`), so a lock outside a transaction doesn't compile.
+- Take locks in one order (root key, org, project; key before data key) or you deadlock.
+- Models never see a store or transaction.
 
 ### Across domains
 
-**Calling another domain is the last resort.** Each call ties together domains that must be able to
-move independently, and every step between two commits is one more place a use case can stop halfway.
-Before adding one, go down this list and stop at the first that fits:
+Calling another domain is a last resort. Before adding one:
 
-1. **The data or rule is yours.** If your domain keeps needing another domain's data to make its own
-   decisions, the boundary is in the wrong place: move the data or the rule into one domain and raise it
-   in review.
-2. **The other domain should react to your change.** Emit an outbox event in your own transaction and
-   let it consume the event; you do not call it.
-3. **You need a value from it to write your own data** (a cipher, a key id, a plan). Call it, following
-   the rules below.
+1. If you keep needing another domain's data for your own decisions, the boundary is wrong. Move the data
+   or rule and raise it in review.
+2. If the other domain should react to your change (keys for a new project, cleanup after a delete), emit an
+   outbox event in your transaction. Until that event exists, call it after your commit.
+3. If you need a value to write your own data (a cipher, a key id, a plan), call it before your `run`.
 
-**Domains do not share transactions.** Each domain commits its own data in its own short
-transaction, and a use case that spans domains is a sequence of calls that are each safe to repeat. A
-shared transaction keeps one domain's row locks held while another domain works, so a write in one
-domain can block or deadlock on a lock held by a connection Postgres cannot see waiting.
-
-When a call cannot be avoided:
-
-| You need | Do this | Not this |
-| --- | --- | --- |
-| Something from another domain to write your own data (a cipher, a key id, a plan) | Call the other domain first, then open your `run` for your writes | Calling it inside your `run`, which either joins your transaction or takes a second connection while you hold one |
-| Another domain to react to your change (keys for a new project, cleanup after a delete) | Emit an outbox event in your own transaction and let the other domain consume it. Until that event exists, call the other domain after your commit | Calling it inside your transaction, or relying on a foreign-key cascade into its tables |
-| Data in two domains that must exist together | Call in dependency order (the domain whose data the other needs goes first), make each write idempotent, and let a sweeper remove orphans | One transaction around both |
-| Something created on first use | Create it in the owning domain's own short transaction with `INSERT ... ON CONFLICT DO NOTHING`; the loser rolls back and reads the winner's row | An advisory lock held until a caller's transaction commits |
-| To replace a value another request may be changing | Compare and swap: `UPDATE ... WHERE value = :expected`, and treat no row as a conflict | Reading it, then writing it unconditionally |
+Domains never share a transaction. A shared one keeps one domain's row locks held while another works, and
+with a pool of ~10 connections you get deadlocks Postgres can't see. A cross-domain use case is a sequence
+of short, repeatable calls.
 
 ```ts
-export class SecretService implements TSecretService {
-  constructor(private readonly deps: { runner: TransactionRunner<TSecretsStore>; kmsKeyService: TKmsKeyService }) {}
-
-  async createSecret(input: TCreateSecretInput) {
-    const cipher = await this.deps.kmsKeyService.createCipherPairWithDataKey({ projectId: input.projectId });
-    return this.deps.runner.run(({ store }) =>
-      store.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
-    );
-  }
+async createSecret(input: TCreateSecretInput) {
+  const cipher = await this.deps.kmsKeyService.createCipherPairWithDataKey({ projectId: input.projectId });
+  return this.deps.runner.run(({ store }) =>
+    store.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
+  );
 }
 ```
 
-| Rule | Why |
-| --- | --- |
-| Call other domains before `run` or after it commits, never inside it | Inside `run` the call either joins your transaction or holds a second connection while yours waits, which exhausts a pool of about 10 |
-| Each domain writes only its own tables. Never add a column to another domain's table for your data; keep it in your own table, keyed by the other domain's id | Writing a row another domain updates takes the same row lock its transactions hold, so your write waits on theirs |
-| Never hold a lock on a row another domain writes while you call another domain | The other domain may need that row, and the wait cannot be detected as a deadlock |
-| Remove your data when the owner tells you it is gone (an event, or a call until the event exists); do not depend on `ON DELETE CASCADE` from another domain's table | A cascade from someone else's table is a write into your tables inside their transaction |
-| No network or HSM calls inside a transaction; make them before `run` | The connection and its locks are held for the whole call |
-| Within one domain, take locks in one order (root key, org, project; key before data key) | Two transactions taking the same locks in different orders deadlock |
-| Legacy code under `src/services/` holding a Knex transaction never hands it to a domain: it reads from the domain before opening the transaction, and calls it after the commit. When that code runs inside a caller's transaction, the caller makes the call after its own commit | A domain query on the caller's connection runs under the caller's locks, and a hook on a nested Knex transaction fires when the savepoint is released, before the real commit |
+- Call other domains before `run` or after commit, never inside.
+- Only write your own tables. Need to hang data off another domain's row? Use your own table keyed by its id,
+  not a new column on theirs (you'd fight over their row locks).
+- Don't hold a lock on a row another domain writes while calling another domain.
+- Clean up when the owner tells you something is gone (event, or a call for now). No `ON DELETE CASCADE` from
+  another domain's table, since that's a write into your tables inside their transaction.
+- No network or HSM calls inside a transaction.
+- Data that must exist in two domains: call in dependency order, make each write idempotent, let a sweeper
+  remove orphans.
+- Create-on-first-use: `INSERT ... ON CONFLICT DO NOTHING` in the owner's own short transaction, loser reads
+  the winner's row. No advisory lock held across a caller's transaction.
+- Replacing a value others may change: compare and swap (`UPDATE ... WHERE value = :expected`, no row = conflict).
+- Legacy `src/services/` code never hands its Knex transaction to a domain: read from the domain before
+  opening it, call it after commit. If that code runs inside a caller's transaction, the caller makes the call
+  after its own commit. (A hook on a nested Knex transaction fires on savepoint release, before the real commit.)
 
-If an outcome truly has to be atomic across two domains, the boundary is in the wrong place: raise it in
-review and move the data into one domain rather than sharing a transaction.
+If something truly has to be atomic across two domains, the boundary is wrong. Move the data into one domain.
 
 ## Dependency direction
 
@@ -246,120 +160,109 @@ router → service → model
        data-access → model
 ```
 
-An arrow means "imports". The service sits in the middle and imports nothing that does I/O: it declares
-what it needs as types in `service/dependencies.ts`, and `data-access/` (like a `<system>-client/`)
-imports those types to implement them. `module.ts` builds the implementations and passes them in.
+Arrows mean "imports". Services import nothing that does I/O: they declare needs in `service/dependencies.ts`,
+`data-access/` and clients implement those, and `module.ts` wires them. This is what lets services run on the
+in-memory store and lets EE plug in without `ce/` importing it.
 
-| Rule | Why |
-| --- | --- |
-| `router/` imports `service/`; `service/` imports `model/`; `data-access/` and `<system>-client/` import `model/` and `service/dependencies.ts` | Each layer is readable and testable without the ones that call it |
-| A service never imports `data-access/` or a client. It takes them through its constructor, typed by `service/dependencies.ts` | The service runs unchanged on the in-memory store in tests, and EE can supply an implementation without `ce/` importing it |
-| `data-access/` and `<system>-client/` import from `service/` only `dependencies.ts` and the `*-types/` shapes it exposes (`license-server-types/`), never a service class or helper | Data access implements what the service asks for; it does not run business logic |
-| `model/` imports no other layer | Rules about the data stay pure and testable |
-| No layer throws an HTTP error class (`BadRequestError`, `NotFoundError`, `InternalServerError`, ...) from `@app/lib/errors`. A domain throws `RuleViolationError`, `EntityNotFoundError` or `ExternalSystemError` (`lib/errors.ts`), and `toHttpError` (`server/lib/domain-errors.ts`) turns each kind into the response in the error handler. A new kind needs an arm there and in `classifyError` | A domain is also called from queues, crons and other domains, where a status code means nothing. Legacy code that catches `instanceof BadRequestError` does not catch a domain error, so check the callers when moving a throw |
-| `module.ts` imports from every layer; no layer imports `module.ts` | Avoids cycles. Types a module exposes are defined in the service and re-exported |
-| Other domains import only `ce/module.ts` | The module is the domain's contract; everything else can change freely |
-| `ce/` never imports `ee/`; only `domains.ts` imports `ee/` from outside the domain | Community code reads and builds alone. EE plugs in by implementing types in `ce/`'s `service/dependencies.ts` |
-| A module that provides something is built before the module that takes it | A provider that needs the taker's service is a cycle: move the boundary |
-| A platform domain that needs something from the products built on it defines the type in its `service/dependencies.ts` and takes the implementations in its constructor (`usageCounters: TUsageCounter[]`). `domains.ts` builds the products first and passes their implementations in | The platform domain stays a base every product depends on; importing product modules would make it depend on all of them |
-| `ce/module.ts` and what it imports reach `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with `import type`; `domains.ts` passes their runtime pieces in | Code all over the backend imports values from a module, and those three sit in an import cycle with `@app/lib/crypto`, which breaks any test that loads them first |
-| Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces the rules between domains, `ce/` never importing a domain's `ee/`, `unsealTransaction` staying in `data-access/`, no HTTP error class inside a domain, and the layer order above: one override per layer folder (`model/`, `service/`, `data-access/`, `*-client/`, `router/`), each repeating the shared patterns because the last matching override replaces the rule. Test files (`*.test.ts`, `*.spec.ts`) are exempt from the layer order, since they build the layers they test. Imports of legacy `@app/ee/**` from `ce/` are not linted: check them in review. A new layer folder needs its own override | A broken boundary or layer fails `npm run lint`, not a review |
+- `data-access/` and clients import from `service/` only `dependencies.ts` and its `*-types/` shapes
+  (`license-server-types/`), never a service class or helper.
+- `model/` imports no other layer.
+- `module.ts` imports every layer; nothing imports `module.ts` back. Types a module exposes are defined in the
+  service and re-exported.
+- Other domains import only `ce/module.ts`. `ce/` never imports `ee/`; only `domains.ts` imports `ee/` from outside.
+- Providers are built before the modules that take them. A provider needing the taker's service is a cycle,
+  move the boundary.
+- A platform domain needing something from products built on it defines a type in its `dependencies.ts` and
+  takes implementations in its constructor (`usageCounters: TUsageCounter[]`). `domains.ts` builds products first.
+- `ce/module.ts` and what it imports touch `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with
+  `import type`; `domains.ts` passes the runtime pieces in. Those three are in an import cycle with
+  `@app/lib/crypto` and break any test that loads them first.
+- No HTTP error classes from `@app/lib/errors` in a domain. Throw `RuleViolationError`, `EntityNotFoundError` or
+  `ExternalSystemError` (`lib/errors.ts`); `toHttpError` (`server/lib/domain-errors.ts`) maps them. A new kind needs
+  an arm there and in `classifyError`. Domains also run from queues and crons where status codes mean nothing.
+  Heads up: legacy code catching `instanceof BadRequestError` won't catch these, so check callers when moving a throw.
+- Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`model/`,
+  `service/`, `data-access/`, `*-client/`, `router/`), each repeating the shared patterns because the last matching
+  override wins. A new layer folder needs its own override. Test files are exempt from layer order. Imports of
+  legacy `@app/ee/**` from `ce/` aren't linted, catch them in review.
 
 ## Where new code goes
 
-Paths are inside `ce/` unless the code is a paid feature.
+Inside `ce/` unless it's a paid feature (then same layer in `ee/`).
 
-| You are adding | Put it in |
+| Adding | Goes in |
 | --- | --- |
-| A business rule about one entity | `model/` |
-| A query or table write | `data-access/`, its in-memory version in `testing/`, and a case in the contract suite |
+| A rule about one entity | `model/` |
+| A query or write | `data-access/`, plus its in-memory version in `testing/` and a contract suite case |
 | A use case | `service/` |
-| Logic two services need | A helper in `service/` that takes `store` |
+| Logic two services share | A helper in `service/` that takes `store` |
 | An endpoint | `router/`, registered in `module.ts` |
-| Something another domain calls | A method on the service type, re-exported from `module.ts` |
-| Something your service needs from its data access, from EE, or from a domain that depends on yours | A type in `service/dependencies.ts`, implemented there and passed in through the constructor. Anything else another domain offers, take as its whole service type |
-| Something the domain must remember across requests | A state holder built in the module constructor |
-| A paid feature | The same layer, in `ee/` instead of `ce/` |
-| A new capability with its own tables | A new domain folder with a `ce/` |
+| Something other domains call | A method on the service type, re-exported from `module.ts` |
+| Something from data access, EE, or a domain that depends on you | A type in `service/dependencies.ts`, passed through the constructor. Anything else from another domain: take its whole service type |
+| Cross-request memory | A state holder built in the module constructor |
+| A capability with its own tables | A new domain folder with `ce/` |
 
 ## Naming
 
 | Kind | Pattern | Example |
 | --- | --- | --- |
 | Folder | kebab-case noun | `static-secrets` |
-| Module class | `<Domain>Module`, in `ce/module.ts` | `StaticSecretsModule` |
-| Service type (what other code calls) | `T<Name>Service`, beside `class <Name>Service implements T<Name>Service` | `TLicenseService`, `LicenseService` |
-| A service passed as a dependency | `<name>Service: T<Name>Service`, everywhere it is passed, never a shorter or role name (`license`, `metering`). Take the whole type, never a `Pick<>` of it: tests pass the domain's full `Fake<Name>Service` anyway | `licenseService: TLicenseService` |
-| Dependencies of a module or service | `T<Name>Deps`, a named type beside the class, never inline in the constructor | `TKmsCoreDeps`, `TKmsKeyServiceDeps` |
-| Dependency type | A `type` in `service/dependencies.ts`, named for what the service needs | `TPlanCache`, `TLicenseProvider`, `TUsageCounter` |
-| Store | `<domain>-store.ts` in `data-access/`, exporting `T<Domain>Store` and `build<Domain>Store` | `kms-core-store.ts` |
-| Transaction argument | `tx` (type `TTransaction`) | `run(({ store, tx }) => ...)` |
-| EE module | `<Domain>EeModule`, in `ee/module.ts` | `StaticSecretsEeModule` |
-| Unit test | `<file>.test.ts`, beside the code | `kms-key-service.test.ts` |
-| Integration test | `<file>.integration.spec.ts`, beside the code | `kms-key-data-access.integration.spec.ts` |
+| Module | `<Domain>Module` in `ce/module.ts`, `<Domain>EeModule` in `ee/module.ts` | `StaticSecretsModule` |
+| Service | `class <Name>Service implements T<Name>Service` | `LicenseService` |
+| Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |
+| Deps type | `T<Name>Deps`, named, beside the class, never inline | `TKmsCoreDeps` |
+| Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |
+| Store | `data-access/<domain>-store.ts` exporting `T<Domain>Store` and `build<Domain>Store` | `kms-core-store.ts` |
+| Transaction arg | `tx: TTransaction` | |
+| Tests | `<file>.test.ts` (unit), `<file>.integration.spec.ts` (integration), beside the code | |
 
 ## Testing
 
-Tests follow the same rules as the root blackbox suite (`tests/docs/writing-tests.md`), adapted to
-Vitest. The unit of a test is **(operation, outcome)**, not line coverage. Write a test because it
-claims something a caller depends on, never to raise a coverage number.
-
-### What goes where
+Same philosophy as the blackbox suite (`tests/docs/writing-tests.md`): test (operation, outcome) pairs a
+caller depends on, not line coverage.
 
 | Layer | Tests | Uses |
 | --- | --- | --- |
-| **Unit** (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory store and `InMemoryTransactionRunner`; no database, no network |
-| **Integration** (`*.integration.spec.ts`) | What only Postgres can prove: SQL, the data access contract, locks, rollback, joining with `within(tx)`, `afterCommit`, concurrency | The real store on a real Postgres, through the integration harness |
-| Not here | HTTP status codes and response bodies, effects of queues and crons, the full server | `tests/` (blackbox) and `e2e-test/` |
+| Unit (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory store and `InMemoryTransactionRunner`, no DB or network |
+| Integration (`*.integration.spec.ts`) | Things only Postgres proves: SQL, data access contract, locks, rollback, `within(tx)`, `afterCommit`, concurrency | Real store on real Postgres via the harness |
+| Not here | HTTP responses, queue/cron effects, the full server | `tests/` and `e2e-test/` |
 
-### Rules for both
+Rules:
 
-- **Outcome, not mechanics.** Assert the state a caller can observe: what is in the store, what the
-  service returned, the error it raised. Do not assert that a fake was called with an argument, unless
-  that call is the outcome (a provider was asked to encrypt).
-- **Name the claim.** `describe("<Class>.<method>")`, then `test("should <outcome> [when <condition>]")`,
-  lowercase, outcome first. "handles duplicates" cannot fail; "should keep the first key when two
-  callers create one concurrently" can.
-- **Three parts.** Every test body is `// Setup`, `// Action`, `// Assert`. About eight lines of setup,
-  one action, one to three assertions. Longer setup means a missing helper in `testing/`.
-- **Cover failure outcomes:** refused, not found, another org's resource, conflicting, repeated
-  (idempotency), concurrent, rolled back.
-- **A rejection test also checks that nothing changed.**
-- **Assert error messages** where the message is part of the contract (`backend/CODE_QUALITY.md`).
-- **Own your data.** Every test creates the orgs, projects and keys it needs, with fresh ids. No test
-  depends on rows another test made. Per-test state goes in the test or `beforeEach`, never `beforeAll`.
-- **Never sleep.** Await the operation, or poll the state the product records.
-- **Fakes reproduce the contract.** One class per file in `testing/`. A fake that only records its input
-  proves nothing; an in-memory data access must behave like the real one, which the contract suite
-  enforces.
-- **Prove it can fail.** Before calling a test done, break the code it covers and confirm the test fails.
+- Assert observable outcomes (store contents, return values, errors), not that a fake got called, unless the
+  call is the outcome.
+- `describe("<Class>.<method>")` + `test("should <outcome> [when <condition>]")`, lowercase.
+- Body is `// Setup`, `// Action`, `// Assert`. Roughly eight setup lines, one action, one to three asserts.
+  Long setup means a missing helper in `testing/`.
+- Cover failures (refused, not found, other org's resource, conflict, repeat, concurrent, rollback). A
+  rejection test also checks nothing changed. Assert messages when they're part of the contract.
+- Each test makes its own data with fresh ids. Per-test state in the test or `beforeEach`, never `beforeAll`.
+- Never sleep.
+- Fakes must behave like the real thing, one class per file in `testing/`. The contract suite enforces it for
+  in-memory data access.
+- Break the code and watch the test fail before calling it done.
 
 ### Unit tests
 
-- Build services directly with in-memory state, an `InMemory<Domain>Store` and an
-  `InMemoryTransactionRunner`. The in-memory runner behaves like a transaction:
-  - it snapshots the store and restores it when the work throws;
-  - it runs `afterCommit` hooks only on success;
-  - it joins when bound with `within(tx)`;
-  - its locks are per-key mutexes released when the work finishes.
-- Consumers of a domain use the `Fake<Name>Service` from its `testing/`, never a hand-rolled mock.
+Build services directly with in-memory state, an `InMemory<Domain>Store` and `InMemoryTransactionRunner`.
+The runner acts like a real transaction: restores the store snapshot on throw, runs `afterCommit` only on
+success, joins with `within(tx)`, and locks are per-key mutexes. Consumers of a domain use its
+`Fake<Name>Service`, never a hand-rolled mock.
 
 ### Integration tests
 
-The harness lives in `lib/testing/integration/`. It gives a test a real, migrated Postgres and any
-other server it asks for, with no Fastify server, queues or license server. Files run in parallel.
+The harness (`lib/testing/integration/`) gives a test a migrated Postgres and any other server it asks for.
+No Fastify, queues or license server. Files run in parallel.
 
 ```bash
-npm run test:integration                  # from backend/; needs Docker
+npm run test:integration                  # from backend/, needs Docker
 npm run test:integration -- kms-key       # one file
-make test-api-integration SPEC=kms-key    # the same, from the repo root
+make test-api-integration SPEC=kms-key    # same, from repo root
 ```
-
-A test declares what it needs once per `describe` and keeps plain `test(...)`:
 
 ```ts
 describe("KmsKeyService.generateKmsKey", () => {
-  const h = setupIntegration();   // this worker's migrated database, plus tenants
+  const h = setupIntegration();
 
   test("should refuse a duplicate key name in the same org", async () => {
     // Setup
@@ -378,40 +281,29 @@ describe("KmsKeyService.generateKmsKey", () => {
 
 | `h.` | Gives |
 | --- | --- |
-| `db` | Knex on this describe's database (`replicaNode()` and `primaryNode()` resolve to it) |
-| `newTenant()` | A new organization, an admin user and one project with dev, staging and prod |
-| `factories` | One more row: `user`, `organization`, `orgMembership`, `project`, `projectMembership` |
-| `newDatabase()` | An empty database on the same server (a rotation target, say), dropped after the test |
+| `db` | Knex on this describe's DB (`primaryNode()`/`replicaNode()` resolve to it) |
+| `newTenant()` | New org, admin user, one project with dev/staging/prod |
+| `factories` | Single rows: `user`, `organization`, `orgMembership`, `project`, `projectMembership` |
+| `newDatabase()` | Empty DB on the same server, dropped after the test |
 
-Read `h.*` inside tests and hooks; reading it while the describe is being declared throws. Factories
-insert only platform rows no domain owns yet. Create a domain's own rows through its module, so the
-test exercises its rules.
-
-How it is shared:
-
-| Level | Postgres | Another server (LDAP, say) |
-| --- | --- | --- |
-| Once per run | the server, and a template database with every migration applied | the container |
-| Once per worker | a clone of the template (`infisical_it_<run>_w<n>`), reused by the worker's later files | nothing |
-| Once per test | a tenant from `h.newTenant()` | a namespace such as an OU, from `ldap.newOrgUnit()` |
-
-- **Nothing starts until a test asks for it.** `startOnce(name, start)` (`harness.ts`) lets the first
-  caller in the run start a server while every other worker waits on a lock and then reuses its
-  address. A run that never asks for a server never starts it.
-- **Migrations run once, sequentially.** The template is named after a hash of `src/db/migrations`;
-  against a long-lived server (`INTEGRATION_POSTGRES_URL`) an unchanged tree reuses it across runs.
-- **Instance-wide state** (root key, server config) is not per tenant. A describe that changes it uses
-  `setupIntegration({ freshDatabase: true })`, a private clone dropped afterwards.
-- **Postgres** is a Testcontainers container unless `INTEGRATION_POSTGRES_URL` names a server. The
-  harness creates and drops only databases named `infisical_it_*` and refuses any other name.
-- **Cleanup** is the run's: global teardown removes every container labelled with the run id (the worker
-  that started one may exit while others still use it) and drops the run's databases.
-- **Never `initDbConnection()` in an integration test.** It registers `primaryNode()`/`replicaNode()`
-  globally, once per process; the harness's own client supports several databases in one file.
+- Only read `h.*` inside tests and hooks; reading it at describe time throws.
+- Factories only insert platform rows no domain owns yet. Create a domain's rows through its module so its
+  rules run.
+- Sharing: Postgres server and a fully migrated template DB once per run (template named by a hash of
+  `src/db/migrations`, reused across runs on a long-lived `INTEGRATION_POSTGRES_URL`); a clone per worker
+  (`infisical_it_<run>_w<n>`); a tenant per test. Other servers: one container per run, a namespace (an OU, say)
+  per test.
+- Nothing starts until asked for. `startOnce(name, start)` (`harness.ts`) lets the first caller start a server
+  while other workers wait on a lock and reuse its address.
+- Changing instance-wide state (root key, server config)? Use `setupIntegration({ freshDatabase: true })` for a
+  private clone.
+- Harness only creates/drops DBs named `infisical_it_*`. Global teardown removes the run's labelled containers
+  and DBs (the worker that started one may exit while others still use it).
+- Never call `initDbConnection()` here: it registers global `primaryNode()`/`replicaNode()` once per process.
 
 #### Adding a server
 
-Write one file in `lib/testing/integration/servers/`:
+One file in `lib/testing/integration/servers/`:
 
 ```ts
 const startLdapServer = async (): Promise<TLdapServer> => {
@@ -435,18 +327,11 @@ export const setupLdap = () => {
 };
 ```
 
-1. `start<Name>()` starts the container with `container(image)` (a Testcontainers builder labelled with
-   the run) and returns a plain JSON address: host, port, container id, credentials. It crosses
-   processes, so never a live client.
-2. `setup<Name>()` calls `startOnce("<name>", start<Name>)` in `beforeAll` and returns `new<Thing>()`,
-   which creates a namespace no other test uses (a Unix user, an LDAP OU, a key prefix) and removes it in
-   `onTestFinished`.
+- `start<Name>()` returns a plain JSON address (host, port, container id, creds), never a live client, since it
+  crosses processes.
+- `new<Thing>()` makes a namespace no other test uses and removes it in `onTestFinished`. Put per-test options
+  here, not in a second server.
+- Pin an exact image tag and check it can actually do per-test namespaces (an sshd running unprivileged can only
+  log in one user, for example).
 
-Nothing else registers it. Add per-test options to `new<Thing>()`, not a second server. Pin the image to
-an exact tag, and check it can do what the namespace needs: an sshd running as an unprivileged user, for
-instance, can only log in that one user, so it cannot give each test its own.
-
-#### Before you call it done
-
-Run the integration suite three times. A failure that only appears on a rerun is state leaking between
-tests or workers.
+Run the suite three times before calling it done. Failures that only show on reruns mean state is leaking.

@@ -14,11 +14,11 @@ const LICENSE_LOGIN_PATH = "/api/auth/v1/license-login";
 // Refresh this many seconds before the JWT's exp so an in-flight request never carries an expired token.
 const EXPIRY_MARGIN_SECONDS = 60;
 
-// Fallback cache lifetime when the token carries no readable exp — short enough to re-exchange often,
+// Fallback cache lifetime when the token carries no readable exp: short enough to re-exchange often,
 // long enough to avoid a login per request.
 const FALLBACK_TTL_SECONDS = 5 * 60;
 
-// Read exp (unix seconds) from a JWT without verifying it — the license server verifies the signature;
+// Read exp (unix seconds) from a JWT without verifying it. The license server verifies the signature;
 // we only need the expiry to schedule a refresh. Returns null when exp is missing/unreadable.
 const readJwtExp = (token: string): number | null => {
   const segments = token.split(".");

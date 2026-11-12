@@ -17,8 +17,8 @@ import (
 // Reports sit behind a 5s debounce, so waits need extra room on top of the default.
 const reportWithin = 30 * time.Second
 
-// A retried report also waits out the job's first backoff (10s, see UsageQueue.emit), so it lands at
-// debounce + backoff plus queue latency, which already measured 26s locally under suite load.
+// A retry also waits out the first 10s backoff (UsageQueue.emit). Measured 26s locally
+// under suite load.
 const retryWithin = reportWithin + 30*time.Second
 
 func TestUsageReport_Send(t *testing.T) {
@@ -196,7 +196,7 @@ func TestUsageReport_Send(t *testing.T) {
 // A new paid org reports this many dimensions once, on its first plan read.
 const meteredDimensions = 8
 
-// Wait for the initial reports so an injected failure hits the one the test triggers.
+// Lets an injected failure hit the report the test triggers, not an initial one.
 func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {
 	t.Helper()
 	wait.Until(t, "the first report of every dimension", func() bool {

@@ -3,7 +3,7 @@ import { TOrganizationsProjectsService } from "@app/domains/platform/organizatio
 import { Meter } from "../model/meter";
 import { TUsageCounter } from "./dependencies";
 
-// The two seat meters, counted the same way getSeatUsage counts seats.
+// Counted the same way as getSeatUsage.
 export const seatUsageCounters = (organizationsProjectsService: TOrganizationsProjectsService): TUsageCounter[] => [
   {
     meter: Meter.Identities,

@@ -1,8 +1,7 @@
 import { DomainError, EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
-// Turns an error from src/domains into the HTTP error the handler already knows how to answer, log and
-// count. A name the domain chose is kept; otherwise the HTTP class's own name is sent, as before.
+// Keeps a name the domain chose; otherwise the HTTP class's name is sent.
 export const toHttpError = (error: Error): Error => {
   if (!(error instanceof DomainError)) return error;
 

@@ -11,30 +11,27 @@ import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/licen
 import { UsageQueue } from "./usage-queue";
 
 export type TRefreshPlanOptions = {
-  // Set after a billing change: the plan keeps serving and refreshes in the background, instead of being
-  // fetched now, before the License Server has applied the change.
+  // After a billing change: keep serving the cached plan and refresh in the background, since the License
+  // Server may not have applied the change yet.
   afterBillingChange?: { checkout?: boolean };
 };
 
 export type TLicenseService = {
   getInstanceEntitlements(): TInstanceEntitlementsProps;
   getInstanceType(): InstanceType;
-  // The offline license's id, or "unknown".
   getLicenseId(): string;
   // Whether LICENSE_KEY holds an offline key, whether or not it verifies.
   hasOfflineLicenseKey(): boolean;
   getPlan(orgId: string): Promise<Plan>;
-  // Fetches the plan again now; after a billing change, pass afterBillingChange to refresh in the background.
   refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void>;
-  // Drops the cached plan so the next read fetches it, without fetching now.
+  // Drops the cache without refetching now.
   invalidatePlan(orgId: string): Promise<void>;
   isServingFallbackPlan(orgId: string): Promise<boolean>;
   getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null>;
-  // Cloud: after a root org is deleted, cancels its subscription and closes its licenses. Safe to repeat;
-  // any failure is thrown so the caller can retry.
+  // Cloud only. Safe to repeat; throws so the caller can retry.
   closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult>;
-  // Seats in use for the org's plan: the root org's tree on cloud, the whole instance self-hosted. To enforce
-  // a limit while adding a member, read this before the transaction and check it with seatUsage.assertAvailable.
+  // Root org's tree on cloud, whole instance on self-hosted. To enforce a limit when adding a member, read
+  // this before the transaction and check it with seatUsage.assertAvailable.
   getSeatUsage(orgId: string): Promise<SeatUsage>;
   getInstanceSeatUsage(): Promise<SeatUsage>;
 };
@@ -68,13 +65,13 @@ export class LicenseService implements TLicenseService {
     return this.deps.provider.isOffline();
   }
 
-  // Self-hosted orgs get the instance's license. On cloud the root org's plan is cached; when the License
-  // Server cannot be reached the org gets the fallback plan until the cache expires.
+  // Self-hosted orgs get the instance license. On cloud, if the License Server is down the org gets the
+  // fallback plan until the cache expires.
   async getPlan(orgId: string): Promise<Plan> {
     const instance = this.deps.instance.get();
     if (!instance.isCloud()) return instance.plan();
 
-    // An org that does not exist has no plan to fetch: it gets the fallback, which is not cached.
+    // Unknown org: return the fallback without caching it.
     const rootOrgId = await this.deps.organizationsProjectsService.findRootOrgId(orgId);
     if (!rootOrgId) return this.deps.provider.fallbackPlan();
 
@@ -102,9 +99,8 @@ export class LicenseService implements TLicenseService {
     if (this.deps.instance.isCloud()) {
       const rootOrgId = await this.deps.organizationsProjectsService.findRootOrgId(orgId);
       if (!rootOrgId) return;
-      // Fetched before the cached plan is replaced: a License Server failure keeps the plan the org has,
-      // rather than caching the fallback over it. The org is read outside the try, so a database error is not
-      // reported as the License Server being unreachable.
+      // Fetch before replacing the cache so a License Server failure keeps the current plan instead of caching
+      // the fallback over it. The org is read outside the try so a DB error isn't blamed on the License Server.
       const rootOrg = await this.rootOrg(rootOrgId);
       let fetched: Plan;
       try {
@@ -150,7 +146,6 @@ export class LicenseService implements TLicenseService {
     return this.countSeats(rootOrgId);
   }
 
-  // Every org on the instance, which is what an instance-wide identity limit caps.
   getInstanceSeatUsage(): Promise<SeatUsage> {
     return this.countSeats(null);
   }
@@ -160,8 +155,8 @@ export class LicenseService implements TLicenseService {
     return SeatUsage.create({ membersUsed: users, identitiesUsed: users + identities });
   }
 
-  // Only a License Server failure serves and caches the fallback: that is what the fallback marker records. A
-  // database or key store error is thrown instead, so it can never overwrite a cached paid plan.
+  // Only a License Server failure caches the fallback. DB or key store errors throw instead, so they can never
+  // overwrite a cached paid plan.
   private async fetchPlanOrFallback(rootOrgId: string): Promise<Plan> {
     const rootOrg = await this.rootOrg(rootOrgId);
     let fetched: Plan;
@@ -176,7 +171,6 @@ export class LicenseService implements TLicenseService {
     return this.cachePlan(rootOrgId, fetched);
   }
 
-  // The License Server records the name and slug in its org directory.
   private async rootOrg(rootOrgId: string): Promise<TEntitlementOrg> {
     const org = await this.deps.organizationsProjectsService.findOrganization(rootOrgId);
     return org ? { id: rootOrgId, name: org.name, slug: org.slug } : { id: rootOrgId };
@@ -188,8 +182,7 @@ export class LicenseService implements TLicenseService {
     return plan;
   }
 
-  // While the pass-through marker is set (after a billing change), each read serves the cached plan and one
-  // caller at a time fetches a fresh one behind it.
+  // Pass-through mode (after a billing change): reads get the cached plan while one caller at a time refreshes it.
   private revalidateInBackground(rootOrgId: string) {
     void (async () => {
       if (!(await this.deps.planCache.acquireRevalidateLock(rootOrgId))) return;

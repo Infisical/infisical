@@ -7,8 +7,8 @@ import { CounterRegistry } from "./counter-registry";
 import { TLicenseServer, TUsageReportCache } from "./dependencies";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types/usage-reports";
 
-// Names match the old pods' so jobs they queued still run. Typed against the queue catalog without importing
-// it since the queue module is in an import cycle with crypto.
+// Same names as the old pods so their queued jobs still run. Typed against the queue catalog without importing
+// it, since the queue module is in an import cycle with crypto.
 export const UsageQueues = {
   usageEvent: "usage-event" as QueueName.UsageEvent,
   usageEventJob: "usage-event-job" as QueueJobs.UsageEvent,
@@ -37,12 +37,11 @@ export type TUsageQueueDeps = {
 
 const USAGE_DEBOUNCE_MS = 5000;
 
-// Never throws into the caller: the metered write already happened, and a lost report gets fixed by the
-// next one or by reconcile.
+// Never throws: the metered write already happened, and a lost report gets fixed by the next one or reconcile.
 export class UsageQueue {
   constructor(private readonly deps: TUsageQueueDeps) {}
 
-  // Queued after a short debounce, replacing an event for the same org and dimension that has not run yet.
+  // Debounced: replaces a pending event for the same org and dimension.
   emit(orgId: string, dimensionKey: string): void {
     if (!this.deps.licenseServer.isEnabled()) return;
 
@@ -76,10 +75,9 @@ export class UsageQueue {
     this.deps.counters.all().forEach((counter) => this.emit(orgId, counter.meter.key));
   }
 
-  // Reports are sent only when a metered write happens, and the last reported value is remembered for
-  // seven days. A report lost to a failed job, or a meter whose last reported value expired, would stay wrong until the
-  // next write to it. So once per interval per org, the first plan read re-sends every meter; the worker
-  // skips the ones whose value the server already has.
+  // Reports only go out on metered writes, so a lost report (or an expired last-reported value) would stay
+  // wrong until the next write. Once per interval per org, the first plan read resends every meter; the
+  // worker skips the ones that didn't change.
   reconcile(orgId: string): void {
     if (!this.deps.licenseServer.isEnabled()) return;
 
@@ -91,9 +89,8 @@ export class UsageQueue {
     });
   }
 
-  // Every event is a fact to deliver, so jobs are never debounced or replaced. The server accepts or rejects
-  // a request whole, so each job holds one dimension: a dimension the plan does not price is refused without
-  // taking other events with it.
+  // Every event must be delivered, so no debounce or replace. The server accepts or rejects a request whole,
+  // so one dimension per job: an unpriced dimension gets refused without taking other events down with it.
   recordMeteringEvents(orgId: string, events: TMeteringEventInput[]): void {
     if (!this.deps.licenseServer.isEnabled() || !events.length) return;
 

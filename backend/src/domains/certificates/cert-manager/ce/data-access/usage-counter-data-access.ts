@@ -47,10 +47,8 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     }
   }
 
-  // Code signing is licensed separately, so skip signer certs. Keyed on the signer, not the code_signing
-  // EKU, since callers set the EKU and could use it to dodge the quota. Matched on quotaKey, not
-  // pki_signers.certificateId (current cert only): every cert a signer issues shares its commonName, so
-  // this covers the whole renewal chain.
+  // Code signing is licensed separately, so skip signer certs. Keyed on the signer, not the EKU (callers
+  // set the EKU and could dodge the quota with it), and on quotaKey so the whole renewal chain is covered.
   private excludeSignerCertificates(qb: Knex.QueryBuilder) {
     return qb.whereNotExists((sub) => {
       void sub
@@ -132,9 +130,8 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     }
   }
 
-  // The meter counts DISTINCT quotaKey across the org tree, so for a per-org split each quotaKey has to land
-  // in exactly one org or the parts add up past the billed total. Earliest issuance wins (org id breaks
-  // ties) so the split stays stable between reads.
+  // Each quotaKey lands in exactly one org so the split adds up to the billed total. Earliest issuance
+  // wins (org id breaks ties) so it's stable between reads.
   async getActiveCertificateOrgBreakdown(orgId?: string): Promise<TCertificateOrgUnitCount[]> {
     try {
       const attributed = this.activeQuotaCertificates(orgId)

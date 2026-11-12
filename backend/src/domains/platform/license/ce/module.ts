@@ -22,7 +22,6 @@ export * from "./model/meter";
 export * from "./model/plan";
 export * from "./model/seat-usage";
 export type { TLicenseService, TRefreshPlanOptions } from "./service/license-service";
-// The License Server shapes code outside the domain names: billing, and the org a plan fetch sends.
 export type {
   TCatalogProduct,
   TEntitlementOrg,
@@ -46,33 +45,28 @@ export type TLicenseDeps = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: Pick<TCronJobFactory, "register">;
   isProductionMode: boolean;
-  // Runs a task on a timer in this process. Supplied by the wiring: the timer module must not load with this one.
+  // Injected because the timer module must not load with this one.
   startLocalRefresh: typeof startLocalRefresh;
-  // Licensing policy and the License Server, from the EE edition. Required: CE has no defaults of its own.
+  // From EE. Required: CE has no defaults of its own.
   provider: TLicenseProvider;
   licenseServer: TLicenseServer;
-  // Root orgs, workspace and seat counts.
   organizationsProjectsService: TOrganizationsProjectsService;
-  // One per product Meter, each from the domain that owns the data it counts. License builds the seat
-  // meters itself.
+  // One per product meter, from the domain that owns the data. Seat meters are built here.
   usageCounters: TUsageCounter[];
 };
 
 export class LicenseModule {
-  // Entitlements: plans, the instance's license and seat usage.
   readonly service: TLicenseService;
 
-  // Reporting usage to the License Server.
   readonly usageMeteringService: TUsageMeteringService;
 
-  // Exposed for the e2e suite's license overrides, which replace the instance entitlements in place.
+  // Exposed for the e2e suite's license overrides.
   readonly instanceEntitlements: InstanceEntitlementsHolder;
 
   private readonly counters: CounterRegistry;
 
   private readonly worker: UsageReportWorker;
 
-  // Reads the instance's license first, so the module never exists without one.
   static async create(deps: TLicenseDeps): Promise<LicenseModule> {
     const instanceEntitlements = await deps.provider.resolveInstanceEntitlements();
     logger.info(`Instance type: ${instanceEntitlements.instanceType}`);
@@ -120,17 +114,16 @@ export class LicenseModule {
     });
   }
 
-  // The meters a counter was given for.
   usageDimensions(): string[] {
     return this.counters.all().map((counter) => counter.meter.key);
   }
 
-  // Starts the usage workers and registers the daily flush. Called once at boot.
+  // Call once at boot.
   start(): void {
     this.deps.queueService.start(
       UsageQueues.usageEvent,
       (job) => this.worker.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
-      // Counts are DB-heavy, so a backlog is rate-shaped instead of bursting the read replica.
+      // Counts are DB-heavy, so rate limit the backlog instead of hammering the read replica.
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
     this.deps.queueService.start(
@@ -148,15 +141,14 @@ export class LicenseModule {
     });
   }
 
-  // Re-reads an online self-hosted license every ten minutes.
   startBackgroundSync() {
     if (!this.deps.isProductionMode || !this.deps.provider.hasOnlineLicense()) return undefined;
     logger.info("Setting up background sync process to refresh the instance license from License Server v2");
     return this.deps.startLocalRefresh({
       name: "self-hosted-license-sync",
       intervalMs: 10 * 60 * 1000,
-      // A failure is thrown so startLocalRefresh logs it and records it as a failed run; the last
-      // entitlements stay in place until a refresh succeeds.
+      // Throw on failure so startLocalRefresh logs it as a failed run. The last entitlements stay until a
+      // refresh succeeds.
       task: async () => {
         const refreshed = await this.deps.provider.refreshInstanceEntitlements();
         if (refreshed) this.instanceEntitlements.set(refreshed);

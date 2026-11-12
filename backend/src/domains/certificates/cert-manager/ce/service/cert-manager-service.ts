@@ -3,7 +3,7 @@ import { TOrganizationsProjectsService } from "@app/domains/platform/organizatio
 import { TCertificateOrgUnitCount, TCertificateUsageDataAccess, TOrgUnitCount, TPkiRootOrgUsage } from "./dependencies";
 
 export type TCertManagerService = {
-  // Distinct cert names in use, plus how many are wildcards. No orgId = whole instance.
+  // No orgId = whole instance.
   countActiveCertificateQuota(orgId?: string): Promise<{ total: number; wildcard: number }>;
   isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string): Promise<boolean>;
   getInternalCaOrgBreakdown(orgId?: string): Promise<TOrgUnitCount[]>;

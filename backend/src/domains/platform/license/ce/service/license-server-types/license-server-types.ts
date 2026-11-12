@@ -262,7 +262,7 @@ const subscriptionLineSchema = z
   .object({
     productKey: z.string(),
     dimensionKey: z.string().nullish(),
-    // "commit" | "standard" — a prepaid commitment line vs a plain recurring line.
+    // "commit" | "standard": prepaid commitment line vs plain recurring line.
     role: z.string().nullish(),
     cadence: z.string().nullish(),
     quantity: z.number().nullish(),

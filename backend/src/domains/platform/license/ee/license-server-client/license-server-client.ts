@@ -46,12 +46,9 @@ export type TLicenseServerClientConfig = {
     TEnvConfig,
     "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_URL" | "LICENSE_KEY" | "INTERNAL_REGION"
   >;
-  // Offline (air-gapped) licenses must never contact the license server; the client stays dormant for them.
   isOffline: boolean;
 };
 
-// Returns null (dormant) unless either a self-hosted license key or
-// the cloud service key (plus the license server URL) is configured.
 const buildBackend = (envConfig: TLicenseServerClientConfig["envConfig"]): TLicenseClientBackend | null => {
   const licenseKey = envConfig.LICENSE_KEY;
   if (licenseKey) {
@@ -142,7 +139,7 @@ const buildUsageEndpoint = (envConfig: TLicenseServerClientConfig["envConfig"]):
   return { serverUrl, getBearerToken: () => Promise.resolve(mintServiceToken(serviceKey)) };
 };
 
-// Throws UsageReportError, which carries the status and message the client reads a final no from.
+// Throws UsageReportError so the client can tell a final no from a retryable failure.
 const postUsage = async (
   endpoint: TUsageEndpoint,
   orgId: string,
@@ -178,14 +175,13 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
   ) {}
 
   static fromConfig({ envConfig, isOffline }: TLicenseServerClientConfig): LicenseServerClient {
-    // An offline (air-gapped) license lives in LICENSE_KEY, but transmitting it would violate the air-gap and
-    // leak the signed credential, so the client stays dormant and no read can POST it to the server.
+    // An offline license lives in LICENSE_KEY too, but sending it would break the air gap and leak the signed
+    // credential, so stay dormant.
     if (isOffline) return new LicenseServerClient(null, null);
     return new LicenseServerClient(buildBackend(envConfig), buildUsageEndpoint(envConfig));
   }
 
-  // False when no license server is reachable (unlicensed self-hosted, or an offline license), so callers can
-  // skip work that would only end in a dormant no-op.
+  // False for unlicensed self-hosted or offline licenses, so callers can skip work that would no-op anyway.
   isEnabled(): boolean {
     return this.backend !== null;
   }
@@ -194,8 +190,8 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     return this.usageEndpoint !== null;
   }
 
-  // Entitlements are not cached here: the domain caches the plan it projects from them. Returns null when the
-  // License Server cannot be read, so the caller falls back.
+  // Not cached here, the domain caches the plan. Null when the License Server can't be read so the caller
+  // falls back.
   async getEntitlements(org: TEntitlementOrg): Promise<TEntitlementsResponse | null> {
     if (!this.backend) return null;
     try {
@@ -222,7 +218,6 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     return this.backend ? this.backend.fetchBillingProfile(orgId) : null;
   }
 
-  // An empty history when no backend is configured (self-hosted).
   async getTrials(orgId: string) {
     return this.backend ? this.backend.fetchTrials(orgId) : { trials: [] };
   }

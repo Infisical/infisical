@@ -7,8 +7,7 @@ export type TDomainErrorProps = {
   cause?: unknown;
 };
 
-// What went wrong, in the domain's own terms. A domain never names a status code: the HTTP boundary
-// (server/lib/domain-errors.ts) decides the response for each kind.
+// Domains never pick a status code; server/lib/domain-errors.ts maps each kind to one.
 export abstract class DomainError extends Error {
   readonly details?: unknown;
 
@@ -23,11 +22,10 @@ export abstract class DomainError extends Error {
   }
 }
 
-// A rule about the domain's data refuses the operation. The caller can fix it by asking for something else.
+// The caller can fix it by asking for something else.
 export class RuleViolationError extends DomainError {}
 
-// The thing the operation names does not exist.
 export class EntityNotFoundError extends DomainError {}
 
-// A system the domain depends on failed or gave no usable answer. Nothing the caller sent is wrong.
+// Something we depend on failed. Nothing the caller sent is wrong.
 export class ExternalSystemError extends DomainError {}

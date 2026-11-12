@@ -30,10 +30,8 @@ export type TDomainDeps = {
   >;
 };
 
-// Builds every domain in dependency order. Only file outside a domain that imports ee/.
-// License sits on organizations-projects and depends on no product: products build first and hand License
-// their counters. A product that needs License builds after it, so its counters must come from data access,
-// not a service using License.
+// Only file outside a domain that imports ee/. Products build before License and hand it their counters;
+// a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
   const organizationsProjectsService = organizationsProjects.service;

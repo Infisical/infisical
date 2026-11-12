@@ -1,4 +1,4 @@
-// The License Server's usage API, as it goes over the wire. Nothing outside this client reads these.
+// Wire format of the License Server's usage API. Only this client uses these.
 
 export type TUsageSnapshotBody = {
   dimension_key: string;

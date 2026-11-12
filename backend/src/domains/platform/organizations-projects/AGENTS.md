@@ -1,8 +1,11 @@
 # Organizations and projects domain
 
-Holds only what License and billing need for now: root-org lookup, the workspace count (`countWorkspaces`, also used by project create and restore) and the billable-actor count (`countBillableOrgActors`) that License reads through its service for plans, seats and the seat meters, the billable-actor queries the billing portal breaks down, and the per-project-type identity counts that `secrets-manager/secrets`, `pam/pam` and `agent-vault/agent-vault` build their usage counters on. It grows as Organizations and projects moves into domains.
+For now just what License and billing need: root-org lookup, workspace count (`countWorkspaces`, also used by
+project create/restore), billable actor count (`countBillableOrgActors`) and its billing portal breakdown, and the
+per-project-type identity counts that the secrets, pam and agent-vault counters build on.
 
-- **Declared exception:** its queries read tables this domain does not own yet (`organizations`, `projects`, `memberships`, `users`, `identities`, `groups`, `user_group_membership`, `identity_group_memberships`). When the owning
-  domain exists, these reads move behind that domain's service.
-- **No in-memory twin:** the counters are SQL whose whole job is the query, so they are tested against
-  Postgres only (`*.integration.spec.ts`). It imports no other domain: License, which is built on it, uses `FakeOrganizationsProjectsService` in its own tests.
+- **Declared exception:** it reads tables no domain owns yet (`organizations`, `projects`, `memberships`, `users`,
+  `identities`, `groups`, `user_group_membership`, `identity_group_memberships`). Those move behind the owning
+  domain's service once it exists.
+- **No in-memory twin:** the counters are pure SQL, so they're only tested against Postgres
+  (`*.integration.spec.ts`). Imports no other domain; License uses `FakeOrganizationsProjectsService` in its tests.

@@ -8,14 +8,12 @@ import { TLicenseService } from "./license-service";
 import { TMeteringEventInput, UsageQueue } from "./usage-queue";
 
 export type TUsageMeteringService = {
-  // The live count of a metered dimension for an org (on cloud) or the instance (self-hosted). Null when
-  // nothing counts it.
+  // Org count on cloud, whole instance on self-hosted. Null when nothing counts the dimension.
   countUsage(orgId: string, dimensionKey: string): Promise<number | null>;
-  // Queues a report of the dimension's count. Never throws: the metered write has already happened.
+  // Never throws: the metered write already happened.
   emit(orgId: string, dimensionKey: string): void;
   recordMeteringEvents(orgId: string, events: TMeteringEventInput[]): void;
-  // Reports the new seat count and refreshes the plan, which carries it. Call after the change to the org's
-  // members commits. A failure is logged rather than thrown, since that change has committed.
+  // Call after the member change commits. Logs failures instead of throwing since the change is already in.
   syncSeats(orgId: string): Promise<void>;
 };
 

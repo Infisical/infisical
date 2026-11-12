@@ -17,7 +17,6 @@ export type TBuildLicenseOptions = {
   counters?: TUsageCounter[];
   // The key store's clock, for tests that let entries expire.
   now?: () => number;
-  // Replaces methods of the organizations-projects fake below.
   organizations?: Partial<FakeOrganizationsProjectsService>;
 };
 

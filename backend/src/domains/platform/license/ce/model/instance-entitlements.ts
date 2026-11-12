@@ -15,14 +15,12 @@ export type TInstanceFeatures = TPlanProps & {
 
 export type TInstanceEntitlementsProps = {
   instanceType: InstanceType;
-  // The features of the instance's own license. Self-hosted orgs get them as their plan.
   features: TInstanceFeatures;
-  // The offline license's id and customer, when the instance runs on one.
+  // Only set on an offline license.
   licenseId: string | null;
   customerId: string | null;
 };
 
-// The instance's own license, read from its key at boot.
 export class InstanceEntitlements {
   private constructor(private readonly props: TInstanceEntitlementsProps) {}
 
@@ -38,7 +36,6 @@ export class InstanceEntitlements {
     return this.props.features;
   }
 
-  // The offline license's id, or "unknown".
   get licenseId(): string {
     return this.props.licenseId ?? "unknown";
   }
@@ -47,13 +44,12 @@ export class InstanceEntitlements {
     return this.props.instanceType === InstanceType.Cloud;
   }
 
-  // The plan every org gets on a self-hosted instance. It keeps the instance flags: the admin console reads
-  // instanceUserManagement from the org's plan.
+  // Keeps the instance flags on purpose: the admin console reads instanceUserManagement from the org's plan.
   plan(): Plan {
     return Plan.restore(this.props.features);
   }
 
-  // Replaces some features in place, as the e2e suite's license overrides do.
+  // For the e2e suite's license overrides.
   withFeatures(features: Partial<TInstanceFeatures>): InstanceEntitlements {
     return new InstanceEntitlements({
       ...this.props,

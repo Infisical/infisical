@@ -841,8 +841,7 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    // Seat sync calls the License Server, so it waits for the org to commit. A caller that passed its own
-    // transaction syncs seats once that transaction commits.
+    // Seat sync calls the License Server, so it waits for commit (the caller's, if it passed a tx).
     if (!trx) await usageMeteringService.syncSeats(organization.id);
 
     usageMeteringService.emit(organization.id, Meter.PamIdentities.key);

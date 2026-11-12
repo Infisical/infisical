@@ -89,7 +89,7 @@ export class LicenseResolver implements TLicenseProvider {
     return !isCloud && licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online;
   }
 
-  // Reads an online license again; the License Server answers live, so there is nothing to invalidate first.
+  // Nothing to invalidate first: the License Server answers live.
   async refreshInstanceEntitlements(): Promise<InstanceEntitlements | null> {
     if (!this.hasOnlineLicense()) return null;
     return this.readOnlineLicense();

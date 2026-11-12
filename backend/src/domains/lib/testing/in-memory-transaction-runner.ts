@@ -15,10 +15,8 @@ type TRunnerShared<TStore> = {
   mutex: KeyedMutex;
 };
 
-// Like TransactionRunner, in memory: restores the store on throw, runs afterCommit only on success, joins
-// via within(tx), per-key locks held until the outermost run ends. No isolation though: a failed run
-// restores its starting snapshot, wiping writes other runs committed meanwhile, so don't overlap runs
-// and count on rollback.
+// No isolation: a failed run restores its starting snapshot and wipes whatever other runs committed
+// meanwhile, so don't overlap runs and count on rollback.
 export class InMemoryTransactionRunner<TStore> implements TTransactionRunner<TStore> {
   private readonly shared: TRunnerShared<TStore>;
 

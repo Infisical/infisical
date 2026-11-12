@@ -17,16 +17,15 @@ export type TUsageReportWorkerDeps = {
   organizationsProjectsService: TOrganizationsProjectsService;
 };
 
-// What the usage queues and the daily flush run. Only LicenseModule.start() registers these.
+// Only LicenseModule.start() registers these.
 export class UsageReportWorker {
   constructor(private readonly deps: TUsageReportWorkerDeps) {}
 
-  // Counts the meter and reports it only when the value changed since the last report.
   async handleUsageEvent(orgId: string, dimensionKey: string): Promise<void> {
     if (!this.deps.licenseServer.canReportUsage()) return;
 
     const cloud = this.isCloud();
-    // On cloud an org with no paid plan (null slug) has no license on the server, so a report would only 404.
+    // On cloud an unpaid org has no license on the server, so a report would just 404.
     if (cloud && !(await this.deps.licenseService.getPlan(orgId)).isPaid) return;
 
     const counter = this.deps.counters.get(dimensionKey);
@@ -45,8 +44,8 @@ export class UsageReportWorker {
 
     try {
       const value = await counter.count(cloud ? reportOrgId : null);
-      // Stamped at counting, not at enqueue: a retried job counts again, and a new count sent under the
-      // first attempt's time would be dropped by the server as a duplicate while recordReported keeps it.
+      // Stamp at count time, not enqueue: a retry recounts, and a new count sent with the first attempt's time
+      // would be dropped by the server as a dupe while recordReported still records it.
       const observedAt = new Date();
       const lastReported = await this.deps.usageReportCache.lastReported(reportOrgId, dimensionKey);
       if (lastReported === value) return;
@@ -57,7 +56,7 @@ export class UsageReportWorker {
         observedAt,
         source: this.source
       });
-      // The server's final answer for this dimension: not retried, and not recorded as reported.
+      // Final answer: don't retry, don't record.
       if (outcome !== "reported") {
         logger.info(
           `usage-event-queue: ${outcome === "no-license" ? "license not found" : "dimension not priced on this license"}, skipping [orgId=${reportOrgId}] [dimensionKey=${dimensionKey}]`
@@ -78,8 +77,8 @@ export class UsageReportWorker {
     }
   }
 
-  // No plan-slug gate as in handleUsageEvent: during an outage the plan is a slugless fallback, which would
-  // drop events nothing sends again.
+  // No paid-plan check here (unlike handleUsageEvent): during an outage the plan is the slugless fallback,
+  // and these events never get resent.
   async handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void> {
     if (!this.deps.licenseServer.canReportUsage() || !events.length) return;
 
