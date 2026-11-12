@@ -19,6 +19,9 @@ func Open(tt *testing.T, adminURL, scope string) *ControlPlane {
 	return &ControlPlane{Scope: fakenet.Open[Site](tt, adminURL, Service.Host(), scope), scope: scope}
 }
 
+// Domain is the site's own name, the parent of every Name.
+func (cp *ControlPlane) Domain() string { return cp.scope + "." + Domain }
+
 // Name is a hostname this site answers for.
 func (cp *ControlPlane) Name(label string) string { return Name(cp.scope, label) }
 

@@ -37,6 +37,10 @@ const SUPPORTED_AUTH_METHODS = Object.values(AgentVaultOauthClientAuthMethod) as
 export const MAX_CLIENT_ID_LENGTH = 2048;
 export const MAX_CLIENT_SECRET_LENGTH = 4096;
 
+export const OAUTH_CLIENT_SECRET_NEEDS_ID_MESSAGE = "A client secret needs the client ID it belongs to.";
+export const OAUTH_CLIENT_ID_OR_DYNAMIC_MESSAGE =
+  "Send either the client ID of your own OAuth app or registration 'dynamic', not both.";
+
 const parseRegistration = (body: string, requestedMethod: AgentVaultOauthClientAuthMethod): TOauthClient | null => {
   let parsed: Record<string, unknown>;
   try {

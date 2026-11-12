@@ -31,10 +31,10 @@ import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { shouldApplyPolicy } from "../secret-approval-policy/secret-approval-policy-fns";
-import { TSecretApprovalPolicyServiceFactory } from "../secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestServiceFactory } from "../secret-approval-request/secret-approval-request-service";
-import { TCreateSecretApprovalSideEffectsDTO } from "../secret-approval-request/secret-approval-request-types";
+import { shouldApplyPolicy } from "../secret-change-policy/secret-change-policy-fns";
+import { TSecretChangePolicyServiceFactory } from "../secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "../secret-change-request/secret-change-request-service";
+import { TCreateSecretApprovalSideEffectsDTO } from "../secret-change-request/secret-change-request-types";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 
 type TPitServiceFactoryDep = {
@@ -47,11 +47,11 @@ type TPitServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  secretApprovalRequestService: Pick<
-    TSecretApprovalRequestServiceFactory,
-    "generateSecretApprovalRequest" | "generateSecretApprovalRequestV2Bridge" | "createSecretApprovalSideEffects"
+  secretChangeRequestService: Pick<
+    TSecretChangeRequestServiceFactory,
+    "generateSecretApprovalRequestV2Bridge" | "createSecretApprovalSideEffects"
   >;
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   folderCommitDAL: Pick<TFolderCommitDALFactory, "transaction">;
@@ -67,8 +67,8 @@ export const pitServiceFactory = ({
   permissionService,
   folderDAL,
   projectEnvDAL,
-  secretApprovalRequestService,
-  secretApprovalPolicyService,
+  secretChangeRequestService,
+  secretChangePolicyService,
   projectDAL,
   secretV2BridgeService,
   folderCommitDAL,
@@ -663,7 +663,7 @@ export const pitServiceFactory = ({
     message: string;
     changes: TProcessNewCommitRawDTO;
   }) => {
-    const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
+    const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
     const secretMutationEvents: Event[] = [];
 
     const project = await projectDAL.findById(projectId);
@@ -855,7 +855,7 @@ export const pitServiceFactory = ({
           (changes.secrets?.update?.length ?? 0) > 0 ||
           (changes.secrets?.delete?.length ?? 0) > 0
         ) {
-          const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+          const approval = await secretChangeRequestService.generateSecretApprovalRequestV2Bridge({
             policy,
             secretPath,
             environment,
@@ -1112,7 +1112,7 @@ export const pitServiceFactory = ({
 
     if (approvalSideEffects) {
       try {
-        await secretApprovalRequestService.createSecretApprovalSideEffects(approvalSideEffects);
+        await secretChangeRequestService.createSecretApprovalSideEffects(approvalSideEffects);
       } catch (error) {
         logger.error(
           error,

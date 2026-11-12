@@ -76,4 +76,23 @@ func TestWebsiteFake_Challenge(t *testing.T) {
 		// Assert
 		require.Equal(t, http.StatusNotFound, code)
 	})
+
+	t.Run("should drop the connection once and then serve when a hang-up rule applies to one fetch", func(t *testing.T) {
+		// Setup
+		fakes, site := newSite(t, "s4")
+		site.Publish(t, "tok", "tok.thumb")
+		site.Fail(t, http.MethodGet, "/.well-known/acme-challenge/*", 0, fakenet.Times(1), fakenet.Hangup())
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fakes.URL+"/.well-known/acme-challenge/tok", nil)
+		require.NoError(t, err)
+		req.Host = site.Name("www")
+
+		// Action
+		_, firstErr := fakes.Client().Do(req)
+		code, body := fetch(t, fakes, site.Name("www"), "tok")
+
+		// Assert
+		require.Error(t, firstErr)
+		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, "tok.thumb", body)
+	})
 }

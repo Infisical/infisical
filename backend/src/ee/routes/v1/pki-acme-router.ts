@@ -75,12 +75,12 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       const strBody = typeof body === "string" ? body : body.toString();
       if (!strBody) {
         done(null, undefined);
+        return;
       }
       const json: unknown = JSON.parse(strBody);
       done(null, json);
     } catch (err) {
-      const error = err as Error;
-      done(error, undefined);
+      done(new AcmeMalformedError({ message: "Invalid request: body is not valid JSON", error: err }), undefined);
     }
   });
 

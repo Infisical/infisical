@@ -1077,6 +1077,7 @@ export const approvalPolicyServiceFactory = ({
     requesterName,
     requesterEmail,
     skipApproverNotification,
+    deferApproverNotification,
     autoApprovalEvidence,
     tx
   }: TCreateRequestFromPolicyDTO) => {
@@ -1109,16 +1110,20 @@ export const approvalPolicyServiceFactory = ({
         : (request, trx) => $emitEvent({ event: ApprovalNotificationEvent.Requested, request }, trx)
     );
 
-    if (!skipApproverNotification) {
+    const notifyApprovers = async () => {
+      if (skipApproverNotification) return;
       await $notify({
         event: ApprovalNotificationEvent.Requested,
         request: requestWithSteps,
         approvers: requestWithSteps.steps[0]?.approvers ?? []
       });
-    }
+    };
+
+    if (!deferApproverNotification) await notifyApprovers();
 
     return {
-      request: requestWithSteps
+      request: requestWithSteps,
+      notifyApprovers
     };
   };
 
@@ -2146,7 +2151,7 @@ export const approvalPolicyServiceFactory = ({
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
 
-    // Secret access grants are managed by the secret-access-approval-global-request-bridge service
+    // Secret access grants are managed by the access-approval-request service
     if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
       throw new BadRequestError({
         message: "This grant is for a secret access request. Revoke it from the access request instead."

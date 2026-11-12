@@ -66,6 +66,10 @@ type Rule struct {
 
 	// Times is how many matching requests it applies to. Zero means every one.
 	Times int `json:"times"`
+
+	// Hangup closes the connection without answering, which a client sees as a
+	// connection reset rather than an HTTP error. Status and Body are ignored.
+	Hangup bool `json:"hangup,omitempty"`
 }
 
 type scopeID struct{ host, key string }
@@ -139,7 +143,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sc := s.scope(host, svc, key)
 
 	rec := &recorder{ResponseWriter: w, status: http.StatusOK}
-	if rule := s.takeRule(sc, r); rule != nil {
+	if rule := s.takeRule(sc, r); rule != nil && rule.Hangup {
+		rec.status = 0
+		if hj, ok := w.(http.Hijacker); ok {
+			if conn, _, err := hj.Hijack(); err == nil {
+				_ = conn.Close()
+			}
+		}
+	} else if rule != nil {
 		rec.WriteHeader(rule.Status)
 		if rule.Body != "" {
 			_, _ = rec.Write([]byte(rule.Body))

@@ -6,6 +6,11 @@ import {
   PkiSyncExportFormat,
   PkiSyncStatus
 } from "@app/hooks/api/pkiSyncs";
+import { PKI_SYNC_EXPORT_FORMAT_LABELS } from "@app/hooks/api/pkiSyncs/enums";
+import {
+  CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL,
+  CLOUDFLARE_BUNDLE_METHOD_LABELS
+} from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,
@@ -232,6 +237,7 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "certificateNameSchema", label: "Certificate Name Schema" },
   { key: "caCertificateNameSchema", label: "CA Certificate Name Schema" },
   { key: "exportFormat", label: "Export Format" },
+  { key: "bundleMethod", label: "Bundle Method" },
   { key: "pemCertificateExtension", label: "Certificate File Extension" },
   { key: "keystoreAlias", label: "Keystore Alias" },
   { key: "fileMode", label: "File Permissions" },
@@ -239,6 +245,26 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "owner", label: "Owner" },
   { key: "group", label: "Group" }
 ] as const;
+
+const SYNC_OPTION_VALUE_LABELS: Record<string, Record<string, string>> = {
+  exportFormat: PKI_SYNC_EXPORT_FORMAT_LABELS,
+  bundleMethod: CLOUDFLARE_BUNDLE_METHOD_LABELS
+};
+
+const UNSET_SYNC_OPTION_LABELS: Partial<Record<PkiSync, Record<string, string>>> = {
+  [PkiSync.CloudflareCustomCertificate]: { bundleMethod: CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL }
+};
+
+export const getSyncOptionDisplayValue = (
+  destination: PkiSync,
+  key: string,
+  value: unknown
+): string | null => {
+  if (value === undefined || value === null || value === "") {
+    return UNSET_SYNC_OPTION_LABELS[destination]?.[key] ?? null;
+  }
+  return SYNC_OPTION_VALUE_LABELS[key]?.[String(value)] ?? String(value);
+};
 
 export const getUnusedExportOptionKeys = (exportFormat?: PkiSyncExportFormat): Set<string> => {
   if (!exportFormat) return new Set();

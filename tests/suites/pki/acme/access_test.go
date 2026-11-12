@@ -172,7 +172,7 @@ func TestAcmeRequest_ProtectedHeader(t *testing.T) {
 		}
 	})
 
-	t.Run("should answer a body that is not a JWS with an ACME malformed problem", func(t *testing.T) {
+	t.Run("should answer a body that is not a JWS, not JSON or empty with an ACME malformed problem", func(t *testing.T) {
 		t.Parallel()
 		tn := h.NewTenant(t)
 		p := newAcmeProfile(t, tn)
@@ -188,15 +188,17 @@ func TestAcmeRequest_ProtectedHeader(t *testing.T) {
 					url = accountEndpoints(t, c, c.NewOrder(t, domain("www")))[name]
 				}
 
-				// Action
-				res := c.send(t, url, []byte(`{"protected":"x"}`))
+				for _, body := range []string{`{"protected":"x"}`, "not json", ""} {
+					// Action
+					res := c.send(t, url, []byte(body))
 
-				// Assert
-				require.Equalf(t, http.StatusBadRequest, res.Status, "ACME answered %d: %s", res.Status, res.Body)
-				require.Contains(t, res.Header.Get("Content-Type"), "application/problem+json")
-				prob := res.Problem(t)
-				require.Equal(t, "urn:ietf:params:acme:error:malformed", prob.Type)
-				require.True(t, strings.HasPrefix(prob.Detail, "Invalid request: "), prob.Detail)
+					// Assert
+					require.Equalf(t, http.StatusBadRequest, res.Status, "ACME answered %d to %q: %s", res.Status, body, res.Body)
+					require.Contains(t, res.Header.Get("Content-Type"), "application/problem+json")
+					prob := res.Problem(t)
+					require.Equal(t, "urn:ietf:params:acme:error:malformed", prob.Type)
+					require.Truef(t, strings.HasPrefix(prob.Detail, "Invalid request: "), "answered %q to %q", prob.Detail, body)
+				}
 			})
 		}
 	})

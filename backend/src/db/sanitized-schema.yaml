@@ -104,6 +104,8 @@ tables:
     columns:
       - id
       - accessBundleId
+      - projectId
+      - sessionId
       - hostPattern
       - credentialType
       - allowedMethods
@@ -156,6 +158,15 @@ tables:
       - onBehalfOfUserId
       - expiresAt
       - revokedAt
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_session_stats
+    source: public.agent_vault_session_stats
+    columns:
+      - sessionId
+      - requests
+      - brokered
       - createdAt
       - updatedAt
 

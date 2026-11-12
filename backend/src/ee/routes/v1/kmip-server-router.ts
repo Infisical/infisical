@@ -2,6 +2,7 @@ import z from "zod";
 
 import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { kmipServerHostnamesOrIpsField } from "@app/ee/services/kmip/kmip-fns";
 import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-method/resource-auth-method-audit-fns";
@@ -14,7 +15,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
@@ -45,13 +45,6 @@ const isTtlAtLeastFloor = (val: string) => {
 const ttlField = z
   .string()
   .refine(isTtlAtLeastFloor, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)");
-
-// hostnamesOrIps is stored in a varchar(4096) column (matching the issued cert's altNames), so cap
-// the resolved SAN list there to surface a clean 400 instead of a DB "value too long" error.
-const hostnamesOrIpsField = validateAltNamesField.refine(
-  (val) => val.length <= 4096,
-  "Hostnames or IPs must be at most 4096 characters"
-);
 
 const KmipServerWithAuthMethodSchema = SanitizedKmipServerSchema.extend({
   authMethod: AuthMethodViewSchema
@@ -102,7 +95,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       description: "Create a new KMIP server with an initial auth method.",
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" }),
-        hostnamesOrIps: hostnamesOrIpsField,
+        hostnamesOrIps: kmipServerHostnamesOrIpsField,
         ttl: ttlField.optional().default("1y"),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional().default(CertKeyAlgorithm.RSA_2048),
         authMethod: SettableAuthMethodInputSchema
@@ -230,7 +223,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.KmipServers],
       params: z.object({ kmipServerId: z.string().uuid() }),
       body: z.object({
-        hostnamesOrIps: hostnamesOrIpsField.optional(),
+        hostnamesOrIps: kmipServerHostnamesOrIpsField.optional(),
         ttl: ttlField
           .nullable()
           .optional()
@@ -260,17 +253,19 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
             orgId: req.permission.orgId
           });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.KMIP_SERVER_UPDATE,
-          metadata: {
-            kmipServerId: req.params.kmipServerId,
-            name: kmipServer.name
+      if (hasFieldUpdate) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.KMIP_SERVER_UPDATE,
+            metadata: {
+              kmipServerId: req.params.kmipServerId,
+              name: kmipServer.name
+            }
           }
-        }
-      });
+        });
+      }
 
       if (req.body.authMethod) {
         const authMethodInput = req.body.authMethod;
@@ -555,6 +550,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     url: "/connect",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "connectKmipServer",
       response: {
         200: z.object({
           clientCertificateChain: z.string(),

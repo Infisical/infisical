@@ -1,9 +1,9 @@
 package pki
 
 import (
-	"net/http"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
@@ -17,53 +17,40 @@ type CA struct{ ID uuid.UUID }
 // NewInternalCA creates an active root CA on an RSA-2048 key.
 func NewInternalCA(tt *testing.T, p *Project) CA {
 	tt.Helper()
-	res, err := p.tn.Admin.API.CreateInternalCertificateAuthorityV1WithBodyWithResponse(tt.Context(), "application/json", jsonBody(tt, map[string]any{
-		"projectId": p.ID,
-		"name":      "ca-" + id.Short(),
-		"status":    "active",
-		"configuration": map[string]any{
-			"type":          "root",
-			"organization":  "Infisical Harness",
-			"ou":            "",
-			"country":       "",
-			"province":      "",
-			"locality":      "",
-			"commonName":    "",
-			"notAfter":      "2035-11-07",
-			"maxPathLength": -1,
-			"keyAlgorithm":  "RSA_2048",
-		},
-	}))
-	require.NoError(tt, err, "creating an internal CA")
-	require.Equalf(tt, http.StatusOK, res.StatusCode(), "creating an internal CA: %s", apierr.Body(res.Body))
-	var out struct {
-		ID uuid.UUID `json:"id"`
+	body := api.CreateInternalCertificateAuthorityV1JSONRequestBody{
+		ProjectId: &p.ID,
+		Name:      "ca-" + id.Short(),
+		Status:    api.CreateInternalCertificateAuthorityV1JSONBodyStatusActive,
 	}
-	decode(tt, res.Body, &out)
-	return CA{ID: out.ID}
+	body.Configuration.Type = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot
+	body.Configuration.KeyAlgorithm = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048
+	body.Configuration.Organization = new("Infisical Harness")
+	body.Configuration.NotAfter = new("2035-11-07")
+	body.Configuration.MaxPathLength = new(float32(-1))
+
+	res, err := p.tn.Admin.API.CreateInternalCertificateAuthorityV1WithResponse(tt.Context(), body)
+	require.NoError(tt, err, "creating an internal CA")
+	require.NotNilf(tt, res.JSON200, "creating an internal CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return CA{ID: res.JSON200.Id}
 }
 
 // NewAcmeCA creates a CA that orders from an upstream ACME directory, answering its
-// DNS-01 challenges in a zone of the DNS provider the connection reaches. provider is
-// the dnsProviderConfig name, such as "cloudflare" or "dns-made-easy".
-func NewAcmeCA(tt *testing.T, p *Project, dns *fixture.AppConnection, provider, zoneID, directoryURL string) CA {
+// DNS-01 challenges in a zone of the DNS provider the connection reaches.
+func NewAcmeCA(tt *testing.T, p *Project, dns *fixture.AppConnection, provider api.CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider, zoneID, directoryURL string) CA {
 	tt.Helper()
-	res, err := p.tn.Admin.API.CreateAcmeCertificateAuthorityV1WithBodyWithResponse(tt.Context(), "application/json", jsonBody(tt, map[string]any{
-		"projectId": p.ID,
-		"name":      "acme-ca-" + id.Short(),
-		"status":    "active",
-		"configuration": map[string]any{
-			"dnsAppConnectionId": dns.ID,
-			"dnsProviderConfig":  map[string]any{"provider": provider, "hostedZoneId": zoneID},
-			"directoryUrl":       directoryURL,
-			"accountEmail":       "pki@harness.test",
-		},
-	}))
-	require.NoError(tt, err, "creating an ACME CA")
-	require.Equalf(tt, http.StatusOK, res.StatusCode(), "creating an ACME CA: %s", apierr.Body(res.Body))
-	var out struct {
-		ID uuid.UUID `json:"id"`
+	body := api.CreateAcmeCertificateAuthorityV1JSONRequestBody{
+		ProjectId: &p.ID,
+		Name:      "acme-ca-" + id.Short(),
+		Status:    api.CreateAcmeCertificateAuthorityV1JSONBodyStatusActive,
 	}
-	decode(tt, res.Body, &out)
-	return CA{ID: out.ID}
+	body.Configuration.DnsAppConnectionId = dns.ID
+	body.Configuration.DnsProviderConfig.Provider = provider
+	body.Configuration.DnsProviderConfig.HostedZoneId = zoneID
+	body.Configuration.DirectoryUrl = directoryURL
+	body.Configuration.AccountEmail = "pki@harness.test"
+
+	res, err := p.tn.Admin.API.CreateAcmeCertificateAuthorityV1WithResponse(tt.Context(), body)
+	require.NoError(tt, err, "creating an ACME CA")
+	require.NotNilf(tt, res.JSON200, "creating an ACME CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return CA{ID: res.JSON200.Id}
 }

@@ -9,14 +9,13 @@ const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
 const SECRET_ACCESS_TYPE = "secret-access";
 
-// Both systems share the seeded project and environment, so every policy this
-// file creates is removed after each test to keep later specs unaffected.
+// Every policy this file creates lives in the seeded project and environment, so it is
+// removed after each test to keep later specs unaffected.
 const legacyPolicyIds: string[] = [];
 const globalPolicyIds: string[] = [];
 
-// The create route always writes to the global tables now, so a legacy policy
-// has to be seeded straight into the legacy tables.
-const createLegacyPolicy = async (dto: { name: string; secretPath: string; id?: string }) => {
+// Policies the migration left behind only exist in the legacy tables, so they are seeded there directly.
+const createLegacyPolicy = async (dto: { name: string; secretPath: string }) => {
   const db = getDb();
   const env = await db(TableName.Environment)
     .where({ projectId: seedData1.project.id, slug: seedData1.environment.slug })
@@ -25,7 +24,6 @@ const createLegacyPolicy = async (dto: { name: string; secretPath: string; id?: 
 
   const [policy] = await db(TableName.AccessApprovalPolicy)
     .insert({
-      ...(dto.id ? { id: dto.id } : {}),
       name: dto.name,
       secretPath: dto.secretPath,
       envId: env.id,
@@ -131,98 +129,60 @@ describe("Access approval request routing", () => {
     }
   });
 
-  test("A global policy cannot be created for an env and path a legacy policy already covers", async () => {
+  test("A request against a global policy is created on the global tables", async () => {
     const db = getDb();
-    const secretPath = "/routing-conflict";
-    await createLegacyPolicy({ name: "routing-conflict-legacy", secretPath });
+    const secretPath = "/routing-global";
+    const created = await createGlobalPolicy({ name: "routing-global", secretPath });
+    expect(created.statusCode).toBe(200);
+    const policyId: string = created.json().approval.id;
 
-    const res = await createGlobalPolicy({ name: "routing-conflict-global", secretPath });
+    const res = await createAccessRequest(secretPath);
 
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain(`already exists in environment '${seedData1.environment.slug}'`);
+    expect(res.statusCode).toBe(200);
+    const { approval } = res.json();
+    expect(approval.policyId).toBe(policyId);
 
-    const globalRows = await db(TableName.ApprovalPolicySecretEnvironment).where({ secretPath });
-    expect(globalRows).toHaveLength(0);
+    const rows = await db(TableName.ApprovalRequests).where({ id: approval.id });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].type).toBe(SECRET_ACCESS_TYPE);
+    expect(await db(TableName.AccessApprovalRequest).where({ id: approval.id })).toHaveLength(0);
   });
 
-  test("A request against a legacy policy is created on the legacy system", async () => {
+  test("A request against a path only a legacy policy covers is refused", async () => {
     const db = getDb();
     const secretPath = "/routing-legacy";
     const legacyPolicy = await createLegacyPolicy({ name: "routing-legacy", secretPath });
 
     const res = await createAccessRequest(secretPath);
 
-    expect(res.statusCode).toBe(200);
-    const { approval } = res.json();
-    expect(approval.policyId).toBe(legacyPolicy.id);
-
-    const rows = await db(TableName.AccessApprovalRequest).where({ policyId: legacyPolicy.id });
-    expect(rows).toHaveLength(1);
-    expect(rows[0].id).toBe(approval.id);
-  });
-
-  test("Review and revoke of a legacy request keep running on the legacy system", async () => {
-    const db = getDb();
-    const secretPath = "/routing-legacy-lifecycle";
-    const legacyPolicy = await createLegacyPolicy({ name: "routing-legacy-lifecycle", secretPath });
-
-    const createRes = await createAccessRequest(secretPath);
-    expect(createRes.statusCode).toBe(200);
-    const requestId = createRes.json().approval.id as string;
-
-    const reviewRes = await reviewAccessRequest(requestId, "approved");
-    expect(reviewRes.statusCode).toBe(200);
-    expect(reviewRes.json().review.requestId).toBe(requestId);
-
-    const reviewers = await db(TableName.AccessApprovalRequestReviewer).where({ requestId });
-    expect(reviewers).toHaveLength(1);
-
-    const approved = await db(TableName.AccessApprovalRequest).where({ id: requestId }).first();
-    expect(approved?.status).toBe("approved");
-    expect(approved?.policyId).toBe(legacyPolicy.id);
-    const privilegeId = approved?.privilegeId as string;
-    expect(privilegeId).toBeTruthy();
-
-    const privilege = await db(TableName.AdditionalPrivilege).where({ id: privilegeId }).first();
-    expect(privilege?.grantId).toBeNull();
-
-    const revokeRes = await revokeAccessRequest(requestId);
-    expect(revokeRes.statusCode).toBe(200);
-    expect(revokeRes.json().request.status).toBe("revoked");
-
-    const deletedPrivilege = await db(TableName.AdditionalPrivilege).where({ id: privilegeId }).first();
-    expect(deletedPrivilege).toBeUndefined();
-
-    const globalRequests = await db(TableName.ApprovalRequests).where({ id: requestId });
-    expect(globalRequests).toHaveLength(0);
-    const grants = await db(TableName.ApprovalRequestGrants).where({ requestId });
-    expect(grants).toHaveLength(0);
-  });
-
-  test("A migrated policy's legacy row does not take requests for the path it moved away from", async () => {
-    const secretPath = "/routing-migrated";
-    const created = await createGlobalPolicy({ name: "routing-migrated", secretPath });
-    expect(created.statusCode).toBe(200);
-    const policyId: string = created.json().approval.id;
-    await createLegacyPolicy({ id: policyId, name: "routing-migrated", secretPath });
-
-    const moved = await testServer.inject({
-      method: "PATCH",
-      url: `/api/v1/access-approvals/policies/${policyId}`,
-      headers: {
-        authorization: `Bearer ${jwtAuthToken}`
-      },
-      body: {
-        secretPath: "/routing-migrated-moved",
-        approvers: [{ type: ApproverType.User, id: seedData1.id }],
-        approvals: 1
-      }
-    });
-    expect(moved.statusCode).toBe(200);
-
-    const res = await createAccessRequest(secretPath);
-
     expect(res.statusCode).toBe(404);
     expect(res.json().message).toContain("No policy in environment");
+    expect(await db(TableName.AccessApprovalRequest).where({ policyId: legacyPolicy.id })).toHaveLength(0);
+  });
+
+  test("A request that only exists in the legacy tables cannot be reviewed or revoked", async () => {
+    const db = getDb();
+    const legacyPolicy = await createLegacyPolicy({
+      name: "routing-legacy-request",
+      secretPath: "/routing-legacy-request"
+    });
+    const [legacyRequest] = await db(TableName.AccessApprovalRequest)
+      .insert({
+        policyId: legacyPolicy.id,
+        requestedByUserId: seedData1.id,
+        isTemporary: false,
+        permissions: JSON.stringify([]),
+        status: "pending"
+      })
+      .returning("*");
+
+    const reviewRes = await reviewAccessRequest(legacyRequest.id, "approved");
+    expect(reviewRes.statusCode).toBe(404);
+
+    const revokeRes = await revokeAccessRequest(legacyRequest.id);
+    expect(revokeRes.statusCode).toBe(404);
+
+    const unchanged = await db(TableName.AccessApprovalRequest).where({ id: legacyRequest.id }).first();
+    expect(unchanged?.status).toBe("pending");
   });
 });

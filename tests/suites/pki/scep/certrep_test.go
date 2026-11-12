@@ -1,17 +1,12 @@
 package scep_test
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"net/http"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/smallstep/scep"
-	"github.com/smallstep/scep/x509util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,25 +23,12 @@ func TestScepCertRep_KnownIssues(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123")
-		ra := p.caCerts(t)[0]
-		signer := newDevice(t, "strict.example.com")
-		key, err := rsa.GenerateKey(rand.Reader, 2048)
-		require.NoError(t, err)
-		der, err := x509util.CreateCertificateRequest(rand.Reader, &x509util.CertificateRequest{
-			CertificateRequest: x509.CertificateRequest{Subject: pkix.Name{CommonName: "strict.example.com"}},
-			ChallengePassword:  "testpassword123",
-		}, key)
-		require.NoError(t, err)
-		csr, err := x509.ParseCertificateRequest(der)
-		require.NoError(t, err)
-		msg, err := scep.NewCSRRequest(csr, &scep.PKIMessage{MessageType: scep.PKCSReq, Recipients: []*x509.Certificate{ra}, SignerKey: signer.key, SignerCert: signer.cert})
-		require.NoError(t, err)
-		res := p.operation(t, "PKIOperation", msg.Raw)
-		require.Equal(t, http.StatusOK, res.StatusCode())
+		p := newScepProfile(t, tn, staticChallenge("testpassword123"))
+		req := p.pkcsReq(t, newDevice(t, "strict.example.com"), "strict.example.com", "testpassword123")
+		certRep := p.post(t, req.msg.Raw)
 
 		// Action
-		_, err = scep.ParsePKIMessage(res.Body, scep.WithCACerts([]*x509.Certificate{ra}))
+		_, err := scep.ParsePKIMessage(certRep, scep.WithCACerts([]*x509.Certificate{req.ra}))
 
 		// Assert
 		require.NoError(t, err)

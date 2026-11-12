@@ -24,6 +24,7 @@ export {
   useInstallCaCertificateAdcsNative,
   useInstallCaCertificateVenafi,
   useOrderCertificateWithProfile,
+  useRegenerateCaCrl,
   useRenewCa,
   useSignIntermediate,
   useUpdateCa,
@@ -56,6 +57,9 @@ export type {
   TOrderCertificateResponse
 } from "./types";
 export {
+  DEFAULT_CRL_VALIDITY_DAYS,
+  MAX_CRL_VALIDITY_DAYS,
   MAX_DISTRIBUTION_POINT_URL_LENGTH,
-  MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
+  MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
+  MIN_CRL_VALIDITY_DAYS
 } from "./types";

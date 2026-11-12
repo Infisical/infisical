@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
@@ -102,6 +103,7 @@ func (a *Account) createRecord(w http.ResponseWriter, r *http.Request) {
 	zone.Records = append(zone.Records, in)
 	a.mu.Unlock()
 
+	a.publishTXT(zoneID, in.Name)
 	a.events.Publish(RecordCreated{Zone: zoneID, Record: in})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -157,8 +159,32 @@ func (a *Account) deleteRecord(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusNotFound, "Record not found")
 		return
 	}
+	a.publishTXT(zoneID, removed.Name)
 	a.events.Publish(RecordDeleted{Zone: zoneID, Record: *removed})
 	w.WriteHeader(http.StatusOK)
+}
+
+// publishTXT serves a zone's TXT records for one name over DNS, as DNS Made Easy's
+// nameservers would. Record names are relative to the zone.
+func (a *Account) publishTXT(zoneID, name string) {
+	a.mu.Lock()
+	zone, known := a.Zones[zoneID]
+	if !known {
+		a.mu.Unlock()
+		return
+	}
+	fqdn := zone.Name
+	if name != "" {
+		fqdn = name + "." + zone.Name
+	}
+	var values []string
+	for _, rec := range zone.Records {
+		if rec.Type == "TXT" && rec.Name == name {
+			values = append(values, strings.Trim(rec.Value, `"`))
+		}
+	}
+	a.mu.Unlock()
+	a.events.SetTXT(fqdn, values...)
 }
 
 func page(r *http.Request) int {

@@ -1,0 +1,102 @@
+# run_agent.py
+import os
+
+import modal
+from infisical_sdk import InfisicalSDKClient
+
+from sandbox_image import app, image
+
+INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
+ACCESS_BUNDLE = "<access-bundle-name>"
+
+WAIT_FOR_PROXY = (
+    "for i in $(seq 60); do "
+    "curl -fs http://agent-proxy:17323/_agent-vault/ca > /dev/null && exit 0; "
+    "sleep 0.5; done; exit 1"
+)
+
+# Reads the session token from the first line of stdin, and leaves the rest of
+# stdin, the prompt, for Claude Code.
+START_AGENT = r"""
+IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
+export INFISICAL_AGENT_VAULT_SESSION_TOKEN
+exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+  -- claude -p --permission-mode bypassPermissions
+"""
+
+AGENT_ENV = {
+    # Claude Code won't start without a key; the proxy replaces this one.
+    "ANTHROPIC_API_KEY": "agent-vault",
+    # Makes the fetch built into Node.js send requests through the proxy.
+    "NODE_USE_ENV_PROXY": "1",
+    # Skips Claude Code's update checks and telemetry, which fail without internet access.
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_AUTOUPDATER": "1",
+}
+
+
+def run_agent(prompt: str) -> str:
+    # The machine identity's credentials stay here and never enter the sandbox.
+    infisical = InfisicalSDKClient(host=INFISICAL_URL)
+    infisical.auth.universal_auth.login(
+        client_id=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
+        client_secret=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
+    )
+
+    # One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
+    # the agent can't lose access mid-run.
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
+    )
+
+    sandbox = None
+    try:
+        sandbox = modal.Sandbox.create(
+            "sleep",
+            "infinity",
+            app=app,
+            image=image,
+            timeout=15 * 60,
+            # An empty allowlist blocks the internet but not the sidecar.
+            outbound_cidr_allowlist=[],
+        )
+        # The agent reaches the proxy at agent-proxy:17323. Nothing outside the
+        # sandbox can reach it.
+        proxy = sandbox._experimental_sidecars.create(
+            "sh",
+            "-c",
+            # If the proxy exits, the sidecar stays up so its log can still be read.
+            "infisical agent-vault proxy > /tmp/proxy.log 2>&1 || sleep 600",
+            name="agent-proxy",
+            image=image,
+            secrets=[modal.Secret.from_name("agent-vault-proxy")],
+        )
+        # The proxy serves only after it has loaded its settings from Infisical.
+        if sandbox.exec("sh", "-c", WAIT_FOR_PROXY).wait() != 0:
+            log = proxy.filesystem.read_text("/tmp/proxy.log")
+            raise RuntimeError(f"The Agent Vault proxy didn't start:\n{log}")
+
+        # Claude Code won't skip its permission prompts as root, which is how
+        # Modal runs commands.
+        agent = sandbox.exec(
+            "runuser", "-u", "agent", "--", "sh", "-c", START_AGENT,
+            env=AGENT_ENV,
+            workdir="/home/agent",
+        )
+        # Modal shows each command's arguments in its dashboard, so the token
+        # and the prompt go on stdin instead.
+        agent.stdin.write(session.token + "\n" + prompt)
+        agent.stdin.write_eof()
+        agent.stdin.drain()
+        output = agent.stdout.read()
+        if agent.wait() != 0:
+            raise RuntimeError(f"The agent failed:\n{agent.stderr.read()}")
+        return output
+    finally:
+        # Revoke first, so the session ends even if terminating fails.
+        try:
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
+        finally:
+            if sandbox:
+                sandbox.terminate()

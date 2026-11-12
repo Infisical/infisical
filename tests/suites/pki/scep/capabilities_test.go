@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
-	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -20,7 +19,7 @@ func TestScepCapabilities_Get(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123")
+		p := newScepProfile(t, tn, staticChallenge("testpassword123"))
 
 		// Action
 		res := p.operation(t, "GetCACaps", nil)
@@ -38,7 +37,7 @@ func TestScepCapabilities_Get(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123", pki.WithoutRenewal())
+		p := newScepProfile(t, tn, withoutRenewal(staticChallenge("testpassword123")))
 
 		// Action
 		res := p.operation(t, "GetCACaps", nil)
@@ -53,7 +52,7 @@ func TestScepCapabilities_Get(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123")
+		p := newScepProfile(t, tn, staticChallenge("testpassword123"))
 
 		// Action
 		res := p.operation(t, "BadOperation", nil)

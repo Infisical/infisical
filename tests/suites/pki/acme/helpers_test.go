@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/website"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/pki"
@@ -36,17 +37,17 @@ type acmeProfile struct {
 	eab     pki.EAB
 }
 
-func newAcmeProfile(t *testing.T, tn *harness.Tenant, opts ...pki.AcmeOption) acmeProfile {
+func newAcmeProfile(t *testing.T, tn *harness.Tenant) acmeProfile {
 	t.Helper()
 	proj := pki.CertManager(t, tn)
-	return newAcmeProfileFrom(t, tn, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj), opts...)
+	return newAcmeProfileFrom(t, tn, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj, pki.AllowAll(t)), api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
 }
 
-func newAcmeProfileFrom(t *testing.T, tn *harness.Tenant, proj *pki.Project, ca pki.CA, policy pki.Policy, opts ...pki.AcmeOption) acmeProfile {
+func newAcmeProfileFrom(t *testing.T, tn *harness.Tenant, proj *pki.Project, ca pki.CA, policy pki.Policy, enrollment api.SetPkiApplicationAcmeEnrollmentJSONRequestBody) acmeProfile {
 	t.Helper()
 	profile := pki.NewProfile(t, proj, ca, policy)
 	app := pki.NewApplication(t, proj, profile)
-	return acmeProfile{tn: tn, project: proj, app: app, profile: profile, eab: pki.EnableACME(t, app, profile, opts...)}
+	return acmeProfile{tn: tn, project: proj, app: app, profile: profile, eab: pki.EnableACME(t, app, profile, enrollment)}
 }
 
 func (p acmeProfile) client(t *testing.T) *acmeClient {
@@ -105,11 +106,11 @@ func waitOrder(t *testing.T, c *acmeClient, url, status string, opts ...wait.Opt
 }
 
 // issue finalizes a ready order and waits for the certificate.
-func issue(t *testing.T, c *acmeClient, o Order, csr []byte) *x509.Certificate {
+func issue(t *testing.T, c *acmeClient, o Order, csr []byte, opts ...wait.Option) *x509.Certificate {
 	t.Helper()
 	var finalized orderBody
 	c.Finalize(t, o.Finalize, csr).Decode(t, http.StatusOK, &finalized)
-	valid := waitOrder(t, c, o.URL, "valid")
+	valid := waitOrder(t, c, o.URL, "valid", opts...)
 	return leaf(t, c.Certificate(t, valid.Certificate))
 }
 
@@ -140,8 +141,6 @@ func (s siteName) labels(ls []string) []string {
 	}
 	return out
 }
-
-func sprintf(format string, args ...any) string { return fmt.Sprintf(format, args...) }
 
 // csrSpec is how a CSR is built: its key, signature hash, subject and SANs.
 type csrSpec struct {
@@ -237,6 +236,3 @@ func emptySANExtension() pkix.Extension {
 // pollACME is how often a status is read back. Once a second, as an ACME client
 // would: every read is a signed request on the tenant's rate-limit budget.
 var pollACME = wait.Interval(time.Second)
-
-// timeout is a wait for work Infisical retries on its own schedule.
-func timeout(d time.Duration) wait.Option { return wait.Timeout(d) }

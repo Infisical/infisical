@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
@@ -27,6 +27,14 @@ export type TMfaChallengeOutcome = "verified" | "blocked" | "failed";
 // Opens the verification page in a popup and resolves once the session goes active
 export const useMfaChallenge = () => {
   const popupRef = useRef<Window | null>(null);
+  const cancelRef = useRef<(() => void) | null>(null);
+
+  useEffect(
+    () => () => {
+      cancelRef.current?.();
+    },
+    []
+  );
 
   return useCallback(async (mfaSessionId: string): Promise<TMfaChallengeOutcome> => {
     popupRef.current = window.open(
@@ -57,7 +65,12 @@ export const useMfaChallenge = () => {
           resolve(false);
         }
       }, MFA_POLL_INTERVAL);
+      cancelRef.current = () => {
+        clearInterval(interval);
+        resolve(false);
+      };
     });
+    cancelRef.current = null;
 
     if (!popupRef.current.closed) popupRef.current.close();
     return verified ? "verified" : "failed";

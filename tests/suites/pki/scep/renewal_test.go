@@ -3,7 +3,6 @@ package scep_test
 import (
 	"testing"
 
-	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/smallstep/scep"
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,7 @@ func TestScepEnrollment_Renew(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123")
+		p := newScepProfile(t, tn, staticChallenge("testpassword123"))
 		issued := p.mustEnroll(t, "renew-device.example.com", "testpassword123")
 
 		// Action
@@ -35,7 +34,7 @@ func TestScepEnrollment_Renew(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123", pki.WithoutRenewal())
+		p := newScepProfile(t, tn, withoutRenewal(staticChallenge("testpassword123")))
 		issued := p.mustEnroll(t, "deny-device.example.com", "testpassword123")
 
 		// Action

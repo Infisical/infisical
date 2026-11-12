@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
@@ -57,23 +58,26 @@ func TestAcmeChallenge_Validate(t *testing.T) {
 		require.Equal(t, name, cert.Subject.CommonName)
 	})
 
-	t.Run("should validate on a retry when the first fetch of the key authorization fails", func(t *testing.T) {
+	t.Run("should validate on a retry and issue when the first fetch of the key authorization cannot connect", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `Validation runs on a queue with retries, so a web server that is briefly unavailable
+		spec.Why(t, `Validation runs on a queue with retries, so a web server that is briefly unreachable
 			must not fail the order. The retry backs off 30 seconds, which is why the wait is longer than usual.`)
 
 		// Setup
 		tn := h.NewTenant(t)
 		c := newAcmeProfile(t, tn).registered(t)
 		site := newSite(t, tn)
-		o := c.NewOrder(t, site.Name("www"))
-		site.Fail(t, http.MethodGet, "/.well-known/acme-challenge/*", http.StatusServiceUnavailable, fakenet.Times(1))
+		name := site.Name("www")
+		o := c.NewOrder(t, name)
+		site.Fail(t, http.MethodGet, "/.well-known/acme-challenge/*", 0, fakenet.Times(1), fakenet.Hangup())
+		passHTTP01(t, c, site, o.Authorizations)
+		waitOrder(t, c, o.URL, "ready", wait.Timeout(90*time.Second))
 
 		// Action
-		passHTTP01(t, c, site, o.Authorizations)
+		cert := issue(t, c, o, newCSR(t, name))
 
 		// Assert
-		waitOrder(t, c, o.URL, "ready", timeout(90*time.Second))
+		require.Equal(t, name, cert.Subject.CommonName)
 		require.Len(t, site.Calls(t), 2, "Infisical did not fetch the key authorization a second time")
 	})
 
@@ -123,7 +127,9 @@ func TestAcmeChallenge_Validate(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		c := newAcmeProfile(t, tn, pki.SkipDNSOwnershipVerification()).registered(t)
+		proj := pki.CertManager(t, tn)
+		c := newAcmeProfileFrom(t, tn, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj, pki.AllowAll(t)),
+			api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{SkipDnsOwnershipVerification: new(true)}).registered(t)
 		name := domain("www")
 
 		// Action

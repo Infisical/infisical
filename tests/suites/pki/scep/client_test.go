@@ -1,6 +1,7 @@
 package scep_test
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -33,12 +34,29 @@ type scepProfile struct {
 	profile pki.Profile
 }
 
-func newScepProfile(t *testing.T, tn *harness.Tenant, password string, opts ...pki.ScepOption) scepProfile {
+// staticChallenge is the enrollment sscep was run against: a static challenge
+// password, the CA certificate in GetCACert, and certificate-based renewal allowed.
+func staticChallenge(password string) api.SetPkiApplicationScepEnrollmentJSONRequestBody {
+	return api.SetPkiApplicationScepEnrollmentJSONRequestBody{
+		ChallengeType:           new(api.SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeStatic),
+		ChallengePassword:       new(password),
+		IncludeCaCertInResponse: new(true),
+		AllowCertBasedRenewal:   new(true),
+	}
+}
+
+// withoutRenewal refuses a renewal signed by a previously issued certificate.
+func withoutRenewal(enrollment api.SetPkiApplicationScepEnrollmentJSONRequestBody) api.SetPkiApplicationScepEnrollmentJSONRequestBody {
+	enrollment.AllowCertBasedRenewal = new(false)
+	return enrollment
+}
+
+func newScepProfile(t *testing.T, tn *harness.Tenant, enrollment api.SetPkiApplicationScepEnrollmentJSONRequestBody) scepProfile {
 	t.Helper()
 	proj := pki.CertManager(t, tn)
-	profile := pki.NewProfile(t, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj))
+	profile := pki.NewProfile(t, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj, pki.AllowAll(t)))
 	app := pki.NewApplication(t, proj, profile)
-	pki.EnableSCEP(t, app, profile, password, opts...)
+	pki.EnableSCEP(t, app, profile, enrollment)
 	return scepProfile{api: tn.Anonymous(t), app: app, profile: profile}
 }
 
@@ -101,9 +119,17 @@ type enrollment struct {
 	cert     *x509.Certificate
 }
 
-// enroll sends a PKCSReq for a CSR naming commonName on a fresh key, signed by
+// request is a PKCSReq: the message, the RA it is encrypted to, and the key its CSR
+// was made on.
+type request struct {
+	msg *scep.PKIMessage
+	ra  *x509.Certificate
+	key *rsa.PrivateKey
+}
+
+// pkcsReq builds a PKCSReq for a CSR naming commonName on a fresh key, signed by
 // signer, with password as the CSR's challengePassword (none when empty).
-func (p scepProfile) enroll(t *testing.T, signer device, commonName, password string) (enrollment, *rsa.PrivateKey) {
+func (p scepProfile) pkcsReq(t *testing.T, signer device, commonName, password string) request {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
@@ -123,10 +149,25 @@ func (p scepProfile) enroll(t *testing.T, signer device, commonName, password st
 		SignerCert:  signer.cert,
 	})
 	require.NoError(t, err)
+	return request{msg: msg, ra: ra, key: key}
+}
 
-	res := p.operation(t, "PKIOperation", msg.Raw)
+// post sends a PKIOperation as a POST body, which is how sscep and any client that
+// sees POSTPKIOperation in GetCACaps sends one.
+func (p scepProfile) post(t *testing.T, message []byte) []byte {
+	t.Helper()
+	res, err := p.api.PostScepApplicationOperationWithBodyWithResponse(t.Context(), p.app.ID, p.profile.ID,
+		&api.PostScepApplicationOperationParams{Operation: new("PKIOperation")}, "application/x-pki-message", bytes.NewReader(message))
+	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "PKIOperation returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return readCertRep(t, res.Body, ra, signer), key
+	return res.Body
+}
+
+// enroll sends a PKCSReq over POST and reads the CertRep it gets back.
+func (p scepProfile) enroll(t *testing.T, signer device, commonName, password string) (enrollment, *rsa.PrivateKey) {
+	t.Helper()
+	req := p.pkcsReq(t, signer, commonName, password)
+	return readCertRep(t, p.post(t, req.msg.Raw), req, signer), req.key
 }
 
 // readCertRep checks a CertRep is signed by the RA over the content it carries, and
@@ -135,15 +176,19 @@ func (p scepProfile) enroll(t *testing.T, signer device, commonName, password st
 // The signature is checked over the signed attributes as sent, the way sscep checks
 // it, rather than over their DER re-encoding: Infisical does not sort them, which
 // TestScepCertRep_KnownIssues pins.
-func readCertRep(t *testing.T, raw []byte, ra *x509.Certificate, signer device) enrollment {
+func readCertRep(t *testing.T, raw []byte, req request, signer device) enrollment {
 	t.Helper()
-	require.NoError(t, verifyAsSent(raw, ra), "the CertRep is not signed by the RA")
+	require.NoError(t, verifyAsSent(raw, req.ra), "the CertRep is not signed by the RA")
 	p7, err := pkcs7.Parse(raw)
 	require.NoError(t, err)
 	var signedDigest []byte
 	require.NoError(t, p7.UnmarshalSignedAttribute(oidMessageDigest, &signedDigest))
 	contentDigest := sha256.Sum256(p7.Content)
 	require.Equal(t, contentDigest[:], signedDigest, "the signed messageDigest does not match the CertRep content")
+
+	var transactionID scep.TransactionID
+	require.NoError(t, p7.UnmarshalSignedAttribute(oidTransactionID, &transactionID))
+	require.Equal(t, req.msg.TransactionID, transactionID, "the CertRep answers another transaction")
 
 	var msgType scep.MessageType
 	require.NoError(t, p7.UnmarshalSignedAttribute(oidMessageType, &msgType))
@@ -171,6 +216,7 @@ func readCertRep(t *testing.T, raw []byte, ra *x509.Certificate, signer device) 
 
 var (
 	oidMessageDigest = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 4}
+	oidTransactionID = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 7}
 	oidMessageType   = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 2}
 	oidPKIStatus     = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 3}
 	oidFailInfo      = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 4}

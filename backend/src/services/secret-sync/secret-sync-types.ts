@@ -507,6 +507,7 @@ export type TCreateSecretSyncDTO = Pick<TSecretSync, "syncOptions" | "destinatio
   projectId: string;
   secretPath: string;
   environment: string;
+  includeAllSubFolders?: boolean;
   isAutoSyncEnabled?: boolean;
 };
 

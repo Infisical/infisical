@@ -20,6 +20,7 @@ gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep")) // state before the action
 gh.Repo(t, "acme/app").Secrets                                 // state now
 gh.Fail(t, "PUT", "/repos/*", 500, fakenet.Times(1))           // inject a failure
+gh.Fail(t, "GET", "/user", 0, fakenet.Hangup())                // drop the connection instead
 gh.Received(t, "GET", "/user")                                 // count calls
 ```
 
@@ -132,8 +133,8 @@ record, so publish it first; it is removed when the test ends.
 fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), "_infisical-verification.acme.test", "value")
 ```
 
-A DNS provider fake (`cloudflare`) serves the TXT records created through its API the
-same way, through `Emitter.SetTXT`, as the provider's nameservers would.
+DNS provider fakes (`cloudflare`, `dnsmadeeasy`) serve the TXT records created through
+their APIs the same way, through `Emitter.SetTXT`, as the provider's nameservers would.
 
 ## Certificate Manager
 

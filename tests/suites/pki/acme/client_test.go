@@ -159,7 +159,7 @@ func (c *acmeClient) Nonce(t *testing.T) string {
 		c.nonce = ""
 		return n
 	}
-	res, err := c.api.GetAcmeNewNonceWithResponse(t.Context(), c.profile)
+	res, err := c.api.GetAcmeNewNonceWithResponse(t.Context(), c.profile, asHEAD)
 	require.NoError(t, err)
 	n := res.HTTPResponse.Header.Get("Replay-Nonce")
 	require.NotEmptyf(t, n, "new-nonce returned %d without a Replay-Nonce", res.StatusCode())
@@ -192,11 +192,22 @@ func (c *acmeClient) PostRaw(t *testing.T, url string, header map[string]any, pa
 	body, err := json.Marshal(c.sign(t, header, payload))
 	require.NoError(t, err)
 	res := c.send(t, url, body)
-	if n := res.Header.Get("Replay-Nonce"); n != "" {
+	n := res.Header.Get("Replay-Nonce")
+	if res.Status < http.StatusMultipleChoices {
+		require.NotEmptyf(t, n, "a successful POST to %s carried no Replay-Nonce (RFC 8555 7.2)", url)
+	}
+	if n != "" {
 		c.nonce = n
 	}
 	return res
 }
+
+// asHEAD sends new-nonce as HEAD, as certbot, lego and cert-manager do. The spec
+// lists only its GET, because the OpenAPI generator leaves HEAD routes out.
+var asHEAD = api.RequestEditorFn(func(_ context.Context, req *http.Request) error {
+	req.Method = http.MethodHead
+	return nil
+})
 
 func (c *acmeClient) sign(t *testing.T, header map[string]any, payload []byte) map[string]string {
 	t.Helper()
@@ -426,6 +437,8 @@ func (c *acmeClient) Respond(t *testing.T, ch challengeBody) {
 	t.Helper()
 	res := c.Post(t, ch.URL, map[string]any{})
 	require.Equalf(t, http.StatusOK, res.Status, "answering the challenge returned %d: %s", res.Status, apierr.Body(res.Body))
+	authz, _, _ := strings.Cut(ch.URL, "/challenges/")
+	require.Contains(t, res.Header.Values("Link"), "<"+authz+`>;rel="up"`, "the challenge response does not link up to its authorization (RFC 8555 7.5.1)")
 }
 
 // Finalize submits a CSR (DER) to an order.

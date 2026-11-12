@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +17,7 @@ func TestScepCACert_Get(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123")
+		p := newScepProfile(t, tn, staticChallenge("testpassword123"))
 
 		// Action
 		res := p.operation(t, "GetCACert", nil)
@@ -36,7 +35,9 @@ func TestScepCACert_Get(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newScepProfile(t, tn, "testpassword123", pki.WithoutCACert())
+		enrollment := staticChallenge("testpassword123")
+		enrollment.IncludeCaCertInResponse = new(false)
+		p := newScepProfile(t, tn, enrollment)
 
 		// Action
 		certs := p.caCerts(t)

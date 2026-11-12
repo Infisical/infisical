@@ -21,6 +21,10 @@ An Agent Vault project holds the credentials, members, and proxies for one agent
   </Step>
   <Step>
     Select **New Project**, enter a **Project Name**, then select **Create Project**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-create.png" alt="The Create a New Agent Vault Project dialog, with a project name, a description, and a Create Project button" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -42,7 +46,7 @@ You become the project's admin.
         Select **Create Access Bundle**. Give the access bundle a **Name**, such as `code-review`, then select **Create Access Bundle**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
+          <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with a name and a description entered" />
         </Frame>
       </Step>
     </Steps>
@@ -60,17 +64,21 @@ You become the project's admin.
 
     <Steps>
       <Step>
-        In the access bundle, select **Add Service**.
+        In the access bundle, select **Add Service**. In the **Services** list, select **Create New Service**.
       </Step>
       <Step>
         On the **Choose a template** panel, pick the template for the API, or select **Custom HTTP API**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+          <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with MCP server templates and HTTP API templates, GitHub among them" />
         </Frame>
       </Step>
       <Step>
         On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom HTTP API**. Select **Continue**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/service-details.png" alt="The Details step of a GitHub service, with api.github.com as the host" />
+        </Frame>
       </Step>
       <Step>
         On the **Credential** step, paste the real key, then select **Continue**.
@@ -131,6 +139,10 @@ You become the project's admin.
 
     Requests that create something in Agent Vault take the ID of the project to create it in. In your Agent Vault project, go to **Administration** > **Settings** and copy the **Project ID**.
 
+    <Frame>
+      <img src="/images/platform/agent-vault/project-settings-general.png" alt="The General settings of an Agent Vault project, with the Project ID and its copy button in the Project Overview card" />
+    </Frame>
+
     ### Create an access bundle
 
     In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. Call [the endpoint to create an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create), replacing `<access-token>` with the `accessToken` from the login response and `<project-id>` with the project ID. In the body, send the project ID and a name for the access bundle:
@@ -158,7 +170,7 @@ You become the project's admin.
       ```
     </CodeGroup>
 
-    The response includes the access bundle's `id`, which you need to add a service.
+    The response includes the access bundle's `id`, which you need to add a service to the access bundle.
 
     ### Add a service
 
@@ -171,16 +183,18 @@ You become the project's admin.
       - Each remote MCP server it connects to, such as Linear's (see [add an MCP server](/documentation/platform/agent-vault/mcp-servers#add-an-mcp-server))
     </Accordion>
 
-    Call [the endpoint to create a service](/api-reference/endpoints/agent-vault-services/create), replacing `<access-bundle-id>` in the URL with the `id` from the previous step and `<access-token>` with the `accessToken` from the login response.
-    
-    In the body, send the hosts that the credential applies to and the credential itself. For example, to add a GitHub personal access token:
+    Call the [Create service](/api-reference/endpoints/agent-vault-services/create) endpoint, replacing `<access-token>` with the `accessToken` from the login response.
+
+    In the body, send the project ID, the access bundle's `id` in `accessBundleIds`, the hosts that the credential applies to, and the credential itself. For example, to add a GitHub personal access token:
 
     <CodeGroup>
       ```bash US Cloud
-      curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST https://app.infisical.com/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",
@@ -193,10 +207,12 @@ You become the project's admin.
       ```
 
       ```bash EU Cloud
-      curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST https://eu.infisical.com/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",
@@ -209,10 +225,12 @@ You become the project's admin.
       ```
 
       ```bash Self-hosted
-      curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST <your-instance-url>/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",

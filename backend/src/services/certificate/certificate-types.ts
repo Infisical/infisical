@@ -156,6 +156,7 @@ export type TImportCertDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+  csr?: string;
 
   profileId?: string;
   externalMetadata?: TImportExternalMetadata;

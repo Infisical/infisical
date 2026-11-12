@@ -7,7 +7,10 @@ import {
   canTurnOnAgentVaultSessionLogs,
   getAgentVaultSessionLogRetentionDays,
   isAgentVaultSessionLogBlockedByPlan,
-  isAgentVaultSessionLogStorageOnPlan
+  isAgentVaultSessionLogStorageOnPlan,
+  isInfisicalDomain,
+  isInfisicalLogHost,
+  isInfisicalSessionEndpointRequest
 } from "./agentVaultSessionLogs";
 
 const defaultStorage = { type: AgentVaultSessionLogStorageType.Default } as const;
@@ -68,5 +71,40 @@ describe("agent vault session log helpers", () => {
     ["neither on the plan", true, noPlan, false]
   ])("can turn on: %s", (_, isConfigured, plan, expected) => {
     expect(canTurnOnAgentVaultSessionLogs(isConfigured, plan)).toBe(expected);
+  });
+});
+
+describe("Infisical hosts in session logs", () => {
+  it("Infisical's own domains", () => {
+    expect(isInfisicalDomain("app.infisical.com")).toBe(true);
+    expect(isInfisicalDomain("EU.Infisical.com")).toBe(true);
+    expect(isInfisicalDomain("infisical.com")).toBe(true);
+    expect(isInfisicalDomain("notinfisical.com")).toBe(false);
+    expect(isInfisicalDomain("infisical.com.evil.example")).toBe(false);
+  });
+
+  it("the instance the dashboard runs on matches by host and port", () => {
+    const local = { hostname: "localhost", port: "8080", protocol: "http:" };
+    expect(isInfisicalLogHost({ host: "localhost", port: "8080" }, local)).toBe(true);
+    expect(isInfisicalLogHost({ host: "localhost", port: "3000" }, local)).toBe(false);
+
+    const selfHosted = { hostname: "secrets.acme.com", port: "", protocol: "https:" };
+    expect(isInfisicalLogHost({ host: "Secrets.Acme.com", port: "443" }, selfHosted)).toBe(true);
+    expect(isInfisicalLogHost({ host: "secrets.acme.com", port: "80" }, selfHosted)).toBe(false);
+    expect(isInfisicalLogHost({ host: "api.github.com", port: "443" }, selfHosted)).toBe(false);
+    expect(isInfisicalLogHost({ host: "eu.infisical.com", port: "443" }, selfHosted)).toBe(true);
+  });
+});
+
+describe("requests to the session's endpoints on Infisical", () => {
+  const local = { hostname: "localhost", port: "8080", protocol: "http:" };
+
+  it("are the two session paths on Infisical's host, with or without a query", () => {
+    const at = (path: string, host = "localhost", port = "8080") =>
+      isInfisicalSessionEndpointRequest({ host, port, path }, local);
+    expect(at("/api/v1/agent-vault/session/services")).toBe(true);
+    expect(at("/api/v1/agent-vault/session/skills?includeBuiltin=false")).toBe(true);
+    expect(at("/api/v1/organizations")).toBe(false);
+    expect(at("/api/v1/agent-vault/session/services", "api.example.com", "443")).toBe(false);
   });
 });

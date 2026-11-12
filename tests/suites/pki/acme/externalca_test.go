@@ -2,9 +2,12 @@ package acme_test
 
 import (
 	"crypto"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/acmeca"
 	"github.com/Infisical/infisical/tests/fakes/cloudflare"
 	"github.com/Infisical/infisical/tests/fakes/dnsmadeeasy"
@@ -13,6 +16,8 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,18 +39,40 @@ func cloudflareCA(t *testing.T, tn *harness.Tenant, proj *pki.Project) (pki.CA, 
 	dns := cloudflare.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 	dns.Seed(t, cloudflare.WithZone(zone))
 	up := openUpstream(t, tn)
-	return pki.NewAcmeCA(t, proj, conn, "cloudflare", zone, up.DirectoryURL()), up, dns
+	return pki.NewAcmeCA(t, proj, conn, api.CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderCloudflare, zone, up.DirectoryURL()), up, dns
 }
 
-// dnsMadeEasyCA is the same through a DNS Made Easy zone.
-func dnsMadeEasyCA(t *testing.T, tn *harness.Tenant, proj *pki.Project) (pki.CA, *acmeca.ControlPlane, *dnsmadeeasy.ControlPlane) {
+// dnsMadeEasyCA is the same through a DNS Made Easy zone named zoneName.
+func dnsMadeEasyCA(t *testing.T, tn *harness.Tenant, proj *pki.Project, zoneName string) (pki.CA, *acmeca.ControlPlane, *dnsmadeeasy.ControlPlane) {
 	t.Helper()
 	conn := fixture.NewAppConnection(t, tn, fixture.DNSMadeEasyAPIKeyAppConnection)
 	const zone = "1001"
 	dns := dnsmadeeasy.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-	dns.Seed(t, dnsmadeeasy.WithZone(zone, "web.test"))
+	dns.Seed(t, dnsmadeeasy.WithZone(zone, zoneName))
 	up := openUpstream(t, tn)
-	return pki.NewAcmeCA(t, proj, conn, "dns-made-easy", zone, up.DirectoryURL()), up, dns
+	return pki.NewAcmeCA(t, proj, conn, api.CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderDnsMadeEasy, zone, up.DirectoryURL()), up, dns
+}
+
+// upstreamIssuance is how long an order waits for a certificate from the upstream CA.
+// Infisical issues those one at a time across the instance, and each DNS Made Easy
+// issuance spends 10 seconds waiting for a record it looks up by a name that never
+// resolves, so parallel tests queue well past the default 30 seconds.
+const upstreamWait = 2 * time.Minute
+
+var upstreamIssuance = wait.Timeout(upstreamWait)
+
+// allowNames narrows a policy to one common name and one DNS SAN.
+func allowNames(t *testing.T, commonName, dnsName string) api.CreateCertificatePolicyJSONRequestBody {
+	t.Helper()
+	body := pki.AllowAll(t)
+	var cn api.CreateCertificatePolicyJSONBody_Subject_Item
+	require.NoError(t, cn.FromCreateCertificatePolicyJSONBodySubject0(api.CreateCertificatePolicyJSONBodySubject0{
+		Type:    api.CreateCertificatePolicyJSONBodySubject0TypeCommonName,
+		Allowed: &[]string{commonName},
+	}))
+	body.Subject = &[]api.CreateCertificatePolicyJSONBody_Subject_Item{cn}
+	(*body.Sans)[0].Allowed = &[]string{dnsName}
+	return body
 }
 
 // withCertificateKey makes the project's certificate KMS key exist before parallel
@@ -57,16 +84,15 @@ func withCertificateKey(t *testing.T, proj *pki.Project) {
 	pki.NewInternalCA(t, proj)
 }
 
-// readyOrder registers on a profile and orders names, passing their HTTP-01
+// readyOrder registers on a profile and orders names on a site, passing their HTTP-01
 // challenges on Infisical.
-func readyOrder(t *testing.T, p acmeProfile, tn *harness.Tenant, names func(site siteName) []string) (*acmeClient, Order, siteName) {
+func readyOrder(t *testing.T, p acmeProfile, site siteName, names ...string) (*acmeClient, Order) {
 	t.Helper()
-	site := siteName{newSite(t, tn)}
 	c := p.registered(t)
-	o := c.NewOrder(t, names(site)...)
+	o := c.NewOrder(t, names...)
 	passHTTP01(t, c, site.ControlPlane, o.Authorizations)
 	waitOrder(t, c, o.URL, "ready")
-	return c, o, site
+	return c, o
 }
 
 // cnFor is the common name a subject row asks for: none, or the name itself.
@@ -92,12 +118,13 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			tn := h.NewTenant(t)
 			proj := pki.CertManager(t, tn)
 			ca, up, dns := cloudflareCA(t, tn, proj)
-			p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj))
-			c, o, site := readyOrder(t, p, tn, func(s siteName) []string { return []string{s.Name("www")} })
+			p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t)), api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
+			site := siteName{newSite(t, tn)}
 			name := site.Name("www")
+			c, o := readyOrder(t, p, site, name)
 
 			// Action
-			cert := issue(t, c, o, newCSR(t, cnFor(subject.commonName, name), name))
+			cert := issue(t, c, o, newCSR(t, cnFor(subject.commonName, name), name), upstreamIssuance)
 
 			// Assert
 			require.Equal(t, []string{name}, cert.DNSNames)
@@ -108,22 +135,26 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 
 		t.Run("should issue from the upstream CA after answering DNS-01 in DNS Made Easy "+subject.name, func(t *testing.T) {
 			t.Parallel()
+			spec.Why(t, `DNS Made Easy record names are relative to the zone and Infisical always writes
+				_acme-challenge, so the identifier here is the zone apex, the one case that name is right
+				for. TestAcmeExternalCA_KnownIssues covers a name below the apex.`)
 
 			// Setup
 			tn := h.NewTenant(t)
 			proj := pki.CertManager(t, tn)
-			ca, up, dns := dnsMadeEasyCA(t, tn, proj)
-			p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj))
-			c, o, site := readyOrder(t, p, tn, func(s siteName) []string { return []string{s.Name("www")} })
-			name := site.Name("www")
+			site := siteName{newSite(t, tn)}
+			ca, up, dns := dnsMadeEasyCA(t, tn, proj, site.Domain())
+			p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t)), api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
+			name := site.Domain()
+			c, o := readyOrder(t, p, site, name)
 
 			// Action
-			cert := issue(t, c, o, newCSR(t, cnFor(subject.commonName, name), name))
+			cert := issue(t, c, o, newCSR(t, cnFor(subject.commonName, name), name), upstreamIssuance)
 
 			// Assert
 			require.Equal(t, []string{name}, cert.DNSNames)
-			dns.ExpectEvent[dnsmadeeasy.RecordCreated](t, func(e dnsmadeeasy.RecordCreated) bool { return e.Type == "TXT" })
-			dns.ExpectEvent[dnsmadeeasy.RecordDeleted](t, func(e dnsmadeeasy.RecordDeleted) bool { return e.Type == "TXT" })
+			dns.ExpectEvent[dnsmadeeasy.RecordCreated](t, func(e dnsmadeeasy.RecordCreated) bool { return e.Type == "TXT" && e.Name == "_acme-challenge" })
+			dns.ExpectEvent[dnsmadeeasy.RecordDeleted](t, func(e dnsmadeeasy.RecordDeleted) bool { return e.Type == "TXT" && e.Name == "_acme-challenge" })
 			require.Len(t, up.State(t).Issued, 1)
 		})
 	}
@@ -154,8 +185,8 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 
 				// Setup
 				site := siteName{newSite(t, tn)}
-				policy := pki.NewPolicy(t, proj, pki.WithAllowedNames([]string{site.Name("cn")}, []string{site.Name("san")}))
-				p := newAcmeProfileFrom(t, tn, proj, ca, policy)
+				policy := pki.NewPolicy(t, proj, allowNames(t, site.Name("cn"), site.Name("san")))
+				p := newAcmeProfileFrom(t, tn, proj, ca, policy, api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
 				c := p.registered(t)
 				want := csrSpec{keyType: "RSA-2048", hash: crypto.SHA256, commonName: site.label(row.cn), dnsNames: site.labels(row.sans), emptySANs: row.emptySANs}
 				o := c.NewOrder(t, want.names()...)
@@ -166,7 +197,7 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 				res := c.Finalize(t, o.Finalize, buildCSR(t, want))
 
 				// Assert
-				requireProblem(t, res, http.StatusBadRequest, "badCSR", sprintf(row.detail, site.Name("www")))
+				requireProblem(t, res, http.StatusBadRequest, "badCSR", fmt.Sprintf(row.detail, site.Name("www")))
 				require.Empty(t, up.State(t).Issued)
 			})
 		}
@@ -201,9 +232,12 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 				t.Parallel()
 
 				// Setup
-				policy := pki.NewPolicy(t, proj, pki.WithAlgorithms([]string{row.allowedSignature}, []string{row.allowedKey}))
-				p := newAcmeProfileFrom(t, tn, proj, ca, policy)
-				c, o, site := readyOrder(t, p, tn, func(s siteName) []string { return []string{s.Name("www")} })
+				body := pki.AllowAll(t)
+				body.Algorithms.Signature = &[]string{row.allowedSignature}
+				body.Algorithms.KeyAlgorithm = &[]string{row.allowedKey}
+				p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj, body), api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
+				site := siteName{newSite(t, tn)}
+				c, o := readyOrder(t, p, site, site.Name("www"))
 
 				// Action
 				res := c.Finalize(t, o.Finalize, buildCSR(t, csrSpec{keyType: row.keyType, hash: row.hash, dnsNames: []string{site.Name("www")}}))
@@ -213,5 +247,33 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 				require.Empty(t, up.State(t).Issued)
 			})
 		}
+	})
+}
+
+func TestAcmeExternalCA_KnownIssues(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should name the DNS Made Easy challenge record after the identifier when it is below the zone apex", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `DNS Made Easy record names are relative to the zone, so the DNS-01 record for
+			www.<zone> is _acme-challenge.www. Infisical always writes _acme-challenge
+			(getAcmeChallengeRecord in acme-certificate-authority-fns.ts), which is the record for the
+			apex, so a CA that checks DNS never finds the record for any other name.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := pki.CertManager(t, tn)
+		site := siteName{newSite(t, tn)}
+		ca, _, dns := dnsMadeEasyCA(t, tn, proj, site.Domain())
+		p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t)), api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
+		c, o := readyOrder(t, p, site, site.Name("www"))
+
+		// Action
+		c.Finalize(t, o.Finalize, newCSR(t, "", site.Name("www")))
+
+		// Assert
+		created := dns.ExpectEvent[dnsmadeeasy.RecordCreated](t, nil, fakenet.Within(upstreamWait))
+		require.Equal(t, "_acme-challenge.www", created.Name)
 	})
 }

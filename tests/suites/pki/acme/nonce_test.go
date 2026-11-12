@@ -39,7 +39,24 @@ func TestAcmeNonce_New(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should hand out a nonce in Replay-Nonce without authentication", func(t *testing.T) {
+	t.Run("should hand out a nonce with 200 on HEAD without authentication", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newAcmeProfile(t, tn)
+		c := p.client(t)
+
+		// Action
+		res, err := c.api.GetAcmeNewNonceWithResponse(t.Context(), p.profile.ID, asHEAD)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, res.StatusCode())
+		require.NotEmpty(t, res.HTTPResponse.Header.Get("Replay-Nonce"))
+	})
+
+	t.Run("should hand out a nonce with 204 on GET without authentication", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup

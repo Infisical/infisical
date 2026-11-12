@@ -3,6 +3,7 @@ package pki
 import (
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/google/uuid"
@@ -12,57 +13,72 @@ import (
 // Policy is a certificate policy: what a certificate a profile issues may contain.
 type Policy struct{ ID uuid.UUID }
 
-type PolicyOption func(map[string]any)
-
-// WithAllowedNames narrows the common names and DNS SANs a certificate may carry.
-func WithAllowedNames(commonNames, dnsNames []string) PolicyOption {
-	return func(b map[string]any) {
-		b["subject"] = []any{map[string]any{"type": "common_name", "allowed": commonNames}}
-		b["sans"] = []any{map[string]any{"type": "dns_name", "allowed": dnsNames}}
-	}
-}
-
-// WithAlgorithms narrows the CSR signature and key algorithms, in the policy's own
-// spelling (SHA256-RSA, RSA-2048, ECDSA-P256).
-func WithAlgorithms(signature, keyAlgorithm []string) PolicyOption {
-	return func(b map[string]any) {
-		b["algorithms"] = map[string]any{"signature": signature, "keyAlgorithm": keyAlgorithm}
-	}
-}
-
-// NewPolicy creates a policy that allows any name, every usage and algorithm, and up
-// to a year of validity, unless narrowed by options.
-func NewPolicy(tt *testing.T, p *Project, opts ...PolicyOption) Policy {
+// AllowAll is a policy body that allows any name, every key usage and extended key
+// usage, every algorithm, and up to a year of validity. Narrow it before NewPolicy to
+// test a restriction.
+func AllowAll(tt *testing.T) api.CreateCertificatePolicyJSONRequestBody {
 	tt.Helper()
-	body := map[string]any{
-		"projectId": p.ID,
-		"name":      "policy-" + id.Short(),
-		"subject":   []any{map[string]any{"type": "common_name", "allowed": []string{"*"}}},
-		"sans":      []any{map[string]any{"type": "dns_name", "allowed": []string{"*"}}},
-		"keyUsages": map[string]any{"required": []string{}, "allowed": []string{
-			"digital_signature", "non_repudiation", "key_encipherment", "data_encipherment",
-			"key_agreement", "key_cert_sign", "crl_sign", "encipher_only", "decipher_only",
-		}},
-		"extendedKeyUsages": map[string]any{"required": []string{}, "allowed": []string{
-			"client_auth", "server_auth", "code_signing", "email_protection", "ocsp_signing", "time_stamping",
-		}},
-		"algorithms": map[string]any{
-			"signature":    []string{"SHA256-RSA", "SHA384-RSA", "SHA512-RSA", "SHA256-ECDSA", "SHA384-ECDSA", "SHA512-ECDSA"},
-			"keyAlgorithm": []string{"RSA-2048", "RSA-3072", "RSA-4096", "ECDSA-P256", "ECDSA-P384", "ECDSA-P521"},
-		},
-		"validity": map[string]any{"max": "365d"},
+	var commonName api.CreateCertificatePolicyJSONBody_Subject_Item
+	require.NoError(tt, commonName.FromCreateCertificatePolicyJSONBodySubject0(api.CreateCertificatePolicyJSONBodySubject0{
+		Type:    api.CreateCertificatePolicyJSONBodySubject0TypeCommonName,
+		Allowed: &[]string{"*"},
+	}))
+	body := api.CreateCertificatePolicyJSONRequestBody{
+		Subject: &[]api.CreateCertificatePolicyJSONBody_Subject_Item{commonName},
+		Validity: &struct {
+			Max *string `json:"max,omitempty"`
+		}{Max: new("365d")},
 	}
-	for _, o := range opts {
-		o(body)
+	body.Sans = &[]struct {
+		Allowed  *[]string                                   `json:"allowed,omitempty"`
+		Denied   *[]string                                   `json:"denied,omitempty"`
+		Required *[]string                                   `json:"required,omitempty"`
+		Type     api.CreateCertificatePolicyJSONBodySansType `json:"type"`
+	}{{Type: api.CreateCertificatePolicyJSONBodySansTypeDnsName, Allowed: &[]string{"*"}}}
+	body.KeyUsages = &struct {
+		Allowed  *[]api.CreateCertificatePolicyJSONBodyKeyUsagesAllowed  `json:"allowed,omitempty"`
+		Denied   *[]api.CreateCertificatePolicyJSONBodyKeyUsagesDenied   `json:"denied,omitempty"`
+		Required *[]api.CreateCertificatePolicyJSONBodyKeyUsagesRequired `json:"required,omitempty"`
+	}{Allowed: &[]api.CreateCertificatePolicyJSONBodyKeyUsagesAllowed{
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedDigitalSignature,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedNonRepudiation,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyEncipherment,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedDataEncipherment,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyAgreement,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedKeyCertSign,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedCrlSign,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedEncipherOnly,
+		api.CreateCertificatePolicyJSONBodyKeyUsagesAllowedDecipherOnly,
+	}}
+	body.ExtendedKeyUsages = &struct {
+		Allowed  *[]api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed  `json:"allowed,omitempty"`
+		Denied   *[]api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesDenied   `json:"denied,omitempty"`
+		Required *[]api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesRequired `json:"required,omitempty"`
+	}{Allowed: &[]api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowed{
+		api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedClientAuth,
+		api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedServerAuth,
+		api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedCodeSigning,
+		api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedEmailProtection,
+		api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedOcspSigning,
+		api.CreateCertificatePolicyJSONBodyExtendedKeyUsagesAllowedTimeStamping,
+	}}
+	body.Algorithms = &struct {
+		KeyAlgorithm *[]string `json:"keyAlgorithm,omitempty"`
+		Signature    *[]string `json:"signature,omitempty"`
+	}{
+		Signature:    &[]string{"SHA256-RSA", "SHA384-RSA", "SHA512-RSA", "SHA256-ECDSA", "SHA384-ECDSA", "SHA512-ECDSA"},
+		KeyAlgorithm: &[]string{"RSA-2048", "RSA-3072", "RSA-4096", "ECDSA-P256", "ECDSA-P384", "ECDSA-P521"},
 	}
-	res, err := p.tn.Admin.API.CreateCertificatePolicyWithBodyWithResponse(tt.Context(), "application/json", jsonBody(tt, body))
+	return body
+}
+
+// NewPolicy creates a policy from a body, usually AllowAll's, possibly narrowed.
+func NewPolicy(tt *testing.T, p *Project, body api.CreateCertificatePolicyJSONRequestBody) Policy {
+	tt.Helper()
+	body.ProjectId = new(p.ID.String())
+	body.Name = "policy-" + id.Short()
+	res, err := p.tn.Admin.API.CreateCertificatePolicyWithResponse(tt.Context(), body)
 	require.NoError(tt, err, "creating a certificate policy")
 	require.NotNilf(tt, res.JSON200, "creating a certificate policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	var out struct {
-		CertificatePolicy struct {
-			ID uuid.UUID `json:"id"`
-		} `json:"certificatePolicy"`
-	}
-	decode(tt, res.Body, &out)
-	return Policy{ID: out.CertificatePolicy.ID}
+	return Policy{ID: res.JSON200.CertificatePolicy.Id}
 }

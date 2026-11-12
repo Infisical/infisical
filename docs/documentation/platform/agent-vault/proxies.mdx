@@ -26,13 +26,13 @@ If you run a shared proxy, we recommend keeping it on the same private network a
 
 ## Supported connections
 
-Agents connect to the proxy as an HTTP proxy. If you turn on the [SOCKS5 port](#accept-connections-over-socks5), clients such as E2B can also connect over SOCKS5 over TLS.
+Agents connect to the proxy as an HTTP proxy. If you turn on the [SOCKS5 port](#accept-connections-over-socks5), clients such as E2B can also connect over SOCKS5 over TLS. To reach [databases and SSH servers](/documentation/platform/agent-vault/databases-and-ssh), agents run `infisical agent-vault connect`, which connects to the proxy's HTTP port over TLS.
 
 Over either connection, the proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain HTTP. These connections fail through the proxy:
 
 - WebSocket connections, such as to a `wss://` URL
 - Clients that only speak HTTP/2, such as gRPC clients
-- Other TCP traffic through the SOCKS5 port, such as SSH
+- Other TCP traffic through the SOCKS5 port, such as an `ssh` or `psql` client that connects directly
 
 If an API offers both WebSocket connections and plain HTTPS requests, configure the agent to use the HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
 
@@ -46,11 +46,15 @@ If an API offers both WebSocket connections and plain HTTPS requests, configure 
     Enter a **Name**. Optionally, add a **Description**. To set the [traffic policy](#traffic-policy), [exceptions](#exceptions), or [poll interval](#poll-interval) now, expand **Advanced Options**. You can change these settings later.
 
     <Frame>
-      <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the two traffic policy options and the poll interval" />
+      <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with egress-1 as the name, a description, and Advanced Options expanded to show the Any host and Service hosts only traffic policies and a poll interval of 60" />
     </Frame>
   </Step>
   <Step>
     Select **Create**. The **Proxy Token** dialog shows the proxy token, and commands for the CLI, systemd, Docker, and Kubernetes with your token and instance filled in.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/proxy-token.png" alt="The Proxy Token dialog showing the proxy token once, with CLI, systemd, Docker, and Kubernetes tabs and the CLI command to start the proxy" />
+    </Frame>
   </Step>
   <Step>
     Run one of the commands on each machine where the proxy will run.
@@ -174,6 +178,10 @@ Each time the proxy starts, it loads its settings and certificate authority from
 
 To change a setting, select **Edit Settings** on the proxy's menu. If the proxy is running, it applies the change within one [poll interval](#poll-interval) (60 seconds by default).
 
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-actions.png" alt="The Proxies page with the menu of prod-proxy open, showing Edit Settings, Rotate Proxy Token, Revoke Access, and Delete" />
+</Frame>
+
 ### Traffic policy
 
 The **Traffic Policy** setting controls which hosts agents can reach through the proxy:
@@ -187,13 +195,17 @@ Use **Service hosts only** if the proxy can reach systems that agents shouldn't 
 
 #### Blocked requests
 
-If the policy blocks a request, the proxy still accepts the connection and completes the TLS handshake, so the agent gets a 403 response instead of a connection error:
+If the policy blocks a request, the proxy still accepts the connection and completes the TLS handshake, so the agent gets a 403 response instead of a connection error. The response body is JSON with an error code, the reason, and a hint for the agent:
 
 ```text
 HTTP/1.1 403 Forbidden
+Content-Type: application/json
+X-Agent-Vault-Decision: blocked
 
-no service covers host "internal.example.com": host blocked by policy
+{"error":"host_not_allowed","message":"no service covers host \"internal.example.com\": host blocked by policy","hint":"This is the Agent Vault proxy, not the API: it only lets through hosts a service in this session covers. https://app.infisical.com/api/v1/agent-vault/session/services lists them."}
 ```
+
+The `X-Agent-Vault-Decision` header is on every response that goes through the proxy, so an agent can tell the proxy's responses apart from the API's. For its values, see [Responses from the proxy](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy).
 
 The proxy also returns a 403 for:
 
@@ -298,7 +310,7 @@ infisical agent-vault run --session-token <session-token> --proxy <proxy-address
 If the proxy's certificate doesn't match, the CLI stops before starting the agent.
 
 <Frame>
-  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing two healthy proxies with their traffic policy and certificate authority fingerprints" />
+  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing three proxies with their status, traffic policy, and certificate authority fingerprint: staging-proxy and prod-proxy are Healthy, and laptop-dev shows Not connected" />
 </Frame>
 
 ### Use your own certificate authority
