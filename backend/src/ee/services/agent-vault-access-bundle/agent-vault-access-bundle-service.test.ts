@@ -23,7 +23,7 @@ const ctx = {
 
 const sshService = ({ hasCertificate, secret }: { hasCertificate: boolean; secret: string }): TAgentVaultServices => ({
   id: SERVICE_ID,
-  accessBundleId: BUNDLE_ID,
+  projectId: PROJECT_ID,
   name: "bastion",
   type: AgentVaultServiceType.Ssh,
   hostPattern: null,
@@ -43,12 +43,16 @@ const sshService = ({ hasCertificate, secret }: { hasCertificate: boolean; secre
 const buildService = ({ firstRead, locked }: { firstRead: TAgentVaultServices; locked: TAgentVaultServices }) => {
   const tx = {};
   const agentVaultServiceDAL = {
-    findByIdInAccessBundle: vi.fn().mockResolvedValue(firstRead),
-    lockByIdInAccessBundle: vi.fn().mockResolvedValue(locked),
+    findByIdInProject: vi.fn().mockResolvedValue(firstRead),
+    lockByIdInProject: vi.fn().mockResolvedValue(locked),
     findByAccessBundleId: vi.fn().mockResolvedValue([]),
+    findByNameInProject: vi.fn().mockResolvedValue(undefined),
+    findBundlesForServices: vi.fn().mockResolvedValue(new Map([[SERVICE_ID, [{ id: BUNDLE_ID, name: "infra" }]]])),
     updateById: vi.fn(async (_id: string, columns: Partial<TAgentVaultServices>) => ({ ...locked, ...columns })),
     transaction: vi.fn(async (fn: (trx: unknown) => Promise<unknown>) => fn(tx))
   };
+  // The advisory lock the transaction takes first.
+  Object.assign(tx, { raw: vi.fn() });
   const transformationDAL = () => ({
     findByServiceIds: vi.fn().mockResolvedValue([]),
     insertMany: vi.fn(),
@@ -90,7 +94,6 @@ const updatePort = (
   service.updateService({
     projectId: PROJECT_ID,
     ctx,
-    accessBundleId: BUNDLE_ID,
     serviceId: SERVICE_ID,
     type: AgentVaultServiceType.Ssh,
     port: 2222,
@@ -101,7 +104,6 @@ const updateSsh = (service: ReturnType<typeof buildService>["service"], fields: 
   service.updateService({
     projectId: PROJECT_ID,
     ctx,
-    accessBundleId: BUNDLE_ID,
     serviceId: SERVICE_ID,
     type: AgentVaultServiceType.Ssh,
     ...fields
@@ -189,7 +191,7 @@ describe("updateService, the service it returns", () => {
     expect(Object.keys(result.service).sort()).toEqual(
       [
         "id",
-        "accessBundleId",
+        "accessBundles",
         "name",
         "description",
         "type",

@@ -30,7 +30,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeJwksFetcher } from "@app/lib/validator";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -145,13 +145,9 @@ export const identityJwtAuthServiceFactory = ({
           cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
         }).toString();
 
-        const requestAgent = await buildSsrfSafeAgent(identityJwtAuth.jwksUrl, {
-          ca: decryptedJwksCaCert || undefined
-        });
-
         const client = new JwksClient({
           jwksUri: identityJwtAuth.jwksUrl,
-          requestAgent
+          fetcher: await buildSsrfSafeJwksFetcher(identityJwtAuth.jwksUrl, { ca: decryptedJwksCaCert || undefined })
         });
 
         const { kid } = decodedToken.header as { kid: string };

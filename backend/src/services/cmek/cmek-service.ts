@@ -8,15 +8,20 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   AsymmetricKeyAlgorithm,
   getSigningAlgorithmsForKeyAlgorithm,
   isPqcKeyAlgorithm,
-  signingService
+  publicKeyToJwk,
+  signingService,
+  TPublicJwk
 } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { canPublishCmekPublicKey, getCmekJwkKid } from "@app/services/cmek/cmek-fns";
 import {
   TCmekBulkGetPrivateKeysDTO,
   TCmekBulkImportKeysDTO,
@@ -44,6 +49,7 @@ type TCmekServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
@@ -52,8 +58,23 @@ export const cmekServiceFactory = ({
   kmsService,
   kmsDAL,
   permissionService,
-  licenseService
+  licenseService,
+  keyStore
 }: TCmekServiceFactoryDep) => {
+  const $assertCanPublishPublicKey = (key: { name: string; keyUsage: string; encryptionAlgorithm: string }) => {
+    if (!canPublishCmekPublicKey(key)) {
+      throw new BadRequestError({
+        message: `Key '${key.name}' can't publish its public key. Only sign-verify keys using RSA, ECC or ED25519 can be published.`
+      });
+    }
+  };
+
+  // The cache expires within a minute anyway, so a failed clear must not fail a change that already committed
+  const $clearCachedPublicJwks = (keyId: string) =>
+    keyStore.deleteItem(KeyStorePrefixes.CmekPublicJwks(keyId)).catch((err) => {
+      logger.warn(err, `Failed to clear the cached public JWKS for KMS key [keyId=${keyId}]`);
+    });
+
   // A public key is not secret, and verifying outside Infisical needs it, so anyone who may sign or verify with the
   // key can read it and its signing algorithms without being able to list or look up the project's keys.
   const $throwUnlessCanReadPublicKeyInfo = (permission: MongoAbility<ProjectPermissionSet, MongoQuery>) => {
@@ -78,6 +99,14 @@ export const cmekServiceFactory = ({
       actionProjectType: ActionProjectType.KMS
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
+
+    if (dto.isPublicKeyPublished) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCmekActions.PublishPublicKey,
+        ProjectPermissionSub.Cmek
+      );
+      $assertCanPublishPublicKey({ ...dto, encryptionAlgorithm: dto.encryptionAlgorithm as string });
+    }
 
     if (isPqcKeyAlgorithm(dto.encryptionAlgorithm as string)) {
       const plan = await licenseService.getPlan(dto.orgId);
@@ -130,8 +159,19 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
 
+    if (data.isPublicKeyPublished !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCmekActions.PublishPublicKey,
+        ProjectPermissionSub.Cmek
+      );
+
+      if (data.isPublicKeyPublished) $assertCanPublishPublicKey(key);
+    }
+
     try {
       const cmek = await kmsDAL.updateById(keyId, data);
+
+      await $clearCachedPublicJwks(keyId);
 
       return {
         ...cmek,
@@ -203,7 +243,40 @@ export const cmekServiceFactory = ({
       });
     }
 
+    await $clearCachedPublicJwks(keyId);
+
     return key;
+  };
+
+  // Cached so anonymous fetches don't each decrypt the key. Changes made through this service clear it
+  const getPublicJwks = async (keyId: string): Promise<{ keys: TPublicJwk[] }> => {
+    const cacheKey = KeyStorePrefixes.CmekPublicJwks(keyId);
+    const cached = await keyStore.getItem(cacheKey);
+    if (cached) return JSON.parse(cached) as { keys: TPublicJwk[] };
+
+    // Read on the primary, or a lagging replica could serve and re-cache a key that was just unpublished or disabled
+    const jwks = await kmsDAL.transaction(async (tx) => {
+      // Unpublished, disabled and missing keys all read as missing, so outsiders can't tell them apart
+      const key = await kmsDAL.findPublishedCmekById(keyId, tx);
+      if (!key || key.isDisabled || !canPublishCmekPublicKey(key)) {
+        throw new NotFoundError({ message: `KMS key with ID '${keyId}' not found` });
+      }
+
+      const publicKey = await kmsService.getPublicKey({ kmsId: keyId }, tx);
+      return {
+        keys: [
+          publicKeyToJwk({
+            publicKey,
+            keyAlgorithm: key.encryptionAlgorithm as AsymmetricKeyAlgorithm,
+            kid: getCmekJwkKid(key.id, key.version)
+          })
+        ]
+      };
+    });
+
+    await keyStore.setItemWithExpiry(cacheKey, KeyStoreTtls.CmekPublicJwksInSeconds, JSON.stringify(jwks));
+
+    return jwks;
   };
 
   const listCmeksByProjectId = async ({ projectId, ...filters }: TListCmeksByProjectIdDTO, actor: OrgServiceActor) => {
@@ -732,6 +805,7 @@ export const cmekServiceFactory = ({
     cmekVerifyMac,
     listSigningAlgorithms,
     getPublicKey,
+    getPublicJwks,
     getPrivateKey,
     bulkGetPrivateKeys,
     bulkImportKeys

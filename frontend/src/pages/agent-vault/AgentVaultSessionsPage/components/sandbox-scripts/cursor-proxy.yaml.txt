@@ -1,0 +1,116 @@
+# agent-vault-proxy.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-vault
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-vault-proxy
+  namespace: agent-vault
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-vault-proxy
+  template:
+    metadata:
+      labels:
+        app: agent-vault-proxy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent-vault-proxy
+          image: infisical/cli
+          args: ["agent-vault", "proxy", "--domain", "https://app.infisical.com"]
+          envFrom:
+            - secretRef:
+                name: agent-vault-proxy
+          env:
+            # The proxy saves its cache under the home directory.
+            - name: HOME
+              value: /tmp
+          ports:
+            - containerPort: 17323
+          readinessProbe:
+            httpGet:
+              path: /_agent-vault/ca
+              port: 17323
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-vault-proxy
+  namespace: agent-vault
+spec:
+  selector:
+    app: agent-vault-proxy
+  ports:
+    - port: 17323
+      targetPort: 17323
+---
+# Only worker pods can connect. The proxy can reach DNS and public HTTP and HTTPS
+# hosts, but not private networks or your cloud's metadata service.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-vault-proxy
+  namespace: agent-vault
+spec:
+  podSelector:
+    matchLabels:
+      app: agent-vault-proxy
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cursor-workers
+      ports:
+        - port: 17323
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchExpressions:
+              - key: k8s-app
+                operator: In
+                values: [kube-dns, node-local-dns]
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - port: 443
+        - port: 80

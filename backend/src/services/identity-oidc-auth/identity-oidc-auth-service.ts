@@ -39,7 +39,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent, safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeJwksFetcher, safeRequest } from "@app/lib/validator";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -197,11 +197,9 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      const requestAgent = await buildSsrfSafeAgent(jwksUri, { ca: caCert || undefined });
-
       const client = new JwksClient({
         jwksUri,
-        requestAgent
+        fetcher: await buildSsrfSafeJwksFetcher(jwksUri, { ca: caCert || undefined })
       });
 
       const { kid } = decodedToken.header as { kid?: string };

@@ -244,6 +244,15 @@ describe("cert manager signer alert provider", () => {
     expect(provider.dedupWindowHours?.({ alertBefore: "30d", dailyReminder: true })).toBe(20);
   });
 
+  // A Product Member assigned only to a signer can open Code Signing but not the certificate page,
+  // which needs product-wide certificate access or assignment to the certificate's application.
+  test("buildPayload gives signer certificates no link to the certificate page", async () => {
+    const provider = buildProvider();
+    const viewUrl = await provider.buildViewUrl(signerAlert);
+    const payload = provider.buildPayload(signerAlert, [signerCertificate()], viewUrl);
+    expect(payload.items[0]).not.toHaveProperty("url");
+  });
+
   test("a certificate shared by several signers is one item naming every signer", () => {
     const payload = buildProvider().buildPayload(
       signerAlert,

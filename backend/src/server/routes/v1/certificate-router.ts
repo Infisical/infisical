@@ -5,7 +5,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
@@ -1270,6 +1270,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         .nullish(),
       response: {
         200: z.object({
+          status: z.nativeEnum(CertificateRequestStatus),
           certificate: z.string().trim(),
           issuingCaCertificate: z.string().trim(),
           certificateChain: z.string().trim(),
@@ -1312,22 +1313,26 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             applicationName: data.applicationName,
             renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
             externalConfiguration: req.body?.externalConfiguration,
-            changedAttributes: data.changedAttributes ?? []
+            changedAttributes: data.changedAttributes ?? [],
+            status: data.status
           }
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CertificateRenewed,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          orgId: req.permission.orgId,
-          projectId: data.projectId
-        }
-      });
+      if (data.status !== CertificateRequestStatus.PENDING_APPROVAL) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateRenewed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: data.projectId
+          }
+        });
+      }
 
       return {
+        status: data.status,
         certificate: data.certificate || "",
         issuingCaCertificate: data.issuingCaCertificate || "",
         certificateChain: data.certificateChain || "",
@@ -1866,13 +1871,14 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           message: z.string().trim(),
           serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
-          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt)
+          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt),
+          crlWarning: z.string().optional().describe(CERTIFICATES.REVOKE.crlWarning)
         })
       }
     },
     handler: async (req) => {
       const { id: identifier } = req.params;
-      const { revokedAt, cert, applicationName, ca, crlUpdateError } = await server.services.certificate.revokeCert({
+      const { revokedAt, cert, applicationName, ca, crlWarning } = await server.services.certificate.revokeCert({
         ...(isUuidV4(identifier) ? { id: identifier } : { thumbprint: identifier }),
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -1908,14 +1914,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      if (crlUpdateError) throw new InternalServerError({ message: crlUpdateError });
-
       return {
         message: "Successfully revoked certificate",
         serialNumber: cert.serialNumber,
         applicationId: cert.applicationId,
         applicationName,
-        revokedAt
+        revokedAt,
+        crlWarning
       };
     }
   });

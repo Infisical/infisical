@@ -5,7 +5,6 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
-import { InternalServerError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -494,12 +493,13 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         200: z.object({
           message: z.string().trim(),
           serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
-          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt)
+          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt),
+          crlWarning: z.string().optional().describe(CERTIFICATES.REVOKE.crlWarning)
         })
       }
     },
     handler: async (req) => {
-      const { revokedAt, cert, applicationName, ca, crlUpdateError } = await server.services.certificate.revokeCert({
+      const { revokedAt, cert, applicationName, ca, crlWarning } = await server.services.certificate.revokeCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -524,12 +524,11 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         }
       });
 
-      if (crlUpdateError) throw new InternalServerError({ message: crlUpdateError });
-
       return {
         message: "Successfully revoked certificate",
         serialNumber: req.params.serialNumber,
-        revokedAt
+        revokedAt,
+        crlWarning
       };
     }
   });

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { agentVaultKeys } from "@app/hooks/api/agentVault/queries";
-import { userMembershipsBase } from "@app/hooks/api/certManagerAccess";
+import { isCertManagerProject, userMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { projectKeys } from "../projects";
@@ -23,10 +23,11 @@ export const useAddUserToWsNonE2EE = () => {
         });
         return data;
       }
-      const { data } = await apiRequest.post(userMembershipsBase(projectType, projectId), {
-        usernames,
-        roleSlugs
-      });
+      const { data } = await apiRequest.post(
+        userMembershipsBase(projectType, projectId),
+        { usernames, roleSlugs },
+        { params: isCertManagerProject(projectType) ? { projectId } : undefined }
+      );
       return data;
     },
     onSuccess: (_, { orgId, projectId }) => {

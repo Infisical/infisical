@@ -19,8 +19,8 @@ import {
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { UserAddToProjectModal } from "./UserAddToProjectModal";
-import { UserProjectsTable } from "./UserProjectsTable";
+import { UserAddToProductModal } from "./UserAddToProductModal";
+import { getUserProjectsFirstPageParams, UserProjectsTable } from "./UserProjectsTable";
 
 type Props = {
   membershipId: string;
@@ -34,19 +34,23 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: membership } = useGetOrgMembership(orgId, membershipId);
-  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(orgId, membershipId);
+  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(
+    orgId,
+    membershipId,
+    getUserProjectsFirstPageParams()
+  );
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "addUserToProject",
+    "addUserToProduct",
     "removeUserFromProject"
   ] as const);
 
-  const handleRemoveUser = async (projectId: string, username: string) => {
-    await removeUserFromWorkspace({ projectId, usernames: [username], orgId });
+  const handleRemoveUser = async (projectId: string, projectType: string, username: string) => {
+    await removeUserFromWorkspace({ projectId, projectType, usernames: [username], orgId });
     createNotification({
-      text: "Successfully removed user from project",
+      text: "Successfully removed user",
       type: "success"
     });
     handlePopUpClose("removeUserFromProject");
@@ -56,19 +60,19 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
     return null;
   }
 
-  const canAddToProject = userId !== membership.user.id;
+  const canAddToProduct = userId !== membership.user.id;
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Projects</CardTitle>
-          <CardDescription>Manage user project memberships</CardDescription>
-          {canAddToProject && Boolean(projectMemberships?.length) && (
+          <CardTitle>Products</CardTitle>
+          <CardDescription>Manage the products and projects this user can access</CardDescription>
+          {canAddToProduct && Boolean(projectMemberships?.totalCount) && (
             <CardAction>
               <Button
                 onClick={() => {
-                  handlePopUpOpen("addUserToProject", {
+                  handlePopUpOpen("addUserToProduct", {
                     username: membership.user.username
                   });
                 }}
@@ -76,7 +80,7 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
                 variant="outline"
               >
                 <PlusIcon />
-                Add to Project
+                Add to Product
               </Button>
             </CardAction>
           )}
@@ -85,12 +89,12 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
           <UserProjectsTable
             membershipId={membershipId}
             handlePopUpOpen={handlePopUpOpen}
-            canAddToProject={canAddToProject}
+            canAddToProduct={canAddToProduct}
             username={membership.user.username}
           />
         </CardContent>
       </Card>
-      <UserAddToProjectModal
+      <UserAddToProductModal
         membershipId={membershipId}
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
@@ -107,10 +111,11 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
           const popupData = popUp?.removeUserFromProject?.data as {
             username: string;
             projectId: string;
+            projectType: string;
             projectName: string;
           };
 
-          return handleRemoveUser(popupData.projectId, popupData.username);
+          return handleRemoveUser(popupData.projectId, popupData.projectType, popupData.username);
         }}
       />
     </>

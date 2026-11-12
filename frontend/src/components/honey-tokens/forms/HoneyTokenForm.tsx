@@ -394,9 +394,9 @@ export const HoneyTokenForm = ({
             isPending={isSubmitting || isValidating}
             isDisabled={isSubmitting || isValidating}
             className="w-full sm:w-fit"
-            variant={isFinalStep ? "org" : "outline"}
+            variant="project"
           >
-            {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Next"}
+            {isFinalStep ? `${honeyToken ? "Update" : "Create"} Honey Token` : "Continue"}
           </Button>
         </div>
       </SheetFooter>

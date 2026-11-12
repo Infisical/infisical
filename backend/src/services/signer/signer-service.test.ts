@@ -120,8 +120,7 @@ const buildService = ({
   };
   const certificateService = {
     revokeOwnedCertificate: vi.fn().mockResolvedValue({
-      cert: { serialNumber: certificate.serialNumber, commonName: certificate.commonName },
-      crlUpdateError: undefined
+      cert: { serialNumber: certificate.serialNumber, commonName: certificate.commonName }
     })
   };
   const signerIssuanceService = {

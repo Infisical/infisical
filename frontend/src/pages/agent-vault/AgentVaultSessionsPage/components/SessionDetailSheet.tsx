@@ -35,6 +35,7 @@ import { InlineServicesHoverCard } from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
 import { inlineServiceTarget } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
+import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
 const SHOWN_INLINE_SERVICES = 1;
@@ -236,6 +237,14 @@ export const SessionDetailSheet = ({
                         <DetailLabel>{hasExpired ? "Expired" : "Expires"}</DetailLabel>
                         <DetailValue>
                           <SessionExpiry expiresAt={session.expiresAt} />
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.stats && (
+                      <Detail>
+                        <DetailLabel>Requests</DetailLabel>
+                        <DetailValue>
+                          <SessionRequestCount stats={session.stats} />
                         </DetailValue>
                       </Detail>
                     )}

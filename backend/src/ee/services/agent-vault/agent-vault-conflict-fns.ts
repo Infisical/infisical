@@ -24,5 +24,5 @@ export const findHostPatternConflicts = (
     }))
     .filter((conflict) => conflict.patterns.length > 0);
 
-export const describeConflict = (conflict: TAgentVaultConflict): string =>
-  `'${conflict.serviceName}' already covers ${conflict.patterns.join(", ")} in this access bundle.`;
+export const describeConflict = (conflict: TAgentVaultConflict, accessBundleName: string): string =>
+  `'${conflict.serviceName}' already covers ${conflict.patterns.join(", ")} in the access bundle '${accessBundleName}'. A bundle can't hold two services for the same host.`;
