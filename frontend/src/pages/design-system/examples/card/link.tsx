@@ -1,7 +1,7 @@
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card, CardLink } from "@app/components/v4/ui/card";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
+import { Icon } from "@app/components/v4/ui/icon";
 import { SmallText } from "@app/components/v4/ui/text";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
@@ -15,7 +15,7 @@ export default function Example() {
       >
         <Card variant="framed">
           <div className="flex items-start gap-3">
-            <ProviderIcon icon="Infisical.png" alt="" size="xl" />
+            <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <CardLink
                 link={{
@@ -50,7 +50,7 @@ export default function Example() {
       <ExampleCell align="stretch" label="Disabled: no href, no overlay">
         <Card variant="framed">
           <div className="flex items-start gap-3">
-            <ProviderIcon icon="Kafka.png" alt="" size="xl" />
+            <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <CardLink
                 link={{
