@@ -53,6 +53,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           .where(`${TableName.Membership}.scopeOrgId`, orgId)
           .whereNotNull(`${TableName.Membership}.actorIdentityId`)
           .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+          .whereNull(`${TableName.Project}.deleteAfter`)
           .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`);
         if (search) void qb.whereILike(`${TableName.Project}.name`, `%${sanitizeSqlLikeString(search)}%`);
@@ -170,20 +171,35 @@ export const identityProjectDALFactory = (db: TDbClient) => {
 
       let totalCount: number | undefined;
       if (limit !== undefined || offset > 0) {
-        const countRow = await matchingMemberships()
-          .countDistinct<{ count: string }[]>({ count: `${TableName.Membership}.id` })
-          .first();
-        totalCount = Number(countRow?.count ?? 0);
-
-        // The page is cut over memberships, not over the membership-role rows the outer query returns.
+        // The page is cut over memberships, not over the membership-role rows the outer query returns, and
+        // the window count is taken before LIMIT/OFFSET, so it is the full total.
         const page = matchingMemberships()
-          .select(db.ref("id").withSchema(TableName.Membership))
+          .select<{ id: string; totalCount: string }[]>(
+            db.ref("id").withSchema(TableName.Membership),
+            db.raw(`count(*) over () as "totalCount"`)
+          )
           .groupBy(`${TableName.Membership}.id`, `${TableName.Project}.name`)
           .orderByRaw(projectNameOrder, [`${TableName.Project}.name`])
           .orderBy(`${TableName.Membership}.id`, "asc")
           .offset(offset);
         if (limit !== undefined) void page.limit(limit);
-        void query.whereIn(`${TableName.Membership}.id`, page);
+        const pageRows = await page;
+
+        if (pageRows.length) {
+          totalCount = Number(pageRows[0].totalCount);
+        } else if (offset > 0) {
+          const countRow = await matchingMemberships()
+            .countDistinct<{ count: string }[]>({ count: `${TableName.Membership}.id` })
+            .first();
+          totalCount = Number(countRow?.count ?? 0);
+        } else {
+          totalCount = 0;
+        }
+
+        void query.whereIn(
+          `${TableName.Membership}.id`,
+          pageRows.map((row) => row.id)
+        );
       }
 
       const members = sqlNestRelationships({

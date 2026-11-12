@@ -341,45 +341,63 @@ export const projectDALFactory = (db: TDbClient) => {
             }
           });
 
-      const query = accessibleProjects()
-        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
-          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.deleteAfter`
-          );
-        })
-        .select(
-          selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
-          db.ref("id").withSchema(TableName.Environment).as("envId"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
-        )
-        .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
-        .orderBy([
-          { column: `${TableName.Project}.id`, order: "asc" },
-          { column: `${TableName.Environment}.position`, order: "asc" }
-        ]);
+      const projectsWithEnvironments = (projectIds: string[] | Knex.QueryBuilder) =>
+        db
+          .replicaNode()(TableName.Project)
+          .whereIn(`${TableName.Project}.id`, projectIds)
+          .whereNull(`${TableName.Project}.deleteAfter`)
+          .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+            this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+              `${TableName.Environment}.deleteAfter`
+            );
+          })
+          .select(
+            selectAllTableCols(TableName.Project),
+            db.ref("id").withSchema(TableName.Project).as("_id"),
+            db.ref("id").withSchema(TableName.Environment).as("envId"),
+            db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+            db.ref("name").withSchema(TableName.Environment).as("envName")
+          )
+          .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
+          .orderBy([
+            { column: `${TableName.Project}.id`, order: "asc" },
+            { column: `${TableName.Environment}.position`, order: "asc" }
+          ]);
 
+      let rows;
       let totalCount: number | undefined;
       if (limit !== undefined || offset > 0) {
-        const countRow = await accessibleProjects()
-          .countDistinct<{ count: string }[]>({ count: `${TableName.Project}.id` })
-          .first();
-        totalCount = Number(countRow?.count ?? 0);
-
-        // The page is cut over projects, not over the project-environment rows the outer query returns.
+        // The page is cut over projects, not over the project-environment rows, and the window count is
+        // taken before LIMIT/OFFSET, so it is the full total.
         const page = accessibleProjects()
-          .select(db.ref("id").withSchema(TableName.Project))
+          .select<{ id: string; totalCount: string }[]>(
+            db.ref("id").withSchema(TableName.Project),
+            db.raw(`count(*) over () as "totalCount"`)
+          )
           .groupBy(`${TableName.Project}.id`)
           .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
           .orderBy(`${TableName.Project}.id`, "asc")
           .offset(offset);
         if (limit !== undefined) void page.limit(limit);
-        void query.whereIn(`${TableName.Project}.id`, page);
+        const pageRows = await page;
+
+        if (pageRows.length) {
+          totalCount = Number(pageRows[0].totalCount);
+        } else if (offset > 0) {
+          const countRow = await accessibleProjects()
+            .countDistinct<{ count: string }[]>({ count: `${TableName.Project}.id` })
+            .first();
+          totalCount = Number(countRow?.count ?? 0);
+        } else {
+          totalCount = 0;
+        }
+        rows = pageRows.length ? await projectsWithEnvironments(pageRows.map((row) => row.id)) : [];
+      } else {
+        rows = await projectsWithEnvironments(accessibleProjects().select(db.ref("id").withSchema(TableName.Project)));
       }
 
       const projects = sqlNestRelationships({
-        data: await query,
+        data: rows,
         key: "id",
         parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
