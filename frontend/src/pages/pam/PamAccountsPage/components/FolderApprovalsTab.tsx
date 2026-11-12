@@ -334,11 +334,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       return;
     }
 
-    if (
-      autoApprovalDraft.rules.some(
-        (rule) => !isRuleComplete(rule, autoApprovalCatalog)
-      )
-    ) {
+    if (autoApprovalDraft.rules.some((rule) => !isRuleComplete(rule, autoApprovalCatalog))) {
       setShowAutoApprovalErrors(true);
       createNotification({ type: "error", text: "Finish the auto-approval rules before saving" });
       return;
