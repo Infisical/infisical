@@ -10,6 +10,7 @@
   "scripts": {
     "predev": "npm run ui:generate",
     "dev": "vite",
+    "dev:scan": "VITE_REACT_SCAN=true npm run dev",
     "prebuild": "npm run ui:generate",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -26,7 +27,10 @@
     "ui:lint": "node --import tsx scripts/check-v4.ts",
     "ui:info": "node --import tsx scripts/ui-info.ts",
     "cipher:release": "npm run ui:generate && node --import tsx scripts/release-cipher.ts",
-    "v4:parity": "node --import tsx scripts/v4-route-parity.ts"
+    "v4:parity": "node --import tsx scripts/v4-route-parity.ts",
+    "react:doctor": "react-doctor . --no-telemetry",
+    "react:doctor:diff": "react-doctor . --no-telemetry --scope changed",
+    "react:doctor:trace": "react-doctor scan"
   },
   "overrides": {
     "sha.js": "2.4.12",
@@ -183,6 +187,8 @@
     "oxlint": "^1.89.0",
     "oxlint-tsgolint": "^7.0.2004",
     "postcss": "^8.4.49",
+    "react-doctor": "0.9.22",
+    "react-scan": "0.5.7",
     "storybook": "~10.6.3",
     "storybook-addon-tag-badges": "^3.0.0",
     "tailwindcss": "^4.1.14",

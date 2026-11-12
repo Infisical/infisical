@@ -1,0 +1,9 @@
+{
+  "adoptExistingLintConfig": false,
+  "noScore": true,
+  "share": false,
+  "supplyChain": { "enabled": false },
+  "ignore": {
+    "files": ["src/routeTree.gen.ts", "src/lib/ironrdp-decoder/**"]
+  }
+}
