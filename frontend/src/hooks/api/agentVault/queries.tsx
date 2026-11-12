@@ -427,7 +427,9 @@ export const useIsAgentVaultAccessBundleMember = (
     ),
     queryFn: () => (actor ? findAccessBundleMember(accessBundleId, actor) : false),
     enabled: Boolean(accessBundleId && actor),
-    placeholderData: keepPreviousInProject(projectId)
+    placeholderData: keepPreviousInProject(projectId),
+    // The access can be granted in another tab, and the answer is fresh for a minute otherwise.
+    refetchOnWindowFocus: "always"
   });
 };
 

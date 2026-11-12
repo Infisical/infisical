@@ -58,7 +58,9 @@ const isNoUniversalAuthError = (error: unknown) =>
 // blank the snippet and the notices before filling them back in.
 export const useSnippetClientId = (identity: TSnippetIdentity | null): TSnippetClientId => {
   const { data, error, isPending } = useGetIdentityUniversalAuth(identity?.id ?? "", {
-    retry: (failureCount, retryError) => !isNoUniversalAuthError(retryError) && failureCount < 1
+    retry: (failureCount, retryError) => !isNoUniversalAuthError(retryError) && failureCount < 1,
+    // The notices link to the identity's page in a new tab, so pick up auth added there on return.
+    refetchOnWindowFocus: true
   });
   const isLoading = Boolean(identity) && isPending;
   const hasNoUniversalAuth = Boolean(identity) && isNoUniversalAuthError(error);

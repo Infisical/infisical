@@ -138,7 +138,8 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
 
 export const useGetIdentityUniversalAuth = (
   identityId: string,
-  options?: TReactQueryOptions["options"] & Pick<UseQueryOptions<IdentityUniversalAuth>, "retry">
+  options?: TReactQueryOptions["options"] &
+    Pick<UseQueryOptions<IdentityUniversalAuth>, "retry" | "refetchOnWindowFocus">
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityUniversalAuth(identityId),

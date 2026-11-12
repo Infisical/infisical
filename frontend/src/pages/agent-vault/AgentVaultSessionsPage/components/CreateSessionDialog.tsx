@@ -156,8 +156,9 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
   const { data: proxies } = useListAgentVaultProxies(
     projectId,
     { limit: 1 },
-    // The dialog stays mounted on the sessions page, so it must not poll while closed.
-    { enabled: isOpen }
+    // The dialog stays mounted on the sessions page, so it must not poll while closed. Its notice
+    // links to the proxies page in a new tab, so check again on return.
+    { enabled: isOpen, refetchOnWindowFocus: "always" }
   );
   // Unknown until the list loads, so the notice doesn't flash for a project that has proxies.
   const hasNoProxy = proxies !== undefined && proxies.totalCount === 0;
