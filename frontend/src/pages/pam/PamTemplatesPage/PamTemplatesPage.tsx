@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import {
+  ClipboardList,
+  Layers,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Settings2,
+  Trash2
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
@@ -53,7 +61,6 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
 import { CopyIdMenuItem } from "../components/CopyIdMenuItem";
-import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
 import { DeleteTemplateModal } from "./components/DeleteTemplateModal";
@@ -104,18 +111,15 @@ const TemplateRow = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
             <CopyIdMenuItem id={template.id} />
-            {PAM_TEMPLATE_TABS.map((tab) => (
-              <DropdownMenuItem
-                key={tab.value}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpen(tab.value);
-                }}
-              >
-                <tab.icon />
-                {tab.label}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen(PamSheetTab.General);
+              }}
+            >
+              <Settings2 />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="danger"
