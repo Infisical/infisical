@@ -7,8 +7,8 @@
   min-height: calc(var(--v4-size-control-lg) * 2);
   max-height: 320px;
   margin: 0;
-  padding: var(--v4-space-12) calc(var(--v4-size-control-sm) + var(--v4-space-16)) var(--v4-space-12)
-    var(--v4-space-12);
+  padding: var(--v4-space-12) calc(var(--v4-size-control-sm) + var(--v4-space-16))
+    var(--v4-space-12) var(--v4-space-12);
   overflow: auto;
   font-family: inherit;
   font-size: var(--v4-type-body-font-size);

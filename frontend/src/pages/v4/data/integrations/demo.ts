@@ -155,6 +155,8 @@ const store = createFixtureStore<TAppConnection[]>([
 
 const workflowIntegrations: WorkflowIntegration[] = [];
 
+export const demoConnections = () => store.get();
+
 export const integrationsDemo: IntegrationsAdapter = {
   useConnections: (projectId) => ({
     data: store.use().filter((entry) => !projectId || entry.projectId === projectId),

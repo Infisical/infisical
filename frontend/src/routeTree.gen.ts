@@ -101,6 +101,7 @@ import { Route as v4AdminGeneralPageRouteImport } from './pages/v4/admin/General
 import { Route as v4AuthSignUpPageRouteImport } from './pages/v4/auth/SignUpPage/route'
 import { Route as v4AuthLoginPageRouteImport } from './pages/v4/auth/LoginPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
+import { Route as v4SecretScanningSettingsPageRouteImport } from './pages/v4/secret-scanning/SettingsPage/route'
 import { Route as v4SecretScanningSecretScanningFindingsPageRouteImport } from './pages/v4/secret-scanning/SecretScanningFindingsPage/route'
 import { Route as v4ProjectAccessControlPageSecretScanningRouteImport } from './pages/v4/project/AccessControlPage/secret-scanning/route'
 import { Route as v4OrganizationRoleByIDPageRouteImport } from './pages/v4/organization/RoleByIDPage/route'
@@ -1197,6 +1198,13 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute =
     id: '/organizations/$orgId',
     path: '/organizations/$orgId',
     getParentRoute: () => organizationLayoutRoute,
+  } as any)
+
+const v4SecretScanningSettingsPageRouteRoute =
+  v4SecretScanningSettingsPageRouteImport.update({
+    id: '/secret-scanning/settings',
+    path: '/secret-scanning/settings',
+    getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
 const v4SecretScanningSecretScanningFindingsPageRouteRoute =
@@ -4695,6 +4703,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4SecretScanningSecretScanningFindingsPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/secret-scanning/settings': {
+      id: '/v4/organizations/$orgId/secret-scanning/settings'
+      path: '/secret-scanning/settings'
+      fullPath: '/v4/organizations/$orgId/secret-scanning/settings'
+      preLoaderRoute: typeof v4SecretScanningSettingsPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId'
       path: '/organizations/$orgId'
@@ -7185,6 +7200,7 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationRoleByIDPageRouteRoute: typeof v4OrganizationRoleByIDPageRouteRoute
   v4ProjectAccessControlPageSecretScanningRouteRoute: typeof v4ProjectAccessControlPageSecretScanningRouteRoute
   v4SecretScanningSecretScanningFindingsPageRouteRoute: typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
+  v4SecretScanningSettingsPageRouteRoute: typeof v4SecretScanningSettingsPageRouteRoute
   v4CertManagerApprovalsPageRouteRoute: typeof v4CertManagerApprovalsPageRouteRoute
   v4PamPamAccountsPageRouteRoute: typeof v4PamPamAccountsPageRouteRoute
   v4SecretScanningSecretScanningDataSourcesPageRouteRoute: typeof v4SecretScanningSecretScanningDataSourcesPageRouteRoute
@@ -7253,6 +7269,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4ProjectAccessControlPageSecretScanningRouteRoute,
   v4SecretScanningSecretScanningFindingsPageRouteRoute:
     v4SecretScanningSecretScanningFindingsPageRouteRoute,
+  v4SecretScanningSettingsPageRouteRoute:
+    v4SecretScanningSettingsPageRouteRoute,
   v4CertManagerApprovalsPageRouteRoute: v4CertManagerApprovalsPageRouteRoute,
   v4PamPamAccountsPageRouteRoute: v4PamPamAccountsPageRouteRoute,
   v4SecretScanningSecretScanningDataSourcesPageRouteRoute:
@@ -8825,6 +8843,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning/settings': typeof v4SecretScanningSettingsPageRouteRoute
   '/organizations/$orgId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren
   '/v4/organizations/$orgId/cert-manager/approvals': typeof v4CertManagerApprovalsPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts': typeof v4PamPamAccountsPageRouteRoute
@@ -9244,6 +9263,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning/settings': typeof v4SecretScanningSettingsPageRouteRoute
   '/organizations/$orgId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren
   '/v4/organizations/$orgId/cert-manager/approvals': typeof v4CertManagerApprovalsPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts': typeof v4PamPamAccountsPageRouteRoute
@@ -9657,6 +9677,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
   '/v4/organizations/$orgId/secret-scanning/findings': typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
+  '/v4/organizations/$orgId/secret-scanning/settings': typeof v4SecretScanningSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren
   '/v4/organizations/$orgId/cert-manager/approvals/': typeof v4CertManagerApprovalsPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts/': typeof v4PamPamAccountsPageRouteRoute
@@ -10094,6 +10115,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
     | '/v4/organizations/$orgId/secret-scanning/findings'
+    | '/v4/organizations/$orgId/secret-scanning/settings'
     | '/organizations/$orgId'
     | '/v4/organizations/$orgId/cert-manager/approvals'
     | '/v4/organizations/$orgId/pam/accounts'
@@ -10512,6 +10534,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
     | '/v4/organizations/$orgId/secret-scanning/findings'
+    | '/v4/organizations/$orgId/secret-scanning/settings'
     | '/organizations/$orgId'
     | '/v4/organizations/$orgId/cert-manager/approvals'
     | '/v4/organizations/$orgId/pam/accounts'
@@ -10923,6 +10946,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
     | '/v4/organizations/$orgId/secret-scanning/findings'
+    | '/v4/organizations/$orgId/secret-scanning/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId'
     | '/v4/organizations/$orgId/cert-manager/approvals/'
     | '/v4/organizations/$orgId/pam/accounts/'
@@ -11608,6 +11632,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/roles/$roleId",
         "/v4/organizations/$orgId/secret-scanning/access-management",
         "/v4/organizations/$orgId/secret-scanning/findings",
+        "/v4/organizations/$orgId/secret-scanning/settings",
         "/v4/organizations/$orgId/cert-manager/approvals/",
         "/v4/organizations/$orgId/pam/accounts/",
         "/v4/organizations/$orgId/secret-scanning/data-sources/",
@@ -12019,6 +12044,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/secret-scanning/findings": {
       "filePath": "v4/secret-scanning/SecretScanningFindingsPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/secret-scanning/settings": {
+      "filePath": "v4/secret-scanning/SettingsPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId": {

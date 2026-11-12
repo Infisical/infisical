@@ -1,16 +1,23 @@
+import type { TBitbucketWorkspace } from "@app/hooks/api/appConnections/bitbucket/types";
+import type { AppConnection } from "@app/hooks/api/appConnections/enums";
+import type { TGitLabGroup } from "@app/hooks/api/appConnections/gitlab/types";
+import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import type { TSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2/queries";
 import type {
+  TCreateSecretScanningDataSourceDTO,
   TAddAllSecretScanningResourcesDTO,
   TAddSecretScanningResourceDTO,
   TDeleteSecretScanningDataSourceDTO,
   TGetSecretScanningDataSource,
   TListSecretScanningFindingsDTO,
   TListSecretScanningFindingsResponse,
+  TSecretScanningConfig,
   TListSecretScanningResourcesDTO,
   TListSecretScanningResourcesResponse,
   TRemoveSecretScanningResourceDTO,
   TSecretScanningAvailableResource,
   TSecretScanningDataSource,
+  TSecretScanningDataSourceOption,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
   TSecretScanningResource,
@@ -38,6 +45,19 @@ export type SecretScanningAdapter = {
     projectId: string,
     options?: { refetchInterval?: number }
   ) => V4QueryResult<TSecretScanningDataSourceWithDetails[]>;
+  useDataSourceOptions: () => V4QueryResult<TSecretScanningDataSourceOption[]>;
+  useAvailableConnections: (
+    app: AppConnection,
+    projectId: string
+  ) => V4QueryResult<TAvailableAppConnection[]>;
+  useBitbucketWorkspaces: (
+    connectionId: string,
+    search?: string
+  ) => V4QueryResult<TBitbucketWorkspace[]>;
+  useGitLabGroups: (connectionId: string, search?: string) => V4QueryResult<TGitLabGroup[]>;
+  useCreateDataSource: V4Mutation<TCreateSecretScanningDataSourceDTO, TSecretScanningDataSource>;
+  useConfig: (projectId: string) => V4QueryResult<TSecretScanningConfig>;
+  useUpdateConfig: V4Mutation<TSecretScanningConfig, TSecretScanningConfig>;
   useDataSource: (dto: TGetSecretScanningDataSource) => V4QueryResult<TSecretScanningDataSource>;
   useUpdateDataSource: V4Mutation<TUpdateSecretScanningDataSourceDTO, TSecretScanningDataSource>;
   useDeleteDataSource: V4Mutation<TDeleteSecretScanningDataSourceDTO, TSecretScanningDataSource>;
