@@ -281,6 +281,7 @@ describe("output masking presets", () => {
     expect(matches(`{"url":"https://example.com:8443/a","email":"jane@corp.com"}`)).toBeNull();
     expect(matches(`{"a":"https://u:p1@h1/x","b":"https://u:p2@h2/y"}`)).toEqual(["https://u:p1@", "https://u:p2@"]);
     expect(matches("postgres://app:p@ss@db:5432/app")).toEqual(["postgres://app:p@ss@"]);
+    expect(matches("postgres://app:it's-secret@db/app")).toEqual(["postgres://app:it's-secret@"]);
   });
 
   test("dedupes presets and caps the list at the number of presets", () => {
