@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState
@@ -81,7 +82,9 @@ export const useSecretValues = (projectId: string) => {
   const [requested, setRequested] = useState<Record<string, ValueRequest>>({});
   const waiters = useRef<Waiter[]>([]);
   const latest = useRef(values);
-  latest.current = values;
+  useLayoutEffect(() => {
+    latest.current = values;
+  }, [values]);
 
   useEffect(() => {
     waiters.current = waiters.current.filter((waiter) => {

@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState
 } from "react";
@@ -402,7 +403,9 @@ export const OverviewPage = () => {
       values: valueStore.values
     })
   );
-  resourcesRef.current = resources;
+  useLayoutEffect(() => {
+    resourcesRef.current = resources;
+  });
   const projectSlug = projectQuery.data?.slug ?? projectId;
   const createDynamicSecret = adapter.useCreateDynamicSecret();
   const updateDynamicSecret = adapter.useUpdateDynamicSecret();
@@ -807,15 +810,15 @@ export const OverviewPage = () => {
     if (hadPending.current && !pendingHere.length) setQuickAddedState({ scope: "", keys: [] });
     hadPending.current = pendingHere.length > 0;
   }, [pendingHere.length]);
+  const isRecentShown = ordered.some(([key]) => recent.includes(key));
   useEffect(() => {
     const signature = recent.join("|");
-    if (!signature || revealed.current === signature) return;
-    if (!ordered.some(([key]) => recent.includes(key))) return;
+    if (!signature || !isRecentShown || revealed.current === signature) return;
     revealed.current = signature;
     root.current
       ?.querySelector('tbody tr[data-state="selected"]')
       ?.scrollIntoView({ block: "nearest" });
-  }, [recent, ordered]);
+  }, [recent, isRecentShown]);
   const isFiltered = Boolean(query.trim() || types.length || tags.length);
   const tagOptions = tagList.map((tag) => tag.slug).sort();
   const selectableOnPage = windowRows.flatMap(([, entries]) =>

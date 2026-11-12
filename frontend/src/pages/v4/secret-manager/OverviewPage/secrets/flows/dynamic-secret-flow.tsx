@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Controller,
   type FieldValues,
@@ -56,6 +56,7 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock, useManagedBlock } from "../row-actions/permissions";
+import { useLastDefined } from "../use-last-defined";
 import { ProviderFormItems } from "./dynamic-secret/fields";
 import { dynamicSecretDocsSlug, dynamicSecretFlowProviders } from "./dynamic-secret/registry";
 import type {
@@ -272,7 +273,9 @@ export function DynamicSecretFlow({
   const definition = dynamicSecretFlowProviders.find((item) => item.provider === provider);
   const definitionRef = useRef(definition);
   const sheetRef = useRef<HTMLDivElement>(null);
-  definitionRef.current = definition;
+  useLayoutEffect(() => {
+    definitionRef.current = definition;
+  });
 
   const context = useMemo<DynamicSecretFlowContext>(() => {
     const projectEnvironments = environments
@@ -614,16 +617,16 @@ export function DynamicSecretEditSheet({
   onClose: () => void;
   onSave: (entry: DynamicSecretResource, successMessage: string) => boolean;
 }) {
-  const lastEntry = useRef(openEntry);
-  if (openEntry) lastEntry.current = openEntry;
-  const entry = openEntry ?? lastEntry.current;
+  const entry = useLastDefined(openEntry);
   const definition = entry && dynamicSecretDefinitionFor(entry);
   const editContext = useMemo(
     () => (entry && definition ? editContextFor(entry, definition) : undefined),
     [definition, entry]
   );
   const definitionRef = useRef(definition?.edit);
-  definitionRef.current = definition?.edit;
+  useLayoutEffect(() => {
+    definitionRef.current = definition?.edit;
+  });
   const [discardOpen, setDiscardOpen] = useState(false);
   const [submitState, setSubmitState] = useState({ isDisabled: false, isPending: false });
   const form = useForm<FieldValues>({

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
 import {
@@ -27,6 +27,7 @@ import {
   type DynamicSecretResource
 } from "../flows/dynamic-secret-flow";
 import { environmentLabel, Gate } from "../flows/shared";
+import { useLastDefined } from "../use-last-defined";
 import type { LeaseRequest } from "./dynamic-secret-lease-provision";
 import type { DynamicSecretLease } from "./dynamic-secret-leases";
 import { DynamicSecretLeasesSheet } from "./dynamic-secret-leases-sheet";
@@ -82,9 +83,11 @@ export function DynamicSecretActions({
           }
         }
       : listed;
-  const lastDeleted = useRef<{ entry: DynamicSecretResource; isForced: boolean }>(undefined);
-  if (entry && (kind === "delete" || kind === "force-delete"))
-    lastDeleted.current = { entry, isForced: kind === "force-delete" };
+  const deleted = useLastDefined(
+    entry && (kind === "delete" || kind === "force-delete")
+      ? { entry, isForced: kind === "force-delete" }
+      : undefined
+  );
 
   const blockFor = useManagedBlock(scope.project);
   const dynamicBlock = (
@@ -130,14 +133,13 @@ export function DynamicSecretActions({
     });
 
   const leaseTarget = kind === "leases" ? entry : undefined;
-  const lastLeaseTarget = useRef(leaseTarget);
-  if (leaseTarget) lastLeaseTarget.current = leaseTarget;
-  const leaseProvider = lastLeaseTarget.current
-    ? providerOf(lastLeaseTarget.current)
+  const lastLeaseTarget = useLastDefined(leaseTarget);
+  const leaseProvider = lastLeaseTarget
+    ? providerOf(lastLeaseTarget)
     : DynamicSecretProviders.SqlDatabase;
 
   const provision = async (request: LeaseRequest) => {
-    const item = lastLeaseTarget.current;
+    const item = lastLeaseTarget;
     if (!item) return undefined;
     const { fixedTtl } = getDynamicSecretProviderRuntimeMetadata(leaseProvider).leaseCapabilities;
     const { name, ...rest } = target(item);
@@ -160,7 +162,6 @@ export function DynamicSecretActions({
     }
   };
 
-  const deleted = lastDeleted.current;
   const deleteBlock = dynamicBlock(
     deleted?.entry,
     ProjectPermissionDynamicSecretActions.DeleteRootCredential,

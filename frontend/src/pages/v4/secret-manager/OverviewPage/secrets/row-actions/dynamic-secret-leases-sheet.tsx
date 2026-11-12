@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
 import { Badge } from "@app/components/v4/ui/badge";
@@ -18,6 +18,7 @@ import type { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types"
 
 import type { DynamicSecretResource } from "../flows/dynamic-secret-flow";
 import { environmentLabel, Gate } from "../flows/shared";
+import { useLastDefined } from "../use-last-defined";
 import {
   DynamicSecretLeaseProvision,
   LEASE_FORM_ID,
@@ -61,9 +62,7 @@ export function DynamicSecretLeasesSheet({
   onRevoke: (leaseId: string, isForced: boolean) => void;
   leaseBlock?: string;
 }) {
-  const lastEntry = useRef(openEntry);
-  if (openEntry) lastEntry.current = openEntry;
-  const entry = openEntry ?? lastEntry.current;
+  const entry = useLastDefined(openEntry);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<LeaseResult>();
   const [pending, setPending] = useState(false);
