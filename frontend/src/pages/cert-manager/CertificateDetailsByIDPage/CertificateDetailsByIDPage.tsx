@@ -37,6 +37,7 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
@@ -115,7 +116,10 @@ const Page = () => {
     certificate?.applicationId ?? ""
   );
   const { data: pendingRevocations } = usePendingCertificateRevocations(certificate?.applicationId);
-  const hasPendingRevocation = Boolean(certificate && pendingRevocations?.has(certificate.id));
+  const pendingRevocationRequestId = certificate
+    ? pendingRevocations?.get(certificate.id)
+    : undefined;
+  const hasPendingRevocation = Boolean(pendingRevocationRequestId);
 
   const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
     certificateId: certificate?.id,
@@ -331,9 +335,22 @@ const Page = () => {
           backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
           description={
-            hasPendingRevocation
-              ? "A revocation of this certificate is waiting for approval. It stays active until the request is approved."
-              : "View certificate details"
+            pendingRevocationRequestId ? (
+              <>
+                This certificate stays active until its{" "}
+                <Link
+                  to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
+                  params={{ orgId: currentOrg.id, approvalRequestId: pendingRevocationRequestId }}
+                  search={{ policyType: ApprovalPolicyType.CertRevocation }}
+                  className="text-foreground underline underline-offset-2 hover:text-project"
+                >
+                  revocation request
+                </Link>{" "}
+                is approved.
+              </>
+            ) : (
+              "View certificate details"
+            )
           }
           title={displayName}
         >

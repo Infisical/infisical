@@ -55,11 +55,13 @@ const ROUTE_ID =
 const RevocationDetailsSection = ({
   orgId,
   requestData,
+  isPending,
   requesterName,
   requesterEmail
 }: {
   orgId: string;
   requestData: CertRevocationRequestData;
+  isPending: boolean;
   requesterName?: string;
   requesterEmail?: string;
 }) => (
@@ -113,10 +115,12 @@ const RevocationDetailsSection = ({
             <p className="font-mono text-xs text-foreground">{requestData.profileName}</p>
           </div>
         </div>
-        <p className="mt-4 border-t border-border-control pt-4 text-xs text-muted">
-          The certificate stays active until this request is approved. Once approved, it is revoked
-          with the reason above and added to its CA&apos;s revocation list.
-        </p>
+        {isPending && (
+          <p className="mt-4 border-t border-border-control pt-4 text-xs text-muted">
+            The certificate stays active until this request is approved. Once approved, it is
+            revoked with the reason above and added to its CA&apos;s revocation list.
+          </p>
+        )}
       </CardContent>
     </Card>
   </div>
@@ -442,6 +446,7 @@ const PageContent = () => {
         <RevocationDetailsSection
           orgId={currentOrg.id}
           requestData={request.requestData.requestData as CertRevocationRequestData}
+          isPending={request.status === ApprovalRequestStatus.Pending}
           requesterName={request.requesterName}
           requesterEmail={request.requesterEmail}
         />
