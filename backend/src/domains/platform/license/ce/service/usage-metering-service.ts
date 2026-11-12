@@ -1,9 +1,9 @@
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { CounterRegistry } from "./counter-registry";
-import { TLicenseOrganizations } from "./dependencies";
 import { TLicenseService } from "./license-service";
 import { TMeteringEventInput, UsageQueue } from "./usage-queue";
 
@@ -23,7 +23,7 @@ export type TUsageMeteringServiceDeps = {
   counters: CounterRegistry;
   usageQueue: UsageQueue;
   licenseService: TLicenseService;
-  organizations: TLicenseOrganizations;
+  organizationsProjectsService: TOrganizationsProjectsService;
 };
 
 export class UsageMeteringService implements TUsageMeteringService {
@@ -45,7 +45,7 @@ export class UsageMeteringService implements TUsageMeteringService {
 
   async syncSeats(orgId: string): Promise<void> {
     try {
-      const rootOrgId = await this.deps.organizations.resolveRootOrgId(orgId);
+      const rootOrgId = await this.deps.organizationsProjectsService.resolveRootOrgId(orgId);
       this.deps.usageQueue.emit(rootOrgId, Meter.UserIdentities.key);
       await this.deps.licenseService.refreshPlan(rootOrgId);
     } catch (error) {

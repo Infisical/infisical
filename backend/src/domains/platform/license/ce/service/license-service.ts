@@ -1,10 +1,11 @@
 import { EntityNotFoundError, ExternalSystemError } from "@app/domains/lib/errors";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
 import { Plan } from "../model/plan";
 import { SeatUsage } from "../model/seat-usage";
-import { TLicenseOrganizations, TLicenseProvider, TLicenseServer, TPlanCache, TUsageReportCache } from "./dependencies";
+import { TLicenseProvider, TLicenseServer, TPlanCache, TUsageReportCache } from "./dependencies";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
 import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/license-server-types";
 import { UsageQueue } from "./usage-queue";
@@ -43,7 +44,7 @@ export type TLicenseServiceDeps = {
   planCache: TPlanCache;
   usageReportCache: TUsageReportCache;
   usageQueue: UsageQueue;
-  organizations: TLicenseOrganizations;
+  organizationsProjectsService: TOrganizationsProjectsService;
   provider: TLicenseProvider;
   licenseServer: TLicenseServer;
 };
@@ -74,7 +75,7 @@ export class LicenseService implements TLicenseService {
     if (!instance.isCloud()) return instance.plan();
 
     // An org that does not exist has no plan to fetch: it gets the fallback, which is not cached.
-    const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
+    const rootOrgId = await this.deps.organizationsProjectsService.findRootOrgId(orgId);
     if (!rootOrgId) return this.deps.provider.fallbackPlan();
 
     const [cached, isReconciled] = await Promise.all([
@@ -90,7 +91,7 @@ export class LicenseService implements TLicenseService {
   async refreshPlan(orgId: string, opts: TRefreshPlanOptions = {}): Promise<void> {
     if (opts.afterBillingChange) {
       if (!this.deps.instance.isCloud()) return;
-      const rootOrgId = await this.deps.organizations.resolveRootOrgId(orgId);
+      const rootOrgId = await this.deps.organizationsProjectsService.resolveRootOrgId(orgId);
       try {
         await this.deps.planCache.markForRevalidation(rootOrgId, Boolean(opts.afterBillingChange.checkout));
       } catch (error) {
@@ -99,7 +100,7 @@ export class LicenseService implements TLicenseService {
       return;
     }
     if (this.deps.instance.isCloud()) {
-      const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
+      const rootOrgId = await this.deps.organizationsProjectsService.findRootOrgId(orgId);
       if (!rootOrgId) return;
       // Fetched before the cached plan is replaced: a License Server failure keeps the plan the org has,
       // rather than caching the fallback over it. The org is read outside the try, so a database error is not
@@ -124,16 +125,16 @@ export class LicenseService implements TLicenseService {
   }
 
   async invalidatePlan(orgId: string): Promise<void> {
-    await this.deps.planCache.invalidate(await this.deps.organizations.resolveRootOrgId(orgId));
+    await this.deps.planCache.invalidate(await this.deps.organizationsProjectsService.resolveRootOrgId(orgId));
   }
 
   async isServingFallbackPlan(orgId: string): Promise<boolean> {
     if (!this.deps.instance.isCloud()) return false;
-    return this.deps.planCache.isFallback(await this.deps.organizations.resolveRootOrgId(orgId));
+    return this.deps.planCache.isFallback(await this.deps.organizationsProjectsService.resolveRootOrgId(orgId));
   }
 
   async getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {
-    return this.deps.planCache.lastKnown(await this.deps.organizations.resolveRootOrgId(orgId));
+    return this.deps.planCache.lastKnown(await this.deps.organizationsProjectsService.resolveRootOrgId(orgId));
   }
 
   async closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult> {
@@ -144,7 +145,7 @@ export class LicenseService implements TLicenseService {
 
   async getSeatUsage(orgId: string): Promise<SeatUsage> {
     if (!this.deps.instance.isCloud()) return this.countSeats(null);
-    const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
+    const rootOrgId = await this.deps.organizationsProjectsService.findRootOrgId(orgId);
     if (!rootOrgId) throw new EntityNotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return this.countSeats(rootOrgId);
   }
@@ -155,7 +156,7 @@ export class LicenseService implements TLicenseService {
   }
 
   private async countSeats(orgId: string | null): Promise<SeatUsage> {
-    const { users, identities } = await this.deps.organizations.countBillableOrgActors(orgId);
+    const { users, identities } = await this.deps.organizationsProjectsService.countBillableOrgActors(orgId);
     return SeatUsage.create({ membersUsed: users, identitiesUsed: users + identities });
   }
 
@@ -177,12 +178,12 @@ export class LicenseService implements TLicenseService {
 
   // The License Server records the name and slug in its org directory.
   private async rootOrg(rootOrgId: string): Promise<TEntitlementOrg> {
-    const org = await this.deps.organizations.findOrganization(rootOrgId);
+    const org = await this.deps.organizationsProjectsService.findOrganization(rootOrgId);
     return org ? { id: rootOrgId, name: org.name, slug: org.slug } : { id: rootOrgId };
   }
 
   private async cachePlan(rootOrgId: string, fetched: Plan): Promise<Plan> {
-    const plan = fetched.withWorkspacesUsed(await this.deps.organizations.countWorkspaces(rootOrgId));
+    const plan = fetched.withWorkspacesUsed(await this.deps.organizationsProjectsService.countWorkspaces(rootOrgId));
     await this.deps.planCache.write(rootOrgId, plan);
     return plan;
   }

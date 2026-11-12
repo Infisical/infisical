@@ -31,8 +31,9 @@ export type TDomainDeps = {
 };
 
 // Builds every domain in dependency order. Only file outside a domain that imports ee/.
-// License depends on no product: products build first and hand License their counters. A product that
-// needs License builds after it, so its counters must come from data access, not a service using License.
+// License sits on organizations-projects and depends on no product: products build first and hand License
+// their counters. A product that needs License builds after it, so its counters must come from data access,
+// not a service using License.
 export const createDomains = (deps: TDomainDeps) => {
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
   const organizationsProjectsService = organizationsProjects.service;
@@ -50,9 +51,8 @@ export const createDomains = (deps: TDomainDeps) => {
     startLocalRefresh,
     provider: licenseEe.resolver,
     licenseServer: licenseEe.licenseServerClient,
-    organizations: organizationsProjectsService,
+    organizationsProjectsService,
     usageCounters: [
-      ...organizationsProjects.usageCounters,
       ...secrets.usageCounters,
       ...pam.usageCounters,
       ...agentVault.usageCounters,

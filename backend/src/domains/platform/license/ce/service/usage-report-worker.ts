@@ -1,8 +1,9 @@
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { InstanceType } from "../model/instance-entitlements";
 import { CounterRegistry } from "./counter-registry";
-import { TLicenseOrganizations, TLicenseServer, TUsageReportCache } from "./dependencies";
+import { TLicenseServer, TUsageReportCache } from "./dependencies";
 import { SELF_HOSTED_LICENSE_ORG_ID } from "./license-server-types/license-server-types";
 import { TUsageEvent, UsageReportError } from "./license-server-types/usage-reports";
 import { TLicenseService } from "./license-service";
@@ -14,7 +15,7 @@ export type TUsageReportWorkerDeps = {
   usageQueue: UsageQueue;
   licenseService: TLicenseService;
   licenseServer: TLicenseServer;
-  organizations: TLicenseOrganizations;
+  organizationsProjectsService: TOrganizationsProjectsService;
 };
 
 // What the usage queues and the daily flush run. Only LicenseModule.start() registers these.
@@ -37,7 +38,10 @@ export class UsageReportWorker {
 
     let reportOrgId = SELF_HOSTED_LICENSE_ORG_ID;
     if (cloud) {
-      reportOrgId = counter.meter.scope === "org-tree" ? await this.deps.organizations.resolveRootOrgId(orgId) : orgId;
+      reportOrgId =
+        counter.meter.scope === "org-tree"
+          ? await this.deps.organizationsProjectsService.resolveRootOrgId(orgId)
+          : orgId;
     }
 
     try {

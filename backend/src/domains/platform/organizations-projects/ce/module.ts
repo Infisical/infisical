@@ -1,5 +1,4 @@
 import { TDbClient } from "@app/db";
-import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
 
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
 import { BillableActorDataAccess } from "./data-access/usage-counter-data-access";
@@ -15,23 +14,10 @@ export type TOrganizationsProjectsDeps = {
 export class OrganizationsProjectsModule {
   readonly service: TOrganizationsProjectsService;
 
-  readonly usageCounters: TUsageCounter[];
-
   constructor({ db }: TOrganizationsProjectsDeps) {
-    const service = new OrganizationsProjectsService({
+    this.service = new OrganizationsProjectsService({
       organizations: new OrganizationDataAccess(db),
       billableActors: new BillableActorDataAccess(db)
     });
-    this.service = service;
-    this.usageCounters = [
-      {
-        meter: Meter.Identities,
-        count: async (orgId) => {
-          const { users, identities } = await service.countBillableOrgActors(orgId);
-          return users + identities;
-        }
-      },
-      { meter: Meter.UserIdentities, count: async (orgId) => (await service.countBillableOrgActors(orgId)).users }
-    ];
   }
 }

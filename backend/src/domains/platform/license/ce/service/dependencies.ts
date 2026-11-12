@@ -4,8 +4,7 @@ import { Plan } from "../model/plan";
 import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/license-server-types";
 import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "./license-server-types/usage-reports";
 
-// Implemented outside License (data access, other domains, EE). License imports none of them so any product
-// can depend on it.
+// Implemented outside the services: by License's data access, by the products (TUsageCounter) and by EE.
 
 // Keys are always the root org's.
 export type TPlanCache = {
@@ -24,20 +23,6 @@ export type TUsageReportCache = {
   isReconciled(orgId: string): Promise<boolean>;
   lastReported(reportOrgId: string, meterKey: string): Promise<number | null>;
   recordReported(reportOrgId: string, meterKey: string, value: number): Promise<void>;
-};
-
-export type TLicenseOrganizations = {
-  // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
-  // The License Server knows only root orgs.
-  findRootOrgId(orgId: string): Promise<string | null>;
-  // The org's root, or the org itself when it does not exist.
-  resolveRootOrgId(orgId: string): Promise<string>;
-  // The org's name and slug, read fresh because they can change. Null when the org does not exist.
-  findOrganization(orgId: string): Promise<{ id: string; name: string; slug: string } | null>;
-  // The projects that count against a plan's workspace limit, shown on the plan as workspacesUsed.
-  countWorkspaces(rootOrgId: string): Promise<number>;
-  // Users and machine identities that count as seats. A null orgId counts the whole instance.
-  countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
 };
 
 export type TUsageCounter = {

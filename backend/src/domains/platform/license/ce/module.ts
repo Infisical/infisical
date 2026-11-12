@@ -1,4 +1,5 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import type { TCronJobFactory } from "@app/lib/cron/cron-job";
 import type { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
@@ -7,9 +8,10 @@ import type { TQueueServiceFactory } from "@app/queue";
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
 import { CounterRegistry } from "./service/counter-registry";
-import { TLicenseOrganizations, TLicenseProvider, TLicenseServer, TUsageCounter } from "./service/dependencies";
+import { TLicenseProvider, TLicenseServer, TUsageCounter } from "./service/dependencies";
 import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
 import { LicenseService, TLicenseService } from "./service/license-service";
+import { seatUsageCounters } from "./service/seat-usage-counters";
 import { TUsageMeteringService, UsageMeteringService } from "./service/usage-metering-service";
 import { UsageQueue, UsageQueues } from "./service/usage-queue";
 import { UsageReportWorker } from "./service/usage-report-worker";
@@ -22,7 +24,6 @@ export type { TLicenseService, TRefreshPlanOptions } from "./service/license-ser
 export * from "./service/license-server-types/license-server-types";
 export * from "./service/license-server-types/usage-reports";
 export type {
-  TLicenseOrganizations,
   TLicenseProvider,
   TLicenseServer,
   TPlanCache,
@@ -42,9 +43,10 @@ export type TLicenseDeps = {
   // Licensing policy and the License Server, from the EE edition. Required: CE has no defaults of its own.
   provider: TLicenseProvider;
   licenseServer: TLicenseServer;
-  // Root orgs, workspace and seat counts, from the organizations-projects domain.
-  organizations: TLicenseOrganizations;
-  // One per Meter, each from the domain that owns the data it counts.
+  // Root orgs, workspace and seat counts.
+  organizationsProjectsService: TOrganizationsProjectsService;
+  // One per product Meter, each from the domain that owns the data it counts. License builds the seat
+  // meters itself.
   usageCounters: TUsageCounter[];
 };
 
@@ -63,9 +65,9 @@ export class LicenseModule {
   private readonly worker: UsageReportWorker;
 
   constructor(private readonly deps: TLicenseDeps) {
-    const { keyStore, organizations, provider, licenseServer } = deps;
+    const { keyStore, organizationsProjectsService, provider, licenseServer } = deps;
     const usageReportCache = new UsageReportCache(keyStore);
-    this.counters = new CounterRegistry(deps.usageCounters);
+    this.counters = new CounterRegistry([...seatUsageCounters(organizationsProjectsService), ...deps.usageCounters]);
 
     const usageQueue = new UsageQueue({
       queueService: deps.queueService,
@@ -79,7 +81,7 @@ export class LicenseModule {
       planCache: new PlanCache(keyStore),
       usageReportCache,
       usageQueue,
-      organizations,
+      organizationsProjectsService,
       provider,
       licenseServer
     });
@@ -87,7 +89,7 @@ export class LicenseModule {
       counters: this.counters,
       usageQueue,
       licenseService: this.service,
-      organizations
+      organizationsProjectsService
     });
     this.worker = new UsageReportWorker({
       counters: this.counters,
@@ -95,7 +97,7 @@ export class LicenseModule {
       usageQueue,
       licenseService: this.service,
       licenseServer,
-      organizations
+      organizationsProjectsService
     });
   }
 

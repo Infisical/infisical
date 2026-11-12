@@ -2,7 +2,6 @@ import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../testing/build-license";
 import { FakeLicenseServer } from "../testing/fake-license-server";
-import { FakeUsageCounter } from "../testing/fake-usage-counter";
 import { enterprisePlan } from "../testing/test-features";
 
 vi.mock("@app/lib/logger", () => ({
@@ -13,14 +12,11 @@ const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
   licenseServer.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
 describe("LicenseService.getPlan", () => {
-  test("should queue every meter once per interval when a paid plan is read, and nothing for a plan with no slug", async () => {
+  test("should queue each seat meter once per interval when a paid plan is read, and nothing for a plan with no slug", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(OTHER_ROOT.id, { ...enterprisePlan(), slug: null });
-    const { licenseService, queue } = await buildLicense({
-      licenseServer,
-      counters: [new FakeUsageCounter(Meter.UserIdentities)]
-    });
+    const { licenseService, queue } = await buildLicense({ licenseServer });
 
     // Action
     await licenseService.getPlan(ROOT.id);
@@ -32,16 +28,15 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     const orgsQueued = queue.jobs.map((j) => (j.data as { orgId: string }).orgId);
-    expect(orgsQueued).toEqual([ROOT.id]);
+    expect(orgsQueued).toEqual([ROOT.id, ROOT.id]);
   });
 });
 
 describe("UsageMeteringService.syncSeats", () => {
   test("should report the root's member count and refresh its plan", async () => {
     // Setup
-    const members = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 6);
     const { usageMeteringService, licenseService, queue, licenseServer } = await buildLicense({
-      counters: [members]
+      organizations: { countBillableOrgActors: async (orgId) => ({ users: orgId === ROOT.id ? 6 : 0, identities: 0 }) }
     });
     await licenseService.getPlan(ROOT.id);
     licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });

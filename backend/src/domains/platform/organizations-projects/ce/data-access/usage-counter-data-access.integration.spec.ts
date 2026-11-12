@@ -2,8 +2,6 @@ import { randomUUID } from "node:crypto";
 
 import { ProjectType } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
-import { Meter } from "@app/domains/platform/license/ce/module";
-import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
 
 import { OrganizationsProjectsModule } from "../module";
 import { seedBillableActors } from "../testing/billable-actor-fixture";
@@ -12,6 +10,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
   const h = setupIntegration();
 
   const build = () => ({ module: new OrganizationsProjectsModule({ db: h.db }) });
+  const countSeats = async (module: OrganizationsProjectsModule, orgId: string | null) => {
+    const { users, identities } = await module.service.countBillableOrgActors(orgId);
+    return users + identities;
+  };
 
   test("should count only accepted, non-ghost members in a Secret Manager or KMS project or in none, each once", async () => {
     // Setup
@@ -19,7 +21,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const { module } = build();
 
     // Action
-    const users = await usageCounter(module.usageCounters, Meter.UserIdentities.key).count(rootOrgId);
+    const { users } = await module.service.countBillableOrgActors(rootOrgId);
 
     // Assert
     expect(users).toBe(5);
@@ -31,7 +33,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const { module } = build();
 
     // Action
-    const total = await usageCounter(module.usageCounters, Meter.Identities.key).count(rootOrgId);
+    const total = await countSeats(module, rootOrgId);
 
     // Assert
     expect(total).toBe(9);
@@ -43,7 +45,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const { module } = build();
 
     // Action
-    const total = await usageCounter(module.usageCounters, Meter.Identities.key).count(randomUUID());
+    const total = await countSeats(module, randomUUID());
 
     // Assert
     expect(total).toBe(0);
@@ -54,12 +56,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const first = await seedBillableActors(h.db);
     const second = await seedBillableActors(h.db);
     const { module } = build();
-    const perOrg =
-      (await usageCounter(module.usageCounters, Meter.Identities.key).count(first.rootOrgId)) +
-      (await usageCounter(module.usageCounters, Meter.Identities.key).count(second.rootOrgId));
+    const perOrg = (await countSeats(module, first.rootOrgId)) + (await countSeats(module, second.rootOrgId));
 
     // Action
-    const instance = await usageCounter(module.usageCounters, Meter.Identities.key).count(null);
+    const instance = await countSeats(module, null);
 
     // Assert
     expect(instance).toBeGreaterThanOrEqual(perOrg);

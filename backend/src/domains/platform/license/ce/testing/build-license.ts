@@ -1,8 +1,9 @@
 import { InMemoryKeyStore } from "@app/domains/lib/testing/in-memory-key-store";
+import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
 import { TQueueServiceFactory } from "@app/queue";
 
 import { LicenseModule } from "../module";
-import { TLicenseOrganizations, TUsageCounter } from "../service/dependencies";
+import { TUsageCounter } from "../service/dependencies";
 import { FakeLicenseServer } from "./fake-license-server";
 import { FakeQueue } from "./fake-queue";
 
@@ -16,22 +17,18 @@ export type TBuildLicenseOptions = {
   counters?: TUsageCounter[];
   // The key store's clock, for tests that let entries expire.
   now?: () => number;
-  // Replaces parts of the organizations below.
-  organizations?: Partial<TLicenseOrganizations>;
+  // Replaces methods of the organizations-projects fake below.
+  organizations?: Partial<FakeOrganizationsProjectsService>;
 };
 
 // resolveRootOrgId reads findRootOrgId, so overriding one overrides both.
-const buildOrganizations = (overrides: Partial<TLicenseOrganizations> = {}): TLicenseOrganizations => {
-  const organizations: TLicenseOrganizations = {
-    findRootOrgId: async (orgId) =>
-      ({ [ROOT.id]: ROOT.id, [SUB_ORG_ID]: ROOT.id, [OTHER_ROOT.id]: OTHER_ROOT.id })[orgId] ?? null,
-    resolveRootOrgId: async (orgId) => (await organizations.findRootOrgId(orgId)) ?? orgId,
-    findOrganization: async (orgId) => ({ id: orgId, name: `org ${orgId}`, slug: `org-${orgId}` }),
-    countWorkspaces: async () => WORKSPACES_USED,
-    countBillableOrgActors: async () => ({ users: 0, identities: 0 }),
-    ...overrides
-  };
-  return organizations;
+const buildOrganizations = (overrides: Partial<FakeOrganizationsProjectsService> = {}) => {
+  const organizations = new FakeOrganizationsProjectsService()
+    .setRoot(ROOT.id, ROOT.id)
+    .setRoot(SUB_ORG_ID, ROOT.id)
+    .setRoot(OTHER_ROOT.id, OTHER_ROOT.id);
+  organizations.workspaces = WORKSPACES_USED;
+  return Object.assign(organizations, overrides);
 };
 
 export const buildLicense = async ({
@@ -59,7 +56,7 @@ export const buildLicense = async ({
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
     provider: licenseServer,
     licenseServer,
-    organizations: buildOrganizations(organizations),
+    organizationsProjectsService: buildOrganizations(organizations),
     usageCounters: counters
   });
   await module.start();

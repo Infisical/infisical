@@ -16,15 +16,15 @@ const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
 describe("UsageReportWorker.handleUsageEvent", () => {
   test("should report the counter's value and record it", async () => {
     // Setup
-    const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
+    const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([[ROOT.id, 4]]);
+    expect(snapshotsFor(licenseServer, Meter.SecretIdentities.key)).toEqual([[ROOT.id, 4]]);
   });
 
   test("should send a recount under a new idempotency key when a retry follows a lost reply", async () => {
@@ -54,28 +54,28 @@ describe("UsageReportWorker.handleUsageEvent", () => {
 
   test("should not report a value the server already has", async () => {
     // Setup
-    const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
+    const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
     await queue.drain();
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toHaveLength(1);
+    expect(snapshotsFor(licenseServer, Meter.SecretIdentities.key)).toHaveLength(1);
   });
 
   test("should report nothing for an org on cloud whose plan has no slug", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: null });
-    const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
+    const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
     const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
     await queue.drain();
 
     // Assert
@@ -85,17 +85,17 @@ describe("UsageReportWorker.handleUsageEvent", () => {
   test("should report an org-tree meter at the root, and an org meter at the org that changed", async () => {
     // Setup
     const certs = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
-    const users = new FakeUsageCounter(Meter.UserIdentities).set(SUB_ORG_ID, 2);
+    const users = new FakeUsageCounter(Meter.SecretIdentities).set(SUB_ORG_ID, 2);
     const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [certs, users] });
 
     // Action
     usageMeteringService.emit(SUB_ORG_ID, Meter.ActiveCerts.key);
-    usageMeteringService.emit(SUB_ORG_ID, Meter.UserIdentities.key);
+    usageMeteringService.emit(SUB_ORG_ID, Meter.SecretIdentities.key);
     await queue.drain();
 
     // Assert
     expect(snapshotsFor(licenseServer, Meter.ActiveCerts.key)).toEqual([[ROOT.id, 9]]);
-    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([[SUB_ORG_ID, 2]]);
+    expect(snapshotsFor(licenseServer, Meter.SecretIdentities.key)).toEqual([[SUB_ORG_ID, 2]]);
   });
 
   test("should report under the instance on self-hosted, counting the whole instance", async () => {
@@ -106,15 +106,15 @@ describe("UsageReportWorker.handleUsageEvent", () => {
       instanceType: InstanceType.EnterpriseOnPrem,
       features: enterprisePlan()
     };
-    const counter = new FakeUsageCounter(Meter.UserIdentities).set(null, 12);
+    const counter = new FakeUsageCounter(Meter.SecretIdentities).set(null, 12);
     const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([["self-hosted", 12]]);
+    expect(snapshotsFor(licenseServer, Meter.SecretIdentities.key)).toEqual([["self-hosted", 12]]);
     expect(licenseServer.snapshots[0].snapshot.source).toBe("self-hosted");
   });
 
@@ -139,17 +139,17 @@ describe("UsageReportWorker.handleUsageEvent", () => {
       // Setup
       const licenseServer = new FakeLicenseServer();
       licenseServer.failNextReports.push(new UsageReportError(status, message));
-      const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
+      const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
       const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
-      usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+      usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
       await queue.drain();
 
       // Action
-      usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+      usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
       await queue.drain();
 
       // Assert
-      expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([[ROOT.id, 4]]);
+      expect(snapshotsFor(licenseServer, Meter.SecretIdentities.key)).toEqual([[ROOT.id, 4]]);
     }
   );
 
@@ -157,9 +157,9 @@ describe("UsageReportWorker.handleUsageEvent", () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.failNextReports.push(new UsageReportError(500, "boom"));
-    const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
+    const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
     const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
-    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.SecretIdentities.key);
 
     // Action
     const result = queue.drain();
@@ -202,10 +202,11 @@ describe("UsageReportWorker.flushInstanceUsage", () => {
       features: enterprisePlan()
     };
     const counters = [
-      new FakeUsageCounter(Meter.UserIdentities).set(null, 12),
+      new FakeUsageCounter(Meter.SecretIdentities).set(null, 12),
       new FakeUsageCounter(Meter.ActiveCerts).set(null, 4)
     ];
-    const { cronHandlers, queue } = await buildLicense({ licenseServer, counters });
+    const organizations = { countBillableOrgActors: async () => ({ users: 5, identities: 2 }) };
+    const { cronHandlers, queue } = await buildLicense({ licenseServer, counters, organizations });
 
     // Action
     await cronHandlers.get("license-usage-flush")!();
@@ -213,7 +214,9 @@ describe("UsageReportWorker.flushInstanceUsage", () => {
 
     // Assert
     expect(licenseServer.snapshots.map((s) => [s.orgId, s.snapshot.dimension_key, s.snapshot.value])).toEqual([
-      ["self-hosted", Meter.UserIdentities.key, 12],
+      ["self-hosted", Meter.Identities.key, 7],
+      ["self-hosted", Meter.UserIdentities.key, 5],
+      ["self-hosted", Meter.SecretIdentities.key, 12],
       ["self-hosted", Meter.ActiveCerts.key, 4]
     ]);
   });
@@ -222,12 +225,12 @@ describe("UsageReportWorker.flushInstanceUsage", () => {
 describe("LicenseModule", () => {
   test("should refuse two counters for one dimension", async () => {
     // Setup
-    const counters = [new FakeUsageCounter(Meter.UserIdentities), new FakeUsageCounter(Meter.UserIdentities)];
+    const counters = [new FakeUsageCounter(Meter.SecretIdentities), new FakeUsageCounter(Meter.SecretIdentities)];
 
     // Action
     const result = buildLicense({ counters });
 
     // Assert
-    await expect(result).rejects.toThrow("Two usage counters were given for 'user_identities'");
+    await expect(result).rejects.toThrow("Two usage counters were given for 'secret_identities'");
   });
 });
