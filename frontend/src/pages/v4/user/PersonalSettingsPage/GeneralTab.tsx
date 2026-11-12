@@ -28,6 +28,7 @@ import type { TokenVersion } from "@app/hooks/api/users/types";
 import { timeAgo } from "@app/lib/fn/date";
 import { formatSessionUserAgent } from "@app/lib/fn/string";
 
+import { failed } from "../../access/toast";
 import { usePersonalSettings } from "../../data/personal/contract";
 import { orgHref, v4Path } from "../../links";
 import { resolveV4Href } from "../../resolveV4Href";
@@ -73,12 +74,13 @@ const Profile = () => {
         const parsed = nameSchema.safeParse(name);
         if (!parsed.success) {
           setError(parsed.error.issues[0].message);
-          throw new Error(parsed.error.issues[0].message);
+          return;
         }
         try {
           await rename.mutateAsync({ newName: parsed.data });
-        } catch {
-          throw new Error("Failed to update name. Try again.");
+        } catch (cause) {
+          failed("Failed to update name", cause);
+          return;
         }
         toast.success("Name updated");
       }}
@@ -169,8 +171,8 @@ const Sessions = () => {
       await revokeSession.mutateAsync(revoking.id);
       toast.success("Session signed out");
       setRevoking(null);
-    } catch {
-      toast.error("Failed to sign out session");
+    } catch (cause) {
+      failed("Failed to sign out session", cause);
     } finally {
       setPending(false);
     }
@@ -183,8 +185,8 @@ const Sessions = () => {
       setRevokingAll(false);
       personal.endSession();
       navigate({ href: signedOutHref });
-    } catch {
-      toast.error("Failed to sign out everywhere");
+    } catch (cause) {
+      failed("Failed to sign out everywhere", cause);
     } finally {
       setPending(false);
     }
@@ -301,8 +303,8 @@ const DeleteAccount = () => {
       toast.success("Account deleted");
       setOpen(false);
       navigate({ href: signedOutHref });
-    } catch {
-      toast.error("Failed to delete account");
+    } catch (cause) {
+      failed("Failed to delete account", cause);
     } finally {
       setPending(false);
     }

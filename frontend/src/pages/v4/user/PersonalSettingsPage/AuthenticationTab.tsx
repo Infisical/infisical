@@ -28,6 +28,7 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
+import { failed } from "../../access/toast";
 import { CodeForm } from "../../auth/components/CodeForm";
 import { PasswordField } from "../../auth/components/PasswordField";
 import { PasswordInput } from "../../auth/components/PasswordInput";
@@ -69,8 +70,8 @@ const AuthMethods = ({ user }: { user: PersonalUser }) => {
       });
       setAuthMethods(updated.authMethods);
       toast.success(`${method.label} authentication ${enabled ? "enabled" : "disabled"}`);
-    } catch {
-      toast.error(`Failed to update ${method.label} authentication`);
+    } catch (cause) {
+      failed(`Failed to update ${method.label} authentication`, cause);
     } finally {
       setPending(false);
     }
@@ -147,23 +148,27 @@ const ChangePassword = ({ user }: { user: PersonalUser }) => {
 
   const save = async () => {
     const valid = await form.trigger();
-    if (!valid) throw new Error("Fix the highlighted fields, then try again.");
+    if (!valid) {
+      failed("Fix the highlighted fields, then try again.");
+      return;
+    }
     if ((await validatePassword(newPassword)) === "breached") {
       form.setError("newPassword", {
         type: "validate",
         message: "This password was found in a known data breach."
       });
-      throw new Error("Choose a password that has not appeared in a data breach.");
+      failed("Choose a password that has not appeared in a data breach.");
+      return;
     }
     if (user.encryptionVersion !== UserEncryptionVersion.V2) {
-      throw new Error(
-        "Legacy encryption scheme not supported for changing password. Contact support."
-      );
+      failed("Legacy encryption scheme not supported for changing password. Contact support.");
+      return;
     }
     try {
       await changePassword.mutateAsync({ oldPassword, newPassword });
-    } catch {
-      throw new Error("Failed to change password. Check your current password and try again.");
+    } catch (cause) {
+      failed("Failed to change password", cause);
+      return;
     }
     toast.success("Password changed");
     form.reset();
@@ -178,8 +183,8 @@ const ChangePassword = ({ user }: { user: PersonalUser }) => {
       toast.info("Password setup email sent", {
         description: "Check your email to continue setting up a password."
       });
-    } catch {
-      toast.error("Failed to send password setup email");
+    } catch (cause) {
+      failed("Failed to send password setup email", cause);
     } finally {
       setSending(false);
     }
@@ -252,13 +257,19 @@ const ChangeEmail = ({ user }: { user: PersonalUser }) => {
 
   const sendCode = async () => {
     const parsed = emailSchema.safeParse(newEmail.trim());
-    if (!parsed.success) throw new Error(parsed.error.issues[0].message);
-    if (parsed.data.toLowerCase() === user.email?.toLowerCase())
-      throw new Error("New email must be different from current email.");
+    if (!parsed.success) {
+      failed(parsed.error.issues[0].message);
+      return;
+    }
+    if (parsed.data.toLowerCase() === user.email?.toLowerCase()) {
+      failed("New email must be different from current email.");
+      return;
+    }
     try {
       await requestChange.mutateAsync({ newEmail: parsed.data });
-    } catch {
-      throw new Error("Failed to send the verification code. Try again.");
+    } catch (cause) {
+      failed("Failed to send the verification code", cause);
+      return;
     }
     setPendingEmail(parsed.data);
     setCode("");
@@ -281,8 +292,8 @@ const ChangeEmail = ({ user }: { user: PersonalUser }) => {
       resetFlow();
       personal.endSession();
       redirectTimer.current = setTimeout(() => navigate({ href: loginHref }), 2000);
-    } catch {
-      toast.error("Verification failed. Request a new code to try again.");
+    } catch (cause) {
+      failed("Verification failed. Request a new code to try again.", cause);
       resetFlow();
     } finally {
       setVerifying(false);

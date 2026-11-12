@@ -48,7 +48,9 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       route("/access-management", "v4/admin/AccessManagementPage/route.tsx")
     ])
   ]),
-  route("/personal-settings", "v4/user/PersonalSettingsPage/route.tsx"),
+  route("/personal-settings", "v4/user/route.tsx", [
+    index("v4/user/PersonalSettingsPage/route.tsx")
+  ]),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
