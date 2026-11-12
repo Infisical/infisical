@@ -70,6 +70,20 @@ describe("OpenRouterProvider", () => {
     });
   });
 
+  test("create leaves out the settings a user cleared", async () => {
+    mockedPost.mockResolvedValueOnce({ data: { key: "sk-or-v1-leased", data: { hash: "hash-1" } } } as AxiosResponse);
+
+    await OpenRouterProvider().create({
+      ...createArgs(Date.now() + 60_000),
+      inputs: { managementKey: MANAGEMENT_KEY, workspaceId: null, limit: null, limitReset: null }
+    });
+
+    const body = mockedPost.mock.calls[0][1];
+    expect(body.workspace_id).toBeUndefined();
+    expect(body.limit).toBeUndefined();
+    expect(body.limit_reset).toBeUndefined();
+  });
+
   test("create names the key from the username template", async () => {
     mockedPost.mockResolvedValueOnce({ data: { key: "sk-or-v1-leased", data: { hash: "hash-1" } } } as AxiosResponse);
 
@@ -128,6 +142,15 @@ describe("DynamicSecretOpenRouterSchema", () => {
     await expect(
       OpenRouterProvider().validateProviderInputs({ ...inputs, limit }, { projectId: "proj-1" })
     ).rejects.toThrow("Credit limit must be a non-negative number");
+  });
+
+  test("accepts null for the settings an edit clears", async () => {
+    await expect(
+      OpenRouterProvider().validateProviderInputs(
+        { ...inputs, workspaceId: null, limit: null, limitReset: null },
+        { projectId: "proj-1" }
+      )
+    ).resolves.toMatchObject({ workspaceId: null, limit: null, limitReset: null });
   });
 
   test("rejects a numeric credit limit", async () => {

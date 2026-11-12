@@ -866,6 +866,7 @@ export const DynamicSecretOpenRouterSchema = z.object({
     .string()
     .trim()
     .max(100)
+    .nullable()
     .optional()
     .describe("ID of the OpenRouter workspace to create keys in. Defaults to the management key's default workspace."),
   limit: z
@@ -876,10 +877,12 @@ export const DynamicSecretOpenRouterSchema = z.object({
       (value) => new RE2(/^\d+(\.\d+)?$/).test(value),
       "Credit limit must be a non-negative number, such as 10 or 2.5"
     )
+    .nullable()
     .optional()
     .describe('Spending limit in USD applied to each created API key, as a decimal string such as "2.5".'),
   limitReset: z
     .nativeEnum(OpenRouterLimitReset)
+    .nullable()
     .optional()
     .describe("How often the spending limit resets. Leave unset for a limit that never resets."),
   includeByokInLimit: z

@@ -66,9 +66,9 @@ export const openRouterEditFormSchema = editDynamicSecretProviderFormSchema(
 
 const buildInputs = (inputs: TOpenRouterFormValues["inputs"]): TOpenRouterInputs => ({
   ...(inputs.managementKey ? { managementKey: inputs.managementKey } : {}),
-  workspaceId: inputs.workspaceId || undefined,
-  limit: inputs.limit || undefined,
-  limitReset: inputs.limitReset === OPEN_ROUTER_NO_LIMIT_RESET ? undefined : inputs.limitReset,
+  workspaceId: inputs.workspaceId || null,
+  limit: inputs.limit || null,
+  limitReset: inputs.limitReset === OPEN_ROUTER_NO_LIMIT_RESET ? null : inputs.limitReset,
   includeByokInLimit: inputs.includeByokInLimit
 });
 

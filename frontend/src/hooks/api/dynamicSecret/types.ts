@@ -635,9 +635,9 @@ export type TDynamicSecretProvider =
       type: DynamicSecretProviders.OpenRouter;
       inputs: {
         managementKey?: string;
-        workspaceId?: string;
-        limit?: string;
-        limitReset?: OpenRouterLimitReset;
+        workspaceId?: string | null;
+        limit?: string | null;
+        limitReset?: OpenRouterLimitReset | null;
         includeByokInLimit?: boolean;
       };
     }
