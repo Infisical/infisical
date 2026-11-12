@@ -1,15 +1,6 @@
-import {
-  type ComponentPropsWithoutRef,
-  type ReactElement,
-  type ReactNode,
-  type Ref,
-  useCallback,
-  useEffect,
-  useRef,
-  useState
-} from "react";
-import { createLink, type LinkOptions } from "@tanstack/react-router";
+import { type ReactElement, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
+import { CipherLink, type CipherLinkTarget } from "../lib/link";
 import { useControllableState } from "../lib/use-controllable-state";
 import {
   Command,
@@ -44,7 +35,7 @@ export interface SwitcherAction {
   shortcut?: string;
   danger?: boolean;
   disabled?: boolean;
-  link?: LinkOptions;
+  link?: CipherLinkTarget;
   onSelect?: () => void;
 }
 export type SwitcherActionDivider = { type: "separator" } | { type: "label"; label: ReactNode };
@@ -71,15 +62,6 @@ export interface SwitcherProps {
   onOpenChange?: (open: boolean) => void;
   className?: string;
 }
-
-function ActionAnchor({
-  ref,
-  ...props
-}: ComponentPropsWithoutRef<"a"> & { ref?: Ref<HTMLAnchorElement> }) {
-  return <a ref={ref} {...props} />;
-}
-
-const ActionLink = createLink(ActionAnchor);
 
 const SwitcherActionItem = ({
   action,
@@ -129,15 +111,15 @@ const SwitcherActionItem = ({
         close();
       }}
     >
-      <ActionLink
-        {...action.link}
+      <CipherLink
+        link={action.link}
         tabIndex={-1}
         onClick={() => {
           clicked.current = true;
         }}
       >
         {content}
-      </ActionLink>
+      </CipherLink>
     </CommandItem>
   );
 };

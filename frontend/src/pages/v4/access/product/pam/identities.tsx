@@ -304,7 +304,7 @@ export const PamIdentitiesTab = () => {
       grow: true,
       render: (member) => (
         <RowLink
-          {...go.link(
+          link={go.link(
             member.identityId ? accessLinks.projectIdentity(scope, member.identityId) : undefined
           )}
           title={member.name}

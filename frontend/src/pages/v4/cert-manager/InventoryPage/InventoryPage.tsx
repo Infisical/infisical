@@ -272,8 +272,10 @@ export const InventoryPage = () => {
         return (
           <Inline gap={8} align="center" wrap={false}>
             <RowLink
-              to={v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId")}
-              params={{ orgId, certificateId: r.id }}
+              link={{
+                to: v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId"),
+                params: { orgId, certificateId: r.id }
+              }}
             >
               {certificateName(r)}
               {extra > 0 && (

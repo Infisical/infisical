@@ -80,7 +80,10 @@ export const PamApprovalRequestsPage = () => {
       grow: true,
       text: (request) => request.requesterName,
       render: (request) => (
-        <RowLink to={route} params={{ orgId }} search={{ requestId: request.id }} chevron={false}>
+        <RowLink
+          link={{ to: route, params: { orgId }, search: { requestId: request.id } }}
+          chevron={false}
+        >
           {request.requesterName}
         </RowLink>
       )

@@ -145,7 +145,7 @@ export const MemberRolesSection = ({
       grow: true,
       render: (grant) => (
         <RowLink
-          {...go.link(
+          link={go.link(
             linksMemberRoles(scope.projectType)
               ? accessLinks.projectRole(scope, grantSlug(grant))
               : undefined

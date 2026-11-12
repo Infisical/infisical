@@ -175,7 +175,7 @@ const ConnectorsCard = ({ orgId, plan }: { orgId: string; plan: HsmPlan }) => {
       grow: true,
       render: (connector) => (
         <RowLink
-          {...go.link(orgHref(orgId, `/cert-manager/hsm-connectors/${connector.id}`))}
+          link={go.link(orgHref(orgId, `/cert-manager/hsm-connectors/${connector.id}`))}
           title={connector.name}
         >
           {connector.name}

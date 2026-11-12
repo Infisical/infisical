@@ -322,8 +322,10 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
       render: (row) => (
         <Stack gap={0} style={{ minWidth: 0 }}>
           <RowLink
-            to={v4Path("/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId")}
-            params={{ orgId, type: row.type, dataSourceId: row.id }}
+            link={{
+              to: v4Path("/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId"),
+              params: { orgId, type: row.type, dataSourceId: row.id }
+            }}
             chevron={false}
           >
             {row.name}

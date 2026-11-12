@@ -116,7 +116,7 @@ const PoolResourcesSheet = ({
       grow: true,
       render: (row) =>
         row.href ? (
-          <RowLink {...go.link(row.href)} title={row.name}>
+          <RowLink link={go.link(row.href)} title={row.name}>
             {row.name}
           </RowLink>
         ) : (

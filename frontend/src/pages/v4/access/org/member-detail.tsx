@@ -177,7 +177,7 @@ const UserGroupsSection = ({ username }: { username: string }) => {
       header: "Name",
       sortable: true,
       render: (group) => (
-        <RowLink {...go.link(accessLinks.orgGroup(orgId, group.id))} title={group.name}>
+        <RowLink link={go.link(accessLinks.orgGroup(orgId, group.id))} title={group.name}>
           {group.name}
         </RowLink>
       )

@@ -1,13 +1,11 @@
-import * as React from "react";
-import { createLink } from "@tanstack/react-router";
-
+import { CipherLink, type CipherLinkProps } from "../lib/link";
 import { useStretchedLink } from "../lib/stretched-link";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
 import styles from "./row-link.module.css";
 
-function RowLinkAnchor({
+function RowLink({
   className,
   disabled,
   chevron = true,
@@ -15,12 +13,12 @@ function RowLinkAnchor({
   children,
   ref,
   ...props
-}: React.ComponentPropsWithoutRef<"a"> & {
+}: CipherLinkProps & {
   disabled?: boolean;
   chevron?: boolean;
-  ref?: React.Ref<HTMLAnchorElement>;
 }) {
-  useStretchedLink(!disabled);
+  const off = disabled ?? (props.link as { disabled?: boolean }).disabled;
+  useStretchedLink(!off);
   const content = chevron ? (
     <>
       <span className={styles.label}>{children}</span>
@@ -29,7 +27,7 @@ function RowLinkAnchor({
   ) : (
     children
   );
-  if (disabled)
+  if (off)
     return (
       <span
         role="link"
@@ -44,7 +42,7 @@ function RowLinkAnchor({
       </span>
     );
   return (
-    <a
+    <CipherLink
       ref={ref}
       title={title}
       data-slot="row-link"
@@ -54,10 +52,8 @@ function RowLinkAnchor({
       {...props}
     >
       {content}
-    </a>
+    </CipherLink>
   );
 }
-
-const RowLink = createLink(RowLinkAnchor);
 
 export { RowLink };
