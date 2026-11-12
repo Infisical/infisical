@@ -38,7 +38,7 @@ import {
   ProjectRoleSelect
 } from "@app/pages/organization/AccessManagementPage/components/OrgMembersTab/components/OrgMembersSection/ProjectRoleSelect";
 
-import { isSingleProjectProduct } from "./products";
+import { useIsNamedByProduct } from "./products";
 
 const schema = z.object({
   productType: z.nativeEnum(ProjectType, { required_error: "Select a product" }),
@@ -72,6 +72,7 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
   const orgId = currentOrg?.id || "";
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
+  const isNamedByProduct = useIsNamedByProduct();
 
   const { username } = (popUp.addUserToProduct.data ?? {}) as { username: string };
 
@@ -125,7 +126,7 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
   const product = PRODUCT_DEFINITIONS.find((definition) => definition.type === productType);
   const productProjects = productType ? (availableProjectsByType.get(productType) ?? []) : [];
   const isProjectPickerShown =
-    Boolean(productType) && !(isSingleProjectProduct(productType) && productProjects.length === 1);
+    Boolean(productType) && !(isNamedByProduct(productType) && productProjects.length === 1);
   const targetProjects = isProjectPickerShown ? selectedProjects : productProjects;
 
   useEffect(() => {

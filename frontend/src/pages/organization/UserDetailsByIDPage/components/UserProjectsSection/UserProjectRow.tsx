@@ -26,7 +26,7 @@ import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { isSingleProjectProduct } from "./products";
+import { useIsNamedByProduct } from "./products";
 
 type Props = {
   membership: TWorkspaceUser;
@@ -50,10 +50,7 @@ export const UserProjectRow = ({
 
   const productName = getProjectTitle(project.type);
   const ProductIcon = getProjectLucideIcon(project.type);
-  // Single-project products are named by the product, unless a legacy org still has several instances.
-  const isNamedByProduct =
-    isSingleProjectProduct(project.type) &&
-    workspaces.filter((workspace) => workspace.type === project.type).length <= 1;
+  const isNamedByProduct = useIsNamedByProduct()(project.type);
   const removeLabel = isNamedByProduct ? productName : project.name;
 
   const projectLink =
