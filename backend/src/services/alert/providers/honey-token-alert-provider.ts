@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { HoneyTokenStatus, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_RESOURCE_TYPE,
   HONEY_TOKEN_TRIGGERED_EVENT,
@@ -45,6 +45,13 @@ export type THoneyTokenAlertProviderDep = {
 };
 
 const providerName = (type: string) => HONEY_TOKEN_PROVIDER_MAP[type as HoneyTokenType]?.name ?? type;
+
+// The provider's own timestamp for the call, which can be minutes earlier than triggeredAt because the
+// provider forwards events late. Shown as sent when it isn't a date, so the responder still sees it.
+const formatEventTime = (eventTime: string) => {
+  const parsed = new Date(eventTime);
+  return Number.isNaN(parsed.getTime()) ? eventTime : formatUtcDate(parsed);
+};
 
 export const honeyTokenAlertProviderFactory = ({
   honeyTokenAlertDAL,
@@ -135,6 +142,7 @@ export const honeyTokenAlertProviderFactory = ({
           { label: "Action", value: target.trigger.eventName },
           { label: "Source IP", value: target.trigger.sourceIp || "Unknown" },
           ...(target.trigger.awsRegion ? [{ label: "Region", value: target.trigger.awsRegion }] : []),
+          { label: "Event Time", value: formatEventTime(target.trigger.eventTime) },
           { label: "Triggered At", value: formatUtcDate(target.trigger.triggeredAt) }
         ]
       }))
@@ -158,7 +166,8 @@ export const honeyTokenAlertProviderFactory = ({
 
   // Without a resourceId there is nothing to bind-check: that is a test send from the create form, before
   // the token exists. Creating an alert without one is refused earlier, since this provider has no
-  // scope-wide alerts.
+  // scope-wide alerts. Only create and test sends call this, so an existing alert on a revoked token can
+  // still be changed or deleted.
   const assertResourceInScope = async (input: {
     orgId: string;
     projectId?: string | null;
@@ -166,7 +175,12 @@ export const honeyTokenAlertProviderFactory = ({
   }): Promise<void> => {
     const projectId = $requireProject(input.projectId);
     if (!input.resourceId) return;
-    await $loadInScopeHoneyToken({ orgId: input.orgId, projectId, resourceId: input.resourceId });
+    const honeyToken = await $loadInScopeHoneyToken({ orgId: input.orgId, projectId, resourceId: input.resourceId });
+    if (honeyToken.honeyTokenStatus === HoneyTokenStatus.Revoked) {
+      throw new BadRequestError({
+        message: `Honey token '${honeyToken.honeyTokenName}' is revoked and can no longer be triggered, so it can't get an alert`
+      });
+    }
   };
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {

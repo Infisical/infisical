@@ -6,6 +6,7 @@ export type THoneyTokenWithLocation = {
   honeyTokenId: string;
   honeyTokenName: string;
   honeyTokenType: string;
+  honeyTokenStatus: string;
   folderId: string;
   orgId: string;
   projectId: string;
@@ -16,10 +17,6 @@ export type THoneyTokenWithLocation = {
 export type THoneyTokenAlertDALFactory = ReturnType<typeof honeyTokenAlertDALFactory>;
 
 export const honeyTokenAlertDALFactory = (db: TDbClient) => {
-  // Reads the primary: the event path treats an empty result as terminal, and the trigger event commits in the
-  // same transaction that marks the token triggered. The create form also adds a token's alert right after
-  // creating the token, and a lagging replica would leave that alert's audit log without the token's name.
-  // The inner join on the folder drops tokens whose folder was deleted, which the cleanup queue is reaping.
   const $honeyTokensWithProject = (honeyTokenIds: string[]) =>
     db(TableName.HoneyToken)
       .whereIn(`${TableName.HoneyToken}.id`, honeyTokenIds)
@@ -30,19 +27,17 @@ export const honeyTokenAlertDALFactory = (db: TDbClient) => {
   const findHoneyTokensByIds = async (honeyTokenIds: string[]): Promise<THoneyTokenWithLocation[]> => {
     if (honeyTokenIds.length === 0) return [];
     try {
-      return (await $honeyTokensWithProject(honeyTokenIds)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .select(
-          db.ref("id").withSchema(TableName.HoneyToken).as("honeyTokenId"),
-          db.ref("name").withSchema(TableName.HoneyToken).as("honeyTokenName"),
-          db.ref("type").withSchema(TableName.HoneyToken).as("honeyTokenType"),
-          db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName"),
-          db.ref("id").withSchema(TableName.Project).as("projectId"),
-          db.ref("orgId").withSchema(TableName.Project).as("orgId")
-        )) as THoneyTokenWithLocation[];
+      return (await $honeyTokensWithProject(honeyTokenIds).select(
+        db.ref("id").withSchema(TableName.HoneyToken).as("honeyTokenId"),
+        db.ref("name").withSchema(TableName.HoneyToken).as("honeyTokenName"),
+        db.ref("type").withSchema(TableName.HoneyToken).as("honeyTokenType"),
+        db.ref("status").withSchema(TableName.HoneyToken).as("honeyTokenStatus"),
+        db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
+        db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+        db.ref("name").withSchema(TableName.Environment).as("envName"),
+        db.ref("id").withSchema(TableName.Project).as("projectId"),
+        db.ref("orgId").withSchema(TableName.Project).as("orgId")
+      )) as THoneyTokenWithLocation[];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindHoneyTokensByIds" });
     }

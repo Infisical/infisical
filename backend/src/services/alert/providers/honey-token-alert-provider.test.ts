@@ -20,6 +20,7 @@ const HONEY_TOKEN: THoneyTokenWithLocation = {
   honeyTokenId: "honey-token-1",
   honeyTokenName: "prod-aws-decoy",
   honeyTokenType: "aws",
+  honeyTokenStatus: "active",
   folderId: "folder-1",
   orgId: "org-1",
   projectId: "proj-1",
@@ -186,8 +187,16 @@ describe("honey token alert provider", () => {
       { label: "Action", value: "GetCallerIdentity" },
       { label: "Source IP", value: "203.0.113.7" },
       { label: "Region", value: "us-east-1" },
+      { label: "Event Time", value: formatUtcDate(new Date(TRIGGER.eventTime)) },
       { label: "Triggered At", value: formatUtcDate(TRIGGERED_AT) }
     ]);
+  });
+
+  test("shows an event time that isn't a date as the provider sent it", async () => {
+    const { provider } = buildProvider();
+    const targets = await provider.findEventTargets(triggeredEvent({ payload: { ...TRIGGER, eventTime: "soon" } }));
+    const fields = provider.buildPayload(alertContext, targets, "https://view").items[0].fields ?? [];
+    expect(fields).toContainEqual({ label: "Event Time", value: "soon" });
   });
 
   test("shows an unknown source IP and leaves out a missing region", async () => {
@@ -275,6 +284,13 @@ describe("honey token alert provider", () => {
     await expect(
       provider.assertResourceInScope({ orgId: "org-2", projectId: "proj-1", resourceId: "honey-token-1" })
     ).rejects.toThrow("not found in this project");
+  });
+
+  test("refuses an alert for a revoked token, which can no longer trigger", async () => {
+    const { provider } = buildProvider({ honeyTokens: [{ ...HONEY_TOKEN, honeyTokenStatus: "revoked" }] });
+    await expect(
+      provider.assertResourceInScope({ orgId: "org-1", projectId: "proj-1", resourceId: "honey-token-1" })
+    ).rejects.toThrow("Honey token 'prod-aws-decoy' is revoked");
   });
 
   test("rejects an org-scoped honey token alert", async () => {
