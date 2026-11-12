@@ -26,7 +26,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectType, TListActorProjectMembershipsParams } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityProjectRow } from "./IdentityProjectRow";
@@ -43,6 +43,15 @@ enum IdentityProjectsOrderBy {
   Name = "name"
 }
 
+const DEFAULT_PER_PAGE = 20;
+
+export const getIdentityProjectsFirstPageParams = (): TListActorProjectMembershipsParams => ({
+  limit: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, DEFAULT_PER_PAGE),
+  offset: 0,
+  orderDirection: OrderByDirection.ASC,
+  excludeProjectType: ProjectType.CertificateManager
+});
+
 export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) => {
   const { isSubOrganization } = useOrganization();
 
@@ -58,7 +67,11 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     orderDirection,
     toggleOrderDirection
   } = usePagination(IdentityProjectsOrderBy.Name, {
-    initPerPage: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, 20)
+    initPerPage: getUserTablePreference(
+      "identityProjectsTable",
+      PreferenceKey.PerPage,
+      DEFAULT_PER_PAGE
+    )
   });
 
   const handlePerPageChange = (newPerPage: number) => {
@@ -98,7 +111,10 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
       <Input
         className="mb-4"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1);
+        }}
         placeholder="Search projects..."
       />
       {projectMemberships.length ? (

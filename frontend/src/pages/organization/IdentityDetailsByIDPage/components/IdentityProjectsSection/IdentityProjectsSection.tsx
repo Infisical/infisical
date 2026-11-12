@@ -23,11 +23,10 @@ import {
   useDeleteProjectIdentityMembership,
   useGetIdentityProjectMemberships
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
-import { IdentityProjectsTable } from "./IdentityProjectsTable";
+import { getIdentityProjectsFirstPageParams, IdentityProjectsTable } from "./IdentityProjectsTable";
 
 type Props = {
   identityId: string;
@@ -69,10 +68,10 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
     handlePopUpClose("removeIdentityFromProject");
   };
 
-  const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId, {
-    limit: 1,
-    excludeProjectType: ProjectType.CertificateManager
-  });
+  const { data: projectMemberships } = useGetIdentityProjectMemberships(
+    identityId,
+    getIdentityProjectsFirstPageParams()
+  );
 
   return (
     <>

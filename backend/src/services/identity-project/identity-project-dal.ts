@@ -46,23 +46,30 @@ export const identityProjectDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const matchingMemberships = () => {
+      const filteredMemberships = () => {
         const qb = (tx || db.replicaNode())(TableName.Membership)
           .where(`${TableName.Membership}.actorIdentityId`, identityId)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeOrgId`, orgId)
           .whereNotNull(`${TableName.Membership}.actorIdentityId`)
           .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-          .whereNull(`${TableName.Project}.deleteAfter`)
-          .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
-          .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`);
+          .whereNull(`${TableName.Project}.deleteAfter`);
         if (search) void qb.whereILike(`${TableName.Project}.name`, `%${sanitizeSqlLikeString(search)}%`);
         if (excludeProjectType) void qb.whereNot(`${TableName.Project}.type`, excludeProjectType);
         return qb;
       };
+      const countableMemberships = () =>
+        filteredMemberships().whereExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.MembershipRole)
+            .whereRaw("??.?? = ??.??", [TableName.MembershipRole, "membershipId", TableName.Membership, "id"]);
+        });
       const projectNameOrder = `lower(??) ${orderDirection === OrderByDirection.DESC ? "desc" : "asc"}`;
 
-      const query = matchingMemberships()
+      const query = filteredMemberships()
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .orderByRaw(projectNameOrder, [`${TableName.Project}.name`])
         .orderBy(`${TableName.Membership}.id`, "asc")
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
@@ -171,14 +178,12 @@ export const identityProjectDALFactory = (db: TDbClient) => {
 
       let totalCount: number | undefined;
       if (limit !== undefined || offset > 0) {
-        // The page is cut over memberships, not over the membership-role rows the outer query returns, and
-        // the window count is taken before LIMIT/OFFSET, so it is the full total.
-        const page = matchingMemberships()
+        // The window count is taken before LIMIT/OFFSET, so it is the full total.
+        const page = countableMemberships()
           .select<{ id: string; totalCount: string }[]>(
             db.ref("id").withSchema(TableName.Membership),
             db.raw(`count(*) over () as "totalCount"`)
           )
-          .groupBy(`${TableName.Membership}.id`, `${TableName.Project}.name`)
           .orderByRaw(projectNameOrder, [`${TableName.Project}.name`])
           .orderBy(`${TableName.Membership}.id`, "asc")
           .offset(offset);
@@ -188,9 +193,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
         if (pageRows.length) {
           totalCount = Number(pageRows[0].totalCount);
         } else if (offset > 0) {
-          const countRow = await matchingMemberships()
-            .countDistinct<{ count: string }[]>({ count: `${TableName.Membership}.id` })
-            .first();
+          const countRow = await countableMemberships().count<{ count: string }[]>({ count: "*" }).first();
           totalCount = Number(countRow?.count ?? 0);
         } else {
           totalCount = 0;

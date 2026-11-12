@@ -17,11 +17,10 @@ import {
   useGetOrgMembership,
   useGetOrgMembershipProjectMemberships
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { UserAddToProjectModal } from "./UserAddToProjectModal";
-import { UserProjectsTable } from "./UserProjectsTable";
+import { getUserProjectsFirstPageParams, UserProjectsTable } from "./UserProjectsTable";
 
 type Props = {
   membershipId: string;
@@ -35,10 +34,11 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: membership } = useGetOrgMembership(orgId, membershipId);
-  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(orgId, membershipId, {
-    limit: 1,
-    excludeProjectType: ProjectType.CertificateManager
-  });
+  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(
+    orgId,
+    membershipId,
+    getUserProjectsFirstPageParams()
+  );
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
 
