@@ -719,7 +719,8 @@
                     ]
                   },
                   "documentation/platform/agent-vault/guides/docker",
-                  "documentation/platform/agent-vault/guides/cursor"
+                  "documentation/platform/agent-vault/guides/cursor",
+                  "documentation/platform/agent-vault/guides/boxd"
                 ]
               },
               {
