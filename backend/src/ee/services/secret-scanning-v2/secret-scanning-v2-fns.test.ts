@@ -350,7 +350,7 @@ describe("closeFindingsWithSameValue", () => {
   const tx = {} as Parameters<typeof closeFindingsWithSameValue>[1];
 
   test("closes the findings and their unresolved same-value findings in one call", async () => {
-    const triageWithSameValue = vi.fn().mockResolvedValue([]);
+    const triageWithSameValue = vi.fn().mockResolvedValue(undefined);
 
     await closeFindingsWithSameValue(
       {

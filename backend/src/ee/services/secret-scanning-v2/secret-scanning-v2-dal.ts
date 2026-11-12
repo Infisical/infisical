@@ -818,7 +818,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
   /**
    * Applies one triage to the given findings and to every unresolved finding that shares a secret value with them,
-   * in the project or, with `sameValueResourceId`, only in that resource. Returns all the rows it changed.
+   * in the project or, with `sameValueResourceId`, only in that resource.
    *
    * The rows are locked in (resourceId, fingerprint) order before they are written, the order scans upsert findings in
    * (`sortFindingRowsForUpsert`). Two closes of the same value (the batch PATCH runs its items concurrently) each touch
@@ -872,18 +872,14 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .orderByRaw('?? COLLATE "C"', ["fingerprint"])
         .forUpdate()) as Pick<TSecretScanningFindings, "id">[];
 
-      if (!lockedFindings.length) return [];
-
-      return (await tx(TableName.SecretScanningFinding)
-        .whereIn(
-          "id",
-          lockedFindings.map(({ id }) => id)
-        )
-        .update(data)
-        .returning(["id", "secretFindingBlindIndex"])) as Pick<
-        TSecretScanningFindings,
-        "id" | "secretFindingBlindIndex"
-      >[];
+      // the rows are already locked, so updating them in chunks keeps each statement under Postgres's parameter limit
+      for (const chunk of chunkArray(
+        lockedFindings.map(({ id }) => id),
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
+        // eslint-disable-next-line no-await-in-loop
+        await tx(TableName.SecretScanningFinding).whereIn("id", chunk).update(data);
+      }
     } catch (error) {
       throw new DatabaseError({ error, name: "Triage With Same Value - Secret Scanning Finding" });
     }
