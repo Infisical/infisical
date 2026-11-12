@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-/* eslint-disable no-continue */
 import { isAxiosError } from "axios";
 import RE2 from "re2";
 
@@ -216,12 +215,11 @@ export const JenkinsSyncFns = {
     if (disableSecretDeletion) return;
 
     for (const credential of credentials) {
-      if (credential.typeName !== JENKINS_SECRET_TEXT_TYPE_NAME) continue;
-
-      // Only remove credentials managed by this sync (respecting the configured key schema)
-      if (!matchesSchema(credential.id, environment?.slug || "", keySchema)) continue;
-
-      if (!Object.hasOwn(secretMap, credential.id)) {
+      if (
+        credential.typeName === JENKINS_SECRET_TEXT_TYPE_NAME &&
+        matchesSchema(credential.id, environment?.slug || "", keySchema) &&
+        !Object.hasOwn(secretMap, credential.id)
+      ) {
         await deleteJenkinsCredential(connection, storePath, credential.id, deps);
       }
     }
