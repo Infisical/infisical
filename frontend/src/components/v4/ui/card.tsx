@@ -1,8 +1,8 @@
 import * as React from "react";
-import { createLink } from "@tanstack/react-router";
 
 import { useDescendantFlags } from "../lib/descendant-flags";
 import { FrameScope, useInFrame } from "../lib/frame-context";
+import { CipherLink, type CipherLinkProps } from "../lib/link";
 import {
   StretchedLinkContext,
   useStretchedLink,
@@ -233,16 +233,15 @@ function CardFooter({
 }
 CardFooter.displayName = "CardFooter";
 
-function CardLinkAnchor({
+function CardLink({
   className,
   disabled,
   title,
   children,
   ref,
   ...props
-}: React.ComponentPropsWithoutRef<"a"> & {
+}: CipherLinkProps & {
   disabled?: boolean;
-  ref?: React.Ref<HTMLAnchorElement>;
 }) {
   useStretchedLink(!disabled);
   if (disabled)
@@ -259,7 +258,7 @@ function CardLinkAnchor({
       </span>
     );
   return (
-    <a
+    <CipherLink
       ref={ref}
       title={title}
       data-slot="card-link"
@@ -267,11 +266,9 @@ function CardLinkAnchor({
       {...props}
     >
       {children}
-    </a>
+    </CipherLink>
   );
 }
-
-const CardLink = createLink(CardLinkAnchor);
 
 export {
   Card,

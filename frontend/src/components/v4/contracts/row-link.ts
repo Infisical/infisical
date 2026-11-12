@@ -10,7 +10,7 @@ export const rowLinkDefinition = {
   exports: ["RowLink"],
   referenceNames: ["RowLink"],
   behavior: [
-    "RowLink is TanStack Router's createLink over an anchor, so to, params, search and hash are typed against the route tree and the href is real.",
+    "RowLink takes link, the app's link target, and renders one anchor through CipherLink. The app wires its router once with CipherRouterProvider (V4RouterProvider in pages/v4/cipher-router.tsx), so in the app to, params, search and hash are typed against the route tree and the href is real.",
     "Its ::after covers the nearest table row or Card. The row or Card becomes the positioning context through :has(), so hosts need no linked prop.",
     "Buttons, inputs, checkboxes, comboboxes, switches, other links, tooltip triggers and anything marked data-row-interactive inside that host sit above the overlay and keep their own click.",
     "The link text truncates with an ellipsis; pass title to show the full value on hover.",

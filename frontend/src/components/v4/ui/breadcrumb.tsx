@@ -1,7 +1,7 @@
 import * as React from "react";
-import { createLink, type LinkOptions } from "@tanstack/react-router";
 import { Slot } from "radix-ui";
 
+import { CipherLink, type CipherLinkTarget } from "../lib/link";
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
@@ -13,22 +13,13 @@ export type BreadcrumbSwitcher = Omit<SwitcherProps, "trigger" | "anchor">;
 
 export type BreadcrumbCrumb = {
   label: React.ReactNode;
-  link?: LinkOptions;
+  link?: CipherLinkTarget;
   href?: string;
   onNavigate?: React.MouseEventHandler<HTMLElement>;
   mono?: boolean;
   media?: React.ReactNode;
   switcher?: BreadcrumbSwitcher;
 };
-
-function CrumbAnchor({
-  ref,
-  ...props
-}: React.ComponentPropsWithoutRef<"a"> & { ref?: React.Ref<HTMLAnchorElement> }) {
-  return <a ref={ref} {...props} />;
-}
-
-const CrumbLink = createLink(CrumbAnchor);
 
 const hasPage = (crumb: BreadcrumbCrumb) => Boolean(crumb.link || crumb.href || crumb.onNavigate);
 
@@ -45,15 +36,15 @@ const CrumbName = ({
 }) => {
   if (crumb.link)
     return (
-      <CrumbLink
-        {...crumb.link}
+      <CipherLink
+        link={crumb.link}
         onClick={crumb.onNavigate}
         data-slot="breadcrumb-name"
         className={className}
         aria-labelledby={labelId}
       >
         {children}
-      </CrumbLink>
+      </CipherLink>
     );
   if (crumb.href)
     return (

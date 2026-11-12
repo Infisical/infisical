@@ -5,24 +5,36 @@ import {
   createMemoryHistory,
   createRootRoute,
   createRoute,
+  createLink,
   createRouter,
   RouterProvider
 } from "@tanstack/react-router";
 import { expect, it } from "vitest";
 
+import { type CipherRouter, CipherRouterProvider } from "../lib/link";
 import { Button } from "./button";
 import { Card, CardLink } from "./card";
+
+const TestLink = createLink((props: React.ComponentPropsWithoutRef<"a">) => (
+  <a {...props} />
+)) as unknown as React.ComponentType<Record<string, unknown>>;
+const cipherRouter: CipherRouter = {
+  Link: ({ link, ref: _ref, ...props }) => <TestLink {...(link as object)} {...props} />,
+  useLinkMatch: () => () => undefined
+};
 
 it("renders one stretched anchor that leaves modifier, middle and nested clicks to the browser", async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const rootRoute = createRootRoute({
     component: () => (
-      <Card>
-        <CardLink to={"/items/$itemId" as never} params={{ itemId: "a" } as never}>
-          Item A
-        </CardLink>
-        <Button variant="ghost">Copy</Button>
-      </Card>
+      <CipherRouterProvider router={cipherRouter}>
+        <Card>
+          <CardLink link={{ to: "/items/$itemId" as never, params: { itemId: "a" } as never }}>
+            Item A
+          </CardLink>
+          <Button variant="ghost">Copy</Button>
+        </Card>
+      </CipherRouterProvider>
     )
   });
   const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: "/items/$itemId" });

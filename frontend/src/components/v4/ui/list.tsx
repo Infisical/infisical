@@ -1,7 +1,7 @@
 import * as React from "react";
-import { createLink, type LinkOptions } from "@tanstack/react-router";
 
 import { FrameScope, useInFrame } from "../lib/frame-context";
+import { CipherLink, type CipherLinkTarget } from "../lib/link";
 import { cn } from "../lib/utils";
 import { Checkbox } from "./checkbox";
 import { Skeleton } from "./skeleton";
@@ -29,7 +29,7 @@ export interface ListRowProps {
   children?: React.ReactNode;
   href?: string;
   /** A router link (to, params, search); the title renders as one anchor that keeps modifier clicks native. */
-  link?: LinkOptions;
+  link?: CipherLinkTarget;
   onClick?: (event: React.MouseEvent) => void;
   current?: boolean;
   disabled?: boolean;
@@ -38,15 +38,6 @@ export interface ListRowProps {
   resolved?: boolean;
   label: string;
 }
-function RowTitleAnchor({
-  ref,
-  ...props
-}: React.ComponentPropsWithoutRef<"a"> & { ref?: React.Ref<HTMLAnchorElement> }) {
-  return <a ref={ref} {...props} />;
-}
-
-const RowTitleLink = createLink(RowTitleAnchor);
-
 export function ListRow({
   value,
   title,
@@ -137,8 +128,8 @@ export function ListRow({
         <div className={styles.titleLine}>
           {unread && !media && <span className={styles.unread} aria-hidden />}
           {link && !disabled ? (
-            <RowTitleLink
-              {...link}
+            <CipherLink
+              link={link}
               className={styles.rowTitle}
               title={fullTitle}
               onClick={click}
@@ -147,7 +138,7 @@ export function ListRow({
               data-list-target
             >
               {title}
-            </RowTitleLink>
+            </CipherLink>
           ) : href && !disabled ? (
             <a
               className={styles.rowTitle}

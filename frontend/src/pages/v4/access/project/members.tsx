@@ -103,7 +103,9 @@ export const ProjectMembersTab = () => {
       grow: true,
       render: (member) => (
         <RowLink
-          {...go.link(accessLinks.projectMember(scope, memberDetailId(scope.projectType, member)))}
+          link={go.link(
+            accessLinks.projectMember(scope, memberDetailId(scope.projectType, member))
+          )}
           title={personName(member.user) ?? undefined}
         >
           {personName(member.user) ?? <Muted>-</Muted>}

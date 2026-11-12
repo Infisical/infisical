@@ -104,8 +104,10 @@ export const ProjectsPage = () => {
                     <Icon name={product.icon} size={18} />
                     <CardLink
                       disabled={blocked.has(product.type)}
-                      to={v4Path("/organizations/$orgId/$")}
-                      params={{ orgId, _splat: productHome(product).slice(1) }}
+                      link={{
+                        to: v4Path("/organizations/$orgId/$"),
+                        params: { orgId, _splat: productHome(product).slice(1) }
+                      }}
                     >
                       {product.label}
                     </CardLink>

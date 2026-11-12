@@ -229,7 +229,7 @@ export const PamMembersTab = () => {
       grow: true,
       render: (member) => (
         <RowLink
-          {...go.link(accessLinks.projectMember(scope, member.id))}
+          link={go.link(accessLinks.projectMember(scope, member.id))}
           title={displayName(member) ?? undefined}
         >
           {displayName(member) ?? <Muted>-</Muted>}

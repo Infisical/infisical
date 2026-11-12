@@ -87,7 +87,7 @@ export const ConnectedResourcesCard = ({ gatewayId }: { gatewayId: string }) => 
       primary: true,
       grow: true,
       render: (row) => (
-        <RowLink {...row.link} title={row.name}>
+        <RowLink link={row.link} title={row.name}>
           {row.name}
         </RowLink>
       )

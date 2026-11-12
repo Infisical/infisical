@@ -415,7 +415,7 @@ export const ProjectMembershipsSection = ({
       sortable: true,
       grow: true,
       render: (row) => (
-        <RowLink {...go.link(projectHref(row))} title={row.project.name}>
+        <RowLink link={go.link(projectHref(row))} title={row.project.name}>
           {row.project.name}
         </RowLink>
       )

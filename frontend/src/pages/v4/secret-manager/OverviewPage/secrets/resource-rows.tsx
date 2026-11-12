@@ -792,14 +792,15 @@ function FolderRowView({
         >
           <div className={styles.nameLine}>
             <RowLink
-              from={OVERVIEW_ROUTE}
-              to="."
-              search={(previous) =>
-                withoutDefaults(
-                  { ...previous, secretPath, search: "" },
-                  { secretPath: "/", search: "", environments: [] }
-                )
-              }
+              link={{
+                from: OVERVIEW_ROUTE,
+                to: ".",
+                search: (previous) =>
+                  withoutDefaults(
+                    { ...previous, secretPath, search: "" },
+                    { secretPath: "/", search: "", environments: [] }
+                  )
+              }}
               title={first.name}
             >
               {first.name}

@@ -61,7 +61,7 @@ export const OverviewPage = () => {
                   <Media icon={link.icon} />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center justify-between gap-2">
-                      <RowLink {...page.link} title={page.title}>
+                      <RowLink link={page.link} title={page.title}>
                         {page.title}
                       </RowLink>
                       <Badge tone={statusTone[link.status]}>{link.status}</Badge>
@@ -82,7 +82,7 @@ export const OverviewPage = () => {
                 <Media icon={section.icon} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
-                    <RowLink {...page.link}>{section.title}</RowLink>
+                    <RowLink link={page.link}>{section.title}</RowLink>
                     <Meta>{pages.length} pages</Meta>
                   </div>
                   <SmallText muted>{summary}</SmallText>

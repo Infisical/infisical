@@ -166,7 +166,7 @@ export const GatewaysPanel = ({
       text: (gateway) => gateway.name,
       render: (gateway) => (
         <RowLink
-          {...go.link(orgHref(orgId, `/networking/gateways/${gateway.id}`))}
+          link={go.link(orgHref(orgId, `/networking/gateways/${gateway.id}`))}
           title={gateway.name}
         >
           {gateway.name}

@@ -147,8 +147,7 @@ const baseColumns = <Row extends Project>(
     text: (row) => row.name,
     render: (row) => (
       <RowLink
-        to={homeRoute(row.type)}
-        params={{ orgId, projectId: row.id }}
+        link={{ to: homeRoute(row.type), params: { orgId, projectId: row.id } }}
         disabled={!canOpen(row)}
       >
         {row.name}
@@ -284,7 +283,7 @@ const ProjectCard = ({
       variant="framed"
       footerPlacement="frame"
       title={
-        <CardLink to={homeRoute(project.type)} params={{ orgId, projectId: project.id }}>
+        <CardLink link={{ to: homeRoute(project.type), params: { orgId, projectId: project.id } }}>
           {project.name}
         </CardLink>
       }

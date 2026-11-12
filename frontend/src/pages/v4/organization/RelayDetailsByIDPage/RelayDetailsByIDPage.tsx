@@ -257,7 +257,7 @@ const ConnectedGatewaysCard = ({ relayId }: { relayId: string }) => {
       primary: true,
       grow: true,
       render: (row) => (
-        <RowLink {...go.link(orgHref(orgId, `/networking/gateways/${row.id}`))} title={row.name}>
+        <RowLink link={go.link(orgHref(orgId, `/networking/gateways/${row.id}`))} title={row.name}>
           {row.name}
         </RowLink>
       )
