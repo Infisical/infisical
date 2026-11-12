@@ -132,14 +132,14 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/row-link/default.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @cipher/badge, @cipher/button, @cipher/card, @cipher/data-table, @cipher/provider-icon, @cipher/row-link, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/card, @cipher/data-table, @cipher/icon, @cipher/row-link, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
 import { Button } from "../../../../components/v4/ui/button";
 import { Card } from "../../../../components/v4/ui/card";
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
-import { ProviderIcon } from "../../../../components/v4/ui/provider-icon";
+import { Icon, type IconName } from "../../../../components/v4/ui/icon";
 import { RowLink } from "../../../../components/v4/ui/row-link";
 import { SmallText } from "../../../../components/v4/ui/text";
 
@@ -147,7 +147,7 @@ type Page = {
   id: string;
   group: string;
   title: string;
-  icon: string;
+  icon: IconName;
   status: string;
   ready: boolean;
 };
@@ -156,7 +156,7 @@ const pages: Page[] = [
     id: "detail",
     group: "data-display",
     title: "Detail",
-    icon: "Infisical.png",
+    icon: "file",
     status: "Data display",
     ready: true
   },
@@ -164,7 +164,7 @@ const pages: Page[] = [
     id: "documentation-link-badge",
     group: "navigation",
     title: "Documentation link badge",
-    icon: "GitHub.png",
+    icon: "link",
     status: "Navigation",
     ready: true
   },
@@ -172,7 +172,7 @@ const pages: Page[] = [
     id: "provider-icon",
     group: "data-display",
     title: "Provider icon",
-    icon: "Amazon Web Services.png",
+    icon: "apps",
     status: "Data display",
     ready: true
   },
@@ -180,7 +180,7 @@ const pages: Page[] = [
     id: "unreleased",
     group: "patterns",
     title: "Unreleased page, not linked yet",
-    icon: "Kafka.png",
+    icon: "folder",
     status: "Draft",
     ready: false
   }
@@ -195,7 +195,7 @@ export default function Example() {
       text: (row) => row.title,
       render: (row) => (
         <div className="flex min-w-0 items-center gap-2">
-          <ProviderIcon icon={row.icon} alt="" />
+          <Icon name={row.icon} size="var(--v4-size-icon)" className="shrink-0" />
           <RowLink
             link={{ href: `/design-system/components/${row.group}/${row.id}` }}
             disabled={!row.ready}
@@ -249,7 +249,7 @@ export default function Example() {
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
           <Card variant="framed">
             <div className="flex items-center gap-3">
-              <ProviderIcon icon="Infisical.png" alt="" size="xl" />
+              <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
               <div className="min-w-0 flex-1">
                 <RowLink
                   link={{ href: "/design-system/components/data-display/detail" }}

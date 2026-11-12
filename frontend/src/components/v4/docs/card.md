@@ -206,13 +206,13 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/card/link.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @cipher/badge, @cipher/button, @cipher/card, @cipher/provider-icon, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/card, @cipher/icon, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
 import { Button } from "../../../../components/v4/ui/button";
 import { Card, CardLink } from "../../../../components/v4/ui/card";
-import { ProviderIcon } from "../../../../components/v4/ui/provider-icon";
+import { Icon } from "../../../../components/v4/ui/icon";
 import { SmallText } from "../../../../components/v4/ui/text";
 
 export default function Example() {
@@ -222,7 +222,7 @@ export default function Example() {
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
           <Card variant="framed">
             <div className="flex items-start gap-3">
-              <ProviderIcon icon="Infisical.png" alt="" size="xl" />
+              <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <CardLink
                   link={{ href: "/design-system/components/data-display/detail" }}
@@ -259,7 +259,7 @@ export default function Example() {
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
           <Card variant="framed">
             <div className="flex items-start gap-3">
-              <ProviderIcon icon="Kafka.png" alt="" size="xl" />
+              <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <CardLink
                   link={{ href: "/design-system/components/data-display/detail" }}
