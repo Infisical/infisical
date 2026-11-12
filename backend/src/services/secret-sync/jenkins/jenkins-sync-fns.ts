@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-continue */
 import { isAxiosError } from "axios";
+import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -25,7 +26,7 @@ const JENKINS_SECRET_TEXT_TYPE_NAME = "Secret text";
 const JENKINS_CREDENTIAL_DESCRIPTION = "Managed by Infisical";
 // The rule Jenkins' own credential form enforces; the REST endpoints accept anything, including
 // IDs that later break URLs behind a proxy
-const JENKINS_CREDENTIAL_ID_REGEX = /^[A-Za-z0-9_.-]+$/;
+const JENKINS_CREDENTIAL_ID_REGEX = new RE2("^[A-Za-z0-9_.-]+$");
 
 const isValidJenkinsCredentialId = (id: string) => JENKINS_CREDENTIAL_ID_REGEX.test(id) && id !== "." && id !== "..";
 
@@ -42,13 +43,13 @@ export const getJenkinsCredentialStorePath = (destinationConfig: TJenkinsSyncWit
 
 const escapeXml = (value: string) =>
   value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;")
     // XML parsers normalize a literal carriage return to a newline, so it is sent as a character reference
-    .replace(/\r/g, "&#13;");
+    .replaceAll("\r", "&#13;");
 
 // Jenkins replaces the whole credential with this body on update, so every field is always sent
 export const buildJenkinsSecretTextCredentialXml = (id: string, secret: string) =>

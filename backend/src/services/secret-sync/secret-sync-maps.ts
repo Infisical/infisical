@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
@@ -283,7 +285,7 @@ const getJenkinsInstanceKey = (connection: TJenkinsConnection) => {
   const url = new URL(getJenkinsInstanceUrl(connection));
   const route = connection.gatewayPoolId ?? connection.gatewayId ?? "direct";
 
-  return `${url.origin}${url.pathname.replace(/\/+$/, "")}@${route}`;
+  return `${url.origin}${url.pathname.replace(new RE2("/+$"), "")}@${route}`;
 };
 
 const jenkinsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
