@@ -1,6 +1,7 @@
 import { V4Scope } from "@infisical/cipher/scope";
 import { Loader } from "@infisical/cipher/ui/loader";
 
+import "@infisical/cipher/fonts.css";
 import "@app/pages/v4/cipher.css";
 
 import { useV4AppTheme } from "./useV4Theme";
