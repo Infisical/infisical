@@ -84,7 +84,7 @@ Exports: RowLink. Source TypeScript defines the API.
 
 ## Behavior
 
-- RowLink is TanStack Router's createLink over an anchor, so to, params, search and hash are typed against the route tree and the href is real.
+- RowLink takes link, the app's link target, and renders one anchor through CipherLink. The app wires its router once with CipherRouterProvider (V4RouterProvider in pages/v4/cipher-router.tsx), so in the app to, params, search and hash are typed against the route tree and the href is real.
 - Its ::after covers the nearest table row or Card. The row or Card becomes the positioning context through :has(), so hosts need no linked prop.
 - Buttons, inputs, checkboxes, comboboxes, switches, other links, tooltip triggers and anything marked data-row-interactive inside that host sit above the overlay and keep their own click.
 - The link text truncates with an ellipsis; pass title to show the full value on hover.
@@ -197,8 +197,7 @@ export default function Example() {
         <div className="flex min-w-0 items-center gap-2">
           <ProviderIcon icon={row.icon} alt="" />
           <RowLink
-            to="/design-system/components/$group/$component"
-            params={{ group: row.group, component: row.id }}
+            link={{ href: `/design-system/components/${row.group}/${row.id}` }}
             disabled={!row.ready}
             title={row.title}
           >
@@ -253,8 +252,7 @@ export default function Example() {
               <ProviderIcon icon="Infisical.png" alt="" size="xl" />
               <div className="min-w-0 flex-1">
                 <RowLink
-                  to="/design-system/components/$group/$component"
-                  params={{ group: "data-display", component: "detail" }}
+                  link={{ href: "/design-system/components/data-display/detail" }}
                   chevron={false}
                 >
                   Detail

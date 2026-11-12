@@ -68,7 +68,7 @@ Exports: Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 ## Behavior
 
 - Card offers plain and framed shells, a flush body and named title/description/action/footer slots. Plain (the default) is a single surface with one line-soft border and no frame: use it, or no card at all, for a standalone card. Framed is for emphasis, such as the org overview product cards and project cards with a footer band, and for section cards that head a part of a page, such as a detail page's Details sidecar, a roles or authentication section and settings sections; set variant framed on those. Framed is a borderless tint frame around a bordered inset surface: frame, then the line border, then the inset ground, then content. Only the inset carries a border, so header band, inner surface and footer band read as one card: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. With footerPlacement frame and the title, description and footer props, the header and body sit together on the inner surface with its own line border, and the footer is a band in the frame below it, padded by the frame pad, never a separate box. description is optional: use a short line where it tells cards in a set apart or scopes the card, never to restate the title. In a grid that stretches its items, the body grows to fill the card, so a row of framed cards keeps level bottoms and footer bands. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column. The framed header band centers its label and action vertically, so the label sits at the same height in every band whether the action is a link, an xs Button, an xs search Input or nothing. A plain Card whose children are raw content rather than CardHeader, CardContent or CardFooter pads them by the body inset, as a framed body does, and flush removes it. A Card never frames inside another frame: inside a framed Card, a List, a DataTable or a CodeBlock, variant framed drops to plain.
-- CardLink makes the whole Card a link with RowLink's semantics. It is TanStack Router's createLink over one real anchor, so to, params, search and hash are typed and the href is real, and an absolute URL in to renders a plain external href. Put it around the card's name; its ::after covers the Card, which becomes the positioning context through :has() and takes a translucent ink hover. Buttons, inputs, other links, tooltip triggers and anything marked data-row-interactive inside the Card sit above the overlay and keep their own click. Unlike RowLink, the text wraps instead of truncating. disabled renders a muted span with no href and no overlay, so the Card stays visible and does not navigate.
+- CardLink makes the whole Card a link with RowLink's semantics. It takes link, the app's link target, and renders one real anchor through CipherLink, so a TanStack app gets typed to, params, search and hash and a real href, and an absolute URL in to renders a plain external href. Put it around the card's name; its ::after covers the Card, which becomes the positioning context through :has() and takes a translucent ink hover. Buttons, inputs, other links, tooltip triggers and anything marked data-row-interactive inside the Card sit above the overlay and keep their own click. Unlike RowLink, the text wraps instead of truncating. disabled renders a muted span with no href and no overlay, so the Card stays visible and does not navigate.
 
 ## Accessibility
 
@@ -225,8 +225,7 @@ export default function Example() {
               <ProviderIcon icon="Infisical.png" alt="" size="xl" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <CardLink
-                  to="/design-system/components/$group/$component"
-                  params={{ group: "data-display", component: "detail" }}
+                  link={{ href: "/design-system/components/data-display/detail" }}
                 >
                   Detail
                 </CardLink>
@@ -263,8 +262,7 @@ export default function Example() {
               <ProviderIcon icon="Kafka.png" alt="" size="xl" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <CardLink
-                  to="/design-system/components/$group/$component"
-                  params={{ group: "data-display", component: "detail" }}
+                  link={{ href: "/design-system/components/data-display/detail" }}
                   disabled
                 >
                   Unreleased page

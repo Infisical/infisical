@@ -1,29 +1,48 @@
+import type * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   createMemoryHistory,
   createRootRoute,
   createRoute,
+  createLink,
   createRouter,
   RouterProvider
 } from "@tanstack/react-router";
 import { expect, it } from "vitest";
 
+import { type CipherRouter, CipherRouterProvider } from "../lib/link";
 import { RowLink } from "./row-link";
+
+const TestLink = createLink((props: React.ComponentPropsWithoutRef<"a">) => (
+  <a {...props} />
+)) as unknown as React.ComponentType<Record<string, unknown>>;
+const cipherRouter: CipherRouter = {
+  Link: ({ link, ref: _ref, ...props }) => <TestLink {...(link as object)} {...props} />,
+  useLinkMatch: () => () => undefined
+};
 
 it("renders a typed href with a stretched target, and a span with no href when disabled", async () => {
   const rootRoute = createRootRoute({
     component: () => (
-      <>
-        <RowLink to={"/items/$itemId" as never} params={{ itemId: "a" } as never}>
-          Item A
-        </RowLink>
-        <RowLink to={"/items/$itemId" as never} params={{ itemId: "b" } as never} disabled>
-          Item B
-        </RowLink>
-        <RowLink to={"/items/$itemId" as never} params={{ itemId: "c" } as never} chevron={false}>
-          Item C
-        </RowLink>
-      </>
+      <CipherRouterProvider router={cipherRouter}>
+        <>
+          <RowLink link={{ to: "/items/$itemId" as never, params: { itemId: "a" } as never }}>
+            Item A
+          </RowLink>
+          <RowLink
+            link={{ to: "/items/$itemId" as never, params: { itemId: "b" } as never }}
+            disabled
+          >
+            Item B
+          </RowLink>
+          <RowLink
+            link={{ to: "/items/$itemId" as never, params: { itemId: "c" } as never }}
+            chevron={false}
+          >
+            Item C
+          </RowLink>
+        </>
+      </CipherRouterProvider>
     )
   });
   const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: "/items/$itemId" });

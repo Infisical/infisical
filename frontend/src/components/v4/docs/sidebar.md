@@ -115,7 +115,7 @@ Exports: Sidebar. Source TypeScript defines the API.
 - Pass scope to show a product, project or settings level instead of the top level: a back row (chevron-left and the parent's name, named Back to the parent) above that scope's sections. The back row calls onNavigate with scope.back, so the host moves up one level and passes the parent scope, or none for the top level. Spaces show only at the top level.
 - A scope change slides the rows in over duration-moderate on ease-standard, from the right going deeper and from the left going back; with reduced motion it only fades. In the rail the back row is the first icon, with a Back to tooltip.
 - A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail.
-- Pass levels for routed, nested navigation: each level has an id, a label and its sections, and every level but the top names its parent. A row declares its route as link, built with linkOptions so to and params are typed against the route tree, and renders as a TanStack Link. A row with level instead opens that level in place (the drill-in chevron comes with it) and a level with a parent gets a back row named for the parent that goes up one level, so a person can browse another level without leaving the page.
+- Pass levels for routed, nested navigation: each level has an id, a label and its sections, and every level but the top names its parent. A row declares its route as link, built with linkOptions so to and params are typed against the route tree, and renders through CipherLink; the current row comes from the router's useLinkMatch. A row with level instead opens that level in place (the drill-in chevron comes with it) and a level with a parent gets a back row named for the parent that goes up one level, so a person can browse another level without leaving the page.
 - With links, route matches pick the current row: a link matches its route and every route below it unless its activeOptions set exact, params must match, and when several rows match the most specific wins (an exact match, then the longest path). The level holding the current row shows, it follows every navigation (back and forward, deep links, reload), and drill-in rows on the way to it carry the holds-current ink. current is only the fallback when no route matches.
 
 ## Accessibility
@@ -138,7 +138,7 @@ Exports: Sidebar. Source TypeScript defines the API.
 
 ## Limits
 
-- Without links the host owns routing: rows call onNavigate or follow href, and the host passes the current id back. Links need a RouterProvider above the Sidebar.
+- Without links the host owns routing: rows call onNavigate or follow href, and the host passes the current id back. Links need a CipherRouterProvider above the Sidebar, or they render plain anchors and no row is current from the route.
 - Levels show one level at a time, so a row's children stay a single level of pages; deeper structure is another level.
 - The person's account and the organization menu live in the TopBar, not here.
 
@@ -421,20 +421,16 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/sidebar/routes.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
 
-Registry items used: @cipher/sidebar. Additional packages: @tanstack/react-router@^1.95.1. Install every listed item before compiling this example.
+Registry items used: @cipher/sidebar. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { linkOptions } from "@tanstack/react-router";
 
 import { Sidebar, type SidebarLevel } from "../../../../components/v4/ui/sidebar";
 
 const page = (group: string, component: string, label: string) => ({
   id: component,
   label,
-  link: linkOptions({
-    to: "/design-system/components/$group/$component",
-    params: { group, component }
-  })
+  link: { href: `/design-system/components/${group}/${component}` }
 });
 
 const levels: SidebarLevel[] = [
@@ -448,7 +444,7 @@ const levels: SidebarLevel[] = [
             id: "overview",
             label: "Overview",
             icon: "home",
-            link: linkOptions({ to: "/design-system", activeOptions: { exact: true } })
+            link: { href: "/design-system" }
           },
           { id: "open-navigation", label: "Navigation", icon: "menu", level: "navigation" },
           { id: "open-feedback", label: "Feedback", icon: "bell", level: "feedback" }

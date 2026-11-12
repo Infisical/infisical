@@ -77,7 +77,7 @@ export const KmipServersPage = () => {
       sortable: true,
       grow: true,
       render: (server) => (
-        <RowLink {...go.link(kmipLinks.server(orgId, server.id))} title={server.name}>
+        <RowLink link={go.link(kmipLinks.server(orgId, server.id))} title={server.name}>
           {server.name}
         </RowLink>
       )

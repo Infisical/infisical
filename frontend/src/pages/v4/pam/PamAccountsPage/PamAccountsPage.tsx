@@ -351,8 +351,10 @@ export const PamAccountsPage = () => {
             <Inline gap={8} align="center" wrap={false}>
               <Icon name="folder" />
               <RowLink
-                to={v4Path("/organizations/$orgId/$")}
-                params={{ orgId, _splat: `pam/accounts/${folder.id}` }}
+                link={{
+                  to: v4Path("/organizations/$orgId/$"),
+                  params: { orgId, _splat: `pam/accounts/${folder.id}` }
+                }}
               >
                 {folder.name}
                 <span
@@ -380,10 +382,12 @@ export const PamAccountsPage = () => {
           <Inline gap={8} align="center" wrap={false}>
             {meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="sm" />}
             <RowLink
-              to={v4Path("/organizations/$orgId/$")}
-              params={{
-                orgId,
-                _splat: `pam/accounts/${account.accountType}/${account.id}/access`
+              link={{
+                to: v4Path("/organizations/$orgId/$"),
+                params: {
+                  orgId,
+                  _splat: `pam/accounts/${account.accountType}/${account.id}/access`
+                }
               }}
             >
               {account.name}

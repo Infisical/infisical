@@ -167,7 +167,7 @@ export const IdentityRoleDetailsSection = ({
       grow: true,
       render: (grant) => (
         <RowLink
-          {...go.link(
+          link={go.link(
             linksIdentityRoles(scope.projectType)
               ? accessLinks.projectRole(scope, grantSlug(grant))
               : undefined

@@ -1,7 +1,7 @@
 import * as React from "react";
-import { createLink, type LinkOptions, useMatchRoute, useRouter } from "@tanstack/react-router";
 import { CircleHelp } from "lucide-react";
 
+import { CipherLink, type CipherLinkTarget, useCipherLinkMatch } from "../lib/link";
 import { ListHighlight } from "../lib/list-highlight";
 import { useReportPresence } from "../lib/presence-count";
 import { useControllableState } from "../lib/use-controllable-state";
@@ -41,7 +41,7 @@ export interface SidebarLink {
   external?: boolean;
   disabled?: boolean;
   drillIn?: boolean;
-  link?: LinkOptions;
+  link?: CipherLinkTarget;
   level?: string;
 }
 export interface SidebarItem extends SidebarLink {
@@ -124,18 +124,6 @@ const holds = (sections: readonly SidebarSection[], id?: string) =>
     )
   );
 
-function SidebarAnchor({
-  ref,
-  ...props
-}: React.ComponentPropsWithoutRef<"a"> & {
-  ref?: React.Ref<HTMLAnchorElement>;
-  "data-current"?: boolean;
-}) {
-  return <a ref={ref} {...props} aria-current={props["data-current"] ? "page" : undefined} />;
-}
-
-const SidebarLinkAnchor = createLink(SidebarAnchor);
-
 const LevelTrail = React.createContext<readonly string[]>([]);
 
 const RowContent = ({
@@ -213,9 +201,9 @@ const SidebarRow = ({
   );
   const row =
     item.link && !item.disabled ? (
-      <SidebarLinkAnchor {...item.link} {...shared} activeProps={{}}>
+      <CipherLink link={item.link} {...shared}>
         {content}
-      </SidebarLinkAnchor>
+      </CipherLink>
     ) : item.href || item.link ? (
       <a
         {...shared}
@@ -294,14 +282,13 @@ const SidebarGroup = ({
               asChild={Boolean(childItem.href || childItem.link)}
             >
               {childItem.link ? (
-                <SidebarLinkAnchor
-                  {...childItem.link}
-                  activeProps={{}}
+                <CipherLink
+                  link={childItem.link}
                   data-current={childItem.id === current || undefined}
                 >
                   {childItem.label}
                   {childItem.count ? <Count>{childItem.count}</Count> : null}
-                </SidebarLinkAnchor>
+                </CipherLink>
               ) : childItem.href ? (
                 <a
                   href={childItem.href}
@@ -971,17 +958,12 @@ const sidebarLinks = ({ sections, levels, scope, spaces, footerItems }: SidebarP
     .filter((item) => item.link);
 
 const RoutedSidebar = ({ links, ...props }: SidebarProps & { links: readonly SidebarLink[] }) => {
-  const router = useRouter();
-  const matchRoute = useMatchRoute();
+  const match = useCipherLinkMatch();
   let routed: { id: string; rank: number } | undefined;
   links.forEach((item) => {
-    const link = item.link as Parameters<typeof matchRoute>[0];
-    const exact = Boolean(matchRoute({ ...link, fuzzy: false }));
-    if (!exact && (item.link?.activeOptions?.exact || !matchRoute({ ...link, fuzzy: true })))
-      return;
-    const rank =
-      (exact ? 1e6 : 0) +
-      router.buildLocation(link as Parameters<typeof router.buildLocation>[0]).pathname.length;
+    const found = item.link && match(item.link);
+    if (!found) return;
+    const rank = (found.exact ? 1e6 : 0) + found.length;
     if (!routed || rank > routed.rank) routed = { id: item.id, rank };
   });
   return <SidebarView {...props} current={routed?.id ?? props.current} />;

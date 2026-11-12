@@ -25,7 +25,7 @@ export const loaderDefinition = {
     "Size page is the page loader: it fills a page body while the page or its lazy chunk loads, before any of the page is on screen.",
     "BootLoader is the page loader for app and session boot, before the shell exists: the router's root pending state and a route that authenticates the session or loads the organization. It fills the viewport, or its container with fill container, and themes itself from storage the way the app theme does (a ?theme= or session preview outside live orgs, else the named theme for the scheme the shared light, dark or system preference resolves to), so it needs no V4Scope. A theme prop pins one theme.",
     "Before any JavaScript runs, index.html paints the same ground on /v4 paths: a generated inline script resolves the theme with the same rules and sets data-v4-boot on the html element, and a generated style gives each theme its inset ground and color scheme, so a dark theme never flashes white. Other paths are untouched, and the app removes the attribute once the first route resolves. ui:generate writes the block from tokens.json.",
-    "RouteProgress is a size-space-2 ink bar along the top of the viewport while the TanStack router is pending. It appears only after duration-slow, so instant navigations show nothing, then creeps toward nine tenths of the width; when the navigation resolves it fills and fades out. Reduced motion shows a still full-width bar instead. pending overrides the router state."
+    "RouteProgress is a size-space-2 ink bar along the top of the viewport while pending is true. It appears only after duration-slow, so instant navigations show nothing, then creeps toward nine tenths of the width; when the navigation resolves it fills and fades out. Reduced motion shows a still full-width bar instead. It reads no router: the app passes pending from its own router state."
   ],
   accessibility: [
     "Spinner's label carries one polite status announcement; the region sets aria-busy while loading.",
@@ -36,7 +36,7 @@ export const loaderDefinition = {
     "For an inline status beside text, use Spinner with a label directly; Loader only fills areas.",
     "Use Progress for a known count and Skeleton for a known layout. A blanket Loader over rows, cards or a chart whose shape is known is a misuse.",
     "The boot ground in index.html cannot evaluate the v4 feature flag, so it applies to /v4 paths only; a flag-on visit to a main path paints main's ground until the redirect to /v4.",
-    "RouteProgress mounts once, inside the v4 root; it reads the router it is rendered under and does not cover the v3 app, which keeps NProgress."
+    "RouteProgress mounts once, inside the v4 root; the app passes its router's pending state, and it does not cover the v3 app, which keeps NProgress."
   ],
   examples: [
     {
@@ -79,7 +79,7 @@ export const loaderDefinition = {
       axis: "level",
       expected: ["boot", "route", "page", "region"],
       shown: [
-        { value: "boot", exampleId: "boot", label: "Boot, peach" },
+        { value: "boot", exampleId: "boot", label: "Boot, Lightly Peach" },
         {
           value: "route",
           exampleId: "route-progress",

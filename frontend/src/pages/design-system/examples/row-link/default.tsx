@@ -62,8 +62,10 @@ export default function Example() {
         <div className="flex min-w-0 items-center gap-2">
           <ProviderIcon icon={row.icon} alt="" />
           <RowLink
-            to="/design-system/components/$group/$component"
-            params={{ group: row.group, component: row.id }}
+            link={{
+              to: "/design-system/components/$group/$component",
+              params: { group: row.group, component: row.id }
+            }}
             disabled={!row.ready}
             title={row.title}
           >
@@ -115,8 +117,10 @@ export default function Example() {
             <ProviderIcon icon="Infisical.png" alt="" size="xl" />
             <div className="min-w-0 flex-1">
               <RowLink
-                to="/design-system/components/$group/$component"
-                params={{ group: "data-display", component: "detail" }}
+                link={{
+                  to: "/design-system/components/$group/$component",
+                  params: { group: "data-display", component: "detail" }
+                }}
                 chevron={false}
               >
                 Detail

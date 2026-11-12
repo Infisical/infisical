@@ -204,7 +204,7 @@ export const OrgIdentitiesTab = () => {
         const locked = row.identity.activeLockoutAuthMethods;
         return (
           <RowLink
-            {...go.link(
+            link={go.link(
               isProjectScoped(row)
                 ? projectHref(row)
                 : accessLinks.orgIdentity(orgId, row.identity.id)

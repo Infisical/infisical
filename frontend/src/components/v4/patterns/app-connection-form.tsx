@@ -96,6 +96,8 @@ export type AppConnectionFormProps = {
   onSubmit: (values: AppConnectionFormValues) => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
   onPendingChange?: (pending: boolean) => void;
+  /** Called with the selected method's submit label: its redirect submitLabel, or Create connection. */
+  onSubmitLabelChange?: (label: string) => void;
 };
 
 export function AppConnectionForm({
@@ -105,7 +107,8 @@ export function AppConnectionForm({
   redirect,
   onSubmit,
   onDirtyChange,
-  onPendingChange
+  onPendingChange,
+  onSubmitLabelChange
 }: AppConnectionFormProps) {
   const methods = usableMethods(preset, redirect);
   const [first] = methods;
@@ -128,6 +131,8 @@ export function AppConnectionForm({
   const [redirecting, setRedirecting] = React.useState(false);
   const pending = formState.isSubmitting || redirecting;
   React.useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
+  const submitLabel = method.redirect?.submitLabel ?? "Create connection";
+  React.useEffect(() => onSubmitLabelChange?.(submitLabel), [submitLabel, onSubmitLabelChange]);
   React.useEffect(() => onPendingChange?.(pending), [pending, onPendingChange]);
   const submit = form.handleSubmit(async (submitted) => {
     setFailure("");
@@ -318,7 +323,14 @@ export function connectionCreation({
     disabledReason,
     discardTitle: "Discard connection setup?",
     discardDescription: "Your progress configuring this connection will be lost.",
-    renderForm: ({ query, formId, complete, onDirtyChange, onPendingChange }) => (
+    renderForm: ({
+      query,
+      formId,
+      complete,
+      onDirtyChange,
+      onPendingChange,
+      onSubmitLabelChange
+    }) => (
       <AppConnectionForm
         id={formId}
         preset={preset}
@@ -326,6 +338,7 @@ export function connectionCreation({
         redirect={redirect}
         onDirtyChange={onDirtyChange}
         onPendingChange={onPendingChange}
+        onSubmitLabelChange={onSubmitLabelChange}
         onSubmit={async (values) => {
           const connection = await create(values);
           complete({ value: connection.id, label: connection.name });

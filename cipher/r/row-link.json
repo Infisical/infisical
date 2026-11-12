@@ -6,15 +6,12 @@
     "@cipher/cipher-base",
     "@cipher/icon"
   ],
-  "dependencies": [
-    "@tanstack/react-router@^1.95.1"
-  ],
   "files": [
     {
       "path": "src/components/v4/ui/row-link.tsx",
       "type": "registry:file",
       "target": "src/components/v4/ui/row-link.tsx",
-      "content": "import * as React from \"react\";\nimport { createLink } from \"@tanstack/react-router\";\n\nimport { useStretchedLink } from \"../lib/stretched-link\";\nimport { cn } from \"../lib/utils\";\nimport { Icon } from \"./icon\";\n\nimport styles from \"./row-link.module.css\";\n\nfunction RowLinkAnchor({\n  className,\n  disabled,\n  chevron = true,\n  title,\n  children,\n  ref,\n  ...props\n}: React.ComponentPropsWithoutRef<\"a\"> & {\n  disabled?: boolean;\n  chevron?: boolean;\n  ref?: React.Ref<HTMLAnchorElement>;\n}) {\n  useStretchedLink(!disabled);\n  const content = chevron ? (\n    <>\n      <span className={styles.label}>{children}</span>\n      <Icon name=\"chev-right\" className={styles.chevron} data-row-link-chevron=\"\" />\n    </>\n  ) : (\n    children\n  );\n  if (disabled)\n    return (\n      <span\n        role=\"link\"\n        aria-disabled=\"true\"\n        title={title}\n        data-slot=\"row-link\"\n        data-disabled=\"\"\n        data-chevron={chevron || undefined}\n        className={cn(styles.rowLink, className)}\n      >\n        {content}\n      </span>\n    );\n  return (\n    <a\n      ref={ref}\n      title={title}\n      data-slot=\"row-link\"\n      data-row-link=\"\"\n      data-chevron={chevron || undefined}\n      className={cn(styles.rowLink, styles.stretched, className)}\n      {...props}\n    >\n      {content}\n    </a>\n  );\n}\n\nconst RowLink = createLink(RowLinkAnchor);\n\nexport { RowLink };\n"
+      "content": "import { CipherLink, type CipherLinkProps } from \"../lib/link\";\nimport { useStretchedLink } from \"../lib/stretched-link\";\nimport { cn } from \"../lib/utils\";\nimport { Icon } from \"./icon\";\n\nimport styles from \"./row-link.module.css\";\n\nfunction RowLink({\n  className,\n  disabled,\n  chevron = true,\n  title,\n  children,\n  ref,\n  ...props\n}: CipherLinkProps & {\n  disabled?: boolean;\n  chevron?: boolean;\n}) {\n  const off = disabled ?? (props.link as { disabled?: boolean }).disabled;\n  useStretchedLink(!off);\n  const content = chevron ? (\n    <>\n      <span className={styles.label}>{children}</span>\n      <Icon name=\"chev-right\" className={styles.chevron} data-row-link-chevron=\"\" />\n    </>\n  ) : (\n    children\n  );\n  if (off)\n    return (\n      <span\n        role=\"link\"\n        aria-disabled=\"true\"\n        title={title}\n        data-slot=\"row-link\"\n        data-disabled=\"\"\n        data-chevron={chevron || undefined}\n        className={cn(styles.rowLink, className)}\n      >\n        {content}\n      </span>\n    );\n  return (\n    <CipherLink\n      ref={ref}\n      title={title}\n      data-slot=\"row-link\"\n      data-row-link=\"\"\n      data-chevron={chevron || undefined}\n      className={cn(styles.rowLink, styles.stretched, className)}\n      {...props}\n    >\n      {content}\n    </CipherLink>\n  );\n}\n\nexport { RowLink };\n"
     },
     {
       "path": "src/components/v4/ui/row-link.module.css",

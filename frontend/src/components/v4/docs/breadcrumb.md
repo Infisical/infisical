@@ -85,10 +85,10 @@ Exports: Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcr
 ## Behavior
 
 - Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths.
-- A crumb's name goes to that level's page through one of three props. link takes a typed TanStack route (build it with linkOptions, so to, params, search and hash are checked against the route tree, the way RowLink does it), href a plain URL, and onNavigate an in-page handler that also runs on a link or href click, so it can preventDefault. With none of them the crumb has no page of its own.
+- A crumb's name goes to that level's page through one of three props. link takes the app's link target and renders through CipherLink (in the app, a TanStack route built with linkOptions, so to, params, search and hash are checked against the route tree, the way RowLink does it), href a plain URL, and onNavigate an in-page handler that also runs on a link or href click, so it can preventDefault. With none of them the crumb has no page of its own.
 - A crumb with a switcher whose name has a page is two targets in one segment: the name, then a standalone chevron button that opens the Switcher, anchored to the segment's start. Clicking the name never opens the Switcher; it navigates. The two are separate surfaces: the name takes the shared hover ground on hover and the shared press ground while pressed, the chevron keeps its own hover, press and open grounds, and a space-2 gap between them shows two targets. The gap stays visible but is never dead: the name's hit area runs across it to the chevron, so every pixel of the segment belongs to one target. When the name only opens the same Switcher, the whole segment is one button that wraps the media, the label and the chevron glyph: every pixel of it, padding and gaps included, opens the Switcher, hover draws the shared hover ground across it, and pressing it or an open Switcher draws the press ground. Crumb names that navigate and plain ancestor links take the pointer cursor, like any link; the chevron, the switcher-only segment and the middle-levels button keep the default cursor. Either way the ground's inline padding is cancelled by a negative margin, so the text stays on the content edge. In the product variant every ground (name, chevron, switcher-only segment and plain ancestor link) is size-shell-target (32px) tall with space-control-inline-sm (10px) inline padding, and crumbs use the label type role (14px); the default variant keeps size-nested-sm grounds, space-6 padding and the small role. The current crumb is plain text and never takes a hover ground. TopBar marks its trail with data-org-zone; there the root switcher crumb drops the negative start margin, takes the Sidebar row's inset, glyph size and label gap, is capped at --v4-crumb-root-max, and its width is --v4-crumb-root-size while the Sidebar is open and its content width while it is collapsed, eased between the two with interpolate-size over duration-slow, so the BandDivider after it follows it in the flow.
 - Fallbacks keep every target alive. A switcher crumb without a page, and a switcher crumb that is the current page, become that one segment button for the Switcher. A crumb with neither a page nor a switcher is plain text, and the current crumb without a switcher is plain text marked as the current page.
-- A Switcher option with onSelect is an action row inside its group, such as New sub-organization under Sub-organizations: choosing it runs the action and closes the popover without changing the value. A SwitcherAction with link renders as one typed router anchor inside its row, like a crumb's link: a click or Enter navigates, middle-click and modifier-click open a new tab, and the popover closes; without link, onSelect runs as before. Options keep their groups in order of first appearance, so the row lands where it is listed. In the TopBar band the root switcher crumb reads in ink at 600, and data-fill on a Breadcrumb lets a single switcher crumb fill its row with the chevron at the end, as in the nav Sheet.
+- A Switcher option with onSelect is an action row inside its group, such as New sub-organization under Sub-organizations: choosing it runs the action and closes the popover without changing the value. A SwitcherAction with link renders as one CipherLink anchor inside its row, like a crumb's link: a click or Enter navigates, middle-click and modifier-click open a new tab, and the popover closes; without link, onSelect runs as before. Options keep their groups in order of first appearance, so the row lands where it is listed. In the TopBar band the root switcher crumb reads in ink at 600, and data-fill on a Breadcrumb lets a single switcher crumb fill its row with the chevron at the end, as in the nav Sheet.
 - Crumbs are separated by a vertical divider, never a typed slash: a size-crumb-divider-width line, size-crumb-divider tall, in crumb-divider, drawn by BandDivider. BandDivider is an element in the layout flow inside the following crumb's li, aria-hidden, with space-crumb-divider on each side between the line and the neighboring target's ground, in both variants; no crumb offsets it with a negative margin, so both gaps are always equal. Every crumb target pads its text by its inset, so the text sits space-crumb-divider plus the inset from the line (10px in the band, 6px elsewhere), and only the first crumb pulls back by its inset to keep its label on the content edge. BreadcrumbSeparator draws the same element by default, and the TopBar's right cluster uses it between search and the account trigger.
 - lastIsCurrent={false} keeps every crumb an ancestor, for trails that sit above a page title.
 
@@ -138,11 +138,10 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/breadcrumb/default.tsx`; its relative imports are generated for that exact path. States: controlled, overflow, keyboard.
 
-Registry items used: @cipher/breadcrumb. Additional packages: @tanstack/react-router@^1.95.1. Install every listed item before compiling this example.
+Registry items used: @cipher/breadcrumb. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
-import { linkOptions } from "@tanstack/react-router";
 
 import { Breadcrumb } from "../../../../components/v4/ui/breadcrumb";
 
@@ -176,10 +175,7 @@ export default function Example() {
             items={[
               {
                 label: org === "acme" ? "Acme Corp" : "Globex",
-                link: linkOptions({
-                  to: "/design-system/components/$group/$component",
-                  params: { group: "navigation", component: "breadcrumb" }
-                }),
+                link: { href: "/design-system/components/navigation/breadcrumb" },
                 switcher: {
                   label: "Switch organization",
                   value: org,
@@ -191,10 +187,7 @@ export default function Example() {
                   actions: [
                     {
                       label: "Organization settings",
-                      link: linkOptions({
-                        to: "/design-system/components/$group/$component",
-                        params: { group: "navigation", component: "top-bar" }
-                      })
+                      link: { href: "/design-system/components/navigation/top-bar" }
                     }
                   ]
                 }

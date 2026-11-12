@@ -125,7 +125,7 @@ export const ProjectIdentitiesTab = () => {
         const lockout = lockoutText(row.identity);
         return (
           <RowLink
-            {...go.link(accessLinks.projectIdentity(scope, row.identity.id))}
+            link={go.link(accessLinks.projectIdentity(scope, row.identity.id))}
             title={row.identity.name}
           >
             {row.identity.name}

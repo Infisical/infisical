@@ -72,6 +72,11 @@
           "target": "src/components/v4/lib/invisible-characters.ts"
         },
         {
+          "path": "src/components/v4/lib/link.tsx",
+          "type": "registry:file",
+          "target": "src/components/v4/lib/link.tsx"
+        },
+        {
           "path": "src/components/v4/lib/list-highlight.tsx",
           "type": "registry:file",
           "target": "src/components/v4/lib/list-highlight.tsx"
@@ -970,7 +975,6 @@
         "@cipher/switcher"
       ],
       "dependencies": [
-        "@tanstack/react-router@^1.95.1",
         "radix-ui@^1.6.7"
       ],
       "files": [
@@ -1055,7 +1059,7 @@
         "@cipher/icon"
       ],
       "dependencies": [
-        "react-day-picker@^9.13.0"
+        "react-day-picker@^10.0.2"
       ],
       "files": [
         {
@@ -1075,9 +1079,6 @@
       "type": "registry:ui",
       "registryDependencies": [
         "@cipher/cipher-base"
-      ],
-      "dependencies": [
-        "@tanstack/react-router@^1.95.1"
       ],
       "files": [
         {
@@ -1943,9 +1944,6 @@
         "@cipher/cipher-base",
         "@cipher/skeleton"
       ],
-      "dependencies": [
-        "@tanstack/react-router@^1.95.1"
-      ],
       "files": [
         {
           "path": "src/components/v4/ui/list.tsx",
@@ -2215,9 +2213,6 @@
       "registryDependencies": [
         "@cipher/cipher-base"
       ],
-      "dependencies": [
-        "@tanstack/react-router@^1.95.1"
-      ],
       "files": [
         {
           "path": "src/components/v4/ui/route-progress.tsx",
@@ -2237,9 +2232,6 @@
       "registryDependencies": [
         "@cipher/cipher-base",
         "@cipher/icon"
-      ],
-      "dependencies": [
-        "@tanstack/react-router@^1.95.1"
       ],
       "files": [
         {
@@ -2487,7 +2479,6 @@
         "@cipher/top-bar"
       ],
       "dependencies": [
-        "@tanstack/react-router@^1.95.1",
         "lucide-react@^0.544.0"
       ],
       "files": [
@@ -2641,9 +2632,6 @@
         "@cipher/icon",
         "@cipher/kbd",
         "@cipher/popover"
-      ],
-      "dependencies": [
-        "@tanstack/react-router@^1.95.1"
       ],
       "files": [
         {

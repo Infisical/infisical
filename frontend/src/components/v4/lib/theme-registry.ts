@@ -5,7 +5,7 @@ export const v4Themes = tokens.themes.list as unknown as readonly V4ThemeDefinit
 
 export const defaultV4Theme: Readonly<Record<V4Scheme, string>> = { light: "peach", dark: "dark" };
 
-/** A theme id from a stored, URL or hard-coded value; legacy light and dark map to peach and dark. */
+/** A theme id from a stored, URL or hard-coded value; legacy light maps to peach, and legacy dark-alt to dark. */
 export const toV4Theme = (value: unknown): string | undefined => {
   if (typeof value !== "string") return undefined;
   const id = legacyV4Themes[value] ?? value;

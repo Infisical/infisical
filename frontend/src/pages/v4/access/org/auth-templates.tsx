@@ -366,7 +366,7 @@ const UsagesDialog = ({
       grow: true,
       render: (usage) => (
         <RowLink
-          {...go.link(accessLinks.orgIdentity(orgId, usage.identityId))}
+          link={go.link(accessLinks.orgIdentity(orgId, usage.identityId))}
           title={usage.identityName}
         >
           {usage.identityName}

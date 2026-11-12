@@ -199,7 +199,7 @@ export const ChangeRequests = ({
       width: 240,
       text: (row) => row.commits.map((commit) => commit.secretKey).join(", "),
       render: (row) => (
-        <RowLink {...go.link(hrefFor(row.id))} title={`Change request #${row.slug}`}>
+        <RowLink link={go.link(hrefFor(row.id))} title={`Change request #${row.slug}`}>
           <ChangeSummary commits={row.commits} isReplicated={row.isReplicated} />
         </RowLink>
       )

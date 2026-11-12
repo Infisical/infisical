@@ -24,15 +24,14 @@
     <style>
       html[data-v4-boot="peach"] { background: #ffffff; color-scheme: light; }
       html[data-v4-boot="pale"] { background: #f9f9fa; color-scheme: light; }
-      html[data-v4-boot="dark"] { background: #0b0b0b; color-scheme: dark; }
-      html[data-v4-boot="dark-alt"] { background: #121213; color-scheme: dark; }
+      html[data-v4-boot="dark"] { background: #121213; color-scheme: dark; }
     </style>
     <script>
       (function () {
         var path = location.pathname;
         if (!/^\/v4(?:\/|$)/.test(path)) return;
-        var schemes = {"peach":"light","pale":"light","dark":"dark","dark-alt":"dark"};
-        var legacy = {"light":"peach","dark":"dark"};
+        var schemes = {"peach":"light","pale":"light","dark":"dark"};
+        var legacy = {"light":"peach","dark":"dark","dark-alt":"dark"};
         var defaults = {"light":"peach","dark":"dark"};
         var own = function (map, key) { return typeof key === "string" && Object.prototype.hasOwnProperty.call(map, key); };
         var named = function (value) { var id = own(legacy, value) ? legacy[value] : value; return own(schemes, id) ? id : null; };

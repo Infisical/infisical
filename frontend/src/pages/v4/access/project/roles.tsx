@@ -96,7 +96,7 @@ export const ProjectRolesTab = () => {
       sortable: true,
       grow: true,
       render: (role) => (
-        <RowLink {...go.link(accessLinks.projectRole(scope, role.slug))} title={role.name}>
+        <RowLink link={go.link(accessLinks.projectRole(scope, role.slug))} title={role.name}>
           {role.name}
         </RowLink>
       )

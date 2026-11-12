@@ -19,7 +19,9 @@ export const InventoryCard = ({ stats }: { stats: TDashboardStats }) => {
       variant="framed"
       className="relative"
       title={
-        <CardLink to={v4Path("/organizations/$orgId/cert-manager/inventory")} params={{ orgId }}>
+        <CardLink
+          link={{ to: v4Path("/organizations/$orgId/cert-manager/inventory"), params: { orgId } }}
+        >
           Certificates
         </CardLink>
       }

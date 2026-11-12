@@ -221,7 +221,7 @@ export const OrgRolesTab = () => {
       sortable: true,
       grow: true,
       render: (role) => (
-        <RowLink {...go.link(accessLinks.orgRole(orgId, role.id))} title={role.name}>
+        <RowLink link={go.link(accessLinks.orgRole(orgId, role.id))} title={role.name}>
           {role.name}
           {isDefault(role) && (
             <span className={styles.linkBadges}>

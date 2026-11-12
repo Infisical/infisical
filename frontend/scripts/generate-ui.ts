@@ -1090,8 +1090,66 @@ const portablePresentation = async (file: string) => {
   return formatted.code;
 };
 
+const plainLinkTargets = (file: string, code: string) => {
+  if (!file.startsWith("src/pages/design-system/")) return code;
+  const result = parseSync(file, code);
+  const replacements: { start: number; end: number; text: string }[] = [];
+  walk(result.program, (node, ancestors) => {
+    if (node.type !== "ObjectExpression") return;
+    const property = (key: string) =>
+      node.properties.find(
+        (entry) =>
+          entry.type === "Property" && entry.key.type === "Identifier" && entry.key.name === key
+      );
+    const to = property("to");
+    if (
+      to?.type !== "Property" ||
+      to.value.type !== "Literal" ||
+      typeof to.value.value !== "string"
+    )
+      return;
+    const params = property("params");
+    const values = new Map<string, { literal?: string; source: string }>();
+    if (params?.type === "Property" && params.value.type === "ObjectExpression")
+      params.value.properties.forEach((entry) => {
+        if (entry.type !== "Property" || entry.key.type !== "Identifier") return;
+        const { value } = entry;
+        values.set(entry.key.name, {
+          literal:
+            value.type === "Literal" && typeof value.value === "string" ? value.value : undefined,
+          source: code.slice(value.start, value.end)
+        });
+      });
+    let dynamic = false;
+    const href = to.value.value.replace(/\$(\w+)/g, (segment, key: string) => {
+      const value = values.get(key);
+      if (!value) return segment;
+      if (value.literal !== undefined) return value.literal;
+      dynamic = true;
+      return `${"$"}{${value.source}}`;
+    });
+    const parent = ancestors.at(-1);
+    const wrapper =
+      parent?.type === "CallExpression" &&
+      code.slice(parent.callee.start, parent.callee.end) === "linkOptions"
+        ? parent
+        : node;
+    replacements.push({
+      start: wrapper.start,
+      end: wrapper.end,
+      text: `{ href: ${dynamic ? `\`${href}\`` : JSON.stringify(href)} }`
+    });
+  });
+  return replacements
+    .sort((left, right) => right.start - left.start)
+    .reduce(
+      (text, { start, end, text: next }) => text.slice(0, start) + next + text.slice(end),
+      code
+    )
+    .replace(/^import \{ linkOptions \} from "@tanstack\/react-router";\n/m, "");
+};
 const portable = async (file: string) =>
-  (await portablePresentation(file))
+  plainLinkTargets(file, await portablePresentation(file))
     .replace(/^@source "\.\.\/\.\.\/pages\/.+";\n/gm, (match) =>
       file === `${componentRoot}/v4.css` ? "" : match
     )
@@ -1144,7 +1202,8 @@ for (const definition of componentCatalog) {
               !localFile(file, specifier) &&
               !specifier.startsWith(".") &&
               !specifier.startsWith("@app/") &&
-              !["react", "react-dom"].includes(packageName(specifier))
+              !["react", "react-dom"].includes(packageName(specifier)) &&
+              code.includes(`"${specifier}"`)
           )
           .map(packageName)
           .map(declaredPackage)
