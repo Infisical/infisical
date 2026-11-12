@@ -832,7 +832,8 @@ export enum DynamicSecretProviders {
   IbmApiConnect = "ibm-api-connect",
   Tailscale = "tailscale",
   OAuth2 = "oauth2",
-  Kafka = "kafka"
+  Kafka = "kafka",
+  OpenRouter = "openrouter"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -846,6 +847,36 @@ export const DynamicSecretIbmApiConnectSchema = z.object({
   appId: z.string().trim().min(1, "Application is required"),
   gatewayId: z.string().nullable().optional(),
   gatewayPoolId: z.string().nullable().optional()
+});
+
+export enum OpenRouterLimitReset {
+  Daily = "daily",
+  Weekly = "weekly",
+  Monthly = "monthly"
+}
+
+export const DynamicSecretOpenRouterSchema = z.object({
+  managementKey: z
+    .string()
+    .trim()
+    .min(1, "Management key is required")
+    .max(512)
+    .describe("OpenRouter management API key used to create and delete the API keys issued for each lease."),
+  workspaceId: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .describe("ID of the OpenRouter workspace to create keys in. Defaults to the management key's default workspace."),
+  limit: z.number().min(0).optional().describe("Spending limit in USD applied to each created API key."),
+  limitReset: z
+    .nativeEnum(OpenRouterLimitReset)
+    .optional()
+    .describe("How often the spending limit resets. Leave unset for a limit that never resets."),
+  includeByokInLimit: z
+    .boolean()
+    .optional()
+    .describe("Whether bring-your-own-key usage counts toward the spending limit.")
 });
 
 export enum TailscaleKeyAuthType {
@@ -1221,7 +1252,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Kafka), inputs: DynamicSecretKafkaSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Kafka), inputs: DynamicSecretKafkaSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.OpenRouter), inputs: DynamicSecretOpenRouterSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project

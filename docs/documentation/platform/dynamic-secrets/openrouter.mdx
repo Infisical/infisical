@@ -1,0 +1,105 @@
+---
+title: "OpenRouter dynamic secrets"
+sidebarTitle: "OpenRouter"
+description: "Learn how to issue short-lived OpenRouter API keys on demand, each with its own spending limit."
+---
+
+The OpenRouter dynamic secret creates a new [OpenRouter](https://openrouter.ai/) API key each time someone creates a lease, and deletes the key when the lease ends. Use it to give an application, a CI job, or an AI agent its own short-lived key for OpenRouter models, with a spending limit, instead of sharing one long-lived key.
+
+To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+
+## Prerequisites
+
+- An OpenRouter [management API key](https://openrouter.ai/docs/guides/overview/auth/management-api-keys), which you can create on the [Management API Keys](https://openrouter.ai/settings/management-keys) page in OpenRouter (for organizations, only an Organization Admin can create one)
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
+Infisical uses the management key only to create and delete API keys. A management key can't call OpenRouter models, so leases always return a separate API key.
+
+<Note>
+  If your management key has an expiration date, the dynamic secret stops working when the key expires. Before that date, create a new management key and enter it in the dynamic secret.
+</Note>
+
+## Step 1: Create the dynamic secret
+
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **OpenRouter**.
+  </Step>
+  <Step>
+    Fill in the form:
+
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease lasts if the person creating it doesn't choose a TTL (for example, `1h`).
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `24h`).
+    </ParamField>
+
+    <ParamField path="Management Key" type="string" required>
+      Your OpenRouter management API key. When you edit the dynamic secret, leave this blank to keep the current key.
+    </ParamField>
+
+    <ParamField path="Workspace ID" type="string">
+      The ID of the OpenRouter workspace to create API keys in. If you leave this blank, OpenRouter creates keys in the default workspace of the management key.
+    </ParamField>
+
+    <ParamField path="Credit Limit (USD)" type="number">
+      The most each API key can spend, in US dollars. If you leave this blank, the keys have no spending limit.
+    </ParamField>
+
+    <ParamField path="Limit Reset" type="string" default="Never">
+      How often the credit limit of each API key resets: **Never**, **Daily**, **Weekly**, or **Monthly**. OpenRouter resets limits at midnight UTC, and weeks run Monday through Sunday.
+    </ParamField>
+
+    <ParamField path="Include BYOK Usage in Limit" type="boolean" default="false">
+      Whether usage through your own provider keys ([BYOK](https://openrouter.ai/docs/guides/overview/auth/byok)) counts toward the credit limit.
+    </ParamField>
+
+    <ParamField path="Key Name Template" type="string" default="{{randomUsername}}">
+      The name each API key gets in OpenRouter, under **Advanced**. The default gives each key a random name that starts with `infisical-`. You can use `{{dynamicSecret.name}}`, `{{identity.name}}`, `{{unixTimestamp}}`, and `{{randomUsername}}` to make the keys easier to find in OpenRouter.
+    </ParamField>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    Before Infisical saves the dynamic secret, it checks that the management key works. If OpenRouter rejects the key, Infisical shows the error from OpenRouter and doesn't save the dynamic secret.
+  </Step>
+</Steps>
+
+## Step 2: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+  </Step>
+  <Step>
+    Copy the values Infisical shows:
+
+    - `API_KEY`: the OpenRouter API key, which starts with `sk-or-v1-`
+    - `KEY_HASH`: the ID OpenRouter uses for the key in its API
+    - `KEY_NAME`: the name of the key in OpenRouter
+
+    <Warning>
+      Infisical shows the API key only once. Copy it before you close the dialog.
+    </Warning>
+  </Step>
+</Steps>
+
+## Revoke a lease
+
+Select the dynamic secret to see its leases, then select **Revoke lease** next to a lease to delete its API key in OpenRouter before the lease expires. When a lease expires, Infisical deletes its API key automatically.
+
+Infisical also sets an expiration date on each API key in OpenRouter that matches the end of the lease. If Infisical can't delete a key, OpenRouter still stops accepting it when the lease ends.
+
+OpenRouter leases can't be renewed, because OpenRouter can't change the expiration date of a key. To keep access, create a new lease before the current one expires.
