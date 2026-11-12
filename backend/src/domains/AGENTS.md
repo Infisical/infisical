@@ -38,7 +38,7 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts`, so a `ce/` domain never depends on an `ee/`-only one |
 | `model/` | One class per entity or value, with its rules. A file holds the class and its props type, nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
 | `data-access/` | One class per entity implementing a type from `services/dependencies.ts` and returning models, plus `data-access/<domain>-store.ts` exporting `build<Domain>Store(trx, locks)` |
-| `<system>-client/` | Client for an external system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
+| `clients/<system>/` | Client for an external system, one folder per system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
 | `services/` | Business logic. One folder per use case group: `services/<name>/service.ts` holds the class (`T<Name>Service`) and its input types, with its unit and integration tests and the helpers only it uses beside it. Helpers two or more services use go in `services/helpers/`. `services/dependencies.ts` holds the data access and store types, `T<Domain>Store` included, and what the services need from EE or a domain they can't import |
 | `router/` | Fastify routes: validate, call a service, shape the response |
 | `testing/` | In-memory data access and store, a `Fake<Name>Service` per service another domain or legacy code calls, contract suites |
@@ -250,7 +250,7 @@ in-memory store and lets EE plug in without `ce/` importing it.
 - A domain may read a table no domain owns yet only as a declared exception in its `AGENTS.md`, like
   `organizations-projects`. Prefer adding the read there over a second domain reading the same table.
 - Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`model/`,
-  `services/`, `data-access/`, `*-client/`, `router/`), each repeating the shared patterns because the last matching
+  `services/`, `data-access/`, `clients/`, `router/`), each repeating the shared patterns because the last matching
   override wins. A new layer folder needs its own override. Test files are exempt from layer order. Imports of
   legacy `@app/ee/**` from `ce/` aren't linted, catch them in review.
 

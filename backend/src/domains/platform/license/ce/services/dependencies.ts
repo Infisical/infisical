@@ -71,7 +71,7 @@ export type TMeteringEventsOutcome =
 export type TLicenseServer = {
   // False when no License Server is configured, so usage isn't queued.
   isEnabled(): boolean;
-  // True when a License Server URL and credentials are configured.
+  // False when usage can't be sent, which a plain-http License Server URL outside development also causes.
   canReportUsage(): boolean;
   // Throws only when worth retrying.
   reportSnapshot(orgId: string, snapshot: TUsageSnapshot): Promise<TUsageSnapshotOutcome>;

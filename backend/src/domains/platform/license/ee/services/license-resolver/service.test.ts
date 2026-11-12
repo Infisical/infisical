@@ -1,7 +1,6 @@
 import { InstanceType } from "../../../ce/model/instance-entitlements";
 import { TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
-import { TLicenseClientBackend } from "../../license-server-client/license-server-backends";
-import { LicenseServerClient } from "../../license-server-client/license-server-client";
+import { TLicenseServerEntitlements } from "../dependencies";
 import { getLicenseKeyConfig, LicenseResolver } from "./service";
 
 vi.mock("@app/lib/logger", async (importOriginal) => ({
@@ -38,14 +37,10 @@ const resolve = async ({
   onlineEntitlements,
   onlineFails = false
 }: TResolveOptions) => {
-  // The real client over a backend that answers with the given entitlements, or fails.
-  const backend = {
-    fetchEntitlements: async () => {
-      if (onlineFails || !onlineEntitlements) throw new Error("License Server unreachable");
-      return onlineEntitlements;
-    }
-  } as unknown as TLicenseClientBackend;
-  const licenseServerClient = new LicenseServerClient(backend, null);
+  // The client answers null when the License Server can't be read.
+  const licenseServerClient: TLicenseServerEntitlements = {
+    getEntitlements: async () => (onlineFails ? null : (onlineEntitlements ?? null))
+  };
   const resolver = new LicenseResolver({
     isCloud,
     licenseKeyConfig: getLicenseKeyConfig({ LICENSE_KEY: licenseKey, LICENSE_KEY_OFFLINE: licenseKeyOffline }),

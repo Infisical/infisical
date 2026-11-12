@@ -24,7 +24,7 @@ anyone can edit into a paid one.
 | `ce/services/` | `license/`, `usage-metering/`, `usage-report-worker/`, `dependencies.ts` |
 | `ce/services/helpers/` | `UsageQueue`, `CounterRegistry`, seat counters, and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
 | `ee/services/license-resolver/` | The resolver, `license-fns.ts` (default features, key parsing), entitlement projection, feature mapping |
-| `ee/license-server-client/` | `LicenseServerClient` (entitlements, billing, usage), HTTP backends, token provider, usage wire shapes |
+| `ee/clients/license-server/` | `LicenseServerClient` (entitlements, billing, usage) for both cloud and self-hosted, the self-hosted token provider, error mapping |
 
 Rules:
 
