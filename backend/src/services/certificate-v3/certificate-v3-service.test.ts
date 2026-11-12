@@ -485,7 +485,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -551,7 +552,8 @@ describe("CertificateV3Service", () => {
             crlDistributionPointUrls: [],
             disableManagedCrlDistributionPointUrl: false,
             isOcspEnabled: false,
-            ocspGeneration: 0
+            ocspGeneration: 0,
+            crlValidityDays: 7
           }
         }
       };
@@ -663,7 +665,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -1009,7 +1012,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -1126,7 +1130,8 @@ describe("CertificateV3Service", () => {
             crlDistributionPointUrls: [],
             disableManagedCrlDistributionPointUrl: false,
             isOcspEnabled: false,
-            ocspGeneration: 0
+            ocspGeneration: 0,
+            crlValidityDays: 7
           }
         }
       };
@@ -1298,7 +1303,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -1347,7 +1353,8 @@ describe("CertificateV3Service", () => {
             crlDistributionPointUrls: [],
             disableManagedCrlDistributionPointUrl: false,
             isOcspEnabled: false,
-            ocspGeneration: 0
+            ocspGeneration: 0,
+            crlValidityDays: 7
           }
         }
       };
@@ -1807,7 +1814,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         }
       };
 
@@ -1982,7 +1990,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         }
       };
 
@@ -2157,7 +2166,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         }
       };
 
@@ -2332,7 +2342,8 @@ describe("CertificateV3Service", () => {
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
           isOcspEnabled: false,
-          ocspGeneration: 0
+          ocspGeneration: 0,
+          crlValidityDays: 7
         }
       };
 
@@ -2575,7 +2586,8 @@ describe("CertificateV3Service", () => {
         crlDistributionPointUrls: [],
         disableManagedCrlDistributionPointUrl: false,
         isOcspEnabled: false,
-        ocspGeneration: 0
+        ocspGeneration: 0,
+        crlValidityDays: 7
       }
     };
 

@@ -26,7 +26,11 @@ import { ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  CaCapability,
+  CaCrlRegenerationTrigger,
+  CaType
+} from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr, caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
@@ -81,7 +85,8 @@ import {
   expandInternalCa,
   getCaCertChain,
   getCaCertChains,
-  rebuildCaCrl
+  getInternalCaExpiredAt,
+  rebuildCaCrlAfterChange
 } from "../certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { assertCsrMatchesCertificate } from "../certificate-common/certificate-csr-utils";
@@ -163,7 +168,7 @@ type TCertificateServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create" | "delete">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById" | "find">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "update" | "primaryNode">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "delete">;
@@ -187,7 +192,7 @@ type TCertificateServiceFactoryDep = {
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
   >;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "acquireLock">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
@@ -817,11 +822,12 @@ export const certificateServiceFactory = ({
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
-    // rebuild CRL (TODO: move to interval-based cron job)
-    // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
-    if (!ca.externalCa?.id) {
-      await rebuildCaCrl({
+    let crlWarning: string | undefined;
+    if (!ca.externalCa?.id && !getInternalCaExpiredAt(ca.internalCa?.notAfter)) {
+      const crlRegeneration = await rebuildCaCrlAfterChange({
         caId: ca.id,
+        trigger: CaCrlRegenerationTrigger.Revocation,
+        auditLogService,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
         certificateAuthorityCrlDAL,
@@ -829,8 +835,10 @@ export const certificateServiceFactory = ({
         projectDAL,
         certificateDAL,
         kmsService,
-        caKeySourceService
+        caKeySourceService,
+        keyStore
       });
+      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
     }
 
     if (!cert.deletedAt) {
@@ -859,7 +867,13 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    return { revokedAt, cert, applicationName: await $resolveApplicationName(cert.applicationId), ca: caResult };
+    return {
+      revokedAt,
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
+      ca: caResult,
+      crlWarning
+    };
   };
 
   /**

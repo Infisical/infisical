@@ -2003,15 +2003,6 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
-  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
-    certificateAuthorityDAL,
-    certificateAuthorityCrlDAL,
-    projectDAL,
-    kmsService,
-    permissionService
-    // licenseService
-  });
-
   const certificateTemplateService = certificateTemplateServiceFactory({
     certificateTemplateDAL,
     certificateTemplateEstConfigDAL,
@@ -3850,10 +3841,10 @@ export const registerRoutes = async (
     appConnectionService,
     pkiSyncDAL,
     pkiSyncQueue,
-    internalCertificateAuthorityDAL,
     caKeySourceService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    auditLogService
   });
 
   const certificateAuthorityOcspService = certificateAuthorityOcspServiceFactory({
@@ -3865,6 +3856,21 @@ export const registerRoutes = async (
     kmsService,
     caKeySourceService,
     keyStore
+  });
+
+  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    licenseService,
+    caKeySourceService,
+    keyStore,
+    auditLogService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -3888,7 +3894,9 @@ export const registerRoutes = async (
     licenseService,
     caSigningConfigDAL,
     usageMeteringService,
-    caKeySourceService
+    caKeySourceService,
+    keyStore,
+    auditLogService
   });
 
   const certificateAuthorityCrossSignedCertService = certificateAuthorityCrossSignedCertServiceFactory({

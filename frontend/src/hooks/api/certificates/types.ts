@@ -102,6 +102,13 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
+export type TRevokeCertResponse = {
+  message: string;
+  serialNumber: string;
+  revokedAt: string;
+  crlWarning?: string;
+};
+
 export type TImportPkcs12EntriesDTO = {
   entries: TPkcs12Entry[];
   applicationId?: string;

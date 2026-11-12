@@ -96,6 +96,7 @@ export enum EventType {
   IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
   DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRL = "get-certificate-authority-crl",
+  REGENERATE_CA_CRL = "regenerate-certificate-authority-crl",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   GET_CERT = "get-cert",

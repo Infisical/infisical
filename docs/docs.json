@@ -4394,6 +4394,7 @@
                           "api-reference/endpoints/certificate-authorities/internal/csr",
                           "api-reference/endpoints/certificate-authorities/internal/cert",
                           "api-reference/endpoints/certificate-authorities/internal/crl",
+                          "api-reference/endpoints/certificate-authorities/internal/regenerate-crl",
                           {
                             "group": "Installation",
                             "pages": [

@@ -99,6 +99,7 @@ export const KeyStorePrefixes = {
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
+  CaCrlRebuildLock: (caId: string) => `ca-crl-rebuild-lock-${caId}` as const,
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
