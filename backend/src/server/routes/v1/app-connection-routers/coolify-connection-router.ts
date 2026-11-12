@@ -57,7 +57,7 @@ export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider
     schema: {
       params: z.object({
         connectionId: z.string().uuid(),
-        projectId: z.string().cuid2()
+        projectId: z.string().trim().min(1).max(255)
       }),
       response: {
         200: z
@@ -90,15 +90,15 @@ export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider
     schema: {
       params: z.object({
         connectionId: z.string().uuid(),
-        envId: z.coerce.number()
+        envId: z.coerce.number().int()
       }),
       response: {
         200: z
           .object({
             uuid: z.string(),
             name: z.string(),
-            created_at: z.string().datetime(),
-            updated_at: z.string().datetime()
+            created_at: z.string().optional(),
+            updated_at: z.string().optional()
           })
           .array()
       }

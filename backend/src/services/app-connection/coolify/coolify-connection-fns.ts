@@ -1,8 +1,8 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { safeRequest } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { CoolifyConnectionMethod } from "./coolify-connection-enums";
@@ -30,16 +30,20 @@ export const validateCoolifyConnectionCredentials = async (config: TCoolifyConne
   const { apiToken } = config.credentials;
 
   try {
-    await request.get(`${instanceUrl}/api/v1/servers`, {
+    await safeRequest.get(`${instanceUrl}/api/v1/servers`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: "application/json"
       }
     });
   } catch (error: unknown) {
+    if (error instanceof BadRequestError) {
+      throw error;
+    }
     if (error instanceof AxiosError) {
+      const serverMessage = (error.response?.data as { message?: string } | undefined)?.message;
       throw new BadRequestError({
-        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
+        message: `Failed to validate Coolify credentials: ${serverMessage || error.message || "Unknown error"}`
       });
     }
     throw new BadRequestError({
@@ -51,7 +55,7 @@ export const validateCoolifyConnectionCredentials = async (config: TCoolifyConne
 };
 
 const fetchCoolifyData = async <T>(apiUrl: string, apiToken: string): Promise<T> => {
-  const resp = await request.get<T>(apiUrl, {
+  const resp = await safeRequest.get<T>(apiUrl, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
       Accept: "application/json"

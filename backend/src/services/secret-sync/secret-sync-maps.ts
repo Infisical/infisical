@@ -240,7 +240,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Spacelift]: ["contextName"],
   [SecretSync.Daytona]: [],
   [SecretSync.Keeper]: ["folderName"],
-  [SecretSync.Coolify]: []
+  [SecretSync.Coolify]: ["appName", "projectId", "projectName", "environmentId", "environmentName"]
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;

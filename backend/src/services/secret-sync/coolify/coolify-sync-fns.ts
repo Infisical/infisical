@@ -1,10 +1,11 @@
-import { request } from "@app/lib/config/request";
+import { safeRequest } from "@app/lib/validator";
 import { getCoolifyInstanceUrl } from "@app/services/app-connection/coolify";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TSecretSyncPayload } from "../secret-sync-payload";
+import { COOLIFY_ENV_KEY_PATTERN, COOLIFY_ENV_KEY_RULE } from "./coolify-sync-schemas";
 import {
   TCoolifyAPICreateEnvResponse,
   TCoolifyAPIResponse,
@@ -22,14 +23,19 @@ const getAllCoolifySecrets = async (secretSync: TCoolifySyncWithCredentials) => 
   const instanceUrl = getCoolifyInstanceUrl(connection);
   const { apiToken } = connection.credentials;
 
-  const resp = await request.get<TCoolifySecret[]>(`${instanceUrl}/api/v1/applications/${appId}/envs`, {
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      Accept: "application/json"
-    }
-  });
+  try {
+    const resp = await safeRequest.get<TCoolifySecret[]>(`${instanceUrl}/api/v1/applications/${appId}/envs`, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      }
+    });
 
-  return resp.data;
+    return resp.data;
+  } catch (error) {
+    if (error instanceof SecretSyncError) throw error;
+    throw new SecretSyncError({ error });
+  }
 };
 
 const createCoolifySecret = async (secretSync: TCoolifySyncWithCredentials, secret: TCoolifyNewSecret) => {
@@ -41,7 +47,7 @@ const createCoolifySecret = async (secretSync: TCoolifySyncWithCredentials, secr
   const instanceUrl = getCoolifyInstanceUrl(connection);
   const { apiToken } = connection.credentials;
 
-  await request.post<TCoolifyAPICreateEnvResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs`, secret, {
+  await safeRequest.post<TCoolifyAPICreateEnvResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs`, secret, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
       "Content-Type": "application/json"
@@ -61,7 +67,7 @@ const updateCoolifySecret = async (
   const instanceUrl = getCoolifyInstanceUrl(connection);
   const { apiToken } = connection.credentials;
 
-  await request.patch<TCoolifyAPIResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs`, secret, {
+  await safeRequest.patch<TCoolifyAPIResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs`, secret, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
       "Content-Type": "application/json"
@@ -78,7 +84,7 @@ const deleteCoolifySecret = async (secretSync: TCoolifySyncWithCredentials, envI
   const instanceUrl = getCoolifyInstanceUrl(connection);
   const { apiToken } = connection.credentials;
 
-  await request.delete<TCoolifyAPIResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs/${envId}`, {
+  await safeRequest.delete<TCoolifyAPIResponse>(`${instanceUrl}/api/v1/applications/${appId}/envs/${envId}`, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
       Accept: "application/json"
@@ -95,7 +101,7 @@ const redeployApplication = async (secretSync: TCoolifySyncWithCredentials) => {
   const instanceUrl = getCoolifyInstanceUrl(connection);
   const { apiToken } = connection.credentials;
 
-  await request.post<TCoolifyAPICreateEnvResponse>(
+  await safeRequest.post<TCoolifyAPICreateEnvResponse>(
     `${instanceUrl}/api/v1/deploy`,
     {
       uuid: appId
@@ -119,13 +125,24 @@ const infisicalSecretToCoolifySecret = (key: string, secret: TSecretMap[keyof TS
 
 export const CoolifySyncFns = {
   syncSecrets: async (secretSync: TCoolifySyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
+
+    const invalidKeys = Object.keys(secretMap).filter((key) => !COOLIFY_ENV_KEY_PATTERN.test(key));
+    if (invalidKeys.length) {
+      throw new SecretSyncError({
+        secretKey: invalidKeys[0],
+        shouldRetry: false,
+        message: `${invalidKeys.length} secret ${
+          invalidKeys.length === 1 ? "key is" : "keys are"
+        } not a valid Coolify environment variable name: ${invalidKeys.join(", ")}. ${COOLIFY_ENV_KEY_RULE}`
+      });
+    }
+
     const existingCoolifySecrets = await getAllCoolifySecrets(secretSync);
 
-    const secretMap = payload.flatten();
     for await (const entry of Object.entries(secretMap)) {
       const [key, secret] = entry;
       try {
-        // Check if exists
         const coolifySecret = existingCoolifySecrets.find((s) => s.key === key);
         const newSecret = infisicalSecretToCoolifySecret(key, secret);
         if (coolifySecret) {
@@ -134,6 +151,7 @@ export const CoolifySyncFns = {
           await createCoolifySecret(secretSync, newSecret);
         }
       } catch (error) {
+        if (error instanceof SecretSyncError) throw error;
         throw new SecretSyncError({
           error,
           secretKey: key
@@ -151,6 +169,7 @@ export const CoolifySyncFns = {
           try {
             await deleteCoolifySecret(secretSync, coolifySecret.uuid);
           } catch (error) {
+            if (error instanceof SecretSyncError) throw error;
             throw new SecretSyncError({
               error,
               secretKey: coolifySecret.key
@@ -189,7 +208,15 @@ export const CoolifySyncFns = {
     for await (const secret of Object.keys(secretMap)) {
       const coolifySecret = allSecrets.find((s) => s.key === secret);
       if (coolifySecret) {
-        await deleteCoolifySecret(secretSync, coolifySecret.uuid);
+        try {
+          await deleteCoolifySecret(secretSync, coolifySecret.uuid);
+        } catch (error) {
+          if (error instanceof SecretSyncError) throw error;
+          throw new SecretSyncError({
+            error,
+            secretKey: secret
+          });
+        }
       }
     }
 
