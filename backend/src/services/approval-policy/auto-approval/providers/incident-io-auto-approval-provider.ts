@@ -93,12 +93,6 @@ export const INCIDENT_IO_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TIncident
           )
         ];
         const named = getNamedSchedules(all, values, ambiguousNames);
-        if (named.length > MAX_CHECKED_SCHEDULES) {
-          throw new BadRequestError({
-            message: `The rules name ${named.length} incident.io schedules, and Infisical checks at most ${MAX_CHECKED_SCHEDULES}`
-          });
-        }
-
         const now = new Date();
         const schedules = await Promise.all(
           named.map(async ({ id, name }) => {
