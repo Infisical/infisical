@@ -39,14 +39,22 @@ const restrictedInlineServices = (trx: Knex.Transaction) =>
  * instead, the way the API's revoke does. Deleting only the service would not do: while it exists it hides a bundle
  * service of the same name, which the session would then get. The rows stay for the Sessions page.
  *
- * Runs before the constraint swap, in its own transaction, and takes session rows before service rows, the order the
- * API's revoke takes them, so the two can't deadlock. It sets revokedAt only where revokeIfActive would: a session whose
- * owner or on-behalf-of user was deleted has already ended, and writing it would move the updatedAt that marks when.
+ * Runs before the constraint swap, in its own transaction, and locks session rows, then their service rows, then the
+ * services' header and substitution rows: the order the API's revoke and the hourly secret cleanup take them, so none of
+ * them can deadlock with it. It sets revokedAt only where revokeIfActive would: a session whose owner or on-behalf-of
+ * user was deleted has already ended, and writing it would move the updatedAt that marks when.
+ *
+ * Every statement works on the sessions read once at the start. A session minted with a tool list after that keeps it,
+ * so the check in down still finds it rather than this clearing its list without revoking it.
  */
 const revokeSessionsWithRestrictedInlineServices = (knex: Knex) =>
   knex.transaction(async (trx) => {
+    const sessionIds = ((await restrictedInlineServices(trx).distinct("sessionId")) as { sessionId: string }[]).map(
+      (row) => row.sessionId
+    );
+    if (!sessionIds.length) return;
+
     const now = new Date();
-    const sessionIds = restrictedInlineServices(trx).distinct("sessionId");
     await trx(SESSION)
       .whereIn("id", sessionIds)
       .whereNull("revokedAt")
@@ -58,19 +66,26 @@ const revokeSessionsWithRestrictedInlineServices = (knex: Knex) =>
       })
       .update({ revokedAt: now });
 
-    const serviceIds = trx(SERVICE).whereIn("sessionId", sessionIds).whereNull("secretsDeletedAt").select("id");
+    const services = (await trx(SERVICE)
+      .whereIn("sessionId", sessionIds)
+      .orderBy("id")
+      .forUpdate()
+      .select("id", "secretsDeletedAt")) as { id: string; secretsDeletedAt: Date | null }[];
+    const withSecrets = services.filter((service) => !service.secretsDeletedAt).map((service) => service.id);
+
+    await trx(SERVICE)
+      .whereIn(
+        "id",
+        services.map((service) => service.id)
+      )
+      .update({ allowedTools: null });
+    await trx(SERVICE).whereIn("id", withSecrets).update({ encryptedCredential: null, secretsDeletedAt: now });
     await trx(TableName.AgentVaultServiceCustomHeader)
-      .whereIn("serviceId", serviceIds)
+      .whereIn("serviceId", withSecrets)
       .update({ encryptedValue: null });
     await trx(TableName.AgentVaultServiceSubstitution)
-      .whereIn("serviceId", serviceIds)
+      .whereIn("serviceId", withSecrets)
       .update({ encryptedValue: null });
-    await trx(SERVICE)
-      .whereIn("sessionId", sessionIds)
-      .whereNull("secretsDeletedAt")
-      .update({ encryptedCredential: null, secretsDeletedAt: now });
-
-    await restrictedInlineServices(trx).update({ allowedTools: null });
   });
 
 export async function down(knex: Knex): Promise<void> {
