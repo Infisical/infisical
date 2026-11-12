@@ -2,8 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 import { entitlementsResponseSchema, TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
-import { projectV2ToFeatureSet, withCloudPlanDefaults } from "./entitlement-projection";
-import { getDefaultOnPremFeatures } from "./license-fns";
+import { cloudPlanFeatures, applyEntitlements } from "./entitlement-projection";
 
 const makeBase = (overrides: Partial<Record<keyof TInstanceFeatures, unknown>>): TInstanceFeatures =>
   ({ rateLimits: { readLimit: 0, writeLimit: 0, secretsLimit: 0 }, ...overrides }) as TInstanceFeatures;
@@ -11,24 +10,24 @@ const makeBase = (overrides: Partial<Record<keyof TInstanceFeatures, unknown>>):
 const makeEntitlements = (features: TEntitlementsResponse["features"]): TEntitlementsResponse =>
   ({ features }) as TEntitlementsResponse;
 
-describe("projectV2ToFeatureSet", () => {
+describe("applyEntitlements", () => {
   test("overlays a present v2 feature onto the base TInstanceFeatures field", () => {
-    const plan = projectV2ToFeatureSet(makeBase({ rbac: false }), makeEntitlements({ rbac: { value: true } }));
+    const plan = applyEntitlements(makeBase({ rbac: false }), makeEntitlements({ rbac: { value: true } }));
     expect(plan.rbac).toBe(true);
   });
 
   test("keeps the base value when v2 omits the key", () => {
-    const plan = projectV2ToFeatureSet(makeBase({ rbac: true }), makeEntitlements({}));
+    const plan = applyEntitlements(makeBase({ rbac: true }), makeEntitlements({}));
     expect(plan.rbac).toBe(true);
   });
 
   test("projects a nested rateLimits field via its dotted v1Field", () => {
-    const plan = projectV2ToFeatureSet(makeBase({}), makeEntitlements({ read_rate_limit: { value: 500 } }));
+    const plan = applyEntitlements(makeBase({}), makeEntitlements({ read_rate_limit: { value: 500 } }));
     expect(plan.rateLimits.readLimit).toBe(500);
   });
 
   test("turns a feature on through a legacy registry key the current key leaves off", () => {
-    const plan = projectV2ToFeatureSet(
+    const plan = applyEntitlements(
       makeBase({ pamEnterpriseAlerting: false }),
       makeEntitlements({ pam_enterprise_alerting: { value: false }, pam_slack_notifications: { value: true } })
     );
@@ -37,12 +36,12 @@ describe("projectV2ToFeatureSet", () => {
 
   test("does not mutate the passed base", () => {
     const base = makeBase({ rbac: false });
-    projectV2ToFeatureSet(base, makeEntitlements({ rbac: { value: true } }));
+    applyEntitlements(base, makeEntitlements({ rbac: { value: true } }));
     expect(base.rbac).toBe(false);
   });
 });
 
-describe("projectV2ToFeatureSet notices", () => {
+describe("applyEntitlements notices", () => {
   const trialPaymentFailed = {
     type: "trial_payment_failed",
     product_key: "secrets_management",
@@ -53,7 +52,7 @@ describe("projectV2ToFeatureSet notices", () => {
   };
 
   const projectNotices = (notices: unknown[]) =>
-    projectV2ToFeatureSet(makeBase({}), { features: {}, notices } as unknown as TEntitlementsResponse).notices;
+    applyEntitlements(makeBase({}), { features: {}, notices } as unknown as TEntitlementsResponse).notices;
 
   test("projects a trial_payment_failed notice into camelCase", () => {
     expect(projectNotices([trialPaymentFailed])).toEqual([
@@ -96,7 +95,7 @@ const entitlements = (features: TEntitlementsResponse["features"]) =>
 
 const cloudPlan = (features: TEntitlementsResponse["features"]) => {
   const ent = entitlements(features);
-  return withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), ent), ent);
+  return cloudPlanFeatures(ent);
 };
 
 describe("cloud plan defaults for session log default storage", () => {
@@ -124,6 +123,6 @@ describe("cloud plan defaults for session log default storage", () => {
   });
 
   test("is on in the stand-in plan used while the License Server can't be reached", () => {
-    expect(withCloudPlanDefaults(getDefaultOnPremFeatures(), null).agentVaultManagedStorage).toBe(true);
+    expect(cloudPlanFeatures(null).agentVaultManagedStorage).toBe(true);
   });
 });

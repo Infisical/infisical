@@ -116,7 +116,7 @@ copy drifts on its own.
 `isTestMode` branches. Replace the module instead, from `test.alias` in
 `vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
 a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
-are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+are the worked examples, and the License domain's `./default-features` alias is the precedent.
 
 Four things decide whether this works:
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import { getDefaultOnPremFeatures } from "./default-features";
 import { EXCLUDED_FIELDS, FEATURE_MAPPINGS } from "./feature-mapping";
-import { getDefaultOnPremFeatures } from "./license-fns";
 
 const topLevelV1Field = (v1Field: string): string => {
   const dotIndex = v1Field.indexOf(".");

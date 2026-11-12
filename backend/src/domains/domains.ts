@@ -47,7 +47,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     cronJob: deps.cronJob,
     isProductionMode: deps.envConfig.isProductionMode,
     startLocalRefresh,
-    provider: licenseEe.resolver,
+    licensePolicyService: licenseEe.licensePolicyService,
     licenseServer: licenseEe.licenseServerClient,
     organizationsProjectsService,
     usageCounters: [

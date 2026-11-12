@@ -4,7 +4,7 @@ import { ExternalSystemError } from "@app/domains/lib/errors";
 import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../models/instance-entitlements";
 import { Plan, TPlanProps } from "../models/plan";
 import {
-  TLicenseProvider,
+  TLicensePolicyService,
   TLicenseServer,
   TMeteringEvent,
   TUsageSnapshot,
@@ -15,7 +15,7 @@ import { FakeLicenseServerBilling } from "./fake-license-server-billing";
 import { enterprisePlan, testFeatures } from "./test-features";
 
 // Plays both EE's provider and the License Server in memory. Cloud by default.
-export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
+export class FakeLicenseServer implements TLicensePolicyService, TLicenseServer {
   instance: TInstanceEntitlementsProps = {
     instanceType: InstanceType.Cloud,
     features: testFeatures(),

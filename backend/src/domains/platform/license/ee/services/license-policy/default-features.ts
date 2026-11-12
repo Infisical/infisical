@@ -1,10 +1,8 @@
-import { getConfig, TEnvConfig } from "@app/lib/config/env";
-
 import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
-import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
 
-// Only import this as "./license-fns": the e2e suite aliases that path to a mock that grants everything
-// (src/ee/services/license/__mocks__/license-fns.ts).
+// The free tier, and the base every plan starts from. Only entitlement-projection.ts imports this, and only as
+// "./default-features": the e2e suite aliases that specifier to e2e-test/fakes/default-features.ts, which grants
+// everything, and the BDD workflow edits this file by path.
 
 // Literal so that flipping a default to try a feature locally fails type-check instead of getting committed.
 type TDefaultOnPremFeatures = TInstanceFeatures & {
@@ -182,46 +180,3 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   fips: false,
   instanceUserManagement: false
 });
-
-export const isOfflineLicenseKey = (licenseKey: string): boolean => {
-  try {
-    const contents = JSON.parse(Buffer.from(licenseKey, "base64").toString("utf8")) as TOfflineLicenseContents;
-
-    return "signature" in contents && "license" in contents;
-  } catch (error) {
-    return false;
-  }
-};
-
-export const getLicenseKeyConfig = (
-  config?: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE">
-): TLicenseKeyConfig => {
-  const cfg = config || getConfig();
-
-  if (!cfg) {
-    return { isValid: false };
-  }
-
-  const licenseKey = cfg.LICENSE_KEY;
-
-  if (licenseKey) {
-    if (isOfflineLicenseKey(licenseKey)) {
-      return { isValid: true, licenseKey, type: LicenseType.Offline };
-    }
-
-    return { isValid: true, licenseKey, type: LicenseType.Online };
-  }
-
-  const offlineLicenseKey = cfg.LICENSE_KEY_OFFLINE;
-
-  // backwards compatibility
-  if (offlineLicenseKey) {
-    if (isOfflineLicenseKey(offlineLicenseKey)) {
-      return { isValid: true, licenseKey: offlineLicenseKey, type: LicenseType.Offline };
-    }
-
-    return { isValid: false };
-  }
-
-  return { isValid: false };
-};

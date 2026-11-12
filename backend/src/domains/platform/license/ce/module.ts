@@ -8,14 +8,14 @@ import type { TQueueServiceFactory } from "@app/queue";
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
 import { InstanceEntitlements } from "./models/instance-entitlements";
-import { TLicenseProvider, TLicenseServer, TUsageCounter } from "./services/dependencies";
+import { TLicensePolicyService, TLicenseServer, TUsageCounter } from "./services/dependencies";
 import { CounterRegistry } from "./services/helpers/counter-registry";
 import { seatUsageCounters } from "./services/helpers/seat-usage-counters";
 import { UsageQueue, UsageQueues } from "./services/helpers/usage-queue";
 import { InstanceEntitlementsHolder } from "./services/license/instance-entitlements-holder";
 import { LicenseService, TLicenseService } from "./services/license/service";
 import { TUsageMeteringService, UsageMeteringService } from "./services/usage-metering/service";
-import { UsageReportWorker } from "./services/usage-report-worker/service";
+import { TUsageReportWorkerService, UsageReportWorkerService } from "./services/usage-report-worker/service";
 
 export * from "./models/instance-entitlements";
 export * from "./models/meter";
@@ -31,7 +31,7 @@ export type {
   TSubscriptionResponse
 } from "./services/helpers/license-server-types";
 export type {
-  TLicenseProvider,
+  TLicensePolicyService,
   TLicenseServer,
   TPlanCache,
   TUsageCounter,
@@ -48,7 +48,7 @@ export type TLicenseDeps = {
   // Injected because the timer module must not load with this one.
   startLocalRefresh: typeof startLocalRefresh;
   // From EE. Required: CE has no defaults of its own.
-  provider: TLicenseProvider;
+  licensePolicyService: TLicensePolicyService;
   licenseServer: TLicenseServer;
   organizationsProjectsService: TOrganizationsProjectsService;
   // One per product meter, from the domain that owns the data. Seat meters are built here.
@@ -65,10 +65,10 @@ export class LicenseModule {
 
   private readonly counters: CounterRegistry;
 
-  private readonly worker: UsageReportWorker;
+  private readonly usageReportWorkerService: TUsageReportWorkerService;
 
   static async create(deps: TLicenseDeps): Promise<LicenseModule> {
-    const instanceEntitlements = await deps.provider.resolveInstanceEntitlements();
+    const instanceEntitlements = await deps.licensePolicyService.resolveInstanceEntitlements();
     logger.info(`Instance type: ${instanceEntitlements.instanceType}`);
     return new LicenseModule(deps, instanceEntitlements);
   }
@@ -77,7 +77,7 @@ export class LicenseModule {
     private readonly deps: TLicenseDeps,
     instanceEntitlements: InstanceEntitlements
   ) {
-    const { keyStore, organizationsProjectsService, provider, licenseServer } = deps;
+    const { keyStore, organizationsProjectsService, licensePolicyService, licenseServer } = deps;
     this.instanceEntitlements = new InstanceEntitlementsHolder(instanceEntitlements);
     const usageReportCache = new UsageReportCache(keyStore);
     this.counters = new CounterRegistry([...seatUsageCounters(organizationsProjectsService), ...deps.usageCounters]);
@@ -95,7 +95,7 @@ export class LicenseModule {
       usageReportCache,
       usageQueue,
       organizationsProjectsService,
-      provider,
+      licensePolicyService,
       licenseServer
     });
     this.usageMeteringService = new UsageMeteringService({
@@ -104,7 +104,7 @@ export class LicenseModule {
       licenseService: this.licenseService,
       organizationsProjectsService
     });
-    this.worker = new UsageReportWorker({
+    this.usageReportWorkerService = new UsageReportWorkerService({
       counters: this.counters,
       usageReportCache,
       usageQueue,
@@ -122,13 +122,13 @@ export class LicenseModule {
   start(): void {
     this.deps.queueService.start(
       UsageQueues.usageEvent,
-      (job) => this.worker.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
+      (job) => this.usageReportWorkerService.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
       // Counts are DB-heavy, so rate limit the backlog instead of hammering the read replica.
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
     this.deps.queueService.start(
       UsageQueues.meteringEvent,
-      (job) => this.worker.handleMeteringEvents(job.data.orgId, job.data.events),
+      (job) => this.usageReportWorkerService.handleMeteringEvents(job.data.orgId, job.data.events),
       { concurrency: 5 }
     );
 
@@ -136,13 +136,13 @@ export class LicenseModule {
       name: "license-usage-flush",
       pattern: "0 0 * * *",
       runHashTtlS: 60 * 60,
-      enabled: !this.instanceEntitlements.isCloud() && !this.deps.provider.isOffline(),
-      handler: async () => this.worker.flushInstanceUsage()
+      enabled: !this.instanceEntitlements.isCloud() && !this.deps.licensePolicyService.isOffline(),
+      handler: async () => this.usageReportWorkerService.flushInstanceUsage()
     });
   }
 
   startBackgroundSync() {
-    if (!this.deps.isProductionMode || !this.deps.provider.hasOnlineLicense()) return undefined;
+    if (!this.deps.isProductionMode || !this.deps.licensePolicyService.hasOnlineLicense()) return undefined;
     logger.info("Setting up background sync process to refresh the instance license from License Server v2");
     return this.deps.startLocalRefresh({
       name: "self-hosted-license-sync",
@@ -150,7 +150,7 @@ export class LicenseModule {
       // Throw on failure so startLocalRefresh logs it as a failed run. The last entitlements stay until a
       // refresh succeeds.
       task: async () => {
-        const refreshed = await this.deps.provider.refreshInstanceEntitlements();
+        const refreshed = await this.deps.licensePolicyService.refreshInstanceEntitlements();
         if (refreshed) this.instanceEntitlements.set(refreshed);
       }
     });

@@ -1,7 +1,9 @@
 import { InstanceType } from "../../../ce/models/instance-entitlements";
-import { TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
+import { PlanFeature } from "../../../ce/models/plan";
+import { TEntitlementOrg, TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
 import { TLicenseServerEntitlements } from "../dependencies";
-import { getLicenseKeyConfig, LicenseResolver } from "./service";
+import { getLicenseKeyConfig } from "./license-key";
+import { LicensePolicyService } from "./service";
 
 vi.mock("@app/lib/logger", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/logger")>()),
@@ -41,19 +43,19 @@ const resolve = async ({
   const licenseServerClient: TLicenseServerEntitlements = {
     getEntitlements: async () => (onlineFails ? null : (onlineEntitlements ?? null))
   };
-  const resolver = new LicenseResolver({
+  const policy = new LicensePolicyService({
     isCloud,
     licenseKeyConfig: getLicenseKeyConfig({ LICENSE_KEY: licenseKey, LICENSE_KEY_OFFLINE: licenseKeyOffline }),
     licenseServerClient
   });
-  return { resolver, instance: await resolver.resolveInstanceEntitlements() };
+  return { policy, instance: await policy.resolveInstanceEntitlements() };
 };
 
 beforeEach(() => {
   verified.value = true;
 });
 
-describe("LicenseResolver.resolveInstanceEntitlements", () => {
+describe("LicensePolicyService.resolveInstanceEntitlements", () => {
   test("should resolve Cloud when the service key is set, even with a license key", async () => {
     // Setup + Action
     const { instance } = await resolve({ isCloud: true, licenseKey: "online-license-key" });
@@ -188,7 +190,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
   });
 });
 
-describe("LicenseResolver.refreshInstanceEntitlements", () => {
+describe("LicensePolicyService.refreshInstanceEntitlements", () => {
   test("should read an online license again, and do nothing for an offline one", async () => {
     // Setup
     const online = await resolve({ licenseKey: "online-license-key", onlineEntitlements: entitlements({}) });
@@ -196,12 +198,71 @@ describe("LicenseResolver.refreshInstanceEntitlements", () => {
 
     // Action
     const refreshed = await Promise.all([
-      online.resolver.refreshInstanceEntitlements(),
-      offline.resolver.refreshInstanceEntitlements()
+      online.policy.refreshInstanceEntitlements(),
+      offline.policy.refreshInstanceEntitlements()
     ]);
 
     // Assert
     expect(refreshed[0]?.instanceType).toBe(InstanceType.EnterpriseOnPrem);
     expect(refreshed[1]).toBeNull();
+  });
+});
+
+const ROOT_ORG: TEntitlementOrg = { id: "root-org", name: "Acme", slug: "acme" };
+
+// Answers every read with the given entitlements, or null as when the License Server can't be read.
+const cloudPolicy = (answer: TEntitlementsResponse | null) => {
+  const asked: TEntitlementOrg[] = [];
+  const policy = new LicensePolicyService({
+    isCloud: true,
+    licenseKeyConfig: { isValid: false },
+    licenseServerClient: {
+      getEntitlements: async (org) => {
+        asked.push(org);
+        return answer;
+      }
+    }
+  });
+  return { policy, asked };
+};
+
+describe("LicensePolicyService.fetchPlan", () => {
+  test("should ask for the root org and turn its entitlements into its plan", async () => {
+    // Setup
+    const { policy, asked } = cloudPolicy({ ...entitlements({ rbac: { value: true } } as never), slug: "pro" });
+
+    // Action
+    const plan = await policy.fetchPlan(ROOT_ORG);
+
+    // Assert
+    expect(asked).toEqual([ROOT_ORG]);
+    expect(plan.slug).toBe("pro");
+    expect(plan.has(PlanFeature.Rbac)).toBe(true);
+  });
+
+  test("should throw when the License Server cannot be read, so the domain serves the fallback", async () => {
+    // Setup
+    const { policy } = cloudPolicy(null);
+
+    // Action
+    const result = policy.fetchPlan(ROOT_ORG);
+
+    // Assert
+    await expect(result).rejects.toThrow("License Server entitlements are unavailable");
+  });
+});
+
+describe("LicensePolicyService.fallbackPlan", () => {
+  test("should be the free tier with cloud defaults, and no slug", () => {
+    // Setup
+    const { policy } = cloudPolicy(null);
+
+    // Action
+    const plan = policy.fallbackPlan();
+
+    // Assert
+    expect(plan.slug).toBeNull();
+    expect(plan.has(PlanFeature.Rbac)).toBe(false);
+    expect(plan.toJSON().agentVaultManagedStorage).toBe(true);
   });
 });

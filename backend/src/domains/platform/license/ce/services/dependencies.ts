@@ -28,7 +28,8 @@ export type TUsageCounter = {
 };
 
 // All licensing decisions go through EE. No CE fallback on purpose, so the free tier stays EE-licensed.
-export type TLicenseProvider = {
+export type TLicensePolicyService = {
+  // What this instance is licensed for: Cloud, an online or offline license key, or the community edition.
   resolveInstanceEntitlements(): Promise<InstanceEntitlements>;
   // Null when there's no online license; throws when the License Server fails.
   refreshInstanceEntitlements(): Promise<InstanceEntitlements | null>;
@@ -36,7 +37,7 @@ export type TLicenseProvider = {
   hasOnlineLicense(): boolean;
   // Whether LICENSE_KEY or LICENSE_KEY_OFFLINE holds an offline key, whether or not it verifies.
   isOffline(): boolean;
-  // Cloud only. Throws when the License Server can't be read.
+  // Cloud only: a root org's plan. Throws when the License Server can't be read.
   fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan>;
   // Cloud only: what an org gets while the License Server is down.
   fallbackPlan(): Plan;

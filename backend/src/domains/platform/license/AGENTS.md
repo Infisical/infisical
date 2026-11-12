@@ -11,10 +11,10 @@ Two services, one module. Take only the one you use:
 Owns no tables. Its state is the plan cache in the key store and the usage queues.
 
 **CE is the mechanism, EE is the policy.** CE caches plans, queues and sends usage, counts usage and checks
-features. EE decides the free tier (`getDefaultOnPremFeatures` in `ee/services/license-resolver/license-fns.ts`), parses and
+features. EE decides the free tier (`getDefaultOnPremFeatures` in `ee/services/license-policy/default-features.ts`), parses and
 verifies license keys, maps License Server entitlements to a plan, and talks to the License Server. EE plugs in
-through `ce/services/dependencies.ts` (`TLicenseProvider` = `LicenseResolver`, `TLicenseServer` =
-`LicenseServerClient`). Never add defaults or fallbacks for them in `ce/`: a free tier copy in MIT code is one
+through `ce/services/dependencies.ts`: `TLicensePolicyService` = `LicensePolicyService` (what the instance and each cloud org get),
+`TLicenseServer` = `LicenseServerClient`. Never add defaults or fallbacks for them in `ce/`: a free tier copy in MIT code is one
 anyone can edit into a paid one.
 
 | Layer | Holds |
@@ -23,7 +23,7 @@ anyone can edit into a paid one.
 | `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names |
 | `ce/services/` | `license/`, `usage-metering/`, `usage-report-worker/`, `dependencies.ts` |
 | `ce/services/helpers/` | `UsageQueue`, `CounterRegistry`, seat counters, and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
-| `ee/services/license-resolver/` | The resolver, `license-fns.ts` (default features, key parsing), entitlement projection, feature mapping |
+| `ee/services/license-policy/` | `LicensePolicyService` (the instance's license: cloud, online or offline key, or community; and cloud org plans), with `default-features.ts` (the free tier only), `license-key.ts` (key parsing, offline key shape), entitlement projection (the only place the free tier is applied), feature mapping |
 | `ee/clients/license-server/` | `LicenseServerClient` (entitlements, billing, usage) for both cloud and self-hosted, the self-hosted token provider, error mapping |
 
 Rules:
@@ -61,7 +61,7 @@ Rules:
   `Meter` (`Meter.SecretIdentities`). A key arrives as a string only from a queued job or a License Server catalog
   dimension; turn it into a meter once with `Meter.fromKey`, which returns null for a key no meter defines.
 - **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend an active
-  paid org's meters; `UsageReportWorker` and `syncSeats` call `getPlan`/`refreshPlan`.
+  paid org's meters; `UsageReportWorkerService` and `syncSeats` call `getPlan`/`refreshPlan`.
 - **Deleted orgs close from the outbox.** Only the `license-org-deleted` consumer
   (`services/org/license-org-deleted-consumer.ts`) calls `closeDeletedOrg`, for root orgs on cloud. It throws so
   the outbox retries; the License Server delete is idempotent.
@@ -71,17 +71,19 @@ Rules:
   `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).
 - **Build it with `LicenseModule.create(deps)`**, which reads the instance license first so nothing runs without
-  one. `start()` only registers the usage workers and daily flush. `UsageReportWorker` isn't on either service type.
+  one. `start()` only registers the usage workers and daily flush. `UsageReportWorkerService` stays inside the module: only its queues and cron call it.
 - **CE never sees the usage wire format.** The EE client builds the body and idempotency key and maps responses
   to outcomes: `no-license`, `not-priced`, `rejected` are final, anything else throws so the queue retries. A new
-  final answer goes in the client, not as a status check in `UsageReportWorker`.
+  final answer goes in the client, not as a status check in `UsageReportWorkerService`.
 - **Billing isn't on `TLicenseService`.** It's the EE `LicenseServerClient`, returned by `createDomains` as
   `licenseBilling` and passed only to subscription code.
 - **Offline licenses never hit the License Server** (`LicenseServerClient.fromConfig` stays dormant).
-- **Import `./license-fns` by that exact specifier.** The e2e suite aliases it to
-  `src/ee/services/license/__mocks__/license-fns.ts`, and `.github/workflows/run-backend-bdd-tests.yml` `sed`s
-  feature lines in it by path, so update that workflow if the file moves.
+- **Only `license-policy/entitlement-projection.ts` imports `./default-features`, by that exact specifier.** The e2e
+  suite aliases it to `e2e-test/fakes/default-features.ts`, so a free tier read anywhere else escapes the
+  mock; go through the projection's builders (`communityFeatures`, `cloudPlanFeatures`, ...).
+  `.github/workflows/run-backend-bdd-tests.yml` `sed`s feature lines in it by path, so update that workflow if the
+  file moves.
 - **Tests:** `ce/testing/build-license.ts` builds the module on an in-memory key store and queue, with
-  `FakeLicenseServer` (provider and License Server) and `FakeOrganizationsProjectsService`. `testFeatures()` is
+  `FakeLicenseServer` (policy and License Server) and `FakeOrganizationsProjectsService`. `testFeatures()` is
   test data, not product defaults. Consumers use `FakeLicenseService` / `FakeUsageMeteringService`; product
   domains read their counters with `usageCounter(module.usageCounters, Meter.X)`.

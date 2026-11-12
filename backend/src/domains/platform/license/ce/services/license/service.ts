@@ -5,7 +5,7 @@ import { logger } from "@app/lib/logger";
 import { InstanceEntitlements, InstanceType } from "../../models/instance-entitlements";
 import { Plan } from "../../models/plan";
 import { SeatUsage } from "../../models/seat-usage";
-import { TLicenseProvider, TLicenseServer, TPlanCache, TUsageReportCache } from "../dependencies";
+import { TLicensePolicyService, TLicenseServer, TPlanCache, TUsageReportCache } from "../dependencies";
 import { TEntitlementOrg, TOrgDeletedResult } from "../helpers/license-server-types";
 import { UsageQueue } from "../helpers/usage-queue";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
@@ -46,7 +46,7 @@ export type TLicenseServiceDeps = {
   usageReportCache: TUsageReportCache;
   usageQueue: UsageQueue;
   organizationsProjectsService: TOrganizationsProjectsService;
-  provider: TLicenseProvider;
+  licensePolicyService: TLicensePolicyService;
   licenseServer: TLicenseServer;
 };
 
@@ -66,7 +66,7 @@ export class LicenseService implements TLicenseService {
   }
 
   hasOfflineLicenseKey(): boolean {
-    return this.deps.provider.isOffline();
+    return this.deps.licensePolicyService.isOffline();
   }
 
   // Self-hosted orgs get the instance license. On cloud, if the License Server is down the org gets the
@@ -77,7 +77,7 @@ export class LicenseService implements TLicenseService {
 
     // Unknown org: return the fallback without caching it.
     const rootOrgId = await this.deps.organizationsProjectsService.findRootOrgId(orgId);
-    if (!rootOrgId) return this.deps.provider.fallbackPlan();
+    if (!rootOrgId) return this.deps.licensePolicyService.fallbackPlan();
 
     const [cached, isReconciled] = await Promise.all([
       this.deps.planCache.read(rootOrgId),
@@ -108,7 +108,7 @@ export class LicenseService implements TLicenseService {
       const rootOrg = await this.rootOrg(rootOrgId);
       let fetched: Plan;
       try {
-        fetched = await this.deps.provider.fetchPlan(rootOrg);
+        fetched = await this.deps.licensePolicyService.fetchPlan(rootOrg);
       } catch (error) {
         throw new ExternalSystemError({
           name: "RefreshPlan",
@@ -120,7 +120,7 @@ export class LicenseService implements TLicenseService {
       await this.cachePlan(rootOrgId, fetched);
       return;
     }
-    const refreshed = await this.deps.provider.refreshInstanceEntitlements();
+    const refreshed = await this.deps.licensePolicyService.refreshInstanceEntitlements();
     if (refreshed) this.deps.instance.set(refreshed);
   }
 
@@ -168,10 +168,10 @@ export class LicenseService implements TLicenseService {
     const rootOrg = await this.rootOrg(rootOrgId);
     let fetched: Plan;
     try {
-      fetched = await this.deps.provider.fetchPlan(rootOrg);
+      fetched = await this.deps.licensePolicyService.fetchPlan(rootOrg);
     } catch (error) {
       logger.error(error, `getPlan: the License Server failed, serving the fallback plan [orgId=${rootOrgId}]`);
-      const fallback = this.deps.provider.fallbackPlan();
+      const fallback = this.deps.licensePolicyService.fallbackPlan();
       await this.deps.planCache.writeFallback(rootOrgId, fallback);
       return fallback;
     }
@@ -193,7 +193,7 @@ export class LicenseService implements TLicenseService {
   private revalidateInBackground(rootOrgId: string) {
     void (async () => {
       if (!(await this.deps.planCache.acquireRevalidateLock(rootOrgId))) return;
-      await this.cachePlan(rootOrgId, await this.deps.provider.fetchPlan(await this.rootOrg(rootOrgId)));
+      await this.cachePlan(rootOrgId, await this.deps.licensePolicyService.fetchPlan(await this.rootOrg(rootOrgId)));
     })().catch((error) => {
       logger.error(error, `getPlan: background revalidation failed [orgId=${rootOrgId}]`);
     });

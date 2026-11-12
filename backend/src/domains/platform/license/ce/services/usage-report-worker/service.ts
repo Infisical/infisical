@@ -9,7 +9,13 @@ import { SELF_HOSTED_LICENSE_ORG_ID } from "../helpers/license-server-types";
 import { TMeteringEventPayload, UsageQueue } from "../helpers/usage-queue";
 import { TLicenseService } from "../license/service";
 
-export type TUsageReportWorkerDeps = {
+export type TUsageReportWorkerService = {
+  handleUsageEvent(orgId: string, dimensionKey: string): Promise<void>;
+  handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void>;
+  flushInstanceUsage(): void;
+};
+
+export type TUsageReportWorkerServiceDeps = {
   counters: CounterRegistry;
   usageReportCache: TUsageReportCache;
   usageQueue: UsageQueue;
@@ -19,8 +25,8 @@ export type TUsageReportWorkerDeps = {
 };
 
 // Only LicenseModule.start() registers these.
-export class UsageReportWorker {
-  constructor(private readonly deps: TUsageReportWorkerDeps) {}
+export class UsageReportWorkerService implements TUsageReportWorkerService {
+  constructor(private readonly deps: TUsageReportWorkerServiceDeps) {}
 
   async handleUsageEvent(orgId: string, dimensionKey: string): Promise<void> {
     if (!this.deps.licenseServer.canReportUsage()) return;

@@ -4,18 +4,21 @@ import { logger } from "@app/lib/logger";
 
 import { InstanceEntitlements, InstanceType } from "../../../ce/models/instance-entitlements";
 import { Plan } from "../../../ce/models/plan";
-import { TLicenseProvider } from "../../../ce/services/dependencies";
+import { TLicensePolicyService } from "../../../ce/services/dependencies";
 import { SELF_HOSTED_LICENSE_ORG_ID, TEntitlementOrg } from "../../../ce/services/helpers/license-server-types";
 import { TLicenseServerEntitlements } from "../dependencies";
-import { projectV2ToFeatureSet, withCloudPlanDefaults, withSelfHostedLicenseBase } from "./entitlement-projection";
-// Keep this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
-import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
-import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
+import {
+  cloudPlanFeatures,
+  communityFeatures,
+  offlineV1LicenseFeatures,
+  selfHostedLicenseFeatures
+} from "./entitlement-projection";
+import { isOfflineLicenseKey, LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./license-key";
 
 const community = (): InstanceEntitlements =>
   InstanceEntitlements.restore({
     instanceType: InstanceType.OnPrem,
-    features: getDefaultOnPremFeatures(),
+    features: communityFeatures(),
     licenseId: null,
     customerId: null
   });
@@ -32,12 +35,10 @@ const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitleme
     return null;
   }
 
-  // A v1 feature set is a snapshot frozen when the key was issued, so it is layered over current defaults:
-  // otherwise every flag added since reads as undefined, withdrawing features the license paid for.
   const features =
     contents.license.version === 2 && contents.license.entitlements
-      ? projectV2ToFeatureSet(withSelfHostedLicenseBase(getDefaultOnPremFeatures()), contents.license.entitlements)
-      : { ...withSelfHostedLicenseBase(getDefaultOnPremFeatures()), ...contents.license.features };
+      ? selfHostedLicenseFeatures(contents.license.entitlements)
+      : offlineV1LicenseFeatures(contents.license.features);
 
   // Keys issued before PAM alerts moved to the alert module grant them through the old Slack flag.
   if ((contents.license.features as { pamSlackNotifications?: boolean } | undefined)?.pamSlackNotifications) {
@@ -52,18 +53,15 @@ const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitleme
   });
 };
 
-// An offline (air-gapped) license must never reach the License Server.
-export const isOfflineLicenseKey = (licenseKeyConfig: TLicenseKeyConfig) =>
-  licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
-
-export type TLicenseResolverDeps = {
+export type TLicensePolicyServiceDeps = {
   isCloud: boolean;
   licenseKeyConfig: TLicenseKeyConfig;
   licenseServerClient: TLicenseServerEntitlements;
 };
 
-export class LicenseResolver implements TLicenseProvider {
-  constructor(private readonly deps: TLicenseResolverDeps) {}
+// Decides what the instance and each cloud org are entitled to, from license keys and the License Server's answers.
+export class LicensePolicyService implements TLicensePolicyService {
+  constructor(private readonly deps: TLicensePolicyServiceDeps) {}
 
   // The service key wins over a license key: it is what makes the instance Infisical Cloud. Anything that
   // fails to resolve leaves the community edition.
@@ -96,20 +94,18 @@ export class LicenseResolver implements TLicenseProvider {
     return isOfflineLicenseKey(this.deps.licenseKeyConfig);
   }
 
-  // eslint-disable-next-line class-methods-use-this
-  fallbackPlan(): Plan {
-    return Plan.restore(withCloudPlanDefaults(getDefaultOnPremFeatures(), null));
-  }
-
   // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
   async fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan> {
     const entitlements = await this.deps.licenseServerClient.getEntitlements(rootOrg);
     if (!entitlements) {
       throw new ExternalSystemError({ message: "License Server entitlements are unavailable" });
     }
-    return Plan.restore(
-      withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements)
-    );
+    return Plan.restore(cloudPlanFeatures(entitlements));
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  fallbackPlan(): Plan {
+    return Plan.restore(cloudPlanFeatures(null));
   }
 
   private async readOnlineLicense(): Promise<InstanceEntitlements> {
@@ -119,11 +115,9 @@ export class LicenseResolver implements TLicenseProvider {
     }
     return InstanceEntitlements.restore({
       instanceType: InstanceType.EnterpriseOnPrem,
-      features: projectV2ToFeatureSet(withSelfHostedLicenseBase(getDefaultOnPremFeatures()), entitlements),
+      features: selfHostedLicenseFeatures(entitlements),
       licenseId: null,
       customerId: null
     });
   }
 }
-
-export { getLicenseKeyConfig };

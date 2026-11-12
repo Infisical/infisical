@@ -53,7 +53,7 @@ export const buildLicense = async ({
     },
     isProductionMode: false,
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
-    provider: licenseServer,
+    licensePolicyService: licenseServer,
     licenseServer,
     organizationsProjectsService: buildOrganizations(organizations),
     usageCounters: counters
