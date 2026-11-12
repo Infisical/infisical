@@ -393,7 +393,6 @@ export const secretFolderServiceFactory = ({
     projectId,
     environment,
     folderId,
-    oldPath,
     newName,
     actor,
     permission,
@@ -402,15 +401,32 @@ export const secretFolderServiceFactory = ({
     projectId: string;
     environment: string;
     folderId: string;
-    oldPath: string;
     newName: string;
     actor: ActorType;
     permission: MongoAbility<ProjectPermissionSet>;
     tx: Knex;
   }) => {
+    const unlockedSubtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
+    await folderDAL.lockFoldersForUpdate(
+      unlockedSubtree.map((folder) => folder.id),
+      tx
+    );
+
+    // a concurrent rename in or above this tree may have committed before the lock, so the paths read so far can be
+    // stale. renames and inserts in the locked tree now wait for this transaction, so read the tree and its path again
+    // and lock any folder created in between.
     const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
     const subtreeIds = subtree.map((folder) => folder.id);
-    await folderDAL.lockFoldersForUpdate(subtreeIds, tx);
+    const lockedIds = new Set(unlockedSubtree.map((folder) => folder.id));
+    await folderDAL.lockFoldersForUpdate(
+      subtreeIds.filter((id) => !lockedIds.has(id)),
+      tx
+    );
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Failed to retrieve path for folder with ID '${folderId}'` });
+    }
+    const oldPath = folderWithPath.path;
 
     const toOldPath = buildToAbsPath(oldPath);
     const toNewPath = buildToAbsPath(path.posix.join(path.posix.dirname(oldPath), newName));
@@ -516,7 +532,7 @@ export const secretFolderServiceFactory = ({
       );
 
       return Promise.all(
-        entries.map(async ({ newFolder, parentFolder, env, folder, folderPath }) => {
+        entries.map(async ({ newFolder, parentFolder, env, folder }) => {
           const { environment, id, name, description } = newFolder;
 
           if (name !== folder.name) {
@@ -541,7 +557,6 @@ export const secretFolderServiceFactory = ({
               projectId: projectId as string,
               environment,
               folderId: folder.id,
-              oldPath: folderPath,
               newName: name,
               actor,
               permission,
@@ -708,7 +723,6 @@ export const secretFolderServiceFactory = ({
           projectId,
           environment,
           folderId: folder.id,
-          oldPath: oldFolderWithPath.path,
           newName: name,
           actor,
           permission,
