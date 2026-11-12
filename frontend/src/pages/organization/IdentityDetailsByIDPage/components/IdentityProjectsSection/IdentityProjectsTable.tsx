@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -27,7 +26,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetIdentityProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectType, TListActorProjectMembershipsParams } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityProjectRow } from "./IdentityProjectRow";
@@ -44,13 +43,21 @@ enum IdentityProjectsOrderBy {
   Name = "name"
 }
 
-export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) => {
-  const { data: projectMemberships = [], isPending } = useGetIdentityProjectMemberships(identityId);
+const DEFAULT_PER_PAGE = 20;
 
+export const getIdentityProjectsFirstPageParams = (): TListActorProjectMembershipsParams => ({
+  limit: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, DEFAULT_PER_PAGE),
+  offset: 0,
+  orderDirection: OrderByDirection.ASC,
+  excludeProjectType: ProjectType.CertificateManager
+});
+
+export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) => {
   const { isSubOrganization } = useOrganization();
 
   const {
     search,
+    debouncedSearch,
     setSearch,
     setPage,
     page,
@@ -60,7 +67,11 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     orderDirection,
     toggleOrderDirection
   } = usePagination(IdentityProjectsOrderBy.Name, {
-    initPerPage: getUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, 20)
+    initPerPage: getUserTablePreference(
+      "identityProjectsTable",
+      PreferenceKey.PerPage,
+      DEFAULT_PER_PAGE
+    )
   });
 
   const handlePerPageChange = (newPerPage: number) => {
@@ -68,32 +79,20 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     setUserTablePreference("identityProjectsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const visibleProjectMemberships = useMemo(
-    () =>
-      projectMemberships?.filter(
-        (membership) => membership.project.type !== ProjectType.CertificateManager
-      ),
-    [projectMemberships]
-  );
-  const filteredProjectMemberships = useMemo(
-    () =>
-      visibleProjectMemberships
-        ?.filter((membership) =>
-          membership.project.name.toLowerCase().includes(search.trim().toLowerCase())
-        )
-        .sort((a, b) => {
-          const [membershipOne, membershipTwo] =
-            orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-          return membershipOne.project.name
-            .toLowerCase()
-            .localeCompare(membershipTwo.project.name.toLowerCase());
-        }),
-    [visibleProjectMemberships, orderDirection, search]
-  );
+  const projectSearch = debouncedSearch.trim();
+  const { data, isPending, isError } = useGetIdentityProjectMemberships(identityId, {
+    limit: perPage,
+    offset,
+    orderDirection,
+    // Certificate Manager membership is managed inside Certificate Manager, not as a project.
+    excludeProjectType: ProjectType.CertificateManager,
+    ...(projectSearch ? { search: projectSearch } : {})
+  });
+  const projectMemberships = data?.identityMemberships ?? [];
+  const totalCount = data?.totalCount ?? 0;
 
   useResetPageHelper({
-    totalCount: filteredProjectMemberships.length,
+    totalCount,
     offset,
     setPage
   });
@@ -107,15 +106,30 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     );
   }
 
+  if (isError) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Could not load projects</EmptyTitle>
+          <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
     <>
       <Input
         className="mb-4"
+        maxLength={255}
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1);
+        }}
         placeholder="Search projects..."
       />
-      {filteredProjectMemberships.length ? (
+      {projectMemberships.length ? (
         <Table>
           <TableHeader>
             <TableRow>
@@ -135,32 +149,31 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {!isPending &&
-              filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
-                return (
-                  <IdentityProjectRow
-                    key={`identity-project-membership-${membership.id}`}
-                    membership={membership}
-                    handlePopUpOpen={handlePopUpOpen}
-                  />
-                );
-              })}
+            {projectMemberships.map((membership) => {
+              return (
+                <IdentityProjectRow
+                  key={`identity-project-membership-${membership.id}`}
+                  membership={membership}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              );
+            })}
           </TableBody>
         </Table>
       ) : (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
-              {visibleProjectMemberships.length
+              {projectSearch
                 ? "No projects match this search"
                 : "This machine identity is not a member of any projects"}
             </EmptyTitle>
             <EmptyDescription>
-              {visibleProjectMemberships.length
+              {projectSearch
                 ? "Adjust search filters to view project memberships."
                 : "Assign this machine identity to a project."}
             </EmptyDescription>
-            {!visibleProjectMemberships.length && (
+            {!projectSearch && (
               <EmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
@@ -175,9 +188,9 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
           </EmptyHeader>
         </Empty>
       )}
-      {Boolean(filteredProjectMemberships.length) && (
+      {Boolean(projectMemberships.length) && (
         <Pagination
-          count={filteredProjectMemberships.length}
+          count={totalCount}
           page={page}
           perPage={perPage}
           onChangePage={setPage}
