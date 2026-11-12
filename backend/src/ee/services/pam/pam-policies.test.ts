@@ -10,6 +10,7 @@ import {
   PamPolicyType,
   PamSettingType,
   resolveAccessControls,
+  resolveOutputMasking,
   validatePolicyValues
 } from "./pam-policies";
 
@@ -245,10 +246,10 @@ describe("accountTypeSupportsSessionLogMasking", () => {
 });
 
 describe("output masking presets", () => {
-  const masks = (preset: PamOutputMaskingPreset, value: string) =>
+  const masks = (preset: keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS, value: string) =>
     new RE2(PAM_OUTPUT_MASKING_PRESET_PATTERNS[preset]).test(value);
 
-  test.each([
+  test.each<[keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS, string]>([
     [PamOutputMaskingPreset.Email, "jane.doe+billing@corp.example.co.uk"],
     [PamOutputMaskingPreset.PhoneNumber, "(555) 123-4567"],
     [PamOutputMaskingPreset.PhoneNumber, "+44 20 7946 0958"],
@@ -258,23 +259,42 @@ describe("output masking presets", () => {
     [PamOutputMaskingPreset.CreditCard, "4111111111111111"],
     [PamOutputMaskingPreset.CreditCard, "3782 822463 10005"],
     [PamOutputMaskingPreset.IpAddress, "10.20.30.40"],
-    [PamOutputMaskingPreset.Jwt, "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln"]
+    [PamOutputMaskingPreset.Jwt, "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln"],
+    [PamOutputMaskingPreset.ConnectionString, "postgres://app:hunter2@db:5432/app"],
+    [PamOutputMaskingPreset.ConnectionString, "redis://:hunter2@cache:6379"]
   ])("%s masks %s", (preset, value) => {
     expect(masks(preset, value)).toBe(true);
   });
 
   // A broader pattern would also hit these, blanking ordinary query output.
-  test.each(["2026-11-10", "1731300000000", "ORD-2026-000123", "10.0.1", "12:30:45"])("no preset masks %s", (value) => {
-    expect(Object.values(PamOutputMaskingPreset).some((preset) => masks(preset, value))).toBe(false);
-  });
+  test.each(["2026-11-10", "1731300000000", "ORD-2026-000123", "10.0.1", "12:30:45", "https://example.com:8443/a"])(
+    "no preset masks %s",
+    (value) => {
+      expect(
+        (Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS) as (keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS)[]).some(
+          (preset) => masks(preset, value)
+        )
+      ).toBe(false);
+    }
+  );
 
   test("dedupes presets and caps the list at the number of presets", () => {
     expect(
       validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: ["email", "email"] } })
     ).toEqual({ ok: true, data: { [PamPolicyType.OutputMasking]: { presets: ["email"], patterns: "" } } });
     expect(
-      validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: Array(7).fill("email") } })
+      validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: Array(9).fill("email") } })
         .ok
     ).toBe(false);
+  });
+});
+
+describe("resolveOutputMasking", () => {
+  test("sends the account credentials preset as a flag for the gateway, not a pattern", () => {
+    expect(
+      resolveOutputMasking({
+        [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.AccountCredentials], patterns: "" }
+      })
+    ).toEqual({ patterns: [], accountCredentials: true });
   });
 });

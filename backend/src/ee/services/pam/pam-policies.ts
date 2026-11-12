@@ -20,12 +20,18 @@ export enum PamOutputMaskingPreset {
   Ssn = "ssn",
   Email = "email",
   IpAddress = "ip-address",
-  PhoneNumber = "phone-number"
+  PhoneNumber = "phone-number",
+  ConnectionString = "connection-string",
+  AccountCredentials = "account-credentials"
 }
 
 // Most specific first, so a broader pattern can't split a value a narrower one would mask whole.
-export const PAM_OUTPUT_MASKING_PRESET_PATTERNS: Record<PamOutputMaskingPreset, string> = {
+export const PAM_OUTPUT_MASKING_PRESET_PATTERNS: Record<
+  Exclude<PamOutputMaskingPreset, PamOutputMaskingPreset.AccountCredentials>,
+  string
+> = {
   [PamOutputMaskingPreset.Jwt]: String.raw`\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*`,
+  [PamOutputMaskingPreset.ConnectionString]: String.raw`[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]*:\S*@`,
   [PamOutputMaskingPreset.CreditCard]: String.raw`\b(?:\d{4}[ -]?){3}\d{4}\b|\b3[47]\d{2}[ -]?\d{6}[ -]?\d{5}\b`,
   [PamOutputMaskingPreset.Ssn]: String.raw`\b\d{3}-\d{2}-\d{4}\b`,
   [PamOutputMaskingPreset.Email]: String.raw`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`,
@@ -75,7 +81,7 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
 const PamOutputMaskingSchema = z.object({
   presets: z
     .array(z.nativeEnum(PamOutputMaskingPreset))
-    .max(Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS).length)
+    .max(Object.values(PamOutputMaskingPreset).length)
     .transform((presets) => [...new Set(presets)])
     .default([]),
   patterns: patternsStringSchema().default("")
@@ -252,7 +258,7 @@ const PamSessionLogMaskingRuleSchema = PamPolicyRulePatternSchema.extend({
 export const PamPolicyRulesSchema = z
   .object({
     [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
-    [PamPolicyType.OutputMasking]: PamPolicyRulePatternSchema.optional(),
+    [PamPolicyType.OutputMasking]: PamPolicyRulePatternSchema.extend({ accountCredentials: z.boolean() }).optional(),
     [PamSettingType.SessionLogMasking]: PamSessionLogMaskingRuleSchema.optional()
   })
   .nullable()
@@ -268,12 +274,12 @@ export type TPamPolicyRules = z.infer<typeof PamPolicyRulesSchema>;
  */
 export const buildPamPolicyRules = ({
   commandBlockingPatterns,
-  outputMaskingPatterns = [],
+  outputMasking = null,
   maskingPatterns,
   maskingBuiltInDetection
 }: {
   commandBlockingPatterns: string[];
-  outputMaskingPatterns?: string[];
+  outputMasking?: TPamOutputMaskingRule | null;
   maskingPatterns: string[];
   maskingBuiltInDetection: boolean;
 }): TPamPolicyRules => {
@@ -283,8 +289,8 @@ export const buildPamPolicyRules = ({
     rules[PamPolicyType.CommandBlocking] = { patterns: commandBlockingPatterns };
   }
 
-  if (outputMaskingPatterns.length > 0) {
-    rules[PamPolicyType.OutputMasking] = { patterns: outputMaskingPatterns };
+  if (outputMasking) {
+    rules[PamPolicyType.OutputMasking] = outputMasking;
   }
 
   if (maskingBuiltInDetection || maskingPatterns.length > 0) {
@@ -297,16 +303,23 @@ export const buildPamPolicyRules = ({
   return Object.keys(rules).length > 0 ? (rules as TPamPolicyRules) : null;
 };
 
-export const resolveOutputMaskingPatterns = (policyMap: unknown): string[] => {
+type TPamOutputMaskingRule = { patterns: string[]; accountCredentials: boolean };
+
+// The gateway masks the account's own credentials itself, since it already holds them.
+export const resolveOutputMasking = (policyMap: unknown): TPamOutputMaskingRule | null => {
   const masking = resolvePolicy(policyMap, PamPolicyType.OutputMasking) as z.infer<
     typeof PamOutputMaskingSchema
   > | null;
-  if (!masking) return [];
+  if (!masking) return null;
 
-  const presets = (Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS) as PamOutputMaskingPreset[])
+  const presets = (
+    Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS) as (keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS)[]
+  )
     .filter((preset) => masking.presets.includes(preset))
     .map((preset) => PAM_OUTPUT_MASKING_PRESET_PATTERNS[preset]);
-  return [...presets, ...splitPatternString(masking.patterns)];
+  const patterns = [...presets, ...splitPatternString(masking.patterns)];
+  const accountCredentials = masking.presets.includes(PamOutputMaskingPreset.AccountCredentials);
+  return patterns.length > 0 || accountCredentials ? { patterns, accountCredentials } : null;
 };
 
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {

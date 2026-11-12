@@ -59,7 +59,7 @@ import {
   PamPolicyType,
   policyAppliesTo,
   resolveAccessControls,
-  resolveOutputMaskingPatterns,
+  resolveOutputMasking,
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
@@ -222,7 +222,7 @@ export const pamSessionServiceFactory = ({
   ) => {
     if (
       !policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType) ||
-      resolveOutputMaskingPatterns(account.templatePolicies).length === 0
+      !resolveOutputMasking(account.templatePolicies)
     ) {
       return;
     }
@@ -408,9 +408,9 @@ export const pamSessionServiceFactory = ({
 
     const policyRules = buildPamPolicyRules({
       commandBlockingPatterns,
-      outputMaskingPatterns: policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType)
-        ? resolveOutputMaskingPatterns(account.templatePolicies)
-        : [],
+      outputMasking: policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType)
+        ? resolveOutputMasking(account.templatePolicies)
+        : null,
       maskingPatterns: parsedSettings.success ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns) : [],
       // Never send a rule the gateway has no way to honour.
       maskingBuiltInDetection:

@@ -134,7 +134,9 @@ export enum PamOutputMaskingPreset {
   Ssn = "ssn",
   CreditCard = "credit-card",
   IpAddress = "ip-address",
-  Jwt = "jwt"
+  Jwt = "jwt",
+  ConnectionString = "connection-string",
+  AccountCredentials = "account-credentials"
 }
 
 export enum SessionChannelType {

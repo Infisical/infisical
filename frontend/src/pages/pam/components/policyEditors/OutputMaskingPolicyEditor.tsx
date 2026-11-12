@@ -12,6 +12,11 @@ import { PamOutputMaskingPreset } from "@app/hooks/api/pam";
 import { PolicyEditorProps } from "./types";
 
 const PRESETS: { key: PamOutputMaskingPreset; label: string; example: string }[] = [
+  {
+    key: PamOutputMaskingPreset.AccountCredentials,
+    label: "Account Credentials",
+    example: "password, keys, tokens"
+  },
   { key: PamOutputMaskingPreset.Email, label: "Email Addresses", example: "jane@acme.com" },
   { key: PamOutputMaskingPreset.PhoneNumber, label: "Phone Numbers", example: "(555) 123-4567" },
   { key: PamOutputMaskingPreset.Ssn, label: "Social Security Numbers", example: "123-45-6789" },
@@ -21,7 +26,12 @@ const PRESETS: { key: PamOutputMaskingPreset; label: string; example: string }[]
     example: "4111 1111 1111 1111"
   },
   { key: PamOutputMaskingPreset.IpAddress, label: "IPv4 Addresses", example: "192.168.1.10" },
-  { key: PamOutputMaskingPreset.Jwt, label: "JSON Web Tokens", example: "eyJhbGciOiJIUzI1NiJ9…" }
+  { key: PamOutputMaskingPreset.Jwt, label: "JSON Web Tokens", example: "eyJhbGciOiJIUzI1NiJ9…" },
+  {
+    key: PamOutputMaskingPreset.ConnectionString,
+    label: "Connection String Passwords",
+    example: "passwords in URLs"
+  }
 ];
 
 type TOutputMasking = { presets: PamOutputMaskingPreset[]; patterns: string };
