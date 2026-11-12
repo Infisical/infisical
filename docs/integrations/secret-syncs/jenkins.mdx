@@ -4,7 +4,6 @@ sidebarTitle: "Jenkins"
 description: "Learn how to configure a Jenkins sync for Infisical."
 ---
 
-import GenerateApiToken from "/snippets/app-connections/jenkins/generate-api-token.mdx";
 import ConnectionFormFields from "/snippets/app-connections/jenkins/form-fields.mdx";
 
 A Jenkins Secret Sync pushes secrets from Infisical into Jenkins credentials, where your pipelines read them with the `withCredentials` step. Each Infisical secret becomes a Secret text credential whose ID is the secret's name, unless you customize key names to add a prefix or suffix.
@@ -22,17 +21,12 @@ If you'd rather have pipelines fetch secrets from Infisical when they run, witho
   - Overall/Read
   - Credentials/View, Credentials/Create, Credentials/Update, and Credentials/Delete, either across Jenkins or on the folder you plan to sync to
   - Job/Read on the folder you plan to sync to and on every folder that contains it
+- An [API token](/integrations/app-connections/jenkins#step-1-generate-a-jenkins-api-token) for that user
 - The [Credentials Binding](https://plugins.jenkins.io/credentials-binding/) plugin, which adds the `withCredentials` step (Jenkins installs it with the suggested plugins)
 - To sync to a folder, the [Folders](https://plugins.jenkins.io/cloudbees-folder/) plugin (also installed with the suggested plugins)
 - If your Jenkins instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
 
-## Step 1: Generate a Jenkins API token
-
-Infisical needs an API token for the Jenkins user that has the permissions in the [prerequisites](#prerequisites).
-
-<GenerateApiToken />
-
-## Step 2: Set up the sync in Infisical
+## Step 1: Set up the sync in Infisical
 
 <Tip>
     To create the sync using the API, use the Jenkins [Create](/api-reference/endpoints/secret-syncs/jenkins/create) endpoint.
@@ -129,7 +123,7 @@ Infisical needs an API token for the Jenkins user that has the permissions in th
     </Step>
 </Steps>
 
-## Step 3: Use the credentials in a pipeline
+## Step 2: Use the credentials in a pipeline
 
 Each synced secret appears in Jenkins as a Secret text credential with the description `Managed by Infisical`. To read one in a pipeline, bind it to an environment variable with the `withCredentials` step:
 
