@@ -383,6 +383,7 @@ describe("certificate revocation behind an approval policy", () => {
         request: { id: "approval-request-1" },
         notifyApprovers: vi.fn().mockResolvedValue(undefined)
       }),
+      notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined),
       cancelPendingRequests: vi.fn().mockImplementation(async (_type: unknown, requestIds: string[]) =>
         requestIds.map((id) => {
           const renewal = renewalRequests.get(id) as TPendingRenewal;
@@ -551,10 +552,52 @@ describe("certificate revocation behind an approval policy", () => {
           type: EventType.CERT_REVOCATION_FAILED,
           metadata: expect.objectContaining({
             approvalRequestId: "approval-request-1",
-            error: expect.stringMatching(/still active/) as unknown
+            error: expect.stringMatching(/unexpected error stopped the revocation/) as unknown
           }) as unknown
         })
       ]);
+    });
+
+    it("tells the requester and approvers once why the revocation failed", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledTimes(1);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        expect.stringMatching(/unexpected error stopped the revocation/)
+      );
+    });
+
+    it("sends no failure notice when the certificate is revoked", async () => {
+      const ctx = buildRevocationService();
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
+    });
+
+    it("sends no failure notice when the certificate was already revoked", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findById.mockResolvedValue({ ...applicationCertificate, status: CertStatus.REVOKED });
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
+    });
+
+    it("keeps the recorded failure and doesn't throw when the failure notice can't be sent", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
+      ctx.approvalPolicyService.notifyApprovedActionFailed.mockRejectedValue(new Error("notifications unavailable"));
+
+      await expect(ctx.service.revokeApprovedCertificate(approvedRevocation)).resolves.toBeUndefined();
+
+      expect(ctx.auditEvents().map((event) => event.type)).toEqual([EventType.CERT_REVOCATION_FAILED]);
     });
 
     it("records the revocation when a step after the local revoke fails", async () => {
