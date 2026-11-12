@@ -3,7 +3,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { AGENT_VAULT_OAUTH_HEADER_NAME } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
 
-type TStoredRow = { id: string; encryptedValue: Buffer };
+type TStoredRow = { id: string; encryptedValue?: Buffer | null };
 
 /** `encryptedValue` is undefined when the caller omitted the value, which means "keep whatever is stored". */
 export type TTransformationWrite<TColumns> = {

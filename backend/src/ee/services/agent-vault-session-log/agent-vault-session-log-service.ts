@@ -28,6 +28,7 @@ import { ObjectStorageType } from "@app/services/object-storage/object-storage-t
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { isOrphanedSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
+import { TAgentVaultSessionStatsDALFactory } from "../agent-vault-session/agent-vault-session-stats-dal";
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
@@ -53,6 +54,7 @@ import {
   AgentVaultSessionLogsNamespace,
   buildSessionLogObjectName,
   chunkIdTimeMs,
+  getChunkDecisionProperties,
   parseSessionLogObjectKey,
   toRev
 } from "./agent-vault-session-log-fns";
@@ -91,6 +93,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
     "findOne" | "findByProjectIdFromPrimary" | "upsert"
   >;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findOne">;
+  agentVaultSessionStatsDAL: Pick<TAgentVaultSessionStatsDALFactory, "addChunkCounts">;
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
@@ -127,6 +130,7 @@ type TSessionLogFolder = Awaited<ReturnType<typeof $openSessionLogFolder>>["fold
 export const agentVaultSessionLogServiceFactory = ({
   agentVaultSessionLogConfigDAL,
   agentVaultSessionDAL,
+  agentVaultSessionStatsDAL,
   agentVaultProxyDAL,
   appConnectionDAL,
   appConnectionService,
@@ -284,6 +288,19 @@ export const agentVaultSessionLogServiceFactory = ({
       .catch((error) =>
         logger.warn(error, `agentVaultSessionLog: could not add a chunk to the live feed [sessionId=${session.id}]`)
       );
+
+    // The proxy's own counts, unchecked, since Infisical never opens a chunk. A retry that asks for a new link counts
+    // its chunk again; rare enough for a display number. Not awaited, for the same reason as the live feed.
+    if (chunk.recordCount !== undefined) {
+      void agentVaultSessionStatsDAL
+        .addChunkCounts(session.id, {
+          requests: chunk.recordCount,
+          brokered: getChunkDecisionProperties(chunk).brokered ?? null
+        })
+        .catch((error) =>
+          logger.warn(error, `agentVaultSessionLog: could not add a chunk's counts [sessionId=${session.id}]`)
+        );
+    }
 
     return {
       chunkId: chunk.chunkId,

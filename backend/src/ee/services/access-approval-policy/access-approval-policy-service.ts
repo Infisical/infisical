@@ -65,7 +65,8 @@ export const secretAccessApprovalPolicyServiceFactory = ({
   approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
   additionalPrivilegeDAL,
-  delegatedApprovalService
+  delegatedApprovalService,
+  licenseService
 }: TSecretAccessApprovalPolicyServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -470,6 +471,14 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval policy due to plan restriction. Upgrade plan to create access approval policy."
+      });
+    }
+
     const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApproval;
 
     const mergedEnvs = (environment ? [environment] : environments) || [];
@@ -593,6 +602,14 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       projectId: policy.projectId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update access approval policy due to plan restriction. Upgrade plan to update access approval policy."
+      });
+    }
 
     let envs: { id: string; slug: string }[] = policy.environments;
     if (environments) {

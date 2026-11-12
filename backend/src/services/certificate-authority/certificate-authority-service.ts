@@ -806,6 +806,7 @@ export const certificateAuthorityServiceFactory = ({
             crlDistributionPointUrls?: string[];
             disableManagedCrlDistributionPointUrl?: boolean;
             isOcspEnabled?: boolean;
+            crlValidityDays?: number;
           }
         | undefined;
 
@@ -816,7 +817,8 @@ export const certificateAuthorityServiceFactory = ({
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
         disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
-        isOcspEnabled: internalConfig?.isOcspEnabled
+        isOcspEnabled: internalConfig?.isOcspEnabled,
+        crlValidityDays: internalConfig?.crlValidityDays
       });
 
       if (!updatedCa.internalCa) {
@@ -826,14 +828,17 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       return {
-        id: updatedCa.id,
-        type,
-        enableDirectIssuance: updatedCa.enableDirectIssuance,
-        name: updatedCa.name,
-        projectId: updatedCa.projectId,
-        configuration: updatedCa.internalCa,
-        status: updatedCa.status
-      } as TCertificateAuthority;
+        ...({
+          id: updatedCa.id,
+          type,
+          enableDirectIssuance: updatedCa.enableDirectIssuance,
+          name: updatedCa.name,
+          projectId: updatedCa.projectId,
+          configuration: updatedCa.internalCa,
+          status: updatedCa.status
+        } as TCertificateAuthority),
+        crlWarning: updatedCa.crlWarning
+      };
     }
 
     if (type === CaType.ACME) {

@@ -26,13 +26,13 @@ If you run a shared proxy, we recommend keeping it on the same private network a
 
 ## Supported connections
 
-Agents connect to the proxy as an HTTP proxy. If you turn on the [SOCKS5 port](#accept-connections-over-socks5), clients such as E2B can also connect over SOCKS5 over TLS.
+Agents connect to the proxy as an HTTP proxy. If you turn on the [SOCKS5 port](#accept-connections-over-socks5), clients such as E2B can also connect over SOCKS5 over TLS. To reach [databases and SSH servers](/documentation/platform/agent-vault/databases-and-ssh), agents run `infisical agent-vault connect`, which connects to the proxy's HTTP port over TLS.
 
 Over either connection, the proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain HTTP. These connections fail through the proxy:
 
 - WebSocket connections, such as to a `wss://` URL
 - Clients that only speak HTTP/2, such as gRPC clients
-- Other TCP traffic through the SOCKS5 port, such as SSH
+- Other TCP traffic through the SOCKS5 port, such as an `ssh` or `psql` client that connects directly
 
 If an API offers both WebSocket connections and plain HTTPS requests, configure the agent to use the HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
 
@@ -195,13 +195,17 @@ Use **Service hosts only** if the proxy can reach systems that agents shouldn't 
 
 #### Blocked requests
 
-If the policy blocks a request, the proxy still accepts the connection and completes the TLS handshake, so the agent gets a 403 response instead of a connection error:
+If the policy blocks a request, the proxy still accepts the connection and completes the TLS handshake, so the agent gets a 403 response instead of a connection error. The response body is JSON with an error code, the reason, and a hint for the agent:
 
 ```text
 HTTP/1.1 403 Forbidden
+Content-Type: application/json
+X-Agent-Vault-Decision: blocked
 
-no service covers host "internal.example.com": host blocked by policy
+{"error":"host_not_allowed","message":"no service covers host \"internal.example.com\": host blocked by policy","hint":"This is the Agent Vault proxy, not the API: it only lets through hosts a service in this session covers. https://app.infisical.com/api/v1/agent-vault/session/services lists them."}
 ```
+
+The `X-Agent-Vault-Decision` header is on every response that goes through the proxy, so an agent can tell the proxy's responses apart from the API's. For its values, see [Responses from the proxy](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy).
 
 The proxy also returns a 403 for:
 

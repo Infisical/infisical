@@ -34,7 +34,8 @@ export const InternalCertificateAuthoritiesSchema = z.object({
   crlDistributionPointUrls: z.string().array().nullable().optional(),
   disableManagedCrlDistributionPointUrl: z.boolean().default(false),
   isOcspEnabled: z.boolean().default(false),
-  ocspGeneration: z.coerce.number().default(0)
+  ocspGeneration: z.coerce.number().default(0),
+  crlValidityDays: z.number().default(7)
 });
 
 export type TInternalCertificateAuthorities = z.infer<typeof InternalCertificateAuthoritiesSchema>;

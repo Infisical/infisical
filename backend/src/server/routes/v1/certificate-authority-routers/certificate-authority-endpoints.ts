@@ -23,7 +23,8 @@ export const registerCertificateAuthorityEndpoints = <
   caType,
   createSchema,
   updateSchema,
-  responseSchema
+  responseSchema,
+  updateResponseSchema = responseSchema
 }: {
   caType: CaType;
   server: FastifyZodProvider;
@@ -38,6 +39,7 @@ export const registerCertificateAuthorityEndpoints = <
     configuration?: I["configuration"];
   }>;
   responseSchema: z.ZodTypeAny;
+  updateResponseSchema?: z.ZodTypeAny;
 }) => {
   const caTypeNameForOpId = caType
     .split("-")
@@ -143,8 +145,12 @@ export const registerCertificateAuthorityEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const body = req.body as { projectId?: string; configuration?: { isOcspEnabled?: boolean } };
+      const body = req.body as {
+        projectId?: string;
+        configuration?: { isOcspEnabled?: boolean; crlValidityDays?: number };
+      };
       const createdOcspSetting = body.configuration?.isOcspEnabled;
+      const createdCrlValidityDays = body.configuration?.crlValidityDays;
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, projectId: body.projectId ?? req.internalCertManagerProjectId, type: caType },
         req.permission
@@ -159,7 +165,8 @@ export const registerCertificateAuthorityEndpoints = <
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
             ...getCaKeySourceAuditMetadata(certificateAuthority.configuration),
-            ...(typeof createdOcspSetting === "boolean" && { isOcspEnabled: createdOcspSetting })
+            ...(typeof createdOcspSetting === "boolean" && { isOcspEnabled: createdOcspSetting }),
+            ...(typeof createdCrlValidityDays === "number" && { crlValidityDays: createdCrlValidityDays })
           }
         }
       });
@@ -194,14 +201,17 @@ export const registerCertificateAuthorityEndpoints = <
       }),
       body: updateSchema,
       response: {
-        200: responseSchema
+        200: updateResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id } = req.params;
-      const updatedOcspSetting = (req.body as { configuration?: { isOcspEnabled?: boolean } }).configuration
-        ?.isOcspEnabled;
+      const updatedConfiguration = (
+        req.body as { configuration?: { isOcspEnabled?: boolean; crlValidityDays?: number } }
+      ).configuration;
+      const updatedOcspSetting = updatedConfiguration?.isOcspEnabled;
+      const updatedCrlValidityDays = updatedConfiguration?.crlValidityDays;
 
       const certificateAuthority = (await server.services.certificateAuthority.updateCertificateAuthority(
         {
@@ -221,7 +231,8 @@ export const registerCertificateAuthorityEndpoints = <
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
             status: certificateAuthority.status,
-            ...(typeof updatedOcspSetting === "boolean" && { isOcspEnabled: updatedOcspSetting })
+            ...(typeof updatedOcspSetting === "boolean" && { isOcspEnabled: updatedOcspSetting }),
+            ...(typeof updatedCrlValidityDays === "number" && { crlValidityDays: updatedCrlValidityDays })
           }
         }
       });

@@ -79,7 +79,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { buildLdapTlsOptions, searchGroups, testLDAPConfig } from "./ldap-fns";
+import { buildLdapTlsOptions, pinLdapTarget, searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -483,10 +483,10 @@ export const ldapConfigServiceFactory = ({
       isActive: true
     });
 
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
+    const { url, tlsOptions } = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
     const opts = {
       server: {
-        url: ldapConfig.url,
+        url,
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
         uniqueUserAttribute: ldapConfig.uniqueUserAttribute,

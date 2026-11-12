@@ -88,6 +88,7 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
+import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
@@ -902,8 +903,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
-      issuer = await Issuer.discover(oidcCfg.discoveryURL);
+      issuer = await discoverOidcIssuer(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -916,9 +916,6 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,
@@ -928,7 +925,9 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const client = new issuer.Client({
+    await secureOidcIssuer(issuer);
+
+    const client = createSsrfSafeOidcClient(issuer, {
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
       redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],

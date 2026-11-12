@@ -28,13 +28,13 @@ import {
 } from "@app/hooks/api/agentVault/types";
 
 import { TMcpToolsOwnCredential } from "./serviceRequest";
-import { hostOf, isMemberProvidedOAuthService, TServiceForm } from "./serviceSchema";
+import { hostOf, isMemberProvidedOAuthService, serverUrlOf, TServiceForm } from "./serviceSchema";
 import { useOAuthAuthorize } from "./useOAuthAuthorize";
 
 const NOT_SAVED = "Used once to read the tool list. Infisical doesn't save it.";
 
 type Props = {
-  accessBundleId: string;
+  projectId: string;
   service?: TAgentVaultService | null;
   label: string;
   isLoading: boolean;
@@ -50,7 +50,7 @@ type Props = {
  * admin's own, entered in a dialog. It goes only to the list call and is never saved.
  */
 export const McpToolsLoadButton = ({
-  accessBundleId,
+  projectId,
   service,
   label,
   isLoading,
@@ -106,17 +106,17 @@ export const McpToolsLoadButton = ({
   const isSavedClientKept =
     Boolean(savedClientId) && typedClientId === savedClientId && !clientSecret;
   // The saved secret is sent only for the server the service was saved with, so a new URL needs it typed again.
-  const isSecretNeededAgain = isSavedClientKept && service?.serverUrl !== trimmedUrl;
+  const isSecretNeededAgain = isSavedClientKept && serverUrlOf(service) !== trimmedUrl;
 
   // A saved admin-entered client signs the admin in the way it signs in a member, since only the server holds its
   // secret. Otherwise the client on the Credential step is the one the save stores, and a refused registration
   // comes back as registrationRequired, which a member's sign-in can't offer.
   const signInParams = (): TCreateAgentVaultOauthAuthorizationDTO => {
     if (service && isSavedClientKept && !isSecretNeededAgain) {
-      return { accessBundleId, serverUrl: trimmedUrl, serviceId: service.id, personal: true };
+      return { projectId, serverUrl: trimmedUrl, serviceId: service.id, personal: true };
     }
     return {
-      accessBundleId,
+      projectId,
       serverUrl: trimmedUrl,
       ...(typedClientId ? { clientId: typedClientId, clientSecret: clientSecret || undefined } : {})
     };

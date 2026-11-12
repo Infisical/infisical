@@ -4,7 +4,7 @@ import pLimit from "p-limit";
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
@@ -61,7 +61,7 @@ export type TExternalMigrationQueueFactoryDep = {
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  secretApprovalRequestService: Pick<TSecretApprovalRequestServiceFactory, "createSecretApprovalSideEffects">;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalSideEffects">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -87,7 +87,7 @@ export const externalMigrationQueueFactory = ({
   folderVersionDAL,
   resourceMetadataDAL,
   notificationService,
-  secretApprovalRequestService,
+  secretChangeRequestService,
   auditLogService
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
@@ -283,7 +283,7 @@ export const externalMigrationQueueFactory = ({
         approvedFolders.map(({ folderPath, secretKeys, approval }) =>
           sideEffectLimit(async () => {
             try {
-              await secretApprovalRequestService.createSecretApprovalSideEffects({
+              await secretChangeRequestService.createSecretApprovalSideEffects({
                 secretApprovalRequest: {
                   id: approval.id,
                   policyId: approval.policyId,

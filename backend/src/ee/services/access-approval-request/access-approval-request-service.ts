@@ -87,7 +87,8 @@ export const secretAccessApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   queueService,
-  secretAccessApprovalGlobalResource
+  secretAccessApprovalGlobalResource,
+  licenseService
 }: TSecretAccessApprovalRequestServiceFactoryDep) => {
   const $findPolicyById = async (policyId: string, message: string) => {
     const [policy] = await secretAccessApprovalPolicyDAL.findSecretAccessPolicies({ policyId });
@@ -386,6 +387,15 @@ export const secretAccessApprovalRequestServiceFactory = ({
   }: TCreateAccessApprovalRequestDTO) => {
     // Anyone can create an access approval request.
     const { project } = await $getProjectBySlug({ projectSlug, actor, actorId, actorOrgId, actorAuthMethod });
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval request due to plan restriction. Upgrade plan to create access approval request."
+      });
+    }
+
     const projectId = project.id;
     const requestedByUserId = actorId;
 
