@@ -77,47 +77,59 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
   }
 
   async countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number> {
-    // .as() on a union builder is typed as any, so cast before counting.
-    const row = (await this.db
-      .replicaNode()
-      .count("* as count")
-      .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
-      .first()) as { count?: string | number } | undefined;
-    return toCount(row);
+    try {
+      // .as() on a union builder is typed as any, so cast before counting.
+      const row = (await this.db
+        .replicaNode()
+        .count("* as count")
+        .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
+        .first()) as { count?: string | number } | undefined;
+      return toCount(row);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountProjectIdentities" });
+    }
   }
 
   async countProjectIdentitiesByKind(
     projectType: ProjectType,
     orgId?: string
   ): Promise<{ users: number; identities: number }> {
-    const rows = (await this.db
-      .replicaNode()
-      .select("kind")
-      .count("* as count")
-      .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
-      .groupBy("kind")) as { kind: string; count: string | number }[];
+    try {
+      const rows = (await this.db
+        .replicaNode()
+        .select("kind")
+        .count("* as count")
+        .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
+        .groupBy("kind")) as { kind: string; count: string | number }[];
 
-    const byKind = (kind: string) => Number(rows.find((row) => row.kind === kind)?.count ?? 0);
-    return { users: byKind("u"), identities: byKind("i") };
+      const byKind = (kind: string) => Number(rows.find((row) => row.kind === kind)?.count ?? 0);
+      return { users: byKind("u"), identities: byKind("i") };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountProjectIdentitiesByKind" });
+    }
   }
 
   // Attributed by owner (project, or the org when org-owned), not membership, for the same reason as above.
   async getProjectIdentityOwnershipBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]> {
-    const rows = (await this.db
-      .replicaNode()({ i: TableName.Identity })
-      .whereIn(
-        "i.id",
-        this.db
-          .replicaNode()
-          .select("entityId")
-          .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
-          .where("kind", "i")
-      )
-      .groupBy("i.orgId", "i.projectId")
-      .select({ orgId: "i.orgId", projectId: "i.projectId" })
-      .count("i.id as count")) as { orgId: string; projectId: string | null; count: string | number }[];
+    try {
+      const rows = (await this.db
+        .replicaNode()({ i: TableName.Identity })
+        .whereIn(
+          "i.id",
+          this.db
+            .replicaNode()
+            .select("entityId")
+            .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
+            .where("kind", "i")
+        )
+        .groupBy("i.orgId", "i.projectId")
+        .select({ orgId: "i.orgId", projectId: "i.projectId" })
+        .count("i.id as count")) as { orgId: string; projectId: string | null; count: string | number }[];
 
-    return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
+      return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetProjectIdentityOwnershipBreakdown" });
+    }
   }
 
   private withBillableScopes(orgId: string | null) {

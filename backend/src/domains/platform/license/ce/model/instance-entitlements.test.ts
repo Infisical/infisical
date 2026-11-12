@@ -28,24 +28,6 @@ describe("InstanceEntitlements.plan", () => {
   });
 });
 
-describe("InstanceEntitlements.isSelfHostedLicensed", () => {
-  test("should be true only for an online or offline self-hosted license", () => {
-    // Setup
-    const types = [
-      InstanceType.EnterpriseOnPrem,
-      InstanceType.EnterpriseOnPremOffline,
-      InstanceType.OnPrem,
-      InstanceType.Cloud
-    ];
-
-    // Action
-    const result = types.map((type) => licensed(type).isSelfHostedLicensed());
-
-    // Assert
-    expect(result).toEqual([true, true, false, false]);
-  });
-});
-
 describe("InstanceEntitlements.withFeatures", () => {
   test("should replace the given features and leave the original unchanged", () => {
     // Setup
@@ -60,7 +42,7 @@ describe("InstanceEntitlements.withFeatures", () => {
     const overridden = instance.withFeatures({ rbac: true as false });
 
     // Assert
-    expect([overridden.has("rbac"), instance.has("rbac")]).toEqual([true, false]);
+    expect([overridden.features.rbac, instance.features.rbac]).toEqual([true, false]);
   });
 });
 

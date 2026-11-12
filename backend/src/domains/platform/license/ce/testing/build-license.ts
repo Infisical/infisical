@@ -44,10 +44,18 @@ export const buildLicense = async ({
   const keyStore = new InMemoryKeyStore(now);
   const queue = new FakeQueue();
   const registeredCrons: string[] = [];
+  const cronHandlers = new Map<string, () => Promise<void>>();
   const module = new LicenseModule({
     keyStore,
     queueService: queue as unknown as Pick<TQueueServiceFactory, "queue" | "start">,
-    cronJob: { register: (job) => registeredCrons.push(`${job.name}:${String(job.enabled)}`) },
+    cronJob: {
+      register: (job) => {
+        registeredCrons.push(`${job.name}:${String(job.enabled)}`);
+        cronHandlers.set(job.name, async () => {
+          await job.handler();
+        });
+      }
+    },
     isProductionMode: false,
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
     provider: licenseServer,
@@ -57,5 +65,5 @@ export const buildLicense = async ({
     usageCounters: counters
   });
   await module.start();
-  return { module, licenseService: module.service, licenseServer, keyStore, queue, registeredCrons };
+  return { module, licenseService: module.service, licenseServer, keyStore, queue, registeredCrons, cronHandlers };
 };

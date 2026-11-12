@@ -6,7 +6,7 @@ type TQueued = { queue: QueueName; data: unknown; opts: Record<string, unknown> 
 export class FakeQueue {
   jobs: TQueued[] = [];
 
-  handlers = new Map<QueueName, (job: { data: unknown; timestamp: number }) => Promise<unknown>>();
+  handlers = new Map<QueueName, (job: { data: unknown }) => Promise<unknown>>();
 
   queue = async (queue: QueueName, _job: unknown, data: unknown, opts?: Record<string, unknown>) => {
     const dedupId = (opts?.deduplication as { id?: string } | undefined)?.id;
@@ -16,7 +16,7 @@ export class FakeQueue {
     this.jobs.push({ queue, data, opts });
   };
 
-  start = (queue: QueueName, handler: (job: { data: unknown; timestamp: number }) => Promise<unknown>) => {
+  start = (queue: QueueName, handler: (job: { data: unknown }) => Promise<unknown>) => {
     this.handlers.set(queue, handler);
   };
 
@@ -30,7 +30,7 @@ export class FakeQueue {
     for (const job of jobs) {
       const handler = this.handlers.get(job.queue);
       // eslint-disable-next-line no-await-in-loop
-      if (handler) await handler({ data: job.data, timestamp: Date.now() });
+      if (handler) await handler({ data: job.data });
     }
   }
 }

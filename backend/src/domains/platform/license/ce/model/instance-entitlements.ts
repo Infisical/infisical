@@ -47,17 +47,6 @@ export class InstanceEntitlements {
     return this.props.instanceType === InstanceType.Cloud;
   }
 
-  isSelfHostedLicensed(): boolean {
-    return (
-      this.props.instanceType === InstanceType.EnterpriseOnPrem ||
-      this.props.instanceType === InstanceType.EnterpriseOnPremOffline
-    );
-  }
-
-  has(feature: keyof TInstanceFeatures): boolean {
-    return Boolean(this.props.features[feature]);
-  }
-
   // The plan every org gets on a self-hosted instance. It keeps the instance flags: the admin console reads
   // instanceUserManagement from the org's plan.
   plan(): Plan {

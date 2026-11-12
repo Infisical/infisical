@@ -38,7 +38,7 @@ describe("LicenseService.handleUsageEvent", () => {
       setImmediate(resolve);
     });
     const [job] = queue.jobs;
-    const run = () => queue.handlers.get(job.queue)!({ data: job.data, timestamp: 1_700_000_000_000 });
+    const run = () => queue.handlers.get(job.queue)!({ data: job.data });
     vi.useFakeTimers({ toFake: ["Date"], now: 1_700_000_005_000 });
     await expect(run()).rejects.toThrow("License Server reply lost");
     counter.set(ROOT.id, 8);
@@ -169,7 +169,32 @@ describe("LicenseService.handleUsageEvent", () => {
     await expect(result).rejects.toThrow("usage report failed with 500");
   });
 
-  test("should re-emit each meter once at the instance for the daily flush, and only for online self-hosted", async () => {
+  test("should enable the daily flush on online self-hosted, and not on cloud or an offline license", async () => {
+    // Setup
+    const online = new FakeLicenseServer();
+    online.instance = { ...online.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
+    const offline = new FakeLicenseServer();
+    offline.instance = { ...online.instance, instanceType: InstanceType.EnterpriseOnPremOffline };
+    offline.offline = true;
+
+    // Action
+    const enabled = await Promise.all(
+      [online, offline, new FakeLicenseServer()].map(
+        async (licenseServer) => (await buildLicense({ licenseServer })).registeredCrons
+      )
+    );
+
+    // Assert
+    expect(enabled).toEqual([
+      ["license-usage-flush:true"],
+      ["license-usage-flush:false"],
+      ["license-usage-flush:false"]
+    ]);
+  });
+});
+
+describe("LicenseService.flushInstanceUsage", () => {
+  test("should report every meter once under the instance, counting the whole instance", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.instance = {
@@ -177,14 +202,21 @@ describe("LicenseService.handleUsageEvent", () => {
       instanceType: InstanceType.EnterpriseOnPrem,
       features: enterprisePlan()
     };
-    const { registeredCrons } = await buildLicense({ licenseServer });
-    const cloud = await buildLicense();
+    const counters = [
+      new FakeUsageCounter(Meter.UserIdentities).set(null, 12),
+      new FakeUsageCounter(Meter.ActiveCerts).set(null, 4)
+    ];
+    const { cronHandlers, queue } = await buildLicense({ licenseServer, counters });
 
     // Action
-    const enabled = [registeredCrons, cloud.registeredCrons];
+    await cronHandlers.get("license-usage-flush")!();
+    await queue.drain();
 
     // Assert
-    expect(enabled).toEqual([["license-usage-flush:true"], ["license-usage-flush:false"]]);
+    expect(licenseServer.snapshots.map((s) => [s.orgId, s.snapshot.dimension_key, s.snapshot.value])).toEqual([
+      ["self-hosted", Meter.UserIdentities.key, 12],
+      ["self-hosted", Meter.ActiveCerts.key, 4]
+    ]);
   });
 });
 

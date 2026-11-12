@@ -5,10 +5,10 @@ import type { TestProject } from "vitest/node";
 import { connectMaintenance, dropDatabase, listHarnessDatabases, TPostgresServer } from "./postgres-connection";
 import {
   createRunDirectory,
-  DATABASE_PREFIX,
   randomId,
   readAddress,
   RUN_LABEL,
+  runDatabasePrefix,
   runDirectory,
   usedContainers
 } from "./run";
@@ -21,7 +21,7 @@ const dropRunDatabases = async (runId: string) => {
 
   const admin = connectMaintenance(server);
   try {
-    const names = await listHarnessDatabases(admin, `${DATABASE_PREFIX}${runId}_`);
+    const names = await listHarnessDatabases(admin, runDatabasePrefix(runId));
     await Promise.all(names.map((name) => dropDatabase(admin, name)));
   } finally {
     await admin.destroy();

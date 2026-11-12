@@ -211,7 +211,7 @@ describe("CertificateV3Service", () => {
     })
   };
 
-  const mockUsageCounterDAL = {
+  const mockCertManagerService = {
     resolveRootOrgId: vi.fn(async (id: string) => id),
     countActiveCertificateQuota: vi.fn(async () => ({ total: 0, wildcard: 0 })),
     isCertificateQuotaKeyActive: vi.fn((orgId: string | undefined, quotaKey: string) =>
@@ -272,9 +272,9 @@ describe("CertificateV3Service", () => {
     vi.resetAllMocks();
     // These three are shared across tests rather than rebuilt per test, so resetAllMocks strips their
     // implementations and they have to be re-established here.
-    mockUsageCounterDAL.resolveRootOrgId.mockImplementation(async (id: string) => id);
-    mockUsageCounterDAL.countActiveCertificateQuota.mockResolvedValue({ total: 0, wildcard: 0 });
-    mockUsageCounterDAL.isCertificateQuotaKeyActive.mockResolvedValue(false);
+    mockCertManagerService.resolveRootOrgId.mockImplementation(async (id: string) => id);
+    mockCertManagerService.countActiveCertificateQuota.mockResolvedValue({ total: 0, wildcard: 0 });
+    mockCertManagerService.isCertificateQuotaKeyActive.mockResolvedValue(false);
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
@@ -422,7 +422,7 @@ describe("CertificateV3Service", () => {
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
       },
-      certManagerService: mockUsageCounterDAL,
+      certManagerService: mockCertManagerService,
       keyStore: mockKeyStore,
       licenseService,
       telemetryService: mockTelemetryService,
@@ -1546,7 +1546,7 @@ describe("CertificateV3Service", () => {
         })
         .catch(() => undefined);
 
-      const [, probedKey] = mockUsageCounterDAL.isCertificateQuotaKeyActive.mock.calls[0];
+      const [, probedKey] = mockCertManagerService.isCertificateQuotaKeyActive.mock.calls[0];
       expect(probedKey).toBe(buildCertificateQuotaKey({ commonName: "app.example.com", altNames: "app.example.com" }));
       expect(probedKey).not.toBe(
         buildCertificateQuotaKey({
@@ -2624,8 +2624,8 @@ describe("CertificateV3Service", () => {
       const atCap = (plan: Partial<TPlanProps> = AT_CAP, total = 5, wildcard = 0) => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
         licenseService.defaultPlan = { ...licenseService.defaultPlan, ...plan };
-        vi.mocked(mockUsageCounterDAL.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });
-        vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActive).mockResolvedValue(false);
+        vi.mocked(mockCertManagerService.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });
+        vi.mocked(mockCertManagerService.isCertificateQuotaKeyActive).mockResolvedValue(false);
       };
 
       it("refuses a renewal that changes the SANs once the certificate cap is reached", async () => {
@@ -2672,7 +2672,7 @@ describe("CertificateV3Service", () => {
         // Fails later for want of the issuance mocks; the point is that it gets past the quota gate.
         await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
 
-        expect(mockUsageCounterDAL.countActiveCertificateQuota).not.toHaveBeenCalled();
+        expect(mockCertManagerService.countActiveCertificateQuota).not.toHaveBeenCalled();
       });
     });
 

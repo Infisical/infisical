@@ -13,7 +13,9 @@ declare module "vitest" {
   }
 }
 
-const LOCK_TIMEOUT_MS = 10 * 60 * 1000;
+// Shorter than the config's hookTimeout, so a lock left by a crashed worker fails with the message below
+// rather than a bare hook timeout.
+const LOCK_TIMEOUT_MS = 4 * 60 * 1000;
 const LOCK_POLL_MS = 200;
 
 export const getRunId = () => inject("integrationRunId");

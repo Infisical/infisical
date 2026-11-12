@@ -16,8 +16,13 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 )
 
-// licenseFeaturePath is the path to the compiled license-fns module inside the Node.js container.
-const licenseFeaturePath = "/backend/dist/ee/services/license/license-fns.mjs"
+// licenseFeaturePaths are where the compiled license-fns module can sit inside the Node.js container. The
+// container runs the published image, which has the module at the first path until a release ships it at
+// the second, so the one that exists is edited.
+var licenseFeaturePaths = []string{
+	"/backend/dist/ee/services/license/license-fns.mjs",
+	"/backend/dist/domains/platform/license/ee/service/license-fns.mjs",
+}
 
 // Builder configures which services to spin up for an integration test.
 type Builder struct {
@@ -76,7 +81,7 @@ func (b *Builder) buildNodeJSCmd() []string {
 		sedExprs = append(sedExprs, fmt.Sprintf("s/%s: false/%s: true/g", feature, feature))
 	}
 
-	sedCmd := fmt.Sprintf("sed -i '%s' %s", strings.Join(sedExprs, "; "), licenseFeaturePath)
+	sedCmd := fmt.Sprintf("sed -i '%s' $(ls %s 2>/dev/null)", strings.Join(sedExprs, "; "), strings.Join(licenseFeaturePaths, " "))
 	return []string{"sh", "-c", sedCmd + " && ./standalone-entrypoint.sh"}
 }
 

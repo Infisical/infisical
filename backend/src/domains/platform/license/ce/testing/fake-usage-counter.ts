@@ -5,8 +5,6 @@ import { TUsageCounter } from "../service/dependencies";
 export class FakeUsageCounter implements TUsageCounter {
   values = new Map<string | null, number>();
 
-  countedFor: (string | null)[] = [];
-
   constructor(readonly meter: Meter) {}
 
   set(orgId: string | null, value: number) {
@@ -14,8 +12,5 @@ export class FakeUsageCounter implements TUsageCounter {
     return this;
   }
 
-  count = async (orgId: string | null) => {
-    this.countedFor.push(orgId);
-    return this.values.get(orgId) ?? 0;
-  };
+  count = async (orgId: string | null) => this.values.get(orgId) ?? 0;
 }

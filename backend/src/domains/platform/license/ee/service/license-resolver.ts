@@ -7,8 +7,7 @@ import { Plan } from "../../ce/model/plan";
 import { TLicenseProvider } from "../../ce/service/dependencies";
 import {
   SELF_HOSTED_LICENSE_ORG_ID,
-  TEntitlementOrg,
-  TEntitlementsResponse
+  TEntitlementOrg
 } from "../../ce/service/license-server-types/license-server-types";
 import { LicenseServerClient } from "../license-server-client/license-server-client";
 import { projectV2ToFeatureSet, withCloudPlanDefaults, withSelfHostedLicenseBase } from "./entitlement-projection";
@@ -56,11 +55,6 @@ const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitleme
   });
 };
 
-export const cloudPlanFromEntitlements = (entitlements: TEntitlementsResponse): Plan =>
-  Plan.restore(withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements));
-
-export const cloudFallbackPlan = (): Plan => Plan.restore(withCloudPlanDefaults(getDefaultOnPremFeatures(), null));
-
 // An offline (air-gapped) license must never reach the License Server.
 export const isOfflineLicenseKey = (licenseKeyConfig: TLicenseKeyConfig) =>
   licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
@@ -80,8 +74,7 @@ export class LicenseResolver implements TLicenseProvider {
     const { isCloud, licenseKeyConfig } = this.deps;
     try {
       if (isCloud) return InstanceEntitlements.restore({ ...community().toJSON(), instanceType: InstanceType.Cloud });
-      if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online)
-        return await this.readOnlineLicense();
+      if (this.hasOnlineLicense()) return await this.readOnlineLicense();
       if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline) {
         return (await readOfflineLicense(licenseKeyConfig.licenseKey)) ?? community();
       }
@@ -108,7 +101,7 @@ export class LicenseResolver implements TLicenseProvider {
 
   // eslint-disable-next-line class-methods-use-this
   fallbackPlan(): Plan {
-    return cloudFallbackPlan();
+    return Plan.restore(withCloudPlanDefaults(getDefaultOnPremFeatures(), null));
   }
 
   // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
@@ -117,7 +110,9 @@ export class LicenseResolver implements TLicenseProvider {
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }
-    return cloudPlanFromEntitlements(entitlements);
+    return Plan.restore(
+      withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements)
+    );
   }
 
   private async readOnlineLicense(): Promise<InstanceEntitlements> {

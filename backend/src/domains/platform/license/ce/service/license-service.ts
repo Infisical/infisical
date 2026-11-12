@@ -269,6 +269,7 @@ export class LicenseService implements TLicenseService {
       throw error;
     }
   }
+
   // No plan-slug gate as in handleUsageEvent: during an outage the plan is a slugless fallback, which would
   // drop events nothing sends again. A 404 "license not found" or any 422 is final for the batch.
   async handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void> {
@@ -304,6 +305,7 @@ export class LicenseService implements TLicenseService {
       throw error;
     }
   }
+
   // Self-hosted true-up: a daily backstop on top of event-driven reports. Each meter is emitted once at the
   // instance identity, where it counts the whole instance and is skipped when unchanged.
   flushInstanceUsage(): void {

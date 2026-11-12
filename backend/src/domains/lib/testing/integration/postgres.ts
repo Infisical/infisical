@@ -21,9 +21,9 @@ import {
   parsePostgresUrl,
   TPostgresServer
 } from "./postgres-connection";
-import { DATABASE_PREFIX, randomId } from "./run";
+import { DATABASE_PREFIX, randomId, runDatabasePrefix } from "./run";
 
-// Matches docker-compose.test.yml, which CI points INTEGRATION_POSTGRES_URL at.
+// The Postgres version docker-compose.test.yml runs the other backend suites on.
 const POSTGRES_IMAGE = "postgres:14-alpine";
 
 const MIGRATIONS_DIRECTORY = path.join(__dirname, "../../../../db/migrations");
@@ -165,8 +165,6 @@ const withMaintenance = async <T>(
     await admin.destroy();
   }
 };
-
-export const runDatabasePrefix = (runId: string) => `${DATABASE_PREFIX}${runId}_`;
 
 // One clone per worker, reused by its files since they run one after another.
 export const openWorkerDatabase = async (): Promise<TOpenDatabase> => {

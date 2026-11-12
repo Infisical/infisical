@@ -42,16 +42,7 @@ export type TLicenseServerClientConfig = {
 
 // Returns null (dormant) unless either a self-hosted license key or
 // the cloud service key (plus the license server URL) is configured.
-const buildBackend = (
-  envConfig: TLicenseServerClientConfig["envConfig"],
-  isOffline: boolean
-): TLicenseClientBackend | null => {
-  // An offline (air-gapped) license lives in LICENSE_KEY, but transmitting it would violate the
-  // air-gap and leak the signed credential — keep the SDK dormant so no read can POST it to the server.
-  if (isOffline) {
-    return null;
-  }
-
+const buildBackend = (envConfig: TLicenseServerClientConfig["envConfig"]): TLicenseClientBackend | null => {
   const licenseKey = envConfig.LICENSE_KEY;
   if (licenseKey) {
     if (!envConfig.LICENSE_SERVER_URL) {
@@ -178,8 +169,10 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
   ) {}
 
   static fromConfig({ envConfig, isOffline }: TLicenseServerClientConfig): LicenseServerClient {
+    // An offline (air-gapped) license lives in LICENSE_KEY, but transmitting it would violate the air-gap and
+    // leak the signed credential, so the client stays dormant and no read can POST it to the server.
     if (isOffline) return new LicenseServerClient(null, null);
-    return new LicenseServerClient(buildBackend(envConfig, isOffline), buildUsageEndpoint(envConfig));
+    return new LicenseServerClient(buildBackend(envConfig), buildUsageEndpoint(envConfig));
   }
 
   // False when no license server is reachable (unlicensed self-hosted, or an offline license), so callers can
