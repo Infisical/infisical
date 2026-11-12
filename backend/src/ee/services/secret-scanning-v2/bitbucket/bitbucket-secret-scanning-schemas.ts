@@ -5,9 +5,10 @@ import {
   BaseCreateSecretScanningDataSourceSchema,
   BaseSecretScanningDataSourceSchema,
   BaseSecretScanningFindingSchema,
-  BaseUpdateSecretScanningDataSourceSchema
+  BaseUpdateSecretScanningDataSourceSchema,
+  GitRepositoryScanFindingDetailsSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
-import { SecretScanningDataSources } from "@app/lib/api-docs";
+import { SecretScanningDataSources, SecretScanningFindings } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const BitbucketDataSourceConfigSchema = z.object({
@@ -69,7 +70,8 @@ export const BitbucketDataSourceListItemSchema = z
   );
 
 export const BitbucketFindingSchema = BaseSecretScanningFindingSchema.extend({
-  dataSourceType: z.literal(SecretScanningDataSource.Bitbucket)
+  dataSourceType: z.literal(SecretScanningDataSource.Bitbucket),
+  details: GitRepositoryScanFindingDetailsSchema.describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION)
 });
 
 export const BitbucketDataSourceCredentialsSchema = z.object({

@@ -19,6 +19,7 @@ import {
   TFindingLocationRow,
   TSecretScanningScannedLocation
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray, sanitizeSqlLikeString } from "@app/lib/fn";
 import {
@@ -182,6 +183,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     tx: Knex
   ) => {
     try {
+      // A diff scan can overlap a full scan of the same resource. Without this, both could take one location as new,
+      // and the second would reopen a finding resolved after the first saved it.
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingLocations(resourceId)]);
+
       const findingIdByFingerprint = new Map<string, string>();
 
       for (const chunk of chunkArray(
@@ -211,76 +216,84 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         if (!newRowByValue.has(row.secretFindingBlindIndex)) newRowByValue.set(row.secretFindingBlindIndex, row);
       });
 
-      const now = new Date();
-      const reopenedFindingIds: string[] = [];
-
-      // Sorted so concurrent scans lock the findings they share in the same order (blind indexes are lowercase hex, so
-      // this is also Postgres's order). Each value appears once, since an upsert can't touch the same row twice.
-      for (const chunk of chunkArray([...newRowByValue.keys()].sort(), FINDINGS_UPSERT_CHUNK_SIZE)) {
-        // eslint-disable-next-line no-await-in-loop
-        const upserted = (await tx(TableName.SecretScanningFinding)
-          .insert(
-            chunk.map((secretFindingBlindIndex) => {
-              const { rule, severity, fingerprint, details } = newRowByValue.get(secretFindingBlindIndex)!;
-              // the first location is kept on the finding too, for the release before locations existed
-              return {
-                resourceId,
-                secretFindingBlindIndex,
-                rule,
-                severity,
-                lastDetectedAt: now,
-                scanId,
-                fingerprint,
-                details
-              };
-            })
-          )
-          .onConflict(["resourceId", "secretFindingBlindIndex"])
-          .merge({ status: SecretScanningFindingStatus.Unresolved, resolvedAt: null })
-          .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Resolved)
-          .returning(["id", tx.raw("(xmax = 0) AS inserted")])) as { id: string; inserted: boolean }[];
-
-        reopenedFindingIds.push(...upserted.filter(({ inserted }) => !inserted).map(({ id }) => id));
-      }
-
+      // The release before this one saves a finding per location, so after a rollback a value can have several
+      // findings; the oldest one takes the new locations.
       const findingByValue = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
       for (const chunk of chunkArray([...newRowByValue.keys()], FINDINGS_UPSERT_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
         const findings = await tx(TableName.SecretScanningFinding)
           .where({ resourceId })
           .whereIn("secretFindingBlindIndex", chunk)
+          .orderBy("createdAt")
+          .orderBy("id")
           .select("id", "status", "secretFindingBlindIndex");
 
-        findings.forEach(({ id, status, secretFindingBlindIndex }) =>
+        findings.forEach(({ id, status, secretFindingBlindIndex }) => {
+          if (!findingByValue.has(secretFindingBlindIndex as string)) {
+            findingByValue.set(secretFindingBlindIndex as string, { id, status });
+          }
+        });
+      }
+
+      const now = new Date();
+
+      for (const chunk of chunkArray(
+        [...newRowByValue.values()].filter(({ secretFindingBlindIndex }) => !findingByValue.has(secretFindingBlindIndex)),
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
+        // eslint-disable-next-line no-await-in-loop
+        const created = await tx(TableName.SecretScanningFinding)
+          .insert(
+            // the first location is kept on the finding too, for the release before locations existed
+            chunk.map(({ secretFindingBlindIndex, rule, severity, fingerprint, details }) => ({
+              resourceId,
+              secretFindingBlindIndex,
+              rule,
+              severity,
+              lastDetectedAt: now,
+              scanId,
+              fingerprint,
+              details
+            }))
+          )
+          .returning(["id", "status", "secretFindingBlindIndex"]);
+
+        created.forEach(({ id, status, secretFindingBlindIndex }) =>
           findingByValue.set(secretFindingBlindIndex as string, { id, status })
         );
       }
 
-      // the upsert above already locked these rows, so this takes no new locks
+      const reopenedFindings: Pick<TSecretScanningFindings, "id" | "rule">[] = [];
+
       for (const chunk of chunkArray(
         [...findingByValue.values()].map(({ id }) => id),
         FINDINGS_UPSERT_CHUNK_SIZE
       )) {
         // eslint-disable-next-line no-await-in-loop
         await tx(TableName.SecretScanningFinding).whereIn("id", chunk).update({ lastDetectedAt: now });
+
+        // eslint-disable-next-line no-await-in-loop
+        const reopened = await tx(TableName.SecretScanningFinding)
+          .whereIn("id", chunk)
+          .where("status", SecretScanningFindingStatus.Resolved)
+          .update({ status: SecretScanningFindingStatus.Unresolved, resolvedAt: null })
+          .returning(["id", "rule"]);
+
+        reopenedFindings.push(...reopened);
       }
 
       for (const chunk of chunkArray(newRows, FINDINGS_UPSERT_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
-        await tx(TableName.SecretScanningFindingLocation)
-          .insert(
-            chunk.map(({ fingerprint, rule, details, secretFindingBlindIndex }) => ({
-              findingId: findingByValue.get(secretFindingBlindIndex)!.id,
-              resourceId,
-              scanId,
-              fingerprint,
-              rule,
-              details
-            }))
-          )
-          // a diff scan can overlap a full scan of the same resource; the location is the same either way
-          .onConflict(["resourceId", "fingerprint"])
-          .ignore();
+        await tx(TableName.SecretScanningFindingLocation).insert(
+          chunk.map(({ fingerprint, rule, details, secretFindingBlindIndex }) => ({
+            findingId: findingByValue.get(secretFindingBlindIndex)!.id,
+            resourceId,
+            scanId,
+            fingerprint,
+            rule,
+            details
+          }))
+        );
       }
 
       // A location saved before may belong to a finding from before blind indexes existed, so it's found by its id.
@@ -292,16 +305,19 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         findings.forEach((finding) => findingById.set(finding.id, finding));
       }
 
+      const reopenedIds = new Set(reopenedFindings.map(({ id }) => id));
+
       const scannedLocations: TSecretScanningScannedLocation[] = rows.map(({ fingerprint, rule, details, ...row }) => {
         const existingFindingId = findingIdByFingerprint.get(fingerprint);
         const finding = existingFindingId
           ? findingById.get(existingFindingId)!
           : findingByValue.get(row.secretFindingBlindIndex)!;
+        const status = reopenedIds.has(finding.id) ? SecretScanningFindingStatus.Unresolved : finding.status;
 
-        return { id: finding.id, status: finding.status, fingerprint, rule, details };
+        return { id: finding.id, status, fingerprint, rule, details };
       });
 
-      return { scannedLocations, reopenedFindingIds };
+      return { scannedLocations, reopenedFindings };
     } catch (error) {
       throw new DatabaseError({ error, name: "Persist Locations - Secret Scanning Finding" });
     }
@@ -809,6 +825,9 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       case SecretScanningFindingOrderBy.ResourceName:
         void query.orderBy(`${TableName.SecretScanningResource}.name`, direction);
         break;
+      case SecretScanningFindingOrderBy.Author:
+        void query.orderByRaw(`??->>'author' ${direction}`, [`${TableName.SecretScanningFinding}.details`]);
+        break;
       case SecretScanningFindingOrderBy.Status:
         void query.orderByRaw(
           `CASE ?? ${FINDING_STATUS_SORT_ORDER.map(() => "WHEN ? THEN ?").join(" ")} END ${direction}`,
@@ -929,6 +948,22 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // A pull request check that ran before findings were merged saved ids of findings that are now locations of another
+  // finding, under the same ids.
+  const findFindingsByIdsOrLocationIds = async (resourceId: string, ids: string[], tx?: Knex) => {
+    try {
+      return await (tx || db.replicaNode())(TableName.SecretScanningFinding)
+        .where({ resourceId })
+        .where((qb) => {
+          void qb.whereIn("id", ids).orWhereIn("id", (subQuery) => {
+            void subQuery.select("findingId").from(TableName.SecretScanningFindingLocation).whereIn("id", ids);
+          });
+        });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By IDs Or Location IDs - Secret Scanning Finding" });
+    }
+  };
+
   // Ordered newest first, which is the order a finding's locations are shown in.
   const findLocationsByFindingId = async (
     findingId: string,
@@ -978,6 +1013,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     findings: {
       ...findingOrm,
       persistLocations: persistFindingLocations,
+      findByIdsOrLocationIds: findFindingsByIdsOrLocationIds,
       countByScanId: countFindingsByScanId,
       findByProjectId: findFindingsByProjectId,
       findByIdWithDetails: findFindingByIdWithDetails,

@@ -7,8 +7,6 @@ import { TableName } from "../schemas";
 const FINDING = TableName.SecretScanningFinding;
 const LOCATION = TableName.SecretScanningFindingLocation;
 
-const FINDING_VALUE_UNIQUE = "secret_scanning_findings_resource_value_unique";
-
 // Every finding row becomes a location, and the rows of one secret value in one resource merge into one finding.
 export async function up(knex: Knex): Promise<void> {
   // already merged
@@ -48,25 +46,22 @@ export async function up(knex: Knex): Promise<void> {
     [FINDING, LOCATION]
   );
 
-  // the rows merged into another finding, which have no location of their own
-  await knex(FINDING).whereNull("lastDetectedAt").delete();
+  await knex.raw(`DELETE FROM ?? AS f USING finding_merge AS m WHERE m.id = f.id AND m."findingId" <> f.id`, [FINDING]);
 
   // The finding's own scanId, fingerprint and details stay, holding one of its locations, so the release before this
-  // one still works.
+  // one still works. A value has no unique constraint for the same reason: that release saves a finding per location.
   await knex.schema.alterTable(FINDING, (t) => {
     t.timestamp("lastDetectedAt").notNullable().defaultTo(knex.fn.now()).alter();
-    // NULLs are distinct, so findings from before blind indexes existed stay one per location
-    t.unique(["resourceId", "secretFindingBlindIndex"], { indexName: FINDING_VALUE_UNIQUE });
   });
 }
 
 // A finding still holds one of its locations in its own columns, so every other location becomes a finding of its own
-// again, with the same triage.
+// again, with the same triage. A location migrated from a finding has that finding's id, so the finding comes back
+// under it and scans that saved its id still find it.
 export async function down(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(LOCATION))) return;
 
   await knex.schema.alterTable(FINDING, (t) => {
-    t.dropUnique(["resourceId", "secretFindingBlindIndex"], FINDING_VALUE_UNIQUE);
     t.timestamp("lastDetectedAt").nullable().alter();
   });
 
@@ -76,7 +71,7 @@ export async function down(knex: Knex): Promise<void> {
        "triagedByUserId", "triagedAt", "resolvedAt", "secretFindingBlindIndex", "createdAt"
      )
      SELECT
-       gen_random_uuid(), l."resourceId", l."scanId", l.fingerprint, l.details, l.rule, f.severity, f.confidence,
+       l.id, l."resourceId", l."scanId", l.fingerprint, l.details, l.rule, f.severity, f.confidence,
        f.status, f."triageComment", f."triagedByUserId", f."triagedAt", f."resolvedAt", f."secretFindingBlindIndex",
        l."createdAt"
      FROM ?? AS l

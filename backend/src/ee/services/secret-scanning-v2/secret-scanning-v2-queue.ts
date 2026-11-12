@@ -1,6 +1,12 @@
 import { join } from "path";
 
-import { ProjectMembershipRole, TSecretScanningDataSources, TSecretScanningResourcesInsert } from "@app/db/schemas";
+import {
+  ProjectMembershipRole,
+  TSecretScanningDataSources,
+  TSecretScanningFindings,
+  TSecretScanningResources,
+  TSecretScanningResourcesInsert
+} from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   assertClonedRepositoryWithinSizeLimit,
@@ -130,9 +136,13 @@ export const secretScanningV2QueueServiceFactory = ({
   };
 
   // Written after the transaction that reopened them commits, so the log never shows a reopen that rolled back.
-  const auditReopenedFindings = (projectId: string, findingIds: string[]) =>
+  const auditReopenedFindings = (
+    projectId: string,
+    resource: Pick<TSecretScanningResources, "id" | "name">,
+    findings: Pick<TSecretScanningFindings, "id" | "rule">[]
+  ) =>
     Promise.all(
-      findingIds.map((findingId) =>
+      findings.map((finding) =>
         auditLogService.createAuditLog({
           projectId,
           actor: {
@@ -141,7 +151,13 @@ export const secretScanningV2QueueServiceFactory = ({
           },
           event: {
             type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-            metadata: { findingId, status: SecretScanningFindingStatus.Unresolved }
+            metadata: {
+              findingId: finding.id,
+              findingRule: finding.rule,
+              resourceId: resource.id,
+              resourceName: resource.name,
+              status: SecretScanningFindingStatus.Unresolved
+            }
           }
         })
       )
@@ -470,7 +486,7 @@ export const secretScanningV2QueueServiceFactory = ({
       ) => {
         const findingRows = await buildFindingRows(batchFindings);
 
-        const { owned, reopenedFindingIds } = await secretScanningV2DAL.findings.transaction(async (tx) => {
+        const { owned, reopenedFindings } = await secretScanningV2DAL.findings.transaction(async (tx) => {
           const persisted = findingRows.length
             ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
             : undefined;
@@ -481,11 +497,11 @@ export const secretScanningV2QueueServiceFactory = ({
             tx
           );
 
-          return { owned: Boolean(progressed.length), reopenedFindingIds: persisted?.reopenedFindingIds ?? [] };
+          return { owned: Boolean(progressed.length), reopenedFindings: persisted?.reopenedFindings ?? [] };
         });
 
         // the batch committed even when the scan was taken from this run, so its reopens happened
-        await auditReopenedFindings(dataSource.projectId, reopenedFindingIds);
+        await auditReopenedFindings(dataSource.projectId, resource, reopenedFindings);
 
         if (!owned) return false;
 
@@ -895,11 +911,11 @@ export const secretScanningV2QueueServiceFactory = ({
       const buildFindingRows = await createFindingRowsBuilder(dataSource.projectId);
       const findingRows = await buildFindingRows(findingsPayload);
 
-      const { scannedLocations, reopenedFindingIds, closedOutByThisRun } =
+      const { scannedLocations, reopenedFindings, closedOutByThisRun } =
         await secretScanningV2DAL.findings.transaction(async (tx) => {
           const persisted = findingRows.length
             ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
-            : { scannedLocations: [], reopenedFindingIds: [] };
+            : { scannedLocations: [], reopenedFindings: [] };
 
           // Same guard as the full scan: a scan the reaper already failed keeps that outcome.
           const completedScans = await secretScanningV2DAL.scans.update(
@@ -917,7 +933,7 @@ export const secretScanningV2QueueServiceFactory = ({
           return { ...persisted, closedOutByThisRun: Boolean(completedScans.length) };
         });
 
-      await auditReopenedFindings(dataSource.projectId, reopenedFindingIds);
+      await auditReopenedFindings(dataSource.projectId, resource, reopenedFindings);
 
       if (!closedOutByThisRun) {
         logger.warn(

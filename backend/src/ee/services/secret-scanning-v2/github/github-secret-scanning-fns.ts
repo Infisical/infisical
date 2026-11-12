@@ -1208,7 +1208,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     const { pullRequestNumber, findingIds = [] } = metadata.data;
 
     const findings = findingIds.length
-      ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx: primary })
+      ? await secretScanningV2DAL.findings.findByIdsOrLocationIds(resource.id, findingIds, primary)
       : [];
     const findingsToSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
 
@@ -1233,7 +1233,14 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
             },
             event: {
               type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-              metadata: { findingId: finding.id, status: action, triageComment }
+              metadata: {
+                findingId: finding.id,
+                findingRule: finding.rule,
+                resourceId: resource.id,
+                resourceName: resource.name,
+                status: action,
+                triageComment
+              }
             }
           })
         )

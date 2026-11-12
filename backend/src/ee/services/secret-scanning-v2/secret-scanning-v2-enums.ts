@@ -35,6 +35,8 @@ export enum SecretScanningFindingOrderBy {
   CreatedAt = "createdAt",
   Rule = "rule",
   ResourceName = "resourceName",
+  // deprecated: a finding can have several authors, so this sorts by its first location's author
+  Author = "author",
   Status = "status"
 }
 

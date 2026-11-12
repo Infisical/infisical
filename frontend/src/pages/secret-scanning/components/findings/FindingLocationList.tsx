@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
@@ -20,8 +21,14 @@ type Props = {
 };
 
 export const FindingLocationList = ({ findingId, locationCount }: Props) => {
-  const { data, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } =
+  const { data, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useListSecretScanningFindingLocations(findingId);
+
+  // the findings table polls, so a scan that finds the secret somewhere new changes the count while this is open
+  const loadedCount = data?.pages[0]?.totalCount;
+  useEffect(() => {
+    if (loadedCount !== undefined && loadedCount !== locationCount) refetch();
+  }, [locationCount, loadedCount]);
 
   const locations = data?.pages.flatMap((page) => page.locations) ?? [];
 
@@ -30,29 +37,36 @@ export const FindingLocationList = ({ findingId, locationCount }: Props) => {
       <span className="text-sm font-medium">
         {locationCount === 1 ? "1 Location" : `${locationCount} Locations`}
       </span>
-      {isPending ? (
-        <Skeleton className="h-16 w-full" />
-      ) : (
+      {isPending && <Skeleton className="h-16 w-full" />}
+      {isError && !data && (
+        <div className="flex items-center justify-between gap-2 text-sm text-muted">
+          Could not load the locations.
+          <Button variant="outline" size="xs" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </div>
+      )}
+      {data && (
         <ItemGroup>
           {locations.map(({ id, fingerprint, details }) => {
             const position = `${details.file}:${details.startLine}`;
 
             return (
               <Item key={id} variant="outline" size="sm">
-                <ItemContent className="min-w-0">
-                  <ItemTitle className="w-full">
+                <ItemContent>
+                  <ItemTitle>
                     {details.link ? (
                       <a
                         href={details.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex min-w-0 items-center gap-1.5 hover:underline hover:underline-offset-2"
+                        className="inline-flex items-center gap-1.5 hover:underline hover:underline-offset-2"
                       >
                         <ExternalLinkIcon className="size-3.5 shrink-0" />
-                        <span className="truncate">{position}</span>
+                        <span className="break-all">{position}</span>
                       </a>
                     ) : (
-                      <span className="truncate">{position}</span>
+                      <span className="break-all">{position}</span>
                     )}
                   </ItemTitle>
                   <ItemDescription>

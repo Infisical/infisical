@@ -1252,14 +1252,6 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1284,14 +1276,6 @@ export const secretScanningV2ServiceFactory = ({
     filter: TListSecretScanningFindingsFilter,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1311,19 +1295,12 @@ export const secretScanningV2ServiceFactory = ({
     return { findings: findings as TSecretScanningFinding[], totalCount };
   };
 
+  // Reading findings doesn't check the plan, so an org that downgrades can still see what was found.
   const findSecretScanningFindingWithPermission = async (
     findingId: string,
     action: ProjectPermissionSecretScanningFindingActions,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const finding = await secretScanningV2DAL.findings.findByIdWithDetails(findingId);
 
     if (!finding)
@@ -1360,13 +1337,21 @@ export const secretScanningV2ServiceFactory = ({
       limit
     });
 
-    return { locations: locations as TSecretScanningFindingLocation[], totalCount, projectId: finding.projectId };
+    return { locations: locations as TSecretScanningFindingLocation[], totalCount, finding };
   };
 
   const updateSecretScanningFindingById = async (
     { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
     actor: OrgServiceActor
   ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to update Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
     const finding = await findSecretScanningFindingWithPermission(
       findingId,
       ProjectPermissionSecretScanningFindingActions.Update,

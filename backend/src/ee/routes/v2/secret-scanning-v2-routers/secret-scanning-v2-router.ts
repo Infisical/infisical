@@ -304,7 +304,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         permission
       } = req;
 
-      const { locations, totalCount, projectId } =
+      const { locations, totalCount, finding } =
         await server.services.secretScanningV2.listSecretScanningFindingLocations(
           { findingId, offset, limit },
           permission
@@ -312,12 +312,14 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId,
+        projectId: finding.projectId,
         event: {
           type: EventType.SECRET_SCANNING_FINDING_LOCATION_LIST,
           metadata: {
             findingId,
-            locationIds: locations.map((location) => location.id),
+            findingRule: finding.rule,
+            resourceId: finding.resourceId,
+            resourceName: finding.resourceName,
             count: locations.length
           }
         }
@@ -367,6 +369,9 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           type: EventType.SECRET_SCANNING_FINDING_UPDATE,
           metadata: {
             findingId,
+            findingRule: finding.rule,
+            resourceId: finding.resourceId,
+            resourceName: finding.resourceName,
             ...body
           }
         }
@@ -414,7 +419,12 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           projectId,
           event: {
             type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-            metadata: findingUpdatePayload
+            metadata: {
+              ...findingUpdatePayload,
+              findingRule: finding.rule,
+              resourceId: finding.resourceId,
+              resourceName: finding.resourceName
+            }
           }
         });
 

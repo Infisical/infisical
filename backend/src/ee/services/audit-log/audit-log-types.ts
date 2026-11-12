@@ -5956,14 +5956,16 @@ interface SecretScanningFindingLocationListEvent {
   type: EventType.SECRET_SCANNING_FINDING_LOCATION_LIST;
   metadata: {
     findingId: string;
-    locationIds: string[];
+    findingRule: string;
+    resourceId: string;
+    resourceName: string;
     count: number;
   };
 }
 
 interface SecretScanningFindingUpdateEvent {
   type: EventType.SECRET_SCANNING_FINDING_UPDATE;
-  metadata: TUpdateSecretScanningFindingDTO;
+  metadata: TUpdateSecretScanningFindingDTO & { findingRule: string; resourceId: string; resourceName: string };
 }
 
 interface SecretScanningConfigUpdateEvent {
