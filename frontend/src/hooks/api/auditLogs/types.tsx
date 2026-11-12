@@ -741,6 +741,8 @@ interface RevokeCert {
     serialNumber: string;
     revocationReason?: CrlReason;
     approvalRequestId?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     crlWarning?: string;
   };
 }
@@ -755,7 +757,10 @@ interface RequestCertRevocation {
     applicationName?: string | null;
     revocationReason: CrlReason;
     approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     approvalPolicyId: string;
+    approvalPolicyName: string;
   };
 }
 
@@ -766,8 +771,11 @@ interface CertRevocationFailed {
     cn?: string;
     serialNumber?: string;
     applicationId?: string | null;
+    applicationName?: string | null;
     revocationReason: CrlReason;
     approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     error: string;
   };
 }
