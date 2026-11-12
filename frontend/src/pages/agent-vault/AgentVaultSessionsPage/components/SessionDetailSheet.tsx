@@ -199,6 +199,11 @@ export const SessionDetailSheet = ({
                               <TooltipContent>
                                 Sent with this session when it was created, for{" "}
                                 {inlineServiceTarget(service)}
+                                {service.hook && (
+                                  <span className="block break-all">
+                                    Calls the hook at {service.hook.url} first.
+                                  </span>
+                                )}
                               </TooltipContent>
                             </Tooltip>
                           ))}

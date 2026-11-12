@@ -11,7 +11,8 @@ import {
   SearchIcon,
   TrashIcon,
   TriangleAlertIcon,
-  UnlinkIcon
+  UnlinkIcon,
+  WebhookIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -469,6 +470,19 @@ export const ServicesCard = ({
                         service.credential.status !== AgentVaultOauthStatus.Connected && (
                           <OAuthStatusBadge status={service.credential.status} />
                         )}
+                      {service.hook && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="neutral">
+                              <WebhookIcon />
+                              Hook
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-sm break-all">
+                            {service.hook.url}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       {service.description && (
                         <span
                           className="min-w-0 flex-1 truncate text-sm text-muted"

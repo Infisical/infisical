@@ -134,6 +134,14 @@ const outcomeDescription = (record: TAgentVaultSessionLogRecord) => {
       ? "Agent Vault got this session's skills from Infisical"
       : `Agent Vault asked Infisical for this session's skills, and Infisical returned ${httpStatusLabel(record.status)}`;
   }
+  if (record.hook && record.decision === AgentVaultSessionLogDecision.Error) {
+    return "The hook didn't give a usable answer, so the request wasn't sent.";
+  }
+  if (record.hook && record.decision === AgentVaultSessionLogDecision.Blocked) {
+    return record.hook.reason
+      ? `The hook refused this request: ${record.hook.reason}`
+      : "The hook refused this request.";
+  }
   const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
   return record.decision === AgentVaultSessionLogDecision.Blocked
     ? `${answer} without sending this request to ${record.host}`

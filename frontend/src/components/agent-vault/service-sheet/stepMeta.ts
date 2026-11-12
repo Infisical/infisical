@@ -14,6 +14,7 @@ type StepMeta = {
   rightLabel?: string;
   rightDescription?: string;
   rightTip?: string;
+  docsUrl?: string;
 };
 
 const VARIABLE_TIP =
@@ -32,6 +33,42 @@ const REVIEW_STEP: StepMeta = {
   rightLabel: "REVIEW",
   rightDescription: "Review your settings before saving."
 };
+
+type THookStepType = "http" | "mcp" | "database" | "ssh";
+
+const HOOK_STEP_COPY: Record<THookStepType, { short: string; right: string }> = {
+  http: {
+    short: "Your server checks each request",
+    right:
+      "With a hook on, the proxy sends each request to your server before it adds the credential, and sends it on only if your server allows it. If your server refuses, the agent gets its message. If it doesn't answer, the request is refused."
+  },
+  mcp: {
+    short: "Your server checks each request",
+    right:
+      "With a hook on, the proxy sends each request to the MCP server to your server first, and sends it on only if your server allows it. If your server refuses, the agent gets its message. If it doesn't answer, the request is refused."
+  },
+  database: {
+    short: "Your server checks each connection",
+    right:
+      "With a hook on, the proxy asks your server once when the agent connects, not before each query, and opens the connection only if your server allows it. If your server refuses, the reason shows in infisical agent-vault connect's output. If it doesn't answer, the connection is refused."
+  },
+  ssh: {
+    short: "Your server checks each connection",
+    right:
+      "With a hook on, the proxy asks your server once when the agent connects, not before each command, and opens the connection only if your server allows it. If your server refuses, the reason shows in infisical agent-vault connect's output. If it doesn't answer, the connection is refused."
+  }
+};
+
+const hookStep = (type: THookStepType): StepMeta => ({
+  step: ServiceStep.Hook,
+  name: "Hook",
+  shortDescription: HOOK_STEP_COPY[type].short,
+  title: "Hook",
+  subtitle: "Let your own server allow or refuse what agents send through this service.",
+  rightLabel: "HOOK",
+  rightDescription: HOOK_STEP_COPY[type].right,
+  docsUrl: AgentVaultDocsUrls.hooks
+});
 
 export const SERVICE_STEPS: StepMeta[] = [
   TEMPLATE_STEP,
@@ -56,6 +93,7 @@ export const SERVICE_STEPS: StepMeta[] = [
       "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value.",
     rightTip: VARIABLE_TIP
   },
+  hookStep("http"),
   REVIEW_STEP
 ];
 
@@ -94,6 +132,7 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     rightTip:
       "Turning off All Tools asks the server for its list with the credential from the previous step. If members provide their own credential, enter a token or sign in with your own account to load the list. Infisical doesn't save it. To allow a tool the server doesn't list, type its exact name in Allowed Tools."
   },
+  hookStep("mcp"),
   REVIEW_STEP
 ];
 
@@ -149,6 +188,7 @@ export const nativeServiceSteps = (serviceType: TAgentVaultNativeServiceType): S
       rightLabel: "CREDENTIAL",
       rightDescription: copy.credentialRight
     },
+    hookStep(serviceType === AgentVaultServiceType.Ssh ? "ssh" : "database"),
     REVIEW_STEP
   ];
 };

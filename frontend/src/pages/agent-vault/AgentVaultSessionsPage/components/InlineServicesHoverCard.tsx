@@ -3,6 +3,7 @@ import { ReactNode, useState } from "react";
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
+  Badge,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -42,6 +43,11 @@ export const InlineServicesList = ({ services }: ListProps) => (
             {/* A service sent without a name goes by its host, which would only repeat here. */}
             {target !== service.name && (
               <span className="truncate text-xs text-muted">{target}</span>
+            )}
+            {service.hook && (
+              <Badge variant="neutral" className="shrink-0" title={service.hook.url}>
+                Hook
+              </Badge>
             )}
           </div>
         );

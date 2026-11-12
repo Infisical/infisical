@@ -62,7 +62,8 @@ type SecretName =
   | "secret"
   | "username"
   | `customHeaders.${number}.value`
-  | `substitutions.${number}.value`;
+  | `substitutions.${number}.value`
+  | "hookSigningSecret";
 
 // Keys the input handles itself while suggestions are open, so they must not re-read the caret after.
 const SUGGESTION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"]);
