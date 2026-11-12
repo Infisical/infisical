@@ -47,7 +47,11 @@ description: "Learn how to configure a Coolify Sync for Infisical."
             <Note>
                 We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
             </Note>
+            <Note>
+                Coolify only accepts environment variable names that start with a letter or underscore and contain only letters, digits, and underscores. Infisical validates each secret name after applying the Key Schema and fails without modifying the application if any name contains hyphens or other invalid characters.
+            </Note>
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Auto-Redeploy Services**: If enabled, Coolify automatically redeploys the target application whenever secrets change.
             - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
 
         6. Configure the **Details** of your Coolify Sync, then click **Next**.
@@ -64,7 +68,7 @@ description: "Learn how to configure a Coolify Sync for Infisical."
 
     </Tab>
     <Tab title="API">
-        To create an **Coolify Sync**, make an API request to the [Create Coolify Sync](/api-reference/endpoints/secret-syncs/coolify/create) API endpoint.
+        To create a **Coolify Sync**, make an API request to the [Create Coolify Sync](/api-reference/endpoints/secret-syncs/coolify/create) API endpoint.
 
         ### Sample request
 
