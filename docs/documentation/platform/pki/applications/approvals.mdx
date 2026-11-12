@@ -56,12 +56,12 @@ While a renewal is waiting for approval, you can't submit another renewal that n
 
 If a revocation policy covers a certificate's profile, revoking the certificate creates an approval request instead of revoking it, whether you revoke it in Infisical or with the [Revoke](/api-reference/endpoints/certificates/revoke) endpoint. The endpoint then responds with `202 Accepted`, a `pending_approval` status, and the approval request's ID. The certificate stays active while the request is pending, and the Application's certificate list marks it **Revocation Pending**.
 
-- If every step approves the request, Infisical revokes the certificate with the reason the requester chose
+- If the request gets the required approvals at every step, Infisical revokes the certificate with the reason the requester chose
 - If an approver rejects the request, or it's cancelled or expires, the certificate isn't revoked
 
-A certificate can have only one revocation request pending at a time. Machine identities can't skip revocation approval.
+A certificate can have only one revocation request pending at a time. Whether Infisical revokes a certificate right away or after approval, it cancels any revocation request still pending for that certificate. If Infisical revoked the certificate after approval, it also cancels the certificate's pending renewal requests.
 
-If a revocation policy covers the certificate's profile, Application Admins and Operators can request a revocation. If no revocation policy covers the profile, only Application Admins can revoke the certificate, and Infisical revokes it right away.
+If a revocation policy covers the certificate's profile, Application Admins and Operators can request a revocation, and machine identities can't skip the approval. If no revocation policy covers the profile, only Application Admins can revoke the certificate, and Infisical revokes it right away.
 
 ## Create an approval policy
 
@@ -72,10 +72,10 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
     | Field | Description |
     |-------|-------------|
     | **Policy Name** | A descriptive name like `production-cert-approval` |
-    | **Policy Type** | **Issuance** or **Revocation** (you can't change it after you create the policy) |
     | **Max. Request TTL** | How long a request can remain pending before expiring |
+    | **Policy Type** | **Issuance** or **Revocation** (you can't change it after you create the policy) |
     | **Certificate Profiles** | Which profiles require approval |
-    | **Bypass for machine identities** | Allow automated systems to skip approval (issuance policies only) |
+    | **Bypass approval for machine identities** | Allow automated systems to skip approval (issuance policies only) |
   </Step>
   <Step title="Configure approval steps">
     Each step defines who can approve and how many approvals are required:
@@ -107,7 +107,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 | **Open** | Pending approval |
 | **Approved** | All steps completed, certificate issued or revoked |
 | **Rejected** | An approver rejected the request |
-| **Cancelled** | Requester cancelled the request |
+| **Cancelled** | The requester cancelled the request, or Infisical cancelled it because the certificate was revoked |
 | **Expired** | Request exceeded max TTL |
 
 ### Approve a request
@@ -128,9 +128,9 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
   </Step>
 </Steps>
 
-Once all required approvals are obtained, Infisical issues the certificate, or revokes it for a revocation request. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason.
+Once the request gets every required approval, Infisical issues the certificate, or revokes the certificate if the request is for a revocation. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason.
 
-If revocation fails at that point, for example because the CA can't be reached, the certificate stays active and Infisical records a `cert-revocation-failed` audit log event with the reason. Infisical also sends the requester and the request's approvers an in-app notification with the reason and a link to the request. To revoke the certificate, revoke it again once the problem is fixed.
+If revocation fails at that point, for example because the CA can't be reached, Infisical records a [`cert-revocation-failed` audit log event](/documentation/platform/audit-logs#certificate-revocations) with the reason. The reason includes whether the certificate is still active. Infisical also sends the requester and the request's approvers an in-app notification with the reason and a link to the request. After you fix the problem, revoke the certificate again. If a revocation policy still covers the certificate's profile, Infisical creates a new approval request instead of revoking the certificate right away.
 
 ### Reject a request
 

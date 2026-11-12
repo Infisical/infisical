@@ -640,8 +640,8 @@ Here are a few common patterns for filtering audit logs, grouped by product.
 
     Infisical counts identical failures the same way it counts [repeated denials](#permission-denials). In each minute, it records the first failure with a given actor, operation, certificate, and error, then writes one summary event when the minute ends.
   </Accordion>
-  <Accordion title="Who revoked a certificate">
-    Find every revocation in a project.
+  <Accordion title="Who revoked a certificate" id="certificate-revocations">
+    Find every revocation in a project, including revocations that needed [approval](/documentation/platform/pki/applications/approvals#revocation).
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -651,21 +651,38 @@ Here are a few common patterns for filtering audit logs, grouped by product.
           </Step>
           <Step>
             Select **Search audit logs** and add:
-            - `event`: `revoke-cert`
+            - `event`: `revoke-cert`, `request-cert-revocation`, `cert-revocation-failed`
           </Step>
         </Steps>
 
-        Read the actor column on each result to see who ran the revocation.
+        Select a result to see its `event.metadata`.
       </Tab>
       <Tab title="API">
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
           --data-urlencode "projectId=<project-id>" \
-          --data-urlencode "eventType=revoke-cert"
+          --data-urlencode "eventType=revoke-cert,request-cert-revocation,cert-revocation-failed"
         ```
       </Tab>
     </Tabs>
+
+    If Infisical revoked the certificate right away, the actor of the `revoke-cert` event is the user or machine identity that revoked it. If the revocation needed approval, the actor is `platform`, and `event.metadata.approvalRequestId` holds the ID of the approval request. If an approved revocation fails, Infisical records a `cert-revocation-failed` event instead, with `platform` as the actor and the reason in `event.metadata.error`.
+
+    To find who requested and who reviewed an approved revocation, look for events with the same `approvalRequestId`:
+
+    - `request-cert-revocation`: the actor requested the revocation
+    - `approval-request-approve` and `approval-request-reject`: the actor approved or rejected the request
+
+    Through the API, add `eventMetadata` to return every event for one approval request:
+
+    ```bash
+    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+      -H "Authorization: Bearer <your-access-token>" \
+      --data-urlencode "projectId=<project-id>" \
+      --data-urlencode "eventType=request-cert-revocation,approval-request-approve,approval-request-reject,revoke-cert,cert-revocation-failed" \
+      --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
+    ```
   </Accordion>
 </AccordionGroup>
 
