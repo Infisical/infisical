@@ -188,7 +188,7 @@ const STORED_TYPES = [
     credential: BEARER,
     fields: ["serverUrl", "transport", "hostPattern"],
     bundleFields: ["allowedTools", "customHeaders"],
-    inlineFields: ["customHeaders"]
+    inlineFields: ["allowedTools", "customHeaders"]
   },
   {
     type: AgentVaultServiceType.Postgres,

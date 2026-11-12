@@ -7098,6 +7098,8 @@ interface AgentVaultSessionMintEvent {
       headerName?: string;
       allowedMethods: string[] | null;
       allowedPathPrefixes: string[] | null;
+      // Absent for every type but MCP. Null when the agent can call every tool.
+      allowedTools?: string[] | null;
       customHeaderNames: string[];
       substitutionPlaceholders: string[];
     }[];

@@ -30,7 +30,6 @@ export type TAgentVaultInlineServiceInput = {
   tls?: { enabled?: boolean; verify?: boolean; ca?: string | null };
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
-  // Accepted only to be refused by name: an inline MCP server can't be limited to some of its tools.
   allowedTools?: string[] | null;
   credential:
     | {
@@ -82,6 +81,7 @@ export type TAgentVaultInlineServiceSummary = {
       substitutions: TAgentVaultInlineSubstitutionSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
+      allowedTools: string[] | null;
       credential: TAgentVaultInlineBearerCredentialSummary;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })

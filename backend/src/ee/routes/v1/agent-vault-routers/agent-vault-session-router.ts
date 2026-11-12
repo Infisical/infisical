@@ -366,6 +366,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                       : undefined,
                   allowedMethods: fields.allowedMethods ?? null,
                   allowedPathPrefixes: fields.allowedPathPrefixes ?? null,
+                  allowedTools: fields.allowedTools,
                   ...serviceTransformationNamesOf(service)
                 };
               })

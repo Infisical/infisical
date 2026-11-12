@@ -941,9 +941,8 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+      allowedTools: AgentVaultAllowedToolsSchema.optional(),
       substitutions: AgentVaultInlineSubstitutionsInputSchema.optional().describe(openApiHidden()),
-      // Refused by the session service with a message, rather than dropped, so nobody believes the tools are limited.
-      allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
       ...hiddenNativeCreateFields
     })
     .describe(JSON.stringify({ title: "MCP" })),
@@ -1059,6 +1058,7 @@ const inlineServiceResponseTypeExtras = {
       .describe(AGENT_VAULT.SESSION.inlineSubstitutionsRead)
   },
   [AgentVaultServiceType.Mcp]: {
+    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
     credential: inlineBearerCredentialSummarySchema,
     customHeaders: inlineCustomHeadersResponseSchema
   },

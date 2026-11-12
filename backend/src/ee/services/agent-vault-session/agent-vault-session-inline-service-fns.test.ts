@@ -176,18 +176,21 @@ describe("prepareInlineServices", () => {
     );
   });
 
-  test("refuses a tool list on an MCP server, rather than dropping it", () => {
-    expect(() =>
-      prepareInlineServices([
-        {
-          type: AgentVaultServiceType.Mcp,
-          serverUrl: "https://mcp.example.com/mcp",
-          transport: AgentVaultMcpTransport.StreamableHttp,
-          credential: { type: AgentVaultCredentialType.Bearer, value: "token" },
-          allowedTools: ["search"]
-        }
-      ])
-    ).toThrow(/^Service at index 0: Services sent with a session can't limit an MCP server's tools/);
+  test("keeps an MCP server's tool list, and null when it was sent without one", () => {
+    const mcp = (allowedTools?: string[] | null): TAgentVaultInlineServiceInput => ({
+      type: AgentVaultServiceType.Mcp,
+      serverUrl: "https://mcp.example.com/mcp",
+      transport: AgentVaultMcpTransport.StreamableHttp,
+      credential: { type: AgentVaultCredentialType.Bearer, value: "token" },
+      allowedTools
+    });
+    expect(prepareInlineServices([mcp(["search", "read_file"])])[0].allowedTools).toEqual(["search", "read_file"]);
+    expect(prepareInlineServices([mcp()])[0].allowedTools).toBeNull();
+    expect(prepareInlineServices([mcp(null)])[0].allowedTools).toBeNull();
+  });
+
+  test("refuses a tool list on an HTTP service", () => {
+    expect(() => prepareInlineServices([httpBearer({ allowedTools: ["search"] })])).toThrow(/^Service at index 0: /);
   });
 
   test("refuses a basic credential with neither half", () => {
@@ -268,6 +271,26 @@ describe("inline service reads", () => {
       headerName: "Authorization",
       headerPrefix: "Bearer"
     });
+  });
+});
+
+describe("an MCP server's tool list", () => {
+  const mcpRow = storedRow({
+    type: AgentVaultServiceType.Mcp,
+    hostPattern: "mcp.example.com",
+    config: { serverUrl: "https://mcp.example.com/mcp", transport: AgentVaultMcpTransport.StreamableHttp },
+    allowedTools: ["search"]
+  });
+
+  test("goes out to the proxy", () => {
+    expect(
+      toResolvedInlineService(mcpRow, { credential: { value: "token" }, customHeaders: [], substitutions: [] })
+    ).toMatchObject({ allowedTools: ["search"] });
+  });
+
+  test("is in the summary, and null when the server was sent without one", () => {
+    expect(toInlineServiceSummary(mcpRow)).toMatchObject({ allowedTools: ["search"] });
+    expect(toInlineServiceSummary({ ...mcpRow, allowedTools: null })).toMatchObject({ allowedTools: null });
   });
 });
 

@@ -390,7 +390,7 @@ export type TAgentVaultSessionInlineService = (
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
       substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
     })
-  | (Omit<TAgentVaultServiceConfigOf<AgentVaultServiceType.Mcp>, "allowedTools"> & {
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Mcp> & {
       credential: TAgentVaultInlineCredentialSummaryOf<AgentVaultCredentialType.Bearer>;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })
