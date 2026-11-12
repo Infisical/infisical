@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
@@ -22,6 +23,7 @@ import {
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2/enums";
 import type { TCreateSecretScanningDataSourceDTO } from "@app/hooks/api/secretScanningV2/types";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
@@ -30,6 +32,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { useDebounced } from "../../access/org/use-debounced";
 import { failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { startConnectionRedirect } from "../../data/integrations/connection-redirect";
 import { orgHref } from "../../links";
 import { useConnectionCreation } from "../../secret-manager/OverviewPage/secrets/flows/connection-creation";
 
@@ -58,6 +61,7 @@ const initialDraft = (type: SecretScanningDataSource): Draft => ({
 });
 
 const ALL_PROJECTS = "all";
+const DRAFT_STORAGE_KEY = "v4-secret-scanning-data-source-draft";
 
 const nameSchema = slugSchema({ field: "Name" });
 const descriptionSchema = z.string().trim().max(256, "Cannot exceed 256 characters");
@@ -102,15 +106,20 @@ const ConnectionFields = ({
   projectId,
   draft,
   errors,
-  onChange
+  onChange,
+  onRedirect
 }: {
   orgId: string;
   projectId: string;
   draft: Draft;
   errors: Errors;
   onChange: (changes: Partial<Draft>) => void;
+  onRedirect: () => void;
 }) => {
   const scanning = useV4Adapter("secretScanning");
+  const { data: appOptions } = useV4Adapter("integrations").useConnectionOptions(
+    ProjectType.SecretScanning
+  );
   const app = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[draft.type];
   const appName = APP_CONNECTION_MAP[app].name;
   const [search, setSearch] = useState("");
@@ -121,15 +130,28 @@ const ConnectionFields = ({
     draft.connection && !available.some((entry) => entry.id === draft.connection?.id)
       ? [...available, draft.connection]
       : available;
-  const creation = useConnectionCreation(app, projectId, (connection) => {
-    setSearch("");
-    onChange({
-      connection: { id: connection.id, name: connection.name },
-      workspaceSlug: "",
-      group: undefined,
-      ...(draft.type === SecretScanningDataSource.GitLab && { isDiscoveryEnabled: false })
-    });
-  });
+  const creation = useConnectionCreation(
+    app,
+    projectId,
+    (connection) => {
+      setSearch("");
+      onChange({
+        connection: { id: connection.id, name: connection.name },
+        workspaceSlug: "",
+        group: undefined,
+        ...(draft.type === SecretScanningDataSource.GitLab && { isDiscoveryEnabled: false })
+      });
+    },
+    {
+      returnTo: orgHref(orgId, "/secret-scanning/data-sources"),
+      projectId,
+      option: appOptions?.find((entry) => entry.app === app) as Record<string, unknown> | undefined,
+      start: (href, pending) => {
+        onRedirect();
+        startConnectionRedirect(href, pending);
+      }
+    }
+  );
   const workspaces = scanning.useBitbucketWorkspaces(
     draft.type === SecretScanningDataSource.Bitbucket ? connectionId : "",
     debounced || undefined
@@ -148,19 +170,7 @@ const ConnectionFields = ({
 
   return (
     <Stack gap={16}>
-      <Field
-        label={`${appName} connection`}
-        error={errors.connection}
-        description={
-          creation ? undefined : (
-            <>
-              Create {appName} connections in{" "}
-              <a href={orgHref(orgId, "/secret-scanning/app-connections")}>App connections</a>.
-            </>
-          )
-        }
-        wide
-      >
+      <Field label={`${appName} connection`} error={errors.connection} wide>
         <Combobox
           label={`${appName} connection`}
           value={connectionId}
@@ -248,6 +258,11 @@ export const AddDataSourceSheet = ({
   onOpenChange: (open: boolean) => void;
 }) => {
   const scanning = useV4Adapter("secretScanning");
+  const navigate = useNavigate();
+  const { connectionId, connectionName } = useSearch({ strict: false }) as {
+    connectionId?: string;
+    connectionName?: string;
+  };
   const { data: options, isPending: optionsPending } = scanning.useDataSourceOptions();
   const create = scanning.useCreateDataSource();
   const {
@@ -283,10 +298,35 @@ export const AddDataSourceSheet = ({
   };
 
   const close = () => {
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
     reset(initialDraft(SecretScanningDataSource.GitHub));
     setStep(0);
     onOpenChange(false);
   };
+
+  useEffect(() => {
+    if (!connectionId || !connectionName) return;
+    const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    navigate({ to: ".", search: {}, replace: true });
+    if (!stored) return;
+    let saved: Draft;
+    try {
+      saved = JSON.parse(stored) as Draft;
+    } catch {
+      return;
+    }
+    reset(initialDraft(saved.type));
+    change({
+      ...saved,
+      connection: { id: connectionId, name: connectionName },
+      workspaceSlug: "",
+      group: undefined,
+      isDiscoveryEnabled: saved.type !== SecretScanningDataSource.GitLab
+    });
+    setStep(1);
+    onOpenChange(true);
+  }, [connectionId, connectionName]);
 
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty,
@@ -388,6 +428,7 @@ export const AddDataSourceSheet = ({
                 draft={draft}
                 errors={fieldErrors}
                 onChange={change}
+                onRedirect={() => sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))}
               />
             )
           },

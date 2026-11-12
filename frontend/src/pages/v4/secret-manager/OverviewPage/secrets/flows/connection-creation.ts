@@ -1,4 +1,7 @@
-import { connectionCreation } from "@app/components/v4/patterns/app-connection-form";
+import {
+  type AppConnectionRedirect,
+  connectionCreation
+} from "@app/components/v4/patterns/app-connection-form";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
@@ -16,7 +19,8 @@ export type CreatedConnection = { id: string; name: string; app: AppConnection }
 export const useConnectionCreation = (
   app: AppConnection,
   projectId: string,
-  onCreated: (connection: CreatedConnection) => void
+  onCreated: (connection: CreatedConnection) => void,
+  redirect?: AppConnectionRedirect
 ) => {
   const createConnection = useV4Adapter("integrations").useCreateConnection();
   const { permission, isPending } = useProjectPermission(projectId);
@@ -29,6 +33,7 @@ export const useConnectionCreation = (
   return connectionCreation({
     preset: CONNECTION_PRESETS[app],
     disabledReason: canCreate ? undefined : "No permission to create connections",
+    redirect,
     create: async ({ method, name, description, credentials }) => {
       const created = await createConnection
         .mutateAsync({

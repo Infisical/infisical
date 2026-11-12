@@ -17,7 +17,7 @@ import {
 
 import {
   bitbucketApiTokenConnectionFormSchema,
-  gitLabAccessTokenConnectionFormSchema
+  gitLabConnectionFormSchema
 } from "./connection-schemas";
 
 const methodLabel = (method: Parameters<typeof getAppConnectionMethodDetails>[0]) =>
@@ -142,7 +142,7 @@ export const CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPres
   [AppConnection.GitLab]: {
     app: AppConnection.GitLab,
     name: APP_CONNECTION_MAP[AppConnection.GitLab].name,
-    schema: gitLabAccessTokenConnectionFormSchema,
+    schema: gitLabConnectionFormSchema,
     methods: [
       {
         value: GitLabConnectionMethod.AccessToken,
@@ -173,6 +173,42 @@ export const CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPres
           },
           { name: "credentials.accessToken", label: "Access token", kind: "secret" }
         ]
+      },
+      {
+        value: GitLabConnectionMethod.OAuth,
+        label: methodLabel(GitLabConnectionMethod.OAuth),
+        credentials: { instanceUrl: "" },
+        fields: [
+          {
+            name: "credentials.instanceUrl",
+            label: "Instance URL",
+            mono: true,
+            optional: true,
+            placeholder: "https://gitlab.com",
+            description: "Leave empty for gitlab.com."
+          }
+        ],
+        redirect: {
+          submitLabel: "Connect to GitLab",
+          href: ({ values, option }) => {
+            if (typeof option?.oauthClientId !== "string" || !option.oauthClientId)
+              return undefined;
+            const base =
+              (values.credentials?.instanceUrl as string | undefined)?.trim().replace(/\/+$/, "") ||
+              "https://gitlab.com";
+            const query = new URLSearchParams({
+              client_id: option.oauthClientId,
+              redirect_uri: `${window.location.origin}/organization/app-connections/gitlab/oauth/callback`,
+              response_type: "code"
+            });
+            return `${base}/oauth/authorize?${query}`;
+          },
+          unconfigured: "This server has no GitLab OAuth application configured.",
+          credentials: ({ callback, stored }) => ({
+            code: callback.code ?? "",
+            instanceUrl: (stored.instanceUrl as string | undefined) || undefined
+          })
+        }
       }
     ]
   },
