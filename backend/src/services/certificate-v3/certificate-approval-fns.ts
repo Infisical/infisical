@@ -582,10 +582,10 @@ export const certificateApprovalServiceFactory = (
     );
     const mappedReconstructedRequest = mapEnumsForValidation(reconstructedRequest);
     mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
-    // Resolved again at issuance: ACME stores the CSR's own algorithm, and the CA or policy may have
-    // changed since the request was made.
+    // Resolved again at issuance: requests made before resolution was stored hold the CSR's own
+    // algorithm, and the CA or policy may have changed since the request was made.
     const issuedSignatureAlgorithm = (
-      ca.internalCa
+      ca.internalCa?.keyAlgorithm
         ? await caKeySourceService.resolveCsrSignatureAlgorithm({
             caId: ca.id,
             keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
@@ -696,7 +696,8 @@ export const certificateApprovalServiceFactory = (
           certificateRequestId,
           {
             status: CertificateRequestStatus.ISSUED,
-            certificateId: newCert.id
+            certificateId: newCert.id,
+            signatureAlgorithm: issuedSignatureAlgorithm
           },
           tx
         );

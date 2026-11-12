@@ -1352,7 +1352,7 @@ export const pkiAcmeServiceFactory = ({
             const csrAlgorithms = extractAlgorithmsFromCSR(csr);
             const requestAlgorithms = {
               ...csrAlgorithms,
-              signatureAlgorithm: (ca.internalCa
+              signatureAlgorithm: (ca.internalCa?.keyAlgorithm
                 ? await caKeySourceService.resolveCsrSignatureAlgorithm({
                     caId: ca.id,
                     keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,

@@ -1428,7 +1428,7 @@ export const certificateV3ServiceFactory = ({
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
     const extractedSignatureAlgorithm = (
-      ca.internalCa
+      ca.internalCa?.keyAlgorithm
         ? await caKeySourceService.resolveCsrSignatureAlgorithm({
             caId: ca.id,
             keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
