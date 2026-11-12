@@ -10,6 +10,7 @@ import {
   TIncidentIoSchedule
 } from "@app/services/app-connection/incident-io";
 
+import { anyOf, AUTO_APPROVAL_MAX_OPTIONS as MAX_OPTIONS } from "../auto-approval-fns";
 import {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
@@ -27,11 +28,8 @@ export type TIncidentIoRequesterFacts = {
   ambiguousNames: string[];
 };
 
-const MAX_OPTIONS = 100;
 const MAX_CHECKED_SCHEDULES = 20;
 const SCHEDULE_ID_REGEX = new RE2("^[0-9A-Z]{26}$");
-
-const anyOf = (values: string[]) => values.join(" or ");
 
 const countByName = (schedules: TIncidentIoSchedule[]) => {
   const counts = new Map<string, number>();

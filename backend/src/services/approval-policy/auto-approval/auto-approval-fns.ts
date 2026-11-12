@@ -14,6 +14,10 @@ import {
 export const getAutoApprovalSubjectKey = (condition: { inputId: string | null; connectionId: string }) =>
   condition.inputId ?? `${AUTO_APPROVAL_REQUESTER_SUBJECT}:${condition.connectionId}`;
 
+export const AUTO_APPROVAL_MAX_OPTIONS = 100;
+
+export const anyOf = (values: string[]) => values.join(" or ");
+
 export const describeAutoApprovalCondition = (subjectLabel: string, constraintLabel: string, values: string[]) =>
   [subjectLabel, constraintLabel, values.join(" or ")].filter(Boolean).join(" ");
 

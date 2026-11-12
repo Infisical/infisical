@@ -17,6 +17,7 @@ import {
   TJiraIssue
 } from "@app/services/app-connection/jira";
 
+import { anyOf, AUTO_APPROVAL_MAX_OPTIONS as MAX_OPTIONS } from "../auto-approval-fns";
 import {
   AutoApprovalConstraintValue,
   TAutoApprovalContext,
@@ -54,12 +55,9 @@ const JIRA_TICKET_FIELDS = ["status", "project", "issuetype", "labels", "assigne
 const JIRA_ISSUE_KEY_REGEX = new RE2("^[A-Z][A-Z0-9_]+-[1-9][0-9]*$");
 const MAX_TICKET_INPUT_LENGTH = 2048;
 const MAX_STORED_LABELS = 100;
-const MAX_OPTIONS = 100;
 const MAX_SIBLING_PROJECTS = 5;
 
 const TICKET_FORMAT_MESSAGE = "Enter a Jira ticket key like PAY-123, or a link to the ticket";
-
-const anyOf = (values: string[]) => values.join(" or ");
 
 const includesIgnoreCase = (values: string[], value: string | null) =>
   value !== null && values.some((candidate) => candidate.toLowerCase() === value.toLowerCase());
