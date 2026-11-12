@@ -141,12 +141,14 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!rows.length) return rows;
 
-      // A new finding whose secret value was already triaged in this project starts with the newest of those triages,
+      // A new finding whose secret value was already triaged in this resource starts with the newest of those triages,
       // unless that triage resolved it: the value turning up again is a regression, so the finding starts unresolved.
+      // Triage never carries over from another resource: a GitHub check skip only needs write access to its own
+      // repository, so inheriting it elsewhere would let it pass checks in repositories its author can't reach.
       // Only rows the upsert inserts take these columns, so findings saved by an earlier scan keep their own triage.
       // Read from the primary so a triage made moments ago is not missed on a lagging replica.
       const triagedFindings = await secretScanningV2DAL.findings.findLatestTriagedByBlindIndexes(
-        projectId,
+        resourceId,
         rows.map(({ secretFindingBlindIndex }) => secretFindingBlindIndex),
         secretScanningV2DAL.primaryNode()
       );

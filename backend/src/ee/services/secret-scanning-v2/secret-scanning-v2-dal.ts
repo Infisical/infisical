@@ -788,17 +788,17 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Returns, for each blind index, the most recently triaged finding in the project that is no longer unresolved.
-   * New findings with the same secret value inherit its triage.
+   * Returns, for each blind index, the most recently triaged finding in the resource that is no longer unresolved.
+   * New findings with the same secret value in the resource inherit its triage.
    */
-  const findLatestTriagedFindingsByBlindIndexes = async (projectId: string, blindIndexes: string[], tx?: Knex) => {
+  const findLatestTriagedFindingsByBlindIndexes = async (resourceId: string, blindIndexes: string[], tx?: Knex) => {
     try {
       const triagedFindings: TSecretScanningFindings[] = [];
 
       for (const chunk of chunkArray([...new Set(blindIndexes)], FINDINGS_UPSERT_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
         const rows = (await baseFindingQuery(tx)
-          .where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
+          .where(`${TableName.SecretScanningFinding}.resourceId`, resourceId)
           .whereIn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`, chunk)
           .whereNot(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
           .distinctOn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`)
