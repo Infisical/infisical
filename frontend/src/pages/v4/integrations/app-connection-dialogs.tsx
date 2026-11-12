@@ -625,7 +625,12 @@ const CredentialsForm = ({
       method: method.value,
       credentials: {
         ...method.credentials,
-        ...storedCredentials(connection, Object.keys(method.credentials))
+        ...storedCredentials(connection, [
+          ...Object.keys(method.credentials),
+          ...method.fields
+            .filter((spec) => spec.name.startsWith("credentials."))
+            .map((spec) => spec.name.slice("credentials.".length))
+        ])
       }
     }
   });

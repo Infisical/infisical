@@ -245,7 +245,7 @@ export const SERVICE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>
       {
         value: TriggerDevConnectionMethod.ApiKey,
         label: methodLabel(TriggerDevConnectionMethod.ApiKey),
-        credentials: { instanceUrl: "", apiKey: "" },
+        credentials: { apiKey: "" },
         fields: [
           {
             name: "credentials.instanceUrl",

@@ -17,9 +17,10 @@ import type { WorkflowIntegration } from "@app/hooks/api/workflowIntegrations/ty
 
 import { V4_DEMO_ORG_ID } from "../../mode";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
+import { CONNECTION_PRESETS } from "./connection-presets";
 import type { IntegrationsAdapter } from "./contract";
 
-const options = [
+const seededOptions: { app: AppConnection; methods: string[]; [key: string]: unknown }[] = [
   { app: AppConnection.AWS, methods: Object.values(AwsConnectionMethod) },
   {
     app: AppConnection.GitHub,
@@ -43,6 +44,16 @@ const options = [
     methods: [AzureKeyVaultConnectionMethod.OAuth, AzureKeyVaultConnectionMethod.ClientSecret]
   },
   { app: AppConnection.Databricks, methods: [DatabricksConnectionMethod.ServicePrincipal] }
+];
+
+const options = [
+  ...seededOptions,
+  ...Object.values(CONNECTION_PRESETS)
+    .filter((preset) => !seededOptions.some((option) => option.app === preset.app))
+    .map((preset) => ({
+      app: preset.app as AppConnection,
+      methods: preset.methods.map((method) => method.value)
+    }))
 ].map((option) => ({ ...option, name: option.app }) as TAppConnectionOption);
 
 const project = (id: string, type: ProjectType) => ({ id, name: id, slug: id, type });
