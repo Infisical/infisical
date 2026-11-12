@@ -152,6 +152,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "/secret-scanning/data-sources/",
       "v4/secret-scanning/SecretScanningDataSourcesPage/route.tsx"
     ),
+    route(
+      "/secret-scanning/data-sources/$type/$dataSourceId",
+      "v4/secret-scanning/SecretScanningDataSourceByIdPage/route.tsx"
+    ),
     route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
     route("/cert-manager/", "v4/cert-manager/IndexPage/route.tsx"),
     route("/cert-manager/overview", "v4/cert-manager/DashboardPage/route.tsx"),
