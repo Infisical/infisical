@@ -84,6 +84,16 @@ export type CertRequestRequestData = {
   certificateRequestId: string;
 };
 
+export type CertRevocationRequestData = {
+  certificateId: string;
+  serialNumber: string;
+  commonName: string;
+  profileId: string;
+  profileName: string;
+  applicationId: string;
+  revocationReason: string;
+};
+
 export type CodeSigningRequestData = {
   signerId: string;
   approvalPolicyId: string;
@@ -109,7 +119,11 @@ export type TApprovalRequest = {
   expiresAt?: string | null;
   requestData: {
     version: number;
-    requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
+    requestData:
+      | PamAccessRequestData
+      | CertRequestRequestData
+      | CertRevocationRequestData
+      | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
   canBreakGlass: boolean;

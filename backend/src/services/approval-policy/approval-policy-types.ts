@@ -36,6 +36,14 @@ import {
   TCertRequestRequestData
 } from "./cert-request/cert-request-policy-types";
 import {
+  TCertRevocationPolicy,
+  TCertRevocationPolicyConditions,
+  TCertRevocationPolicyConstraints,
+  TCertRevocationPolicyInputs,
+  TCertRevocationRequest,
+  TCertRevocationRequestData
+} from "./cert-revocation/cert-revocation-policy-types";
+import {
   TCodeSigningPolicy,
   TCodeSigningPolicyConditions,
   TCodeSigningPolicyConstraints,
@@ -64,27 +72,41 @@ export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" 
 
 export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
 
-export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy | TSecretAccessPolicy;
+export type TApprovalPolicy =
+  | TPamAccessPolicy
+  | TCertRequestPolicy
+  | TCertRevocationPolicy
+  | TCodeSigningPolicy
+  | TSecretAccessPolicy;
 export type TApprovalPolicyInputs =
   | TPamAccessPolicyInputs
   | TCertRequestPolicyInputs
+  | TCertRevocationPolicyInputs
   | TCodeSigningPolicyInputs
   | TSecretAccessPolicyInputs;
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
+  | TCertRevocationPolicyConditions
   | TCodeSigningPolicyConditions
   | TSecretAccessPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints
   | TCertRequestPolicyConstraints
+  | TCertRevocationPolicyConstraints
   | TCodeSigningPolicyConstraints
   | TSecretAccessPolicyConstraints;
 
-export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest | TSecretAccessRequest;
+export type TApprovalRequest =
+  | TPamAccessRequest
+  | TCertRequestRequest
+  | TCertRevocationRequest
+  | TCodeSigningRequest
+  | TSecretAccessRequest;
 export type TApprovalRequestData =
   | TPamAccessRequestData
   | TCertRequestRequestData
+  | TCertRevocationRequestData
   | TCodeSigningRequestData
   | TSecretChangeRequestData
   | TSecretAccessRequestData;
@@ -357,6 +379,7 @@ export type TApprovalResourceRegistry = Partial<Record<ApprovalPolicyType, TAppr
 
 export type TApprovalRequestSubjectMetadata = {
   certificateRequestId?: string;
+  certificateId?: string;
   commonName?: string;
   profileName?: string;
   signerId?: string;

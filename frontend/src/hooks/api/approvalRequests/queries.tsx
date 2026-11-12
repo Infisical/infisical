@@ -1,8 +1,15 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TApprovalRequest, TGetApprovalRequestByIdDTO, TListApprovalRequestsDTO } from "./types";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "../approvalPolicies/types";
+import {
+  ApprovalRequestStatus,
+  CertRevocationRequestData,
+  TApprovalRequest,
+  TGetApprovalRequestByIdDTO,
+  TListApprovalRequestsDTO
+} from "./types";
 
 export const approvalRequestQuery = {
   allKey: () => ["approval-requests"] as const,
@@ -36,3 +43,29 @@ export const approvalRequestQuery = {
       }
     })
 };
+
+// Maps each certificate in an Application to its revocation request that is still waiting for approval.
+export const usePendingCertificateRevocations = (applicationId?: string | null) =>
+  useQuery({
+    ...approvalRequestQuery.list({
+      policyType: ApprovalPolicyType.CertRevocation,
+      scope: ApprovalPolicyScope.PkiApplication,
+      scopeId: applicationId ?? ""
+    }),
+    enabled: Boolean(applicationId),
+    select: (requests) => {
+      const now = Date.now();
+      return new Map(
+        requests
+          .filter(
+            (request) =>
+              request.status === ApprovalRequestStatus.Pending &&
+              (!request.expiresAt || new Date(request.expiresAt).getTime() > now)
+          )
+          .map((request) => [
+            (request.requestData.requestData as CertRevocationRequestData).certificateId,
+            request.id
+          ])
+      );
+    }
+  });

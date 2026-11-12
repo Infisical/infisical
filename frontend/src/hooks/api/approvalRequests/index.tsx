@@ -4,7 +4,7 @@ export {
   useCreateApprovalRequest,
   useRejectApprovalRequest
 } from "./mutations";
-export { approvalRequestQuery } from "./queries";
+export { approvalRequestQuery, usePendingCertificateRevocations } from "./queries";
 export {
   type ApprovalRequestApproval,
   ApprovalRequestApprovalDecision,
@@ -12,6 +12,7 @@ export {
   type ApprovalRequestStep,
   ApprovalRequestStepStatus,
   type CertRequestRequestData,
+  type CertRevocationRequestData,
   type CodeSigningRequestData,
   type PamAccessRequestData,
   type TApprovalRequest,

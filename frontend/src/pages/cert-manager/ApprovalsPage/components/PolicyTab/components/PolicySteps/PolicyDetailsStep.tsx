@@ -11,8 +11,14 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   PkiApplicationResourceActions,
@@ -32,10 +38,12 @@ type ProfileOption = {
 
 type Props = {
   applicationId?: string;
+  isEditing?: boolean;
 };
 
-export const PolicyDetailsStep = ({ applicationId }: Props) => {
-  const { control, getValues, setValue } = useFormContext<TPolicyForm>();
+export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
+  const { control, getValues, setValue, watch } = useFormContext<TPolicyForm>();
+  const isRevocationPolicy = watch("policyType") === ApprovalPolicyType.CertRevocation;
 
   const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({
     enabled: !applicationId
@@ -172,6 +180,39 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
         />
       </div>
 
+      {applicationId && (
+        <Controller
+          control={control}
+          name="policyType"
+          render={({ field: { onChange, ...field } }) => (
+            <Field>
+              <FieldLabel htmlFor="policy-type">Policy Type</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={field.value}
+                  name={field.name}
+                  onValueChange={onChange}
+                  disabled={isEditing}
+                >
+                  <SelectTrigger id="policy-type" ref={field.ref} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ApprovalPolicyType.CertRequest}>Issuance</SelectItem>
+                    <SelectItem value={ApprovalPolicyType.CertRevocation}>Revocation</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  {isEditing
+                    ? "A policy's type can't be changed after it's created."
+                    : "Issuance covers new certificates and renewals. Revocation covers revoking certificates."}
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+
       <Controller
         control={control}
         name="conditions.0.profileNames"
@@ -208,7 +249,9 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
                 }
               />
               <FieldDescription isOpen={!error}>
-                Policy applies to certificates issued from these selected profiles
+                {isRevocationPolicy
+                  ? "Revoking a certificate issued from these selected profiles requires approval"
+                  : "Policy applies to certificates issued from these selected profiles"}
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
@@ -216,28 +259,30 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
         )}
       />
 
-      <Controller
-        control={control}
-        name="bypassForMachineIdentities"
-        render={({ field: { value, onChange } }) => (
-          <Field orientation="horizontal" className="mt-2">
-            <Checkbox
-              id="bypassForMachineIdentities"
-              variant="project"
-              isChecked={value}
-              onCheckedChange={onChange}
-            />
-            <FieldContent>
-              <FieldLabel htmlFor="bypassForMachineIdentities" className="cursor-pointer">
-                Bypass approval for machine identities
-              </FieldLabel>
-              <FieldDescription>
-                When enabled, machine identities can issue certificates without requiring approval
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        )}
-      />
+      {!isRevocationPolicy && (
+        <Controller
+          control={control}
+          name="bypassForMachineIdentities"
+          render={({ field: { value, onChange } }) => (
+            <Field orientation="horizontal" className="mt-2">
+              <Checkbox
+                id="bypassForMachineIdentities"
+                variant="project"
+                isChecked={value}
+                onCheckedChange={onChange}
+              />
+              <FieldContent>
+                <FieldLabel htmlFor="bypassForMachineIdentities" className="cursor-pointer">
+                  Bypass approval for machine identities
+                </FieldLabel>
+                <FieldDescription>
+                  When enabled, machine identities can issue certificates without requiring approval
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
     </div>
   );
 };

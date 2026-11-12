@@ -140,7 +140,7 @@ All user-facing "notify me when X happens" features share one module: `backend/s
 All "someone has to approve this before it happens" features share one module:
 `backend/src/services/approval-policy/`, which owns policies, requests, steps, grants, break-glass, and
 the generic `/v1/<policy-type>/approval-policies` endpoints. Current types: PAM access, certificate
-requests, code signing.
+requests, certificate revocation, code signing.
 
 A policy type plugs in through **one** extension point, a `TApprovalResource` (see its doc comment),
 constructed with its own dependencies and registered in the `approvalResources` map in

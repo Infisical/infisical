@@ -37,6 +37,7 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
+import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -113,6 +114,8 @@ const Page = () => {
   const { data: appPermissionData } = useGetPkiApplicationPermissions(
     certificate?.applicationId ?? ""
   );
+  const { data: pendingRevocations } = usePendingCertificateRevocations(certificate?.applicationId);
+  const hasPendingRevocation = Boolean(certificate && pendingRevocations?.has(certificate.id));
 
   const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
     certificateId: certificate?.id,
@@ -327,7 +330,11 @@ const Page = () => {
         <PageHeader
           backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
-          description="View certificate details"
+          description={
+            hasPendingRevocation
+              ? "A revocation of this certificate is waiting for approval. It stays active until the request is approved."
+              : "View certificate details"
+          }
           title={displayName}
         >
           {isDeleted && !canOfferRevoke ? (
@@ -483,10 +490,18 @@ const Page = () => {
                     </BlockedActionTooltip>
                   )}
                 {canOfferRevoke && (
-                  <BlockedActionTooltip reason={applicationAccess?.revokeBlockedReason}>
+                  <BlockedActionTooltip
+                    reason={
+                      hasPendingRevocation
+                        ? "A revocation of this certificate is already waiting for approval."
+                        : applicationAccess?.revokeBlockedReason
+                    }
+                  >
                     <DropdownMenuItem
-                      isDisabled={!canDeleteCertificate}
-                      isDisabledFocusable={Boolean(applicationAccess?.revokeBlockedReason)}
+                      isDisabled={!canDeleteCertificate || hasPendingRevocation}
+                      isDisabledFocusable={
+                        hasPendingRevocation || Boolean(applicationAccess?.revokeBlockedReason)
+                      }
                       onClick={() =>
                         handlePopUpOpen("revokeCertificate", {
                           certificateId: certificate.id

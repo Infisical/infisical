@@ -27,6 +27,7 @@ import { useProject } from "@app/context";
 import { useRevokeCert } from "@app/hooks/api";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
+import { CertificateRevocationStatus } from "@app/hooks/api/certificates/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -72,7 +73,7 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
 
     const { certificateId } = popUp.revokeCertificate.data as { certificateId: string };
 
-    const { crlWarning } = await revokeCertificate({
+    const response = await revokeCertificate({
       id: certificateId,
       revocationReason
     });
@@ -80,10 +81,18 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
     reset();
     handlePopUpToggle("revokeCertificate", false);
 
-    if (crlWarning) {
+    if (response.status === CertificateRevocationStatus.PendingApproval) {
+      createNotification({
+        text: "Revocation request submitted. The certificate stays active until the request is approved.",
+        type: "success"
+      });
+      return;
+    }
+
+    if (response.crlWarning) {
       createNotification({
         title: "Certificate revoked, CRL not regenerated",
-        text: crlWarning,
+        text: response.crlWarning,
         type: "warning"
       });
       return;

@@ -661,6 +661,13 @@ export const approvalPolicyServiceFactory = ({
     const resolved = await $resolveScope(scope, inputScopeId, policyType);
     const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = resolved;
 
+    // $resolveScope enforces a type's scope only for domain scopes it resolves through the resource, so a
+    // type pinned to a built-in scope (an Application) is checked here.
+    const requiredScope = resources[policyType]?.scopeType;
+    if (requiredScope && !resources[policyType]?.resolveScope && dbScopeType !== requiredScope) {
+      throw new BadRequestError({ message: `${policyType} policies must use the ${requiredScope} scope` });
+    }
+
     await $assertCanManagePolicy(
       projectId,
       dbScopeType,
@@ -670,8 +677,9 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
-    // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
-    if (policyType === ApprovalPolicyType.CertRequest) {
+    // Certificate issuance and revocation only: code signing follows pkiCodeSigning and PAM has its own
+    // product entitlement.
+    if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertRevocation) {
       const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({

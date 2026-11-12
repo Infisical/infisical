@@ -128,6 +128,11 @@ export type TDeleteCertDTO = {
   auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
+export enum CertificateRevocationStatus {
+  Revoked = "revoked",
+  PendingApproval = "pending_approval"
+}
+
 export type TRevokeCertDTO = {
   id?: string;
   serialNumber?: string;

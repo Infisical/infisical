@@ -1,10 +1,10 @@
 ---
 title: "Certificate approval policies"
 sidebarTitle: "Approvals"
-description: "Add human review workflows before certificates are issued."
+description: "Add human review workflows before certificates are issued or revoked."
 ---
 
-Approval workflows add a human review step before certificates are issued. Use them to enforce separation of duties, ensure oversight of sensitive certificates, or meet compliance requirements.
+Approval workflows add a human review step before certificates are issued or revoked. Use them to enforce separation of duties, ensure oversight of sensitive certificates, or meet compliance requirements.
 
 ## When to use approvals
 
@@ -29,7 +29,12 @@ Approval workflows add a human review step before certificates are issued. Use t
 
 ## How approval policies work
 
-An approval policy defines the workflow that must be completed before certificates are issued. Policies are configured per Application and can be scoped to specific profiles attached to that Application. When a certificate request is made through an enrollment method:
+An approval policy defines the workflow that must be completed before a certificate is issued or revoked. Policies are configured per Application and can be scoped to specific profiles attached to that Application. Each policy covers one of two actions:
+
+- **Issuance:** new certificates and renewals
+- **Revocation:** revoking certificates
+
+When a certificate request is made through an enrollment method:
 
 1. Request enters **pending** state
 2. Approvers receive an in-app notification and an email with a link to the request (if configured)
@@ -47,6 +52,17 @@ If you renew a certificate that Infisical issued and don't change it, the renewa
 
 While a renewal is waiting for approval, you can't submit another renewal that needs approval for the same certificate. If an approver rejects the renewal of an imported or discovered certificate, automatic renewal stops for that certificate. Renew it manually to request approval again. Automatic renewal continues on the new certificate once that renewal is approved.
 
+### Revocation
+
+If a revocation policy covers a certificate's profile, revoking the certificate creates an approval request instead of revoking it, whether you revoke it in Infisical or with the [Revoke](/api-reference/endpoints/certificates/revoke) endpoint. The certificate stays active while the request is pending, and the Application's certificate list marks it **Revocation Pending**.
+
+- If every step approves the request, Infisical revokes the certificate with the reason the requester chose
+- If an approver rejects the request, or it's cancelled or expires, the certificate isn't revoked
+
+A certificate can have only one revocation request pending at a time. Machine identities can't skip revocation approval.
+
+If the Application has no revocation policy for the certificate's profile, revoking works without approval.
+
 ## Create an approval policy
 
 In your Application, go to the **Settings** tab and find the **Approval Policies** section. Select **Create Policy**.
@@ -56,9 +72,10 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
     | Field | Description |
     |-------|-------------|
     | **Policy Name** | A descriptive name like `production-cert-approval` |
+    | **Policy Type** | **Issuance** or **Revocation** (you can't change it after you create the policy) |
     | **Max. Request TTL** | How long a request can remain pending before expiring |
     | **Certificate Profiles** | Which profiles require approval |
-    | **Bypass for machine identities** | Allow automated systems to skip approval |
+    | **Bypass for machine identities** | Allow automated systems to skip approval (issuance policies only) |
   </Step>
   <Step title="Configure approval steps">
     Each step defines who can approve and how many approvals are required:
@@ -88,7 +105,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 | Status | Meaning |
 |--------|---------|
 | **Open** | Pending approval |
-| **Approved** | All steps completed, certificate issued |
+| **Approved** | All steps completed, certificate issued or revoked |
 | **Rejected** | An approver rejected the request |
 | **Cancelled** | Requester cancelled the request |
 | **Expired** | Request exceeded max TTL |
@@ -111,7 +128,9 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
   </Step>
 </Steps>
 
-Once all required approvals are obtained, the certificate is automatically issued. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason.
+Once all required approvals are obtained, Infisical issues the certificate, or revokes it for a revocation request. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason.
+
+If revocation fails at that point, for example because the CA can't be reached, the certificate stays active and Infisical records a `cert-revocation-failed` audit log event with the reason. To revoke the certificate, revoke it again once the problem is fixed.
 
 ### Reject a request
 
@@ -124,7 +143,7 @@ Once all required approvals are obtained, the certificate is automatically issue
   </Step>
 </Steps>
 
-When a request is rejected, the workflow ends and no certificate is issued.
+When a request is rejected, the workflow ends and no certificate is issued or revoked.
 
 ## FAQ
 

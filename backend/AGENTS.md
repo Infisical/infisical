@@ -898,6 +898,12 @@ One rule binds code elsewhere: **any new path that revokes a certificate must bu
 `internal_certificate_authorities.ocspGeneration` in the same transaction as the status write** (as
 `revokeCert` does), or cached OCSP responses keep answering `good`.
 
+**A revoke someone asks for goes through `certificateService.revokeCert`**, never straight to
+`$performRevocation` or a CA's revoke call, because `revokeCert` is where an Application's revocation
+approval policy holds the request (`cert-revocation` type). Only an approved request revokes through
+`revokeApprovedCertificate`. Not gated, by decision: revocations that come with another action (signer
+delete, DigiCert reissue) and ones that record an upstream fact (the DigiCert revocation sync).
+
 ### Internal CA key sources
 
 An internal CA's signing key lives in Infisical (`keySource: infisical`, encrypted private key) or

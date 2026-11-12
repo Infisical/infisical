@@ -116,6 +116,7 @@ export type TOriginatingCertificateRequest = {
 };
 
 const PENDING_RENEWAL_CERTIFICATE_ID = `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'certificateId'`;
+const PENDING_REVOCATION_CERTIFICATE_ID = `"${TableName.ApprovalRequests}"."requestData"->'requestData'->>'certificateId'`;
 
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
@@ -888,6 +889,21 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingRevocationApprovalRequest = async (
+    { certificateId, projectId }: { certificateId: string; projectId: string },
+    tx?: Knex
+  ) => {
+    try {
+      const row = await (tx || db)(TableName.ApprovalRequests)
+        .where({ projectId, type: ApprovalPolicyType.CertRevocation, status: ApprovalRequestStatus.Pending })
+        .whereRaw(`${PENDING_REVOCATION_CERTIFICATE_ID} = ?`, [certificateId])
+        .first("id", "expiresAt");
+      return row as { id: string; expiresAt: Date | null } | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find pending revocation approval request" });
+    }
+  };
+
   const getOriginatingRequestByCertId = async (certId: string, tx?: Knex): Promise<TOriginatingCertificateRequest> => {
     try {
       // Primary, not replica: eligibility checks must not miss a recently-issued request row.
@@ -1652,6 +1668,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findLatestCertificatesByOrderIds,
     findCertificatesEligibleForRenewal,
     hasRenewalAwaitingApproval,
+    findPendingRevocationApprovalRequest,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,
     canRenewFromCsr,
