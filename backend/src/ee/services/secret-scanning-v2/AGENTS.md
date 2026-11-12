@@ -19,6 +19,7 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, or the GitHub
   check skip) also closes the unresolved findings in the project with that value. Close findings only through
   `closeFindingsWithSameValue` (`secret-scanning-v2-fns.ts`), including from a provider's own triage action. It writes
   the finding and its siblings together after locking them in id order; updating the finding first and its siblings
-  after deadlocks two concurrent closes of the same value. A newly
-  inserted finding inherits the newest closed triage for its value from `createFindingRowsBuilder`; keep triage columns
-  out of the upsert's merge columns, or every rescan overwrites what users triaged.
+  after deadlocks two concurrent closes of the same value. A newly inserted finding inherits the newest closed triage
+  for its value from `createFindingRowsBuilder`, unless that triage is `resolved`: a resolved value showing up again
+  is a regression, so the finding starts `unresolved`. Keep triage columns out of the upsert's merge columns, or every
+  rescan overwrites what users triaged.

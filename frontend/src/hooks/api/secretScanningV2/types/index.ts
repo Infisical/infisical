@@ -251,6 +251,8 @@ export type TListSecretScanningFindingsDTO = {
   status?: SecretScanningFindingStatus;
   dataSourceId?: string;
   resourceId?: string;
+  // other findings with the same secret value as any of these, at most 100
+  sameValueAs?: string[];
   orderBy: SecretScanningFindingOrderBy;
   orderDirection: OrderByDirection;
   offset: number;

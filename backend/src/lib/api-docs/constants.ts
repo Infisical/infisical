@@ -4250,6 +4250,8 @@ export const SecretScanningFindings = {
     status: "Only return findings with this status.",
     dataSourceId: "Only return findings detected in this Data Source.",
     resourceId: "Only return findings detected in this resource, such as a repository or project.",
+    sameValueAs:
+      "A comma-separated list of up to 100 finding IDs. Only return other findings with the same secret value as one of them.",
     orderBy: "The field to sort findings by.",
     orderDirection: "The direction to sort findings in.",
     offset: "The number of findings to skip, for pagination.",

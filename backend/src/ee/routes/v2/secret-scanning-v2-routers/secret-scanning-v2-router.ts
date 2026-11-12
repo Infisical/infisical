@@ -223,6 +223,12 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.LIST.status),
         dataSourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.dataSourceId),
         resourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.resourceId),
+        sameValueAs: z
+          .string()
+          .transform((val) => val.split(",").map((id) => id.trim()))
+          .pipe(z.array(z.string().uuid("Each finding ID must be a UUID")).max(100, "Pass at most 100 finding IDs"))
+          .optional()
+          .describe(SecretScanningFindings.LIST.sameValueAs),
         orderBy: z
           .nativeEnum(SecretScanningFindingOrderBy)
           .default(SecretScanningFindingOrderBy.CreatedAt)
@@ -242,11 +248,11 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { permission } = req;
       const projectId = req.internalSecretScanningProjectId;
-      const { status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit } = req.query;
+      const { status, dataSourceId, resourceId, sameValueAs, orderBy, orderDirection, offset, limit } = req.query;
 
       const { findings, totalCount } = await server.services.secretScanningV2.listSecretScanningFindingsByProjectId(
         projectId,
-        { status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit },
+        { status, dataSourceId, resourceId, sameValueAs, orderBy, orderDirection, offset, limit },
         permission
       );
 

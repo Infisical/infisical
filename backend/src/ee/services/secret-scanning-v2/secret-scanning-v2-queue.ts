@@ -141,7 +141,8 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!rows.length) return rows;
 
-      // A new finding whose secret value was already triaged in this project starts with the newest of those triages.
+      // A new finding whose secret value was already triaged in this project starts with the newest of those triages,
+      // unless that triage resolved it: the value turning up again is a regression, so the finding starts unresolved.
       // Only rows the upsert inserts take these columns, so findings saved by an earlier scan keep their own triage.
       // Read from the primary so a triage made moments ago is not missed on a lagging replica.
       const triagedFindings = await secretScanningV2DAL.findings.findLatestTriagedByBlindIndexes(
@@ -156,7 +157,8 @@ export const secretScanningV2QueueServiceFactory = ({
       const now = new Date();
 
       return rows.map((row) => {
-        const triaged = triageByBlindIndex.get(row.secretFindingBlindIndex);
+        const latestTriage = triageByBlindIndex.get(row.secretFindingBlindIndex);
+        const triaged = latestTriage?.status === SecretScanningFindingStatus.Resolved ? undefined : latestTriage;
 
         return {
           ...row,
@@ -164,7 +166,7 @@ export const secretScanningV2QueueServiceFactory = ({
           triageComment: triaged ? (triaged.triageComment ?? null) : null,
           triagedByUserId: triaged ? (triaged.triagedByUserId ?? null) : null,
           triagedAt: triaged ? now : null,
-          resolvedAt: triaged?.status === SecretScanningFindingStatus.Resolved ? now : null
+          resolvedAt: null
         };
       });
     };

@@ -366,7 +366,7 @@ export const useListSecretScanningFindings = (
     queryFn: async () => {
       const { data } = await apiRequest.get<TListSecretScanningFindingsResponse>(
         "/api/v2/secret-scanning/findings",
-        { params }
+        { params: { ...params, sameValueAs: params.sameValueAs?.join(",") } }
       );
 
       return data;

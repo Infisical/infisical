@@ -34,6 +34,8 @@ export type TListSecretScanningFindingsFilter = {
   status?: SecretScanningFindingStatus;
   dataSourceId?: string;
   resourceId?: string;
+  // findings with the same secret value as any of these findings, excluding them
+  sameValueAs?: string[];
   orderBy: SecretScanningFindingOrderBy;
   orderDirection: OrderByDirection;
   offset: number;
@@ -639,13 +641,37 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     {
       status,
       dataSourceId,
-      resourceId
-    }: Pick<TListSecretScanningFindingsFilter, "status" | "dataSourceId" | "resourceId">
+      resourceId,
+      sameValueAs
+    }: Pick<TListSecretScanningFindingsFilter, "status" | "dataSourceId" | "resourceId" | "sameValueAs">
   ) => {
     void query.where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
     if (status) void query.where(`${TableName.SecretScanningFinding}.status`, status);
     if (dataSourceId) void query.where(`${TableName.SecretScanningDataSource}.id`, dataSourceId);
     if (resourceId) void query.where(`${TableName.SecretScanningFinding}.resourceId`, resourceId);
+    if (sameValueAs?.length) {
+      // the referenced findings are limited to the project too, so another project's finding can't be matched against
+      void query
+        .whereIn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`, (subQuery) => {
+          void subQuery
+            .select(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`)
+            .from(TableName.SecretScanningFinding)
+            .join(
+              TableName.SecretScanningResource,
+              `${TableName.SecretScanningResource}.id`,
+              `${TableName.SecretScanningFinding}.resourceId`
+            )
+            .join(
+              TableName.SecretScanningDataSource,
+              `${TableName.SecretScanningDataSource}.id`,
+              `${TableName.SecretScanningResource}.dataSourceId`
+            )
+            .where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
+            .whereIn(`${TableName.SecretScanningFinding}.id`, sameValueAs)
+            .whereNotNull(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`);
+        })
+        .whereNotIn(`${TableName.SecretScanningFinding}.id`, sameValueAs);
+    }
     return query;
   };
 
