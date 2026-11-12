@@ -4,7 +4,7 @@ export {
   useDeleteApprovalPolicy,
   useUpdateApprovalPolicy
 } from "./mutations";
-export { approvalPolicyQuery } from "./queries";
+export { approvalPolicyQuery, useRevocationPolicyProfileNames } from "./queries";
 export {
   ApprovalPolicyScope,
   type ApprovalPolicyStep,

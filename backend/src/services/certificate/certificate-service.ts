@@ -106,7 +106,7 @@ import {
   detectSanType,
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
-import { assertCanRevokeCertificate } from "../certificate-common/certificate-permission-fns";
+import { assertCanRevokeOrRequestRevocation } from "../certificate-common/certificate-permission-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   buildCsrRenewalCertificateRequest,
@@ -938,7 +938,7 @@ export const certificateServiceFactory = ({
     const cert = await $findCertificateToRevoke({ id, serialNumber, thumbprint, actorOrgId });
     const ca = await $loadRevocationCa(cert);
 
-    await assertCanRevokeCertificate({
+    const { canRevokeDirectly } = await assertCanRevokeOrRequestRevocation({
       certificate: { ...cert, projectId: ca.projectId },
       actor,
       actorId,
@@ -947,6 +947,13 @@ export const certificateServiceFactory = ({
       permissionService,
       resourceMetadataDAL
     });
+
+    const approval = await $matchRevocationApprovalPolicy(cert, ca.projectId);
+    if (!approval && !canRevokeDirectly) {
+      throw new ForbiddenRequestError({
+        message: `Certificate '${getCertificateDisplayName(cert)}' isn't covered by a revocation approval policy, so you need permission to revoke it directly. Ask an Application Admin to revoke it.`
+      });
+    }
 
     await $assertCertificateRevocable(cert, ca);
 
@@ -963,7 +970,6 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    const approval = await $matchRevocationApprovalPolicy(cert, ca.projectId);
     if (approval && cert.applicationId) {
       const { policy, profile } = approval;
       const requester = await $resolveRevocationRequester(actor, actorId);
