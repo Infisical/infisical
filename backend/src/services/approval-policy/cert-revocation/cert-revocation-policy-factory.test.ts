@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ApprovalNotificationEvent, ApprovalPolicyScope } from "../approval-policy-enums";
+import { ForbiddenRequestError } from "@app/lib/errors";
+
+import {
+  ApprovalNotificationEvent,
+  ApprovalPolicyScope,
+  ApprovalRequestApprovalDecision
+} from "../approval-policy-enums";
 import { certRevocationApprovalResourceFactory } from "./cert-revocation-policy-factory";
 
 vi.mock("@app/lib/config/env", () => ({
@@ -19,8 +25,9 @@ const makePolicy = (overrides: Record<string, unknown>) => ({
   ...overrides
 });
 
-const setup = (policies: unknown[]) => {
+const setup = (policies: unknown[], memberships: unknown[] = []) => {
   const deps = {
+    membershipDAL: { find: vi.fn().mockResolvedValue(memberships) },
     approvalPolicyDAL: {
       findByProjectId: vi
         .fn()
@@ -115,5 +122,67 @@ describe("certRevocationApprovalResourceFactory.buildNotification", () => {
     const notification = await resource.buildNotification!({ event: ApprovalNotificationEvent.Approved, request });
 
     expect(notification).toBeNull();
+  });
+});
+
+describe("certRevocationApprovalResourceFactory live approver checks", () => {
+  const actor = { id: "approver-1" } as never;
+  const request = {
+    projectId: "project",
+    scopeType: ApprovalPolicyScope.PkiApplication,
+    scopeId: applicationId
+  } as never;
+  const decision = ApprovalRequestApprovalDecision.Approved;
+
+  const directMember = { actorUserId: "approver-1", actorGroupId: null, isActive: true };
+  const groupMember = { actorUserId: null, actorGroupId: "group-1", isActive: true };
+  const otherMember = { actorUserId: "someone-else", actorGroupId: null, isActive: true };
+
+  it("lets a direct member of the request's Application review it", async () => {
+    const { deps, resource } = setup([], [directMember]);
+
+    await expect(
+      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set() })
+    ).resolves.toBeUndefined();
+    await expect(
+      resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
+    ).resolves.toBe(true);
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({ scopeProjectId: "project", scopeResourceId: applicationId })
+    );
+  });
+
+  it("lets a member through one of their groups review it", async () => {
+    const { resource } = setup([], [groupMember]);
+    const userGroupIds = new Set(["group-1"]);
+
+    await expect(resource.assertCanReview!({ request, decision, actor, userGroupIds })).resolves.toBeUndefined();
+    await expect(
+      resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds })
+    ).resolves.toBe(true);
+  });
+
+  it("refuses a user removed from the Application", async () => {
+    const { resource } = setup([], [otherMember, groupMember]);
+
+    await expect(
+      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set(["group-2"]) })
+    ).rejects.toBeInstanceOf(ForbiddenRequestError);
+  });
+
+  it("refuses a user whose Application membership is inactive", async () => {
+    const { resource } = setup([], [{ ...directMember, isActive: false }]);
+
+    await expect(
+      resource.assertCanReview!({ request, decision, actor, userGroupIds: new Set() })
+    ).rejects.toBeInstanceOf(ForbiddenRequestError);
+  });
+
+  it("stops treating a user removed from the Application as an approver", async () => {
+    const { resource } = setup([], [otherMember]);
+
+    await expect(
+      resource.isLiveApprover!({ projectId: "project", scopeId: applicationId, actor, userGroupIds: new Set() })
+    ).resolves.toBe(false);
   });
 });
