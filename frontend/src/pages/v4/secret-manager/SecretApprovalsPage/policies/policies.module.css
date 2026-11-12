@@ -27,14 +27,13 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .step {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) 4.5rem auto;
   align-items: start;
   gap: var(--v4-space-8);
-  padding: var(--v4-space-8);
+  padding-block: var(--v4-space-8);
 }
 .step + .step {
   border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
