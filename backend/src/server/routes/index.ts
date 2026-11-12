@@ -4381,7 +4381,8 @@ export const registerRoutes = async (
 
   approvalResources[ApprovalPolicyType.CertRevocation] = certRevocationApprovalResourceFactory({
     approvalPolicyDAL,
-    certificateService
+    certificateService,
+    membershipDAL
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

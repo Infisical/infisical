@@ -1,5 +1,9 @@
+import { ResourceType } from "@app/db/schemas";
+import { RESOURCE_SCOPE } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -21,11 +25,38 @@ import {
 type TCertRevocationApprovalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
   certificateService: Pick<TCertificateServiceFactory, "revokeApprovedCertificate">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
+};
+
+// A request snapshots its approvers when it is raised, and removing a member from the Application only edits the
+// policy, so the snapshot alone would let a removed member decide requests that were already pending.
+const holdsApplicationMembership = async (
+  membershipDAL: TCertRevocationApprovalResourceDep["membershipDAL"],
+  {
+    projectId,
+    applicationId,
+    userId,
+    userGroupIds
+  }: { projectId: string; applicationId: string; userId: string; userGroupIds: Set<string> }
+) => {
+  const memberships = await membershipDAL.find({
+    scope: RESOURCE_SCOPE,
+    scopeProjectId: projectId,
+    scopeResourceType: ResourceType.CertificateApplication,
+    scopeResourceId: applicationId
+  });
+  return memberships.some(
+    (membership) =>
+      membership.isActive &&
+      (membership.actorUserId === userId ||
+        Boolean(membership.actorGroupId && userGroupIds.has(membership.actorGroupId)))
+  );
 };
 
 export const certRevocationApprovalResourceFactory = ({
   approvalPolicyDAL,
-  certificateService
+  certificateService,
+  membershipDAL
 }: TCertRevocationApprovalResourceDep): TApprovalResource<
   TCertRevocationPolicyInputs,
   TCertRevocationPolicy,
@@ -50,6 +81,27 @@ export const certRevocationApprovalResourceFactory = ({
   canAccess: async () => null,
 
   validateConstraints: () => ({ valid: true }),
+
+  isLiveApprover: async ({ projectId, scopeId, actor, userGroupIds }) =>
+    holdsApplicationMembership(membershipDAL, { projectId, applicationId: scopeId, userId: actor.id, userGroupIds }),
+
+  assertCanReview: async ({ request, actor, userGroupIds }) => {
+    const { projectId, scopeId } = request;
+    if (
+      scopeId &&
+      (await holdsApplicationMembership(membershipDAL, {
+        projectId,
+        applicationId: scopeId,
+        userId: actor.id,
+        userGroupIds
+      }))
+    ) {
+      return;
+    }
+    throw new ForbiddenRequestError({
+      message: "You can't review this request because you're no longer a member of its Application."
+    });
+  },
 
   buildNotification: async ({ event, request, failureReason }) => {
     const { commonName } = (request.requestData as { requestData: TCertRevocationRequestData }).requestData;
