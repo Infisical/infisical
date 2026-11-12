@@ -5,7 +5,7 @@ project create/restore), billable actor count (`countBillableOrgActors`) and its
 per-project-type identity counts that the secrets, pam and agent-vault counters build on.
 
 - **Declared exception:** it reads tables no domain owns yet (`organizations`, `projects`, `memberships`, `users`,
-  `identities`, `groups`, `user_group_membership`, `identity_group_memberships`). Those move behind the owning
+  `identities`, `groups`, `user_group_membership`, `identity_group_membership`). Those move behind the owning
   domain's service once it exists.
 - **No in-memory twin:** the counters are pure SQL, so they're only tested against Postgres
   (`*.integration.spec.ts`). Imports no other domain; License uses `FakeOrganizationsProjectsService` in its tests.

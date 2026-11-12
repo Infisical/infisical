@@ -55,7 +55,7 @@ type OfflineLicense struct {
 	TerminatesAt *time.Time `json:"terminatesAt"`
 
 	// Version 2 carries License Server entitlements; otherwise Features holds the
-	// legacy TFeatureSet fields directly.
+	// legacy Plan fields directly.
 	Version      int            `json:"version,omitempty"`
 	Features     map[string]any `json:"features"`
 	Entitlements any            `json:"entitlements,omitempty"`

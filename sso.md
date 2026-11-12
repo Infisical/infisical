@@ -42,7 +42,7 @@ nginx), so Infisical is available at **http://localhost:8080**.
 
 OIDC, SAML, LDAP, SCIM, and groups are paid features. On a plain local instance there is no
 license, so `getDefaultOnPremFeatures()` in
-[`backend/src/ee/services/license/license-fns.ts`](backend/src/ee/services/license/license-fns.ts)
+[`backend/src/domains/platform/license/ee/service/license-fns.ts`](backend/src/domains/platform/license/ee/service/license-fns.ts)
 returns `oidcSSO: false` and `ldap: false`, and the config endpoints reject everything.
 Pick one of:
 
