@@ -84,7 +84,7 @@ Paths below are relative to that folder unless they say otherwise. Line numbers 
 - **Severity:** Low
 - **Where:** `OauthApplicationsPage.tsx` 128.
 - **What's wrong:** Every row's button is named "Copy client ID". In a screen reader's button list they're indistinguishable, while the neighbouring actions say "Edit for Backstage portal". A copy shows only an icon swap with no toast, against the rule that copied feedback is always a toast.
-- **Fix:** Use `label={\`Copy client ID for ${client.name}\`}` and an `onCopy` that calls `saved("Client ID copied")`. If the icon swap is meant to replace the toast app-wide, fix it once in Cipher's `CopyButton` instead.
+- **Fix:** Use ``label={`Copy client ID for ${client.name}`}`` and an `onCopy` that calls `saved("Client ID copied")`. If the icon swap is meant to replace the toast app-wide, fix it once in Cipher's `CopyButton` instead.
 
 ### 12. Flow radio names run together for screen readers
 
