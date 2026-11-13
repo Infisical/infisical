@@ -12,6 +12,7 @@ import {
   GitMergeIcon,
   GitPullRequestIcon,
   HourglassIcon,
+  ListChecksIcon,
   LucideIcon,
   PlusIcon,
   SearchIcon,
@@ -751,8 +752,8 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
       </Card>
       <SelectedActionBar selectedCount={selectedCount} onClearSelection={clearSelection}>
         <Button variant="project" size="xs" onClick={() => setIsBulkReviewOpen(true)}>
-          <GitMergeIcon />
-          Review & Merge
+          <ListChecksIcon />
+          Review
         </Button>
       </SelectedActionBar>
       <BulkReviewChangeRequestsSheet
