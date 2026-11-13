@@ -27,7 +27,7 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
   const setup = (issueCertificate: () => Promise<unknown>) => {
     const failedRequest = { id: "cert-req-1", status: CertificateRequestStatus.FAILED };
     const deps = {
-      approvalPolicyDAL: { findByProjectId: vi.fn() },
+      approvalPolicyDAL: { findByProjectId: vi.fn(), findById: vi.fn().mockResolvedValue({ name: "prod renewals" }) },
       approvalPolicyService: { notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined) },
       auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
       certificateApprovalService: { issueCertificate: vi.fn(issueCertificate) },
@@ -235,6 +235,7 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
       id: "approval-1",
       organizationId: "org-1",
       projectId: "project-1",
+      policyId: "policy-1",
       requesterId: "user-1",
       requesterName: "John Smith",
       requesterEmail: "john.smith@example.com",
@@ -281,6 +282,7 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
             applicationName: "Payments",
             status: CertificateRequestStatus.ISSUED,
             approvalRequestId: "approval-1",
+            approvalPolicyName: "prod renewals",
             requesterName: "John Smith",
             requesterEmail: "john.smith@example.com"
           }

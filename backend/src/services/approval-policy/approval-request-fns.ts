@@ -233,6 +233,17 @@ export const resolveStepApproverUserIds = async (
   return userIds;
 };
 
+// An approval request has no name, so an audit event names it by who asked and under which policy.
+export const getApprovalRequestAuditLabel = (
+  request: Pick<TApprovalRequests, "id" | "requesterName" | "requesterEmail">,
+  policy: { name: string } | undefined | null
+) => ({
+  approvalRequestId: request.id,
+  approvalPolicyName: policy?.name,
+  requesterName: request.requesterName,
+  requesterEmail: request.requesterEmail
+});
+
 export const getApprovalRequestSubjectMetadata = (
   request: Pick<TApprovalRequests, "type" | "requestData">
 ): TApprovalRequestSubjectMetadata => {

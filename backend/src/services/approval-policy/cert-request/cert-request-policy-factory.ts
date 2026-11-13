@@ -25,10 +25,11 @@ import {
 } from "../approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
+import { getApprovalRequestAuditLabel } from "../approval-request-fns";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "notifyApprovedActionFailed">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateApprovalService: TCertificateApprovalService;
@@ -198,6 +199,7 @@ export const certRequestApprovalResourceFactory = ({
       try {
         // An external-CA renewal still pending returns its order id in certificateId, not a certificate.
         const isIssued = renewed.status === CertificateRequestStatus.ISSUED;
+        const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : undefined;
         await auditLogService.createAuditLog({
           projectId: request.projectId,
           actor: { type: ActorType.PLATFORM, metadata: {} },
@@ -215,9 +217,7 @@ export const certRequestApprovalResourceFactory = ({
               externalConfiguration: renewal.externalConfiguration,
               changedAttributes: renewed.changedAttributes ?? [],
               status: renewed.status,
-              approvalRequestId: request.id,
-              requesterName: request.requesterName,
-              requesterEmail: request.requesterEmail
+              ...getApprovalRequestAuditLabel(request, policy)
             }
           }
         });

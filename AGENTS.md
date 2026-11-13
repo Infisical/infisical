@@ -166,7 +166,11 @@ outlives their removal. Certificate
 revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
 (`cert-request-policy-factory.ts`) notify through it when the approved action fails, but they have no
 `filterActiveApprovers`, and their status updates, failure recording and telemetry still run outside any guard, so
-they can still throw. Don't copy that part.
+they can still throw. Don't copy that part. An external CA can fail an approved certificate request later, in a
+background job. Jobs report that through `updateCertificateRequestStatus`, whose two implementations
+(`certificate-request-service.ts`, and the manual validation one in `certificate-authority-service.ts`) record it with
+`recordCertificateRequestFailure` and `notifyApprovers`. A new job that fails a certificate request must go through
+one of them, or nobody who approved the request hears about it.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a
