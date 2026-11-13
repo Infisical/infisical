@@ -45,8 +45,9 @@ const restrictedInlineServices = (trx: Knex.Transaction) =>
  *
  * Runs before the constraint swap, in its own transaction, and locks session rows, then their service rows, then the
  * services' header and substitution rows: the order the API's revoke and the hourly secret cleanup take them, so none of
- * them can deadlock with it. It sets revokedAt only where revokeIfActive would: a session whose owner or on-behalf-of
- * user was deleted has already ended, and writing it would move the updatedAt that marks when.
+ * them can deadlock with it. It sets revokedAt only on a session still running: one that expired, or whose owner or
+ * on-behalf-of user was deleted, has already ended, and writing it would show it as revoked and move the updatedAt that
+ * marks when it ended. Those sessions still have their tool lists and secrets cleared.
  *
  * Sessions go in batches, each its own transaction with its own statement timeout, so no query's parameter list or
  * transaction grows with history. Batches walk sessionId upward from the last one handled. Every statement in a batch
@@ -74,6 +75,9 @@ const revokeBatchOfSessionsWithRestrictedInlineServices = (knex: Knex, after: st
       })
       .where((qb) => {
         void qb.whereNull("onBehalfOfUserName").orWhereNotNull("onBehalfOfUserId");
+      })
+      .where((qb) => {
+        void qb.whereNull("expiresAt").orWhere("expiresAt", ">", now);
       })
       .update({ revokedAt: now });
 
