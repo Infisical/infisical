@@ -6759,8 +6759,8 @@ interface AgentVaultServiceUpdateEvent {
     tlsVerify?: boolean;
     // Present only when the update changed the stored CA the proxy checks the server's certificate against.
     tlsCaChanged?: "set" | "removed" | "replaced";
-    // Present only when the update changed the hook. hookUrl is set when it set the hook or changed its URL, and
-    // hookSecretReplaced when a new signing secret was saved. The secret itself is never recorded.
+    // Present only when the update changed the hook. hookUrl is set when it set the hook, changed its URL or
+    // removed it, and hookSecretReplaced when a new signing secret was saved. The secret itself is never recorded.
     hookChanged?: "set" | "removed" | "updated";
     hookUrl?: string;
     hookSecretReplaced?: boolean;

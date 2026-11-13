@@ -120,7 +120,9 @@ export const describeHookChange = (
   lockedHookUrl: string | null | undefined
 ): TAgentVaultHookAudit => {
   if (change.kind === "set") return { hookChanged: "set", hookUrl: change.url, hookSecretReplaced: true };
-  if (change.kind === "removed") return { hookChanged: "removed", hookSecretReplaced: false };
+  if (change.kind === "removed") {
+    return { hookChanged: "removed", hookUrl: lockedHookUrl ?? undefined, hookSecretReplaced: false };
+  }
   return {
     hookChanged: "updated",
     hookUrl: change.url !== lockedHookUrl ? change.url : undefined,

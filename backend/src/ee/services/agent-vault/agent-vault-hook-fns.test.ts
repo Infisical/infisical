@@ -170,9 +170,10 @@ describe("describeHookChange", () => {
     });
   });
 
-  test("removed names neither", () => {
+  test("removed names the URL it removed", () => {
     expect(describeHookChange({ kind: "removed" }, locked)).toEqual({
       hookChanged: "removed",
+      hookUrl: locked,
       hookSecretReplaced: false
     });
   });
