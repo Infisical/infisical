@@ -123,15 +123,16 @@ export const secretScanningV2QueueServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsService });
 
-    // a finding is one secret value, so a match without a value would group every such match into one finding
+    // A rule that matches only a file's path reports no value, so its matches get no blind index rather than all
+    // sharing the one of an empty value, which would group them into one finding.
     return (findings: TFindingsPayload): Promise<TFindingLocationRow[]> =>
       Promise.all(
-        findings
-          .filter(({ secretValue }) => secretValue)
-          .map(async ({ secretValue, ...finding }) => ({
-            ...finding,
-            secretFindingBlindIndex: await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(secretValue))
-          }))
+        findings.map(async ({ secretValue, ...finding }) => ({
+          ...finding,
+          secretFindingBlindIndex: secretValue
+            ? await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(secretValue))
+            : null
+        }))
       );
   };
 

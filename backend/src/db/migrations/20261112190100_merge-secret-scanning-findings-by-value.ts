@@ -34,6 +34,31 @@ const mergeResources = async (tx: Knex, resourceIds: string[]) => {
     [LOCATION, SecretScanningFindingStatus.Unresolved, FINDING, resourceIds]
   );
 
+  // A rerun after a partial failure merges the batches that committed again, and the finding they kept wins. If the
+  // release before this one saved an unresolved row for a new place of that finding's value in between, the new place
+  // reopens it, as a scan would, so the leak isn't merged away.
+  await tx.raw(
+    `UPDATE ?? AS w
+     SET status = ?, "resolvedAt" = NULL
+     FROM finding_merge AS m
+     JOIN ?? AS f ON f.id = m.id
+     WHERE w.id = m."findingId"
+       AND m.id <> m."findingId"
+       AND w.status = ?
+       AND f.status = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM ?? AS l WHERE l."resourceId" = f."resourceId" AND l.fingerprint = f.fingerprint
+       )`,
+    [
+      FINDING,
+      SecretScanningFindingStatus.Unresolved,
+      FINDING,
+      SecretScanningFindingStatus.Resolved,
+      SecretScanningFindingStatus.Unresolved,
+      LOCATION
+    ]
+  );
+
   // A row the release before this one saved again for a location that's already merged is only a copy of it.
   await tx.raw(
     `INSERT INTO ?? (id, "findingId", "resourceId", "scanId", fingerprint, rule, details, "createdAt")
@@ -71,10 +96,11 @@ export async function up(knex: Knex): Promise<void> {
   let lastResourceId: string | null = null;
 
   for (;;) {
+    const cursor = lastResourceId;
     // eslint-disable-next-line no-await-in-loop
     const resources: { id: string; findingCount: number }[] = await knex(TableName.SecretScanningResource)
       .modify((qb) => {
-        if (lastResourceId) void qb.where("id", ">", lastResourceId);
+        if (cursor) void qb.where("id", ">", cursor);
       })
       .orderBy("id")
       .limit(RESOURCE_BATCH_SIZE)
@@ -106,7 +132,7 @@ export async function up(knex: Knex): Promise<void> {
   // Rows saved while this ran got the column's default, so this only covers a row no batch could give a location.
   await knex.transaction(async (tx) => {
     await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT_MS}`);
-    await tx(FINDING).whereNull("lastDetectedAt").update({ lastDetectedAt: tx.ref("createdAt") });
+    await tx.raw(`UPDATE ?? SET "lastDetectedAt" = "createdAt" WHERE "lastDetectedAt" IS NULL`, [FINDING]);
     await tx.raw(`ALTER TABLE ?? ALTER COLUMN "lastDetectedAt" SET NOT NULL`, [FINDING]);
   });
 }

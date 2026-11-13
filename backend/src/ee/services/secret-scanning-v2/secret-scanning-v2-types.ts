@@ -381,7 +381,9 @@ export type TFindingsPayload = (Pick<TSecretScanningFindingLocationsInsert, "det
 export type TGitRepositoryScanFindingDetails = z.infer<typeof GitRepositoryScanFindingDetailsSchema>;
 
 // A row of a scan's findings, with its secret value replaced by the value's blind index.
-export type TFindingLocationRow = Omit<TFindingsPayload[number], "secretValue"> & { secretFindingBlindIndex: string };
+export type TFindingLocationRow = Omit<TFindingsPayload[number], "secretValue"> & {
+  secretFindingBlindIndex: string | null;
+};
 
 // A place a scan matched, with the finding (the secret value) it belongs to: `id` and `status` are the finding's.
 export type TSecretScanningScannedLocation = Pick<TFindingLocationRow, "fingerprint" | "rule" | "details"> &

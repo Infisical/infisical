@@ -158,6 +158,13 @@ const expandSecretScanningDataSource = <
   };
 };
 
+// A row with no value groups only with its own place, so it's a finding of its own. A fingerprint contains colons and a
+// blind index is hex, so the two keys can't collide.
+const valueKeyOf = ({
+  secretFindingBlindIndex,
+  fingerprint
+}: Pick<TFindingLocationRow, "secretFindingBlindIndex" | "fingerprint">) => secretFindingBlindIndex ?? fingerprint;
+
 export const secretScanningV2DALFactory = (db: TDbClient) => {
   const dataSourceOrm = ormify(db, TableName.SecretScanningDataSource);
   const resourceOrm = ormify(db, TableName.SecretScanningResource);
@@ -214,13 +221,18 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       // a value's first new row gives a new finding its rule, severity and first location
       const newRowByValue = new Map<string, TFindingLocationRow>();
       newRows.forEach((row) => {
-        if (!newRowByValue.has(row.secretFindingBlindIndex)) newRowByValue.set(row.secretFindingBlindIndex, row);
+        if (!newRowByValue.has(valueKeyOf(row))) newRowByValue.set(valueKeyOf(row), row);
       });
 
       // The release before this one saves a finding per location, so after a rollback a value can have several
       // findings; the oldest one takes the new locations.
       const findingByValue = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
-      for (const chunk of chunkArray([...newRowByValue.keys()], FINDINGS_UPSERT_CHUNK_SIZE)) {
+      for (const chunk of chunkArray(
+        [...newRowByValue.values()].flatMap(({ secretFindingBlindIndex }) =>
+          secretFindingBlindIndex ? [secretFindingBlindIndex] : []
+        ),
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
         // eslint-disable-next-line no-await-in-loop
         const findings = await tx(TableName.SecretScanningFinding)
           .where({ resourceId })
@@ -239,9 +251,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       const now = new Date();
 
       for (const chunk of chunkArray(
-        [...newRowByValue.values()].filter(
-          ({ secretFindingBlindIndex }) => !findingByValue.has(secretFindingBlindIndex)
-        ),
+        [...newRowByValue.values()].filter((row) => !findingByValue.has(valueKeyOf(row))),
         FINDINGS_UPSERT_CHUNK_SIZE
       )) {
         // eslint-disable-next-line no-await-in-loop
@@ -259,10 +269,13 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
               details
             }))
           )
-          .returning(["id", "status", "secretFindingBlindIndex"]);
+          .returning(["id", "status", "secretFindingBlindIndex", "fingerprint"]);
 
-        created.forEach(({ id, status, secretFindingBlindIndex }) =>
-          findingByValue.set(secretFindingBlindIndex as string, { id, status })
+        created.forEach(({ id, status, secretFindingBlindIndex, fingerprint }) =>
+          findingByValue.set(valueKeyOf({ secretFindingBlindIndex: secretFindingBlindIndex ?? null, fingerprint }), {
+            id,
+            status
+          })
         );
       }
 
@@ -300,7 +313,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         // eslint-disable-next-line no-await-in-loop
         await tx(TableName.SecretScanningFindingLocation).insert(
           chunk.map(({ fingerprint, rule, details, secretFindingBlindIndex }) => ({
-            findingId: findingByValue.get(secretFindingBlindIndex)!.id,
+            findingId: findingByValue.get(valueKeyOf({ secretFindingBlindIndex, fingerprint }))!.id,
             resourceId,
             scanId,
             fingerprint,
@@ -325,7 +338,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         const existingFindingId = findingIdByFingerprint.get(fingerprint);
         const finding = existingFindingId
           ? findingById.get(existingFindingId)!
-          : findingByValue.get(row.secretFindingBlindIndex)!;
+          : findingByValue.get(valueKeyOf({ secretFindingBlindIndex: row.secretFindingBlindIndex, fingerprint }))!;
         const status = reopenedIds.has(finding.id) ? SecretScanningFindingStatus.Unresolved : finding.status;
 
         return { id: finding.id, status, fingerprint, rule, details };

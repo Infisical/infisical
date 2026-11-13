@@ -36,7 +36,8 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   value, so the previous release still works after a rollback) or both take a location as new.
 - A fingerprint is `commit:file:rule:line:column` with the scanner's own column, and full and diff scans must build
   the same one for the same leak, or a full scan sees a known leak as a new location and reopens it.
-- Findings from before blind indexes existed have a NULL blind index and one location each, and stay that way.
+- Findings from before blind indexes existed have a NULL blind index and one location each, and stay that way. So do
+  matches without a value (rules that match only a file's path), since grouping them by value would merge them all.
 - `findings.scanId`, `fingerprint` and `details` are deprecated but still written: `persistLocations` stores the
   finding's first location there, so the release before locations existed keeps working if a deploy is rolled back.
   The findings API still returns them (and sorts by `author` from `details`) for clients built before locations. Never
