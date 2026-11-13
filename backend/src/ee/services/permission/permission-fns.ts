@@ -14,6 +14,7 @@ import {
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -694,7 +695,7 @@ export const recursiveFolderPathGlob = (folderPath: string) => `${folderPath.rep
 export const buildFolderScopedPrivilegeRules = (
   privileges: TProjectFolderScopedPrivilege[]
 ): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
-  const scopedGrants = privileges.map((privilege) => {
+  const scopedGrants = privileges.flatMap((privilege) => {
     // make sure the role is valid
     if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
       throw new NotFoundError({
@@ -702,16 +703,24 @@ export const buildFolderScopedPrivilegeRules = (
         message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
       });
     }
-    return {
-      role: privilege.role as SecretFolderRole,
-      isRecursive: privilege.appliesToSubfolders,
-      conditions: {
-        environment: privilege.environmentSlug,
-        secretPath: privilege.appliesToSubfolders
-          ? { $glob: recursiveFolderPathGlob(privilege.secretPath) }
-          : privilege.secretPath
+    if (privilege.appliesToSubfolders && privilege.secretPath !== "/") {
+      logger.warn(
+        `buildFolderScopedPrivilegeRules: ignoring a folder access grant that applies to subfolders outside the root folder [grantId=${privilege.id}] [environment=${privilege.environmentSlug}] [secretPath=${privilege.secretPath}]`
+      );
+      return [];
+    }
+    return [
+      {
+        role: privilege.role as SecretFolderRole,
+        isRecursive: privilege.appliesToSubfolders,
+        conditions: {
+          environment: privilege.environmentSlug,
+          secretPath: privilege.appliesToSubfolders
+            ? { $glob: recursiveFolderPathGlob(privilege.secretPath) }
+            : privilege.secretPath
+        }
       }
-    };
+    ];
   });
 
   const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>

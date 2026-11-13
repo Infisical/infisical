@@ -5,6 +5,7 @@ import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/sc
 import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
 import { buildFolderScopedPrivilegeRules, filterOverriddenFolderScopedDenyRules } from "./permission-fns";
@@ -25,6 +26,8 @@ import {
   ProjectPermissionSub,
   ProjectPermissionV2Schema
 } from "./project-permission";
+
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
 const privilege = (overrides: Partial<TProjectFolderScopedPrivilege> = {}): TProjectFolderScopedPrivilege => ({
   id: "privilege-id",
@@ -323,6 +326,52 @@ describe("folder-scoped privilege precedence", () => {
 
   test("an unknown grant role fails closed", () => {
     expect(() => buildFolderScopedPrivilegeRules([privilege({ role: "superuser" })])).toThrow(NotFoundError);
+  });
+
+  test.each(Object.values(SecretFolderRole))(
+    "a recursive %s grant on a folder other than the root is ignored and logged",
+    (role) => {
+      vi.mocked(logger.warn).mockClear();
+      const recursiveSubfolder = privilege({
+        id: "subfolder-grant",
+        role,
+        secretPath: "/a",
+        appliesToSubfolders: true
+      });
+      const exactEdit = privilege({ id: "exact-grant", role: SecretFolderRole.Edit, secretPath: "/b" });
+
+      expect(buildFolderScopedPrivilegeRules([recursiveSubfolder])).toEqual([]);
+      expect(buildFolderScopedPrivilegeRules([recursiveSubfolder, exactEdit])).toEqual(
+        buildFolderScopedPrivilegeRules([exactEdit])
+      );
+      expect(buildProjectPermissionRules(noAccessRoles, ProjectType.SecretManager, [recursiveSubfolder])).toEqual(
+        buildProjectPermissionRules(noAccessRoles, ProjectType.SecretManager)
+      );
+      expect(logger.warn).toHaveBeenCalledTimes(3);
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("grantId=subfolder-grant"));
+    }
+  );
+
+  test("a recursive grant on the root of each environment is accepted", () => {
+    const ability = abilityFor(noAccessRoles, [
+      recursiveRoot(SecretFolderRole.Edit),
+      privilege({
+        id: "staging-root-grant",
+        role: SecretFolderRole.Read,
+        secretPath: "/",
+        environmentSlug: "staging",
+        appliesToSubfolders: true
+      })
+    ]);
+
+    const canCreateFoldersIn = (environment: string) =>
+      ability.can(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath: "/a" })
+      );
+
+    expect(canCreateFoldersIn("dev")).toBe(true);
+    expect(canCreateFoldersIn("staging")).toBe(false);
   });
 
   test("no folder grants leaves the rules untouched", () => {
@@ -673,7 +722,7 @@ describe("filterOverriddenFolderScopedDenyRules", () => {
     const folderDenies = (role: SecretFolderRole, appliesToSubfolders: boolean) =>
       denyActionsFor(
         filterOverriddenFolderScopedDenyRules(
-          buildFolderScopedPrivilegeRules([privilege({ role, appliesToSubfolders })])
+          buildFolderScopedPrivilegeRules([privilege({ role, secretPath: "/", appliesToSubfolders })])
         ),
         ProjectPermissionSub.SecretFolders
       ).sort();

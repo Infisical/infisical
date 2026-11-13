@@ -40,9 +40,12 @@ const createService = (
     additionalPrivilegeDAL,
     groupDAL: {} as never,
     secretFolderDAL: {
-      findSecretPathByFolderIds: vi
-        .fn()
-        .mockResolvedValue(folderPrivileges.map(() => ({ environmentSlug: "dev", path: "/app" })))
+      findSecretPathByFolderIds: vi.fn().mockResolvedValue(
+        folderPrivileges.map((folderPrivilege) => ({
+          environmentSlug: "dev",
+          path: (folderPrivilege as { appliesToSubfolders?: boolean }).appliesToSubfolders ? "/" : "/app"
+        }))
+      )
     }
   } as never);
 
