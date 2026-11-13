@@ -430,9 +430,10 @@ describe("AWS KMS CA key source", () => {
 
     expect(await resolve(CertKeySource.AwsKms, CertKeyAlgorithm.ECDSA_P384)).toBe("ECDSA-SHA384");
     expect(await resolve(CertKeySource.AwsKms, CertKeyAlgorithm.ECDSA_P521)).toBe("ECDSA-SHA512");
-    expect(await resolve(CertKeySource.AwsKms, CertKeyAlgorithm.RSA_2048)).toBe("ECDSA-SHA256");
+    expect(await resolve(CertKeySource.AwsKms, CertKeyAlgorithm.RSA_2048)).toBe("RSA-SHA256");
     expect(await resolve(CertKeySource.Hsm, CertKeyAlgorithm.ECDSA_P384)).toBe("ECDSA-SHA256");
     expect(await resolve(CertKeySource.Infisical, CertKeyAlgorithm.ECDSA_P384)).toBe("ECDSA-SHA256");
+    expect(await resolve(CertKeySource.Infisical, CertKeyAlgorithm.RSA_2048)).toBe("RSA-SHA256");
   });
 
   test("the registry rejects algorithms a key source cannot hold", async () => {
