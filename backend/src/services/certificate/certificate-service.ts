@@ -213,6 +213,12 @@ type TCertificateServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
+// Upstream CA messages rarely end in a period, so one is added before another sentence follows.
+const asSentence = (text: string) => {
+  const trimmed = text.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+};
+
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
 
 export const certificateServiceFactory = ({
@@ -777,19 +783,14 @@ export const certificateServiceFactory = ({
     }
   };
 
-  const $performRevocation = async ({
-    cert,
-    ca,
-    revocationReason,
-    orgId
-  }: {
+  type TRevocationArgs = {
     cert: TRevocableCertificate;
     ca: TRevocationCa;
     revocationReason: CrlReason;
     orgId: string;
-  }) => {
-    // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
-    // active at the issuer (e.g., when the upstream rejects the chosen revocation reason).
+  };
+
+  const $revokeAtUpstreamCa = async ({ cert, ca, revocationReason }: Omit<TRevocationArgs, "orgId">) => {
     if (
       ca.externalCa?.type === CaType.AWS_PCA ||
       ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA ||
@@ -803,7 +804,9 @@ export const certificateServiceFactory = ({
         reason: revocationReason
       });
     }
+  };
 
+  const $completeRevocation = async ({ cert, ca, revocationReason, orgId }: TRevocationArgs) => {
     const revokedAt = new Date();
     const revokedCertId = cert.id;
     const revokedCertApplicationId = cert.applicationId ?? null;
@@ -882,6 +885,13 @@ export const certificateServiceFactory = ({
     }
 
     return { revokedAt, crlWarning };
+  };
+
+  // Call the upstream CA first so we don't end up with a cert that's revoked locally but still
+  // active at the issuer (e.g., when the upstream rejects the chosen revocation reason).
+  const $performRevocation = async (args: TRevocationArgs) => {
+    await $revokeAtUpstreamCa(args);
+    return $completeRevocation(args);
   };
 
   const $matchRevocationApprovalPolicy = async (cert: TRevocableCertificate, projectId: string) => {
@@ -1055,11 +1065,13 @@ export const certificateServiceFactory = ({
     | { kind: "failed"; cert?: TRevocableCertificate; reason: string };
 
   // A failure can land before or after the certificate was revoked locally, so the outcome comes from the
-  // certificate's current status rather than from the error.
+  // certificate's current status rather than from the error. `upstreamCa` is set only when the call to the
+  // external CA itself failed, so the reason can name that CA.
   const $settleFailedApprovedRevocation = async (
     approvalRequestId: string,
     certificateId: string,
-    error: unknown
+    error: unknown,
+    upstreamCa?: TRevocationCa
   ): Promise<TApprovedRevocationOutcome> => {
     const logContext = `[certificateId=${certificateId}] [approvalRequestId=${approvalRequestId}]`;
 
@@ -1082,10 +1094,19 @@ export const certificateServiceFactory = ({
     }
 
     logger.error(error, `Failed to revoke certificate after approval ${logContext}`);
-    const cause =
-      error instanceof BadRequestError || error instanceof NotFoundError
-        ? error.message
-        : "An unexpected error stopped the revocation.";
+    const message = error instanceof BadRequestError || error instanceof NotFoundError ? error.message : undefined;
+    let cause: string;
+    if (upstreamCa) {
+      const caType = upstreamCa.externalCa?.type as CaType | undefined;
+      const caLabel = caType
+        ? `CA '${upstreamCa.name}' (${CA_TYPE_LABEL[caType] ?? caType})`
+        : `CA '${upstreamCa.name}'`;
+      cause = message
+        ? `Revoking the certificate at ${caLabel} failed: ${asSentence(message)}`
+        : `Revoking the certificate at ${caLabel} failed with an unexpected error.`;
+    } else {
+      cause = message ? asSentence(message) : "An unexpected error stopped the revocation.";
+    }
     return {
       kind: "failed",
       cert: current,
@@ -1108,7 +1129,12 @@ export const certificateServiceFactory = ({
 
       const ca = await $loadRevocationCa(cert);
       await $assertCertificateRevocable(cert, ca);
-      const { crlWarning } = await $performRevocation({
+      try {
+        await $revokeAtUpstreamCa({ cert, ca, revocationReason });
+      } catch (error) {
+        return await $settleFailedApprovedRevocation(approvalRequest.id, certificateId, error, ca);
+      }
+      const { crlWarning } = await $completeRevocation({
         cert,
         ca,
         revocationReason,

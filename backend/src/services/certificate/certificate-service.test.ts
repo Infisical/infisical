@@ -362,6 +362,7 @@ describe("certificate revocation behind an approval policy", () => {
       transaction: vi.fn().mockImplementation(async (run: (trx: Knex) => Promise<unknown>) => run(tx)),
       findPendingRevocationApprovalRequest: vi.fn().mockResolvedValue(undefined)
     };
+    const certificateAuthorityDAL = { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) };
     const certificateAuthorityService = { revokeCertificate: vi.fn().mockResolvedValue(undefined) };
     const certificateAlertEventEmitter = { notify: vi.fn().mockResolvedValue(undefined) };
     const auditLogService = { createAuditLog: vi.fn().mockResolvedValue(undefined) };
@@ -382,7 +383,7 @@ describe("certificate revocation behind an approval policy", () => {
       auditLogService,
       approvalPolicyService,
       approvalRequestDAL,
-      certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) },
+      certificateAuthorityDAL,
       certificateAuthorityCrlDAL: { primaryNode: vi.fn() },
       internalCertificateAuthorityDAL: { update: vi.fn().mockResolvedValue([]) },
       keyStore: { acquireLock: vi.fn().mockRejectedValue(new Error("redis unavailable")) },
@@ -407,6 +408,7 @@ describe("certificate revocation behind an approval policy", () => {
     return {
       service: certificateServiceFactory(deps),
       certificateDAL,
+      certificateAuthorityDAL,
       certificateAuthorityService,
       certificateAlertEventEmitter,
       approvalPolicyService,
@@ -595,7 +597,7 @@ describe("certificate revocation behind an approval policy", () => {
       ]);
     });
 
-    it("records that the certificate is still active when the certificate authority refuses", async () => {
+    it("names the CA and says the certificate is still active when the CA fails unexpectedly", async () => {
       const ctx = buildRevocationService();
       ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(new Error("AWS PCA timed out"));
 
@@ -611,23 +613,41 @@ describe("certificate revocation behind an approval policy", () => {
             approvalRequestId: "approval-request-1",
             requesterName: "Ada Lovelace",
             requesterEmail: "requester@example.com",
-            error: "An unexpected error stopped the revocation. The certificate is still active."
+            error:
+              "Revoking the certificate at CA 'aws-pca' (AWS Private CA) failed with an unexpected error. The certificate is still active."
           }) as unknown
         })
       ]);
     });
 
-    it("passes on why the revocation was refused and that the certificate is still active", async () => {
-      const ctx = buildRevocationService();
+    it("passes on the CA's own message as a complete sentence", async () => {
+      const adcsCa = { ...externalCa, name: "corp-adcs", externalCa: { id: "external-ca-2", type: CaType.ADCS } };
+      const ctx = buildRevocationService({ ca: adcsCa });
+      // The message the ADCS connection throws when its gateway can't be reached, verbatim: no trailing period.
       ctx.certificateAuthorityService.revokeCertificate.mockRejectedValue(
-        new BadRequestError({ message: "The CA doesn't accept this revocation reason." })
+        new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" })
       );
 
       await ctx.service.revokeApprovedCertificate(approvedRevocation);
 
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
         approvedRevocation,
-        "The CA doesn't accept this revocation reason. The certificate is still active."
+        "Revoking the certificate at CA 'corp-adcs' (Microsoft ADCS) failed: Unable to connect to gateway, no platform connection details found. The certificate is still active."
+      );
+    });
+
+    it("doesn't blame the CA for a failure before Infisical called it", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateAuthorityDAL.findByIdWithAssociatedCa.mockRejectedValueOnce(
+        new Error("Connection terminated unexpectedly")
+      );
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        "An unexpected error stopped the revocation. The certificate is still active."
       );
     });
 
@@ -640,7 +660,7 @@ describe("certificate revocation behind an approval policy", () => {
 
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
         approvedRevocation,
-        "An unexpected error stopped the revocation."
+        "Revoking the certificate at CA 'aws-pca' (AWS Private CA) failed with an unexpected error."
       );
     });
 
@@ -653,7 +673,7 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledTimes(1);
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
         approvedRevocation,
-        expect.stringMatching(/unexpected error stopped the revocation/)
+        expect.stringMatching(/^Revoking the certificate at CA 'aws-pca' \(AWS Private CA\) failed/)
       );
     });
 
