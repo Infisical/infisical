@@ -1,21 +1,21 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-
 import {
   FilterBar,
   type FilterBarField,
   type FilterBarFilter
-} from "@app/components/v4/patterns/filter-bar";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/patterns/filter-bar";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import {
   ApprovalRequestStatus,

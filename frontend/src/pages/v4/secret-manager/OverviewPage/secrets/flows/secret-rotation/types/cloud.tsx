@@ -1,20 +1,20 @@
 import { type ComponentProps, useEffect, useState } from "react";
 import { Controller, useFieldArray, useWatch } from "react-hook-form";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Code } from "@infisical/cipher/ui/code";
+import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
+import { FieldError, FieldLegend, FieldSet } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { Code } from "@app/components/v4/ui/code";
-import { Combobox, type ComboboxOption } from "@app/components/v4/ui/combobox";
-import { FieldError, FieldLegend, FieldSet } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v4/ui/tabs";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import type { TCloudflarePermissionGroup } from "@app/hooks/api/appConnections/cloudflare/types";
 
 import { useV4Adapter } from "../../../../../../data/adapters";

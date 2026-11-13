@@ -1,4 +1,25 @@
 import { type ReactNode, useRef, useState } from "react";
+import { Count } from "@infisical/cipher/ui/badge";
+import { Breadcrumb } from "@infisical/cipher/ui/breadcrumb";
+import { Button } from "@infisical/cipher/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Popover, PopoverAnchor, PopoverContent } from "@infisical/cipher/ui/popover";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { TableCell, TableRow } from "@infisical/cipher/ui/table";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import {
   BellIcon,
   ClipboardPasteIcon,
@@ -14,27 +35,6 @@ import {
 } from "lucide-react";
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
-import { Count } from "@app/components/v4/ui/badge";
-import { Breadcrumb } from "@app/components/v4/ui/breadcrumb";
-import { Button } from "@app/components/v4/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v4/ui/popover";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { TableCell, TableRow } from "@app/components/v4/ui/table";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { ResourceKind, Secret } from "../secrets-model";
 import { KindIcon, NEXT_PHASE } from "./overview-cells";

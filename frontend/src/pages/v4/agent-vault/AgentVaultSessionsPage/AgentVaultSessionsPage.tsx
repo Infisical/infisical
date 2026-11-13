@@ -1,39 +1,39 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { format, formatDistanceToNowStrict } from "date-fns";
-
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
+} from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyState,
   EmptyTitle
-} from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Pagination } from "@app/components/v4/ui/pagination";
+} from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
-import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { format, formatDistanceToNowStrict } from "date-fns";
+
 import {
   getUserTablePreference,
   PreferenceKey,

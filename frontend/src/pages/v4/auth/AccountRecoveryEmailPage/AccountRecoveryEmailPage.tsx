@@ -1,12 +1,12 @@
 import { type FormEvent, useRef, useState } from "react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { useV4Scheme } from "@infisical/cipher/scope";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { Link } from "@tanstack/react-router";
 
-import { useV4Scheme } from "@app/components/v4/scope";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
 import { envConfig } from "@app/config/env";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";

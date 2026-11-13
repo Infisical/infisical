@@ -1,7 +1,6 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { CodeBlock } from "@app/components/v4/ui/code-block";
+import { Button } from "@infisical/cipher/ui/button";
+import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +8,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/dialog";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+
 import type { KmipClientCertificate } from "@app/hooks/api/kmip/types";
 
 const download = (value: string, filename: string) => {

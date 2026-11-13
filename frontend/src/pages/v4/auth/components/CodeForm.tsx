@@ -1,9 +1,8 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@app/components/v4/ui/input-otp";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@infisical/cipher/ui/input-otp";
+import { Stack } from "@infisical/cipher/ui/layout";
 
 type Props = {
   label: string;

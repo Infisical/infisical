@@ -1,6 +1,6 @@
+import type { SidebarLevel } from "@infisical/cipher/ui/sidebar";
 import { type LinkOptions, Outlet, useRouterState } from "@tanstack/react-router";
 
-import type { SidebarLevel } from "@app/components/v4/ui/sidebar";
 import { toV3Href } from "@app/helpers/v4Bridge";
 
 import { v4Path } from "../links";

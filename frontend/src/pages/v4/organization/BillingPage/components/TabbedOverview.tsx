@@ -1,4 +1,13 @@
 import { type ReactNode, useState } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Heading } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import {
   getSelfHostedLicenseState,
@@ -12,15 +21,6 @@ import {
   SecretsManagementUpgradeIntent,
   type UpgradeIntent
 } from "@app/components/license/UpgradeGate/upgrade-intents";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Heading } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import type {
   BillingBreakdownScopeKind,
   BillingCatalogProduct,

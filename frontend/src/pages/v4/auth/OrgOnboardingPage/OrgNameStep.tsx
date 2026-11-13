@@ -1,12 +1,12 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
 import { useCreateOrg } from "@app/hooks/api";
 import { submitSignupOnboarding, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";

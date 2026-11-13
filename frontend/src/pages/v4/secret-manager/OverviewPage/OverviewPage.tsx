@@ -7,17 +7,6 @@ import {
   useRef,
   useState
 } from "react";
-import { replaceEqualDeep } from "@tanstack/react-query";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { isAxiosError } from "axios";
-import {
-  ChevronsDownUpIcon,
-  ChevronsUpDownIcon,
-  EyeIcon,
-  EyeOffIcon,
-  GitCommitIcon
-} from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,9 +16,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +26,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
+} from "@infisical/cipher/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,14 +39,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import {
   Table,
   TableActionsHead,
@@ -67,8 +56,19 @@ import {
   TableHeadButton,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/table";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { replaceEqualDeep } from "@tanstack/react-query";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { isAxiosError } from "axios";
+import {
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
+  EyeIcon,
+  EyeOffIcon,
+  GitCommitIcon
+} from "lucide-react";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,

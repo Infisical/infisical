@@ -1,6 +1,18 @@
 /* eslint-disable react/no-array-index-key -- Couchbase bucket collections do not carry stable IDs. */
 import type { ReactNode } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLegend,
+  FieldSet
+} from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Switch } from "@infisical/cipher/ui/switch";
 
 import {
   couchbaseCreateFormSchema,
@@ -12,18 +24,6 @@ import {
   type TCouchbaseCreateValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/couchbaseContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLegend,
-  FieldSet
-} from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Switch } from "@app/components/v4/ui/switch";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import {

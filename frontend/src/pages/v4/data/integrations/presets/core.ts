@@ -1,10 +1,6 @@
 import type { FieldValues } from "react-hook-form";
 import { z } from "zod";
 
-import type {
-  AppConnectionFieldPreset,
-  AppConnectionPreset
-} from "@app/components/v4/patterns/app-connection-form";
 import {
   APP_CONNECTION_MAP,
   buildGitHubAppUrl,
@@ -27,6 +23,10 @@ import {
   gitLabConnectionFormSchema,
   postgresConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
+import type {
+  AppConnectionFieldPreset,
+  AppConnectionPreset
+} from "@app/pages/v4/components/app-connection-form";
 
 import { methodLabel } from "./shared";
 

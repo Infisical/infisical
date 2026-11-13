@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { formatDistanceToNowStrict } from "date-fns";
-
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,23 +9,23 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { RowLink } from "@app/components/v4/ui/row-link";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
 import {
   Sheet,
   SheetBody,
@@ -38,10 +35,13 @@ import {
   SheetHeader,
   SheetSubheader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+import { formatDistanceToNowStrict } from "date-fns";
+
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub

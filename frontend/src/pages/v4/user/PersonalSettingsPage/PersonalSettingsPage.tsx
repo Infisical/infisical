@@ -1,11 +1,11 @@
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 
 import { v4Path } from "../../links";
 import { AuthenticationTab } from "./AuthenticationTab";

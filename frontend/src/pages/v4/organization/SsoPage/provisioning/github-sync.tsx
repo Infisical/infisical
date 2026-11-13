@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-import { GithubSyncUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,10 +10,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { Detail, DetailLabel, DetailValue } from "@app/components/v4/ui/detail";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Detail, DetailLabel, DetailValue } from "@infisical/cipher/ui/detail";
 import {
   Dialog,
   DialogClose,
@@ -25,14 +22,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { toast as v4Toast } from "@app/components/v4/ui/sonner";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText, Text } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { toast as v4Toast } from "@infisical/cipher/ui/sonner";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
+import { z } from "zod";
+
+import { GithubSyncUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects

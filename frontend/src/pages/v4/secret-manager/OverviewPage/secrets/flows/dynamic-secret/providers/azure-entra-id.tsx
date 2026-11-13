@@ -1,4 +1,8 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 
 import {
   azureEntraIdCreateFormSchema,
@@ -10,10 +14,6 @@ import {
   TAzureEntraIdCreateValues,
   TAzureEntraIdEditValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/azureEntraIdContract";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { useV4Adapter } from "../../../../../../data/adapters";

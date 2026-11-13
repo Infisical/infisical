@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { ProgressSteps } from "@infisical/cipher/ui/progress";
+import { Toaster } from "@infisical/cipher/ui/sonner";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
@@ -7,9 +10,6 @@ import {
   getSignupTrialIntent,
   getSignupTrialProjectType
 } from "@app/components/auth/signupTrialIntent";
-import { Loader } from "@app/components/v4/ui/loader";
-import { ProgressSteps } from "@app/components/v4/ui/progress";
-import { Toaster } from "@app/components/v4/ui/sonner";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";

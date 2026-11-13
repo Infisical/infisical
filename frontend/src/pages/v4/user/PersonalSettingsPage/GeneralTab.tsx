@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useRouteContext } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
-import { z } from "zod";
-
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,17 +9,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { toast } from "@app/components/v4/ui/sonner";
-import { Meta } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { toast } from "@infisical/cipher/ui/sonner";
+import { Meta } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useNavigate, useRouteContext } from "@tanstack/react-router";
+import { LogOut } from "lucide-react";
+import { z } from "zod";
+
 import type { TokenVersion } from "@app/hooks/api/users/types";
 import { timeAgo } from "@app/lib/fn/date";
 import { formatSessionUserAgent } from "@app/lib/fn/string";

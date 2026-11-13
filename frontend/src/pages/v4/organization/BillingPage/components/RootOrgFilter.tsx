@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 
-import { Combobox } from "@app/components/v4/ui/combobox";
 import type { BillingOrganization } from "@app/hooks/api/billing/types";
 
 // Not a real organization, so it never collides with one and the page keys its scope off it.

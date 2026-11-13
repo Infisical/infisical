@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 
 import {
   getSelfHostedLicenseState,
@@ -12,10 +16,6 @@ import {
   type UpgradeIntent
 } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects

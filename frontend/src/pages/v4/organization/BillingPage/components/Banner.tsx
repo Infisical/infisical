@@ -1,6 +1,7 @@
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Inline } from "@app/components/v4/ui/layout";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Inline } from "@infisical/cipher/ui/layout";
+
 import type { BillingOverview } from "@app/hooks/api/billing/types";
 
 import type { BillingMode, BillingRenderState } from "../billing-view-types";

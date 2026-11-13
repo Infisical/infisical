@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
+import { V4Scope } from "@infisical/cipher/scope";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { V4Scope } from "@app/components/v4/scope";
 import type { TBrandingConfig } from "@app/hooks/api/secretSharing/types";
 
 import { brandTheme, DEFAULT_PRIMARY, DEFAULT_SECONDARY } from "./shared";

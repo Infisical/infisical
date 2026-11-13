@@ -45,8 +45,8 @@ jobs:
       - name: 🏗️ Run Type check
         run: npm run type:check
         working-directory: frontend
-      - name: 🧩 Check v4 generated docs
-        run: npm run ui:check
+      - name: 🧩 Check the v4 boot block
+        run: npm run v4:boot -- --check
         working-directory: frontend
       - name: 🧪 Run unit tests
         run: npm test
@@ -103,7 +103,7 @@ jobs:
         run: npm ci
         working-directory: frontend
       - name: 🧱 Build and check that main's bundle does not load v4
-        run: npm run ui:generate && npx vite build
+        run: npx vite build
         working-directory: frontend
 
   react-doctor:

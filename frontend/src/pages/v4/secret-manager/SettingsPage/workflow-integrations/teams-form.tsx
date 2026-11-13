@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { Field } from "@infisical/cipher/ui/field";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
 
-import { Field } from "@app/components/v4/ui/field";
-import { Stack } from "@app/components/v4/ui/layout";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
 import {
   type MicrosoftTeamsIntegration,
   WorkflowIntegrationPlatform

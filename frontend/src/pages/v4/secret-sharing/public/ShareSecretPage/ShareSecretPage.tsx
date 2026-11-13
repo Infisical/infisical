@@ -1,6 +1,6 @@
 import { useId } from "react";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 
-import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { useServerConfig } from "@app/context";
 
 import { AuthPage } from "../../../auth/components/AuthPage";

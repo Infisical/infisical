@@ -6,8 +6,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 
 import { useProjectScope } from "../../../access/project/scope";

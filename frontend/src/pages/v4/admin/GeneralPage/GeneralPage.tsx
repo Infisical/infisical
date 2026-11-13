@@ -1,16 +1,16 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Select } from "@infisical/cipher/ui/select";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
 
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Select } from "@app/components/v4/ui/select";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import { isStorageHostname } from "@app/helpers/appConnections";
 import { downloadFile } from "@app/helpers/download";
 import { allowedEmailDomainsSchema } from "@app/helpers/email";

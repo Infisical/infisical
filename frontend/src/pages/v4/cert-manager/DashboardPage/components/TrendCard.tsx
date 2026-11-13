@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-
-import { Card } from "@app/components/v4/ui/card";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
@@ -9,12 +7,13 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent
-} from "@app/components/v4/ui/chart";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { SmallText } from "@app/components/v4/ui/text";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
+} from "@infisical/cipher/ui/chart";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import { formatTickLabel, ranges } from "./dashboard.utils";
 

@@ -1,9 +1,9 @@
 import { type ReactNode, useRef } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Heading, Text } from "@infisical/cipher/ui/text";
 import { Link } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { Button } from "@app/components/v4/ui/button";
-import { Heading, Text } from "@app/components/v4/ui/text";
 
 import { v4Path } from "../../links";
 import { AuthCellField } from "./AuthCellField";

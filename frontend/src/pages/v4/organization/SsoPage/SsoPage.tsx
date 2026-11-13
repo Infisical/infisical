@@ -1,10 +1,9 @@
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { Navigate, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";

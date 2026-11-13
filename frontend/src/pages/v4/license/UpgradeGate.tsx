@@ -1,4 +1,19 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@infisical/cipher/ui/dialog";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { TooltipText } from "@infisical/cipher/ui/tooltip";
 import { useRouterState } from "@tanstack/react-router";
 
 import {
@@ -22,21 +37,6 @@ import {
   UpgradeFeature,
   type UpgradeIntent
 } from "@app/components/license/UpgradeGate/upgrade-intents";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText } from "@app/components/v4/ui/text";
-import { TooltipText } from "@app/components/v4/ui/tooltip";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects

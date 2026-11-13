@@ -7,7 +7,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
+} from "@infisical/cipher/ui/alert-dialog";
+
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 import { useV4Adapter } from "../../data/adapters";

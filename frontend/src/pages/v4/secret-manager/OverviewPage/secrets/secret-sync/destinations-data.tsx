@@ -1,7 +1,7 @@
 import { Controller, useWatch } from "react-hook-form";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
 import { ZabbixMacroType, ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 

@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { InfoIcon, MailIcon, UserCogIcon, UsersIcon } from "lucide-react";
-
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,25 +9,28 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack, Inline } from "@app/components/v4/ui/layout";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Select } from "@app/components/v4/ui/select";
-import { Separator } from "@app/components/v4/ui/separator";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack, Inline } from "@infisical/cipher/ui/layout";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Select } from "@infisical/cipher/ui/select";
+import { Separator } from "@infisical/cipher/ui/separator";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon, MailIcon, UserCogIcon, UsersIcon } from "lucide-react";
+
 import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects

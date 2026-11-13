@@ -1,23 +1,23 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
-import { useParams } from "@tanstack/react-router";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@app/components/v4/ui/card";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@infisical/cipher/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub

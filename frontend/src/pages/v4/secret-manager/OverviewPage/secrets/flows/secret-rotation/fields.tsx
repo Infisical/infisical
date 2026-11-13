@@ -1,11 +1,10 @@
 import { cloneElement, isValidElement, type ReactElement, type ReactNode, useId } from "react";
 import { Controller, type FieldValues, useFormContext, useWatch } from "react-hook-form";
-
-import { FieldMapping, FieldMappingRow } from "@app/components/v4/patterns/field-mapping";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { CodeBlock } from "@app/components/v4/ui/code-block";
-import { Combobox, type ComboboxOption } from "@app/components/v4/ui/combobox";
+import { FieldMapping, FieldMappingRow } from "@infisical/cipher/patterns/field-mapping";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { CodeBlock } from "@infisical/cipher/ui/code-block";
+import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import {
   Field,
   FieldDescription,
@@ -13,17 +12,17 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSet
-} from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { Select, type SelectOption } from "@app/components/v4/ui/select";
-import { CopyButton } from "@app/components/v4/ui/sensitive-editor";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Heading, SmallText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { Select, type SelectOption } from "@infisical/cipher/ui/select";
+import { CopyButton } from "@infisical/cipher/ui/sensitive-editor";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Heading, SmallText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import type { V4QueryResult } from "../../../../../data/contract";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "./schemas";
@@ -443,6 +442,7 @@ export function ReviewSection({
   label: string;
   items: (readonly [string, ReactNode])[];
 }) {
+  const none = <SmallText muted>None</SmallText>;
   return (
     <Stack gap={12}>
       <Heading level={3} size="subsection">
@@ -450,10 +450,7 @@ export function ReviewSection({
       </Heading>
       <DataList
         variant="meta"
-        items={items.map(([term, value]) => [
-          term,
-          present(value) ? value : <SmallText muted>None</SmallText>
-        ])}
+        items={items.map(([term, value]) => [term, present(value) ? value : none])}
       />
     </Stack>
   );

@@ -1,6 +1,6 @@
+import { Select } from "@infisical/cipher/ui/select";
 import { useLocation } from "@tanstack/react-router";
 
-import { Select } from "@app/components/v4/ui/select";
 import { isInfisicalCloud } from "@app/helpers/platform";
 
 import styles from "../auth.module.css";

@@ -1,21 +1,21 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { CopyButton, SecretValue } from "@infisical/cipher/ui/sensitive-editor";
+import { Spinner } from "@infisical/cipher/ui/spinner";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { z } from "zod";
 
 import {
   getDynamicSecretProviderRuntimeMetadata,
   type TDynamicSecretLeaseOutput
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { CopyButton, SecretValue } from "@app/components/v4/ui/sensitive-editor";
-import { Spinner } from "@app/components/v4/ui/spinner";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { toMs } from "./dynamic-secret-leases";

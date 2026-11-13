@@ -1,7 +1,7 @@
-import { Alert } from "@app/components/v4/ui/alert";
-import { DialogDescription, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
-import { Stack } from "@app/components/v4/ui/layout";
-import { SmallText, Text } from "@app/components/v4/ui/text";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { DialogDescription, DialogHeader, DialogTitle } from "@infisical/cipher/ui/dialog";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
 
 import { tierLabel } from "../billing-format";
 import { daysLeftLabel, type DeprecatedEntry } from "./deprecation-data";

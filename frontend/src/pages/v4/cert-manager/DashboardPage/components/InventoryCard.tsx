@@ -1,11 +1,11 @@
+import { Card, CardLink } from "@infisical/cipher/ui/card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { Progress } from "@infisical/cipher/ui/progress";
+import { Heading } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 
-import { Card, CardLink } from "@app/components/v4/ui/card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { Progress } from "@app/components/v4/ui/progress";
-import { Heading } from "@app/components/v4/ui/text";
 import type { TDashboardStats } from "@app/hooks/api/certificates/types";
 
 import { v4Path } from "../../../links";

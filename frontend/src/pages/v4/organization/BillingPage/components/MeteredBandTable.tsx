@@ -1,5 +1,6 @@
-import { Badge } from "@app/components/v4/ui/badge";
-import { List, ListRow } from "@app/components/v4/ui/list";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+
 import type { BillingBands } from "@app/hooks/api/billing/types";
 
 import { bandRangeLabel, bandTableRate, pluralizeUnit } from "../billing-format";

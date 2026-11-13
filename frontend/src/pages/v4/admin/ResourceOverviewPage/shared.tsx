@@ -1,5 +1,4 @@
 import { type ReactNode, useEffect, useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,10 +8,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { Meta } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Meta } from "@infisical/cipher/ui/text";
+
 import {
   getUserTablePreference,
   PreferenceKey,

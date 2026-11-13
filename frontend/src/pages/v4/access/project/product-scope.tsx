@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import { EmptyState } from "@infisical/cipher/ui/empty";
 
-import { EmptyState } from "@app/components/v4/ui/empty";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {

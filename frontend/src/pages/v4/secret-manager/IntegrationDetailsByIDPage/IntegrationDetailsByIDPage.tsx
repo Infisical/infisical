@@ -1,27 +1,26 @@
 import { type ReactNode, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList, type DataListItem } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
-import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { Meta } from "@app/components/v4/ui/text";
-import { TooltipProvider } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList, type DataListItem } from "@infisical/cipher/ui/list";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Meta } from "@infisical/cipher/ui/text";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -32,6 +31,7 @@ import type { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
 import type { TOctopusDeployVariableSetScopeValues } from "@app/hooks/api/integrationAuth/types";
 import { OctopusDeployScope } from "@app/hooks/api/integrationAuth/types";
 import type { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { CopyButton, Dash } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";

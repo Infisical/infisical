@@ -1,7 +1,7 @@
+import type { IconName } from "@infisical/cipher/ui/icon";
 import { HashIcon, MailIcon } from "lucide-react";
 import { z } from "zod";
 
-import type { IconName } from "@app/components/v4/ui/icon";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,

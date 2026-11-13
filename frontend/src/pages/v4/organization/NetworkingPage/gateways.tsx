@@ -1,20 +1,20 @@
 import { useMemo, useState } from "react";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { HeartPulseIcon, PencilIcon } from "lucide-react";
 
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Tabs } from "@app/components/v4/ui/tabs";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionActions,

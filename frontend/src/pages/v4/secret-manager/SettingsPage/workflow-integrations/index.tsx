@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { PencilIcon } from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,22 +8,24 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Select } from "@app/components/v4/ui/select";
-import { Sheet } from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { StatusText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Select } from "@infisical/cipher/ui/select";
+import { Sheet } from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { PencilIcon } from "lucide-react";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSub

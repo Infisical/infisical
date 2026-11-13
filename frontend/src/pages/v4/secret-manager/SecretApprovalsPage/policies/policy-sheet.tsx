@@ -1,23 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import slugify from "@sindresorhus/slugify";
-import { isAxiosError } from "axios";
-import { GripVerticalIcon } from "lucide-react";
-
-import { useDiscardChangesGuard } from "@app/components/v4/hooks/use-discard-changes-guard";
-import { Alert } from "@app/components/v4/ui/alert";
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Field, FieldError } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { GlobPatternHelp, SecretPathInput } from "@app/components/v4/ui/secret-path-input";
-import { Select } from "@app/components/v4/ui/select";
-import { Separator } from "@app/components/v4/ui/separator";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field, FieldError } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { GlobPatternHelp, SecretPathInput } from "@infisical/cipher/ui/secret-path-input";
+import { Select } from "@infisical/cipher/ui/select";
+import { Separator } from "@infisical/cipher/ui/separator";
 import {
   Sheet,
   SheetBody,
@@ -26,9 +22,13 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import slugify from "@sindresorhus/slugify";
+import { isAxiosError } from "axios";
+import { GripVerticalIcon } from "lucide-react";
+
 import {
   ApproverType,
   BypasserType,

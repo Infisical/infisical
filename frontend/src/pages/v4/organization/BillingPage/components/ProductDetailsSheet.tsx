@@ -1,11 +1,4 @@
 import { type ReactNode, useState } from "react";
-
-import {
-  annualSavingsPercent,
-  getPlanFeatures,
-  getPlanPrice,
-  planSupportsCadence
-} from "@app/components/license/UpgradeGate/plan-catalog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,10 +8,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -27,10 +20,17 @@ import {
   SheetHeader,
   SheetSections,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Tabs } from "@app/components/v4/ui/tabs";
+} from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+
+import {
+  annualSavingsPercent,
+  getPlanFeatures,
+  getPlanPrice,
+  planSupportsCadence
+} from "@app/components/license/UpgradeGate/plan-catalog";
 import type {
   BillingCadence,
   BillingCatalogPlan,

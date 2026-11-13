@@ -1,4 +1,4 @@
-import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
 
 type Props = {
   acknowledged: boolean;

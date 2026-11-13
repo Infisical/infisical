@@ -1,13 +1,13 @@
 import {
-  type AppConnectionRedirect,
-  connectionCreation
-} from "@app/components/v4/patterns/app-connection-form";
-import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import type { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
+import {
+  type AppConnectionRedirect,
+  connectionCreation
+} from "@app/pages/v4/components/app-connection-form";
 
 import { useProjectPermission } from "../../../../access/permissions";
 import { errorMessage } from "../../../../access/toast";

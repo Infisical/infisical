@@ -1,5 +1,6 @@
-import { Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+
 import {
   OrgPermissionActions,
   OrgPermissionSubjects

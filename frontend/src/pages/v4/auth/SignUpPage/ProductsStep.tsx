@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { toast } from "@infisical/cipher/ui/sonner";
 
 import {
   EXPLORING_SELECTION,
@@ -7,11 +12,6 @@ import {
   SignupProductSelection,
   SignupProductType
 } from "@app/components/auth/signupProducts";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Icon } from "@app/components/v4/ui/icon";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { toast } from "@app/components/v4/ui/sonner";
 import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { ensureExampleSecrets, initProjectHelper } from "@app/helpers/project";

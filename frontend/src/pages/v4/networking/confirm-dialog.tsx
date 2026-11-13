@@ -7,7 +7,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
+} from "@infisical/cipher/ui/alert-dialog";
 
 export const ConfirmDialog = ({
   open,

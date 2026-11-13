@@ -1,8 +1,8 @@
 import type { Plugin } from "vite";
 
-const v4Module = /\/src\/(components|pages)\/v4\//;
+const v4Module = /\/src\/pages\/v4\/|\/node_modules\/@infisical\/cipher\//;
 const v4RouteDefinition = /\/src\/pages\/v4\/(?:.+\/)?route\.tsx$/;
-const v4Owner = /\/src\/(components\/v4|pages\/v4|pages\/design-system)\//;
+const v4Owner = /\/src\/pages\/v4\//;
 
 // main must not ship v4 before cutover: no v4 module may load with the entry or a v3 route.
 export const v4BundleFence = (): Plugin => ({
@@ -35,9 +35,7 @@ export const v4BundleFence = (): Plugin => ({
     });
     if (violations.length) {
       this.error(
-        `v4 code reached main's bundle. Only v4 routes and the design system may load it:\n${[
-          ...new Set(violations)
-        ]
+        `v4 code reached main's bundle. Only v4 routes may load it:\n${[...new Set(violations)]
           .slice(0, 20)
           .join("\n")}`
       );

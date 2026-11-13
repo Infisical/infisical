@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Stack } from "@infisical/cipher/ui/layout";
 import {
   SheetBody,
   SheetClose,
@@ -10,8 +9,9 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
+} from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
 import { orgHref, useGo } from "../../../links";

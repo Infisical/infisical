@@ -1,12 +1,9 @@
 import { useState } from "react";
-import { format } from "date-fns";
-import { HourglassIcon } from "lucide-react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { Spinner } from "@app/components/v4/ui/spinner";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Spinner } from "@infisical/cipher/ui/spinner";
 import {
   Table,
   TableBody,
@@ -14,8 +11,11 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/table";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { format } from "date-fns";
+import { HourglassIcon } from "lucide-react";
+
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 

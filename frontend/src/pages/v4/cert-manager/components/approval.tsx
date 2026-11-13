@@ -1,7 +1,7 @@
+import type { IconName } from "@infisical/cipher/ui/icon";
+import { StatusText } from "@infisical/cipher/ui/text";
 import { formatDistanceToNow } from "date-fns";
 
-import type { IconName } from "@app/components/v4/ui/icon";
-import { StatusText } from "@app/components/v4/ui/text";
 import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies/types";
 import {
   ApprovalRequestStatus,

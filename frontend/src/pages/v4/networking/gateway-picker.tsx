@@ -1,4 +1,5 @@
-import { Select } from "@app/components/v4/ui/select";
+import { Select } from "@infisical/cipher/ui/select";
+
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 import { useOrgId } from "../access/permissions";

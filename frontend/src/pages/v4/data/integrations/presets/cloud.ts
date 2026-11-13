@@ -1,10 +1,5 @@
 import type { FieldValues } from "react-hook-form";
 
-import type {
-  AppConnectionFieldPreset,
-  AppConnectionMethodPreset,
-  AppConnectionPreset
-} from "@app/components/v4/patterns/app-connection-form";
 import { APP_CONNECTION_MAP, getS3CompatibleProviderName } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AdcsConnectionMethod } from "@app/hooks/api/appConnections/types/adcs-connection";
@@ -45,6 +40,11 @@ import {
   salesforceConnectionFormSchema,
   stripeConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
+import type {
+  AppConnectionFieldPreset,
+  AppConnectionMethodPreset,
+  AppConnectionPreset
+} from "@app/pages/v4/components/app-connection-form";
 
 import { appStateSuffix } from "../connection-redirect";
 import { methodLabel, ROTATION_VALUES, rotationFields, withRotation } from "./shared";

@@ -1,8 +1,8 @@
+import { Badge } from "@infisical/cipher/ui/badge";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format } from "date-fns";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { StatusText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import type { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { getLastSeenHeartbeat, isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 

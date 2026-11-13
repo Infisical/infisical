@@ -1,6 +1,6 @@
+import type { IconName } from "@infisical/cipher/ui/icon";
 import { format } from "date-fns";
 
-import type { IconName } from "@app/components/v4/ui/icon";
 import type { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { DelegatedApprovalRequestStatus } from "@app/hooks/api/delegatedApprovals/enums";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";

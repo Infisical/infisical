@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { z } from "zod";
 
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
 import type { Project } from "@app/hooks/api/projects/types";
 
 import { saved } from "../../../access/toast";

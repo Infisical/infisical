@@ -1,7 +1,6 @@
+import { toast as v4Toast } from "@infisical/cipher/ui/sonner";
+import type { ToastItem } from "@infisical/cipher/ui/toast-stack";
 import { isAxiosError } from "axios";
-
-import { toast as v4Toast } from "@app/components/v4/ui/sonner";
-import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 
 const byTone = {
   ok: v4Toast.success,

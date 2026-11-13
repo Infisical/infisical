@@ -1,5 +1,6 @@
-import { StatusText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
 import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
 import type { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2/types";
 

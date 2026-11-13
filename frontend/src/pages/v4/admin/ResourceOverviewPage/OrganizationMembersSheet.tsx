@@ -1,26 +1,26 @@
 import { useMemo, useState } from "react";
-import { MailIcon, UserMinusIcon } from "lucide-react";
-
-import { Badge } from "@app/components/v4/ui/badge";
+import { Badge } from "@infisical/cipher/ui/badge";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRowActions
-} from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Pagination } from "@app/components/v4/ui/pagination";
+} from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Pagination } from "@infisical/cipher/ui/pagination";
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/sheet";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { MailIcon, UserMinusIcon } from "lucide-react";
+
 import { OrgMembershipRole } from "@app/helpers/roles";
 import type { OrganizationWithProjects } from "@app/hooks/api/admin/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";

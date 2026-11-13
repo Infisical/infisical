@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@infisical/cipher/ui/tabs";
 import { Infinity as InfinityIcon } from "lucide-react";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v4/ui/tabs";
 import type { BillingCatalogPlan, BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
 import { ProductIcon } from "./product-icon";

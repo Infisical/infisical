@@ -1,7 +1,8 @@
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { RowLink } from "@app/components/v4/ui/row-link";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import type { AppConnection } from "@app/hooks/api/appConnections/enums";
 

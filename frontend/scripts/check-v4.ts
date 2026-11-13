@@ -3,7 +3,7 @@ import path from "node:path";
 
 export type V4Check = {
   id: string;
-  /** The shared or component rule this check enforces. Generation requires the rule to name it. */
+  /** The Cipher rule this check enforces. */
   rule: string;
   message: string;
   appliesTo: (file: string) => boolean;
@@ -21,7 +21,6 @@ export type V4Check = {
   source?: (text: string) => readonly { index: number; text: string }[];
 };
 
-const isUi = (file: string) => file.startsWith("src/components/v4/");
 /**
  * Modules allowed to spell the /v4 prefix: the v4 link helpers and path registries. Moving v4 to
  * the root changes these, the route definitions and the resolver in src/helpers/v4Bridge.ts, which
@@ -32,17 +31,13 @@ const v4PathModules = [
   "src/pages/v4/auth/paths.ts",
   "src/pages/v4/access/links.ts",
   "src/pages/v4/liveReady.ts",
-  "src/pages/v4/resolveV4Href.ts",
-  "src/components/v4/lib/boot-theme-keys.ts"
+  "src/pages/v4/resolveV4Href.ts"
 ];
 const isRouteDefinition = (file: string) =>
   file.endsWith("/route.tsx") || file === "src/routes.ts" || file === "src/pages/v4/routes.ts";
-const pageScrollerFiles = ["src/components/v4/ui/top-bar.module.css"];
-const isExample = (file: string) =>
-  file.startsWith("src/pages/design-system/") || file.startsWith("src/pages/v4/");
 const isCss = (file: string) => file.endsWith(".css");
 const isMarkup = (file: string) => /\.tsx?$/.test(file);
-const isAuthored = (file: string) => isUi(file) || isExample(file);
+const isAuthored = (file: string) => file.startsWith("src/pages/v4/");
 
 const tailwindPalette =
   "black|white|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
@@ -499,7 +494,7 @@ export const tabWidthClasses = (text: string) => {
 };
 
 const isPage = (file: string) => file.startsWith("src/pages/v4/");
-const isComposition = (file: string) => isMarkup(file) && (isExample(file) || isPage(file));
+const isComposition = (file: string) => isMarkup(file) && isPage(file);
 
 const braceEnd = (text: string, open: number) => {
   let depth = 0;
@@ -754,8 +749,6 @@ export const v4Checks: readonly V4Check[] = [
   {
     id: "raw-color",
     rule: "token-colors",
-    // The hand-written theme bridge declares the token values themselves.
-    exempt: ["src/components/v4/v4.css"],
     message: "Colour comes from a v4 token, not a hex, rgb/hsl literal or Tailwind palette class.",
     appliesTo: isAuthored,
     css: [/#[0-9a-fA-F]{3,8}\b(?![-\w])/g, /\b(?:rgba?|hsla?)\(\s*\d/g],
@@ -862,76 +855,6 @@ export const v4Checks: readonly V4Check[] = [
     ]
   },
   {
-    id: "menu-row-margin",
-    rule: "menu-spacing-model",
-    message:
-      "Menu rows, labels and rules never set an outer margin. The panel pads every side by --v4-menu-pad and a separator draws its own full-width rule.",
-    appliesTo: (file) =>
-      [
-        "src/components/v4/ui/menu.module.css",
-        "src/components/v4/ui/picker.module.css",
-        "src/components/v4/ui/sidebar.module.css",
-        "src/components/v4/v4.css"
-      ].includes(file),
-    cssBlock: (selector, body) => {
-      const subject =
-        /(?:^|[\s>+~,])(?:\.(?:row|label|separator|themeRow|userRow)|\[cmdk-(?:item|separator|group-heading)\]|\.v4-switcher-(?:header|footer))(?=[\s:[.,{]|$)/;
-      const last = selector
-        .split(",")
-        .map(
-          (part) =>
-            part
-              .trim()
-              .split(/[\s>+~]+/)
-              .pop() ?? ""
-        )
-        .some((part) => subject.test(` ${part.replace(/::?[\w-]+(\([^)]*\))?/g, "")}`));
-      if (!last) return [];
-      return [...body.matchAll(/(?:^|;|\n)\s*(margin(?:-[\w-]+)?\s*:\s*[^;]+)/g)]
-        .map((match) => match[1].trim())
-        .filter((declaration) => !/:\s*0(?:px)?\s*$/.test(declaration));
-    }
-  },
-  {
-    id: "overlay-section-padding",
-    rule: "overlay-section-padding",
-    message:
-      "Dialog, AlertDialog and Sheet headers, bodies and footers pad every side by the one overlay pad. Use a single padding value.",
-    appliesTo: (file) => file === "src/components/v4/v4.css",
-    cssBlock: (selector, body) => {
-      if (!/(?:dialog|sheet)-(?:header|footer|body|content)/.test(selector)) return [];
-      return [...body.matchAll(/(?:^|;|\n)\s*(padding\s*:\s*([^;]+))/g)]
-        .filter((match) => match[2].trim().split(/\s+(?![^(]*\))/).length > 1)
-        .map((match) => match[1].trim());
-    }
-  },
-  {
-    id: "press-transform",
-    rule: "press-keeps-box",
-    message:
-      "Pressing never moves or resizes a control box. Put press feedback on the [data-press] label, not a transform, translate or scale on the control.",
-    appliesTo: (file) => isUi(file) && isCss(file),
-    cssBlock: (selector, body) => {
-      if (!/:active|\[aria-pressed|\[data-state="on"\]|\[data-pressed/.test(selector)) return [];
-      if (/\[data-press\]\s*$/.test(selector.split(",").pop() ?? "")) return [];
-      return [...body.matchAll(/(?:^|;|\n)\s*((?:transform|translate|scale)\s*:\s*[^;]+)/g)]
-        .map((match) => match[1].trim())
-        .filter((declaration) => !/:\s*none\s*$/.test(declaration));
-    }
-  },
-  {
-    id: "scroll-fade",
-    rule: "scroll-edge-fade",
-    message:
-      "A v4 component scroll container takes the shared edge fade: add data-scroll-fade (y, x or both) to the element that scrolls, or mark the rule with a reason. Page and inset scrollers never fade.",
-    appliesTo: (file) => isUi(file) && isCss(file),
-    exempt: pageScrollerFiles,
-    cssBlock: (_selector, body) =>
-      [...body.matchAll(/(?:^|;|\n)\s*(overflow(?:-[xy])?\s*:\s*(?:auto|scroll)[^;]*)/g)].map(
-        (match) => match[1].trim()
-      )
-  },
-  {
     id: "left-accent-bar",
     rule: "no-left-accent-bars",
     message:
@@ -986,12 +909,6 @@ export const v4Checks: readonly V4Check[] = [
     message:
       'Tabs and ToggleGroup size the list and its triggers together: width="full" stretches the track and every trigger to fill it, and the default width="content" fits both to the labels. Pass width instead of setting a width, flex or grow on the list, the track or a trigger, so a full-width track never holds content-width triggers.',
     appliesTo: isAuthored,
-    exempt: [
-      "src/components/v4/ui/tabs.tsx",
-      "src/components/v4/ui/navigation.module.css",
-      "src/components/v4/ui/toggle-group.tsx",
-      "src/components/v4/ui/controls.module.css"
-    ],
     cssBlock: tabWidthDeclarations,
     source: tabWidthClasses
   },
@@ -1117,7 +1034,7 @@ export const v4Checks: readonly V4Check[] = [
     rule: "toast-action-feedback",
     message:
       'Report an action result (copied, saved, deleted, moved, uploaded, failed) with a toast, never in a table or list status footer or a role="status" line. persistentStatus and footer hold state that must stay visible, such as Showing 5 of 120 after filter.',
-    appliesTo: (file) => isComposition(file) || file.startsWith("src/components/v4/patterns/"),
+    appliesTo: isComposition,
     source: actionFeedbackInStatus
   },
   {
@@ -1127,7 +1044,7 @@ export const v4Checks: readonly V4Check[] = [
       "Build v4 links through the v4 path helpers, not a literal /v4 path, so moving v4 to the root at launch changes one module. Route definitions and the modules in v4PathModules may spell the prefix.",
     appliesTo: (file) =>
       isMarkup(file) &&
-      (isUi(file) || file.startsWith("src/pages/v4/")) &&
+      file.startsWith("src/pages/v4/") &&
       !isRouteDefinition(file) &&
       !v4PathModules.includes(file),
     markup: [
@@ -1153,13 +1070,7 @@ const patternsFor = (check: V4Check, file: string): readonly RegExp[] => {
 
 const ignoreMarker = /v4-check-ignore\s+([\w-]+)\s+--\s+\S/;
 
-const skipped = (file: string) =>
-  file.endsWith(".test.ts") ||
-  file.endsWith(".test.tsx") ||
-  file.startsWith("src/components/v4/docs/") ||
-  file === "src/components/v4/tokens.generated.css" ||
-  file === "src/components/v4/catalog.ts" ||
-  file === "src/components/v4/ui/icon-data.ts";
+const skipped = (file: string) => file.endsWith(".test.ts") || file.endsWith(".test.tsx");
 
 export type Finding = { check: string; file: string; line: number; text: string };
 
@@ -1224,7 +1135,7 @@ export const scanSource = (file: string, text: string): Finding[] => {
 };
 
 const root = path.resolve(import.meta.dirname, "..");
-const scanRoots = ["src/components/v4", "src/pages/design-system", "src/pages/v4"];
+const scanRoots = ["src/pages/v4"];
 const baselinePath = path.join(root, "scripts/check-v4-baseline.json");
 
 const walk = (dir: string): string[] =>

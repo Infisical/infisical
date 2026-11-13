@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
+import { useV4Scheme } from "@infisical/cipher/scope";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
 import { Mail } from "lucide-react";
 
-import { useV4Scheme } from "@app/components/v4/scope";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { providerIconPath } from "@app/components/v4/ui/provider-icon";
+import { providerIconPath } from "@app/pages/v4/components/provider-icon";
 
 import styles from "../auth.module.css";
 

@@ -1,6 +1,6 @@
-import type { AppConnectionPreset } from "@app/components/v4/patterns/app-connection-form";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
+import type { AppConnectionPreset } from "@app/pages/v4/components/app-connection-form";
 
 import { CLOUD_PRESETS } from "./presets/cloud";
 import { CORE_PRESETS } from "./presets/core";

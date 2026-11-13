@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { z } from "zod";
-
-import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
-import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,13 +10,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { toast } from "@app/components/v4/ui/sonner";
-import { Text } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { toast } from "@infisical/cipher/ui/sonner";
+import { Text } from "@infisical/cipher/ui/text";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { z } from "zod";
+
+import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
+import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import { useServerConfig } from "@app/context";
 import {
   useEnableEmailAuthAccountRecovery,

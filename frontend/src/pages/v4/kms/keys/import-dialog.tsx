@@ -1,15 +1,13 @@
 import { useRef, useState } from "react";
-import slugify from "@sindresorhus/slugify";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { CodeBlock } from "@app/components/v4/ui/code-block";
+} from "@infisical/cipher/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import {
   Dialog,
   DialogContent,
@@ -17,10 +15,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/dialog";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
   Table,
   TableBody,
@@ -28,8 +26,10 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/table";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import slugify from "@sindresorhus/slugify";
+
 import {
   AsymmetricKeyAlgorithm,
   HmacAlgorithm,

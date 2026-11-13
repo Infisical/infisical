@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@infisical/cipher/ui/button";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Toaster, toast } from "@infisical/cipher/ui/sonner";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
-import { Button } from "@app/components/v4/ui/button";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Toaster, toast } from "@app/components/v4/ui/sonner";
 import { useServerConfig } from "@app/context";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { useSetupPassword } from "@app/hooks/api/auth/queries";

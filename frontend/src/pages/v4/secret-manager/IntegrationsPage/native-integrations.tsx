@@ -1,25 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { RowLink } from "@app/components/v4/ui/row-link";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { NATIVE_INTEGRATION_DEPRECATION_DATE } from "@app/const/nativeIntegrationDeprecation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import type { TIntegration } from "@app/hooks/api/integrations/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../access/ui";

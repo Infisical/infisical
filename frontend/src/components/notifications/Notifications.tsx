@@ -11,7 +11,7 @@ import { useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { isV4Href } from "@app/helpers/v4Bridge";
 import { useTimedReset } from "@app/hooks";
 
-// The v4 Toaster's id (V4_TOASTER_ID in components/v4/ui/sonner.tsx), which main code may not import.
+// The v4 Toaster's id (V4_TOASTER_ID in @infisical/cipher/ui/sonner), which main code may not import.
 const V4_TOASTER_ID = "infisical-v4";
 
 export type NotificationType = "success" | "error" | "info" | "warning" | "loading" | "default";

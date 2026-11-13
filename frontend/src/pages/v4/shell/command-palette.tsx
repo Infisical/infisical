@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-
-import { v4Themes } from "@app/components/v4/lib/theme-registry";
+import { v4Themes } from "@infisical/cipher/lib/theme-registry";
 import {
   CommandMenu,
   type CommandMenuGroup,
   type CommandMenuItem
-} from "@app/components/v4/ui/command-menu";
+} from "@infisical/cipher/ui/command-menu";
+import { useNavigate } from "@tanstack/react-router";
+
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../data/adapters";

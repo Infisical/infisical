@@ -1,6 +1,5 @@
+import { Button } from "@infisical/cipher/ui/button";
 import { Link } from "@tanstack/react-router";
-
-import { Button } from "@app/components/v4/ui/button";
 
 import { v4Path } from "../../links";
 import { AuthPage } from "../components/AuthPage";

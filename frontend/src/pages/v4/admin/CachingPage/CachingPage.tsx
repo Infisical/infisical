@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,12 +8,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Spinner } from "@app/components/v4/ui/spinner";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Spinner } from "@infisical/cipher/ui/spinner";
+
 import { CacheType } from "@app/hooks/api/admin/types";
 
 import { saved } from "../../access/toast";

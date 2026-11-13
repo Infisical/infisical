@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { useV4Scheme } from "@infisical/cipher/scope";
+import { Button } from "@infisical/cipher/ui/button";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Text } from "@infisical/cipher/ui/text";
 import { Link } from "@tanstack/react-router";
 import axios from "axios";
 
 import { waitForMinimumAuthVerificationLoading } from "@app/components/auth/authTiming";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { useV4Scheme } from "@app/components/v4/scope";
-import { Button } from "@app/components/v4/ui/button";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Text } from "@app/components/v4/ui/text";
 import { envConfig } from "@app/config/env";
 import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 

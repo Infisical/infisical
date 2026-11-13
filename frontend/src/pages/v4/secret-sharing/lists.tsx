@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { format } from "date-fns";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,10 +8,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
   Dialog,
   DialogClose,
@@ -21,13 +19,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
-import { SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/dialog";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { SecretValue } from "@infisical/cipher/ui/sensitive-editor";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { format } from "date-fns";
+
 import { SecretSharingAccessType, type TSharedSecret } from "@app/hooks/api/secretSharing/types";
 
 import { failed, toast } from "../access/toast";

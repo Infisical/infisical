@@ -1,7 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-
-import { connectionCreation } from "@app/components/v4/patterns/app-connection-form";
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,18 +9,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Code } from "@app/components/v4/ui/code";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Switch } from "@app/components/v4/ui/switch";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Code } from "@infisical/cipher/ui/code";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Switch } from "@infisical/cipher/ui/switch";
+
 import {
   canTurnOnAgentVaultSessionLogs,
   getAgentVaultSessionLogRetentionDays,
@@ -45,6 +44,7 @@ import {
   toStorage,
   type TSessionLogFormValues
 } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogModal.utils";
+import { connectionCreation } from "@app/pages/v4/components/app-connection-form";
 
 import { useProjectScope } from "../../../access/project/scope";
 import { saved } from "../../../access/toast";

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
 
 import { useV4Adapter } from "../../../data/adapters";
 

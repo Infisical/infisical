@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { useV4Scheme } from "@infisical/cipher/scope";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { toast } from "@infisical/cipher/ui/sonner";
 import { Link } from "@tanstack/react-router";
 
-import { useV4Scheme } from "@app/components/v4/scope";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { toast } from "@app/components/v4/ui/sonner";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { isValidEmail } from "@app/helpers/email";

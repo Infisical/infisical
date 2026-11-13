@@ -1,9 +1,5 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
-import { PencilIcon } from "lucide-react";
-
-import { AuditLogStreamsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,19 +9,23 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { format } from "date-fns";
+import { PencilIcon } from "lucide-react";
+
+import { AuditLogStreamsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects

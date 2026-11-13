@@ -1,5 +1,6 @@
-import { Stack } from "@app/components/v4/ui/layout";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretValidationRuleActions,

@@ -1,12 +1,12 @@
 import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Field } from "@infisical/cipher/ui/field";
+import { Select } from "@infisical/cipher/ui/select";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { InstanceHsmUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Field } from "@app/components/v4/ui/field";
-import { Select } from "@app/components/v4/ui/select";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { RootKeyEncryptionStrategy } from "@app/hooks/api/admin/types";
 
 import { failed, saved } from "../../access/toast";

@@ -1,4 +1,5 @@
-import { MultiSelect, type MultiSelectOption } from "@app/components/v4/ui/multi-select";
+import { MultiSelect, type MultiSelectOption } from "@infisical/cipher/ui/multi-select";
+
 import { getMemberLabel } from "@app/helpers/members";
 import type { TGroupMembership } from "@app/hooks/api/groups/types";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";

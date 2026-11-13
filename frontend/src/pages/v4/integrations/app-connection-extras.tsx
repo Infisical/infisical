@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
-
-import type { AppConnectionPreset } from "@app/components/v4/patterns/app-connection-form";
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,12 +9,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Field, FieldDescription, FieldLegend, FieldSet } from "@app/components/v4/ui/field";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { Snippet } from "@app/components/v4/ui/snippet";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Field, FieldDescription, FieldLegend, FieldSet } from "@infisical/cipher/ui/field";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { Snippet } from "@infisical/cipher/ui/snippet";
+
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DatabricksConnectionScope } from "@app/hooks/api/appConnections/types/databricks-connection";
+import type { AppConnectionPreset } from "@app/pages/v4/components/app-connection-form";
 
 import { useOrgId } from "../access/permissions";
 import { useV4Adapter } from "../data/adapters";

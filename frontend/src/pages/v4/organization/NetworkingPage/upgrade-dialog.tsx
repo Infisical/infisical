@@ -1,5 +1,3 @@
-import { useParams } from "@tanstack/react-router";
-
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -8,8 +6,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { useParams } from "@tanstack/react-router";
 
 import { orgHref, v4Path } from "../../links";
 

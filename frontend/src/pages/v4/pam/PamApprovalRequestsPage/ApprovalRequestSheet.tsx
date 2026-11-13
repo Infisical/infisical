@@ -1,12 +1,11 @@
 import { useState } from "react";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Alert } from "@app/components/v4/ui/alert";
+} from "@infisical/cipher/ui/accordion";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,17 +15,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Detail,
   DetailGroup,
   DetailGroupHeader,
   DetailLabel,
   DetailValue
-} from "@app/components/v4/ui/detail";
-import { Field } from "@app/components/v4/ui/field";
-import { Stack } from "@app/components/v4/ui/layout";
+} from "@infisical/cipher/ui/detail";
+import { Field } from "@infisical/cipher/ui/field";
+import { Stack } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -35,9 +34,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { SmallText, StatusText } from "@app/components/v4/ui/text";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/sheet";
+import { SmallText, StatusText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+
 import type { TAutoApprovalOutcome } from "@app/hooks/api/approvalPolicies";
 import {
   PamAccessRequestDecision,

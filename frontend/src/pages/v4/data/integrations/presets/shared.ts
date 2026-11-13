@@ -2,9 +2,9 @@ import type { FieldValues } from "react-hook-form";
 import { format, setHours, setMinutes } from "date-fns";
 import { z, type ZodTypeAny } from "zod";
 
-import type { AppConnectionFieldPreset } from "@app/components/v4/patterns/app-connection-form";
 import { getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
+import type { AppConnectionFieldPreset } from "@app/pages/v4/components/app-connection-form";
 
 export const methodLabel = (method: Parameters<typeof getAppConnectionMethodDetails>[0]) =>
   getAppConnectionMethodDetails(method).name;

@@ -1,16 +1,16 @@
 import { useEffect } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@infisical/cipher/ui/button";
+import { FieldError } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { z } from "zod";
 
-import { Button } from "@app/components/v4/ui/button";
-import { FieldError } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects

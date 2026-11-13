@@ -8,14 +8,7 @@ import {
   useWatch
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import slugify from "@sindresorhus/slugify";
-import { ArrowRightIcon } from "lucide-react";
-
-import {
-  getSecretSyncDestinationConfig,
-  SecretSyncFormSchema
-} from "@app/components/secret-syncs/forms/schemas";
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,18 +18,25 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { FieldError } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Tile } from "@app/components/v4/ui/item";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { RadioGroup, RadioGroupItem } from "@app/components/v4/ui/radio-group";
-import { Switch } from "@app/components/v4/ui/switch";
-import { SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FieldError } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Tile } from "@infisical/cipher/ui/item";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import slugify from "@sindresorhus/slugify";
+import { ArrowRightIcon } from "lucide-react";
+
+import {
+  getSecretSyncDestinationConfig,
+  SecretSyncFormSchema
+} from "@app/components/secret-syncs/forms/schemas";
 import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub

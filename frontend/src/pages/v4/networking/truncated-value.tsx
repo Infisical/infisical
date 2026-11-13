@@ -1,6 +1,6 @@
-import { Inline } from "@app/components/v4/ui/layout";
-import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { CopyButton } from "../access/org/detail-parts";
 

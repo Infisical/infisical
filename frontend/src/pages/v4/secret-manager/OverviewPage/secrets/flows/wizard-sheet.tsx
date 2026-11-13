@@ -1,8 +1,7 @@
 import { type ReactNode, useState } from "react";
-
-import { useV4Scheme } from "@app/components/v4/scope";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Steps } from "@app/components/v4/ui/multi-step";
+import { useV4Scheme } from "@infisical/cipher/scope";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Steps } from "@infisical/cipher/ui/multi-step";
 import {
   Sheet,
   SheetBody,
@@ -11,7 +10,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
 
 import styles from "./flows.module.css";
 

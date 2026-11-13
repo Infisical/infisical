@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Controller, type FieldValues, useWatch } from "react-hook-form";
+import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
 import axios, { HttpStatusCode } from "axios";
 
-import { Combobox, type ComboboxOption } from "@app/components/v4/ui/combobox";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
 import { useDebounce } from "@app/hooks";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
@@ -629,13 +629,14 @@ export const GIT_SYNC_VIEWS: Record<
     defaults: {
       destinationConfig: { workspaceSlug: "", repositorySlug: "", environmentId: "" }
     },
-    destinationReview: (config) => [
-      ["Workspace", config.workspaceSlug],
-      ["Repository", config.repositorySlug],
-      ...(config.environmentId
-        ? [["Deployment environment", <BitbucketEnvironmentName config={config} />] as const]
-        : [])
-    ]
+    destinationReview: (config) => {
+      const environment = <BitbucketEnvironmentName config={config} />;
+      return [
+        ["Workspace", config.workspaceSlug],
+        ["Repository", config.repositorySlug],
+        ...(config.environmentId ? [["Deployment environment", environment] as const] : [])
+      ];
+    }
   },
   [SecretSync.CircleCI]: {
     Destination: CircleCIDestination,
@@ -656,11 +657,13 @@ export const GIT_SYNC_VIEWS: Record<
   [SecretSync.TeamCity]: {
     Destination: TeamCityDestination,
     defaults: { destinationConfig: { project: "", buildConfig: "" } },
-    destinationReview: (config) => [
-      ["Project", <TeamCityNames config={config} field="project" />],
-      ...(config.buildConfig
-        ? [["Build configuration", <TeamCityNames config={config} field="buildConfig" />] as const]
-        : [])
-    ]
+    destinationReview: (config) => {
+      const project = <TeamCityNames config={config} field="project" />;
+      const buildConfig = <TeamCityNames config={config} field="buildConfig" />;
+      return [
+        ["Project", project],
+        ...(config.buildConfig ? [["Build configuration", buildConfig] as const] : [])
+      ];
+    }
   }
 };

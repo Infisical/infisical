@@ -1,4 +1,9 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
 
 import {
   elasticSearchCreateFormSchema,
@@ -10,11 +15,6 @@ import {
   type TElasticSearchFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/elasticSearchContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import {

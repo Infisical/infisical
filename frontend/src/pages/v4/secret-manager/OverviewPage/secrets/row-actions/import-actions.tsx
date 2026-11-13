@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,7 +8,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
+} from "@infisical/cipher/ui/alert-dialog";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionSub

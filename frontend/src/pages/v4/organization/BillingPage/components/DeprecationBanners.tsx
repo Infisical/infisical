@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Dialog, DialogContent } from "@infisical/cipher/ui/dialog";
+import { Inline } from "@infisical/cipher/ui/layout";
 
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Dialog, DialogContent } from "@app/components/v4/ui/dialog";
-import { Inline } from "@app/components/v4/ui/layout";
 import type { BillingCatalogProduct, BillingOverview } from "@app/hooks/api/billing/types";
 
 import { tierLabel } from "../billing-format";

@@ -1,23 +1,22 @@
 import { useState } from "react";
 import { Controller, type FieldValues, useFieldArray, useWatch } from "react-hook-form";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { FieldDescription } from "@app/components/v4/ui/field";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
+} from "@infisical/cipher/ui/accordion";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { FieldDescription } from "@infisical/cipher/ui/field";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
 import {
   Table,
   TableBody,
@@ -25,7 +24,8 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from "@app/components/v4/ui/table";
+} from "@infisical/cipher/ui/table";
+
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { GCP_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
@@ -1012,13 +1012,17 @@ function TagsReviewValue({ tags }: { tags: { key: string; value: string }[] }) {
   );
 }
 
-const awsOptionsReview = (options: FieldValues, tagsLabel: string): ReviewItems => [
-  ...(options.keyId ? [["KMS key", options.keyId] as const] : []),
-  ...(options.tags?.length ? [[tagsLabel, <TagsReviewValue tags={options.tags} />] as const] : []),
-  ...(options.syncSecretMetadataAsTags
-    ? [["Sync secret metadata as resource tags", <Badge tone="ok">Enabled</Badge>] as const]
-    : [])
-];
+const awsOptionsReview = (options: FieldValues, tagsLabel: string): ReviewItems => {
+  const tags = <TagsReviewValue tags={options.tags} />;
+  const enabled = <Badge tone="ok">Enabled</Badge>;
+  return [
+    ...(options.keyId ? [["KMS key", options.keyId] as const] : []),
+    ...(options.tags?.length ? [[tagsLabel, tags] as const] : []),
+    ...(options.syncSecretMetadataAsTags
+      ? [["Sync secret metadata as resource tags", enabled] as const]
+      : [])
+  ];
+};
 
 const githubReview = (config: FieldValues): ReviewItems => {
   const scopeLabel = GITHUB_SCOPES.find((entry) => entry.value === config.scope)?.label;

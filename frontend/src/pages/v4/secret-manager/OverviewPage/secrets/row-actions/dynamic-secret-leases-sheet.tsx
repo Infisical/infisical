@@ -1,9 +1,7 @@
 import { useState } from "react";
-
-import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Inline } from "@app/components/v4/ui/layout";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Inline } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -13,7 +11,9 @@ import {
   SheetHeader,
   SheetSubheader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
+} from "@infisical/cipher/ui/sheet";
+
+import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
 import type { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import type { DynamicSecretResource } from "../flows/dynamic-secret-flow";

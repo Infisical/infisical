@@ -1,8 +1,5 @@
 import { useMemo, useState } from "react";
 import { type MongoAbility, subject } from "@casl/ability";
-import { format } from "date-fns";
-import { PencilIcon } from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,16 +9,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline } from "@app/components/v4/ui/layout";
-import { RowActions } from "@app/components/v4/ui/table";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { RowActions } from "@infisical/cipher/ui/table";
+import { format } from "date-fns";
+import { PencilIcon } from "lucide-react";
+
 import {
   ProjectPermissionProjectFolderGrantActions,
   type ProjectPermissionSet,

@@ -1,8 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -11,17 +9,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Code } from "@app/components/v4/ui/code";
-import { Combobox } from "@app/components/v4/ui/combobox";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { Select } from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Code } from "@infisical/cipher/ui/code";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -30,8 +28,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Tabs } from "@app/components/v4/ui/tabs";
+} from "@infisical/cipher/ui/sheet";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { z } from "zod";
+
 import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
 import type { OIDCConfigData } from "@app/hooks/api/oidcConfig/types";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";

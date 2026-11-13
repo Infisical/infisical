@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,10 +9,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
 import { ProjectPermissionSub } from "@app/context/ProjectPermissionContext/types";
 import { getProjectHomePage } from "@app/helpers/project";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";

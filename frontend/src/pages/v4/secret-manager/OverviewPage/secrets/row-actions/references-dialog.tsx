@@ -1,18 +1,18 @@
-import { EyeOffIcon } from "lucide-react";
-
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { FileTree, type FileTreeNode } from "@app/components/v4/ui/file-tree";
-import { Icon } from "@app/components/v4/ui/icon";
-import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
-import { SmallText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { FileTree, type FileTreeNode } from "@infisical/cipher/ui/file-tree";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { SecretValue } from "@infisical/cipher/ui/sensitive-editor";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { EyeOffIcon } from "lucide-react";
+
 import type {
   TSecretDependencyTreeNode,
   TSecretReferenceTraceNode

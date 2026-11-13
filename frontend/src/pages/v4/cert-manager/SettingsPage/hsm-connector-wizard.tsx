@@ -1,12 +1,11 @@
 import { useRef, useState } from "react";
-
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { MultiStep } from "@app/components/v4/ui/multi-step";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { Textarea } from "@app/components/v4/ui/textarea";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import { saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";

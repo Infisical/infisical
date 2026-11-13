@@ -1,7 +1,3 @@
-import type {
-  AppConnectionFieldPreset,
-  AppConnectionPreset
-} from "@app/components/v4/patterns/app-connection-form";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
@@ -45,6 +41,10 @@ import {
   sshConnectionFormSchema,
   winRMConnectionBaseFormSchema
 } from "@app/lib/schemas/app-connections";
+import type {
+  AppConnectionFieldPreset,
+  AppConnectionPreset
+} from "@app/pages/v4/components/app-connection-form";
 
 import { methodLabel, ROTATION_VALUES, rotationFields, withRotation } from "./shared";
 

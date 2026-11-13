@@ -25,7 +25,6 @@ infisical/
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/AGENTS.md)
 ├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/AGENTS.md)
 ├── docs/                  # Documentation site (Mintlify-based)
-├── cipher/                # Released Cipher (v4) shadcn registry payloads, served from raw GitHub URLs
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack

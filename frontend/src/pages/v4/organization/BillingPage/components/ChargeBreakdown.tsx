@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-
-import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
-import { Icon } from "@app/components/v4/ui/icon";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
+import { Icon } from "@infisical/cipher/ui/icon";
 
 import { fmtMoney } from "../billing-format";
 

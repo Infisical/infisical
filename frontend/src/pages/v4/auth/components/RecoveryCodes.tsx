@@ -1,9 +1,8 @@
 import { useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { toast } from "@app/components/v4/ui/sonner";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { toast } from "@infisical/cipher/ui/sonner";
 
 import { AuthPage } from "./AuthPage";
 

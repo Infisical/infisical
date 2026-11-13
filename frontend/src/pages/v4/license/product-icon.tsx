@@ -1,4 +1,5 @@
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+
 import type { BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
 import { useOrgId } from "../access/permissions";

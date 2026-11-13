@@ -1,4 +1,16 @@
 import { Controller, type Path, useFormContext } from "react-hook-form";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLegend,
+  FieldSet
+} from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Select } from "@infisical/cipher/ui/select";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import {
   getSqlClientResetValues,
@@ -12,18 +24,6 @@ import {
   type TSqlDatabaseFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/sqlDatabaseContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLegend,
-  FieldSet
-} from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Select } from "@app/components/v4/ui/select";
-import { Switch } from "@app/components/v4/ui/switch";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import {

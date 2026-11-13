@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { FieldDescription, FieldLabel } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Separator } from "@app/components/v4/ui/separator";
-import { SmallText, Text } from "@app/components/v4/ui/text";
-import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { FieldDescription, FieldLabel } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Separator } from "@infisical/cipher/ui/separator";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 
 import {
   STRIPE_API_KEY_PERMISSION_GROUPS,

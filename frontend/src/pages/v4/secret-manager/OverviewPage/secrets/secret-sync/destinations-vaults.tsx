@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { SecretPathInput } from "@infisical/cipher/ui/secret-path-input";
 
-import { Stack } from "@app/components/v4/ui/layout";
-import { SecretPathInput } from "@app/components/v4/ui/secret-path-input";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 import { useV4Adapter } from "../../../../data/adapters";

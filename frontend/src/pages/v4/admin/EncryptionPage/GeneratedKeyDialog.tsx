@@ -1,9 +1,8 @@
 import { useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Code } from "@app/components/v4/ui/code";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Code } from "@infisical/cipher/ui/code";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +10,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Snippet } from "@app/components/v4/ui/snippet";
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Snippet } from "@infisical/cipher/ui/snippet";
+
 import type { TCreatedEncryptionKeyRotation } from "@app/hooks/api/admin/types";
 
 import { saved } from "../../access/toast";

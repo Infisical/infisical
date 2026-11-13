@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { Inline } from "@infisical/cipher/ui/layout";
 
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { Inline } from "@app/components/v4/ui/layout";
 import type {
   BillingBreakdownScopeKind,
   BillingCatalogProduct,

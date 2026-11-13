@@ -1,4 +1,8 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { useParams } from "@tanstack/react-router";
 
 import {
@@ -10,10 +14,6 @@ import {
   getGcpIamEditPayload,
   TGcpIamFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/gcpIamContract";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, ProviderGroup } from "../fields";

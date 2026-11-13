@@ -1,7 +1,7 @@
 import { useEffect } from "react";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { SmallText } from "@infisical/cipher/ui/text";
 
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { SmallText } from "@app/components/v4/ui/text";
 import type { BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
 import { saved } from "../../../access/toast";

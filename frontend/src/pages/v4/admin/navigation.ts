@@ -1,4 +1,4 @@
-import type { IconName } from "@app/components/v4/ui/icon";
+import type { IconName } from "@infisical/cipher/ui/icon";
 
 export type AdminNavItem = {
   id: string;

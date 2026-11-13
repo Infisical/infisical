@@ -48,7 +48,7 @@
   width: 32px;
   height: 16px;
   background: currentColor;
-  mask: url("../../../components/v4/assets/mark.svg") center / contain no-repeat;
+  mask: url("./mark.svg") center / contain no-repeat;
 }
 .main {
   display: flex;

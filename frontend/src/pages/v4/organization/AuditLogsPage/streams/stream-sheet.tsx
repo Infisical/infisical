@@ -8,23 +8,20 @@ import {
   useFormContext
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CodeIcon } from "lucide-react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { DiscardChangesAlertDialog } from "@app/components/v4/ui/alert-dialog";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { Loader } from "@app/components/v4/ui/loader";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
-import { SecretInput } from "@app/components/v4/ui/secret-input";
-import { Select } from "@app/components/v4/ui/select";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { SecretInput } from "@infisical/cipher/ui/secret-input";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -33,8 +30,10 @@ import {
   SheetHeader,
   SheetSections,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Switch } from "@app/components/v4/ui/switch";
+} from "@infisical/cipher/ui/sheet";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { CodeIcon } from "lucide-react";
+
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import {
   LogProvider,
@@ -45,6 +44,7 @@ import type {
   TAuditLogStream,
   TCreateAuditLogStreamDTO
 } from "@app/hooks/api/auditLogStreams/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { failed, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";

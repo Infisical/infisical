@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format, formatDistanceStrict, formatDistanceToNowStrict } from "date-fns";
 
-import { FilterBar } from "@app/components/v4/patterns/filter-bar";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Pagination } from "@app/components/v4/ui/pagination";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub

@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { toast } from "@infisical/cipher/ui/sonner";
+import { Text } from "@infisical/cipher/ui/text";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useNavigate } from "@tanstack/react-router";
 
 import { waitForMinimumAuthVerificationLoading } from "@app/components/auth/authTiming";
 import { MFA_METHOD_LABELS } from "@app/components/mfa/setup/types";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { toast } from "@app/components/v4/ui/sonner";
-import { Text } from "@app/components/v4/ui/text";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {

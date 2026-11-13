@@ -1,15 +1,14 @@
 import { type ReactElement, useMemo, useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Popover,
   PopoverContent,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger
-} from "@app/components/v4/ui/popover";
-import { Slider } from "@app/components/v4/ui/slider";
+} from "@infisical/cipher/ui/popover";
+import { Slider } from "@infisical/cipher/ui/slider";
 
 import styles from "./password-generator.module.css";
 

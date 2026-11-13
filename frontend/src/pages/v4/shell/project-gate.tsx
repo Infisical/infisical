@@ -1,7 +1,6 @@
 import { createContext, type ReactNode, useContext, useLayoutEffect, useState } from "react";
+import { Loader } from "@infisical/cipher/ui/loader";
 import { AxiosError } from "axios";
-
-import { Loader } from "@app/components/v4/ui/loader";
 
 import { useV4Adapter } from "../data/adapters";
 import { V4ErrorPage } from "../V4ErrorPage";

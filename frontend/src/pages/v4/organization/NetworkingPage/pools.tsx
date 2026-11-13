@@ -1,18 +1,14 @@
 import { useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { format } from "date-fns";
-import { HeartPulseIcon, PencilIcon } from "lucide-react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { DataList } from "@app/components/v4/ui/list";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
-import { RowLink } from "@app/components/v4/ui/row-link";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { RowLink } from "@infisical/cipher/ui/row-link";
 import {
   Sheet,
   SheetBody,
@@ -20,8 +16,12 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { StatusText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/sheet";
+import { StatusText } from "@infisical/cipher/ui/text";
+import { useParams } from "@tanstack/react-router";
+import { format } from "date-fns";
+import { HeartPulseIcon, PencilIcon } from "lucide-react";
+
 import {
   OrgGatewayPoolPermissionActions,
   OrgPermissionSubjects

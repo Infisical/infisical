@@ -1,4 +1,9 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Button } from "@infisical/cipher/ui/button";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Switch } from "@infisical/cipher/ui/switch";
 
 import {
   azureSqlCreateFormSchema,
@@ -12,11 +17,6 @@ import {
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/azureSqlDatabaseContract";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/schemas";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Button } from "@app/components/v4/ui/button";
-import { Field } from "@app/components/v4/ui/field";
-import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
-import { Switch } from "@app/components/v4/ui/switch";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import {

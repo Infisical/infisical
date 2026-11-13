@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
+import { Field } from "@infisical/cipher/ui/field";
+import { StatusText } from "@infisical/cipher/ui/text";
 
 import { getPasswordRequirements } from "@app/components/utilities/checks/password/passwordPolicy";
 import type { PasswordBreachCheckStatus } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
-import { Field } from "@app/components/v4/ui/field";
-import { StatusText } from "@app/components/v4/ui/text";
 import type { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
 import { PasswordInput } from "./PasswordInput";

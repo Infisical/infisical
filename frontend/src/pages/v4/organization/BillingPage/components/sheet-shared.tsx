@@ -1,20 +1,20 @@
 import { type ReactNode, useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput
-} from "@app/components/v4/ui/input-group";
-import { Media } from "@app/components/v4/ui/item";
-import { Inline } from "@app/components/v4/ui/layout";
-import { List, ListRow } from "@app/components/v4/ui/list";
-import { Progress } from "@app/components/v4/ui/progress";
-import { SheetDescription, SheetHeader, SheetTitle } from "@app/components/v4/ui/sheet";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
-import { SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/input-group";
+import { Media } from "@infisical/cipher/ui/item";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
+import { Progress } from "@infisical/cipher/ui/progress";
+import { SheetDescription, SheetHeader, SheetTitle } from "@infisical/cipher/ui/sheet";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { SmallText } from "@infisical/cipher/ui/text";
+
 import type { BillingCatalogProduct, BillingEntitlementDim } from "@app/hooks/api/billing/types";
 
 import { useV4Adapter } from "../../../data/adapters";

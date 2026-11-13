@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger
-} from "@app/components/v4/ui/collapsible";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { ScrollArea } from "@app/components/v4/ui/scroll-area";
-import { Tabs } from "@app/components/v4/ui/tabs";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/collapsible";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { ScrollArea } from "@infisical/cipher/ui/scroll-area";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+
 import type {
   CopySecretsFolder,
   CopySecretsSource

@@ -1,24 +1,21 @@
 import { useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "@tanstack/react-router";
-import { z } from "zod";
-
-import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
-import { Button } from "@app/components/v4/ui/button";
-import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
   FieldTitle
-} from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { Input } from "@app/components/v4/ui/input";
-import { Grid, Stack } from "@app/components/v4/ui/layout";
-import { RadioGroup, RadioGroupItem } from "@app/components/v4/ui/radio-group";
-import { Select } from "@app/components/v4/ui/select";
+} from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Grid, Stack } from "@infisical/cipher/ui/layout";
+import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
+import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -27,8 +24,11 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle
-} from "@app/components/v4/ui/sheet";
-import { Textarea } from "@app/components/v4/ui/textarea";
+} from "@infisical/cipher/ui/sheet";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { Link } from "@tanstack/react-router";
+import { z } from "zod";
+
 import { OauthGrantType, type TOauthClient } from "@app/hooks/api/oauthClients/types";
 
 import { useOrgId } from "../../access/permissions";

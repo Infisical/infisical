@@ -1,7 +1,7 @@
+import { ErrorState } from "@infisical/cipher/patterns/error-state";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { ErrorState } from "@app/components/v4/patterns/error-state";
 
 import { useErrorContext } from "./errorDetails";
 import { RequestAccessAction } from "./RequestAccessAction";

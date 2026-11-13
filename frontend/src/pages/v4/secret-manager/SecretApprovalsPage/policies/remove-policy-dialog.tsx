@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-import { Alert } from "@app/components/v4/ui/alert";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,9 +9,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from "@app/components/v4/ui/alert-dialog";
-import { Inline } from "@app/components/v4/ui/layout";
-import { Spinner } from "@app/components/v4/ui/spinner";
+} from "@infisical/cipher/ui/alert-dialog";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { Spinner } from "@infisical/cipher/ui/spinner";
+
 import { PolicyType } from "@app/hooks/api/policies/enums";
 import type { Project } from "@app/hooks/api/projects/types";
 

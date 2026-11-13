@@ -1,5 +1,5 @@
-import { Alert } from "@app/components/v4/ui/alert";
-import { Text } from "@app/components/v4/ui/text";
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Text } from "@infisical/cipher/ui/text";
 
 import type { FolderGrantsUsage } from "../../../data/secret-policies/contract";
 

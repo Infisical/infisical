@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import type { MongoAbility } from "@casl/ability";
+import { Loader } from "@infisical/cipher/ui/loader";
 import { useParams } from "@tanstack/react-router";
 
-import { Loader } from "@app/components/v4/ui/loader";
 import type { ProjectPermissionSet } from "@app/context/ProjectPermissionContext/types";
 
 import { useProjectPermission } from "../../access/permissions";

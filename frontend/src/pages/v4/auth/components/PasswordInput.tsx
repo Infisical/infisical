@@ -1,7 +1,6 @@
 import { type ComponentProps, useState } from "react";
-
-import { Button } from "@app/components/v4/ui/button";
-import { Input } from "@app/components/v4/ui/input";
+import { Button } from "@infisical/cipher/ui/button";
+import { Input } from "@infisical/cipher/ui/input";
 
 type Props = Omit<ComponentProps<typeof Input>, "type" | "trailing" | "size">;
 

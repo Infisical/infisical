@@ -1,12 +1,12 @@
+import { Alert } from "@infisical/cipher/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { SecretValue } from "@infisical/cipher/ui/sensitive-editor";
+import { Snippet } from "@infisical/cipher/ui/snippet";
+import { SmallText, Text } from "@infisical/cipher/ui/text";
 import { format } from "date-fns";
 
-import { Alert } from "@app/components/v4/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
-import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
-import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
-import { Snippet } from "@app/components/v4/ui/snippet";
-import { SmallText, Text } from "@app/components/v4/ui/text";
 import type { SecretRotation as ApiSecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 
 import { useV4Adapter } from "../../../../data/adapters";

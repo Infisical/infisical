@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import axios from "axios";
 
-import { Checkbox } from "@app/components/v4/ui/checkbox";
-import { Stack } from "@app/components/v4/ui/layout";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { SettingsCard } from "@app/components/v4/ui/settings-card";
 import { LoginMethod, SuperAdminErrorCode } from "@app/hooks/api/admin/types";
 
 import { failed, saved } from "../../access/toast";

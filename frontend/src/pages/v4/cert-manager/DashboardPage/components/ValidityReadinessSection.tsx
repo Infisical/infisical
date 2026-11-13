@@ -1,15 +1,15 @@
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts";
-
-import { Badge } from "@app/components/v4/ui/badge";
-import { Card } from "@app/components/v4/ui/card";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent
-} from "@app/components/v4/ui/chart";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Heading, Meta, SmallText } from "@app/components/v4/ui/text";
+} from "@infisical/cipher/ui/chart";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Heading, Meta, SmallText } from "@infisical/cipher/ui/text";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts";
+
 import type { TDashboardStats } from "@app/hooks/api/certificates/types";
 
 import { DonutCard } from "./DonutCard";

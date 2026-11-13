@@ -1,19 +1,19 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Outlet } from "@tanstack/react-router";
-import { addSeconds, formatISO } from "date-fns";
-import DOMPurify from "dompurify";
-import rehypeRaw from "rehype-raw";
-
-import { Button } from "@app/components/v4/ui/button";
+import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
-import { Toaster } from "@app/components/v4/ui/sonner";
+} from "@infisical/cipher/ui/dialog";
+import { Toaster } from "@infisical/cipher/ui/sonner";
+import { Outlet } from "@tanstack/react-router";
+import { addSeconds, formatISO } from "date-fns";
+import DOMPurify from "dompurify";
+import rehypeRaw from "rehype-raw";
+
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { GtmHead } from "@app/hooks/useGtm";

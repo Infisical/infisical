@@ -1,3 +1,12 @@
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "@infisical/cipher/ui/accordion";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { MaximizeIcon, MinimizeIcon } from "lucide-react";
 
 import {
@@ -13,15 +22,6 @@ import {
   SECRET_IDENTITY_FIELD,
   summarizeCompactFields
 } from "@app/components/secrets/diff/fieldChanges";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from "@app/components/v4/ui/accordion";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Icon } from "@app/components/v4/ui/icon";
 
 import type { Resource } from "../../secrets-model";
 import type { CommitResourceChange } from "./commits-model";

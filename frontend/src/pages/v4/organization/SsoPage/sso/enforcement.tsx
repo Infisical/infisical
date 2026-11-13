@@ -1,14 +1,8 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-
-import {
-  SsoEnforcementUpgradeIntent,
-  MfaEnforcementUpgradeIntent
-} from "@app/components/license/UpgradeGate/capability-upgrade-intents";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -16,17 +10,23 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@app/components/v4/ui/dialog";
+} from "@infisical/cipher/ui/dialog";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldGroup,
   FieldTitle
-} from "@app/components/v4/ui/field";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { Switch } from "@app/components/v4/ui/switch";
-import { TooltipText } from "@app/components/v4/ui/tooltip";
+} from "@infisical/cipher/ui/field";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { TooltipText } from "@infisical/cipher/ui/tooltip";
+import { Link } from "@tanstack/react-router";
+
+import {
+  SsoEnforcementUpgradeIntent,
+  MfaEnforcementUpgradeIntent
+} from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgPermissionSsoActions,
   OrgPermissionSubjects
