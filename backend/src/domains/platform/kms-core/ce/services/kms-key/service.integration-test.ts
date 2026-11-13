@@ -1,5 +1,7 @@
 import { TableName } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { DatabaseError } from "@app/lib/errors";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { RootKey } from "../../models/root-key";
@@ -141,7 +143,8 @@ describe("KmsKeyService on Postgres", () => {
     expect(await kms.findKeyById(key.id)).toBeTruthy();
   });
 
-  test("should refuse a duplicate key name in the same project with a readable error", async () => {
+  // Callers (CMEK, KMIP) turn this unique violation into their own message.
+  test("should reject a duplicate key name in the same project with the unique violation", async () => {
     // Setup
     const tn = await h.newTenant();
     const kms = newService();
@@ -151,7 +154,8 @@ describe("KmsKeyService on Postgres", () => {
     const result = kms.generateKmsKey({ orgId: tn.org.id, projectId: tn.project.id, isReserved: false, name: "dup" });
 
     // Assert
-    await expect(result).rejects.toThrow("A KMS key named 'dup' already exists in this project.");
+    await expect(result).rejects.toBeInstanceOf(DatabaseError);
+    await expect(result).rejects.toMatchObject({ error: { code: DatabaseErrorCode.UniqueViolation } });
   });
 
   test("should read a just-written key from the primary", async () => {

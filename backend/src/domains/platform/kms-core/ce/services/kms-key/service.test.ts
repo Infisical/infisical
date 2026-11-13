@@ -118,7 +118,7 @@ describe("KmsKeyService.generateKmsKey", () => {
     expect(await memory.stores.kmsKeyStore.findById(record.id)).not.toBeNull();
   });
 
-  test("should refuse a duplicate key name in the same project and store nothing", async () => {
+  test("should leave a duplicate key name to the unique index and store nothing", async () => {
     // Setup
     const { service, memory } = setup();
     const org = orgId();
@@ -128,8 +128,7 @@ describe("KmsKeyService.generateKmsKey", () => {
     const result = service.generateKmsKey(customerKey(org, "p1", "dup"));
 
     // Assert
-    await expect(result).rejects.toThrow(RuleViolationError);
-    await expect(result).rejects.toThrow("already exists");
+    await expect(result).rejects.toThrow("duplicate key value violates unique constraint");
     expect(await memory.stores.kmsKeyStore.find({ orgId: org })).toHaveLength(1);
   });
 
@@ -307,7 +306,7 @@ describe("KmsKeyService.updateKeyAttributes", () => {
     const result = service.updateKeyAttributes(other.id, { name: "taken", isDisabled: true });
 
     // Assert
-    await expect(result).rejects.toThrow("already exists");
+    await expect(result).rejects.toThrow("duplicate key value violates unique constraint");
     expect(await service.findKeyById(other.id)).toMatchObject({ name: "other", isDisabled: false });
   });
 

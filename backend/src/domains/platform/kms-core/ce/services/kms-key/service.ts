@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError } from "@app/domains/lib/errors";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
@@ -167,21 +167,6 @@ export type TKmsKeyService = {
 // it ends. Any error leaves the caller's transaction unusable: roll it back.
 export type TKmsKeyTransaction = Pick<TKmsKeyService, "encryptWithKmsKey" | "decryptWithKmsKey" | "getKmsById">;
 
-// Org-level keys (no project) may share a name, as the unique index allows.
-const assertNameFree = async (
-  stores: TKmsCoreStores,
-  orgId: string,
-  projectId: string | null,
-  name: string,
-  ownId: string
-) => {
-  if (projectId === null) return;
-  const sameName = await stores.kmsKeyStore.find({ orgId, projectId, name });
-  if (sameName.some((existing) => existing.id !== ownId)) {
-    throw new RuleViolationError({ message: `A KMS key named '${name}' already exists in this project.` });
-  }
-};
-
 export class KmsKeyService implements TKmsKeyService {
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
@@ -319,9 +304,6 @@ export class KmsKeyService implements TKmsKeyService {
     return this.transactionRunner.run(async ({ stores }) => {
       const key = await stores.kmsKeyStore.findForUpdate(kmsId);
       if (!key) throw notFoundKey(kmsId);
-      if (attributes.name !== undefined && attributes.name !== key.name) {
-        await assertNameFree(stores, key.orgId, key.projectId, attributes.name, key.id);
-      }
       KmsKeyService.applyAttributes(key, attributes);
       await stores.kmsKeyStore.save(key);
       return key.details();
@@ -441,11 +423,10 @@ export class KmsKeyService implements TKmsKeyService {
     return requireExternalKms(this.externalKms).fetchGcpKeys(input);
   }
 
+  // A duplicate name in a project fails on the unique index; callers translate that DatabaseError into their own
+  // message.
   private async insertKey(key: KmsKey): Promise<TKmsKeyRecord> {
-    await this.transactionRunner.run(async ({ stores }) => {
-      await assertNameFree(stores, key.orgId, key.projectId, key.name, key.id);
-      await stores.kmsKeyStore.insert(key);
-    });
+    await this.stores.kmsKeyStore.insert(key);
     return key.toJSON();
   }
 
