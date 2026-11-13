@@ -32,13 +32,14 @@ export class FakeLicenseService implements TLicenseService {
 
   refreshInstanceEntitlements = async () => undefined;
 
-  getPlan = async (orgId: string) => Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
+  getPlan = async (orgId: string) => {
+    const plan = Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
+    return this.fallbackOrgs.has(orgId) ? plan.asFallback() : plan;
+  };
 
   refreshPlan = async () => undefined;
 
   invalidatePlan = async () => undefined;
-
-  isServingFallbackPlan = async (orgId: string) => this.fallbackOrgs.has(orgId);
 
   getLastKnownPlan = async (orgId: string) => {
     const lastKnown = this.lastKnown.get(orgId);

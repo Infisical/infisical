@@ -132,7 +132,8 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     expect(plan.slug).toBeNull();
-    expect(await licenseService.isServingFallbackPlan(SUB_ORG_ID)).toBe(true);
+    expect(plan.isFallback).toBe(true);
+    expect((await licenseService.getPlan(SUB_ORG_ID)).isFallback).toBe(true);
     expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBe("1");
   });
 
@@ -166,7 +167,7 @@ describe("LicenseService.getPlan", () => {
     await licenseService.refreshPlan(ROOT.id);
 
     // Assert
-    expect(await licenseService.isServingFallbackPlan(ROOT.id)).toBe(false);
+    expect((await licenseService.getPlan(ROOT.id)).isFallback).toBe(false);
     expect((await licenseService.getLastKnownPlan(SUB_ORG_ID))?.plan.slug).toBe("enterprise");
   });
 
@@ -221,6 +222,7 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     expect(plan.slug).toBeNull();
+    expect(plan.isFallback).toBe(true);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBe(cachedPlan);
     expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
   });
@@ -240,6 +242,7 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     expect(plan.slug).toBeNull();
+    expect(plan.isFallback).toBe(true);
     expect(licenseServer.fetchedOrgs).toEqual([]);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBeNull();
     expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
@@ -303,8 +306,9 @@ describe("LicenseService.refreshPlan", () => {
 
     // Assert
     await expect(result).rejects.toThrow("Your current plan stays in place");
-    expect((await licenseService.getPlan(ROOT.id)).slug).toBe("enterprise");
-    expect(await licenseService.isServingFallbackPlan(ROOT.id)).toBe(false);
+    const plan = await licenseService.getPlan(ROOT.id);
+    expect(plan.slug).toBe("enterprise");
+    expect(plan.isFallback).toBe(false);
   });
 
   test("should pass a database error through a refresh rather than blame the License Server", async () => {

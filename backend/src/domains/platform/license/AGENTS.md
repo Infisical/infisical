@@ -38,6 +38,10 @@ Rules:
   store error serves the fallback for that call only and writes nothing, so it never clobbers a cached paid plan.
   `refreshPlan` throws on them instead. `getPlan` reads the cache under the given org id before resolving the
   root, so a root org's cached plan is served without the database.
+- **Every fallback `getPlan` serves for a failure has `plan.isFallback` set**, the cached one (from the
+  `infisical-cloud-plan-fallback-*` marker, read with the plan) and the per-call one alike. Code that would stop
+  something an org pays for checks it and decides from `getLastKnownPlan` instead (`getSessionLogEntitlement`).
+  The flag is never serialized, so mark a plan with `asFallback()`, never through its features.
 - **`getPlan` returns a `Plan`, which keeps its features private and frozen.** Check a feature with
   `plan.has(PlanFeature.X)` / `plan.assert(PlanFeature.X)`, a product a plan can switch off (null means available)
   with `plan.allows(PlanProduct.X)`, and read data through its getters (`slug`, `rateLimits`, ...). Add a getter only

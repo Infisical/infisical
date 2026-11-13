@@ -31,14 +31,14 @@ export class PlanCache implements TPlanCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
 
   async read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean }> {
-    const [plan, passThrough] = await this.keyStore.getItems([
+    const [raw, passThrough, fallback] = await this.keyStore.getItems([
       PlanKeys.plan(rootOrgId),
-      PlanKeys.passThrough(rootOrgId)
+      PlanKeys.passThrough(rootOrgId),
+      PlanKeys.fallback(rootOrgId)
     ]);
-    return {
-      plan: plan ? Plan.restore(JSON.parse(plan) as TPlanFeatures) : null,
-      passThrough: Boolean(passThrough)
-    };
+    if (!raw) return { plan: null, passThrough: Boolean(passThrough) };
+    const plan = Plan.restore(JSON.parse(raw) as TPlanFeatures);
+    return { plan: fallback ? plan.asFallback() : plan, passThrough: Boolean(passThrough) };
   }
 
   async write(rootOrgId: string, plan: Plan) {
@@ -56,11 +56,6 @@ export class PlanCache implements TPlanCache {
     const ttl = jitteredPlanTtl();
     await this.keyStore.setItemWithExpiry(PlanKeys.plan(rootOrgId), ttl, JSON.stringify(plan.toJSON()));
     await this.keyStore.setItemWithExpiry(PlanKeys.fallback(rootOrgId), ttl, "1");
-  }
-
-  async isFallback(rootOrgId: string) {
-    const [marker] = await this.keyStore.getItems([PlanKeys.fallback(rootOrgId)]);
-    return Boolean(marker);
   }
 
   async lastKnown(rootOrgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {

@@ -24,7 +24,6 @@ export type TLicenseService = {
   refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void>;
   // Drops the cache without refetching.
   invalidatePlan(orgId: string): Promise<void>;
-  isServingFallbackPlan(orgId: string): Promise<boolean>;
   getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null>;
   // Cloud only. Safe to repeat; throws so the caller can retry.
   closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult>;
@@ -65,7 +64,7 @@ export class LicenseService implements TLicenseService {
       return await this.getCloudPlan(orgId);
     } catch (error) {
       logger.error(error, `getPlan: failed to read the plan, serving the fallback uncached [orgId=${orgId}]`);
-      return this.licensePolicyService.fallbackPlan();
+      return this.licensePolicyService.fallbackPlan().asFallback();
     }
   }
 
@@ -127,11 +126,6 @@ export class LicenseService implements TLicenseService {
     await this.planCache.invalidate(await this.organizationsProjectsService.resolveRootOrgId(orgId));
   }
 
-  async isServingFallbackPlan(orgId: string): Promise<boolean> {
-    if (!this.getInstanceEntitlements().isCloud()) return false;
-    return this.planCache.isFallback(await this.organizationsProjectsService.resolveRootOrgId(orgId));
-  }
-
   async getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {
     return this.planCache.lastKnown(await this.organizationsProjectsService.resolveRootOrgId(orgId));
   }
@@ -165,7 +159,7 @@ export class LicenseService implements TLicenseService {
       fetched = await this.licensePolicyService.fetchPlan(rootOrg);
     } catch (error) {
       logger.error(error, `getPlan: the License Server failed, serving the fallback plan [orgId=${rootOrgId}]`);
-      const fallback = this.licensePolicyService.fallbackPlan();
+      const fallback = this.licensePolicyService.fallbackPlan().asFallback();
       await this.planCache.writeFallback(rootOrgId, fallback);
       return fallback;
     }

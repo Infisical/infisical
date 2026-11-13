@@ -8017,7 +8017,6 @@ describe("Agent Vault V1 Router", async () => {
       const resolver = buildResolver({
         licenseService: {
           getPlan,
-          isServingFallbackPlan: () => Promise.resolve(false),
           getLastKnownPlan: () => Promise.resolve(null)
         } as never,
         agentVaultSessionLogConfigDAL: sessionLogConfig(true) as never
@@ -8038,8 +8037,7 @@ describe("Agent Vault V1 Router", async () => {
       const { session, proxy } = await mintForResolve("resolve-session-logs-plan-unknown");
       const resolver = buildResolver({
         licenseService: {
-          getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: false })),
-          isServingFallbackPlan: () => Promise.resolve(true),
+          getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: false }).asFallback()),
           getLastKnownPlan: () => Promise.resolve(null)
         } as never,
         agentVaultSessionLogConfigDAL: sessionLogConfig(true) as never

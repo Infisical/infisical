@@ -22,12 +22,12 @@ const hasStorageOnPlan = (plan: Plan, type: ObjectStorageType) =>
 const FALLBACK_LOG_INTERVAL_MS = 5 * 60_000;
 const fallbackLoggedAt = new Map<string, number>();
 
-// Whether the org's plan includes this storage type, and the plan to take retention from. While the License Server
-// can't be reached, getPlan returns a stand-in plan that leaves out external storage and includes default storage.
-// Trusting it would stop recording for orgs that pay for external storage, and for default storage it would hide a
-// downgrade and tag uploads with the stand-in plan's retention. So in that case the last plan the License Server
-// returned decides, if it's under an hour old. Without one the answer is "unknown", and each caller decides what that
-// means.
+// Whether the org's plan includes this storage type, and the plan to take retention from. While the License Server,
+// the database or the key store can't answer, getPlan returns a stand-in plan (plan.isFallback) that leaves out
+// external storage and includes default storage. Trusting it would stop recording for orgs that pay for external
+// storage, and for default storage it would hide a downgrade and tag uploads with the stand-in plan's retention. So in
+// that case the last plan the License Server returned decides, if it's under an hour old. Without one the answer is
+// "unknown", and each caller decides what that means.
 export const getSessionLogEntitlement = async (
   licenseService: TLicenseService,
   orgId: string,
@@ -39,7 +39,7 @@ export const getSessionLogEntitlement = async (
   const plan = await licenseService.getPlan(orgId);
   const isOnPlan = hasStorageOnPlan(plan, storageType);
   if (isOnPlan && storageType !== ObjectStorageType.Default) return { entitlement: "licensed", plan };
-  if (!(await licenseService.isServingFallbackPlan(orgId))) {
+  if (!plan.isFallback) {
     return { entitlement: isOnPlan ? "licensed" : "unlicensed", plan };
   }
 
@@ -60,7 +60,7 @@ export const getSessionLogEntitlement = async (
   if (now - (fallbackLoggedAt.get(orgId) ?? 0) >= FALLBACK_LOG_INTERVAL_MS) {
     fallbackLoggedAt.set(orgId, now);
     logger.warn(
-      `agentVaultSessionLog: the License Server is unreachable, so session logs are decided from the last plan it returned [orgId=${orgId}] [storageType=${storageType}] [entitlement=${decision.entitlement}] [lastKnownAgeMs=${lastKnown ? now - lastKnown.fetchedAt : "none"}]`
+      `agentVaultSessionLog: the plan can't be read, so session logs are decided from the last plan the License Server returned [orgId=${orgId}] [storageType=${storageType}] [entitlement=${decision.entitlement}] [lastKnownAgeMs=${lastKnown ? now - lastKnown.fetchedAt : "none"}]`
     );
   }
   return decision;
