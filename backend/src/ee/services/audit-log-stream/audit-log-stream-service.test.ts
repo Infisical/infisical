@@ -53,7 +53,7 @@ const buildService = () => {
     permissionService: {
       getOrgPermission: vi.fn(async () => ({ permission: { relevantRuleFor: () => ({ inverted: false }) } }))
     },
-    dataKeyService: {}
+    kmsDataKeyService: {}
   } as unknown as TAuditLogStreamServiceFactoryDep;
 
   return { service: auditLogStreamServiceFactory(deps), auditLogStreamDAL };

@@ -54,7 +54,7 @@ export type TReinstallSlackIntegrationDTO = {
 export type TSendSlackNotificationDTO = {
   orgId: string;
   notification: TNotification;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   targetChannelIds: string[];
   slackIntegration: TSlackIntegrations;
 };

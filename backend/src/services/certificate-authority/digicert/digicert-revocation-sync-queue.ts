@@ -51,7 +51,7 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
@@ -66,7 +66,7 @@ export const digicertRevocationSyncQueueFactory = ({
   certificateDAL,
   certificateBodyDAL,
   appConnectionDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   auditLogService,
   pkiAlertV2Queue,
@@ -166,7 +166,7 @@ export const digicertRevocationSyncQueueFactory = ({
     const getKmsDecryptor = async (projectId: string) => {
       const cached = kmsDecryptorsByProjectId.get(projectId);
       if (cached) return cached;
-      const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
       const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
       kmsDecryptorsByProjectId.set(projectId, kmsDecryptor);
       return kmsDecryptor;
@@ -210,7 +210,7 @@ export const digicertRevocationSyncQueueFactory = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       ca.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
     const digicertClient = createDigiCertApiClient(apiKey, baseUrl);
 

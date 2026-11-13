@@ -178,7 +178,7 @@ type TPkiAcmeServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: TLicenseService;
   certManagerService: TCertManagerService;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
@@ -210,7 +210,7 @@ export const pkiAcmeServiceFactory = ({
   keyStore,
   licenseService,
   certManagerService,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   certificateV3Service,
   certificatePolicyService,
@@ -674,7 +674,7 @@ export const pkiAcmeServiceFactory = ({
       if (!effectiveAcmeConfig?.encryptedEabSecret) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding is not configured" });
       }
-      const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+      const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
       const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
@@ -1646,7 +1646,7 @@ export const pkiAcmeServiceFactory = ({
     if (certificate) assertCertificateMaterialAvailable(certificate);
 
     const certBody = await certificateBodyDAL.findOne({ certId: syncedOrder.certificateId });
-    const certificateManagerKeyId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId

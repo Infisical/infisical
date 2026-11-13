@@ -35,7 +35,7 @@ const CORS_CHECK_TIMEOUT_MS = 15_000;
 
 type TObjectStorageServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "incrementByIfUnderLimitWithFixedExpiry">;
 };
 
@@ -43,7 +43,7 @@ export type TObjectStorageServiceFactory = ReturnType<typeof objectStorageServic
 
 export const objectStorageServiceFactory = ({
   appConnectionDAL,
-  dataKeyService,
+  kmsDataKeyService,
   keyStore
 }: TObjectStorageServiceFactoryDep) => {
   const registeredNamespaces = new Map<string, TStorageNamespace>();
@@ -104,7 +104,7 @@ export const objectStorageServiceFactory = ({
 
     let credentials: Awaited<ReturnType<typeof getAwsConnectionConfig>>["credentials"];
     try {
-      const connection = await decryptAppConnection(raw, dataKeyService);
+      const connection = await decryptAppConnection(raw, kmsDataKeyService);
       ({ credentials } = await getAwsConnectionConfig(
         { ...connection, projectType: config.projectType } as unknown as TAwsConnectionConfig,
         region,

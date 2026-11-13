@@ -175,7 +175,7 @@ describe("CertificateEstV3Service", () => {
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
       certificateDAL: mockCertificateDAL,
       projectDAL: mockProjectDAL,
-      dataKeyService: mockKmsService as never,
+      kmsDataKeyService: mockKmsService as never,
       kmsKeyService: mockKmsService as never,
       licenseService,
       certificateProfileDAL: mockCertificateProfileDAL,

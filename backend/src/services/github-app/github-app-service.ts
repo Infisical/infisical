@@ -54,7 +54,7 @@ import {
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
   licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -72,7 +72,7 @@ export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory
 export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   keyStore,
   licenseService,
   gatewayV2Service,
@@ -317,7 +317,7 @@ export const gitHubAppServiceFactory = ({
     try {
       credentials = await resolveGitHubAppCredentials(
         { gitHubAppId: id, orgId: orgPermission.orgId },
-        { gitHubAppDAL, dataKeyService }
+        { gitHubAppDAL, kmsDataKeyService }
       );
     } catch {
       // App missing or credentials unreadable — the transaction below still performs (or rejects)
@@ -613,7 +613,7 @@ export const gitHubAppServiceFactory = ({
         }
         codeExchanged = true;
 
-        const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
+        const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
           projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
         );
 

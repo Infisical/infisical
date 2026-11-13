@@ -43,7 +43,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -69,7 +69,7 @@ export const certificateAuthorityQueueFactory = ({
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   queueService,
   cronJob,
@@ -95,7 +95,7 @@ export const certificateAuthorityQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
@@ -114,7 +114,7 @@ export const certificateAuthorityQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
@@ -157,7 +157,7 @@ export const certificateAuthorityQueueFactory = ({
                 certificateAuthoritySecretDAL,
                 projectDAL,
                 certificateDAL,
-                dataKeyService,
+                kmsDataKeyService,
                 kmsKeyService,
                 caKeySourceService,
                 keyStore

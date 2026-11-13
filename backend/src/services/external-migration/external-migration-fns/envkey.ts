@@ -26,7 +26,7 @@ import { InfisicalImportData, TEnvKeyExportJSON, TImportInfisicalDataCreate } fr
 export type TImportDataIntoInfisicalDTO = {
   projectDAL: Pick<TProjectDALFactory, "transaction">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;

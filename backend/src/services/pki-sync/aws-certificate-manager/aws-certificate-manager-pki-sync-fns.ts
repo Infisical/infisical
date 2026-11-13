@@ -161,7 +161,7 @@ const generateCertificateName = (certificateName: string, pkiSync: TPkiSyncWithC
 
 type TAwsCertificateManagerPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"
@@ -178,7 +178,7 @@ const getAwsAcmClient = async (
   connectionId: string,
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ): Promise<ACMClient> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -194,7 +194,7 @@ const getAwsAcmClient = async (
 
   const decryptedCredentials = await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    dataKeyService,
+    kmsDataKeyService,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   });
@@ -219,7 +219,7 @@ const getAwsAcmClient = async (
 };
 
 export const awsCertificateManagerPkiSyncFactory = ({
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   certificateSyncDAL,
   certificateDAL
@@ -394,7 +394,7 @@ export const awsCertificateManagerPkiSyncFactory = ({
       pkiSync.connection.id,
       destinationConfig.region as AWSRegion,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
 
     const {
@@ -809,7 +809,7 @@ export const awsCertificateManagerPkiSyncFactory = ({
       pkiSync.connection.id,
       destinationConfig.region as AWSRegion,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);

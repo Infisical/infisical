@@ -76,7 +76,7 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
@@ -114,7 +114,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
   keyStore,
   appConnectionDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   certificateDAL,
   certificateBodyDAL,
@@ -196,7 +196,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       certificateAuthorityCertDAL,
       certificateSyncDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -244,7 +244,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
         certificateAuthorityCertDAL,
         certificateSyncDAL,
         projectDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService
       },
       certificateIds
@@ -326,7 +326,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       pkiSync,
       appConnectionDAL,
       projectDAL,
-      dataKeyService
+      kmsDataKeyService
     });
 
     const certificateMap = await $certificatesForCheck(pkiSync, command);
@@ -425,7 +425,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       orgId: connection.orgId,
       projectId: connection.projectId,
       encryptedCredentials: connection.encryptedCredentials,
-      dataKeyService
+      kmsDataKeyService
     });
 
     const target: THealthCheckTarget = {
@@ -480,7 +480,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       orgId: connection.orgId,
       projectId: connection.projectId,
       encryptedCredentials: connection.encryptedCredentials,
-      dataKeyService
+      kmsDataKeyService
     });
 
     const target: THealthCheckTarget = {

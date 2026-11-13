@@ -70,7 +70,7 @@ const buildFns = (storedCertificateId: number, storedCertificate = digicertCerti
     certificateBodyDAL: {
       findOne: vi.fn().mockResolvedValue({ encryptedCertificate: Buffer.from(storedCertificate.rawData) })
     },
-    dataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
     kmsKeyService: {
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
     },

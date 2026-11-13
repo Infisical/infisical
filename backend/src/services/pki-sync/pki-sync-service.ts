@@ -152,7 +152,7 @@ type TPkiSyncServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiSyncHealthCheckQueue: Pick<
     TPkiSyncHealthCheckQueueFactory,
@@ -186,7 +186,7 @@ export const pkiSyncServiceFactory = ({
   permissionService,
   licenseService,
   keyStore,
-  dataKeyService,
+  kmsDataKeyService,
   pkiSyncQueue,
   pkiSyncHealthCheckQueue,
   auditLogService
@@ -778,7 +778,7 @@ export const pkiSyncServiceFactory = ({
 
     const encryptedCredentials =
       credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
-        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, dataKeyService })
+        ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId, credentials, kmsDataKeyService })
         : undefined;
 
     try {
@@ -1035,7 +1035,7 @@ export const pkiSyncServiceFactory = ({
             orgId: actor.orgId,
             projectId: pkiSync.projectId,
             credentials,
-            dataKeyService
+            kmsDataKeyService
           })
         : undefined;
 

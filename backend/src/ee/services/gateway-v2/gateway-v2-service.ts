@@ -72,7 +72,7 @@ const MAX_GATEWAYS_PER_ORG = 50;
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
   relayDAL: TRelayDALFactory;
@@ -102,7 +102,7 @@ export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory
 
 export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
-  dataKeyService,
+  kmsDataKeyService,
   relayService,
   gatewayV2DAL,
   relayDAL,
@@ -134,12 +134,11 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const $getOrgCAs = async (orgId: string) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey(
-      {
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId
-      }
-    );
+      });
 
     const orgCAs = await orgGatewayConfigV2DAL.transaction(async (tx) => {
       const orgGatewayConfigV2 = await orgGatewayConfigV2DAL.findOne({ orgId });
@@ -410,7 +409,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -585,7 +584,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -1221,7 +1220,7 @@ export const gatewayV2ServiceFactory = ({
     }
 
     // Fetched before the transaction: KMS Core is never called inside one.
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });

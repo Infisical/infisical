@@ -20,7 +20,7 @@ export const importDataIntoInfisicalFn = async ({
   projectEnvDAL,
   projectDAL,
   secretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -299,7 +299,7 @@ export const importDataIntoInfisicalFn = async ({
         }
 
         const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
-          dataKeyService,
+          kmsDataKeyService,
           projectId: selectedScope.projectId,
           orgId: actorOrgId,
           tx

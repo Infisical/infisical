@@ -19,7 +19,7 @@ import {
 type TTotpServiceFactoryDep = {
   userDAL: TUserDALFactory;
   totpConfigDAL: TTotpConfigDALFactory;
-  rootKeyService: TRootKeyService;
+  kmsRootKeyService: TRootKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   userService: Pick<TUserServiceFactory, "resolveMfaMethodAfterRemoval">;
 };
@@ -30,7 +30,7 @@ export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
 export const totpServiceFactory = ({
   totpConfigDAL,
-  rootKeyService,
+  kmsRootKeyService,
   userDAL,
   keyStore,
   userService
@@ -82,7 +82,7 @@ export const totpServiceFactory = ({
         return unverifiedTotpConfig;
       }
 
-      const encryptWithRoot = rootKeyService.encryptWithRootKey();
+      const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
 
       // create new TOTP configuration
       const secret = authenticator.generateSecret();
@@ -96,7 +96,7 @@ export const totpServiceFactory = ({
     });
 
     const user = await userDAL.findById(userId);
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
 
     const secret = decryptWithRoot(totpConfig.encryptedSecret).toString();
     const otpUrl = authenticator.keyuri(user.username, "Infisical", secret);
@@ -123,7 +123,7 @@ export const totpServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const secret = decryptWithRoot(totpConfig.encryptedSecret).toString();
     const isValid = authenticator.verify({
       token: totp,
@@ -162,7 +162,7 @@ export const totpServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const secret = decryptWithRoot(totpConfig.encryptedSecret).toString();
     const isValid = authenticator.verify({
       token: totp,

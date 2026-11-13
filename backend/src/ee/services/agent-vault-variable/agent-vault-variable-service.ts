@@ -39,7 +39,7 @@ type TAgentVaultVariableServiceFactoryDep = {
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "delete">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 const AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT = 20;
@@ -56,10 +56,10 @@ export const agentVaultVariableServiceFactory = ({
   agentVaultPersonalValueDAL,
   membershipDAL,
   permissionService,
-  dataKeyService
+  kmsDataKeyService
 }: TAgentVaultVariableServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   /**
    * Global variables are admin only, reads included: a member can use a service without seeing what it is built

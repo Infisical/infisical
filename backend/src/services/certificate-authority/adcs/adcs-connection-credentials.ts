@@ -13,7 +13,7 @@ export type TAdcsResolvedConnection = {
 export const getAdcsConnectionCredentials = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ): Promise<TAdcsResolvedConnection> => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -30,7 +30,7 @@ export const getAdcsConnectionCredentials = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    dataKeyService,
+    kmsDataKeyService,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   })) as { host: string; username: string; password: string };

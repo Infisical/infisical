@@ -28,13 +28,13 @@ type TIssueSignerCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
 
 type TVerifyCodeSigningEkuDeps = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
 
@@ -50,7 +50,7 @@ const assertIssuedWithCodeSigningEku = (cert: TCertificates) => {
 };
 
 export const verifyCodeSigningEku = async (
-  { certificateBodyDAL, dataKeyService, kmsKeyService }: TVerifyCodeSigningEkuDeps,
+  { certificateBodyDAL, kmsDataKeyService, kmsKeyService }: TVerifyCodeSigningEkuDeps,
   { certificateId, projectId }: { certificateId: string; projectId: string }
 ): Promise<void> => {
   const certBody = await certificateBodyDAL.findOne({ certId: certificateId });
@@ -60,7 +60,7 @@ export const verifyCodeSigningEku = async (
     });
   }
 
-  const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
   const decrypted = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
   const cert = new x509.X509Certificate(decrypted);
@@ -87,7 +87,7 @@ export const issueSignerCertificate = async (
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService
   }: TIssueSignerCertificateDeps,
   { caId, projectId, commonName, certificateTtlDays, keyAlgorithm }: TIssueSignerCertificateInput
@@ -138,7 +138,7 @@ export const issueSignerCertificate = async (
   const csrPem = csrObj.toString("pem");
 
   // Encrypted before signing, so the key is stored in the same transaction as the certificate.
-  const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+  const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
   const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
   const skLeafPem = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey).export({
     format: "pem",

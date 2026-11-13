@@ -128,7 +128,7 @@ type TNotifySecretAccessStepApproversDep = Pick<
   | "userGroupMembershipDAL"
   | "projectDAL"
   | "projectSlackConfigDAL"
-  | "dataKeyService"
+  | "kmsDataKeyService"
   | "microsoftTeamsService"
   | "projectMicrosoftTeamsConfigDAL"
   | "notificationService"
@@ -158,7 +158,7 @@ export const notifySecretAccessStepApprovers = async (
     userGroupMembershipDAL,
     projectDAL,
     projectSlackConfigDAL,
-    dataKeyService,
+    kmsDataKeyService,
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     notificationService,
@@ -200,7 +200,7 @@ export const notifySecretAccessStepApprovers = async (
       dependencies: {
         projectDAL,
         projectSlackConfigDAL,
-        dataKeyService,
+        kmsDataKeyService,
         microsoftTeamsService,
         projectMicrosoftTeamsConfigDAL
       }

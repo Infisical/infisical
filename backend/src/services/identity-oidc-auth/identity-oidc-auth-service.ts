@@ -79,7 +79,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   licenseService: TLicenseService;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -99,7 +99,7 @@ export const identityOidcAuthServiceFactory = ({
   permissionService,
   licenseService,
   identityAccessTokenDAL,
-  dataKeyService,
+  kmsDataKeyService,
   orgDAL,
   identityAccessTokenService,
   eventEmitter
@@ -129,7 +129,7 @@ export const identityOidcAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
-      const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: identity.orgId
       });
@@ -647,7 +647,7 @@ export const identityOidcAuthServiceFactory = ({
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -836,7 +836,7 @@ export const identityOidcAuthServiceFactory = ({
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -1037,7 +1037,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });

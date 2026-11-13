@@ -35,8 +35,8 @@ type TSlackServiceFactoryDep = {
     | "findWithWorkflowIntegrationDetails"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  dataKeyService: TDataKeyService;
-  rootKeyService: TRootKeyService;
+  kmsDataKeyService: TDataKeyService;
+  kmsRootKeyService: TRootKeyService;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "transaction" | "create" | "updateById" | "deleteById">;
 };
 
@@ -45,8 +45,8 @@ export type TSlackServiceFactory = ReturnType<typeof slackServiceFactory>;
 export const slackServiceFactory = ({
   permissionService,
   slackIntegrationDAL,
-  dataKeyService,
-  rootKeyService,
+  kmsDataKeyService,
+  kmsRootKeyService,
   workflowIntegrationDAL
 }: TSlackServiceFactoryDep) => {
   const completeSlackIntegration = async ({
@@ -61,7 +61,7 @@ export const slackServiceFactory = ({
     slackBotId,
     slackBotUserId
   }: TCompleteSlackIntegrationDTO) => {
-    const { encryptor: orgDataKeyEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       orgId,
       type: KmsDataKey.Organization
     });
@@ -116,7 +116,7 @@ export const slackServiceFactory = ({
       });
     }
 
-    const { encryptor: orgDataKeyEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       orgId: slackIntegration.orgId,
       type: KmsDataKey.Organization
     });
@@ -143,7 +143,7 @@ export const slackServiceFactory = ({
     let slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
     let slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
 
-    const decrypt = rootKeyService.decryptWithRootKey();
+    const decrypt = kmsRootKeyService.decryptWithRootKey();
 
     if (serverCfg.encryptedSlackClientId) {
       slackClientId = decrypt(Buffer.from(serverCfg.encryptedSlackClientId)).toString();
@@ -368,7 +368,7 @@ export const slackServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
-    const { decryptor: orgDataKeyDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       orgId: slackIntegration.orgId,
       type: KmsDataKey.Organization
     });

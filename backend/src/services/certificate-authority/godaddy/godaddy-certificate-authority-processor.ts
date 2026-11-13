@@ -62,7 +62,7 @@ export type TGoDaddyCertificateRequestServiceDep = {
 export type TProcessGoDaddyRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TGoDaddyCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -81,7 +81,7 @@ export type TProcessGoDaddyRequestResult =
 
 const getOrCreateClient = async (
   request: TCertificateRequests,
-  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "dataKeyService">,
+  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsDataKeyService">,
   clientCache?: Map<string, TGoDaddyApiClient>
 ): Promise<TGoDaddyApiClient> => {
   if (!request.caId) {
@@ -102,7 +102,7 @@ const getOrCreateClient = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    dataKeyService: deps.dataKeyService
+    kmsDataKeyService: deps.kmsDataKeyService
   })) as TGoDaddyConnection["credentials"];
 
   const client = createGoDaddyApiClient(

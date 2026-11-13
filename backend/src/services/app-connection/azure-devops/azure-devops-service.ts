@@ -65,9 +65,9 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
 const listAzureDevOpsProjects = async (
   appConnection: TAzureDevOpsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ): Promise<TAzureDevOpsProject[]> => {
-  const accessToken = await getAzureDevopsConnection(appConnection.id, appConnectionDAL, dataKeyService);
+  const accessToken = await getAzureDevopsConnection(appConnection.id, appConnectionDAL, kmsDataKeyService);
 
   // Both OAuth and access Token methods use organization name from credentials
   const credentials = appConnection.credentials as { orgName: string };
@@ -104,12 +104,12 @@ const listAzureDevOpsProjects = async (
 export const azureDevOpsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AzureDevOps, connectionId, actor);
 
-    const projects = await listAzureDevOpsProjects(appConnection, appConnectionDAL, dataKeyService);
+    const projects = await listAzureDevOpsProjects(appConnection, appConnectionDAL, kmsDataKeyService);
 
     return projects.map((project) => ({
       id: project.id,

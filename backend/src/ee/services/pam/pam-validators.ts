@@ -36,7 +36,7 @@ export type TPamValidatorDeps = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
@@ -142,14 +142,14 @@ export const validateRecordingConnection = async (
 };
 
 export const validateRecordingS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "dataKeyService">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsDataKeyService">,
   connectionId: string,
   s3Config: { bucket: string; region?: string; keyPrefix?: string },
   ctx: TActorContext
 ): Promise<TPamRecordingResolvedConfig> => {
   const raw = await enforceAppConnectionConnect(deps, connectionId, ctx);
 
-  const appConnection = await decryptAppConnection(raw, deps.dataKeyService);
+  const appConnection = await decryptAppConnection(raw, deps.kmsDataKeyService);
 
   const resolvedConfig: TPamRecordingResolvedConfig = {
     backend: PamRecordingStorageBackend.AwsS3,
@@ -169,7 +169,7 @@ export const getInheritedRecordingS3Config = (settingsOverrides: unknown, templa
   PamTemplateSettingsSchema.safeParse(templateSettings).data?.recordingS3Config;
 
 export const resolveOverridesS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "dataKeyService">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsDataKeyService">,
   settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
   effectiveConnectionId: string | null | undefined,
   ctx: TActorContext,

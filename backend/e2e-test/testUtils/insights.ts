@@ -38,7 +38,7 @@ export const projectScopedInsightsDepStubs: Pick<
   | "projectBotService"
   | "projectDAL"
   | "userDAL"
-  | "dataKeyService"
+  | "kmsDataKeyService"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -79,8 +79,8 @@ export const projectScopedInsightsDepStubs: Pick<
   userDAL: {
     find: unreachable("userDAL.find")
   },
-  dataKeyService: {
-    createCipherPairWithDataKey: unreachable("dataKeyService.createCipherPairWithDataKey")
+  kmsDataKeyService: {
+    createCipherPairWithDataKey: unreachable("kmsDataKeyService.createCipherPairWithDataKey")
   } as never
 };
 

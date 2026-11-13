@@ -98,7 +98,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
   objectStorage: Pick<TObjectStorageServiceFactory, "at">;
@@ -135,7 +135,7 @@ export const agentVaultSessionLogServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   licenseService,
   keyStore,
   objectStorage
@@ -381,7 +381,7 @@ export const agentVaultSessionLogServiceFactory = ({
         presignedGetUrl: await folder.presignGet(key, AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS)
       }))
     );
-    const sessionKey = await unwrapSessionLogKey(keyScope, dataKeyService);
+    const sessionKey = await unwrapSessionLogKey(keyScope, kmsDataKeyService);
     return { chunks, sessionKey: sessionKey.toString("base64") };
   };
 

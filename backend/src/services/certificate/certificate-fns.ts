@@ -156,14 +156,14 @@ export const getCertificateCredentials = async ({
   certId,
   projectId,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService
 }: TGetCertificateCredentialsDTO) => {
   const certificateSecret = await certificateSecretDAL.findOne({ certId });
   if (!certificateSecret)
     throw new NotFoundError({ message: `Certificate secret for certificate with ID '${certId}' not found` });
 
-  const keyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
     kmsId: keyId
   });

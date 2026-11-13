@@ -98,7 +98,7 @@ type TSecretReadActivityServiceFactoryDep = {
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl" | "acquireLock">;
 };
 
@@ -119,7 +119,7 @@ export const secretReadActivityServiceFactory = ({
   identityMetadataDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
-  dataKeyService,
+  kmsDataKeyService,
   keyStore
 }: TSecretReadActivityServiceFactoryDep) => {
   let instanceTrackingStartedAt: Promise<Date | undefined> | undefined;
@@ -184,7 +184,7 @@ export const secretReadActivityServiceFactory = ({
     // Every loaded secret is decrypted once to find the keys it references in its own folder. The edges are indexed
     // by "<referenced folder>:<referenced key>", since scanning a folder for every secret in it would be quadratic.
     // Decrypting is synchronous work, so the loop yields to the event loop between batches, like the reach loop below.
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

@@ -46,7 +46,7 @@ const buildService = (transaction: (fn: (tx: unknown) => Promise<unknown>) => Pr
         create: vi.fn(async () => ({ id: "ds-1" }))
       }
     },
-    dataKeyService: { ...cipher, within: vi.fn(() => cipher) }
+    kmsDataKeyService: { ...cipher, within: vi.fn(() => cipher) }
   };
   const deps = new Proxy(overrides, {
     get: (target, key: string) => (key in target ? target[key] : new Proxy({}, { get: () => vi.fn() }))

@@ -302,7 +302,7 @@ export type TFnSecretMove = {
   actorOrgId: string;
   permission: MongoAbility<ProjectPermissionSet>;
   tx: Knex;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: Pick<
     TSecretV2BridgeDALFactory,

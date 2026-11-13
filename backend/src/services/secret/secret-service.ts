@@ -137,7 +137,7 @@ type TSecretServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "find">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -165,7 +165,7 @@ export const secretServiceFactory = ({
   reminderService,
   secretVersionV2DAL,
   secretV2BridgeDAL,
-  dataKeyService,
+  kmsDataKeyService,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
   orgDAL,
@@ -3386,7 +3386,7 @@ export const secretServiceFactory = ({
       }
     }
 
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

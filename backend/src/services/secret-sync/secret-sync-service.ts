@@ -72,7 +72,7 @@ type TSecretSyncServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne" | "find" | "findByFolderId" | "findByFolderIds">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOrgById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -103,7 +103,7 @@ export const secretSyncServiceFactory = ({
   secretV2BridgeDAL,
   appConnectionDAL,
   appConnectionService,
-  dataKeyService,
+  kmsDataKeyService,
   permissionService,
   orgDAL,
   projectBotService,
@@ -135,7 +135,7 @@ export const secretSyncServiceFactory = ({
     });
   };
 
-  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, dataKeyService };
+  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsDataKeyService };
 
   // The sync worker reads its folders with every access check disabled, so this is the only place
   // the actor's read access to them is established. A sync including subfolders reads the whole
@@ -206,7 +206,7 @@ export const secretSyncServiceFactory = ({
     sourceFolderId: string;
     keySchema?: string;
   }) => {
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -224,7 +224,7 @@ export const secretSyncServiceFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      dataKeyService
+      kmsDataKeyService
     });
 
     try {
@@ -249,7 +249,7 @@ export const secretSyncServiceFactory = ({
             projectFolderGrantDAL,
             actorOrgId,
             orgDAL,
-            dataKeyService
+            kmsDataKeyService
           }
         }
       );
@@ -540,7 +540,7 @@ export const secretSyncServiceFactory = ({
           const credentials = await decryptAppConnectionCredentials({
             orgId: conn.orgId,
             encryptedCredentials: conn.encryptedCredentials,
-            dataKeyService,
+            kmsDataKeyService,
             projectId: conn.projectId
           });
           return { ...conn, credentials } as TAppConnection;

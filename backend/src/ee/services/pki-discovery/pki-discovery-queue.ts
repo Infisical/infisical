@@ -32,7 +32,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "find">;
   queueService: TQueueServiceFactory;
@@ -58,7 +58,7 @@ export const pkiDiscoveryQueueFactory = ({
   certificateDAL,
   certificateBodyDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   appConnectionDAL,
   queueService,
@@ -79,7 +79,7 @@ export const pkiDiscoveryQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     projectDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     gatewayV2Service,
     gatewayV2DAL,

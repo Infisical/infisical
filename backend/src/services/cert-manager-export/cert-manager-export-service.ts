@@ -32,7 +32,7 @@ type TCertManagerExportServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -49,7 +49,7 @@ export const certManagerExportServiceFactory = ({
   certificateProfileDAL,
   projectDAL,
   orgDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   permissionService
 }: TCertManagerExportServiceFactoryDep) => {
@@ -131,8 +131,8 @@ export const certManagerExportServiceFactory = ({
       });
     }
 
-    const sourceKmsKeyId = await dataKeyService.getProjectCertificateKmsKeyId(sourceProjectId);
-    const destinationKmsKeyId = await dataKeyService.getProjectCertificateKmsKeyId(destinationProjectId);
+    const sourceKmsKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(sourceProjectId);
+    const destinationKmsKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(destinationProjectId);
 
     const sourceDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: sourceKmsKeyId });
     const destinationEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: destinationKmsKeyId });

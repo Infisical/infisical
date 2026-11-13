@@ -70,7 +70,7 @@ export type TAlertServiceFactoryDep = {
     | "getDetailsForChannels"
     | "filterRecipientsInScope"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   alertProviderRegistry: TAlertProviderRegistry;
   alertHistoryDAL: Pick<TAlertHistoryDALFactory, "findLatestByAlertIds">;
 };
@@ -135,7 +135,7 @@ export const alertServiceFactory = ({
   alertChannelMembershipDAL,
   alertChannelRecipientDAL,
   alertChannelService,
-  dataKeyService,
+  kmsDataKeyService,
   alertProviderRegistry,
   alertHistoryDAL
 }: TAlertServiceFactoryDep) => {
@@ -297,7 +297,7 @@ export const alertServiceFactory = ({
     });
 
     const scope = { orgId: dto.actorOrgId, projectId: projectId ?? null };
-    const cipher = await getAlertChannelCipher(dataKeyService, scope);
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, scope);
     const recipientScope = getRecipientScope(provider, projectId);
 
     const channels: TPreparedChannelCreate[] = [];
@@ -388,7 +388,7 @@ export const alertServiceFactory = ({
     }
 
     const scope = { orgId: alert.orgId, projectId: alert.projectId };
-    const cipher = await getAlertChannelCipher(dataKeyService, scope);
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, scope);
 
     const deleteChannelIds: string[] = [];
     const channelUpdates: TPreparedChannelUpdate[] = [];
@@ -606,7 +606,7 @@ export const alertServiceFactory = ({
     );
 
     const channels = await alertChannelDAL.findByAlertId(alert.id);
-    const cipher = await getAlertChannelCipher(dataKeyService, { orgId: alert.orgId, projectId: alert.projectId });
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, { orgId: alert.orgId, projectId: alert.projectId });
     const details = await alertChannelService.getDetailsForChannels(channels, cipher);
     const lastRuns = await $getLastRuns(provider, [alert.id]);
     const filters = await $getFilters(provider, { orgId: alert.orgId, projectId: alert.projectId ?? null }, [alert]);
@@ -641,7 +641,7 @@ export const alertServiceFactory = ({
     if (alerts.length === 0) return [];
 
     const channels = await alertChannelDAL.findByAlertIds(alerts.map((alert) => alert.id));
-    const cipher = await getAlertChannelCipher(dataKeyService, { orgId: dto.actorOrgId, projectId });
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, { orgId: dto.actorOrgId, projectId });
     const details = await alertChannelService.getDetailsForChannels(channels, cipher);
 
     const lastRuns = await $getLastRuns(

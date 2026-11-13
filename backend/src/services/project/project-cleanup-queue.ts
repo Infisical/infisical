@@ -60,7 +60,7 @@ type TProjectCleanupQueueFactoryDep = {
   >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "deleteById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -76,7 +76,7 @@ export const projectCleanupQueueFactory = ({
   projectDAL,
   membershipUserDAL,
   userDAL,
-  dataKeyService,
+  kmsDataKeyService,
   certificateAuthoritySecretDAL,
   caKeySourceService,
   keyStore,
@@ -211,7 +211,9 @@ export const projectCleanupQueueFactory = ({
         const kmsKeyIds = [delProject.kmsCertificateKeyId, delProject.kmsSecretManagerKeyId].filter(
           (id): id is string => Boolean(id)
         );
-        await dataKeyService.within(sealKnexTransaction(tx)).deleteProjectKeys({ orgId: delProject.orgId, kmsKeyIds });
+        await kmsDataKeyService
+          .within(sealKnexTransaction(tx))
+          .deleteProjectKeys({ orgId: delProject.orgId, kmsKeyIds });
 
         if (ghostUser) await userDAL.deleteById(ghostUser.id, tx);
         return true;

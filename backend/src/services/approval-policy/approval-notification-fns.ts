@@ -17,7 +17,7 @@ export type TApprovalNotificationDeps = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export const expandApproversToUserIds = async (
@@ -76,7 +76,7 @@ const deliverToUsers = async (
 const deliverToChat = async (
   content: TApprovalNotification,
   request: TApprovalRequests,
-  { slackIntegrationDAL, dataKeyService }: TApprovalNotificationDeps
+  { slackIntegrationDAL, kmsDataKeyService }: TApprovalNotificationDeps
 ) => {
   for (const delivery of content.chat ?? []) {
     // eslint-disable-next-line no-await-in-loop
@@ -88,7 +88,7 @@ const deliverToChat = async (
       await sendSlackNotification({
         orgId: request.organizationId,
         notification: delivery.notification,
-        dataKeyService,
+        kmsDataKeyService,
         targetChannelIds: delivery.channelIds,
         slackIntegration
       });

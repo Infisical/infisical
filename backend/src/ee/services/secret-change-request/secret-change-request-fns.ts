@@ -83,7 +83,7 @@ type TSecretChangeRequestFnsFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
@@ -187,7 +187,7 @@ export const secretChangeRequestFnsFactory = ({
   identityDAL,
   projectDAL,
   projectEnvDAL,
-  dataKeyService,
+  kmsDataKeyService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
@@ -373,7 +373,7 @@ export const secretChangeRequestFnsFactory = ({
       },
       dependencies: {
         projectDAL,
-        dataKeyService,
+        kmsDataKeyService,
         projectSlackConfigDAL,
         microsoftTeamsService,
         projectMicrosoftTeamsConfigDAL

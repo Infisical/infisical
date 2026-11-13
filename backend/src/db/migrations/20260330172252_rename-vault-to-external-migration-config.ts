@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
   initLogger();
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
   if (!(await knex.schema.hasTable(TableName.ExternalMigrationConfig))) {
     await knex.schema.createTable(TableName.ExternalMigrationConfig, (t) => {
@@ -40,7 +40,7 @@ export async function up(knex: Knex): Promise<void> {
 
       await Promise.all(
         existingVaultConfigs.map(async (vaultConfig) => {
-          const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+          const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
             orgId: vaultConfig.orgId,
             type: KmsDataKey.Organization
           });

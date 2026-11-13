@@ -41,7 +41,7 @@ export async function up(knex: Knex): Promise<void> {
     initLogger();
     const superAdminDAL = superAdminDALFactory(knex);
     const envConfig = await getMigrationEnvConfig(superAdminDAL);
-    const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+    const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
     const updatedDynamicSecrets = await Promise.all(
       existingDynamicSecretsWithProjectGatewayId.map(async (existingDynamicSecret) => {
@@ -55,11 +55,11 @@ export async function up(knex: Knex): Promise<void> {
           return rest;
         }
 
-        const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+        const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: existingDynamicSecret.projectId
         });
-        const { encryptor: secretManagerEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+        const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: existingDynamicSecret.projectId
         });

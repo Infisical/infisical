@@ -132,7 +132,7 @@ type TLdapConfigServiceFactoryDep = {
   usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -168,7 +168,7 @@ export const ldapConfigServiceFactory = ({
   usageMeteringService,
   tokenService,
   smtpService,
-  dataKeyService,
+  kmsDataKeyService,
   loginService,
   emailDomainDAL,
   telemetryService,
@@ -235,7 +235,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -288,7 +288,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await dataKeysOn(dataKeyService, tx).createCipherPairWithDataKey({
+    const { decryptor } = await dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: ldapConfig.orgId
     });
@@ -399,7 +399,7 @@ export const ldapConfigServiceFactory = ({
       uniqueUserAttribute
     };
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

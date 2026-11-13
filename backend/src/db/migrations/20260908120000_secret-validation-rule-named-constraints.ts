@@ -147,9 +147,9 @@ const rewriteConfigs = async (knex: Knex, convert: (config: never, ruleId: strin
 
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const projectKmsCache =
-    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   const updates: { id: string; encryptedInputs: Buffer }[] = [];
 
@@ -157,7 +157,7 @@ const rewriteConfigs = async (knex: Knex, convert: (config: never, ruleId: strin
     let projectKms = projectKmsCache.getItem(rule.projectId);
     if (!projectKms) {
       // eslint-disable-next-line no-await-in-loop
-      projectKms = await dataKeyService.createCipherPairWithDataKey({
+      projectKms = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: rule.projectId
       });

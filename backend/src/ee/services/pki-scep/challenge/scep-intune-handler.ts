@@ -57,7 +57,7 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
     };
 
     const acquisition = (async (): Promise<TIntuneAccess> => {
-      const { encryptor, decryptor } = await deps.dataKeyService.createCipherPairWithDataKey(
+      const { encryptor, decryptor } = await deps.kmsDataKeyService.createCipherPairWithDataKey(
         connection.projectId
           ? { type: KmsDataKey.SecretManager, projectId: connection.projectId }
           : { type: KmsDataKey.Organization, orgId: connection.orgId }
@@ -85,7 +85,7 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
         orgId: connection.orgId,
         projectId: connection.projectId,
         encryptedCredentials: connection.encryptedCredentials,
-        dataKeyService: deps.dataKeyService
+        kmsDataKeyService: deps.kmsDataKeyService
       })) as TMicrosoftIntuneConnectionCredentials;
 
       const graphToken = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Graph);

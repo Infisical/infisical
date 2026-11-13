@@ -35,7 +35,7 @@ type TSecretApprovalRequestCommitFnsFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findBySecretKeys" | "find">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById">;
@@ -87,7 +87,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
   permissionService,
   folderDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretTagDAL,
@@ -169,7 +169,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const existingTagIds: Record<string, string[]> = {};
 
     const { encryptor: secretManagerEncryptor } = await dataKeysOn(
-      dataKeyService,
+      kmsDataKeyService,
       providedTx
     ).createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 

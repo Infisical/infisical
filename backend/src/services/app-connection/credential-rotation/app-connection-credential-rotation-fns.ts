@@ -104,14 +104,14 @@ export const encryptCredentialRotationGeneratedCredentials = async ({
   orgId,
   projectId,
   generatedCredentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials;
-  dataKeyService: TCipherPairSource;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -134,14 +134,14 @@ export const decryptCredentialRotationGeneratedCredentials = async ({
   orgId,
   projectId,
   encryptedGeneratedCredentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedGeneratedCredentials: Buffer;
-  dataKeyService: TCipherPairSource;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -164,14 +164,14 @@ export const encryptStrategyConfig = async ({
   orgId,
   projectId,
   config,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   config: Record<string, unknown>;
-  dataKeyService: TCipherPairSource;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -194,14 +194,14 @@ export const decryptStrategyConfig = async <T>({
   orgId,
   projectId,
   encryptedStrategyConfig,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedStrategyConfig: Buffer;
-  dataKeyService: TCipherPairSource;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -224,14 +224,14 @@ export const encryptRotationMessage = async ({
   orgId,
   projectId,
   message,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   message: string;
-  dataKeyService: TCipherPairSource;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -254,14 +254,14 @@ export const decryptRotationMessage = async ({
   orgId,
   projectId,
   encryptedLastRotationMessage,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedLastRotationMessage: Buffer;
-  dataKeyService: TCipherPairSource;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -284,12 +284,12 @@ export const expandCredentialRotation = async (
   { encryptedLastRotationMessage, ...rotation }: TAppConnectionCredentialRotationRaw,
   orgId: string,
   projectId: string | null | undefined,
-  dataKeyService: TCipherPairSource
+  kmsDataKeyService: TCipherPairSource
 ): Promise<TAppConnectionCredentialRotation> => {
   let lastRotationMessage: string | null = null;
 
   if (encryptedLastRotationMessage) {
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
       projectId
         ? {
             type: KmsDataKey.SecretManager,

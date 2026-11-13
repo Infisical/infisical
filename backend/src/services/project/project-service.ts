@@ -205,7 +205,7 @@ type TProjectServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -257,7 +257,7 @@ export const projectServiceFactory = ({
   pkiAlertDAL,
   pkiSubscriberDAL,
   keyStore,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
@@ -2034,7 +2034,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const secretManagerKmsKey = await dataKeyService.updateProjectSecretManagerKmsKey({
+    const secretManagerKmsKey = await kmsDataKeyService.updateProjectSecretManagerKmsKey({
       projectId,
       kms
     });
@@ -2069,7 +2069,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await dataKeyService.getProjectKeyBackup(projectId);
+    const kmsBackup = await kmsDataKeyService.getProjectKeyBackup(projectId);
     return kmsBackup;
   };
 
@@ -2099,7 +2099,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await dataKeyService.loadProjectKeyBackup(projectId, backup);
+    const kmsBackup = await kmsDataKeyService.loadProjectKeyBackup(projectId, backup);
     return kmsBackup;
   };
 
@@ -2113,7 +2113,7 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const kmsKeyId = await dataKeyService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKeyId = await kmsDataKeyService.getProjectSecretManagerKmsKeyId(projectId);
     const kmsKey = await kmsKeyService.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };

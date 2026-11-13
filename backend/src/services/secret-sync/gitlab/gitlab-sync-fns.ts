@@ -33,13 +33,13 @@ interface TGitLabVariableUpdate extends Omit<TGitLabVariablePayload, "key"> {}
 
 type TGitLabSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 const getValidAccessToken = async (
   connection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ): Promise<string> => {
   if (
     connection.method === GitLabConnectionMethod.OAuth &&
@@ -52,7 +52,7 @@ const getValidAccessToken = async (
       connection.orgId,
       connection.projectId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       connection.credentials.instanceUrl
     );
     return accessToken;
@@ -291,7 +291,7 @@ export const GitLabSyncFns = {
   syncSecrets: async (
     secretSync: TGitLabSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, dataKeyService }: TGitLabSyncFactoryDeps
+    { appConnectionDAL, kmsDataKeyService }: TGitLabSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { connection, environment, destinationConfig } = secretSync;
@@ -299,7 +299,7 @@ export const GitLabSyncFns = {
 
     const resourceId = scope === GitLabSyncScope.Project ? destinationConfig.projectId : destinationConfig.groupId;
 
-    const accessToken = await getValidAccessToken(connection, appConnectionDAL, dataKeyService);
+    const accessToken = await getValidAccessToken(connection, appConnectionDAL, kmsDataKeyService);
 
     try {
       const currentVariables = await getGitLabVariables({
@@ -408,7 +408,7 @@ export const GitLabSyncFns = {
   removeSecrets: async (
     secretSync: TGitLabSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, dataKeyService }: TGitLabSyncFactoryDeps
+    { appConnectionDAL, kmsDataKeyService }: TGitLabSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { connection, destinationConfig } = secretSync;
@@ -416,7 +416,7 @@ export const GitLabSyncFns = {
 
     const resourceId = scope === GitLabSyncScope.Project ? destinationConfig.projectId : destinationConfig.groupId;
 
-    const accessToken = await getValidAccessToken(connection, appConnectionDAL, dataKeyService);
+    const accessToken = await getValidAccessToken(connection, appConnectionDAL, kmsDataKeyService);
 
     const allVariables = await getGitLabVariables({
       accessToken,

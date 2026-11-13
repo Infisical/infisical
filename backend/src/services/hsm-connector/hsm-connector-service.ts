@@ -46,7 +46,7 @@ import type {
 export type THsmConnectorServiceFactoryDep = {
   hsmConnectorDAL: THsmConnectorDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways" | "selectGatewayFromPool">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
@@ -68,7 +68,7 @@ const ML_DSA_HSM_KEY_ALGORITHMS = new Set<HsmKeyAlgorithm>([
 export const hsmConnectorServiceFactory = ({
   hsmConnectorDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService,
   gatewayV2DAL,
@@ -162,7 +162,7 @@ export const hsmConnectorServiceFactory = ({
     const encryptedCredentials = await encryptHsmConnectorCredentials({
       projectId: dto.projectId,
       credentials: parsedCreds.data,
-      dataKeyService
+      kmsDataKeyService
     });
 
     let row: Awaited<ReturnType<typeof hsmConnectorDAL.create>>;
@@ -205,7 +205,7 @@ export const hsmConnectorServiceFactory = ({
         const credentials = await decryptHsmConnectorCredentials({
           projectId: row.projectId,
           encryptedCredentials: row.encryptedCredentials,
-          dataKeyService
+          kmsDataKeyService
         });
         return HsmConnectorSanitizedSchema.parse({
           ...row,
@@ -228,7 +228,7 @@ export const hsmConnectorServiceFactory = ({
     const credentials = await decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      dataKeyService
+      kmsDataKeyService
     });
     return HsmConnectorSanitizedSchema.parse({
       ...row,
@@ -279,7 +279,7 @@ export const hsmConnectorServiceFactory = ({
     const currentCreds = await decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      dataKeyService
+      kmsDataKeyService
     });
     const credentialsChanged = dto.credentials !== undefined;
     const mergedCreds: THsmConnectorCredentials = {
@@ -319,7 +319,7 @@ export const hsmConnectorServiceFactory = ({
       update.encryptedCredentials = await encryptHsmConnectorCredentials({
         projectId: row.projectId,
         credentials: parsedCreds.data,
-        dataKeyService
+        kmsDataKeyService
       });
     }
 
@@ -413,7 +413,7 @@ export const hsmConnectorServiceFactory = ({
     const credentials = await decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      dataKeyService
+      kmsDataKeyService
     });
 
     const result = await routing.runTestRoundTrip({
@@ -428,7 +428,7 @@ export const hsmConnectorServiceFactory = ({
     decryptHsmConnectorCredentials({
       projectId: row.projectId,
       encryptedCredentials: row.encryptedCredentials,
-      dataKeyService
+      kmsDataKeyService
     });
 
   const $loadConnector = async (connectorId: string, expectedProjectId: string) => {

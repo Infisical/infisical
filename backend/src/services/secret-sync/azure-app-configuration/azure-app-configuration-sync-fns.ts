@@ -16,7 +16,7 @@ import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configura
 
 type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
@@ -27,7 +27,7 @@ interface AzureAppConfigKeyValue {
 }
 
 export const azureAppConfigurationSyncFactory = ({
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   oidcIssuerService
 }: TAzureAppConfigurationSyncFactoryDeps) => {
@@ -82,7 +82,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 
@@ -170,7 +170,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 
@@ -204,7 +204,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 

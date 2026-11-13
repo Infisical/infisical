@@ -144,7 +144,7 @@ type TOidcConfigServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -179,7 +179,7 @@ export const oidcConfigServiceFactory = ({
   projectDAL,
   projectBotDAL,
   auditLogService,
-  dataKeyService,
+  kmsDataKeyService,
   loginService,
   emailDomainDAL,
   telemetryService,
@@ -211,7 +211,7 @@ export const oidcConfigServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: oidcCfg.orgId
     });
@@ -695,7 +695,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });
@@ -838,7 +838,7 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });

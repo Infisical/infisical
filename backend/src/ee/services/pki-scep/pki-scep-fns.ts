@@ -125,7 +125,7 @@ type TGenerateScepRaCertificateDeps = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  dataKeyService: Parameters<typeof getCaCertChains>[0]["dataKeyService"];
+  kmsDataKeyService: Parameters<typeof getCaCertChains>[0]["kmsDataKeyService"];
   kmsKeyService: Parameters<typeof getCaCertChains>[0]["kmsKeyService"];
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
 };
@@ -179,7 +179,7 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthoritySecretDAL: deps.certificateAuthoritySecretDAL,
     projectDAL: deps.projectDAL,
-    dataKeyService: deps.dataKeyService,
+    kmsDataKeyService: deps.kmsDataKeyService,
     kmsKeyService: deps.kmsKeyService,
     caKeySourceService: deps.caKeySourceService
   });
@@ -189,7 +189,7 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthorityCertDAL: deps.certificateAuthorityCertDAL,
     projectDAL: deps.projectDAL,
-    dataKeyService: deps.dataKeyService,
+    kmsDataKeyService: deps.kmsDataKeyService,
     kmsKeyService: deps.kmsKeyService
   });
   const activeChain = chains[chains.length - 1];
@@ -242,7 +242,7 @@ export const generateAndEncryptScepRaCertificate = async ({
 }): Promise<{ certificatePem: string; expiresAt: Date; encryptedPrivateKey: Buffer }> => {
   const raCert = await generateScepRaCertificate({ slug, caId, signRaWithCa, deps });
 
-  const certificateManagerKmsId = await deps.dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const certificateManagerKmsId = await deps.kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
   const kmsEncryptor = await deps.kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
   const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(raCert.privateKeyDer) });
 
@@ -257,7 +257,7 @@ export const isSignerCertIssuedByCa = async ({
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService
 }: {
   signerCertDer: Buffer;
@@ -267,7 +267,7 @@ export const isSignerCertIssuedByCa = async ({
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
 }): Promise<boolean> => {
   try {
@@ -282,7 +282,7 @@ export const isSignerCertIssuedByCa = async ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 

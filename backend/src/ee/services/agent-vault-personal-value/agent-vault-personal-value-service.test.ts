@@ -98,7 +98,7 @@ const setup = ({
     } as never,
     permissionService: {} as never,
     membershipDAL: {} as never,
-    dataKeyService: {} as never
+    kmsDataKeyService: {} as never
   });
 
   const connect = () =>
@@ -218,7 +218,7 @@ describe("findStatusesForOwner", () => {
       agentVaultOauthService: {} as never,
       permissionService: {} as never,
       membershipDAL: {} as never,
-      dataKeyService: {} as never
+      kmsDataKeyService: {} as never
     }).findStatusesForOwner({
       projectId: PROJECT_ID,
       owner: { userId: USER_ID },

@@ -69,7 +69,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
 };
 
@@ -86,7 +86,7 @@ export const agentVaultSessionServiceFactory = ({
   userDAL,
   orgDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   licenseService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
@@ -236,7 +236,7 @@ export const agentVaultSessionServiceFactory = ({
     // Each value is sealed on its own, the way a project's services keep them, so the two can share one table.
     let seal: ((value: unknown) => Buffer) | null = null;
     if (preparedInlineServices.some((service) => service.secrets)) {
-      const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -267,7 +267,7 @@ export const agentVaultSessionServiceFactory = ({
     const sessionId = crypto.nativeCrypto.randomUUID();
     const encryptedSessionLogKey = await wrapSessionLogKey(
       { projectId, sessionId, sessionLogKey: generateSessionLogKey() },
-      dataKeyService
+      kmsDataKeyService
     );
 
     // A session on a user's behalf belongs to the identity, so only it and admins see the session and its logs. The

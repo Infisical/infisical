@@ -4,10 +4,10 @@ export type TAlertEncryptor = (data: { plainText: Buffer }) => { cipherTextBlob:
 export type TAlertDecryptor = (data: { cipherTextBlob: Buffer }) => Buffer;
 
 export const getAlertChannelCipher = (
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   scope: { orgId: string; projectId?: string | null }
 ) =>
-  dataKeyService.createCipherPairWithDataKey(
+  kmsDataKeyService.createCipherPairWithDataKey(
     scope.projectId
       ? { type: KmsDataKey.SecretManager, projectId: scope.projectId }
       : { type: KmsDataKey.Organization, orgId: scope.orgId }

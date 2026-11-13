@@ -516,9 +516,7 @@ A per-request in-memory cache that eliminates redundant DB reads within a single
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 // In a service or function called during request handling:
-const project = await requestMemoize(`project:findById:${projectId}`, () =>
-  projectDAL.findById(projectId),
-);
+const project = await requestMemoize(`project:findById:${projectId}`, () => projectDAL.findById(projectId));
 ```
 
 **When to add more items to request-scoped memoization**:
@@ -573,11 +571,7 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
    ```ts
    import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 
-   export const myServiceFactory = ({
-     cronJob,
-   }: {
-     cronJob: TCronJobFactory;
-   }) => {
+   export const myServiceFactory = ({ cronJob }: { cronJob: TCronJobFactory }) => {
      const init = () => {
        cronJob.register({
          name: CronJobName.MyJob,
@@ -587,7 +581,7 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
          maxAttempts: 3, // optional, default 3
          handler: async () => {
            /* work */
-         },
+         }
        });
      };
      return { init };
@@ -806,7 +800,7 @@ Pattern:
 
 - **Soft-delete columns** on the table: `deleteAfter`, `softDeletedAt`, `deletedByActorType`, `deletedByActorId`, plus a **partial index** `WHERE deleteAfter IS NOT NULL` (tiny, ~zero write cost on the live path). The DELETE handler sets `deleteAfter` (one UPDATE) and returns immediately. Set `deleteAfter = now()` for "real delete" UX (reaped on the next worker tick) or `now + grace` for a restore window. The actor pair follows the same `(actorType, actorId)` pattern used by audit logs — extensible to any `ActorType` without schema changes.
 - **Hide soft-deleted rows from every read.** Override the `ormify` base `findById`/`findOne`/`find` to append `.whereNull("deleteAfter")`, and add explicit `*IncludingExpired` escape hatches used only by the cleanup worker/restore. Patch all custom read queries too — **especially any count feeding a plan/quota limit** (e.g. `countOfOrgProjects`), or soft-deleted rows wrongly count against limits. For unique columns, keep the value reserved while the row is restorable so a restore brings it back unchanged, and refuse creating or renaming to it with a message naming the pending-deletion holder (environments and Secret Manager projects do this with their slug). On an immediate purge, free it so the resource can be recreated right away (projects rename the slug to `del-<random>`).
-- **`Environment.deleteAfter` ≠ `Project.deleteAfter` — filter both.** The two soft-deletes are independent: soft-deleting a project does NOT soft-delete its environments. Many DALs already filter `Environment.deleteAfter` (from the env soft-delete) — that does **not** exclude a soft-deleted *project*'s data. So any **cron / cross-project enumeration** must also filter `Project.deleteAfter`: the rotation/sync/reminder queue queries, and cross-project listings (project/identity memberships, group projects, org product stats). External side effects are the dangerous case — without it, a soft-deleted project's secrets get rotated, synced, or reminded on during the cleanup window. Per-project reads resolved through `projectDAL.findById` are protected upstream (it returns nothing for a soft-deleted project).
+- **`Environment.deleteAfter` ≠ `Project.deleteAfter` — filter both.** The two soft-deletes are independent: soft-deleting a project does NOT soft-delete its environments. Many DALs already filter `Environment.deleteAfter` (from the env soft-delete) — that does **not** exclude a soft-deleted _project_'s data. So any **cron / cross-project enumeration** must also filter `Project.deleteAfter`: the rotation/sync/reminder queue queries, and cross-project listings (project/identity memberships, group projects, org product stats). External side effects are the dangerous case — without it, a soft-deleted project's secrets get rotated, synced, or reminded on during the cleanup window. Per-project reads resolved through `projectDAL.findById` are protected upstream (it returns nothing for a soft-deleted project).
 - **Cron discovery + paced worker** (cron fans out to BullMQ): the cron selects the oldest `LIMIT N` expired rows (`ORDER BY deleteAfter ASC`) and enqueues one job each with a deterministic `jobId` (dedupe → queue stays bounded at ~N; never enqueue the whole backlog). The worker (`concurrency` + `limiter`) does the actual delete, re-reading via the **primary** under a per-resource lock to defeat replica-lag/restore races.
 - **Chunk-deleting child rows: check inbound FKs first.** Reference implementation: `services/secret-v2-bridge/secret-tree-hard-delete-fns.ts` (project/env hard-delete workers).
   - `CASCADE` / `SET NULL` inbound FKs → safe to chunk.
@@ -852,15 +846,10 @@ Uses Pino via `@app/lib/logger`. Always include key identifiers in the message s
 
 ```ts
 // Preferred: identifiers in message + structured object
-logger.error(
-  { sessionId, err },
-  `Failed to get connection details [sessionId=${sessionId}]`,
-);
+logger.error({ sessionId, err }, `Failed to get connection details [sessionId=${sessionId}]`);
 
 // Also acceptable: identifiers in message only
-logger.info(
-  `getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`,
-);
+logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`);
 
 // NOT preferred: identifiers only in structured object, not in message
 logger.error({ sessionId, err }, "Failed to get connection details");
@@ -873,6 +862,7 @@ Note that `logger.ts` also has a `redactedKeys` list applied to structured-objec
 ### Outbound requests to user-configured URLs
 
 **Fetch a URL a user configured through `safeRequest` (`src/lib/validator/safe-request.ts`), never `blockLocalAndPrivateIpAddresses` followed by `request` or another client.** The check and the connection each resolve DNS, so a name that answers a public address to the check and an internal one to the connection gets through. `safeRequest` connects to the IPs it validated. For a client that does not go through axios, pick by what it accepts:
+
 - an agent: `buildSsrfSafeAgent`, but only if the client parses its URL with the WHATWG `URL` parser. The agent pins the checked hostname, and a client using the legacy `url.parse` can read another host from the same string (`http://127.0.0.1%61.example` is `127.0.0.1` to it), which skips the pin. jwks-rsa is one: give `JwksClient` a `fetcher` from `buildSsrfSafeJwksFetcher` instead of a `requestAgent`.
 - a lookup function (openid-client): `ssrfSafeLookup`, with `validateAndPinUrl` on each URL first because Node skips the lookup for an IP literal host (not `validateSsrfUrl`, which rejects bracketed IPv6 literals), and a dedicated agent without keep-alive because a pooled socket skips it too (see `ee/services/oidc/oidc-ssrf-fns.ts`).
 - neither (ldapjs): `buildSsrfSafeUrl`, which puts a validated IP in the URL and keeps the certificate check on the original name.
@@ -883,6 +873,7 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 
 **Before changing certificate deletion, the expiry cleanup job, renewal or certificate syncs, read
 [`src/services/certificate/AGENTS.md`](src/services/certificate/AGENTS.md).** For code elsewhere:
+
 - Delete only through `softDeleteCertificates` (`certificate-fns.ts`); nothing hard deletes certificates, so
   the row stays.
 - A new query over `certificates` filters `whereNull("deletedAt")` unless it deliberately shows deleted rows.
@@ -985,7 +976,7 @@ Enterprise code lives in `src/ee/`:
 
 EE routes register before community routes so they can override/extend endpoints. Licensing lives in the License domain (`src/domains/platform/license/`, read its `AGENTS.md` first). For feature gating take `licenseService: TLicenseService` and call `getPlan(orgId)`: check with `plan.has(PlanFeature.Rbac)` or refuse with `plan.assert(PlanFeature.Rbac)`, which names the feature in the error, and check numeric limits through `plan.exceeds(PlanLimit.X, used)`, never by reading the field. For usage take `usageMeteringService: TUsageMeteringService`: `emit(orgId, Meter.X)` after a metered write commits, `syncSeats(orgId)` after a member change commits. License never joins your transaction: read `getSeatUsage(orgId)` before opening it and check with `seatUsage.assertAvailable(plan)` inside it.
 
-Encryption (the root key, KMS keys, org and project data keys, HSM, external KMS keys, root key rotation) lives in the KMS Core domain (`src/domains/platform/kms-core/`, read its `AGENTS.md` before touching it): take the service you call: `dataKeyService: TDataKeyService` (org and project cipher pairs, key ids, backups), `kmsKeyService: TKmsKeyService` (KMS keys and cryptography with them) or `rootKeyService: TRootKeyService` (root key, cookie signing key, rotation). Inside a transaction you hold, call it through `within(sealKnexTransaction(trx))` (`dataKeyService.within(...).createCipherPairWithDataKey(...)`) so the keys it creates commit or roll back with your rows; outside one, call the service directly.
+Encryption (the root key, KMS keys, org and project data keys, HSM, external KMS keys, root key rotation) lives in the KMS Core domain (`src/domains/platform/kms-core/`, read its `AGENTS.md` before touching it): take the service you call, named with a `kms` prefix so it reads as KMS in a deps list: `kmsDataKeyService: TDataKeyService` (org and project cipher pairs, key ids, backups), `kmsKeyService: TKmsKeyService` (KMS keys and cryptography with them) or `kmsRootKeyService: TRootKeyService` (root key, cookie signing key, rotation). Inside a transaction you hold, call it through `within(sealKnexTransaction(trx))` (`kmsDataKeyService.within(...).createCipherPairWithDataKey(...)`) so the keys it creates commit or roll back with your rows; outside one, call the service directly.
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/AGENTS.md`](src/ee/services/pam/AGENTS.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 

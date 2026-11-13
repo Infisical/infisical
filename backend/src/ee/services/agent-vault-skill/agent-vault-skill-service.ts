@@ -52,7 +52,7 @@ type TAgentVaultSkillServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findByIdInProject" | "lockByIdInProject">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TAgentVaultSkillServiceFactory = ReturnType<typeof agentVaultSkillServiceFactory>;
@@ -64,10 +64,10 @@ export const agentVaultSkillServiceFactory = ({
   agentVaultAccessBundleDAL,
   permissionService,
   membershipDAL,
-  dataKeyService
+  kmsDataKeyService
 }: TAgentVaultSkillServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const $getPermission = async (scoped: TAgentVaultSkillScoped) =>
     (await getAgentVaultPermission({ permissionService }, scoped)).permission;

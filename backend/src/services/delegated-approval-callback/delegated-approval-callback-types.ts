@@ -18,7 +18,7 @@ export type TDelegatedApprovalCallbackServiceFactoryDep = {
     | "updateWithDetails"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "transaction" | "findByIdForUpdate" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   eventEmitter: Pick<TEventEmitter, "emit">;
 };
 

@@ -79,7 +79,7 @@ export const rescanInstallation = async (installationId: string, deps: THostScan
       return;
     }
 
-    const certificateKmsKeyId = await deps.dataKeyService.getProjectCertificateKmsKeyId(installation.projectId);
+    const certificateKmsKeyId = await deps.kmsDataKeyService.getProjectCertificateKmsKeyId(installation.projectId);
     const kmsEncryptor = await deps.kmsKeyService.encryptWithKmsKey({ kmsId: certificateKmsKeyId });
 
     const written = await writeHostFile(

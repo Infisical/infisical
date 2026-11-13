@@ -16,9 +16,9 @@ type TGetAppConnectionFunc = (
 const listAuth0Clients = async (
   appConnection: TAuth0Connection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
-  const accessToken = await getAuth0ConnectionAccessToken(appConnection, appConnectionDAL, dataKeyService);
+  const accessToken = await getAuth0ConnectionAccessToken(appConnection, appConnectionDAL, kmsDataKeyService);
 
   const { audience, clientId: connectionClientId } = appConnection.credentials;
   await blockLocalAndPrivateIpAddresses(audience);
@@ -54,12 +54,12 @@ const listAuth0Clients = async (
 export const auth0ConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const listClients = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Auth0, connectionId, actor);
 
-    const clients = await listAuth0Clients(appConnection, appConnectionDAL, dataKeyService);
+    const clients = await listAuth0Clients(appConnection, appConnectionDAL, kmsDataKeyService);
 
     return clients.map((client) => ({ id: client.client_id, name: client.name }));
   };

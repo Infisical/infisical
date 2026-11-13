@@ -98,7 +98,7 @@ type TAgentVaultOauthServiceFactoryDep = {
     TKeyStoreFactory,
     "getItemPrimary" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem" | "ttl" | "acquireLock"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
     | "findByIdInProject"
@@ -247,7 +247,7 @@ const toView = (record: TAgentVaultOauthAuthorization): TAgentVaultOauthAuthoriz
 
 export const agentVaultOauthServiceFactory = ({
   keyStore,
-  dataKeyService,
+  kmsDataKeyService,
   agentVaultServiceDAL,
   agentVaultPersonalValueDAL,
   permissionService,
@@ -255,7 +255,7 @@ export const agentVaultOauthServiceFactory = ({
   http = agentVaultOauthHttpClient
 }: TAgentVaultOauthServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const sealWith = ({ encryptor }: TProjectCipher, value: unknown) =>
     encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;

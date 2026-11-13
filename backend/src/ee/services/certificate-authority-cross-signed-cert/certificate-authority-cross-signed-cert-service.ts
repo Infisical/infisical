@@ -40,7 +40,7 @@ type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
     "findOne" | "findByCaIdForUpdate" | "upsert" | "delete" | "transaction"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
@@ -55,7 +55,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   permissionService,
   licenseService
@@ -72,7 +72,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     projectId: string,
     crossSignedCert: TCertificateAuthorityCrossSignedCerts
   ) => {
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
@@ -146,7 +146,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -160,7 +160,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       certificateChain
     });
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });

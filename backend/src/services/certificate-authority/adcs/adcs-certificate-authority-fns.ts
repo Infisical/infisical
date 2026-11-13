@@ -134,7 +134,7 @@ type TADCSCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
@@ -150,7 +150,7 @@ export const ADCSCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   certificateProfileDAL,
   gatewayV2Service,
@@ -192,7 +192,7 @@ export const ADCSCertificateAuthorityFns = ({
     // gateway (before the transaction, since discovery is a network call).
     const resolvedCaName = await resolveAdcsCaName(
       caName,
-      () => getAdcsConnectionCredentials(appConnectionId, appConnectionDAL, dataKeyService),
+      () => getAdcsConnectionCredentials(appConnectionId, appConnectionDAL, kmsDataKeyService),
       { gatewayV2Service, gatewayPoolService },
       { ensureReachable: true }
     );
@@ -291,7 +291,7 @@ export const ADCSCertificateAuthorityFns = ({
       } else {
         resolvedUpdateCaName = await resolveAdcsCaName(
           configuration.caName,
-          () => getAdcsConnectionCredentials(configuration.appConnectionId, appConnectionDAL, dataKeyService),
+          () => getAdcsConnectionCredentials(configuration.appConnectionId, appConnectionDAL, kmsDataKeyService),
           { gatewayV2Service, gatewayPoolService },
           { ensureReachable: true }
         );
@@ -423,7 +423,7 @@ export const ADCSCertificateAuthorityFns = ({
       });
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -432,7 +432,7 @@ export const ADCSCertificateAuthorityFns = ({
     const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
       adcsCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
 
     let alg;
@@ -649,7 +649,7 @@ export const ADCSCertificateAuthorityFns = ({
     const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
       adcsCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
 
     const { templates } = await executeAdcsGatewayOperation<AdcsTemplatesResult>(
@@ -695,7 +695,7 @@ export const ADCSCertificateAuthorityFns = ({
     const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
       adcsCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
 
     // Unlike issuance, revocation is an MS-CSRA (ICertAdminD::RevokeCertificate) operation,

@@ -55,7 +55,7 @@ type TCertificateAuthorityOcspServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "setItemWithExpiry">;
@@ -99,7 +99,7 @@ export const certificateAuthorityOcspServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   caKeySourceService,
   keyStore
@@ -111,7 +111,7 @@ export const certificateAuthorityOcspServiceFactory = ({
     const caCert = await certificateAuthorityCertDAL.findById(activeCaCertId);
     if (!caCert) return null;
 
-    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
     const decryptedCaCert = await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate });
 
@@ -274,7 +274,7 @@ export const certificateAuthorityOcspServiceFactory = ({
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
           projectDAL,
-          dataKeyService,
+          kmsDataKeyService,
           kmsKeyService,
           caKeySourceService,
           prefetched: { kmsKeyId: activeCaCert.kmsKeyId }

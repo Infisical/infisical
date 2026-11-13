@@ -63,7 +63,7 @@ type TSecretImportServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: TLicenseService;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -84,7 +84,7 @@ export const secretImportServiceFactory = ({
   licenseService,
   projectBotService,
   secretV2BridgeDAL,
-  dataKeyService
+  kmsDataKeyService
 }: TSecretImportServiceFactoryDep) => {
   const $annotateCrossProjectImports = async <
     T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
@@ -935,7 +935,7 @@ export const secretImportServiceFactory = ({
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -958,7 +958,7 @@ export const secretImportServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        dataKeyService
+        kmsDataKeyService
       });
 
       return importedSecrets;

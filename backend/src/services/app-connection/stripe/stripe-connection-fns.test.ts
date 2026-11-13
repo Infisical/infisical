@@ -76,7 +76,7 @@ let keyStore: ReturnType<typeof makeKeyStore>;
 const authorize = () =>
   assertStripeConnectionAuthorized("connection-id", {
     appConnectionDAL: appConnectionDAL as never,
-    dataKeyService: {} as never,
+    kmsDataKeyService: {} as never,
     keyStore: keyStore as never
   });
 

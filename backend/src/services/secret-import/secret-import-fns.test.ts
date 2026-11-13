@@ -52,7 +52,7 @@ const makeArgs = (overrides: Partial<Args> = {}) => {
     decryptor: (value) => value?.toString() ?? "",
     hasSecretAccess: () => true,
     viewSecretValue: true,
-    dataKeyService: { createCipherPairWithDataKey: vi.fn() } as never,
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() } as never,
     actorOrgId: "org",
     ...overrides
   };

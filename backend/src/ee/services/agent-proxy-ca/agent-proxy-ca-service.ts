@@ -22,7 +22,7 @@ export type TAgentProxyCaServiceFactory = ReturnType<typeof agentProxyCaServiceF
 
 type TAgentProxyCaServiceFactoryDep = {
   orgAgentProxyConfigDAL: TOrgAgentProxyConfigDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -33,7 +33,7 @@ const ROOT_CA_VALIDITY_YEARS = 10;
 
 export const agentProxyCaServiceFactory = ({
   orgAgentProxyConfigDAL,
-  dataKeyService,
+  kmsDataKeyService,
   licenseService,
   permissionService
 }: TAgentProxyCaServiceFactoryDep) => {
@@ -58,12 +58,11 @@ export const agentProxyCaServiceFactory = ({
   };
 
   const $getOrgRootCa = async (orgId: string) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey(
-      {
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId
-      }
-    );
+      });
 
     const config = await orgAgentProxyConfigDAL.transaction(async (tx) => {
       const existing = await orgAgentProxyConfigDAL.findOne({ orgId }, tx);

@@ -554,7 +554,7 @@ export type TRotationFactory<
 > = (
   secretRotation: T,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   keyStore: Pick<TKeyStoreFactory, "acquireLock">,

@@ -44,7 +44,7 @@ export type TExternalMigrationQueueFactoryDep = {
 
   projectDAL: Pick<TProjectDALFactory, "transaction">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
@@ -75,7 +75,7 @@ export const externalMigrationQueueFactory = ({
   projectDAL,
   projectEnvService,
   secretV2BridgeService,
-  dataKeyService,
+  kmsDataKeyService,
   projectEnvDAL,
   secretDAL,
   secretVersionDAL,
@@ -157,7 +157,7 @@ export const externalMigrationQueueFactory = ({
         secretTagDAL,
         secretVersionTagDAL,
         folderDAL,
-        dataKeyService,
+        kmsDataKeyService,
         projectService,
         projectEnvService,
         secretV2BridgeService,

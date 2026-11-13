@@ -62,7 +62,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValidationRuleServiceFactory>;
@@ -75,7 +75,7 @@ export const secretValidationRuleServiceFactory = ({
   secretVersionV2BridgeDAL,
   projectDAL,
   permissionService,
-  dataKeyService
+  kmsDataKeyService
 }: TSecretValidationRuleServiceFactoryDep) => {
   const $getPermission = async (projectId: string, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -108,7 +108,7 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const $getCipher = (projectId: string, tx?: Knex) =>
-    dataKeysOn(dataKeyService, tx).createCipherPairWithDataKey({
+    dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

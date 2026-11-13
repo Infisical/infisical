@@ -69,7 +69,7 @@ export const castDbEntryToDigiCertCertificateAuthority = (
 export const getDigiCertClientCredentials = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ): Promise<{ apiKey: string; baseUrl: string }> => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -83,7 +83,7 @@ export const getDigiCertClientCredentials = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    dataKeyService
+    kmsDataKeyService
   })) as TDigiCertConnection["credentials"];
 
   return {

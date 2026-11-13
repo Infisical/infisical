@@ -36,13 +36,13 @@ export const listProviderOptions = () => {
 export const encryptLogStreamCredentials = async ({
   orgId,
   credentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   credentials: TAuditLogStreamCredentials;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
   });
@@ -57,13 +57,13 @@ export const encryptLogStreamCredentials = async ({
 export const decryptLogStreamCredentials = async ({
   orgId,
   encryptedCredentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
   });
@@ -96,13 +96,13 @@ export const auditLogMatchesStreamFilter = (
   return products.includes(product);
 };
 
-export const decryptLogStream = async (logStream: TAuditLogStreams, dataKeyService: TDataKeyService) => {
+export const decryptLogStream = async (logStream: TAuditLogStreams, kmsDataKeyService: TDataKeyService) => {
   return {
     ...logStream,
     credentials: await decryptLogStreamCredentials({
       encryptedCredentials: logStream.encryptedCredentials,
       orgId: logStream.orgId,
-      dataKeyService
+      kmsDataKeyService
     })
   } as TAuditLogStream;
 };

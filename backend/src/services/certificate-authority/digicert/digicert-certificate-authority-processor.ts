@@ -63,7 +63,7 @@ export type TDigiCertOrderMetadata = {
 export type TProcessDigiCertRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TDigiCertCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -82,7 +82,7 @@ export type TProcessDigiCertRequestResult =
 
 const getOrCreateClient = async (
   request: TCertificateRequests,
-  deps: Pick<TProcessDigiCertRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "dataKeyService">,
+  deps: Pick<TProcessDigiCertRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsDataKeyService">,
   clientCache?: Map<string, TDigiCertApiClient>
 ): Promise<TDigiCertApiClient> => {
   if (!request.caId) {
@@ -103,7 +103,7 @@ const getOrCreateClient = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    dataKeyService: deps.dataKeyService
+    kmsDataKeyService: deps.kmsDataKeyService
   })) as TDigiCertConnection["credentials"];
 
   const client = createDigiCertApiClient(credentials.apiKey, getDigiCertApiBaseUrl(credentials));

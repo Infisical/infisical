@@ -157,7 +157,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
@@ -176,7 +176,7 @@ type TOrderCertificateDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
@@ -378,7 +378,7 @@ export const executeAcmeOrder = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     certificateProfileDAL,
     gatewayV2Service,
@@ -398,7 +398,7 @@ export const executeAcmeOrder = async (
     throw new BadRequestError({ message: "CA is disabled" });
   }
 
-  const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+  const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
   const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
     kmsId: certificateManagerKmsId
@@ -455,7 +455,7 @@ export const executeAcmeOrder = async (
   const acmeClient = new acme.Client(acmeClientOptions);
 
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
-  const connection = await decryptAppConnection(appConnection, dataKeyService);
+  const connection = await decryptAppConnection(appConnection, kmsDataKeyService);
 
   await reportProgress("Submitting order to the certificate authority");
 
@@ -763,7 +763,7 @@ export const AcmeCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   projectDAL,
   pkiSubscriberDAL,
@@ -1026,7 +1026,7 @@ export const AcmeCertificateAuthorityFns = ({
         certificateDAL,
         certificateBodyDAL,
         certificateSecretDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService,
         projectDAL,
         gatewayV2Service,
@@ -1099,7 +1099,7 @@ export const AcmeCertificateAuthorityFns = ({
         certificateDAL,
         certificateBodyDAL,
         certificateSecretDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService,
         projectDAL,
         certificateProfileDAL,

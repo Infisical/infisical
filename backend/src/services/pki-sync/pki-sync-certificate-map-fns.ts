@@ -32,7 +32,7 @@ type TBuildCertificateMapDeps = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findCertificateIdsByPkiSyncId">;
   projectDAL: TProjectDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
 
@@ -46,7 +46,7 @@ export const buildCertificateMap = async (
     certificateAuthorityCertDAL,
     certificateSyncDAL,
     projectDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService
   }: TBuildCertificateMapDeps,
   certificateIdOverride?: string[]
@@ -92,7 +92,7 @@ export const buildCertificateMap = async (
         const certBody = await certificateBodyDAL.findOne({ certId: certificate.id });
 
         if (certBody) {
-          const certificateManagerKeyId = await dataKeyService.getProjectCertificateKmsKeyId(certificate.projectId);
+          const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(certificate.projectId);
 
           const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
             kmsId: certificateManagerKeyId
@@ -112,7 +112,7 @@ export const buildCertificateMap = async (
               projectId: certificate.projectId,
               certificateSecretDAL,
               projectDAL,
-              dataKeyService,
+              kmsDataKeyService,
               kmsKeyService
             });
             certPrivateKey = credentials.certPrivateKey;
@@ -139,7 +139,7 @@ export const buildCertificateMap = async (
                 certificateAuthorityDAL,
                 certificateAuthorityCertDAL,
                 projectDAL,
-                dataKeyService,
+                kmsDataKeyService,
                 kmsKeyService
               });
               if (!certBody.encryptedCertificateChain) {

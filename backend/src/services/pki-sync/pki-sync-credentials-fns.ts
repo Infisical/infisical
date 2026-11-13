@@ -13,14 +13,14 @@ export const encryptPkiSyncCredentials = async ({
   orgId,
   projectId,
   credentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   credentials: TPkiSyncCredentials;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }): Promise<Buffer> => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
   );
 
@@ -32,14 +32,14 @@ const decryptPkiSyncCredentials = async ({
   orgId,
   projectId,
   encryptedCredentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedCredentials: Buffer;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }): Promise<TPkiSyncCredentials> => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
   );
 
@@ -51,12 +51,12 @@ export const hydratePkiSyncCredentials = async ({
   pkiSync,
   appConnectionDAL,
   projectDAL,
-  dataKeyService
+  kmsDataKeyService
 }: {
   pkiSync: TPkiSyncRaw;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }): Promise<TPkiSyncWithCredentials> => {
   const {
     connection: { id: connectionId, orgId, projectId: appConnectionProjectId }
@@ -72,7 +72,7 @@ export const hydratePkiSyncCredentials = async ({
   const credentials = await decryptAppConnectionCredentials({
     orgId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    dataKeyService,
+    kmsDataKeyService,
     projectId: appConnectionProjectId
   });
 
@@ -81,7 +81,7 @@ export const hydratePkiSyncCredentials = async ({
         orgId,
         projectId: pkiSync.projectId,
         encryptedCredentials: pkiSync.encryptedCredentials,
-        dataKeyService
+        kmsDataKeyService
       })
     : undefined;
 

@@ -38,7 +38,7 @@ export const refreshHerokuToken = async (
   orgId: string,
   projectId: string | null | undefined,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ): Promise<string> => {
   const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = getConfig();
 
@@ -65,7 +65,7 @@ export const refreshHerokuToken = async (
       expiresAt: new Date(Date.now() + data.expires_in * 1000 - 60000)
     },
     orgId,
-    dataKeyService,
+    kmsDataKeyService,
     projectId
   });
 
@@ -172,11 +172,11 @@ export const validateHerokuConnectionCredentials = async (config: THerokuConnect
 export const listHerokuApps = async ({
   appConnection,
   appConnectionDAL,
-  dataKeyService
+  kmsDataKeyService
 }: {
   appConnection: THerokuConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }): Promise<THerokuApp[]> => {
   let authCredential = appConnection.credentials.authToken;
   if (
@@ -190,7 +190,7 @@ export const listHerokuApps = async ({
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
   }
 

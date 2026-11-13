@@ -25,7 +25,7 @@ import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-
 
 export type TGitHubAppCredentialResolverDeps = {
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 type TResolvedGitHubAppCredentials = {
@@ -48,7 +48,7 @@ export const resolveGitHubAppCredentials = async (
     orgId: string;
     projectId?: string | null;
   },
-  { gitHubAppDAL, dataKeyService }: TGitHubAppCredentialResolverDeps
+  { gitHubAppDAL, kmsDataKeyService }: TGitHubAppCredentialResolverDeps
 ): Promise<TResolvedGitHubAppCredentials> => {
   if (gitHubAppId) {
     const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
@@ -60,7 +60,7 @@ export const resolveGitHubAppCredentials = async (
 
     // Project-scoped apps are encrypted with the project's data key, org-scoped apps with the
     // org's, mirroring how app connection credentials are encrypted per scope.
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
       app.projectId
         ? { type: KmsDataKey.SecretManager, projectId: app.projectId }
         : { type: KmsDataKey.Organization, orgId }

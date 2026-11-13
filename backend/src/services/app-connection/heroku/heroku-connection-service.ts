@@ -16,12 +16,12 @@ type TGetAppConnectionFunc = (
 export const herokuConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Heroku, connectionId, actor);
     try {
-      const apps = await getHerokuApps({ appConnection, appConnectionDAL, dataKeyService });
+      const apps = await getHerokuApps({ appConnection, appConnectionDAL, kmsDataKeyService });
       return apps;
     } catch (error) {
       logger.error(error, `Failed to establish connection with Heroku for app ${connectionId}`);

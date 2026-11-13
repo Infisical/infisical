@@ -43,7 +43,7 @@ export const getAzureClientSecretsConnectionListItem = () => {
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const appCfg = getConfig();
   const appConnection = await appConnectionDAL.findById(connectionId);
@@ -60,7 +60,7 @@ export const getAzureConnectionAccessToken = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    dataKeyService,
+    kmsDataKeyService,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials
   })) as TAzureClientSecretsConnectionCredentials;
@@ -99,7 +99,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        dataKeyService
+        kmsDataKeyService
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials });
@@ -110,7 +110,7 @@ export const getAzureConnectionAccessToken = async (
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        dataKeyService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionClientSecretCredentials;
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = accessTokenCredentials;
@@ -138,7 +138,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        dataKeyService
+        kmsDataKeyService
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
@@ -150,7 +150,7 @@ export const getAzureConnectionAccessToken = async (
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        dataKeyService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionCertificateCredentials;
       const { accessToken, expiresAt, clientId, tenantId, certificateBody, privateKey } = accessTokenCredentials;
@@ -180,7 +180,7 @@ export const getAzureConnectionAccessToken = async (
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
-        dataKeyService
+        kmsDataKeyService
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });

@@ -83,7 +83,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "findOne">;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   keyStore: Pick<
@@ -112,7 +112,7 @@ export const identityLdapAuthServiceFactory = ({
   membershipIdentityDAL,
   licenseService,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   identityAuthTemplateDAL,
   keyStore,
   orgDAL,
@@ -136,7 +136,7 @@ export const identityLdapAuthServiceFactory = ({
       ? AllowedFieldsSchema.array().parse(ldapAuth.allowedFields)
       : undefined;
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityOrgMembership.scopeOrgId
     });
@@ -436,7 +436,7 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -673,7 +673,7 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -849,7 +849,7 @@ export const identityLdapAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });

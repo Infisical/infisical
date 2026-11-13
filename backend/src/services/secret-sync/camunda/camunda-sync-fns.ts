@@ -18,7 +18,7 @@ import { TSecretSyncPayload } from "../secret-sync-payload";
 
 type TCamundaSecretSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 const getCamundaSecrets = async ({ accessToken, clusterUUID }: TCamundaListSecrets) => {
@@ -72,7 +72,7 @@ const updateCamundaSecret = async ({ accessToken, clusterUUID, key, value }: TCa
     }
   );
 
-export const camundaSyncFactory = ({ dataKeyService, appConnectionDAL }: TCamundaSecretSyncFactoryDeps) => {
+export const camundaSyncFactory = ({ kmsDataKeyService, appConnectionDAL }: TCamundaSecretSyncFactoryDeps) => {
   const syncSecrets = async (secretSync: TCamundaSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
     const {
@@ -80,7 +80,7 @@ export const camundaSyncFactory = ({ dataKeyService, appConnectionDAL }: TCamund
       connection
     } = secretSync;
 
-    const accessToken = await getCamundaConnectionAccessToken(connection, appConnectionDAL, dataKeyService);
+    const accessToken = await getCamundaConnectionAccessToken(connection, appConnectionDAL, kmsDataKeyService);
     const camundaSecrets = await getCamundaSecrets({ accessToken, clusterUUID });
 
     for await (const entry of Object.entries(secretMap)) {
@@ -145,7 +145,7 @@ export const camundaSyncFactory = ({ dataKeyService, appConnectionDAL }: TCamund
       connection
     } = secretSync;
 
-    const accessToken = await getCamundaConnectionAccessToken(connection, appConnectionDAL, dataKeyService);
+    const accessToken = await getCamundaConnectionAccessToken(connection, appConnectionDAL, kmsDataKeyService);
     const camundaSecrets = await getCamundaSecrets({ accessToken, clusterUUID });
 
     for await (const secret of Object.keys(camundaSecrets)) {
@@ -165,7 +165,7 @@ export const camundaSyncFactory = ({ dataKeyService, appConnectionDAL }: TCamund
       connection
     } = secretSync;
 
-    const accessToken = await getCamundaConnectionAccessToken(connection, appConnectionDAL, dataKeyService);
+    const accessToken = await getCamundaConnectionAccessToken(connection, appConnectionDAL, kmsDataKeyService);
     const camundaSecrets = await getCamundaSecrets({ accessToken, clusterUUID });
 
     return Object.fromEntries(Object.entries(camundaSecrets).map(([key, value]) => [key, { value }]));

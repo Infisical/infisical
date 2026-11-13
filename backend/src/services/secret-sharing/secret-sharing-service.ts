@@ -43,7 +43,7 @@ type TSecretSharingServiceFactoryDep = {
   orgAssetDAL: TOrgAssetDALFactory;
   orgDAL: TOrgDALFactory;
   userDAL: TUserDALFactory;
-  rootKeyService: TRootKeyService;
+  kmsRootKeyService: TRootKeyService;
   smtpService: TSmtpService;
   licenseService: TLicenseService;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -77,7 +77,7 @@ export const secretSharingServiceFactory = ({
   orgAssetDAL,
   orgDAL,
   identityDAL,
-  rootKeyService,
+  kmsRootKeyService,
   smtpService,
   userDAL,
   licenseService
@@ -193,7 +193,7 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Secret max views parameter exceeds organization limit" });
     }
 
-    const encryptWithRoot = rootKeyService.encryptWithRootKey();
+    const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
 
     const orgMemberEmails: string[] = [];
 
@@ -373,7 +373,7 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Secret request has no value set" });
     }
 
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const decryptedSecret = decryptWithRoot(secretRequest.encryptedSecret);
 
     return { ...secretRequest, secretValue: decryptedSecret.toString() };
@@ -492,7 +492,7 @@ export const secretSharingServiceFactory = ({
       });
     }
 
-    const encryptWithRoot = rootKeyService.encryptWithRootKey();
+    const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const request = await secretSharingDAL.transaction(async (tx) => {
@@ -526,7 +526,7 @@ export const secretSharingServiceFactory = ({
 
     $validateSharedSecretExpiry(expiresAt);
 
-    const encryptWithRoot = rootKeyService.encryptWithRootKey();
+    const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const appCfg = getConfig();
@@ -752,7 +752,7 @@ export const secretSharingServiceFactory = ({
         }
       }
 
-      const decryptWithRoot = rootKeyService.decryptWithRootKey();
+      const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
 
       if (!sharedSecret.encryptedSecret) {
         throw new BadRequestError({ message: "Secret has no value specified" });

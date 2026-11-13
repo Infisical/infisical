@@ -71,7 +71,7 @@ type TKmipServiceFactoryDep = {
   kmipClientCertificateDAL: TKmipClientCertificateDALFactory;
   kmipOrgServerCertificateDAL: TKmipOrgServerCertificateDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmipOrgConfigDAL: TKmipOrgConfigDALFactory;
   licenseService: TLicenseService;
 };
@@ -104,7 +104,7 @@ export const kmipServiceFactory = ({
   permissionService,
   kmipClientCertificateDAL,
   kmipOrgConfigDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmipOrgServerCertificateDAL,
   licenseService
 }: TKmipServiceFactoryDep) => {
@@ -116,12 +116,11 @@ export const kmipServiceFactory = ({
    * (Root CA, Server Intermediate CA, Client Intermediate CA) within a transaction with advisory lock.
    */
   const $getOrgKmipCAs = async (orgId: string, caKeyAlgorithm: CertKeyAlgorithm = DEFAULT_CA_KEY_ALGORITHM) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey(
-      {
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId
-      }
-    );
+      });
 
     const kmipOrgConfig = await kmipOrgConfigDAL.transaction(async (tx) => {
       const existingConfig = await kmipOrgConfigDAL.findOne({ orgId }, tx);
@@ -681,7 +680,7 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -710,7 +709,7 @@ export const kmipServiceFactory = ({
     // Initialize KMIP org config (or return existing one)
     const orgKmipCAs = await $getOrgKmipCAs(orgId);
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

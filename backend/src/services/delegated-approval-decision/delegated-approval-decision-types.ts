@@ -57,7 +57,7 @@ export type TDelegatedApprovalDecisionServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "findByIdForUpdate" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "isUserProjectMember">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   approvalResources: Record<DelegatedApprovalSupportedPolicyType, Pick<TApprovalResource, "postApprovalTxRoutine">>;
   decisionNotifiers: Record<DelegatedApprovalSupportedPolicyType, TDelegatedApprovalDecisionNotifier>;

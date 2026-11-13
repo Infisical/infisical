@@ -234,7 +234,7 @@ import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
@@ -359,7 +359,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
 export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   licenseService,
   gatewayV2Service,
   gatewayPoolService,
@@ -432,7 +432,7 @@ export const appConnectionServiceFactory = ({
     const decryptedAppConnections = await Promise.all(
       appConnections
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-        .map((appConnection) => decryptAppConnection(appConnection, dataKeyService))
+        .map((appConnection) => decryptAppConnection(appConnection, kmsDataKeyService))
     );
 
     return decryptedAppConnections.map(addAppConnectionFederatedCredential);
@@ -483,7 +483,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
-    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, dataKeyService));
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsDataKeyService));
   };
 
   const findAppConnectionByName = async (
@@ -534,7 +534,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with name ${connectionName} is not for App "${app}"` });
 
-    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, dataKeyService));
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsDataKeyService));
   };
 
   // In project scope, an org-managed GitHub App can only be referenced by actors who can also
@@ -674,7 +674,7 @@ export const appConnectionServiceFactory = ({
           projectType: project?.type
         } as TAppConnectionConfig,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, dataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
+        { identityUaDAL, gitHubAppDAL, kmsDataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
       );
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -694,19 +694,19 @@ export const appConnectionServiceFactory = ({
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
         const created = await appConnectionDAL.transaction(async (tx) => {
-          const txDataKeyService = dataKeyService.within(sealKnexTransaction(tx));
+          const txDataKeyService = kmsDataKeyService.within(sealKnexTransaction(tx));
 
           const encryptedCredentials = await encryptAppConnectionCredentials({
             credentials: connectionCredentials,
             orgId: actor.orgId,
-            dataKeyService: txDataKeyService,
+            kmsDataKeyService: txDataKeyService,
             projectId
           });
 
           const encryptedConfiguration = await encryptAppConnectionConfiguration({
             configuration,
             orgId: actor.orgId,
-            dataKeyService: txDataKeyService,
+            kmsDataKeyService: txDataKeyService,
             projectId
           });
 
@@ -951,7 +951,7 @@ export const appConnectionServiceFactory = ({
           orgId: appConnection.orgId,
           projectId: appConnection.projectId,
           encryptedCredentials: appConnection.encryptedCredentials,
-          dataKeyService
+          kmsDataKeyService
         });
         const existingGitHubAppId = (existingCredentials as { gitHubAppId?: string | null }).gitHubAppId;
         if (existingGitHubAppId) {
@@ -987,7 +987,7 @@ export const appConnectionServiceFactory = ({
             projectType: updateProject?.type
           } as TAppConnectionConfig,
           gatewayV2Service,
-          { identityUaDAL, gitHubAppDAL, dataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
+          { identityUaDAL, gitHubAppDAL, kmsDataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
         );
 
       // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -1014,7 +1014,7 @@ export const appConnectionServiceFactory = ({
           orgId: appConnection.orgId,
           projectId: appConnection.projectId,
           encryptedCredentials: appConnection.encryptedCredentials,
-          dataKeyService
+          kmsDataKeyService
         });
 
         const existingAccountId = (existingCredentials as { accountId?: string }).accountId;
@@ -1033,13 +1033,13 @@ export const appConnectionServiceFactory = ({
       let revokeReplacedCredential: (() => Promise<void>) | undefined;
 
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx: Knex) => {
-        const txDataKeyService = dataKeyService.within(sealKnexTransaction(tx));
+        const txDataKeyService = kmsDataKeyService.within(sealKnexTransaction(tx));
 
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
               credentials: connectionCredentials,
               orgId: actor.orgId,
-              dataKeyService: txDataKeyService,
+              kmsDataKeyService: txDataKeyService,
               projectId: appConnection.projectId
             })
           : undefined;
@@ -1049,7 +1049,7 @@ export const appConnectionServiceFactory = ({
             ? await encryptAppConnectionConfiguration({
                 configuration,
                 orgId: actor.orgId,
-                dataKeyService: txDataKeyService,
+                kmsDataKeyService: txDataKeyService,
                 projectId: appConnection.projectId
               })
             : undefined;
@@ -1178,7 +1178,7 @@ export const appConnectionServiceFactory = ({
 
       if (revokeReplacedCredential) await revokeReplacedCredential();
 
-      return addAppConnectionFederatedCredential(await decryptAppConnection(updatedConnection, dataKeyService));
+      return addAppConnectionFederatedCredential(await decryptAppConnection(updatedConnection, kmsDataKeyService));
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
@@ -1249,7 +1249,7 @@ export const appConnectionServiceFactory = ({
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
 
-      return addAppConnectionFederatedCredential(await decryptAppConnection(deletedAppConnection, dataKeyService));
+      return addAppConnectionFederatedCredential(await decryptAppConnection(deletedAppConnection, kmsDataKeyService));
     } catch (err) {
       if (
         err instanceof DatabaseError &&
@@ -1344,7 +1344,7 @@ export const appConnectionServiceFactory = ({
       ? await projectDAL.findProjectById(appConnection.projectId)
       : null;
 
-    const connection = await decryptAppConnection(appConnection, dataKeyService);
+    const connection = await decryptAppConnection(appConnection, kmsDataKeyService);
 
     return { ...connection, projectType: connectionProject?.type } as unknown as T;
   };
@@ -1509,14 +1509,14 @@ export const appConnectionServiceFactory = ({
     triggerCredentialRotation,
     github: githubConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, {
       gitHubAppDAL,
-      dataKeyService
+      kmsDataKeyService
     }),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(
       connectAppConnectionById,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       gatewayV2Service,
       gatewayPoolService
     ),
@@ -1525,13 +1525,17 @@ export const appConnectionServiceFactory = ({
     imperva: impervaConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     humanitec: humanitecConnectionService(connectAppConnectionById),
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
-    camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, dataKeyService),
+    camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     vercel: vercelConnectionService(connectAppConnectionById),
     qovery: qoveryConnectionService(connectAppConnectionById),
     ona: onaConnectionService(connectAppConnectionById),
-    azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, dataKeyService),
-    azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, dataKeyService),
-    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, dataKeyService),
+    azureClientSecrets: azureClientSecretsConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService
+    ),
+    azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
     hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     windmill: windmillConnectionService(connectAppConnectionById),
@@ -1540,11 +1544,11 @@ export const appConnectionServiceFactory = ({
     onepass: onePassConnectionService(connectAppConnectionById),
     keeper: keeperConnectionService(connectAppConnectionById),
     cloud66: cloud66ConnectionService(connectAppConnectionById),
-    heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, dataKeyService),
+    heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),
     triggerDev: triggerDevConnectionService(connectAppConnectionById),
-    gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, dataKeyService),
+    gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     venafi: venafiConnectionService(connectAppConnectionById),
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
@@ -1575,7 +1579,7 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, dataKeyService),
+    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),

@@ -181,7 +181,7 @@ type TFolderCommitServiceFactoryDep = {
     "scheduleTreeCheckpoint" | "createFolderTreeCheckpoint"
   >;
   permissionService?: TPermissionServiceFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
     | "findSecretTagsByVersionId"
@@ -245,7 +245,7 @@ export const folderCommitServiceFactory = ({
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   secretTagDAL,
   resourceMetadataDAL,
   eventEmitter
@@ -468,7 +468,7 @@ export const folderCommitServiceFactory = ({
   };
 
   const $getSecretManagerDecryptor = async (projectId: string, tx?: Knex) => {
-    const { decryptor } = await dataKeysOn(dataKeyService, tx).createCipherPairWithDataKey({
+    const { decryptor } = await dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -1032,7 +1032,7 @@ export const folderCommitServiceFactory = ({
     if (!project) return (version) => version;
 
     const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
-      dataKeyService,
+      kmsDataKeyService,
       projectId,
       orgId: project.orgId,
       tx

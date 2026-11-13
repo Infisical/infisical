@@ -83,7 +83,7 @@ type TSignerIssuanceServiceDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateIssuanceQueue: Pick<
     TCertificateIssuanceQueueFactory,
@@ -119,7 +119,7 @@ export const signerIssuanceServiceFactory = ({
   certificateAuthorityDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   certificateIssuanceQueue,
   cronJob,
@@ -155,14 +155,14 @@ export const signerIssuanceServiceFactory = ({
   };
 
   const encryptForProject = async (projectId: string, plain: Buffer): Promise<Buffer> => {
-    const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
     const encryptor = await kmsKeyService.encryptWithKmsKey({ kmsId });
     const { cipherTextBlob } = await encryptor({ plainText: plain });
     return cipherTextBlob;
   };
 
   const decryptForProject = async (projectId: string, cipher: Buffer): Promise<Buffer> => {
-    const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
     const decryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
     return decryptor({ cipherTextBlob: cipher });
   };
@@ -467,7 +467,10 @@ export const signerIssuanceServiceFactory = ({
     projectId: string
   ): Promise<void> => {
     try {
-      await verifyCodeSigningEku({ certificateBodyDAL, dataKeyService, kmsKeyService }, { certificateId, projectId });
+      await verifyCodeSigningEku(
+        { certificateBodyDAL, kmsDataKeyService, kmsKeyService },
+        { certificateId, projectId }
+      );
     } catch (ekuErr) {
       const reason = formatSignerIssuanceErrorReason(ekuErr, "Issued certificate failed code-signing EKU verification");
       await markJobFailed(job, reason);

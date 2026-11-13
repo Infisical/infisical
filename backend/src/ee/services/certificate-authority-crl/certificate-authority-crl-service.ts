@@ -41,7 +41,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
@@ -57,7 +57,7 @@ export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   permissionService,
   licenseService,
@@ -75,7 +75,7 @@ export const certificateAuthorityCrlServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caCrl.caId);
     if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caCrl.caId}' not found` });
 
-    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: keyId
@@ -121,7 +121,7 @@ export const certificateAuthorityCrlServiceFactory = ({
 
     const caCrls = await certificateAuthorityCrlDAL.find({ caId: ca.id }, { sort: [["createdAt", "desc"]] });
 
-    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: keyId
@@ -203,7 +203,7 @@ export const certificateAuthorityCrlServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       certificateDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService,
       caKeySourceService,
       keyStore,

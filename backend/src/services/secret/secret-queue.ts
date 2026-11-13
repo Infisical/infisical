@@ -111,7 +111,7 @@ type TSecretQueueFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;
@@ -177,7 +177,7 @@ export const secretQueueFactory = ({
   secretVersionTagDAL,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
-  dataKeyService,
+  kmsDataKeyService,
   secretVersionTagV2BridgeDAL,
 
   keyStore,
@@ -310,7 +310,7 @@ export const secretQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    dataKeyService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -328,7 +328,7 @@ export const secretQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    dataKeyService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -368,7 +368,7 @@ export const secretQueueFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      dataKeyService
+      kmsDataKeyService
     });
     // process secrets in current folder
     const secrets = await secretV2BridgeDAL.findByFolderId({ folderId: dto.folderId });
@@ -418,7 +418,7 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
-      dataKeyService
+      kmsDataKeyService
     });
 
     for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -811,7 +811,7 @@ export const secretQueueFactory = ({
         );
       }
       const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
-      const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -1263,7 +1263,7 @@ export const secretQueueFactory = ({
     if (!botKey) throw new NotFoundError({ message: `Project bot not found for project ${projectId}` });
     await projectDAL.updateById(projectId, { upgradeStatus: ProjectUpgradeStatus.InProgress });
 
-    const { encryptor: secretManagerEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       projectId,
       type: KmsDataKey.SecretManager
     });
@@ -1567,7 +1567,7 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: job.data.payload.projectId
     });

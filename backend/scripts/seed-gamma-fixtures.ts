@@ -122,7 +122,7 @@ const main = async () => {
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await initEnvConfig(superAdminDAL, logger);
   // Loads only the root key, as a migration does: enough for createCipherPairWithDataKey against an org.
-  const { dataKeyService } = await startStandaloneKmsCore({ db: knex, envConfig });
+  const { dataKeyService: kmsDataKeyService } = await startStandaloneKmsCore({ db: knex, envConfig });
 
   let org = await knex(TableName.Organization).where({ slug: orgSlug }).first();
   if (!org) {
@@ -210,7 +210,7 @@ const main = async () => {
   // data key (created lazily on first access), so gamma's runtime SAML
   // service decrypts these via the same code path.
   const idpCert = fs.readFileSync(IDP_CERT_PATH, "utf8");
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId: org.id
   });

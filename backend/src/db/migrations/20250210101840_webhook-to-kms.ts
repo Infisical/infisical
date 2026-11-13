@@ -31,10 +31,10 @@ export async function up(knex: Knex): Promise<void> {
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
   const projectEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);
   const webhooks = await knex(TableName.Webhook)
     .where({})
     .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.Webhook}.envId`)
@@ -57,7 +57,7 @@ export async function up(knex: Knex): Promise<void> {
     webhooks.map(async (el) => {
       let projectKmsService = projectEncryptionRingBuffer.getItem(el.projectId);
       if (!projectKmsService) {
-        projectKmsService = await dataKeyService.createCipherPairWithDataKey({
+        projectKmsService = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: el.projectId
         });

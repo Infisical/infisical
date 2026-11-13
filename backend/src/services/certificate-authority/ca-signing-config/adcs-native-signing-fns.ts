@@ -35,16 +35,16 @@ export const submitCsrToNativeAdcs = async (
   },
   deps: TAdcsNativeGatewayDeps & {
     appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-    dataKeyService: TDataKeyService;
+    kmsDataKeyService: TDataKeyService;
   }
 ): Promise<{ certificate: string; certificateChain: string }> => {
   const { appConnectionId, csr, template } = params;
-  const { appConnectionDAL, dataKeyService, gatewayV2Service, gatewayPoolService } = deps;
+  const { appConnectionDAL, kmsDataKeyService, gatewayV2Service, gatewayPoolService } = deps;
 
   const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
     appConnectionId,
     appConnectionDAL,
-    dataKeyService
+    kmsDataKeyService
   );
 
   const resolvedCaName = await resolveAdcsCaName(

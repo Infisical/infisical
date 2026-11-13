@@ -101,7 +101,7 @@ type TPkiScepServiceFactoryDep = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
@@ -138,7 +138,7 @@ export const pkiScepServiceFactory = ({
   certificateRequestDAL,
   certificateBodyDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   appConnectionDAL,
   keyStore,
@@ -214,7 +214,7 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const raPrivateKeyDer = await kmsDecryptor({ cipherTextBlob: scepConfig.encryptedRaPrivateKey });
 
@@ -269,7 +269,7 @@ export const pkiScepServiceFactory = ({
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
         projectDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService
       });
 
@@ -299,7 +299,7 @@ export const pkiScepServiceFactory = ({
       scepEnrollmentConfigDAL,
       scepDynamicChallengeDAL,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       keyStore
     });
 
@@ -480,7 +480,7 @@ export const pkiScepServiceFactory = ({
           certificateAuthorityCertDAL,
           certificateAuthorityDAL,
           projectDAL,
-          dataKeyService,
+          kmsDataKeyService,
           kmsKeyService
         });
         if (isRenewalViaPKCSReq) {
@@ -672,7 +672,7 @@ export const pkiScepServiceFactory = ({
         certificateAuthorityCertDAL,
         certificateAuthorityDAL,
         projectDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService
       }));
 
@@ -1241,7 +1241,7 @@ export const pkiScepServiceFactory = ({
           });
         }
 
-        const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+        const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
         const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
         const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
 

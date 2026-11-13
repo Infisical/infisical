@@ -59,7 +59,7 @@ const makeService = ({
     findByProviderRequestId: vi.fn(async (): Promise<unknown> => null),
     claimDecisionRead: vi.fn(async (): Promise<unknown> => ({ id: "delegated-1" }))
   };
-  const dataKeyService = {
+  const kmsDataKeyService = {
     createCipherPairWithDataKey: vi.fn(async () => ({
       encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: encrypt(plainText) }),
       decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => decrypt(cipherTextBlob)
@@ -76,11 +76,11 @@ const makeService = ({
   const service = delegatedApprovalCallbackServiceFactory({
     delegatedApprovalRequestDAL: delegatedApprovalRequestDAL as never,
     approvalRequestDAL: approvalRequestDAL as never,
-    dataKeyService: dataKeyService as never,
+    kmsDataKeyService: kmsDataKeyService as never,
     eventEmitter
   });
 
-  return { service, delegatedApprovalRequestDAL, approvalRequestDAL, dataKeyService, eventEmitter };
+  return { service, delegatedApprovalRequestDAL, approvalRequestDAL, kmsDataKeyService, eventEmitter };
 };
 
 describe("getCallbackUrl", () => {
@@ -95,13 +95,13 @@ describe("getOrIssueCallbackToken", () => {
   const delegatedRequest = { id: "delegated-1", requestId: "req-1", encryptedCallbackToken: null };
 
   test("issues a token once and stores it encrypted under the project key", async () => {
-    const { service, delegatedApprovalRequestDAL, approvalRequestDAL, dataKeyService } = makeService();
+    const { service, delegatedApprovalRequestDAL, approvalRequestDAL, kmsDataKeyService } = makeService();
 
     const token = await service.getOrIssueCallbackToken({ delegatedRequest });
 
     expect(token).toBeTruthy();
     expect(approvalRequestDAL.findById).toHaveBeenCalledWith("req-1", PRIMARY);
-    expect(dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith({
+    expect(kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith({
       type: KmsDataKey.SecretManager,
       projectId: "project-1"
     });
@@ -143,12 +143,12 @@ describe("getOrIssueCallbackToken", () => {
   });
 
   test("returns null without issuing a token when the approval request is gone", async () => {
-    const { service, delegatedApprovalRequestDAL, dataKeyService } = makeService({ approvalRequest: null });
+    const { service, delegatedApprovalRequestDAL, kmsDataKeyService } = makeService({ approvalRequest: null });
 
     const token = await service.getOrIssueCallbackToken({ delegatedRequest });
 
     expect(token).toBeNull();
-    expect(dataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
     expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
   });
 });
@@ -308,11 +308,11 @@ describe("handleCallback", () => {
   });
 
   test("emits an outbox event keyed on the delegated request", async () => {
-    const { service, eventEmitter, dataKeyService } = makeCallbackService();
+    const { service, eventEmitter, kmsDataKeyService } = makeCallbackService();
 
     await expect(service.handleCallback(callback())).resolves.toEqual({ delegatedRequestId: "delegated-1" });
 
-    expect(dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith({
+    expect(kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith({
       type: KmsDataKey.SecretManager,
       projectId: "project-1"
     });

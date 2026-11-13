@@ -300,14 +300,14 @@ const createAccessBundle = async (name: string) => {
 
 // The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
 // The spec runs in its own module graph, which is why the env config is initialized again here.
-let dataKeyService: TDataKeyService | undefined;
+let kmsDataKeyService: TDataKeyService | undefined;
 const projectCipher = async (projectId: string) => {
-  if (!dataKeyService) {
+  if (!kmsDataKeyService) {
     await initEnvConfig(testSuperAdminDAL, logger);
     const kmsCore = await startStandaloneKmsCore({ db: testDb, envConfig: getConfig() });
-    dataKeyService = kmsCore.dataKeyService;
+    kmsDataKeyService = kmsCore.dataKeyService;
   }
-  return dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  return kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 };
 
 describe("Agent Vault V1 Router", async () => {
@@ -7971,7 +7971,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        dataKeyService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
@@ -8109,7 +8109,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        dataKeyService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: () =>
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
         } as never,
@@ -8373,7 +8373,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        dataKeyService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
@@ -10429,7 +10429,7 @@ describe("Agent Vault V1 Router", async () => {
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
-          dataKeyService: {
+          kmsDataKeyService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
@@ -10536,7 +10536,7 @@ describe("Agent Vault V1 Router", async () => {
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
-          dataKeyService: {
+          kmsDataKeyService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,

@@ -34,7 +34,7 @@ type TPkiInstallationServiceFactoryDep = {
     "findById" | "findByProjectId" | "countByProjectId" | "findByIdWithCertificates" | "updateById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   queueInstallationRescan: (installationId: string) => Promise<void>;
 };
@@ -44,7 +44,7 @@ export type TPkiInstallationServiceFactory = ReturnType<typeof pkiInstallationSe
 export const pkiInstallationServiceFactory = ({
   pkiCertificateInstallationDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   queueInstallationRescan
 }: TPkiInstallationServiceFactoryDep) => {
@@ -183,7 +183,7 @@ export const pkiInstallationServiceFactory = ({
           : await encryptPkiInstallationCredentials({
               projectId: installation.projectId,
               credentials: { keystorePassword },
-              dataKeyService
+              kmsDataKeyService
             });
     }
 

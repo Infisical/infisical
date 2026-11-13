@@ -79,7 +79,7 @@ type TIntegrationAuthServiceFactoryDep = {
   integrationDAL: Pick<TIntegrationDALFactory, "delete">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthServiceFactory>;
@@ -89,7 +89,7 @@ export const integrationAuthServiceFactory = ({
   integrationAuthDAL,
   integrationDAL,
   projectBotService,
-  dataKeyService
+  kmsDataKeyService
 }: TIntegrationAuthServiceFactoryDep) => {
   const listIntegrationAuthByProjectId = async ({
     actorId,
@@ -213,7 +213,7 @@ export const integrationAuthServiceFactory = ({
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -322,7 +322,7 @@ export const integrationAuthServiceFactory = ({
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -484,7 +484,7 @@ export const integrationAuthServiceFactory = ({
 
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -627,7 +627,7 @@ export const integrationAuthServiceFactory = ({
 
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
-        await dataKeyService.createCipherPairWithDataKey({
+        await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: integrationAuth.projectId
         });

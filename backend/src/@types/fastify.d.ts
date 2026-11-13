@@ -423,8 +423,8 @@ declare module "fastify" {
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
     licenseService: TLicenseService;
-    dataKeyService: TDataKeyService;
-    rootKeyService: TRootKeyService;
+    kmsDataKeyService: TDataKeyService;
+    kmsRootKeyService: TRootKeyService;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;

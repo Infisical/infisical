@@ -58,7 +58,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
   approvalRequestDAL,
   appConnectionDAL,
   membershipDAL,
-  dataKeyService,
+  kmsDataKeyService,
   auditLogService,
   approvalResources,
   decisionNotifiers
@@ -346,7 +346,7 @@ export const delegatedApprovalDecisionServiceFactory = ({
           delegatedPolicy,
           organizationId: approvalRequest.organizationId
         }),
-        dataKeyService
+        kmsDataKeyService
       );
       const result = await provider.fetchDecision(
         { delegatedRequestId, approvalRequestId: approvalRequest.id, providerRequestId: context.providerRequestId },

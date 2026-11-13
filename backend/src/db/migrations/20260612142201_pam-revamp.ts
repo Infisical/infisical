@@ -270,13 +270,13 @@ export async function up(knex: Knex): Promise<void> {
   initLogger();
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const { dataKeyService } = await getMigrationEncryptionServices({
+  const { kmsDataKeyService } = await getMigrationEncryptionServices({
     envConfig,
     db: knex
   });
 
   const getProjectCipher = async (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   for (const { orgId } of orgsWithPam) {
     const newProjectId = orgToPamProject.get(orgId)!;

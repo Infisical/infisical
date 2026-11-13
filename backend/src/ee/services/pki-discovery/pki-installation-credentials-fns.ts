@@ -11,25 +11,31 @@ type TPkiInstallationCredentials = z.infer<typeof PkiInstallationCredentialsSche
 export const encryptPkiInstallationCredentials = async ({
   projectId,
   credentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   credentials: TPkiInstallationCredentials;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
   const { cipherTextBlob } = encryptor({ plainText: Buffer.from(JSON.stringify(credentials)) });
   return cipherTextBlob;
 };
 
 export const createPkiInstallationCredentialsDecryptor = async ({
   projectId,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
   return (encryptedCredentials: Buffer): TPkiInstallationCredentials =>
     PkiInstallationCredentialsSchema.parse(JSON.parse(decryptor({ cipherTextBlob: encryptedCredentials }).toString()));
 };

@@ -41,11 +41,15 @@ const SCIM_SERVICE_PRINCIPALS_LIMIT = 5;
 export const azureEntraIdConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const listScimServicePrincipals = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.AzureEntraId, connectionId, actor);
-    const accessToken = await getAzureEntraIdConnectionAccessToken(appConnection.id, appConnectionDAL, dataKeyService);
+    const accessToken = await getAzureEntraIdConnectionAccessToken(
+      appConnection.id,
+      appConnectionDAL,
+      kmsDataKeyService
+    );
 
     const headers = {
       Authorization: `Bearer ${accessToken}`,

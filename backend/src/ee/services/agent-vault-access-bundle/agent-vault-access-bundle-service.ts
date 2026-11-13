@@ -189,7 +189,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   >;
   agentVaultPersonalValueService: Pick<TAgentVaultPersonalValueServiceFactory, "findStatusesForOwner">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
   membershipDAL: Pick<
     TMembershipDALFactory,
@@ -237,7 +237,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultPersonalValueDAL,
     agentVaultPersonalValueService,
     permissionService,
-    dataKeyService,
+    kmsDataKeyService,
     licenseService,
     membershipDAL,
     membershipRoleDAL,
@@ -414,7 +414,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const getProjectCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const summarizeCredential = (service: TAgentVaultServices): TAgentVaultCredentialSummary => {
     const config = service.credentialConfig as Record<string, string>;

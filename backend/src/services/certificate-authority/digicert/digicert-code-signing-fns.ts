@@ -61,7 +61,7 @@ type TDigiCertCodeSigningFnsDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
@@ -71,7 +71,7 @@ export const digiCertCodeSigningFns = ({
   certificateAuthorityDAL,
   certificateDAL,
   certificateBodyDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService
 }: TDigiCertCodeSigningFnsDeps) => {
   const assertCsOrgValidatedOrContactProvided = async ({
@@ -89,7 +89,11 @@ export const digiCertCodeSigningFns = ({
 
     let isValidated = false;
     try {
-      const { apiKey, baseUrl } = await getDigiCertClientCredentials(appConnectionId, appConnectionDAL, dataKeyService);
+      const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+        appConnectionId,
+        appConnectionDAL,
+        kmsDataKeyService
+      );
       const client = createDigiCertApiClient(apiKey, baseUrl);
       const { validations } = await client.getOrganizationValidations(organizationId);
       isValidated = isDigiCertOrgValidatedForProduct(validations, productNameId);
@@ -154,7 +158,7 @@ export const digiCertCodeSigningFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
     return { ca, digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
   };
@@ -373,7 +377,7 @@ export const digiCertCodeSigningFns = ({
       return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))

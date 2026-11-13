@@ -11,7 +11,7 @@ import { TBitbucketDataSourceCredentials, TBitbucketPushEvent } from "./bitbucke
 export const bitbucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const handlePushEvent = async (
     payload: TBitbucketPushEvent & { dataSourceId: string; receivedSignature: string; bodyString: string }
@@ -58,7 +58,7 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

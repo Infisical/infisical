@@ -219,11 +219,11 @@ const validateExternalConfigs = async (
 
 export const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   kmsKeyService: TKmsKeyService
 ) => {
   try {
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -246,7 +246,7 @@ export const generateAndEncryptAcmeEabSecret = async (
 export const validateAndEncryptPemCaChain = async (
   caChain: string,
   projectId: string,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   kmsKeyService: TKmsKeyService
 ) => {
   try {
@@ -260,7 +260,7 @@ export const validateAndEncryptPemCaChain = async (
       throw new BadRequestError({ message: "Invalid certificate chain" });
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -279,11 +279,11 @@ export const validateAndEncryptPemCaChain = async (
 export const decryptCaChain = async (
   encryptedCaChain: Buffer,
   projectId: string,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   kmsKeyService: TKmsKeyService
 ): Promise<string> => {
   try {
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -327,7 +327,7 @@ type TCertificateProfileServiceFactoryDep = {
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
@@ -392,7 +392,7 @@ export const certificateProfileServiceFactory = ({
   caKeySourceService,
   externalCertificateAuthorityDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   projectDAL,
   resourceMetadataDAL,
@@ -619,7 +619,7 @@ export const certificateProfileServiceFactory = ({
           certificateAuthoritySecretDAL,
           certificateAuthorityCertDAL,
           projectDAL,
-          dataKeyService,
+          kmsDataKeyService,
           kmsKeyService,
           caKeySourceService
         }
@@ -659,7 +659,7 @@ export const certificateProfileServiceFactory = ({
         ({ encryptedCaChain } = await validateAndEncryptPemCaChain(
           data.estConfig.caChain,
           projectId,
-          dataKeyService,
+          kmsDataKeyService,
           kmsKeyService
         ));
       }
@@ -668,7 +668,7 @@ export const certificateProfileServiceFactory = ({
 
     const precomputedAcmeEabSecret =
       enrollmentType === EnrollmentType.ACME && data.acmeConfig
-        ? (await generateAndEncryptAcmeEabSecret(projectId, dataKeyService, kmsKeyService)).encryptedEabSecret
+        ? (await generateAndEncryptAcmeEabSecret(projectId, kmsDataKeyService, kmsKeyService)).encryptedEabSecret
         : undefined;
 
     // Create enrollment configs and profile
@@ -912,7 +912,7 @@ export const certificateProfileServiceFactory = ({
         const { encryptedCaChain } = await validateAndEncryptPemCaChain(
           estConfig.caChain,
           existingProfile.projectId,
-          dataKeyService,
+          kmsDataKeyService,
           kmsKeyService
         );
         estUpdateData.encryptedCaChain = encryptedCaChain;
@@ -1137,7 +1137,7 @@ export const certificateProfileServiceFactory = ({
           const decryptedCaChain = await decryptCaChain(
             estConfig.encryptedCaChain,
             profile.projectId,
-            dataKeyService,
+            kmsDataKeyService,
             kmsKeyService
           );
           profile.estConfig.caChain = decryptedCaChain;
@@ -1350,7 +1350,7 @@ export const certificateProfileServiceFactory = ({
               const decryptedCaChain = await decryptCaChain(
                 estConfig.encryptedCaChain,
                 projectId,
-                dataKeyService,
+                kmsDataKeyService,
                 kmsKeyService
               );
               decryptedEstConfig = {
@@ -1588,7 +1588,7 @@ export const certificateProfileServiceFactory = ({
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
-    const certificateManagerKeyId = await dataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
@@ -1611,7 +1611,7 @@ export const certificateProfileServiceFactory = ({
         projectId: cert.projectId,
         certificateSecretDAL,
         projectDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService
       });
       privateKey = certPrivateKey;
@@ -1768,7 +1768,7 @@ export const certificateProfileServiceFactory = ({
       throw new NotFoundError({ message: "ACME configuration not found for this profile" });
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId

@@ -89,7 +89,7 @@ export type THostScanDeps = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "find">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -195,7 +195,7 @@ export const resolveHostConnection = async <TCredentials extends { host: string 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: connection.orgId,
     encryptedCredentials: connection.encryptedCredentials,
-    dataKeyService: deps.dataKeyService,
+    kmsDataKeyService: deps.kmsDataKeyService,
     projectId: connection.projectId
   })) as unknown as TCredentials;
 
@@ -266,7 +266,10 @@ export const loadKeystorePasswords = async (projectId: string, host: TResolvedHo
       )
   );
   if (installationsOnThisHost.length === 0) return passwords;
-  const decrypt = await createPkiInstallationCredentialsDecryptor({ projectId, dataKeyService: deps.dataKeyService });
+  const decrypt = await createPkiInstallationCredentialsDecryptor({
+    projectId,
+    kmsDataKeyService: deps.kmsDataKeyService
+  });
   installationsOnThisHost.forEach((row) => {
     const { filePath } = row.locationDetails as TPkiInstallationLocationDetails;
     if (!row.encryptedCredentials || !filePath) return;
@@ -701,7 +704,7 @@ export const executeHostScan = async <TConfig extends THostScanTargetConfig>(
       `${definition.label} discovery scan starting [discoveryId=${discoveryId}] [projectId=${discoveryConfig.projectId}]`
     );
 
-    const certificateKmsKeyId = await deps.dataKeyService.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
+    const certificateKmsKeyId = await deps.kmsDataKeyService.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
     const kmsEncryptor = await deps.kmsKeyService.encryptWithKmsKey({ kmsId: certificateKmsKeyId });
 
     scanHistoryId = await startScanRun(discoveryId, startedAt, deps);

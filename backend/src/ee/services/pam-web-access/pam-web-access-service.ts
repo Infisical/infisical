@@ -85,7 +85,7 @@ type TPamWebAccessServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "runWithPoolFailover" | "assertGatewayBindingInOrg"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
@@ -125,7 +125,7 @@ export const pamWebAccessServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   gatewayPoolService,
-  dataKeyService,
+  kmsDataKeyService,
   userDAL,
   mfaSessionService,
   orgDAL,
@@ -134,7 +134,7 @@ export const pamWebAccessServiceFactory = ({
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

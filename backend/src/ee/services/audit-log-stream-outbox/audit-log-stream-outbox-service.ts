@@ -77,7 +77,7 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
   auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectTypesByIds">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
   eventEmitter: TEventEmitter;
@@ -94,7 +94,7 @@ export const auditLogStreamOutboxServiceFactory = ({
   auditLogStreamOutboxDAL,
   auditLogStreamDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   keyStore,
   queueService,
   eventEmitter
@@ -274,7 +274,7 @@ export const auditLogStreamOutboxServiceFactory = ({
       credentials = await decryptLogStreamCredentials({
         encryptedCredentials: stream.encryptedCredentials,
         orgId: stream.orgId,
-        dataKeyService
+        kmsDataKeyService
       });
     } catch (error) {
       // This message reaches the alert and the stream's lastDeliveryError, so the KMS detail stays in the log.

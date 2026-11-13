@@ -54,13 +54,13 @@ export type THsmConnectorCredentialsSchemaType = z.infer<typeof HsmConnectorCred
 export const encryptHsmConnectorCredentials = async ({
   projectId,
   credentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   credentials: THsmConnectorCredentials;
-  dataKeyService: THsmConnectorServiceFactoryDep["dataKeyService"];
+  kmsDataKeyService: THsmConnectorServiceFactoryDep["kmsDataKeyService"];
 }): Promise<Buffer> => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -73,13 +73,13 @@ export const encryptHsmConnectorCredentials = async ({
 export const decryptHsmConnectorCredentials = async ({
   projectId,
   encryptedCredentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   encryptedCredentials: Buffer;
-  dataKeyService: THsmConnectorServiceFactoryDep["dataKeyService"];
+  kmsDataKeyService: THsmConnectorServiceFactoryDep["kmsDataKeyService"];
 }): Promise<THsmConnectorCredentials> => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });

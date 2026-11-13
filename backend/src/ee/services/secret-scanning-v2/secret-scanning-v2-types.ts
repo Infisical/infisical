@@ -315,7 +315,7 @@ export type TSecretScanningFactoryUpdateWebhook<
 
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TSecretScanningFactory<

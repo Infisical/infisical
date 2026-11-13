@@ -47,7 +47,7 @@ type TDynamicSecretServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -91,7 +91,7 @@ export const dynamicSecretServiceFactory = ({
   permissionService,
   dynamicSecretQueueService,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   gatewayV2DAL,
   gatewayPoolService,
   orgDAL,
@@ -211,7 +211,7 @@ export const dynamicSecretServiceFactory = ({
     const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId, defaultTTL, maxTTL });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
-    const { encryptor: secretManagerEncryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor: secretManagerEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -331,7 +331,7 @@ export const dynamicSecretServiceFactory = ({
         throw new BadRequestError({ message: "Provided dynamic secret already exists under the folder" });
     }
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await dataKeyService.createCipherPairWithDataKey({
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -663,7 +663,7 @@ export const dynamicSecretServiceFactory = ({
       })
     );
 
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -984,7 +984,7 @@ export const dynamicSecretServiceFactory = ({
       })
     );
 
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
     });

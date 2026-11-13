@@ -41,7 +41,7 @@ type TIntegrationServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -59,7 +59,7 @@ export const integrationServiceFactory = ({
   projectBotService,
   secretV2BridgeDAL,
   secretImportDAL,
-  dataKeyService,
+  kmsDataKeyService,
   secretDAL,
   projectFolderGrantDAL,
   orgDAL
@@ -188,7 +188,7 @@ export const integrationServiceFactory = ({
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
 
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: integration.projectId
     });
@@ -241,7 +241,7 @@ export const integrationServiceFactory = ({
         folderDAL,
         secretImportDAL,
         secretDAL,
-        dataKeyService,
+        kmsDataKeyService,
         projectFolderGrantDAL,
         orgDAL,
         actorOrgId

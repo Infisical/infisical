@@ -297,7 +297,7 @@ describe("CertificateProfileService", () => {
       caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
-      dataKeyService: mockKmsService,
+      kmsDataKeyService: mockKmsService,
       kmsKeyService: mockKmsService,
       projectDAL: mockProjectDAL,
       resourceMetadataDAL: mockResourceMetadataDAL

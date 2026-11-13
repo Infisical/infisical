@@ -29,7 +29,7 @@ interface GitLabOAuthTokenResponse {
 type TNavigationParams = {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export const getGitLabConnectionListItem = () => {
@@ -72,7 +72,7 @@ export const refreshGitLabToken = async (
   orgId: string,
   projectId: string | undefined | null,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   instanceUrl?: string
 ): Promise<string> => {
   const {
@@ -122,7 +122,7 @@ export const refreshGitLabToken = async (
         expiresAt
       },
       orgId,
-      dataKeyService,
+      kmsDataKeyService,
       projectId
     });
 
@@ -140,7 +140,7 @@ export const refreshGitLabToken = async (
   }
 };
 
-const getNavigationClient = async ({ appConnection, appConnectionDAL, dataKeyService }: TNavigationParams) => {
+const getNavigationClient = async ({ appConnection, appConnectionDAL, kmsDataKeyService }: TNavigationParams) => {
   let { accessToken } = appConnection.credentials;
 
   if (
@@ -161,7 +161,7 @@ const getNavigationClient = async ({ appConnection, appConnectionDAL, dataKeySer
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       appConnection.credentials.instanceUrl
     );
   }
@@ -285,7 +285,7 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
 export const getGitLabConnectionClient = async (
   appConnection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   let { accessToken } = appConnection.credentials;
 
@@ -300,7 +300,7 @@ export const getGitLabConnectionClient = async (
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       appConnection.credentials.instanceUrl
     );
   }
@@ -344,13 +344,13 @@ const throwGitLabListError = (error: unknown, resource: "groups" | "projects"): 
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
-  dataKeyService,
+  kmsDataKeyService,
   search,
   limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   search?: string;
   limit?: number;
 }): Promise<TGitLabProject[]> => {
@@ -367,7 +367,7 @@ export const listGitLabProjects = async ({
       appConnection.orgId,
       appConnection.projectId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       appConnection.credentials.instanceUrl
     );
   }
@@ -403,17 +403,17 @@ export const listGitLabProjects = async ({
 export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
-  dataKeyService,
+  kmsDataKeyService,
   search,
   limit
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   search?: string;
   limit?: number;
 }): Promise<TGitLabGroup[]> => {
-  const client = await getNavigationClient({ appConnection, appConnectionDAL, dataKeyService });
+  const client = await getNavigationClient({ appConnection, appConnectionDAL, kmsDataKeyService });
   if (!client) return [];
 
   try {

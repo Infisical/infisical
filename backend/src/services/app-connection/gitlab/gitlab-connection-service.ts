@@ -17,7 +17,7 @@ type TGetAppConnectionFunc = (
 export const gitlabConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
     try {
@@ -25,7 +25,7 @@ export const gitlabConnectionService = (
       const projects = await listGitLabProjects({
         appConnection,
         appConnectionDAL,
-        dataKeyService,
+        kmsDataKeyService,
         search,
         limit
       });
@@ -43,7 +43,7 @@ export const gitlabConnectionService = (
       const groups = await listGitLabGroups({
         appConnection,
         appConnectionDAL,
-        dataKeyService,
+        kmsDataKeyService,
         search,
         limit
       });

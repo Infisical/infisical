@@ -33,7 +33,7 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findSecretPathByFolderIds">;
 };
 
@@ -57,7 +57,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   dynamicSecretDAL,
   dynamicSecretProviders,
   dynamicSecretLeaseDAL,
-  dataKeyService,
+  kmsDataKeyService,
   folderDAL,
   projectMembershipDAL,
   projectDAL,
@@ -194,7 +194,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           return;
         }
 
-        const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+        const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: folder.projectId
         });
@@ -251,7 +251,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           return;
         }
 
-        const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+        const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: folder.projectId
         });

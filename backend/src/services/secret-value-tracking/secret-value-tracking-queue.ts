@@ -41,7 +41,7 @@ type TSecretValueTrackingQueueFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "updateById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findSecretsInFolderAfter" | "batchSetBlindIndexes">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 // A payload with no scope predates the org-wide walk. Reading it as project scope is what lets a job
@@ -64,7 +64,7 @@ export const secretValueTrackingQueueFactory = ({
   orgDAL,
   folderDAL,
   secretV2BridgeDAL,
-  dataKeyService
+  kmsDataKeyService
 }: TSecretValueTrackingQueueFactoryDep) => {
   const startBackfill = async (scope: TBackfillScope) => {
     const jobId = jobIdOf(scope);
@@ -126,7 +126,7 @@ export const secretValueTrackingQueueFactory = ({
       // One org data key for the whole walk, since every project in the org shares it.
       const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({
         orgId: projects[0].orgId,
-        dataKeyService
+        kmsDataKeyService
       });
       const progress = { projectsTotal: projects.length, projectsDone: 0, secretsProcessed: 0 };
 
@@ -179,7 +179,7 @@ export const secretValueTrackingQueueFactory = ({
         // Soft-deleted environments are included: the delete is reversible, so leaving their rows
         // unindexed and then flagging the scope complete breaks the moment one is restored.
         const folders = await folderDAL.findByProjectId(project.id, undefined, true);
-        const cipher = await dataKeyService.createCipherPairWithDataKey({
+        const cipher = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: project.id
         });

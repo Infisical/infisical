@@ -436,11 +436,11 @@ const buildSlackPayload = (notification: TNotification) => {
 export const sendSlackNotification = async ({
   orgId,
   notification,
-  dataKeyService,
+  kmsDataKeyService,
   targetChannelIds,
   slackIntegration
 }: TSendSlackNotificationDTO) => {
-  const { decryptor: orgDataKeyDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
   });

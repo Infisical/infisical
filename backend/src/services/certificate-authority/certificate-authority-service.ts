@@ -157,7 +157,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
@@ -195,7 +195,7 @@ export const certificateAuthorityServiceFactory = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
@@ -223,7 +223,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
@@ -243,7 +243,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
@@ -260,7 +260,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL,
     certificateProfileDAL,
@@ -276,7 +276,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL,
     certificateProfileDAL,
@@ -292,7 +292,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL,
     certificateProfileDAL
@@ -306,7 +306,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL
   });
@@ -318,7 +318,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL
   });
@@ -330,7 +330,7 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL,
     certificateProfileDAL
@@ -1529,7 +1529,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              dataKeyService,
+              kmsDataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
@@ -1545,7 +1545,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              dataKeyService,
+              kmsDataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,

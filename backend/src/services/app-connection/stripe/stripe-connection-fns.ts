@@ -60,7 +60,7 @@ const REFRESH_LOCK_SETTINGS = { retryCount: 60, retryDelay: 250, retryJitter: 10
 
 export type TStripeConnectionAuthorizationDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -146,7 +146,10 @@ export const validateStripeConnectionCredentials = async (config: TStripeConnect
  */
 const getStoredStripeConnection = async (
   connectionId: string,
-  { appConnectionDAL, dataKeyService }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "dataKeyService">
+  {
+    appConnectionDAL,
+    kmsDataKeyService
+  }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "kmsDataKeyService">
 ) => {
   const appConnection = await appConnectionDAL.transaction((tx) => appConnectionDAL.findById(connectionId, tx));
 
@@ -162,7 +165,7 @@ const getStoredStripeConnection = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    dataKeyService
+    kmsDataKeyService
   })) as TStripeConnectionCredentials;
 
   return { appConnection, credentials };
@@ -211,7 +214,7 @@ const refreshStripeConnection = async (connectionId: string, deps: TStripeConnec
     credentials: { accountId, refreshToken: data.refresh_token },
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
-    dataKeyService: deps.dataKeyService
+    kmsDataKeyService: deps.kmsDataKeyService
   });
 
   try {

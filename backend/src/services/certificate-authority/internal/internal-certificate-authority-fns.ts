@@ -55,7 +55,7 @@ type TInternalCertificateAuthorityFnsDeps = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "transaction" | "findOne" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -69,7 +69,7 @@ export const InternalCertificateAuthorityFns = ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
@@ -89,7 +89,7 @@ export const InternalCertificateAuthorityFns = ({
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -137,7 +137,7 @@ export const InternalCertificateAuthorityFns = ({
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -240,7 +240,7 @@ export const InternalCertificateAuthorityFns = ({
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -310,7 +310,7 @@ export const InternalCertificateAuthorityFns = ({
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -387,7 +387,7 @@ export const InternalCertificateAuthorityFns = ({
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -525,7 +525,7 @@ export const InternalCertificateAuthorityFns = ({
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 

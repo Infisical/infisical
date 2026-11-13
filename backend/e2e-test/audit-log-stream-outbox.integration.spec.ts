@@ -47,7 +47,7 @@ const LAST_ATTEMPT = 4;
 // Stands in for the org KMS key: these tests are about the outbox, not about encryption, and the
 // server does not expose its KMS service. Flip decryptShouldFail to simulate a broken key.
 let decryptShouldFail = false;
-const dataKeyService = {
+const kmsDataKeyService = {
   createCipherPairWithDataKey: async () => ({
     encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
     decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => {
@@ -76,7 +76,7 @@ const service = auditLogStreamOutboxServiceFactory({
   auditLogStreamOutboxDAL: outboxDAL,
   auditLogStreamDAL,
   projectDAL: { findProjectTypesByIds: async () => [] },
-  dataKeyService: dataKeyService as never,
+  kmsDataKeyService: kmsDataKeyService as never,
   // Required by the factory; drainStream never touches it.
   keyStore: { setItemWithExpiryNX: async () => null },
   queueService: {} as never,
@@ -87,7 +87,7 @@ const createStream = async (url: string) => {
   const encryptedCredentials = await encryptLogStreamCredentials({
     orgId,
     credentials: { url, headers: [] },
-    dataKeyService: dataKeyService as never
+    kmsDataKeyService: kmsDataKeyService as never
   });
   const [stream] = await testDb(TableName.AuditLogStream)
     .insert({ orgId, provider: LogProvider.Custom, encryptedCredentials, streamMode: StreamMode.Batch })

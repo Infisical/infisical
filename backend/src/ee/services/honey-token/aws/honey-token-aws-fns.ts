@@ -43,7 +43,7 @@ import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredent
 
 type TConfigProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
@@ -70,13 +70,13 @@ export const verifyAwsStackDeployment = async ({
   stackName,
   awsRegion,
   appConnectionDAL,
-  dataKeyService
+  kmsDataKeyService
 }: {
   connectionId: string;
   stackName: string;
   awsRegion: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }): Promise<{ deployed: boolean; status: string | null }> => {
   try {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -84,7 +84,7 @@ export const verifyAwsStackDeployment = async ({
       return { deployed: false, status: null };
     }
 
-    const decryptedConnection = await decryptAppConnection(appConnection, dataKeyService);
+    const decryptedConnection = await decryptAppConnection(appConnection, kmsDataKeyService);
     const awsConfig = parseAwsConnectionConfig(decryptedConnection);
     const { credentials: awsCredentials } = await getAwsConnectionConfig(awsConfig);
 
@@ -302,7 +302,7 @@ export const parseAwsHoneyTokenDecryptedCredentials = (value: unknown): TAwsHone
 
 export const honeyTokenAwsConfigProviderFactory = ({
   honeyTokenConfigDAL,
-  dataKeyService,
+  kmsDataKeyService,
   licenseService,
   appConnectionDAL
 }: TConfigProviderDep) => {
@@ -319,7 +319,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     }
 
     const validatedConfig = AwsHoneyTokenConfigSchema.parse(config);
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -332,7 +332,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
       stackName: validatedConfig.stackName,
       awsRegion: validatedConfig.awsRegion,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     });
     const derivedStatus = stackDeployment.deployed
       ? HoneyTokenConfigStatus.Complete
@@ -345,7 +345,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     if (existing) {
       // Keep webhook signing key immutable after first save.
       if (existing.encryptedConfig) {
-        const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId
         });
@@ -382,7 +382,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
       throw new BadRequestError({ message: "Honey token configuration not found. Save the configuration first." });
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -394,7 +394,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
       stackName: storedConfig.stackName,
       awsRegion: storedConfig.awsRegion,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     });
 
     await honeyTokenConfigDAL.updateById(config.id, {
@@ -419,7 +419,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
       return undefined;
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

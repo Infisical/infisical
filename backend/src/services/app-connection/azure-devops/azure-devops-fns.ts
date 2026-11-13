@@ -41,7 +41,7 @@ export const getAzureDevopsConnectionListItem = () => {
 export const getAzureDevopsConnection = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -69,7 +69,7 @@ export const getAzureDevopsConnection = async (
 
       const oauthCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureDevOpsConnectionCredentials;
@@ -101,7 +101,7 @@ export const getAzureDevopsConnection = async (
       const encryptedOAuthCredentials = await encryptAppConnectionCredentials({
         credentials: updatedOAuthCredentials,
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         projectId: appConnection.projectId
       });
 
@@ -112,7 +112,7 @@ export const getAzureDevopsConnection = async (
     case AzureDevOpsConnectionMethod.AccessToken:
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as { accessToken: string };
@@ -126,7 +126,7 @@ export const getAzureDevopsConnection = async (
     case AzureDevOpsConnectionMethod.ClientSecret:
       const clientSecretCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureDevOpsConnectionClientSecretCredentials;
@@ -157,7 +157,7 @@ export const getAzureDevopsConnection = async (
       const encryptedClientCredentials = await encryptAppConnectionCredentials({
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         projectId: appConnection.projectId
       });
 

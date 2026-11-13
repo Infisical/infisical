@@ -14,19 +14,19 @@ export const createAcmClient = async ({
   appConnectionId,
   region,
   appConnectionDAL,
-  dataKeyService
+  kmsDataKeyService
 }: {
   appConnectionId: string;
   region: AWSRegion;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
     throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
   }
 
-  const decryptedConnection = (await decryptAppConnection(appConnection, dataKeyService)) as TAwsConnection;
+  const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
   const awsConfig = await getAwsConnectionConfig(decryptedConnection, region);
 
   return new ACMClient({
@@ -40,15 +40,15 @@ export const createAcmClient = async ({
 export const resolveDnsAwsConnection = async ({
   dnsAppConnectionId,
   appConnectionDAL,
-  dataKeyService
+  kmsDataKeyService
 }: {
   dnsAppConnectionId: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
   const dnsAppConnection = await appConnectionDAL.findById(dnsAppConnectionId);
   if (!dnsAppConnection) {
     throw new NotFoundError({ message: `DNS app connection with ID '${dnsAppConnectionId}' not found` });
   }
-  return (await decryptAppConnection(dnsAppConnection, dataKeyService)) as TAwsConnection;
+  return (await decryptAppConnection(dnsAppConnection, kmsDataKeyService)) as TAwsConnection;
 };

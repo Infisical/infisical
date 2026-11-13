@@ -31,7 +31,7 @@ type TPamSessionChunkServiceFactoryDep = {
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -48,7 +48,7 @@ export const pamSessionChunkServiceFactory = ({
   pamSessionEventChunkDAL,
   pamAccountDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL
 }: TPamSessionChunkServiceFactoryDep) => {
   const resolveRecordingConfig = async (accountId: string): Promise<TPamRecordingResolvedConfig | null> => {
@@ -77,7 +77,7 @@ export const pamSessionChunkServiceFactory = ({
         return null;
       }
 
-      const appConnection = await decryptAppConnection(raw, dataKeyService);
+      const appConnection = await decryptAppConnection(raw, kmsDataKeyService);
 
       return {
         backend: PamRecordingStorageBackend.AwsS3,
@@ -316,7 +316,7 @@ export const pamSessionChunkServiceFactory = ({
       projectId: session.projectId,
       sessionId,
       encryptedSessionKey: session.encryptedSessionKey,
-      dataKeyService
+      kmsDataKeyService
     });
 
     const chunks = await pamSessionEventChunkDAL.findAllBySessionId(sessionId);

@@ -76,7 +76,7 @@ export type TPkiSyncQueueFactory = ReturnType<typeof pkiSyncQueueFactory>;
 
 type TPkiSyncQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<
@@ -122,7 +122,7 @@ const getRequeueDelay = (failureCount?: number) => {
 
 export const pkiSyncQueueFactory = ({
   queueService,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   appConnectionDAL,
   keyStore,
@@ -173,7 +173,7 @@ export const pkiSyncQueueFactory = ({
       certificateAuthorityCertDAL,
       certificateSyncDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -271,7 +271,7 @@ export const pkiSyncQueueFactory = ({
         pkiSync,
         appConnectionDAL,
         projectDAL,
-        dataKeyService
+        kmsDataKeyService
       });
 
       const { certificateMap, certificateMetadata } = await $certificatesForSync(pkiSync);
@@ -289,7 +289,7 @@ export const pkiSyncQueueFactory = ({
 
       const syncResult = await PkiSyncFns.syncCertificates(pkiSyncWithCredentials, certificateMap, {
         appConnectionDAL,
-        dataKeyService,
+        kmsDataKeyService,
         certificateDAL,
         certificateSyncDAL,
         gatewayV2Service,
@@ -647,7 +647,7 @@ export const pkiSyncQueueFactory = ({
         pkiSync,
         appConnectionDAL,
         projectDAL,
-        dataKeyService
+        kmsDataKeyService
       });
 
       const certificateMap: TCertificateMap = certificateIdsToRemove?.length
@@ -661,7 +661,7 @@ export const pkiSyncQueueFactory = ({
 
       await PkiSyncFns.removeCertificates(pkiSyncWithCredentials, Object.keys(certificateMap), {
         appConnectionDAL,
-        dataKeyService,
+        kmsDataKeyService,
         certificateSyncDAL,
         certificateDAL,
         certificateMap,

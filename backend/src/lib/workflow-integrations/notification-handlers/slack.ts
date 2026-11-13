@@ -12,12 +12,12 @@ const handleSlackNotification = async ({
   slackConfig,
   notification,
   orgId,
-  dataKeyService
+  kmsDataKeyService
 }: {
   slackConfig: TProjectSlackConfigWithIntegrations;
   notification: TNotification;
   orgId: string;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }): Promise<void> => {
   let targetChannelIds: string[] = [];
   let isEnabled = false;
@@ -44,7 +44,7 @@ const handleSlackNotification = async ({
     await sendSlackNotification({
       orgId,
       notification,
-      dataKeyService,
+      kmsDataKeyService,
       targetChannelIds,
       slackIntegration: slackConfig
     }).catch((error) => {
@@ -61,18 +61,18 @@ export const triggerSlackNotification = async ({
   notification,
   orgId,
   projectSlackConfigDAL,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   notification: TNotification;
   orgId: string;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }): Promise<void> => {
   try {
     const config = await projectSlackConfigDAL.getIntegrationDetailsByProject(projectId);
     if (config) {
-      await handleSlackNotification({ slackConfig: config, notification, orgId, dataKeyService });
+      await handleSlackNotification({ slackConfig: config, notification, orgId, kmsDataKeyService });
     }
   } catch (error) {
     logger.error(error, `Error handling Slack notification. Project ID: ${projectId}`);

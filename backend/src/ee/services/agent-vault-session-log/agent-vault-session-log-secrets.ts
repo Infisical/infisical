@@ -13,8 +13,8 @@ export const generateSessionLogKey = () => crypto.randomBytes(AGENT_VAULT_SESSIO
 
 export const wrapSessionLogKey = async (
   { projectId, sessionId, sessionLogKey }: { projectId: string; sessionId: string; sessionLogKey: Buffer },
-  dataKeyService: TDataKeyService
-) => dataKeyService.wrapKey({ projectId, label: sessionLabel(sessionId), key: sessionLogKey });
+  kmsDataKeyService: TDataKeyService
+) => kmsDataKeyService.wrapKey({ projectId, label: sessionLabel(sessionId), key: sessionLogKey });
 
 const keyOrThrow = (sessionId: string, key: Buffer | null) => {
   if (!key) {
@@ -40,11 +40,11 @@ export const unwrapSessionLogKey = async (
     sessionId,
     encryptedSessionLogKey
   }: { projectId: string; sessionId: string; encryptedSessionLogKey: Buffer },
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) =>
   keyOrThrow(
     sessionId,
-    await dataKeyService.unwrapKey({
+    await kmsDataKeyService.unwrapKey({
       projectId,
       label: sessionLabel(sessionId),
       wrappedKey: encryptedSessionLogKey,

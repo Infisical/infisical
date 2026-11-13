@@ -114,7 +114,7 @@ type TSecretFolderServiceFactoryDep = {
     | "findFolderIdsWithSecrets"
     | "invalidateSecretCacheByProjectId"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -148,7 +148,7 @@ export const secretFolderServiceFactory = ({
   projectDAL,
   secretChangePolicyService,
   secretV2BridgeDAL,
-  dataKeyService,
+  kmsDataKeyService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -2246,7 +2246,7 @@ export const secretFolderServiceFactory = ({
             actorOrgId,
             tx,
             permissionService,
-            dataKeyService,
+            kmsDataKeyService,
             folderDAL,
             secretDAL: secretV2BridgeDAL,
             secretVersionDAL,

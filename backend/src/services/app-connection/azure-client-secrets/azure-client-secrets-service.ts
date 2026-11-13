@@ -20,9 +20,9 @@ type TGetAppConnectionFunc = (
 const listAzureRegisteredApps = async (
   appConnection: TAzureClientSecretsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
-  const accessToken = await getAzureConnectionAccessToken(appConnection.id, appConnectionDAL, dataKeyService);
+  const accessToken = await getAzureConnectionAccessToken(appConnection.id, appConnectionDAL, kmsDataKeyService);
 
   const graphEndpoint = `https://graph.microsoft.com/v1.0/applications`;
 
@@ -48,12 +48,12 @@ const listAzureRegisteredApps = async (
 export const azureClientSecretsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AzureClientSecrets, connectionId, actor);
 
-    const apps = await listAzureRegisteredApps(appConnection, appConnectionDAL, dataKeyService);
+    const apps = await listAzureRegisteredApps(appConnection, appConnectionDAL, kmsDataKeyService);
 
     return apps.map((app) => ({
       id: app.id,

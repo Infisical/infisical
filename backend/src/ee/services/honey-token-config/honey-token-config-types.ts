@@ -19,7 +19,7 @@ import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;

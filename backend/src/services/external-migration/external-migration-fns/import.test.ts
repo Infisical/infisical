@@ -44,7 +44,7 @@ const build = ({ existingSecretKeys = [] as string[] }) => {
       create: vi.fn(async (env: { slug: string }) => ({ id: nextId(), slug: env.slug })),
       find: vi.fn()
     },
-    dataKeyService: kms.dataKeyService,
+    kmsDataKeyService: kms.dataKeyService,
     secretDAL: {
       findBySecretKeys: vi.fn().mockResolvedValue(existingSecretKeys.map((key) => ({ key }))),
       insertMany: vi.fn(async (rows: { key: string }[]) => rows.map((row) => ({ ...row, id: nextId() }))),

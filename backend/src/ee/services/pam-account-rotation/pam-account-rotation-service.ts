@@ -88,7 +88,7 @@ type TPamAccountRotationServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
@@ -104,7 +104,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     permissionService,
     membershipDAL,
     membershipRoleDAL,
-    dataKeyService,
+    kmsDataKeyService,
     keyStore,
     gatewayV2Service,
     gatewayPoolService,
@@ -117,7 +117,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const gatewayDeps = { gatewayV2Service, gatewayPoolService };
 
   const getProjectCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const encrypt = async (projectId: string, data: Record<string, unknown>) => {
     const { encryptor } = await getProjectCipher(projectId);

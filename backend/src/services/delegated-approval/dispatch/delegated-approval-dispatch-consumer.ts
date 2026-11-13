@@ -70,7 +70,7 @@ type TDelegatedApprovalDispatchConsumerDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "update">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TDelegatedApprovalDispatchConsumer = ReturnType<typeof delegatedApprovalDispatchConsumerFactory>;
@@ -82,7 +82,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   approvalRequestDAL,
   projectDAL,
   appConnectionDAL,
-  dataKeyService
+  kmsDataKeyService
 }: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
   const $markDispatchFailed = async (delegatedRequestId: string, eventId: string, statusReason: string) => {
     try {
@@ -227,7 +227,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
           delegatedPolicy,
           organizationId: approvalRequest.organizationId
         }),
-        dataKeyService
+        kmsDataKeyService
       );
 
       const callbackToken = await delegatedApprovalCallbackService.getOrIssueCallbackToken({ delegatedRequest });

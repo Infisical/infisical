@@ -92,7 +92,7 @@ export type THoneyTokenServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
@@ -145,7 +145,7 @@ export const honeyTokenServiceFactory = ({
   honeyTokenEventDAL,
   permissionService,
   licenseService,
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   appConnectionService,
   orgDAL,
@@ -168,7 +168,7 @@ export const honeyTokenServiceFactory = ({
   keyStore
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
-    dataKeyService,
+    kmsDataKeyService,
     appConnectionDAL,
     honeyTokenDAL,
     honeyTokenConfigDAL
@@ -313,7 +313,7 @@ export const honeyTokenServiceFactory = ({
     // to revoke them or they are left behind with no row to find them by.
     let honeyToken: THoneyTokens;
     try {
-      const projectCipher = await dataKeyService.createCipherPairWithDataKey({
+      const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -323,7 +323,7 @@ export const honeyTokenServiceFactory = ({
         plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
       }).cipherTextBlob;
       const { encryptor: secretEncryptor } = projectCipher;
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, dataKeyService });
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsDataKeyService });
 
       const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = honeyTokenCredentials[credentialField];
@@ -551,7 +551,7 @@ export const honeyTokenServiceFactory = ({
 
       const oldSecretKeys = Object.values(oldMapping);
 
-      const projectCipher = await dataKeyService.createCipherPairWithDataKey({
+      const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -564,7 +564,7 @@ export const honeyTokenServiceFactory = ({
 
       const { encryptor: secretEncryptor } = projectCipher;
 
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, dataKeyService });
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsDataKeyService });
 
       const secretEntries = Object.entries(nextSecretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = decryptedCredentials[credentialField];
@@ -695,7 +695,7 @@ export const honeyTokenServiceFactory = ({
     }
     const type = assertSupportedHoneyTokenType(honeyToken.type);
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -1015,7 +1015,7 @@ export const honeyTokenServiceFactory = ({
 
       if (!project || !folderInfo) return;
 
-      const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: honeyToken.projectId
       });

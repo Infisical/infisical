@@ -16,11 +16,11 @@ const makeDataKeyService = () => ({
   )
 });
 
-const makeIndexer = (dataKeyService = makeDataKeyService()) =>
+const makeIndexer = (kmsDataKeyService = makeDataKeyService()) =>
   createSecretBlindIndexer({
     projectCipher: fakeCipher("project") as never,
     orgId: ORG_ID,
-    dataKeyService: dataKeyService as never
+    kmsDataKeyService: kmsDataKeyService as never
   });
 
 describe("createSecretBlindIndexer", () => {
@@ -63,13 +63,13 @@ describe("createSecretBlindIndexer", () => {
   // A bulk write can carry thousands of values, and each data key resolution can be a round trip to an
   // external KMS, so the pairs are built once for the request rather than once per value.
   it("resolves only the org data key, once, no matter how many values it indexes", async () => {
-    const dataKeyService = makeDataKeyService();
-    const indexer = await makeIndexer(dataKeyService);
+    const kmsDataKeyService = makeDataKeyService();
+    const indexer = await makeIndexer(kmsDataKeyService);
 
     await Promise.all(["a", "b", "c", "d"].map((value) => indexer.generateBlindIndexes(Buffer.from(value))));
 
-    expect(dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
-    expect(dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith({
+    expect(kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+    expect(kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith({
       type: KmsDataKey.Organization,
       orgId: ORG_ID
     });

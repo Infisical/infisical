@@ -25,7 +25,7 @@ export type TFnSecretsV2FromImportsDeps = {
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   actorOrgId: string;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export const getAncestorPaths = (path: string): string[] => {

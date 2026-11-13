@@ -175,7 +175,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: TProjectDALFactory;
   certificateIssuanceQueue: Pick<
@@ -351,7 +351,7 @@ export const certificateV3ServiceFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   projectDAL,
   certificateIssuanceQueue,
@@ -905,7 +905,7 @@ export const certificateV3ServiceFactory = ({
         projectId: profile.projectId,
         customExtensions: resolvedCustomExtensions,
         effectiveAlgorithms,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService
       });
       const effectiveApiConfig = await resolveEffectiveApiConfig({
@@ -2344,7 +2344,7 @@ export const certificateV3ServiceFactory = ({
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL,
     certificateIssuanceQueue,

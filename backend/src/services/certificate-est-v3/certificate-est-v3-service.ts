@@ -38,7 +38,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   licenseService: TLicenseService;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
@@ -57,7 +57,7 @@ export const certificateEstV3ServiceFactory = ({
   certificateAuthorityDAL,
   certificateDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   licenseService,
   certificateProfileDAL,
@@ -149,7 +149,7 @@ export const certificateEstV3ServiceFactory = ({
       return;
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -340,7 +340,7 @@ export const certificateEstV3ServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -510,7 +510,7 @@ export const certificateEstV3ServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 

@@ -22,7 +22,7 @@ import { TSecretSyncPayload } from "../secret-sync-payload";
 
 type TDatabricksSecretSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -96,7 +96,7 @@ const deleteDatabricksSecrets = async (
   );
 
 export const databricksSyncFactory = ({
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService
@@ -127,7 +127,7 @@ export const databricksSyncFactory = ({
 
     const connection = await $resolveGatewayConnection(secretSync.connection);
 
-    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, dataKeyService, deps);
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsDataKeyService, deps);
 
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
@@ -188,7 +188,7 @@ export const databricksSyncFactory = ({
 
     const connection = await $resolveGatewayConnection(secretSync.connection);
 
-    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, dataKeyService, deps);
+    const accessToken = await getDatabricksConnectionAccessToken(connection, appConnectionDAL, kmsDataKeyService, deps);
 
     const databricksSecretKeys = await listDatabricksSecrets(
       {

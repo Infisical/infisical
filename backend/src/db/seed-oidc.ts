@@ -115,7 +115,7 @@ const main = async () => {
     // Bootstrap the KMS stack outside the service container, exactly as the *-to-kms migrations do.
     const superAdminDAL = superAdminDALFactory(db);
     const envConfig = await getMigrationEnvConfig(superAdminDAL);
-    const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db });
+    const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db });
     const orgDAL = orgDALFactory(db);
 
     // Resolve the org: use the one the caller passed, otherwise bootstrap a dedicated `oidc` org.
@@ -234,7 +234,7 @@ const main = async () => {
 
     // Active OIDC config. client id/secret are encrypted with the org KMS data key, the same
     // key the OIDC login path decrypts with, so placeholders would break login.
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });

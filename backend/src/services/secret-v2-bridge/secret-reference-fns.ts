@@ -105,7 +105,7 @@ type TInterpolateSecretArg = {
   orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   projectDAL?: Pick<TProjectDALFactory, "find">;
-  dataKeyService?: TDataKeyService;
+  kmsDataKeyService?: TDataKeyService;
   // Optional raw DAL for cross-project secret fetching. This is only distinct from
   // secretDAL when the caller wraps secretDAL with import-aware behavior for
   // same-project relative references; cross-project reads must stay raw so source
@@ -136,7 +136,7 @@ export const expandSecretReferencesFactory = ({
   orgDAL,
   projectFolderGrantDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   crossProjectSecretDAL,
   onSecretExpanded,
   abortSignal,
@@ -144,7 +144,9 @@ export const expandSecretReferencesFactory = ({
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, TCachedReferencedSecret>> = {};
   let crossProjectAllowedCache: boolean | undefined;
-  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && dataKeyService);
+  const hasCrossProjectConfig = Boolean(
+    actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsDataKeyService
+  );
   const checkCrossProjectAllowed = async () => {
     if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
     if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
@@ -165,8 +167,8 @@ export const expandSecretReferencesFactory = ({
     }
   };
   const getProjectDecryptor = async (sourceProjectId: string) => {
-    if (!dataKeyService) return undefined;
-    const { decryptor: sourceDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    if (!kmsDataKeyService) return undefined;
+    const { decryptor: sourceDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sourceProjectId
     });

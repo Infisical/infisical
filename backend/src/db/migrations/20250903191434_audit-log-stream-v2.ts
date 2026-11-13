@@ -29,10 +29,10 @@ export async function up(knex: Knex): Promise<void> {
       const superAdminDAL = superAdminDALFactory(knex);
       const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-      const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+      const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
       const orgEncryptionRingBuffer =
-        createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
+        createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
       const logStreams = await knex(TableName.AuditLogStream).select(
         "id",
@@ -50,7 +50,7 @@ export async function up(knex: Knex): Promise<void> {
         logStreams.map(async (el) => {
           let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
           if (!orgKmsService) {
-            orgKmsService = await dataKeyService.createCipherPairWithDataKey({
+            orgKmsService = await kmsDataKeyService.createCipherPairWithDataKey({
               type: KmsDataKey.Organization,
               orgId: el.orgId
             });
@@ -131,10 +131,10 @@ export async function down(knex: Knex): Promise<void> {
       const superAdminDAL = superAdminDALFactory(knex);
       const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-      const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+      const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
       const orgEncryptionRingBuffer =
-        createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
+        createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
       const logStreamsToRevert = await knex(TableName.AuditLogStream)
         .select("id", "orgId", "encryptedCredentials")
@@ -145,7 +145,7 @@ export async function down(knex: Knex): Promise<void> {
         logStreamsToRevert.map(async (el) => {
           let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
           if (!orgKmsService) {
-            orgKmsService = await dataKeyService.createCipherPairWithDataKey({
+            orgKmsService = await kmsDataKeyService.createCipherPairWithDataKey({
               type: KmsDataKey.Organization,
               orgId: el.orgId
             });

@@ -23,7 +23,7 @@ export type TAlertChannelTestServiceFactoryDep = {
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
   alertChannelService: Pick<TAlertChannelServiceFactory, "validateRecipients" | "assertRecipientTypesAllowed">;
   alertProviderRegistry: TAlertProviderRegistry;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
 };
@@ -40,7 +40,7 @@ export const alertChannelTestServiceFactory = ({
   alertRecipientResolver,
   alertChannelService,
   alertProviderRegistry,
-  dataKeyService,
+  kmsDataKeyService,
   smtpService,
   keyStore
 }: TAlertChannelTestServiceFactoryDep) => {
@@ -105,7 +105,7 @@ export const alertChannelTestServiceFactory = ({
 
     await $assertChannelOwnersPermit(channel.id, dto);
 
-    const { decryptor } = await getAlertChannelCipher(dataKeyService, {
+    const { decryptor } = await getAlertChannelCipher(kmsDataKeyService, {
       orgId: channel.orgId,
       projectId: channel.projectId
     });

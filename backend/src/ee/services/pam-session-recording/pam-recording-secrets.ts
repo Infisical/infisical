@@ -13,18 +13,18 @@ const buildWrapAad = (projectId: string, sessionId: string) =>
 export const generateSessionRecordingSecrets = async ({
   projectId,
   sessionId,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   sessionId: string;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
   const sessionKey = crypto.randomBytes(SESSION_KEY_LENGTH);
   const uploadToken = crypto.randomBytes(UPLOAD_TOKEN_LENGTH);
 
   const wrapAad = buildWrapAad(projectId, sessionId);
 
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -48,14 +48,14 @@ export const decryptSessionKey = async ({
   projectId,
   sessionId,
   encryptedSessionKey,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   sessionId: string;
   encryptedSessionKey: Buffer;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 }) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });

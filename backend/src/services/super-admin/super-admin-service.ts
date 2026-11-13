@@ -104,7 +104,7 @@ type TSuperAdminServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  rootKeyService: TRootKeyService;
+  kmsRootKeyService: TRootKeyService;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: TLicenseService;
@@ -163,7 +163,7 @@ export const superAdminServiceFactory = ({
   authService,
   orgService,
   keyStore,
-  rootKeyService,
+  kmsRootKeyService,
   licenseService,
   usageMeteringService,
   identityAccessTokenService,
@@ -235,7 +235,7 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
     }
 
-    const decrypt = rootKeyService.decryptWithRootKey();
+    const decrypt = kmsRootKeyService.decryptWithRootKey();
 
     const slackClientId = serverCfg.encryptedSlackClientId ? decrypt(serverCfg.encryptedSlackClientId).toString() : "";
     const slackClientSecret = serverCfg.encryptedSlackClientSecret
@@ -303,7 +303,7 @@ export const superAdminServiceFactory = ({
       return {};
     }
 
-    const decrypt = rootKeyService.decryptWithRootKey();
+    const decrypt = kmsRootKeyService.decryptWithRootKey();
 
     const overrides = JSON.parse(decrypt(serverCfg.encryptedEnvOverrides).toString()) as Record<string, string>;
 
@@ -404,7 +404,7 @@ export const superAdminServiceFactory = ({
       }
     }
 
-    const encryptWithRoot = rootKeyService.encryptWithRootKey();
+    const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
     if (data.slackClientId) {
       const encryptedClientId = encryptWithRoot(Buffer.from(data.slackClientId));
 
@@ -527,7 +527,7 @@ export const superAdminServiceFactory = ({
       updatedServerCfg.encryptedMicrosoftTeamsBotId &&
       microsoftTeamsSettingsUpdated
     ) {
-      const decryptWithRoot = rootKeyService.decryptWithRootKey();
+      const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
       decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsBotId); // validate that we're able to decrypt the bot ID
       const decryptedAppId = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsAppId);
       const decryptedAppPassword = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsClientSecret);
@@ -1230,7 +1230,7 @@ export const superAdminServiceFactory = ({
     await userDAL.updateById(userId, { superAdmin: true });
   };
 
-  const getConfiguredEncryptionStrategies = () => rootKeyService.listEncryptionStrategies();
+  const getConfiguredEncryptionStrategies = () => kmsRootKeyService.listEncryptionStrategies();
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
     if (!licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)) {
@@ -1251,7 +1251,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "The selected encryption strategy is already enabled" });
     }
 
-    await rootKeyService.updateEncryptionStrategy(strategy);
+    await kmsRootKeyService.updateEncryptionStrategy(strategy);
   };
 
   const invalidateCache = async (type: CacheType) => {

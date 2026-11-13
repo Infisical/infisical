@@ -53,7 +53,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: TIdentityDALFactory;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "findConstraintsForGeneratedSecret">;
@@ -68,7 +68,7 @@ export const dynamicSecretLeaseServiceFactory = ({
   dynamicSecretQueueService,
   projectDAL,
   licenseService,
-  dataKeyService,
+  kmsDataKeyService,
   userDAL,
   identityDAL,
   secretValidationRuleService
@@ -140,7 +140,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await dataKeyService.createCipherPairWithDataKey({
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -274,7 +274,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -379,7 +379,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

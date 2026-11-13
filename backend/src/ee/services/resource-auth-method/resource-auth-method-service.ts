@@ -104,7 +104,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   resourceGcpAuthDAL: TResourceGcpAuthDALFactory;
   resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
@@ -170,7 +170,7 @@ export const resourceAuthMethodServiceFactory = ({
   resourceGcpAuthDAL,
   resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
-  dataKeyService,
+  kmsDataKeyService,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolMembershipDAL,
@@ -424,7 +424,7 @@ export const resourceAuthMethodServiceFactory = ({
 
       let caCertificate = "";
       if (config.encryptedKubernetesCaCertificate && loaded.orgId) {
-        const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: loaded.orgId
         });
@@ -753,7 +753,7 @@ export const resourceAuthMethodServiceFactory = ({
       return {};
     }
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
 
     const encrypt = (value: string | undefined) => {
       if (value === undefined) return undefined;
@@ -874,7 +874,7 @@ export const resourceAuthMethodServiceFactory = ({
       const stored =
         !isMethodChange && current ? await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id }) : undefined;
       if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
-        const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: actor.orgId
         });
@@ -1322,7 +1322,7 @@ export const resourceAuthMethodServiceFactory = ({
     let caCertificate = "";
     let tokenReviewerJwt = "";
     if (config.encryptedKubernetesCaCertificate || config.encryptedKubernetesTokenReviewerJwt) {
-      const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: resourceOrgId
       });

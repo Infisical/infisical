@@ -35,9 +35,9 @@ export async function up(knex: Knex): Promise<void> {
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const projectEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   const dynamicSecretRootCredentials = await knex(TableName.DynamicSecret)
     .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.DynamicSecret}.folderId`)
@@ -50,7 +50,7 @@ export async function up(knex: Knex): Promise<void> {
     dynamicSecretRootCredentials.map(async ({ projectId, ...el }) => {
       let projectKmsService = projectEncryptionRingBuffer.getItem(projectId);
       if (!projectKmsService) {
-        projectKmsService = await dataKeyService.createCipherPairWithDataKey({
+        projectKmsService = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });

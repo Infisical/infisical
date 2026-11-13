@@ -75,7 +75,7 @@ type TPkiAlertV2ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: TLicenseService;
   smtpService: Pick<TSmtpService, "sendMail">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -91,7 +91,7 @@ export const pkiAlertV2ServiceFactory = ({
   permissionService,
   licenseService,
   smtpService,
-  dataKeyService,
+  kmsDataKeyService,
   notificationService,
   projectMembershipDAL,
   projectDAL,
@@ -287,7 +287,7 @@ export const pkiAlertV2ServiceFactory = ({
     }
 
     // Create encryptor/decryptor for webhook configs
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -350,7 +350,7 @@ export const pkiAlertV2ServiceFactory = ({
       actorOrgId
     });
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: alert.projectId
     });
@@ -382,7 +382,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     const { alerts, total } = await pkiAlertV2DAL.findByProjectIdWithCount(projectId, filters);
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -494,7 +494,7 @@ export const pkiAlertV2ServiceFactory = ({
     }
 
     // Create encryptor/decryptor for webhook configs
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: alert.projectId
     });
@@ -587,7 +587,7 @@ export const pkiAlertV2ServiceFactory = ({
       actorOrgId
     });
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: alert.projectId
     });
@@ -745,7 +745,7 @@ export const pkiAlertV2ServiceFactory = ({
     const webhookEventType = alertEventTypeToWebhookEventType[eventType];
 
     // Get decryptor for channel configs
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

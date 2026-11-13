@@ -54,7 +54,7 @@ const AWS_KMS_KEY_DELETION_WINDOW_DAYS = 30;
 type TAwsKmsCaKeySourceDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: TLicenseService;
 };
@@ -71,7 +71,7 @@ const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
 export const awsKmsCaKeySourceFactory = ({
   appConnectionDAL,
   appConnectionService,
-  dataKeyService,
+  kmsDataKeyService,
   projectDAL,
   licenseService
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
@@ -86,7 +86,7 @@ export const awsKmsCaKeySourceFactory = ({
       throw new BadRequestError({ message: `App connection with ID '${appConnectionId}' is not an AWS connection` });
     }
 
-    const decryptedConnection = (await decryptAppConnection(appConnection, dataKeyService)) as TAwsConnection;
+    const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
     const awsConfig = await getAwsConnectionConfig(
       { ...decryptedConnection, projectType: ProjectType.CertificateManager },
       region as AWSRegion

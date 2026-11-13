@@ -388,7 +388,7 @@ export const getCaCredentials = async ({
   caId,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   signatureAlgorithm,
   prefetched
@@ -407,7 +407,7 @@ export const getCaCredentials = async ({
   // getProjectKmsCertificateKeyId opens a transaction even on its read-only path, so a caller that
   // already resolved the key skips it. That matters on the OCSP signing path, where the concurrency
   // cap would otherwise hold one transaction per in-flight signature against a ten-connection pool.
-  const keyId = prefetched?.kmsKeyId ?? (await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId));
+  const keyId = prefetched?.kmsKeyId ?? (await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId));
 
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
     kmsId: keyId
@@ -468,7 +468,7 @@ export const getCaSigner = async ({
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   caKeySourceService,
   signatureAlgorithm,
@@ -502,7 +502,7 @@ export const getCaSigner = async ({
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,
     projectDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     signatureAlgorithm,
     prefetched: { ca, caSecret, kmsKeyId: prefetched?.kmsKeyId }
@@ -521,13 +521,13 @@ export const getCaCertChains = async ({
   caId,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService
 }: TGetCaCertChainsDTO) => {
   const ca = await certificateAuthorityDAL.findById(caId);
   if (!ca) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-  const keyId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+  const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
     kmsId: keyId
@@ -565,14 +565,14 @@ export const getCaCertChain = async ({
   caCertId,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService
 }: TGetCaCertChainDTO) => {
   const caCert = await certificateAuthorityCertDAL.findById(caCertId);
   if (!caCert) throw new NotFoundError({ message: "CA certificate not found" });
   const ca = await certificateAuthorityDAL.findById(caCert.caId);
 
-  const keyId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+  const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
     kmsId: keyId
@@ -706,7 +706,7 @@ export const buildIssuedCertificateChain = async ({
   caCertChain,
   projectId,
   certificateAuthorityCrossSignedCertDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService
 }: TBuildIssuedCertificateChainDTO) => {
   const defaultChain = `${caCert}\n${caCertChain}`.trim();
@@ -719,7 +719,7 @@ export const buildIssuedCertificateChain = async ({
   );
   if (!crossSignedCerts.length) return defaultChain;
 
-  const keyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
   const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
 
   const crossSignedCertObjs = await Promise.all(
@@ -759,7 +759,7 @@ export const getIssuedCaCertChain = async ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService
 }: TGetCaCertChainDTO & Omit<TBuildIssuedCertificateChainDTO, "caId" | "caCert" | "caCertChain">) => {
   const { caId, caCert, caCertChain } = await getCaCertChain({
@@ -767,7 +767,7 @@ export const getIssuedCaCertChain = async ({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     projectDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService
   });
 
@@ -778,7 +778,7 @@ export const getIssuedCaCertChain = async ({
     projectId,
     certificateAuthorityCrossSignedCertDAL,
     projectDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService
   });
 
@@ -814,7 +814,7 @@ export const rebuildCaCrl = async ({
   certificateAuthoritySecretDAL,
   projectDAL,
   certificateDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   caKeySourceService,
   keyStore,
@@ -835,12 +835,12 @@ export const rebuildCaCrl = async ({
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService,
       caKeySourceService
     });
 
-    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: keyId

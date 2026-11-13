@@ -122,7 +122,7 @@ export type TTriggerWorkflowNotificationDTO = {
     projectDAL: Pick<TProjectDALFactory, "findById">;
     projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
     projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
-    dataKeyService: TDataKeyService;
+    kmsDataKeyService: TDataKeyService;
     microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   };
 };

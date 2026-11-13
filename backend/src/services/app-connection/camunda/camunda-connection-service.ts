@@ -17,9 +17,9 @@ type TGetAppConnectionFunc = (
 const listCamundaClusters = async (
   appConnection: TCamundaConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
-  const accessToken = await getCamundaConnectionAccessToken(appConnection, appConnectionDAL, dataKeyService);
+  const accessToken = await getCamundaConnectionAccessToken(appConnection, appConnectionDAL, kmsDataKeyService);
 
   const { data } = await request.get<TCamundaListClustersResponse>(`${IntegrationUrls.CAMUNDA_API_URL}/clusters`, {
     headers: {
@@ -34,12 +34,12 @@ const listCamundaClusters = async (
 export const camundaConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const listClusters = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Camunda, connectionId, actor);
 
-    const clusters = await listCamundaClusters(appConnection, appConnectionDAL, dataKeyService);
+    const clusters = await listCamundaClusters(appConnection, appConnectionDAL, kmsDataKeyService);
 
     return clusters;
   };

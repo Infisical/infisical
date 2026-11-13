@@ -182,7 +182,7 @@ type TCertificateRenewalServiceFactoryDep = {
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: TProjectDALFactory;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
@@ -269,7 +269,7 @@ export const certificateRenewalServiceFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   projectDAL,
   certificateIssuanceQueue,
@@ -454,7 +454,7 @@ export const certificateRenewalServiceFactory = ({
     projectId: string;
     encryptedPrivateKey: Buffer;
   }): Promise<string> => {
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const decryptedPrivateKey = await kmsDecryptor({ cipherTextBlob: encryptedPrivateKey });
     return decryptedPrivateKey.toString("utf-8");
@@ -998,7 +998,7 @@ export const certificateRenewalServiceFactory = ({
       policy,
       projectId: originalCert.projectId,
       effectiveAlgorithms,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService,
       existingKeyPair,
       customExtensions: resolvedCustomExtensions

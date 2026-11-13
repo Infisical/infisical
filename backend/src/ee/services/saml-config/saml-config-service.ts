@@ -116,7 +116,7 @@ type TSamlConfigServiceFactoryDep = {
   usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"
@@ -159,7 +159,7 @@ export const samlConfigServiceFactory = ({
   tokenService,
   smtpService,
   identityMetadataDAL,
-  dataKeyService,
+  kmsDataKeyService,
   membershipDAL,
   membershipRoleDAL,
   membershipGroupDAL,
@@ -399,7 +399,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -496,7 +496,7 @@ export const samlConfigServiceFactory = ({
     if (mfaAuthnContexts !== undefined) {
       updateQuery.mfaAuthnContexts = mfaAuthnContexts;
     }
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -578,7 +578,7 @@ export const samlConfigServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
     }
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: samlConfig.orgId
     });

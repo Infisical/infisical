@@ -12,17 +12,17 @@ const makeService = () => {
     createCipherPairWithDataKey: vi.fn().mockResolvedValue("pool"),
     within: vi.fn().mockReturnValue(joined)
   };
-  return { service, joined, dataKeyService: service as unknown as TDataKeyService };
+  return { service, joined, kmsDataKeyService: service as unknown as TDataKeyService };
 };
 
 describe("dataKeysOn", () => {
   test("should join a Knex transaction", async () => {
     // Setup
-    const { service, joined, dataKeyService } = makeService();
+    const { service, joined, kmsDataKeyService } = makeService();
     const trx = { isTransaction: true, executionPromise: Promise.resolve() } as unknown as Knex;
 
     // Action
-    const result = await dataKeysOn(dataKeyService, trx).createCipherPairWithDataKey(context);
+    const result = await dataKeysOn(kmsDataKeyService, trx).createCipherPairWithDataKey(context);
 
     // Assert
     expect(result).toBe("joined");
@@ -33,11 +33,11 @@ describe("dataKeysOn", () => {
 
   test("should read the primary for a plain connection instead of trying to join it", async () => {
     // Setup
-    const { service, dataKeyService } = makeService();
+    const { service, kmsDataKeyService } = makeService();
     const connection = {} as Knex;
 
     // Action
-    const result = await dataKeysOn(dataKeyService, connection).createCipherPairWithDataKey(context);
+    const result = await dataKeysOn(kmsDataKeyService, connection).createCipherPairWithDataKey(context);
 
     // Assert
     expect(result).toBe("pool");
@@ -47,10 +47,10 @@ describe("dataKeysOn", () => {
 
   test("should use the service directly without a connection", async () => {
     // Setup
-    const { service, dataKeyService } = makeService();
+    const { service, kmsDataKeyService } = makeService();
 
     // Action
-    await dataKeysOn(dataKeyService).createCipherPairWithDataKey(context);
+    await dataKeysOn(kmsDataKeyService).createCipherPairWithDataKey(context);
 
     // Assert
     expect(service.createCipherPairWithDataKey).toHaveBeenCalledWith(context, undefined);

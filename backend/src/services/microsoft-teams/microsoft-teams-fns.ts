@@ -99,7 +99,7 @@ export const getMicrosoftTeamsAccessToken = async (
     tenantId,
     clientId,
     clientSecret,
-    dataKeyService,
+    kmsDataKeyService,
     microsoftTeamsIntegrationDAL,
     getBotFrameworkToken
   }: {
@@ -108,13 +108,13 @@ export const getMicrosoftTeamsAccessToken = async (
     tenantId: string;
     clientId: string;
     clientSecret: string;
-    dataKeyService: TDataKeyService;
+    kmsDataKeyService: TDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     getBotFrameworkToken?: boolean;
   },
   tx?: Knex
 ) => {
-  const cipherSource = dataKeysOn(dataKeyService, tx);
+  const cipherSource = dataKeysOn(kmsDataKeyService, tx);
 
   try {
     const details = getBotFrameworkToken
@@ -257,7 +257,7 @@ export const isBotInstalledInTenant = async (
     botAppPassword,
     botId,
     orgId,
-    dataKeyService,
+    kmsDataKeyService,
     microsoftTeamsIntegrationDAL,
     microsoftTeamsIntegrationId
   }: {
@@ -266,7 +266,7 @@ export const isBotInstalledInTenant = async (
     botAppPassword: string;
     botId: string;
     orgId: string;
-    dataKeyService: TDataKeyService;
+    kmsDataKeyService: TDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     microsoftTeamsIntegrationId: string;
   },
@@ -280,7 +280,7 @@ export const isBotInstalledInTenant = async (
         clientSecret: botAppPassword.toString(),
         getBotFrameworkToken: true,
         orgId,
-        dataKeyService,
+        kmsDataKeyService,
         microsoftTeamsIntegrationDAL,
         microsoftTeamsIntegrationId
       },
@@ -293,7 +293,7 @@ export const isBotInstalledInTenant = async (
         tenantId,
         clientId: botAppId.toString(),
         clientSecret: botAppPassword.toString(),
-        dataKeyService,
+        kmsDataKeyService,
         microsoftTeamsIntegrationDAL,
         microsoftTeamsIntegrationId
       },

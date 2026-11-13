@@ -13,8 +13,9 @@ product built on it.
 | `ee/`             | `clients/hsm/` (PKCS#11 client, `HsmRootKeyWrapper`), `clients/external-kms/` (AWS, GCP), `services/external-kms/` (`ExternalKmsService`), `KmsCoreEeModule` handing both to CE as `TKmsCoreHooks`                                                                                                               |
 
 `KmsCoreModule.create` loads the root key (from the env key or the HSM, bootstrapping it on a new instance) before any
-service exists and passes the same `RootKey` to each, so a service never runs without it. Consumers take the service
-they call: `dataKeyService`, `kmsKeyService` or `rootKeyService`.
+service exists and passes the same `RootKey` to each, so a service never runs without it. The module exposes
+`dataKeyService`, `kmsKeyService` and `rootKeyService`; consumers take the one they call under a `kms` prefix
+(`kmsDataKeyService`, `kmsKeyService`, `kmsRootKeyService`), which `routes/index.ts` maps once.
 
 ## Transactions
 

@@ -21,7 +21,7 @@ import {
 export const getAzureEntraIdConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -41,7 +41,7 @@ export const getAzureEntraIdConnectionAccessToken = async (
     case AzureEntraIdConnectionMethod.ClientSecret: {
       const clientSecretCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureEntraIdConnectionClientSecretCredentials;
@@ -72,7 +72,7 @@ export const getAzureEntraIdConnectionAccessToken = async (
       const encryptedClientCredentials = await encryptAppConnectionCredentials({
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         projectId: appConnection.projectId
       });
 

@@ -68,7 +68,7 @@ type TAgentVaultPersonalValueServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TAgentVaultPersonalValueServiceFactory = ReturnType<typeof agentVaultPersonalValueServiceFactory>;
@@ -100,10 +100,10 @@ export const agentVaultPersonalValueServiceFactory = ({
   agentVaultOauthService,
   permissionService,
   membershipDAL,
-  dataKeyService
+  kmsDataKeyService
 }: TAgentVaultPersonalValueServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const resolveCaller = async ({ projectId, ctx }: TAgentVaultProjectScoped) => {
     const reachability = await getAgentVaultGrantedReachability(

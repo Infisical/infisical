@@ -159,7 +159,7 @@ const opensslVerifySelfSigned = (certificate: x509.X509Certificate) => {
 const buildDeps = (plan: Record<string, unknown> = { pkiAwsKmsSigning: true }) => ({
   appConnectionDAL: { findById: vi.fn(async () => ({ id: "conn", app: "aws", orgId: "org" })) } as never,
   appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
-  dataKeyService: {} as never,
+  kmsDataKeyService: {} as never,
   projectDAL: { findById: vi.fn(async () => ({ id: "project", orgId: "org" })) } as never,
   licenseService: new FakeLicenseService().setPlan("org", plan as Partial<TPlanFeatures>),
   hsmConnectorService: {} as never,

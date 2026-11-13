@@ -82,7 +82,7 @@ export const secretChangeRequestServiceFactory = ({
   folderDAL,
   projectDAL,
   projectEnvDAL,
-  dataKeyService,
+  kmsDataKeyService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
@@ -106,7 +106,7 @@ export const secretChangeRequestServiceFactory = ({
     permissionService,
     folderDAL,
     projectDAL,
-    dataKeyService,
+    kmsDataKeyService,
     secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
     secretTagDAL,
@@ -142,7 +142,7 @@ export const secretChangeRequestServiceFactory = ({
       identityDAL,
       projectDAL,
       projectEnvDAL,
-      dataKeyService,
+      kmsDataKeyService,
       projectSlackConfigDAL,
       projectMicrosoftTeamsConfigDAL,
       microsoftTeamsService,
@@ -528,8 +528,12 @@ export const secretChangeRequestServiceFactory = ({
       folderId: folder.id,
       commits
     });
-    const cipher = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({ projectCipher: cipher, orgId: actorOrgId, dataKeyService });
+    const cipher = await kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const blindIndexer = await createSecretBlindIndexer({
+      projectCipher: cipher,
+      orgId: actorOrgId,
+      kmsDataKeyService
+    });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
@@ -930,7 +934,7 @@ export const secretChangeRequestServiceFactory = ({
       : toDeletedSecretChangePolicyStub(approvalRequest, steps);
 
     const commits = await secretChangeRequestDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

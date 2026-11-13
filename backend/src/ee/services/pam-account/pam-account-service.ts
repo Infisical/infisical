@@ -124,7 +124,7 @@ type TPamAccountServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "findHealthyGatewaysByPoolId">;
   gatewayV2Service: Pick<
@@ -213,7 +213,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     orgDAL,
     mfaSessionService,
     permissionService,
-    dataKeyService,
+    kmsDataKeyService,
     gatewayV2Service,
     gatewayPoolService,
     gatewayPoolMembershipDAL,
@@ -222,7 +222,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   } = deps;
 
   const getProjectCipher = async (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const encrypt = async (projectId: string, data: Record<string, unknown>) => {
     const { encryptor } = await getProjectCipher(projectId);

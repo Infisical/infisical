@@ -33,7 +33,7 @@ export type TAuditReportGeneratorDALs = {
   auditLogDAL: Pick<TAuditLogDALFactory, "find">;
   clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "find">;
   secretValidationRuleDAL: Pick<TSecretValidationRuleDALFactory, "find">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TReportGenerationContext = {
@@ -209,7 +209,7 @@ const duplicateSecretsReport: TReportDefinition = {
     const groups = await dal.secretV2BridgeDAL.findDuplicatedSecretValues(projectId);
     if (!groups.length) return { columns, rows: [], truncated: false };
 
-    const { decryptor } = await dal.dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await dal.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -266,7 +266,7 @@ const secretValidationComplianceReport: TReportDefinition = {
     if (!rules.length) return { columns, rows: [], truncated: false };
 
     // The same SecretManager data key encrypts both rule inputs and secret values.
-    const { decryptor } = await dal.dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await dal.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

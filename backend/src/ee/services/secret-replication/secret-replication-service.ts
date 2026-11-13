@@ -93,7 +93,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalRequestV2Bridge">;
 
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
@@ -141,7 +141,7 @@ export const secretReplicationServiceFactory = ({
   secretVersionV2TagBridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
-  dataKeyService,
+  kmsDataKeyService,
   folderCommitService,
   eventEmitter,
   projectFolderGrantDAL,
@@ -282,12 +282,12 @@ export const secretReplicationServiceFactory = ({
     if (!destinationReplicatedSecretImports.length) return;
 
     if (shouldUseSecretV2Bridge) {
-      const projectCipher = await dataKeyService.createCipherPairWithDataKey({
+      const projectCipher = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
       const { decryptor: secretManagerDecryptor } = projectCipher;
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId, dataKeyService });
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId, kmsDataKeyService });
 
       // these are the secrets to be added in replicated folders
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
@@ -304,7 +304,7 @@ export const secretReplicationServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId: orgId,
         orgDAL,
-        dataKeyService
+        kmsDataKeyService
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({

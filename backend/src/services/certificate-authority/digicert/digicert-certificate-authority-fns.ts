@@ -67,7 +67,7 @@ type TDigiCertCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
@@ -118,7 +118,7 @@ export const DigiCertCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   projectDAL
 }: TDigiCertCertificateAuthorityFnsDeps) => {
@@ -127,7 +127,7 @@ export const DigiCertCertificateAuthorityFns = ({
     certificateAuthorityDAL,
     certificateDAL,
     certificateBodyDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL
   });
@@ -337,7 +337,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
 
     return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
@@ -369,7 +369,7 @@ export const DigiCertCertificateAuthorityFns = ({
   const $getStoredCertificate = async (certificate: { id: string; projectId: string }) => {
     const certificateBody = await certificateBodyDAL.findOne({ certId: certificate.id });
     if (!certificateBody) return null;
-    const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(certificate.projectId);
+    const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(certificate.projectId);
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
     const decrypted = await kmsDecryptor({ cipherTextBlob: certificateBody.encryptedCertificate });
     const decryptedText = decrypted.toString("utf8");
@@ -742,7 +742,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
@@ -752,7 +752,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const certObj = new x509.X509Certificate(leaf);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
 
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
@@ -836,7 +836,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
@@ -885,7 +885,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
@@ -940,7 +940,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 

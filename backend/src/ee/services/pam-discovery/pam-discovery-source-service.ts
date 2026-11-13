@@ -74,7 +74,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
@@ -143,7 +143,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     pamAccountService,
     pamAccountRotationService,
     permissionService,
-    dataKeyService,
+    kmsDataKeyService,
     gatewayV2Service,
     gatewayPoolService,
     queueService,
@@ -160,7 +160,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     );
 
   const getProjectCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const decryptToObject = (blob: Buffer, decryptor: (i: { cipherTextBlob: Buffer }) => Buffer) =>
     JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;

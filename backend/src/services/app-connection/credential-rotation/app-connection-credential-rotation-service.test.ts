@@ -43,19 +43,19 @@ const buildService = () => {
       decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
     }))
   };
-  const dataKeyService = { ...cipher, within: vi.fn(() => cipher) };
+  const kmsDataKeyService = { ...cipher, within: vi.fn(() => cipher) };
 
   const service = appConnectionCredentialRotationServiceFactory({
     appConnectionCredentialRotationDAL: rotationDAL,
     appConnectionDAL,
-    dataKeyService,
+    kmsDataKeyService,
     keyStore: {},
     queueService: {},
     gatewayV2Service: {},
     gatewayPoolService: {}
   } as unknown as Parameters<typeof appConnectionCredentialRotationServiceFactory>[0]);
 
-  return { service, appConnectionDAL, rotationDAL, dataKeyService };
+  return { service, appConnectionDAL, rotationDAL, kmsDataKeyService };
 };
 
 const DTO = { connectionId: CONNECTION_ID, rotationInterval: 30, rotateAtUtc: { hours: 0, minutes: 0 } };
@@ -83,11 +83,11 @@ describe("createRotation", () => {
       updatedCredentials: { url: "ldaps://example.com", password: "new" },
       postCommitCallback
     });
-    const { service, appConnectionDAL, rotationDAL, dataKeyService } = buildService();
+    const { service, appConnectionDAL, rotationDAL, kmsDataKeyService } = buildService();
 
     const result = await service.createRotation(DTO, TX);
 
-    expect(dataKeyService.within).toHaveBeenCalled();
+    expect(kmsDataKeyService.within).toHaveBeenCalled();
     expect(appConnectionDAL.updateById).toHaveBeenCalledWith(CONNECTION_ID, expect.anything(), TX);
     expect(rotationDAL.create).toHaveBeenCalledWith(expect.anything(), TX);
     expect(result.postCommitCallback).toBe(postCommitCallback);

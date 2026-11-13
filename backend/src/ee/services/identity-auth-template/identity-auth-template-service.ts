@@ -61,7 +61,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
@@ -79,7 +79,7 @@ export const identityAuthTemplateServiceFactory = ({
   gatewayPoolDAL,
   orgDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   licenseService,
   auditLogService
 }: TIdentityAuthTemplateServiceFactoryDep) => {
@@ -365,7 +365,7 @@ export const identityAuthTemplateServiceFactory = ({
       await $validateTemplateHost((templateFields as TLdapTemplateFields).url, "LDAP URL");
     }
 
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -417,7 +417,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -832,7 +832,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -867,7 +867,7 @@ export const identityAuthTemplateServiceFactory = ({
 
     const { docs, totalCount } = await identityAuthTemplateDAL.findByOrgId(actorOrgId, { limit, offset, search });
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -906,7 +906,7 @@ export const identityAuthTemplateServiceFactory = ({
 
     const docs = await identityAuthTemplateDAL.findByAuthMethod(authMethod, actorOrgId);
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });

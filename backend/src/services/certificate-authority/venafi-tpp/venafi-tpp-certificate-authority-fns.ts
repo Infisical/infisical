@@ -121,7 +121,7 @@ const sanToVenafiFormat = (san: {
 const getVenafiTppConnection = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
@@ -147,7 +147,7 @@ const getVenafiTppConnection = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    dataKeyService,
+    kmsDataKeyService,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   })) as {
@@ -350,7 +350,7 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
@@ -366,7 +366,7 @@ export const VenafiTppCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   certificateProfileDAL,
   gatewayV2Service,
@@ -613,7 +613,7 @@ export const VenafiTppCertificateAuthorityFns = ({
       "Venafi TPP: Starting certificate order from profile"
     );
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -622,7 +622,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     const { credentials, gatewayId } = await getVenafiTppConnection(
       venafiCa.configuration.appConnectionId,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       gatewayPoolService
     );
 

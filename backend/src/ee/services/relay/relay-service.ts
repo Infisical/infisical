@@ -46,8 +46,8 @@ export const relayServiceFactory = ({
   instanceRelayConfigDAL,
   orgRelayConfigDAL,
   relayDAL,
-  dataKeyService,
-  rootKeyService,
+  kmsDataKeyService,
+  kmsRootKeyService,
   permissionService,
   orgDAL,
   notificationService,
@@ -59,8 +59,8 @@ export const relayServiceFactory = ({
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
   relayDAL: TRelayDALFactory;
-  dataKeyService: TDataKeyService;
-  rootKeyService: TRootKeyService;
+  kmsDataKeyService: TDataKeyService;
+  kmsRootKeyService: TRootKeyService;
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -228,7 +228,7 @@ export const relayServiceFactory = ({
       const instanceSshServerCaKeyPair = await createSshKeyPair(SshCertKeyAlgorithm.RSA_2048);
       const instanceSshClientCaKeyPair = await createSshKeyPair(SshCertKeyAlgorithm.RSA_2048);
 
-      const encryptWithRoot = rootKeyService.encryptWithRootKey();
+      const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
 
       // root relay CA
       const encryptedRootRelayPkiCaPrivateKey = encryptWithRoot(
@@ -336,7 +336,7 @@ export const relayServiceFactory = ({
     });
 
     // decrypt the instance config
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
 
     // decrypt root relay CA
     const rootRelayPkiCaPrivateKey = decryptWithRoot(instanceConfig.encryptedRootRelayPkiCaPrivateKey);
@@ -414,12 +414,11 @@ export const relayServiceFactory = ({
 
   const $getOrgCAs = async (orgId: string) => {
     const instanceCAs = await $getInstanceCAs();
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey(
-      {
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId
-      }
-    );
+      });
 
     const orgRelayConfig = await orgRelayConfigDAL.transaction(async (tx) => {
       const existingOrgRelayConfig = await orgRelayConfigDAL.findOne(

@@ -258,7 +258,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior,
   projectId,
   projectFolderGrantDAL,
-  dataKeyService,
+  kmsDataKeyService,
   actorOrgId,
   orgDAL,
   abortSignal
@@ -285,7 +285,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   actorOrgId: string;
   abortSignal?: AbortSignal;
 }) => {
@@ -293,7 +293,7 @@ export const fnSecretsV2FromImports = async ({
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
   const projectDecryptors = new Map<string, (value?: Buffer | null) => string>();
   const getProjectDecryptor = async (sourceProjectId: string) => {
-    const { decryptor: sourceDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: sourceDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sourceProjectId
     });

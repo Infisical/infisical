@@ -42,7 +42,7 @@ const getIntegrationSecretsV2 = async (
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">,
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">,
   orgDAL: Pick<TOrgDALFactory, "findOrgById">
 ) => {
@@ -79,7 +79,7 @@ const getIntegrationSecretsV2 = async (
     projectFolderGrantDAL,
     actorOrgId: dto.actorOrgId,
     orgDAL,
-    dataKeyService
+    kmsDataKeyService
   });
 
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -294,7 +294,7 @@ export const deleteIntegrationSecrets = async ({
   folderDAL,
   secretDAL,
   secretImportDAL,
-  dataKeyService,
+  kmsDataKeyService,
   projectFolderGrantDAL,
   orgDAL,
   actorOrgId
@@ -315,13 +315,13 @@ export const deleteIntegrationSecrets = async ({
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath" | "findBySecretPath">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   actorOrgId: string;
 }) => {
   const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integration.projectId);
-  const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId: integration.projectId
   });
@@ -358,7 +358,7 @@ export const deleteIntegrationSecrets = async ({
         secretV2BridgeDAL,
         folderDAL,
         secretImportDAL,
-        dataKeyService,
+        kmsDataKeyService,
         projectFolderGrantDAL,
         orgDAL
       )

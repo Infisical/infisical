@@ -341,7 +341,7 @@ export type TSecretChangeRequestServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "lockFoldersForUpdate">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "insertMany"

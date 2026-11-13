@@ -657,7 +657,7 @@ export type DestinationDuplicateCheckFn = (opts: {
 export type TPreSaveTransformDeps = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TPreSaveTransformSyncOptionsParams = {

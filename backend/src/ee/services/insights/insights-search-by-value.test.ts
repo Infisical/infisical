@@ -34,7 +34,7 @@ const buildService = ({
   const service = insightsServiceFactory({
     orgDAL,
     secretV2BridgeDAL,
-    dataKeyService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         generateSecretBlindIndex: async () => "digest"
       }))

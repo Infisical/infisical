@@ -1685,7 +1685,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     actorOrgId,
     permission,
     tx,
-    dataKeyService,
+    kmsDataKeyService,
     folderDAL,
     secretDAL,
     secretVersionDAL,
@@ -1778,7 +1778,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   });
 
   const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
-    dataKeyService,
+    kmsDataKeyService,
     projectId,
     orgId: actorOrgId,
     tx

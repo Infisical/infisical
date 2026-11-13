@@ -101,7 +101,7 @@ type TPamSessionServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -127,7 +127,7 @@ export const pamSessionServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService,
   userDAL,
@@ -138,7 +138,7 @@ export const pamSessionServiceFactory = ({
   telemetryService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -327,7 +327,7 @@ export const pamSessionServiceFactory = ({
       const secrets = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
-        dataKeyService
+        kmsDataKeyService
       });
 
       // A gateway fetches credentials per connection, so two can mint at once; without a single
@@ -361,7 +361,7 @@ export const pamSessionServiceFactory = ({
         projectId: session.projectId,
         sessionId,
         encryptedSessionKey: storedSessionKey,
-        dataKeyService
+        kmsDataKeyService
       });
 
       recording = {

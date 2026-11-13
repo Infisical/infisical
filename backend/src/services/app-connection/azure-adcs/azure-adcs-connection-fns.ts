@@ -344,7 +344,7 @@ const createNtlmClient = (
 export const getAzureADCSConnectionCredentials = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -360,7 +360,7 @@ export const getAzureADCSConnectionCredentials = async (
     case AzureADCSConnectionMethod.UsernamePassword:
       const credentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        dataKeyService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as {

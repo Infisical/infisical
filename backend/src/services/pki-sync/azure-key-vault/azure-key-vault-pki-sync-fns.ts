@@ -53,7 +53,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
 
 type TAzureKeyVaultPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"
@@ -210,7 +210,7 @@ const parseCertificateKeyProps = (certPem: string) => {
 };
 
 export const azureKeyVaultPkiSyncFactory = ({
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   certificateSyncDAL,
   certificateDAL,
@@ -346,7 +346,7 @@ export const azureKeyVaultPkiSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       pkiSync.connection.id,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 
@@ -763,7 +763,7 @@ export const azureKeyVaultPkiSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       pkiSync.connection.id,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 

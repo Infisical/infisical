@@ -20,17 +20,17 @@ describe("prepareSecretWriteCiphers", () => {
   // Each resolution of the project pair is a few queries and, for a project on an external KMS, a provider call.
   it("should resolve the project data key once and reuse it for the blind indexer", async () => {
     // Setup
-    const dataKeyService = makeDataKeyService();
+    const kmsDataKeyService = makeDataKeyService();
 
     // Action
     const ciphers = await prepareSecretWriteCiphers({
-      dataKeyService: dataKeyService as never,
+      kmsDataKeyService: kmsDataKeyService as never,
       projectId: PROJECT_ID,
       orgId: ORG_ID
     });
 
     // Assert
-    const projectCalls = dataKeyService.createCipherPairWithDataKey.mock.calls.filter(
+    const projectCalls = kmsDataKeyService.createCipherPairWithDataKey.mock.calls.filter(
       ([ctx]) => ctx.type === KmsDataKey.SecretManager
     );
     expect(projectCalls).toHaveLength(1);
@@ -42,19 +42,19 @@ describe("prepareSecretWriteCiphers", () => {
 
   it("should pass the caller's read options to KMS Core", async () => {
     // Setup
-    const dataKeyService = makeDataKeyService();
+    const kmsDataKeyService = makeDataKeyService();
     const readOptions = { readFrom: ReadFrom.Primary };
 
     // Action
     await prepareSecretWriteCiphers({
-      dataKeyService: dataKeyService as never,
+      kmsDataKeyService: kmsDataKeyService as never,
       projectId: PROJECT_ID,
       orgId: ORG_ID,
       readOptions
     });
 
     // Assert
-    expect(dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith(
+    expect(kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith(
       { type: KmsDataKey.SecretManager, projectId: PROJECT_ID },
       readOptions
     );
@@ -62,13 +62,13 @@ describe("prepareSecretWriteCiphers", () => {
 
   it("should fetch both ciphers on the caller's transaction instead of the connection pool", async () => {
     // Setup
-    const dataKeyService = makeDataKeyService();
+    const kmsDataKeyService = makeDataKeyService();
     const joined = makeDataKeyService();
     const within = vi.fn(() => joined);
 
     // Action
     const ciphers = await prepareSecretWriteCiphers({
-      dataKeyService: { ...dataKeyService, within } as never,
+      kmsDataKeyService: { ...kmsDataKeyService, within } as never,
       projectId: PROJECT_ID,
       orgId: ORG_ID,
       tx: TX
@@ -77,7 +77,7 @@ describe("prepareSecretWriteCiphers", () => {
     // Assert
     expect(within).toHaveBeenCalledTimes(1);
     expect(joined.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
-    expect(dataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(kmsDataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
     await expect(ciphers.blindIndexer.generateBlindIndexes(Buffer.from("v"))).resolves.toEqual({
       secretValueBlindIndex: "project:v",
       secretValueOrgBlindIndex: "org:v"

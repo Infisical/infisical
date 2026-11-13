@@ -142,7 +142,7 @@ const authorizeDatabricksConnection = async (config: TDatabricksRequestConfig, d
 export const getDatabricksConnectionAccessToken = async (
   { id, orgId, credentials, projectId, gatewayId, gatewayPoolId }: TDatabricksConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  dataKeyService: TDataKeyService,
+  kmsDataKeyService: TDataKeyService,
   deps: TDatabricksGatewayDeps = {}
 ) => {
   // checked before the cached token is returned, since a caller without gateway support goes on to call the workspace
@@ -166,7 +166,7 @@ export const getDatabricksConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    dataKeyService,
+    kmsDataKeyService,
     projectId
   });
 

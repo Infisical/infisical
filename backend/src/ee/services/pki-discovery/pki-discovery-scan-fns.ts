@@ -66,7 +66,7 @@ type TExecuteScanDeps = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
@@ -122,7 +122,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
   const {
     pkiDiscoveryConfigDAL,
     projectDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     gatewayV2Service,
     gatewayPoolService,
@@ -144,7 +144,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       "PKI discovery scan starting"
     );
 
-    const certificateKmsKeyId = await dataKeyService.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
+    const certificateKmsKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateKmsKeyId

@@ -102,7 +102,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: TProjectDALFactory;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
@@ -219,7 +219,7 @@ export const certificateApprovalServiceFactory = (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService,
     projectDAL,
     licenseService,
@@ -798,7 +798,7 @@ export const certificateApprovalServiceFactory = (
       policy: certPolicy,
       projectId: profile.projectId,
       effectiveAlgorithms,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService,
       customExtensions
     });

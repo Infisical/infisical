@@ -15,14 +15,14 @@ import { TAzureEntraIdScimSyncWithCredentials } from "./azure-entra-id-scim-sync
 
 type TAzureEntraIdScimSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export const AzureEntraIdScimSyncFns = {
   syncSecrets: async (
     secretSync: TAzureEntraIdScimSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, dataKeyService }: TAzureEntraIdScimSyncFactoryDeps
+    { appConnectionDAL, kmsDataKeyService }: TAzureEntraIdScimSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { servicePrincipalId } = secretSync.destinationConfig;
@@ -49,7 +49,7 @@ export const AzureEntraIdScimSyncFns = {
     const accessToken = await getAzureEntraIdConnectionAccessToken(
       secretSync.connection.id,
       appConnectionDAL,
-      dataKeyService
+      kmsDataKeyService
     );
 
     await request.put(
@@ -113,7 +113,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
 // Fetches service principal display name from Azure Graph API and stores it in destinationConfig
 export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
   { destinationConfig, connectionId },
-  { appConnectionDAL, dataKeyService }
+  { appConnectionDAL, kmsDataKeyService }
 ) => {
   if (!destinationConfig) return destinationConfig;
 
@@ -121,7 +121,7 @@ export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransfor
   if (!servicePrincipalId) return destinationConfig;
 
   try {
-    const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, dataKeyService);
+    const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, kmsDataKeyService);
 
     const { data } = await request.get<{ displayName?: string }>(
       `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipalId as string}`,

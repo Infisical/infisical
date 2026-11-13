@@ -105,7 +105,7 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -153,7 +153,7 @@ export const approvalPolicyServiceFactory = ({
   approvalRequestGrantsDAL,
   userGroupMembershipDAL,
   slackIntegrationDAL,
-  dataKeyService,
+  kmsDataKeyService,
   notificationService,
   permissionService,
   licenseService,
@@ -181,7 +181,7 @@ export const approvalPolicyServiceFactory = ({
     notificationService,
     smtpService,
     slackIntegrationDAL,
-    dataKeyService
+    kmsDataKeyService
   };
 
   const $notify = (args: {

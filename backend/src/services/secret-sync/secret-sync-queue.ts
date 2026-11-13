@@ -96,7 +96,7 @@ export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 type TSecretSyncQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
@@ -166,7 +166,7 @@ const getRequeueDelay = (failureCount?: number) => {
 export const secretSyncQueueFactory = ({
   queueService,
   cronJob,
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   gitHubAppDAL,
   keyStore,
@@ -227,7 +227,7 @@ export const secretSyncQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    dataKeyService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -245,7 +245,7 @@ export const secretSyncQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    dataKeyService,
+    kmsDataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -288,7 +288,7 @@ export const secretSyncQueueFactory = ({
         shouldRetry: false
       });
 
-    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -307,7 +307,7 @@ export const secretSyncQueueFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      dataKeyService
+      kmsDataKeyService
     });
 
     return buildSyncPayload(
@@ -331,7 +331,7 @@ export const secretSyncQueueFactory = ({
           projectFolderGrantDAL,
           actorOrgId,
           orgDAL,
-          dataKeyService
+          kmsDataKeyService
         }
       }
     );
@@ -414,7 +414,7 @@ export const secretSyncQueueFactory = ({
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
       gitHubAppDAL,
-      dataKeyService,
+      kmsDataKeyService,
       gatewayV2Service,
       gatewayPoolService,
       oidcIssuerService
@@ -543,7 +543,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        dataKeyService,
+        kmsDataKeyService,
         projectId
       });
 
@@ -578,7 +578,7 @@ export const secretSyncQueueFactory = ({
       const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, payload, {
         appConnectionDAL,
         gitHubAppDAL,
-        dataKeyService,
+        kmsDataKeyService,
         gatewayV2Service,
         gatewayPoolService,
         oidcIssuerService,
@@ -740,7 +740,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        dataKeyService,
+        kmsDataKeyService,
         projectId
       });
 
@@ -876,7 +876,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        dataKeyService,
+        kmsDataKeyService,
         projectId
       });
 
@@ -896,7 +896,7 @@ export const secretSyncQueueFactory = ({
         {
           appConnectionDAL,
           gitHubAppDAL,
-          dataKeyService,
+          kmsDataKeyService,
           gatewayV2Service,
           gatewayPoolService,
           oidcIssuerService
@@ -1063,7 +1063,7 @@ export const secretSyncQueueFactory = ({
         dependencies: {
           projectDAL,
           projectSlackConfigDAL,
-          dataKeyService,
+          kmsDataKeyService,
           microsoftTeamsService,
           projectMicrosoftTeamsConfigDAL
         }

@@ -81,7 +81,7 @@ type TSignerPolicyServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   approvalResources: TApprovalResourceRegistry;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
@@ -152,7 +152,7 @@ export const signerPolicyServiceFactory = ({
   membershipRoleDAL,
   userGroupMembershipDAL,
   slackIntegrationDAL,
-  dataKeyService,
+  kmsDataKeyService,
   approvalResources,
   identityGroupMembershipDAL,
   userDAL,
@@ -690,7 +690,7 @@ export const signerPolicyServiceFactory = ({
         resource: approvalResources[ApprovalPolicyType.CertCodeSigning]!,
         approvers: requestWithSteps.steps[0]?.approvers ?? []
       },
-      { userGroupMembershipDAL, userDAL, notificationService, smtpService, slackIntegrationDAL, dataKeyService }
+      { userGroupMembershipDAL, userDAL, notificationService, smtpService, slackIntegrationDAL, kmsDataKeyService }
     );
 
     return requestWithSteps;

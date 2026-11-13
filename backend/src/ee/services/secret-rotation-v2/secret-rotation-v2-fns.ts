@@ -152,13 +152,13 @@ export const getNextUtcRotationInterval = (rotateAtUtc?: TSecretRotationV2["rota
 export const encryptSecretRotationCredentials = async ({
   projectId,
   generatedCredentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   generatedCredentials: TSecretRotationV2GeneratedCredentials;
-  dataKeyService: TSecretRotationV2ServiceFactoryDep["dataKeyService"];
+  kmsDataKeyService: TSecretRotationV2ServiceFactoryDep["kmsDataKeyService"];
 }) => {
-  const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -173,13 +173,13 @@ export const encryptSecretRotationCredentials = async ({
 export const decryptSecretRotationCredentials = async ({
   projectId,
   encryptedGeneratedCredentials,
-  dataKeyService
+  kmsDataKeyService
 }: {
   projectId: string;
   encryptedGeneratedCredentials: Buffer;
-  dataKeyService: TSecretRotationV2ServiceFactoryDep["dataKeyService"];
+  kmsDataKeyService: TSecretRotationV2ServiceFactoryDep["kmsDataKeyService"];
 }) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -274,9 +274,9 @@ export const calculateNextRotationAt = ({
 
 export const expandSecretRotation = async (
   { encryptedLastRotationMessage, ...secretRotation }: TSecretRotationV2Raw,
-  dataKeyService: TSecretRotationV2ServiceFactoryDep["dataKeyService"]
+  kmsDataKeyService: TSecretRotationV2ServiceFactoryDep["kmsDataKeyService"]
 ) => {
-  const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId: secretRotation.projectId
   });

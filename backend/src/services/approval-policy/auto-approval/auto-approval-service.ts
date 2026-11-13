@@ -56,7 +56,7 @@ type TAutoApprovalServiceFactoryDep = {
     TAppConnectionServiceFactory,
     "validateAppConnectionUsageById" | "listAvailableAppConnectionsForUser"
   >;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
 };
@@ -92,7 +92,7 @@ export const autoApprovalServiceFactory = ({
   approvalPolicyAutoApprovalDAL,
   appConnectionDAL,
   appConnectionService,
-  dataKeyService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService
 }: TAutoApprovalServiceFactoryDep) => {
@@ -109,7 +109,7 @@ export const autoApprovalServiceFactory = ({
   }): Promise<TAppConnection | null> => {
     const raw = await appConnectionDAL.findById(connectionId);
     if (!raw || raw.orgId !== orgId || (raw.projectId && raw.projectId !== projectId)) return null;
-    return decryptAppConnection(raw, dataKeyService);
+    return decryptAppConnection(raw, kmsDataKeyService);
   };
 
   const validateConfig = async ({

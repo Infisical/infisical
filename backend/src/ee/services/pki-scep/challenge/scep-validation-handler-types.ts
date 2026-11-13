@@ -46,5 +46,5 @@ export type TScepValidationHandlerDeps = {
   scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "consumeByHash">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };

@@ -11,20 +11,20 @@ import { TSecretWriteCiphers } from "./secret-v2-bridge-types";
 // acquired in a fixed order. A caller that has just created the project passes { readFrom: ReadFrom.Primary }, which
 // only applies outside a transaction.
 export const prepareSecretWriteCiphers = async ({
-  dataKeyService,
+  kmsDataKeyService,
   projectId,
   orgId,
   readOptions,
   tx
 }: {
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   projectId: string;
   orgId: string;
   readOptions?: TReadOptions;
   tx?: Knex;
 }): Promise<TSecretWriteCiphers> => {
   if (tx?.isTransaction) {
-    const joined = dataKeyService.within(sealKnexTransaction(tx));
+    const joined = kmsDataKeyService.within(sealKnexTransaction(tx));
     const orgCipher = await joined.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
     const secretManager = await joined.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
     return { secretManager, blindIndexer: buildSecretBlindIndexer(secretManager, orgCipher) };
@@ -33,8 +33,8 @@ export const prepareSecretWriteCiphers = async ({
   // A plain connection handed down as `tx` means the caller needs rows that have just committed.
   const options = tx ? { readFrom: ReadFrom.Primary } : readOptions;
   const [secretManager, orgCipher] = await Promise.all([
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, options),
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, options)
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, options),
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, options)
   ]);
   return { secretManager, blindIndexer: buildSecretBlindIndexer(secretManager, orgCipher) };
 };

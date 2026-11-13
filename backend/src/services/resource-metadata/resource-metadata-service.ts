@@ -22,7 +22,7 @@ type TResourceMetadataServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPathMultiEnv" | "findByEnvsDeep">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 export type TResourceMetadataServiceFactory = ReturnType<typeof resourceMetadataServiceFactory>;
@@ -43,7 +43,7 @@ export const resourceMetadataServiceFactory = ({
   permissionService,
   folderDAL,
   projectEnvDAL,
-  dataKeyService
+  kmsDataKeyService
 }: TResourceMetadataServiceFactoryDep) => {
   // Project-scoped secret metadata search. The base query matches on org + project + key/value; the
   // results are then filtered so the requester actually has DescribeSecret permission on each returned
@@ -121,7 +121,7 @@ export const resourceMetadataServiceFactory = ({
 
     // decrypt encrypted candidates once per project (data key is resolved lazily), then match in-app
     if (encryptedCandidates.length) {
-      const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });

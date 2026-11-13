@@ -33,7 +33,7 @@ type TCertificateTemplateServiceFactoryDep = {
   certificateTemplateDAL: TCertificateTemplateDALFactory;
   certificateTemplateEstConfigDAL: TCertificateTemplateEstConfigDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -47,7 +47,7 @@ export const certificateTemplateServiceFactory = ({
   certificateTemplateEstConfigDAL,
   certificateAuthorityDAL,
   permissionService,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   licenseService
 }: TCertificateTemplateServiceFactoryDep) => {
@@ -285,7 +285,7 @@ export const certificateTemplateServiceFactory = ({
 
     let encryptedCaChain: Buffer | undefined;
     if (caChain) {
-      const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
+      const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
 
       // validate CA chain
       const certificates = extractX509CertFromChain(caChain)?.map((cert) => new x509.X509Certificate(cert));
@@ -372,7 +372,7 @@ export const certificateTemplateServiceFactory = ({
 
     const appCfg = getConfig();
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
 
     const updatedData: TCertificateTemplateEstConfigsUpdate = {
       isEnabled,
@@ -447,7 +447,7 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
 
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId

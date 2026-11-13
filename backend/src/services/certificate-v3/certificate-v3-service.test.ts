@@ -390,7 +390,7 @@ describe("CertificateV3Service", () => {
         queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined)
       },
       certificateBodyDAL: mockCertificateBodyDAL,
-      dataKeyService: {
+      kmsDataKeyService: {
         getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
         createCipherPairWithDataKey: vi.fn().mockResolvedValue({
           cipherTextBlob: Buffer.from("encrypted"),

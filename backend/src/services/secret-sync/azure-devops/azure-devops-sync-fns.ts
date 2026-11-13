@@ -12,7 +12,7 @@ import { TAzureDevOpsSyncWithCredentials } from "./azure-devops-sync-types";
 
 type TAzureDevOpsSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
 };
 
 interface AzureDevOpsVariableGroup {
@@ -33,7 +33,7 @@ interface AzureDevOpsVariableGroupList {
   value: AzureDevOpsVariableGroup[];
 }
 
-export const azureDevOpsSyncFactory = ({ dataKeyService, appConnectionDAL }: TAzureDevOpsSyncFactoryDeps) => {
+export const azureDevOpsSyncFactory = ({ kmsDataKeyService, appConnectionDAL }: TAzureDevOpsSyncFactoryDeps) => {
   const getConnectionAuth = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
     const { credentials } = secretSync.connection;
     const isOAuth = secretSync.connection.method === AzureDevOpsConnectionMethod.OAuth;
@@ -45,7 +45,7 @@ export const azureDevOpsSyncFactory = ({ dataKeyService, appConnectionDAL }: TAz
       });
     }
 
-    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, dataKeyService);
+    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, kmsDataKeyService);
 
     return { accessToken, orgName, isOAuth };
   };

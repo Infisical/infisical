@@ -595,7 +595,7 @@ describe("rebuildCaCrl", () => {
         findOne: vi.fn(async () => ({ id: "project-1", orgId: "org-1", kmsCertificateKeyId: "kms-1" })),
         updateById: vi.fn()
       },
-      dataKeyService: { getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1") },
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1") },
       kmsKeyService: {
         encryptWithKmsKey: vi.fn(async () => async ({ plainText }: { plainText: Buffer }) => ({
           cipherTextBlob: plainText
@@ -921,7 +921,7 @@ describe("buildIssuedCertificateChain", () => {
         updateById: vi.fn(),
         transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(undefined))
       } as never,
-      dataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key") } as never,
+      kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key") } as never,
       kmsKeyService: { decryptWithKmsKey, generateKmsKey: vi.fn() } as never
     });
 

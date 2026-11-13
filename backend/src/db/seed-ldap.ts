@@ -116,7 +116,7 @@ const main = async () => {
     // Bootstrap the KMS stack outside the service container, exactly as the *-to-kms migrations do.
     const superAdminDAL = superAdminDALFactory(db);
     const envConfig = await getMigrationEnvConfig(superAdminDAL);
-    const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db });
+    const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db });
     const orgDAL = orgDALFactory(db);
 
     // Resolve the org: use the one the caller passed, otherwise bootstrap a dedicated `ldap` org.
@@ -221,7 +221,7 @@ const main = async () => {
 
     // Active LDAP config. The bind DN/password are encrypted with the org KMS data key, the same
     // key the LDAP login path decrypts with, so placeholders would break the bind.
-    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });

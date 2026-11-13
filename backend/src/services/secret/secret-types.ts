@@ -473,7 +473,7 @@ export type TCreateManySecretsRawFnFactory = {
   secretTagDAL: TSecretTagDALFactory;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   folderDAL: TSecretFolderDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"
@@ -512,7 +512,7 @@ export type TUpdateManySecretsRawFnFactory = {
   secretTagDAL: TSecretTagDALFactory;
   secretVersionTagDAL: TSecretVersionTagDALFactory;
   folderDAL: TSecretFolderDALFactory;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "bulkUpdate" | "deleteMany" | "find"

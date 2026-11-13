@@ -78,7 +78,7 @@ const build = (opts: { connection?: unknown; admit?: (key: string, value: number
   const incrementByIfUnderLimitWithFixedExpiry = vi.fn(opts.admit ?? (async (_key: string, value: number) => value));
   const service = objectStorageServiceFactory({
     appConnectionDAL: { findById: vi.fn(async () => connection) } as never,
-    dataKeyService: {} as never,
+    kmsDataKeyService: {} as never,
     keyStore: { incrementByIfUnderLimitWithFixedExpiry } as never
   });
   service.registerNamespaces([logs]);

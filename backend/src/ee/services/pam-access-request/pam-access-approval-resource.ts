@@ -96,7 +96,7 @@ type TPamAccessApprovalResourceDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   pamFolderNotificationConfigDAL: Pick<TPamFolderNotificationConfigDALFactory, "findByFolderIdWithIntegration">;
 };
 
@@ -159,7 +159,7 @@ export const pamAccessApprovalResourceFactory = ({
   permissionService,
   userDAL,
   gatewayV2Service,
-  dataKeyService,
+  kmsDataKeyService,
   pamFolderNotificationConfigDAL
 }: TPamAccessApprovalResourceDep): TPamAccessApprovalResource => {
   const $assertFolderInProject = async (folderId: string, projectId: string) => {
@@ -433,7 +433,7 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     if (isCredentialRequest) {
-      const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });

@@ -193,7 +193,7 @@ const setup = ({
         };
       }
     },
-    dataKeyService: kms as never,
+    kmsDataKeyService: kms as never,
     agentVaultServiceDAL: {
       findByIdInProject: async ({ id }: { id: string }) => rows.get(id) as never,
       // Every service is in the one bundle these tests use, and a filter narrows to the bundles it names, as the SQL does.

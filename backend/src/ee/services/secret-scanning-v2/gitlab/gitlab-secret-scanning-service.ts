@@ -11,7 +11,7 @@ import { TGitLabDataSourceCredentials, THandleGitLabPushEvent } from "./gitlab-s
 export const gitlabSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
-  dataKeyService: TDataKeyService
+  kmsDataKeyService: TDataKeyService
 ) => {
   const handlePushEvent = async ({ payload, token, dataSourceId }: THandleGitLabPushEvent) => {
     if (!payload.total_commits_count || !payload.project) {
@@ -54,7 +54,7 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

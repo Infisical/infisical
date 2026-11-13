@@ -116,7 +116,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   licenseService: TLicenseService;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "pickHealthyGateway" | "runWithPoolFailover">;
@@ -155,7 +155,7 @@ export const identityKubernetesAuthServiceFactory = ({
   licenseService,
   gatewayV2Service,
   gatewayV2DAL,
-  dataKeyService,
+  kmsDataKeyService,
   gatewayPoolService,
   gatewayPoolDAL,
   orgDAL,
@@ -346,7 +346,7 @@ export const identityKubernetesAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
-      const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: identity.orgId
       });
@@ -868,7 +868,7 @@ export const identityKubernetesAuthServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -1209,7 +1209,7 @@ export const identityKubernetesAuthServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
-    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
@@ -1673,7 +1673,7 @@ export const identityKubernetesAuthServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     }
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });

@@ -115,7 +115,7 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
@@ -648,7 +648,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
@@ -842,7 +842,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -853,7 +853,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       await getAzureADCSConnectionCredentials(
         azureCa.configuration.azureAdcsConnectionId,
         appConnectionDAL,
-        dataKeyService
+        kmsDataKeyService
       );
 
     const credentials: {
@@ -1142,7 +1142,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
-    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
     const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
@@ -1152,7 +1152,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       await getAzureADCSConnectionCredentials(
         azureCa.configuration.azureAdcsConnectionId,
         appConnectionDAL,
-        dataKeyService
+        kmsDataKeyService
       );
 
     const credentials: {
@@ -1503,7 +1503,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
     // Get credentials from the Azure ADCS connection
     const { username, password, adcsUrl, sslRejectUnauthorized, sslCertificate } =
-      await getAzureADCSConnectionCredentials(azureAdcsConnectionId, appConnectionDAL, dataKeyService);
+      await getAzureADCSConnectionCredentials(azureAdcsConnectionId, appConnectionDAL, kmsDataKeyService);
 
     const credentials: {
       username: string;

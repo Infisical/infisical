@@ -67,8 +67,8 @@ type TMicrosoftTeamsServiceFactoryDep = {
     | "update"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  dataKeyService: TDataKeyService;
-  rootKeyService: TRootKeyService;
+  kmsDataKeyService: TDataKeyService;
+  kmsRootKeyService: TRootKeyService;
   workflowIntegrationDAL: Pick<
     TWorkflowIntegrationDALFactory,
     "transaction" | "create" | "updateById" | "deleteById" | "update" | "findOne"
@@ -83,8 +83,8 @@ const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 export const microsoftTeamsServiceFactory = ({
   permissionService,
   serverCfgDAL,
-  dataKeyService,
-  rootKeyService,
+  kmsDataKeyService,
+  kmsRootKeyService,
   microsoftTeamsIntegrationDAL,
   workflowIntegrationDAL
 }: TMicrosoftTeamsServiceFactoryDep) => {
@@ -144,7 +144,7 @@ export const microsoftTeamsServiceFactory = ({
       serverCfg.encryptedMicrosoftTeamsClientSecret &&
       serverCfg.encryptedMicrosoftTeamsBotId
     ) {
-      const decryptWithRoot = rootKeyService.decryptWithRootKey();
+      const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
       const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
       const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
 
@@ -184,7 +184,7 @@ export const microsoftTeamsServiceFactory = ({
         serverCfg?.encryptedMicrosoftTeamsClientSecret &&
         serverCfg?.encryptedMicrosoftTeamsBotId
       ) {
-        const decryptWithRoot = rootKeyService.decryptWithRootKey();
+        const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
         const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
         const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
 
@@ -241,7 +241,7 @@ export const microsoftTeamsServiceFactory = ({
         message: "Microsoft Teams app ID, client secret, or bot ID is not set"
       });
     }
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
     const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
     const decryptedBotId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsBotId);
@@ -252,7 +252,7 @@ export const microsoftTeamsServiceFactory = ({
       botAppPassword: decryptedAppPassword.toString(),
       botId: decryptedBotId.toString(),
       orgId: microsoftTeamsIntegration.orgId,
-      dataKeyService,
+      kmsDataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
@@ -316,7 +316,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const botAppId = decryptWithRoot(encryptedMicrosoftTeamsAppId);
     const botAppPassword = decryptWithRoot(encryptedMicrosoftTeamsClientSecret);
     const botId = decryptWithRoot(encryptedMicrosoftTeamsBotId);
@@ -361,7 +361,7 @@ export const microsoftTeamsServiceFactory = ({
           botAppPassword: botAppPassword.toString(),
           botId: botId.toString(),
           orgId: workflowIntegration.orgId,
-          dataKeyService,
+          kmsDataKeyService,
           microsoftTeamsIntegrationDAL,
           microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
         },
@@ -369,7 +369,7 @@ export const microsoftTeamsServiceFactory = ({
       );
 
       if (teamsBotInfo.installed) {
-        const { encryptor: orgDataKeyEncryptor } = await dataKeyService
+        const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService
           .within(sealKnexTransaction(tx))
           .createCipherPairWithDataKey({
             orgId: workflowIntegration.orgId,
@@ -427,7 +427,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const clientId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
 
     return clientId.toString();
@@ -626,7 +626,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
     const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
     const decryptedBotId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsBotId);
@@ -637,7 +637,7 @@ export const microsoftTeamsServiceFactory = ({
       botAppPassword: decryptedAppPassword.toString(),
       botId: decryptedBotId.toString(),
       orgId: microsoftTeamsIntegration.orgId,
-      dataKeyService,
+      kmsDataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
@@ -750,7 +750,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = rootKeyService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
     const botAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
     const botAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
 
@@ -760,7 +760,7 @@ export const microsoftTeamsServiceFactory = ({
       clientSecret: botAppPassword.toString(),
       getBotFrameworkToken: true,
       orgId,
-      dataKeyService,
+      kmsDataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId
     });

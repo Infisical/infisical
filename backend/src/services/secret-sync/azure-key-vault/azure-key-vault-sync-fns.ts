@@ -26,7 +26,7 @@ import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azu
 
 type TAzureKeyVaultSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
@@ -38,7 +38,7 @@ type TGatewayConnection = { gatewayId?: string | null; gatewayPoolId?: string | 
 const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"];
 
 export const azureKeyVaultSyncFactory = ({
-  dataKeyService,
+  kmsDataKeyService,
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService,
@@ -148,7 +148,7 @@ export const azureKeyVaultSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       connection.id,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 
@@ -297,7 +297,7 @@ export const azureKeyVaultSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       connection.id,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 
@@ -335,7 +335,7 @@ export const azureKeyVaultSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       connection.id,
       appConnectionDAL,
-      dataKeyService,
+      kmsDataKeyService,
       oidcIssuerService
     );
 

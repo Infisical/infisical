@@ -113,7 +113,7 @@ export type TSecretAccessApprovalRequestServiceFactoryDep = {
   >;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;

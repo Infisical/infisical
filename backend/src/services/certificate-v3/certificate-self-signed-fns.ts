@@ -52,7 +52,7 @@ export const prepareSelfSignedCertificate = async ({
   policy,
   projectId,
   effectiveAlgorithms,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   existingKeyPair,
   customExtensions
@@ -69,7 +69,7 @@ export const prepareSelfSignedCertificate = async ({
   } | null;
   projectId: string;
   effectiveAlgorithms: TEffectiveAlgorithms;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   existingKeyPair?: CryptoKeyPair;
   customExtensions?: TResolvedCustomExtension[];
@@ -83,7 +83,7 @@ export const prepareSelfSignedCertificate = async ({
     customExtensions
   });
 
-  const certificateManagerKeyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
   const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
   const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({ plainText: selfSignedResult.certificate });
   const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({ plainText: selfSignedResult.privateKey });

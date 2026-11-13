@@ -191,7 +191,7 @@ type TSignerServiceFactoryDep = {
     | "prepareCodeSigningCertificateImport"
   >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -367,7 +367,7 @@ export const signerServiceFactory = ({
   internalCertificateAuthorityService,
   digicertFns,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   permissionService,
   approvalPolicyDAL,
@@ -391,7 +391,7 @@ export const signerServiceFactory = ({
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
     certificateSecretDAL,
-    dataKeyService,
+    kmsDataKeyService,
     kmsKeyService
   };
 
@@ -1763,7 +1763,7 @@ export const signerServiceFactory = ({
       });
     }
 
-    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(signer.projectId);
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(signer.projectId);
     const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
     const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
     const cert = new x509.X509Certificate(decryptedCert);
@@ -1993,7 +1993,7 @@ export const signerServiceFactory = ({
         projectId,
         certificateSecretDAL,
         projectDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService
       });
       certPrivateKey = Buffer.from(creds.certPrivateKey);
@@ -2200,7 +2200,7 @@ export const signerServiceFactory = ({
       if (!certBody?.encryptedCertificate) {
         throw new BadRequestError({ message: `Certificate body not found for signer '${signer.name}'.` });
       }
-      const keyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
       const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
       const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
       const cert = new x509.X509Certificate(decryptedCert);
@@ -2215,7 +2215,7 @@ export const signerServiceFactory = ({
         projectId,
         certificateSecretDAL,
         projectDAL,
-        dataKeyService,
+        kmsDataKeyService,
         kmsKeyService
       });
 

@@ -210,7 +210,7 @@ export const hpIloRotationFactory: TRotationFactory<
   THpIloRotationWithConnection,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, dataKeyService, gatewayV2Service, gatewayPoolService) => {
+> = (secretRotation, appConnectionDAL, kmsDataKeyService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 

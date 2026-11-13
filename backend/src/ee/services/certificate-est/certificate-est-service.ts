@@ -22,7 +22,7 @@ type TCertificateEstServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
   licenseService: TLicenseService;
 };
@@ -36,7 +36,7 @@ export const certificateEstServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
-  dataKeyService,
+  kmsDataKeyService,
   kmsKeyService,
   licenseService
 }: TCertificateEstServiceFactoryDep) => {
@@ -83,7 +83,7 @@ export const certificateEstServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 
@@ -242,7 +242,7 @@ export const certificateEstServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      dataKeyService,
+      kmsDataKeyService,
       kmsKeyService
     });
 

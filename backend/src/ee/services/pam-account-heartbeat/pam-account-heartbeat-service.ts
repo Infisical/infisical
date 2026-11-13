@@ -47,7 +47,7 @@ type TPamAccountHeartbeatServiceFactoryDep = {
   pamAccountDAL: TPamAccountDALFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   permissionService: TPermissionServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;
@@ -59,13 +59,13 @@ export const pamAccountHeartbeatServiceFactory = ({
   pamAccountDAL,
   gatewayV2Service,
   gatewayPoolService,
-  dataKeyService,
+  kmsDataKeyService,
   permissionService,
   projectDAL,
   rotationHandlers = PAM_ROTATION_FACTORY_MAP
 }: TPamAccountHeartbeatServiceFactoryDep) => {
   const withCipher = async (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await withCipher(projectId);

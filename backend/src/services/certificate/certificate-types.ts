@@ -184,7 +184,7 @@ export type TGetCertificateCredentialsDTO = {
   projectId: string;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
 

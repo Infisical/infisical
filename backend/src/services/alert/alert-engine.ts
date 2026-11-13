@@ -51,7 +51,7 @@ export type TAlertEngineDep = {
   >;
   alertProviderRegistry: TAlertProviderRegistry;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
-  dataKeyService: TDataKeyService;
+  kmsDataKeyService: TDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
@@ -63,7 +63,7 @@ export const alertEngineFactory = ({
   alertHistoryDAL,
   alertProviderRegistry,
   alertRecipientResolver,
-  dataKeyService,
+  kmsDataKeyService,
   smtpService
 }: TAlertEngineDep) => {
   const $dispatchChannelWork = async (
@@ -84,7 +84,7 @@ export const alertEngineFactory = ({
     };
     const viewUrl = await provider.buildViewUrl(alertContext);
 
-    const { decryptor } = await getAlertChannelCipher(dataKeyService, {
+    const { decryptor } = await getAlertChannelCipher(kmsDataKeyService, {
       orgId: alert.orgId,
       projectId: alert.projectId
     });
