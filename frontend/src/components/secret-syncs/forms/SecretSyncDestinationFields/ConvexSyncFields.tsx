@@ -58,7 +58,7 @@ export const ConvexSyncFields = () => {
                 isDisabled={!connectionId}
                 value={
                   deployments.find((deployment) => deployment.name === value) ??
-                  (value ? { name: value, deploymentType: "" } : null)
+                  (value ? { name: value, type: "" } : null)
                 }
                 onValueChange={(option) => {
                   onChange(option?.name ?? "");
@@ -71,7 +71,7 @@ export const ConvexSyncFields = () => {
                     : undefined
                 }
                 getOptionLabel={(option) =>
-                  option.deploymentType ? `${option.name} (${option.deploymentType})` : option.name
+                  option.type ? `${option.name} (${option.type})` : option.name
                 }
                 getOptionValue={(option) => option.name}
                 modal

@@ -117,7 +117,7 @@ export const listConvexDeployments = async ({
   return teamDeployments
     .flat()
     .filter((deployment) => deployment.deploymentUrl)
-    .map(({ name, deploymentType }) => ({ name, deploymentType }));
+    .map(({ name, deploymentType }) => ({ name, type: deploymentType }));
 };
 
 // The URL comes from Convex, answering for the connection's own token, so a sync can never send that token to a

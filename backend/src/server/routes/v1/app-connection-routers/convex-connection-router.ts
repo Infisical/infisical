@@ -39,7 +39,7 @@ export const registerConvexConnectionRouter = async (server: FastifyZodProvider)
           deployments: z
             .object({
               name: z.string(),
-              deploymentType: z.string()
+              type: z.string()
             })
             .array()
         })

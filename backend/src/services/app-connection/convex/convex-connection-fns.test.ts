@@ -50,9 +50,9 @@ describe("listConvexDeployments", () => {
     });
 
     await expect(listConvexDeployments(connection)).resolves.toEqual([
-      { name: "first-one-1", deploymentType: "prod" },
-      { name: "first-two-2", deploymentType: "prod" },
-      { name: "second-one-4", deploymentType: "prod" }
+      { name: "first-one-1", type: "prod" },
+      { name: "first-two-2", type: "prod" },
+      { name: "second-one-4", type: "prod" }
     ]);
     expect(get).toHaveBeenCalledWith(`${BASE_URL}/v1/teams/1/list_deployments`, {
       headers: HEADERS,
