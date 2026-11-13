@@ -86,6 +86,10 @@ func Times(n int) RuleOption { return func(r *Rule) { r.Times = n } }
 // product parses.
 func Body(s string) RuleOption { return func(r *Rule) { r.Body = s } }
 
+// Hangup makes a rule close the connection without answering, for a client whose
+// handling of a dropped connection differs from its handling of an error status.
+func Hangup() RuleOption { return func(r *Rule) { r.Hangup = true } }
+
 // Fail makes matching requests answer with status instead of reaching the fake.
 //
 // Method, path and status are required because a rule without them refuses nothing

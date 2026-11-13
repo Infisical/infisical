@@ -2,6 +2,8 @@ package fixture
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -24,6 +26,11 @@ type AppConnectionKind struct {
 	Host string
 
 	create func(ctx context.Context, c *api.ClientWithResponses, name, credential string) (uuid.UUID, error)
+
+	// seed prepares the fake for a credential before Infisical first uses it, for an
+	// app whose credential check needs state the fake cannot invent, such as the
+	// account a token belongs to.
+	seed func(tt *testing.T, adminURL, credential string)
 }
 
 // AppConnection is one connection and the credential its fake state is keyed on.
@@ -47,6 +54,9 @@ func NewAppConnection(tt *testing.T, tn *harness.Tenant, kind AppConnectionKind)
 	// Before the credential reaches Infisical, so nothing published under it can
 	// arrive before its buffer exists.
 	fakenet.Track(tt, FakenetAdmin(tt, tn), kind.Host, conn.nonce)
+	if kind.seed != nil {
+		kind.seed(tt, FakenetAdmin(tt, tn), conn.nonce)
+	}
 
 	connID, err := kind.create(tt.Context(), tn.Admin.API, conn.Name, conn.nonce)
 	require.NoErrorf(tt, err, "creating a %s connection\n%s", kind.App, deniedHint(tt, tn))
@@ -84,4 +94,23 @@ func (c *AppConnection) FakenetAdmin(tt *testing.T) string {
 func FakenetAdmin(tt *testing.T, tn *harness.Tenant) string {
 	tt.Helper()
 	return tn.Module(tt, fakenet.Key, "harness.Shared").(*fakenet.Handle).AdminURL()
+}
+
+// appConnectionID reads the new connection's id from a create response. It reads the
+// body rather than the generated union, whose As… methods accept any branch and so
+// would hand back a zero id instead of an error.
+func appConnectionID(body []byte, app string) (uuid.UUID, error) {
+	var out struct {
+		AppConnection struct {
+			ID  uuid.UUID `json:"id"`
+			App string    `json:"app"`
+		} `json:"appConnection"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return uuid.Nil, err
+	}
+	if out.AppConnection.App != app || out.AppConnection.ID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("creating the connection returned an unexpected body: %s", body)
+	}
+	return out.AppConnection.ID, nil
 }
