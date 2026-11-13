@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -69,7 +69,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
 };
 
@@ -86,7 +86,7 @@ export const agentVaultSessionServiceFactory = ({
   userDAL,
   orgDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   licenseService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
@@ -236,7 +236,7 @@ export const agentVaultSessionServiceFactory = ({
     // Each value is sealed on its own, the way a project's services keep them, so the two can share one table.
     let seal: ((value: unknown) => Buffer) | null = null;
     if (preparedInlineServices.some((service) => service.secrets)) {
-      const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -267,7 +267,7 @@ export const agentVaultSessionServiceFactory = ({
     const sessionId = crypto.nativeCrypto.randomUUID();
     const encryptedSessionLogKey = await wrapSessionLogKey(
       { projectId, sessionId, sessionLogKey: generateSessionLogKey() },
-      kmsCoreDomain
+      dataKeyService
     );
 
     // A session on a user's behalf belongs to the identity, so only it and admins see the session and its logs. The

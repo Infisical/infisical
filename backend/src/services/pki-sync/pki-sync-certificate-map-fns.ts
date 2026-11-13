@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TCertificates } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -32,7 +32,8 @@ type TBuildCertificateMapDeps = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findCertificateIdsByPkiSyncId">;
   projectDAL: TProjectDALFactory;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 export const buildCertificateMap = async (
@@ -45,7 +46,8 @@ export const buildCertificateMap = async (
     certificateAuthorityCertDAL,
     certificateSyncDAL,
     projectDAL,
-    kmsCoreDomain
+    dataKeyService,
+    kmsKeyService
   }: TBuildCertificateMapDeps,
   certificateIdOverride?: string[]
 ): Promise<{ certificateMap: TCertificateMap; certificateMetadata: Map<string, { id: string; name: string }> }> => {
@@ -90,9 +92,9 @@ export const buildCertificateMap = async (
         const certBody = await certificateBodyDAL.findOne({ certId: certificate.id });
 
         if (certBody) {
-          const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(certificate.projectId);
+          const certificateManagerKeyId = await dataKeyService.getProjectCertificateKmsKeyId(certificate.projectId);
 
-          const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+          const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
             kmsId: certificateManagerKeyId
           });
 
@@ -110,7 +112,8 @@ export const buildCertificateMap = async (
               projectId: certificate.projectId,
               certificateSecretDAL,
               projectDAL,
-              kmsCoreDomain
+              dataKeyService,
+              kmsKeyService
             });
             certPrivateKey = credentials.certPrivateKey;
           } catch (credError) {
@@ -136,7 +139,8 @@ export const buildCertificateMap = async (
                 certificateAuthorityDAL,
                 certificateAuthorityCertDAL,
                 projectDAL,
-                kmsCoreDomain
+                dataKeyService,
+                kmsKeyService
               });
               if (!certBody.encryptedCertificateChain) {
                 certificateChain = `${caCert}\n${caCertChain}`.trim();

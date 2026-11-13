@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -57,7 +57,7 @@ export type TDelegatedApprovalDecisionServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "findByIdForUpdate" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "isUserProjectMember">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   approvalResources: Record<DelegatedApprovalSupportedPolicyType, Pick<TApprovalResource, "postApprovalTxRoutine">>;
   decisionNotifiers: Record<DelegatedApprovalSupportedPolicyType, TDelegatedApprovalDecisionNotifier>;

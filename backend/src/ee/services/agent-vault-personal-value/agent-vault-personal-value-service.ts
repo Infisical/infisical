@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { TAgentVaultPersonalValueReferencesInsert } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -68,7 +68,7 @@ type TAgentVaultPersonalValueServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TAgentVaultPersonalValueServiceFactory = ReturnType<typeof agentVaultPersonalValueServiceFactory>;
@@ -100,10 +100,10 @@ export const agentVaultPersonalValueServiceFactory = ({
   agentVaultOauthService,
   permissionService,
   membershipDAL,
-  kmsCoreDomain
+  dataKeyService
 }: TAgentVaultPersonalValueServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const resolveCaller = async ({ projectId, ctx }: TAgentVaultProjectScoped) => {
     const reachability = await getAgentVaultGrantedReachability(

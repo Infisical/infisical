@@ -10,7 +10,7 @@ import {
   TGatewaysV2Update,
   TRelays
 } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -72,7 +72,7 @@ const MAX_GATEWAYS_PER_ORG = 50;
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
   relayDAL: TRelayDALFactory;
@@ -102,7 +102,7 @@ export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory
 
 export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
-  kmsCoreDomain,
+  dataKeyService,
   relayService,
   gatewayV2DAL,
   relayDAL,
@@ -134,10 +134,12 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const $getOrgCAs = async (orgId: string) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey(
+      {
+        type: KmsDataKey.Organization,
+        orgId
+      }
+    );
 
     const orgCAs = await orgGatewayConfigV2DAL.transaction(async (tx) => {
       const orgGatewayConfigV2 = await orgGatewayConfigV2DAL.findOne({ orgId });
@@ -408,7 +410,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -583,7 +585,7 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
     });
@@ -1219,7 +1221,7 @@ export const gatewayV2ServiceFactory = ({
     }
 
     // Fetched before the transaction: KMS Core is never called inside one.
-    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });

@@ -416,7 +416,7 @@ const dupInsightsService = insightsServiceFactory({
   licenseService: dupGate.licenseService,
   orgDAL: { ...usageInsightsDepStubs.orgDAL, findById: orgDALFactory(testDb).findById },
   // No secret here carries an encrypted value, so the decryptor is never invoked.
-  kmsCoreDomain: {
+  dataKeyService: {
     createCipherPairWithDataKey: async () =>
       ({
         decryptor: () => {

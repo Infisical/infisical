@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -16,9 +16,9 @@ type TGetAppConnectionFunc = (
 const listAuth0Clients = async (
   appConnection: TAuth0Connection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
-  const accessToken = await getAuth0ConnectionAccessToken(appConnection, appConnectionDAL, kmsCoreDomain);
+  const accessToken = await getAuth0ConnectionAccessToken(appConnection, appConnectionDAL, dataKeyService);
 
   const { audience, clientId: connectionClientId } = appConnection.credentials;
   await blockLocalAndPrivateIpAddresses(audience);
@@ -54,12 +54,12 @@ const listAuth0Clients = async (
 export const auth0ConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
   const listClients = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Auth0, connectionId, actor);
 
-    const clients = await listAuth0Clients(appConnection, appConnectionDAL, kmsCoreDomain);
+    const clients = await listAuth0Clients(appConnection, appConnectionDAL, dataKeyService);
 
     return clients.map((client) => ({ id: client.client_id, name: client.name }));
   };

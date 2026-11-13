@@ -1,6 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -22,7 +22,8 @@ type TCertificateEstServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   licenseService: TLicenseService;
 };
 
@@ -35,7 +36,8 @@ export const certificateEstServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   licenseService
 }: TCertificateEstServiceFactoryDep) => {
   const simpleReenroll = async ({
@@ -81,7 +83,8 @@ export const certificateEstServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
     const verifiedChains = await Promise.all(
@@ -239,7 +242,8 @@ export const certificateEstServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
     const certificates = extractX509CertFromChain(caCertChain).map((cert) => new x509.X509Certificate(cert));

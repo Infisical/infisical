@@ -4,7 +4,7 @@ import net from "net";
 import pLimit from "p-limit";
 
 import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -66,7 +66,8 @@ type TExecuteScanDeps = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -118,8 +119,15 @@ export const findOrCreateNetworkInstallation = async (
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
-  const { pkiDiscoveryConfigDAL, projectDAL, kmsCoreDomain, gatewayV2Service, gatewayPoolService, telemetryService } =
-    deps;
+  const {
+    pkiDiscoveryConfigDAL,
+    projectDAL,
+    dataKeyService,
+    kmsKeyService,
+    gatewayV2Service,
+    gatewayPoolService,
+    telemetryService
+  } = deps;
 
   const startedAt = new Date();
   let scanHistoryId: string | undefined;
@@ -136,9 +144,9 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
       "PKI discovery scan starting"
     );
 
-    const certificateKmsKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
+    const certificateKmsKeyId = await dataKeyService.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
 
-    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateKmsKeyId
     });
 

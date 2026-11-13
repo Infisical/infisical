@@ -4,7 +4,7 @@ import { retry } from "@octokit/plugin-retry";
 import { Octokit } from "@octokit/rest";
 
 import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -42,7 +42,7 @@ const getIntegrationSecretsV2 = async (
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">,
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
-  kmsCoreDomain: TKmsCoreDomain,
+  dataKeyService: TDataKeyService,
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">,
   orgDAL: Pick<TOrgDALFactory, "findOrgById">
 ) => {
@@ -79,7 +79,7 @@ const getIntegrationSecretsV2 = async (
     projectFolderGrantDAL,
     actorOrgId: dto.actorOrgId,
     orgDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
@@ -294,7 +294,7 @@ export const deleteIntegrationSecrets = async ({
   folderDAL,
   secretDAL,
   secretImportDAL,
-  kmsCoreDomain,
+  dataKeyService,
   projectFolderGrantDAL,
   orgDAL,
   actorOrgId
@@ -315,13 +315,13 @@ export const deleteIntegrationSecrets = async ({
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath" | "findBySecretPath">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   actorOrgId: string;
 }) => {
   const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integration.projectId);
-  const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+  const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId: integration.projectId
   });
@@ -358,7 +358,7 @@ export const deleteIntegrationSecrets = async ({
         secretV2BridgeDAL,
         folderDAL,
         secretImportDAL,
-        kmsCoreDomain,
+        dataKeyService,
         projectFolderGrantDAL,
         orgDAL
       )

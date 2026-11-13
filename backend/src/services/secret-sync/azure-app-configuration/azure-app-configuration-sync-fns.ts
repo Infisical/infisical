@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import https from "https";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -16,7 +16,7 @@ import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configura
 
 type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
@@ -27,7 +27,7 @@ interface AzureAppConfigKeyValue {
 }
 
 export const azureAppConfigurationSyncFactory = ({
-  kmsCoreDomain,
+  dataKeyService,
   appConnectionDAL,
   oidcIssuerService
 }: TAzureAppConfigurationSyncFactoryDeps) => {
@@ -82,7 +82,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       oidcIssuerService
     );
 
@@ -170,7 +170,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       oidcIssuerService
     );
 
@@ -204,7 +204,7 @@ export const azureAppConfigurationSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       secretSync.connectionId,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       oidcIssuerService
     );
 

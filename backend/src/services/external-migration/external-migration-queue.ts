@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
@@ -44,7 +44,7 @@ export type TExternalMigrationQueueFactoryDep = {
 
   projectDAL: Pick<TProjectDALFactory, "transaction" | "delete">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
@@ -75,7 +75,7 @@ export const externalMigrationQueueFactory = ({
   projectDAL,
   projectEnvService,
   secretV2BridgeService,
-  kmsCoreDomain,
+  dataKeyService,
   projectEnvDAL,
   secretDAL,
   secretVersionDAL,
@@ -157,7 +157,7 @@ export const externalMigrationQueueFactory = ({
         secretTagDAL,
         secretVersionTagDAL,
         folderDAL,
-        kmsCoreDomain,
+        dataKeyService,
         projectService,
         projectEnvService,
         secretV2BridgeService,

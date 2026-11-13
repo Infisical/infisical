@@ -2,7 +2,7 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -25,7 +25,7 @@ import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-
 
 export type TGitHubAppCredentialResolverDeps = {
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 type TResolvedGitHubAppCredentials = {
@@ -48,7 +48,7 @@ export const resolveGitHubAppCredentials = async (
     orgId: string;
     projectId?: string | null;
   },
-  { gitHubAppDAL, kmsCoreDomain }: TGitHubAppCredentialResolverDeps
+  { gitHubAppDAL, dataKeyService }: TGitHubAppCredentialResolverDeps
 ): Promise<TResolvedGitHubAppCredentials> => {
   if (gitHubAppId) {
     const app = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
@@ -60,7 +60,7 @@ export const resolveGitHubAppCredentials = async (
 
     // Project-scoped apps are encrypted with the project's data key, org-scoped apps with the
     // org's, mirroring how app connection credentials are encrypted per scope.
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
       app.projectId
         ? { type: KmsDataKey.SecretManager, projectId: app.projectId }
         : { type: KmsDataKey.Organization, orgId }

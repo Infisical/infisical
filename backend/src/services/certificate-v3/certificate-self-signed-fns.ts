@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -52,7 +52,8 @@ export const prepareSelfSignedCertificate = async ({
   policy,
   projectId,
   effectiveAlgorithms,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   existingKeyPair,
   customExtensions
 }: {
@@ -68,7 +69,8 @@ export const prepareSelfSignedCertificate = async ({
   } | null;
   projectId: string;
   effectiveAlgorithms: TEffectiveAlgorithms;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   existingKeyPair?: CryptoKeyPair;
   customExtensions?: TResolvedCustomExtension[];
 }): Promise<TPreparedSelfSignedCertificate> => {
@@ -81,8 +83,8 @@ export const prepareSelfSignedCertificate = async ({
     customExtensions
   });
 
-  const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-  const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
+  const certificateManagerKeyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
   const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({ plainText: selfSignedResult.certificate });
   const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({ plainText: selfSignedResult.privateKey });
 

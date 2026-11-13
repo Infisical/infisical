@@ -1,7 +1,7 @@
 import pLimit from "p-limit";
 
 import { TAlertChannels, TAlerts } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -51,7 +51,7 @@ export type TAlertEngineDep = {
   >;
   alertProviderRegistry: TAlertProviderRegistry;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
@@ -63,7 +63,7 @@ export const alertEngineFactory = ({
   alertHistoryDAL,
   alertProviderRegistry,
   alertRecipientResolver,
-  kmsCoreDomain,
+  dataKeyService,
   smtpService
 }: TAlertEngineDep) => {
   const $dispatchChannelWork = async (
@@ -84,7 +84,7 @@ export const alertEngineFactory = ({
     };
     const viewUrl = await provider.buildViewUrl(alertContext);
 
-    const { decryptor } = await getAlertChannelCipher(kmsCoreDomain, {
+    const { decryptor } = await getAlertChannelCipher(dataKeyService, {
       orgId: alert.orgId,
       projectId: alert.projectId
     });

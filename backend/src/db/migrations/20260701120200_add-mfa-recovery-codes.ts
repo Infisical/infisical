@@ -19,8 +19,8 @@ const startRootEncryptor = async (knex: Knex) => {
   initLogger();
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
-  return kmsCoreDomain.encryptWithRootKey();
+  const { rootKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  return rootKeyService.encryptWithRootKey();
 };
 
 // Same code count + encoding as generateEncryptedRecoveryCodes in the service,
@@ -46,7 +46,7 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.UserMfaRecoveryCode);
 
     // Backfill from existing TOTP recovery codes. Both stores use
-    // kmsCoreDomain.encryptWithRootKey() (root-key AES-GCM, table-independent),
+    // rootKeyService.encryptWithRootKey() (root-key AES-GCM, table-independent),
     // so the ciphertext is portable and can be copied without decrypting.
     await knex.raw(
       `INSERT INTO ?? ("userId", "encryptedRecoveryCodes")

@@ -6,7 +6,7 @@ import { mfaRecoveryCodeServiceFactory } from "./mfa-recovery-code-service";
 
 const USER_ID = "user-1";
 
-const kmsCoreDomain = {
+const rootKeyService = {
   encryptWithRootKey: () => (plain: Buffer) => Buffer.from(plain),
   decryptWithRootKey: () => (cipher: Buffer) => Buffer.from(cipher)
 } as never;
@@ -27,7 +27,7 @@ const makeService = (dalPatch: Record<string, unknown>, userDALPatch: Record<str
   const service = mfaRecoveryCodeServiceFactory({
     mfaRecoveryCodeDAL: mfaRecoveryCodeDAL as never,
     userDAL: userDAL as never,
-    kmsCoreDomain
+    rootKeyService
   });
   return { service, mfaRecoveryCodeDAL, userDAL };
 };

@@ -4,7 +4,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService, TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -46,7 +46,8 @@ export const relayServiceFactory = ({
   instanceRelayConfigDAL,
   orgRelayConfigDAL,
   relayDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  rootKeyService,
   permissionService,
   orgDAL,
   notificationService,
@@ -58,7 +59,8 @@ export const relayServiceFactory = ({
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
   relayDAL: TRelayDALFactory;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  rootKeyService: TRootKeyService;
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -226,7 +228,7 @@ export const relayServiceFactory = ({
       const instanceSshServerCaKeyPair = await createSshKeyPair(SshCertKeyAlgorithm.RSA_2048);
       const instanceSshClientCaKeyPair = await createSshKeyPair(SshCertKeyAlgorithm.RSA_2048);
 
-      const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
+      const encryptWithRoot = rootKeyService.encryptWithRootKey();
 
       // root relay CA
       const encryptedRootRelayPkiCaPrivateKey = encryptWithRoot(
@@ -334,7 +336,7 @@ export const relayServiceFactory = ({
     });
 
     // decrypt the instance config
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
 
     // decrypt root relay CA
     const rootRelayPkiCaPrivateKey = decryptWithRoot(instanceConfig.encryptedRootRelayPkiCaPrivateKey);
@@ -412,10 +414,12 @@ export const relayServiceFactory = ({
 
   const $getOrgCAs = async (orgId: string) => {
     const instanceCAs = await $getInstanceCAs();
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey(
+      {
+        type: KmsDataKey.Organization,
+        orgId
+      }
+    );
 
     const orgRelayConfig = await orgRelayConfigDAL.transaction(async (tx) => {
       const existingOrgRelayConfig = await orgRelayConfigDAL.findOne(

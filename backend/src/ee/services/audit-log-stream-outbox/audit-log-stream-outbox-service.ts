@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TAuditLogs } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -77,7 +77,7 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
   auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectTypesByIds">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
   eventEmitter: TEventEmitter;
@@ -94,7 +94,7 @@ export const auditLogStreamOutboxServiceFactory = ({
   auditLogStreamOutboxDAL,
   auditLogStreamDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
   keyStore,
   queueService,
   eventEmitter
@@ -274,7 +274,7 @@ export const auditLogStreamOutboxServiceFactory = ({
       credentials = await decryptLogStreamCredentials({
         encryptedCredentials: stream.encryptedCredentials,
         orgId: stream.orgId,
-        kmsCoreDomain
+        dataKeyService
       });
     } catch (error) {
       // This message reaches the alert and the stream's lastDeliveryError, so the KMS detail stays in the log.

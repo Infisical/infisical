@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 import * as crypto from "crypto";
 
 import { TCertificateSyncs } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -53,7 +53,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
 
 type TAzureKeyVaultPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"
@@ -210,7 +210,7 @@ const parseCertificateKeyProps = (certPem: string) => {
 };
 
 export const azureKeyVaultPkiSyncFactory = ({
-  kmsCoreDomain,
+  dataKeyService,
   appConnectionDAL,
   certificateSyncDAL,
   certificateDAL,
@@ -346,7 +346,7 @@ export const azureKeyVaultPkiSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       pkiSync.connection.id,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       oidcIssuerService
     );
 
@@ -763,7 +763,7 @@ export const azureKeyVaultPkiSyncFactory = ({
     const { accessToken } = await getAzureConnectionAccessToken(
       pkiSync.connection.id,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       oidcIssuerService
     );
 

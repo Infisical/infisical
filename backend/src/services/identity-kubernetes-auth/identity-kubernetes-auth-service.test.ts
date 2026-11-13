@@ -133,7 +133,7 @@ const createService = ({
       gatewayPool: true,
       ipAllowlisting: true
     }),
-    kmsCoreDomain: {
+    dataKeyService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob

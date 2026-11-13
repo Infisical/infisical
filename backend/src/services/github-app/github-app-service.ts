@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -54,7 +54,7 @@ import {
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
   licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -72,7 +72,7 @@ export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory
 export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   keyStore,
   licenseService,
   gatewayV2Service,
@@ -317,7 +317,7 @@ export const gitHubAppServiceFactory = ({
     try {
       credentials = await resolveGitHubAppCredentials(
         { gitHubAppId: id, orgId: orgPermission.orgId },
-        { gitHubAppDAL, kmsCoreDomain }
+        { gitHubAppDAL, dataKeyService }
       );
     } catch {
       // App missing or credentials unreadable — the transaction below still performs (or rejects)
@@ -613,7 +613,7 @@ export const gitHubAppServiceFactory = ({
         }
         codeExchanged = true;
 
-        const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+        const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
           projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
         );
 

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { ForbiddenError } from "@casl/ability";
 
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -98,7 +98,7 @@ type TAgentVaultOauthServiceFactoryDep = {
     TKeyStoreFactory,
     "getItemPrimary" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem" | "ttl" | "acquireLock"
   >;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
     | "findByIdInProject"
@@ -118,7 +118,7 @@ type TAgentVaultOauthServiceFactoryDep = {
 
 export type TAgentVaultOauthServiceFactory = ReturnType<typeof agentVaultOauthServiceFactory>;
 
-type TProjectCipher = Awaited<ReturnType<TKmsCoreDomain["createCipherPairWithDataKey"]>>;
+type TProjectCipher = Awaited<ReturnType<TDataKeyService["createCipherPairWithDataKey"]>>;
 
 type TLoadedOauthService = {
   // The row the tokens were read from, which every write is made against.
@@ -247,7 +247,7 @@ const toView = (record: TAgentVaultOauthAuthorization): TAgentVaultOauthAuthoriz
 
 export const agentVaultOauthServiceFactory = ({
   keyStore,
-  kmsCoreDomain,
+  dataKeyService,
   agentVaultServiceDAL,
   agentVaultPersonalValueDAL,
   permissionService,
@@ -255,7 +255,7 @@ export const agentVaultOauthServiceFactory = ({
   http = agentVaultOauthHttpClient
 }: TAgentVaultOauthServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const sealWith = ({ encryptor }: TProjectCipher, value: unknown) =>
     encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;

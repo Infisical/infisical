@@ -27,9 +27,9 @@ export async function up(knex: Knex): Promise<void> {
 
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const orgKmsCache =
-    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   const toNullify: string[] = [];
 
@@ -37,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
     let orgKms = orgKmsCache.getItem(record.orgId);
     if (!orgKms) {
       // eslint-disable-next-line no-await-in-loop
-      orgKms = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: record.orgId });
+      orgKms = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: record.orgId });
       orgKmsCache.push(record.orgId, orgKms);
     }
 

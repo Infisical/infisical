@@ -6,7 +6,7 @@ import {
   TSecretScanningResourcesInsert,
   TSecretScanningScans
 } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TBitbucketDataSource,
@@ -315,7 +315,7 @@ export type TSecretScanningFactoryUpdateWebhook<
 
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TSecretScanningFactory<

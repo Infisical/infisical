@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -71,7 +71,7 @@ type TKmipServiceFactoryDep = {
   kmipClientCertificateDAL: TKmipClientCertificateDALFactory;
   kmipOrgServerCertificateDAL: TKmipOrgServerCertificateDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   kmipOrgConfigDAL: TKmipOrgConfigDALFactory;
   licenseService: TLicenseService;
 };
@@ -104,7 +104,7 @@ export const kmipServiceFactory = ({
   permissionService,
   kmipClientCertificateDAL,
   kmipOrgConfigDAL,
-  kmsCoreDomain,
+  dataKeyService,
   kmipOrgServerCertificateDAL,
   licenseService
 }: TKmipServiceFactoryDep) => {
@@ -116,10 +116,12 @@ export const kmipServiceFactory = ({
    * (Root CA, Server Intermediate CA, Client Intermediate CA) within a transaction with advisory lock.
    */
   const $getOrgKmipCAs = async (orgId: string, caKeyAlgorithm: CertKeyAlgorithm = DEFAULT_CA_KEY_ALGORITHM) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await dataKeyService.createCipherPairWithDataKey(
+      {
+        type: KmsDataKey.Organization,
+        orgId
+      }
+    );
 
     const kmipOrgConfig = await kmipOrgConfigDAL.transaction(async (tx) => {
       const existingConfig = await kmipOrgConfigDAL.findOne({ orgId }, tx);
@@ -679,7 +681,7 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -708,7 +710,7 @@ export const kmipServiceFactory = ({
     // Initialize KMIP org config (or return existing one)
     const orgKmipCAs = await $getOrgKmipCAs(orgId);
 
-    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });

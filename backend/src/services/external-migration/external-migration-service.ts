@@ -1,7 +1,7 @@
 import { MongoAbility, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   AuditLogInfo,
   EventType,
@@ -170,7 +170,7 @@ type TExternalMigrationServiceFactoryDep = {
   folderService: Pick<TSecretFolderServiceFactory, "createManyFolders">;
   folderDAL: Pick<TSecretFolderDALFactory, "transaction" | "findByManySecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -188,7 +188,7 @@ export const externalMigrationServiceFactory = ({
   folderService,
   folderDAL,
   projectEnvDAL,
-  kmsCoreDomain
+  dataKeyService
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
@@ -524,7 +524,7 @@ export const externalMigrationServiceFactory = ({
     const unitsWithSecrets = units.filter(({ secrets }) => secrets.length);
 
     // Fetched before the transaction: KMS Core is never called inside one.
-    const ciphers = await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actor.orgId });
+    const ciphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actor.orgId });
     const results = await folderDAL.transaction(async (tx) => {
       const [baseFolder, ...candidateFolders] = await folderDAL.findByManySecretPath(
         [basePath, ...candidatePaths].map((candidatePath) => ({ envId: env.id, secretPath: candidatePath })),

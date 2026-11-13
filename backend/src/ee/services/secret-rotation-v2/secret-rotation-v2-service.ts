@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
@@ -151,7 +151,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
@@ -254,7 +254,7 @@ export const secretRotationV2ServiceFactory = ({
   appConnectionService,
   projectBotService,
   licenseService,
-  kmsCoreDomain,
+  dataKeyService,
   auditLogService,
   secretQueueService,
   keyStore,
@@ -423,7 +423,7 @@ export const secretRotationV2ServiceFactory = ({
         .filter((rotation) =>
           permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
         )
-        .map((rotation) => expandSecretRotation(rotation, kmsCoreDomain))
+        .map((rotation) => expandSecretRotation(rotation, dataKeyService))
     );
   };
 
@@ -463,7 +463,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
 
-    return expandSecretRotation(secretRotation, kmsCoreDomain);
+    return expandSecretRotation(secretRotation, dataKeyService);
   };
 
   const findSecretRotationGeneratedCredentialsById = async (
@@ -509,7 +509,7 @@ export const secretRotationV2ServiceFactory = ({
     const generatedCredentials = await decryptSecretRotationCredentials({
       projectId,
       encryptedGeneratedCredentials,
-      kmsCoreDomain
+      dataKeyService
     });
 
     return {
@@ -568,7 +568,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
 
-    return expandSecretRotation(secretRotation, kmsCoreDomain);
+    return expandSecretRotation(secretRotation, dataKeyService);
   };
 
   const createSecretRotation = async (
@@ -645,7 +645,7 @@ export const secretRotationV2ServiceFactory = ({
         rotationInterval: payload.rotationInterval
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
@@ -680,17 +680,17 @@ export const secretRotationV2ServiceFactory = ({
         const encryptedGeneratedCredentials = await encryptSecretRotationCredentials({
           generatedCredentials: [newCredentials] as TSecretRotationV2GeneratedCredentials,
           projectId,
-          kmsCoreDomain
+          dataKeyService
         });
 
         // Resolved before the transaction opens, so a slow external KMS does not hold a connection
         // and the advisory lock while it answers.
-        const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+        const projectCipher = await dataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });
         const { encryptor } = projectCipher;
-        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
+        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, dataKeyService });
 
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
@@ -779,7 +779,7 @@ export const secretRotationV2ServiceFactory = ({
         excludeReplication: true
       });
 
-      return await expandSecretRotation(secretRotation, kmsCoreDomain);
+      return await expandSecretRotation(secretRotation, dataKeyService);
     } catch (err) {
       if (err instanceof DatabaseError) {
         const error = err.error as { code: string; message: string; table: string };
@@ -867,7 +867,7 @@ export const secretRotationV2ServiceFactory = ({
     // Fetched before the transaction: KMS Core is never called inside one.
     const mappingSecretManager =
       payload.secretsMapping && !isEqual(payload.secretsMapping, secretsMapping)
-        ? await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId })
+        ? await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId })
         : undefined;
 
     try {
@@ -948,7 +948,7 @@ export const secretRotationV2ServiceFactory = ({
         );
       }
 
-      return await expandSecretRotation(updatedSecretRotation, kmsCoreDomain);
+      return await expandSecretRotation(updatedSecretRotation, dataKeyService);
     } catch (err) {
       if (err instanceof DatabaseError) {
         const error = err.error as { code: string; message: string; table: string };
@@ -1036,7 +1036,7 @@ export const secretRotationV2ServiceFactory = ({
       });
 
     if (revokeGeneratedCredentials) {
-      const appConnection = await decryptAppConnection(connection, kmsCoreDomain);
+      const appConnection = await decryptAppConnection(connection, dataKeyService);
 
       const passwordValidationContext = await $resolvePasswordValidationContext({
         projectId,
@@ -1051,7 +1051,7 @@ export const secretRotationV2ServiceFactory = ({
           connection: appConnection
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
-        kmsCoreDomain,
+        dataKeyService,
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
@@ -1061,7 +1061,7 @@ export const secretRotationV2ServiceFactory = ({
       const generatedCredentials = await decryptSecretRotationCredentials({
         encryptedGeneratedCredentials,
         projectId,
-        kmsCoreDomain
+        dataKeyService
       });
 
       await rotationFactory.revokeCredentials(generatedCredentials, deleteTransaction);
@@ -1081,7 +1081,7 @@ export const secretRotationV2ServiceFactory = ({
       });
     }
 
-    return expandSecretRotation(secretRotation, kmsCoreDomain);
+    return expandSecretRotation(secretRotation, dataKeyService);
   };
 
   const moveSecretRotation = async (
@@ -1156,14 +1156,14 @@ export const secretRotationV2ServiceFactory = ({
 
     const mappedKeys = Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]);
 
-    const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+    const projectCipher = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
 
-    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
+    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, dataKeyService });
 
     const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
       const conflictingRotation = await secretRotationV2DAL.findOne({
@@ -1317,7 +1317,7 @@ export const secretRotationV2ServiceFactory = ({
     });
 
     return {
-      secretRotation: await expandSecretRotation(updatedRotation, kmsCoreDomain),
+      secretRotation: await expandSecretRotation(updatedRotation, dataKeyService),
       sourceEnvironment: environment.slug,
       sourceSecretPath: folder.path
     };
@@ -1394,12 +1394,12 @@ export const secretRotationV2ServiceFactory = ({
     }
 
     try {
-      const appConnection = await decryptAppConnection(connection, kmsCoreDomain);
+      const appConnection = await decryptAppConnection(connection, dataKeyService);
 
       const generatedCredentials = await decryptSecretRotationCredentials({
         projectId,
         encryptedGeneratedCredentials,
-        kmsCoreDomain
+        dataKeyService
       });
 
       const inactiveIndex = (activeIndex + 1) % MAX_GENERATED_CREDENTIALS_LENGTH;
@@ -1420,7 +1420,7 @@ export const secretRotationV2ServiceFactory = ({
           connection: appConnection
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
-        kmsCoreDomain,
+        dataKeyService,
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
@@ -1436,12 +1436,12 @@ export const secretRotationV2ServiceFactory = ({
           const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
             projectId,
             generatedCredentials: updatedCredentials as TSecretRotationV2GeneratedCredentials,
-            kmsCoreDomain
+            dataKeyService
           });
 
           // Resolved before the transaction opens, so a slow external KMS does not hold a connection
           // while it answers.
-          const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+          const projectCipher = await dataKeyService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
           });
@@ -1449,7 +1449,7 @@ export const secretRotationV2ServiceFactory = ({
           const blindIndexer = await createSecretBlindIndexer({
             projectCipher,
             orgId: connection.orgId,
-            kmsCoreDomain
+            dataKeyService
           });
 
           let isRecovery = false;
@@ -1572,7 +1572,7 @@ export const secretRotationV2ServiceFactory = ({
       }
 
       if (isFinalAttempt) {
-        const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+        const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });
@@ -1719,7 +1719,7 @@ export const secretRotationV2ServiceFactory = ({
         isManualRotation: true
       });
 
-      return await expandSecretRotation(updatedRotation, kmsCoreDomain);
+      return await expandSecretRotation(updatedRotation, dataKeyService);
     } catch (err) {
       if (err instanceof SecretRotationInProgressError) throw err;
       throw new InternalServerError({
@@ -1773,12 +1773,12 @@ export const secretRotationV2ServiceFactory = ({
     if (isRotationOccurring)
       throw new BadRequestError({ message: `A rotation is in progress. Please try again shortly.` });
 
-    const appConnection = await decryptAppConnection(connection, kmsCoreDomain);
+    const appConnection = await decryptAppConnection(connection, dataKeyService);
 
     const generatedCredentials = await decryptSecretRotationCredentials({
       projectId,
       encryptedGeneratedCredentials,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const activeCredentials = generatedCredentials?.[activeIndex];
@@ -1792,7 +1792,7 @@ export const secretRotationV2ServiceFactory = ({
         connection: appConnection
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       gatewayV2Service,
       gatewayPoolService,
       keyStore
@@ -1950,7 +1950,7 @@ export const secretRotationV2ServiceFactory = ({
       permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
     );
 
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -2013,7 +2013,7 @@ export const secretRotationV2ServiceFactory = ({
           );
         });
 
-        const expandedRotation = await expandSecretRotation(rotation, kmsCoreDomain);
+        const expandedRotation = await expandSecretRotation(rotation, dataKeyService);
 
         return {
           ...expandedRotation,
@@ -2165,13 +2165,13 @@ export const secretRotationV2ServiceFactory = ({
     const generatedCredentials = await decryptSecretRotationCredentials({
       projectId,
       encryptedGeneratedCredentials,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const activeCredentials = generatedCredentials[
       secretRotation.activeIndex
     ] as TLocalAccountRotationGeneratedCredentials[number];
-    const appConnection = await decryptAppConnection(connection, kmsCoreDomain);
+    const appConnection = await decryptAppConnection(connection, dataKeyService);
 
     const passwordValidationContext = await $resolvePasswordValidationContext({
       projectId,
@@ -2192,7 +2192,7 @@ export const secretRotationV2ServiceFactory = ({
         connection: appConnection
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       gatewayV2Service,
       gatewayPoolService,
       keyStore,
@@ -2209,17 +2209,17 @@ export const secretRotationV2ServiceFactory = ({
         const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
           projectId,
           generatedCredentials: updatedCredentials as TSecretRotationV2GeneratedCredentials,
-          kmsCoreDomain
+          dataKeyService
         });
 
         // Resolved before the transaction opens, so a slow external KMS does not hold a connection
         // while it answers.
-        const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+        const projectCipher = await dataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });
         const { encryptor, decryptor } = projectCipher;
-        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
+        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, dataKeyService });
 
         let isRecovery = false;
         const reconciled = await secretRotationV2DAL.transaction(async (tx) => {
@@ -2289,7 +2289,7 @@ export const secretRotationV2ServiceFactory = ({
     return {
       message: `${type === SecretRotation.UnixLinuxLocalAccount ? "Unix/Linux Local Account" : "Windows Local Account"} rotation credentials reconciled successfully`,
       reconciled: true,
-      secretRotation: await expandSecretRotation(updatedRotation, kmsCoreDomain)
+      secretRotation: await expandSecretRotation(updatedRotation, dataKeyService)
     };
   };
 

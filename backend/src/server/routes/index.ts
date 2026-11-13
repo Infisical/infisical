@@ -664,7 +664,7 @@ export const registerRoutes = async (
   });
   domains.license.start();
   const { usageMeteringService, licenseService } = domains.license;
-  const kmsCoreDomain = domains.kmsCore.service;
+  const { dataKeyService, kmsKeyService, rootKeyService } = domains.kmsCore;
   const { organizationsProjectsService } = domains.organizationsProjects;
   const { certManagerService } = domains.certManager;
 
@@ -1007,7 +1007,7 @@ export const registerRoutes = async (
     honeyTokenDAL,
     honeyTokenConfigDAL,
     appConnectionDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
@@ -1022,11 +1022,11 @@ export const registerRoutes = async (
     permissionService,
     folderDAL,
     projectEnvDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const externalKmsService = externalKmsServiceFactory({
-    kmsCoreDomain,
+    kmsKeyService,
     permissionService,
     licenseService
   });
@@ -1126,7 +1126,7 @@ export const registerRoutes = async (
     alertHistoryDAL,
     alertProviderRegistry,
     alertRecipientResolver,
-    kmsCoreDomain,
+    dataKeyService,
     smtpService
   });
   const alertQueue = alertQueueServiceFactory({
@@ -1166,7 +1166,7 @@ export const registerRoutes = async (
     alertChannelMembershipDAL,
     alertChannelRecipientDAL,
     alertChannelService,
-    kmsCoreDomain,
+    dataKeyService,
     alertProviderRegistry,
     alertHistoryDAL
   });
@@ -1176,7 +1176,7 @@ export const registerRoutes = async (
     alertRecipientResolver,
     alertChannelService,
     alertProviderRegistry,
-    kmsCoreDomain,
+    dataKeyService,
     smtpService,
     keyStore
   });
@@ -1185,14 +1185,14 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({
     auditLogStreamOutboxDAL,
     auditLogStreamDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     queueService,
     eventEmitter: eventOutboxService
@@ -1273,7 +1273,7 @@ export const registerRoutes = async (
     auditLogService
   });
 
-  const oidcIssuerService = oidcIssuerServiceFactory({ kmsCoreDomain, keyStore, auditLogService });
+  const oidcIssuerService = oidcIssuerServiceFactory({ kmsKeyService, keyStore, auditLogService });
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
@@ -1393,7 +1393,7 @@ export const registerRoutes = async (
     folderTreeCheckpointResourcesDAL,
     folderCommitQueueService,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     secretTagDAL,
     resourceMetadataDAL
   });
@@ -1455,7 +1455,7 @@ export const registerRoutes = async (
     licenseService,
     usageMeteringService,
     githubOrgSyncDAL,
-    kmsCoreDomain,
+    dataKeyService,
     permissionService,
     groupDAL,
     userGroupMembershipDAL,
@@ -1488,7 +1488,7 @@ export const registerRoutes = async (
   const mfaRecoveryCodeService = mfaRecoveryCodeServiceFactory({
     mfaRecoveryCodeDAL,
     userDAL,
-    kmsCoreDomain
+    rootKeyService
   });
 
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
@@ -1536,7 +1536,7 @@ export const registerRoutes = async (
   const totpService = totpServiceFactory({
     totpConfigDAL,
     userDAL,
-    kmsCoreDomain,
+    rootKeyService,
     keyStore,
     userService
   });
@@ -1598,7 +1598,7 @@ export const registerRoutes = async (
     usageMeteringService,
     tokenService,
     smtpService,
-    kmsCoreDomain,
+    dataKeyService,
     membershipDAL,
     membershipRoleDAL,
     membershipGroupDAL,
@@ -1633,7 +1633,7 @@ export const registerRoutes = async (
     usageMeteringService,
     tokenService,
     smtpService,
-    kmsCoreDomain,
+    dataKeyService,
     membershipGroupDAL,
     membershipDAL,
     membershipRoleDAL,
@@ -1733,7 +1733,8 @@ export const registerRoutes = async (
     microsoftTeamsIntegrationDAL,
     permissionService,
     workflowIntegrationDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    rootKeyService,
     serverCfgDAL: superAdminDAL
   });
 
@@ -1751,7 +1752,7 @@ export const registerRoutes = async (
     orgDAL,
     licenseService,
     usageMeteringService,
-    kmsCoreDomain,
+    rootKeyService,
     microsoftTeamsService,
     invalidateCacheQueue,
     smtpService,
@@ -1776,7 +1777,7 @@ export const registerRoutes = async (
   const orgProductStatsService = orgProductStatsServiceFactory({
     orgProductStatsDAL,
     keyStore,
-    kmsCoreDomain
+    kmsKeyService
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -1928,7 +1929,8 @@ export const registerRoutes = async (
     certificateTemplateEstConfigDAL,
     certificateAuthorityDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     licenseService
   });
@@ -2001,7 +2003,7 @@ export const registerRoutes = async (
 
   const agentVaultOauthService = agentVaultOauthServiceFactory({
     keyStore,
-    kmsCoreDomain,
+    dataKeyService,
     agentVaultServiceDAL,
     agentVaultPersonalValueDAL,
     permissionService,
@@ -2013,7 +2015,7 @@ export const registerRoutes = async (
     agentVaultPersonalValueDAL,
     membershipDAL,
     permissionService,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const agentVaultPersonalValueService = agentVaultPersonalValueServiceFactory({
@@ -2024,7 +2026,7 @@ export const registerRoutes = async (
     agentVaultOauthService,
     permissionService,
     membershipDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const agentVaultSkillService = agentVaultSkillServiceFactory({
@@ -2034,7 +2036,7 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     permissionService,
     membershipDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
@@ -2047,7 +2049,7 @@ export const registerRoutes = async (
     agentVaultPersonalValueDAL,
     agentVaultPersonalValueService,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService,
     membershipDAL,
     membershipRoleDAL,
@@ -2073,7 +2075,7 @@ export const registerRoutes = async (
     userDAL,
     orgDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService
   });
 
@@ -2163,7 +2165,7 @@ export const registerRoutes = async (
     integrationDAL,
     permissionService,
     projectBotService,
-    kmsCoreDomain
+    dataKeyService
   });
 
   // Populated after gatewayV2Service and gatewayPoolService exist; both depend on
@@ -2177,7 +2179,7 @@ export const registerRoutes = async (
     resourceGcpAuthDAL,
     resourceKubernetesAuthDAL,
     resourceTokenAuthDAL,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2DAL,
     gatewayPoolDAL,
     gatewayPoolMembershipDAL,
@@ -2206,7 +2208,7 @@ export const registerRoutes = async (
     projectDAL,
     userDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService,
     resourceAuthMethodService,
     agentVaultOauthService
@@ -2216,7 +2218,8 @@ export const registerRoutes = async (
     instanceRelayConfigDAL,
     orgRelayConfigDAL,
     relayDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    rootKeyService,
     permissionService,
     orgDAL,
     notificationService,
@@ -2233,7 +2236,7 @@ export const registerRoutes = async (
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
-    kmsCoreDomain,
+    dataKeyService,
     relayService,
     orgGatewayConfigV2DAL,
     gatewayV2DAL,
@@ -2280,7 +2283,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolService,
     appConnectionDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
@@ -2319,7 +2322,7 @@ export const registerRoutes = async (
   const gitHubAppService = gitHubAppServiceFactory({
     gitHubAppDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     licenseService,
     gatewayV2Service,
@@ -2338,7 +2341,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     secretImportDAL,
     secretV2BridgeDAL,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     auditLogService,
     smtpService,
@@ -2393,7 +2396,7 @@ export const registerRoutes = async (
     secretBlindIndexDAL,
     secretTagDAL,
     secretVersionTagDAL,
-    kmsCoreDomain,
+    dataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -2420,7 +2423,7 @@ export const registerRoutes = async (
     orgDAL,
     folderDAL,
     secretV2BridgeDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const secretValueTrackingService = secretValueTrackingServiceFactory({
@@ -2442,7 +2445,7 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     dynamicSecretDAL,
     folderDAL,
-    kmsCoreDomain,
+    dataKeyService,
     smtpService,
     userDAL,
     identityDAL,
@@ -2469,7 +2472,8 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     keyStore,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     certificateTemplateDAL,
     projectSlackConfigDAL,
     slackIntegrationDAL,
@@ -2516,7 +2520,7 @@ export const registerRoutes = async (
     secretValidationRuleDAL,
     projectEnvDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     folderDAL,
     secretDAL: secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
@@ -2536,7 +2540,7 @@ export const registerRoutes = async (
     secretDAL,
     secretQueueService,
     secretV2BridgeDAL,
-    kmsCoreDomain
+    dataKeyService
   });
   const projectFolderGrantService = projectFolderGrantServiceFactory({
     projectFolderGrantDAL,
@@ -2569,7 +2573,7 @@ export const registerRoutes = async (
     folderDAL,
     projectDAL,
     projectEnvDAL,
-    kmsCoreDomain,
+    dataKeyService,
     secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -2604,7 +2608,7 @@ export const registerRoutes = async (
     secretImportDAL,
     secretChangePolicyService,
     secretChangeRequestService,
-    kmsCoreDomain,
+    dataKeyService,
     resourceMetadataDAL,
     reminderService,
     keyStore,
@@ -2633,7 +2637,7 @@ export const registerRoutes = async (
     reminderService,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    kmsCoreDomain,
+    dataKeyService,
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     orgDAL,
@@ -2651,7 +2655,7 @@ export const registerRoutes = async (
     folderCommitService,
     secretChangePolicyService,
     secretV2BridgeDAL,
-    kmsCoreDomain,
+    dataKeyService,
     secretVersionDAL: secretVersionV2BridgeDAL,
     secretTagDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
@@ -2674,7 +2678,7 @@ export const registerRoutes = async (
     secretSharingDAL,
     orgAssetDAL,
     orgDAL,
-    kmsCoreDomain,
+    rootKeyService,
     smtpService,
     userDAL,
     identityDAL,
@@ -2702,7 +2706,7 @@ export const registerRoutes = async (
     secretChangeRequestService,
     secretQueueService,
     projectBotService,
-    kmsCoreDomain,
+    dataKeyService,
     secretV2BridgeDAL,
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
     secretVersionV2BridgeDAL,
@@ -2723,7 +2727,7 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     secretImportDAL,
     secretDAL,
-    kmsCoreDomain,
+    dataKeyService,
     projectFolderGrantDAL,
     orgDAL
   });
@@ -2796,7 +2800,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService,
     auditLogService
   });
@@ -2837,7 +2841,7 @@ export const registerRoutes = async (
     orgDAL,
     gatewayV2Service,
     gatewayV2DAL,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     membershipIdentityDAL,
     gatewayPoolService,
@@ -2877,7 +2881,7 @@ export const registerRoutes = async (
     identityTlsCertAuthDAL,
     licenseService,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     membershipIdentityDAL,
     orgDAL,
@@ -2936,7 +2940,7 @@ export const registerRoutes = async (
     secretV2BridgeService,
     folderCommitDAL,
     secretQueueService,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
@@ -2948,7 +2952,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
@@ -2962,7 +2966,7 @@ export const registerRoutes = async (
     permissionService,
     identityAccessTokenDAL,
     licenseService,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
@@ -2976,7 +2980,7 @@ export const registerRoutes = async (
     permissionService,
     identityAccessTokenDAL,
     licenseService,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
@@ -2987,7 +2991,7 @@ export const registerRoutes = async (
     identityLdapAuthDAL,
     orgDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     identityAccessTokenDAL,
     licenseService,
     identityDAL,
@@ -3011,7 +3015,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     smtpService,
-    kmsCoreDomain,
+    dataKeyService,
     notificationService,
     projectMembershipDAL,
     projectDAL,
@@ -3052,7 +3056,7 @@ export const registerRoutes = async (
     folderDAL,
     permissionService,
     licenseService,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2DAL,
     gatewayPoolService,
     resourceMetadataDAL
@@ -3067,7 +3071,7 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     folderDAL,
     licenseService,
-    kmsCoreDomain,
+    dataKeyService,
     userDAL,
     identityDAL,
     secretValidationRuleService
@@ -3166,7 +3170,7 @@ export const registerRoutes = async (
     usageMeteringService,
     tokenService,
     smtpService,
-    kmsCoreDomain,
+    dataKeyService,
     permissionService,
     oidcConfigDAL,
     projectBotDAL,
@@ -3203,7 +3207,8 @@ export const registerRoutes = async (
 
   const slackService = slackServiceFactory({
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
+    rootKeyService,
     slackIntegrationDAL,
     workflowIntegrationDAL
   });
@@ -3214,7 +3219,7 @@ export const registerRoutes = async (
   });
 
   const cmekService = cmekServiceFactory({
-    kmsCoreDomain,
+    kmsKeyService,
     permissionService,
     licenseService,
     keyStore
@@ -3227,7 +3232,7 @@ export const registerRoutes = async (
     projectDAL,
     projectService,
     smtpService,
-    kmsCoreDomain,
+    dataKeyService,
     projectEnvDAL,
     secretVersionDAL: secretVersionV2BridgeDAL,
     secretTagDAL,
@@ -3256,7 +3261,7 @@ export const registerRoutes = async (
     appConnectionCredentialRotationDAL,
     appConnectionDAL,
     keyStore,
-    kmsCoreDomain,
+    dataKeyService,
     queueService,
     gatewayV2Service,
     gatewayPoolService
@@ -3266,7 +3271,7 @@ export const registerRoutes = async (
     orgDAL,
     appConnectionDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService,
     gatewayV2Service,
     gatewayPoolService,
@@ -3282,7 +3287,7 @@ export const registerRoutes = async (
   const delegatedApprovalCallbackService = delegatedApprovalCallbackServiceFactory({
     delegatedApprovalRequestDAL,
     approvalRequestDAL,
-    kmsCoreDomain,
+    dataKeyService,
     eventEmitter: eventOutboxService
   });
 
@@ -3294,7 +3299,7 @@ export const registerRoutes = async (
       approvalRequestDAL,
       projectDAL,
       appConnectionDAL,
-      kmsCoreDomain
+      dataKeyService
     })
   );
 
@@ -3326,7 +3331,7 @@ export const registerRoutes = async (
     delegatedApprovalService,
     smtpService,
     notificationService,
-    kmsCoreDomain,
+    dataKeyService,
     projectSlackConfigDAL,
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
@@ -3347,7 +3352,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     appConnectionDAL,
     membershipDAL,
-    kmsCoreDomain,
+    dataKeyService,
     auditLogService,
     ...delegatedApprovalDecisionMaps
   });
@@ -3374,7 +3379,7 @@ export const registerRoutes = async (
     delegatedApprovalService
   });
 
-  const objectStorageService = objectStorageServiceFactory({ appConnectionDAL, kmsCoreDomain, keyStore });
+  const objectStorageService = objectStorageServiceFactory({ appConnectionDAL, dataKeyService, keyStore });
   objectStorageService.registerNamespaces([AgentVaultSessionLogsNamespace]);
   // Not awaited: a misconfigured instance bucket is logged, and must not hold up boot. Only pods that serve the API use
   // default storage, so only they check it.
@@ -3392,7 +3397,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     appConnectionService,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService,
     keyStore,
     objectStorage: objectStorageService
@@ -3402,7 +3407,7 @@ export const registerRoutes = async (
     orgDAL,
     hsmConnectorDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2Service,
     gatewayPoolService,
     gatewayV2DAL,
@@ -3416,7 +3421,7 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     appConnectionDAL,
     appConnectionService,
-    kmsCoreDomain,
+    dataKeyService,
     projectDAL,
     licenseService
   });
@@ -3427,7 +3432,7 @@ export const registerRoutes = async (
     projectDAL,
     membershipUserDAL,
     userDAL,
-    kmsCoreDomain,
+    dataKeyService,
     certificateAuthoritySecretDAL,
     caKeySourceService,
     keyStore,
@@ -3452,7 +3457,8 @@ export const registerRoutes = async (
     caKeySourceService,
     externalCertificateAuthorityDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     resourceMetadataDAL,
     pkiApplicationProfileDAL
@@ -3461,7 +3467,7 @@ export const registerRoutes = async (
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService,
     appConnectionDAL,
     appConnectionService
@@ -3474,7 +3480,7 @@ export const registerRoutes = async (
     honeyTokenEventDAL,
     permissionService,
     licenseService,
-    kmsCoreDomain,
+    dataKeyService,
     appConnectionDAL,
     orgDAL,
     projectDAL,
@@ -3510,7 +3516,7 @@ export const registerRoutes = async (
 
   const agentProxyCaService = agentProxyCaServiceFactory({
     orgAgentProxyConfigDAL,
-    kmsCoreDomain,
+    dataKeyService,
     licenseService,
     permissionService
   });
@@ -3520,7 +3526,7 @@ export const registerRoutes = async (
     webhookDAL,
     projectEnvDAL,
     projectDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -3529,7 +3535,7 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     appConnectionDAL,
     appConnectionService,
-    kmsCoreDomain,
+    dataKeyService,
     permissionService,
     orgDAL,
     folderDAL,
@@ -3547,13 +3553,13 @@ export const registerRoutes = async (
     permissionService,
     kmipClientCertificateDAL,
     kmipOrgConfigDAL,
-    kmsCoreDomain,
+    dataKeyService,
     kmipOrgServerCertificateDAL,
     licenseService
   });
 
   const kmipOperationService = kmipOperationServiceFactory({
-    kmsCoreDomain,
+    kmsKeyService,
     kmipClientDAL,
     permissionService
   });
@@ -3567,7 +3573,7 @@ export const registerRoutes = async (
     folderDAL,
     projectBotService,
     licenseService,
-    kmsCoreDomain,
+    dataKeyService,
     auditLogService,
     secretV2BridgeDAL,
     secretTagDAL,
@@ -3610,7 +3616,7 @@ export const registerRoutes = async (
     identityMetadataDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore
   });
 
@@ -3628,7 +3634,7 @@ export const registerRoutes = async (
     projectBotService,
     projectDAL,
     userDAL,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     orgDAL,
     identityOrgMembershipDAL,
@@ -3661,7 +3667,7 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     secretValidationRuleDAL,
-    kmsCoreDomain,
+    dataKeyService,
     insightsDAL,
     dynamicSecretLeaseDAL,
     identityOrgMembershipDAL
@@ -3669,7 +3675,8 @@ export const registerRoutes = async (
 
   const pkiSyncQueue = pkiSyncQueueFactory({
     queueService,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     appConnectionDAL,
     keyStore,
     pkiSyncDAL,
@@ -3719,7 +3726,8 @@ export const registerRoutes = async (
     keyStore,
     appConnectionDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -3743,7 +3751,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     pkiSyncDAL,
     pkiSyncQueue
   });
@@ -3755,7 +3764,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     certificateDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     queueService,
     cronJob,
     pkiSubscriberDAL,
@@ -3779,7 +3789,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     certificateDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     caKeySourceService,
     keyStore
   });
@@ -3791,7 +3802,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     certificateDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService,
     licenseService,
     caKeySourceService,
@@ -3815,7 +3827,8 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     projectDAL,
     internalCertificateAuthorityDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService,
     licenseService,
     caSigningConfigDAL,
@@ -3830,7 +3843,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateAuthorityCrossSignedCertDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService,
     licenseService
   });
@@ -3842,7 +3856,7 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     internalCertificateAuthorityService,
     appConnectionDAL,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2Service,
     gatewayPoolService
   });
@@ -3868,7 +3882,8 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
@@ -3896,7 +3911,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateAuthorityDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     licenseService
   });
 
@@ -3910,7 +3926,8 @@ export const registerRoutes = async (
     certificateProfileDAL,
     projectDAL,
     orgDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService
   });
 
@@ -3935,7 +3952,8 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL
   });
 
@@ -3951,7 +3969,8 @@ export const registerRoutes = async (
     certificateAuthorityCrlDAL,
     certificateAuthoritySecretDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService,
     pkiCollectionDAL,
     pkiCollectionItemDAL,
@@ -3986,7 +4005,8 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL
   });
 
@@ -4013,7 +4033,8 @@ export const registerRoutes = async (
     externalCertificateAuthorityDAL,
     certificateDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     certificateBodyDAL,
     certificateSecretDAL,
     queueService,
@@ -4048,7 +4069,8 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     certificatePolicyService,
     certificateIssuanceQueue,
@@ -4075,7 +4097,7 @@ export const registerRoutes = async (
     permissionService,
     userDAL,
     gatewayV2Service,
-    kmsCoreDomain
+    dataKeyService
   });
 
   const approvalResources: TApprovalResourceRegistry = {
@@ -4090,7 +4112,7 @@ export const registerRoutes = async (
     approvalPolicyAutoApprovalDAL,
     appConnectionDAL,
     appConnectionService,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2Service,
     gatewayPoolService
   });
@@ -4116,7 +4138,7 @@ export const registerRoutes = async (
     userDAL,
     groupDAL,
     slackIntegrationDAL,
-    kmsCoreDomain,
+    dataKeyService,
     eventEmitter: eventOutboxService,
     autoApprovalService,
     resources: approvalResources
@@ -4137,7 +4159,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     certificateAuthorityCertDAL,
     caKeySourceService,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     permissionService
   });
@@ -4184,7 +4207,7 @@ export const registerRoutes = async (
     orgDAL,
     mfaSessionService,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2DAL,
     gatewayV2Service,
     gatewayPoolService,
@@ -4202,7 +4225,7 @@ export const registerRoutes = async (
     permissionService,
     membershipDAL,
     membershipRoleDAL,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     gatewayV2Service,
     gatewayPoolService,
@@ -4221,7 +4244,7 @@ export const registerRoutes = async (
     pamAccountService,
     pamAccountRotationService,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2DAL,
     gatewayV2Service,
     gatewayPoolService,
@@ -4234,7 +4257,7 @@ export const registerRoutes = async (
     pamAccountDAL,
     gatewayV2Service,
     gatewayPoolService,
-    kmsCoreDomain,
+    dataKeyService,
     permissionService,
     projectDAL
   });
@@ -4246,7 +4269,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     gatewayV2Service,
     gatewayPoolService,
     userDAL,
@@ -4262,7 +4285,7 @@ export const registerRoutes = async (
     pamSessionEventChunkDAL,
     pamAccountDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     appConnectionDAL
   });
 
@@ -4275,7 +4298,7 @@ export const registerRoutes = async (
     pamSessionDAL,
     gatewayV2Service,
     gatewayPoolService,
-    kmsCoreDomain,
+    dataKeyService,
     userDAL,
     mfaSessionService,
     orgDAL,
@@ -4300,7 +4323,8 @@ export const registerRoutes = async (
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateBodyDAL,
     certificateIssuanceQueue,
@@ -4342,7 +4366,7 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateAuthorityDAL,
     appConnectionDAL,
-    kmsCoreDomain,
+    dataKeyService,
     resourceMetadataDAL,
     digicertFns: digicertCaFns,
     projectDAL,
@@ -4358,7 +4382,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     projectDAL,
     appConnectionDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     auditLogService,
     pkiAlertV2Queue,
     certificateAlertEventEmitter
@@ -4370,7 +4395,7 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateAuthorityDAL,
     appConnectionDAL,
-    kmsCoreDomain,
+    dataKeyService,
     resourceMetadataDAL,
     godaddyFns: godaddyCaFns,
     projectDAL,
@@ -4385,7 +4410,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     certificateDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     licenseService,
     certificateProfileDAL,
     estEnrollmentConfigDAL,
@@ -4410,7 +4436,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     certificateBodyDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     appConnectionDAL,
     licenseService,
     certificatePolicyDAL,
@@ -4449,7 +4476,8 @@ export const registerRoutes = async (
     acmeOrderAuthDAL,
     acmeChallengeDAL,
     keyStore,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     certificateV3Service,
     certificatePolicyService,
     certificateRequestService,
@@ -4476,7 +4504,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService,
     certificateAuthorityQueue,
     internalCaFns,
@@ -4496,7 +4525,7 @@ export const registerRoutes = async (
     pkiSyncQueue,
     pkiSyncHealthCheckQueue,
     auditLogService,
-    kmsCoreDomain,
+    dataKeyService,
     pkiApplicationProfileDAL,
     pkiApplicationDAL
   });
@@ -4510,7 +4539,8 @@ export const registerRoutes = async (
     certificateDAL,
     certificateBodyDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     appConnectionDAL,
     queueService,
     cronJob,
@@ -4538,7 +4568,7 @@ export const registerRoutes = async (
   const pkiInstallationService = pkiInstallationServiceFactory({
     pkiCertificateInstallationDAL,
     permissionService,
-    kmsCoreDomain,
+    dataKeyService,
     appConnectionDAL,
     queueInstallationRescan: pkiDiscoveryQueue.queueInstallationRescan
   });
@@ -4549,7 +4579,8 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     certificateIssuanceQueue,
     cronJob,
     hsmConnectorService,
@@ -4567,7 +4598,8 @@ export const registerRoutes = async (
     internalCertificateAuthorityService,
     digicertFns: digicertCaFns,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService,
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
@@ -4608,7 +4640,7 @@ export const registerRoutes = async (
     notificationService,
     smtpService,
     slackIntegrationDAL,
-    kmsCoreDomain,
+    dataKeyService,
     approvalResources
   });
 
@@ -4623,7 +4655,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     projectDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     permissionService,
     internalCaFns
   });
@@ -4676,7 +4709,7 @@ export const registerRoutes = async (
     projectDAL,
     projectMembershipDAL,
     smtpService,
-    kmsCoreDomain,
+    dataKeyService,
     keyStore,
     appConnectionDAL,
     notificationService,
@@ -4702,7 +4735,7 @@ export const registerRoutes = async (
     licenseService,
     secretScanningV2DAL,
     secretScanningV2Queue,
-    kmsCoreDomain,
+    dataKeyService,
     appConnectionDAL,
     keyStore
   });
@@ -4720,7 +4753,7 @@ export const registerRoutes = async (
     folderService,
     folderDAL,
     projectEnvDAL,
-    kmsCoreDomain
+    dataKeyService
   });
 
   // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
@@ -4730,7 +4763,7 @@ export const registerRoutes = async (
 
   server.addHook("onClose", async () => domains.kmsCoreEe.stop());
 
-  server.decorate("cookieSigningKey", appCfg.COOKIE_SECRET_SIGN_KEY || kmsCoreDomain.getCookieSigningKey());
+  server.decorate("cookieSigningKey", appCfg.COOKIE_SECRET_SIGN_KEY || rootKeyService.getCookieSigningKey());
   await server.register<FastifyCookieOptions>(cookie, { secret: server.cookieSigningKey });
 
   // Register all cron jobs (synchronous registrations) before starting the scheduler
@@ -4790,7 +4823,8 @@ export const registerRoutes = async (
     oauthClient: oauthClientService,
     oidcIssuer: oidcIssuerService,
     superAdmin: superAdminService,
-    kmsCoreDomain,
+    dataKeyService,
+    rootKeyService,
     offlineUsageReport: offlineUsageReportService,
     orgProductStats: orgProductStatsService,
     project: projectService,

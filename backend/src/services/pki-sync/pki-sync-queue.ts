@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -76,7 +76,8 @@ export type TPkiSyncQueueFactory = ReturnType<typeof pkiSyncQueueFactory>;
 
 type TPkiSyncQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -121,7 +122,8 @@ const getRequeueDelay = (failureCount?: number) => {
 
 export const pkiSyncQueueFactory = ({
   queueService,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   appConnectionDAL,
   keyStore,
   pkiSyncDAL,
@@ -171,7 +173,8 @@ export const pkiSyncQueueFactory = ({
       certificateAuthorityCertDAL,
       certificateSyncDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
   const queuePkiSyncSyncCertificatesById = async (payload: TQueuePkiSyncSyncCertificatesByIdDTO) =>
@@ -268,7 +271,7 @@ export const pkiSyncQueueFactory = ({
         pkiSync,
         appConnectionDAL,
         projectDAL,
-        kmsCoreDomain
+        dataKeyService
       });
 
       const { certificateMap, certificateMetadata } = await $certificatesForSync(pkiSync);
@@ -286,7 +289,7 @@ export const pkiSyncQueueFactory = ({
 
       const syncResult = await PkiSyncFns.syncCertificates(pkiSyncWithCredentials, certificateMap, {
         appConnectionDAL,
-        kmsCoreDomain,
+        dataKeyService,
         certificateDAL,
         certificateSyncDAL,
         gatewayV2Service,
@@ -644,7 +647,7 @@ export const pkiSyncQueueFactory = ({
         pkiSync,
         appConnectionDAL,
         projectDAL,
-        kmsCoreDomain
+        dataKeyService
       });
 
       const certificateMap: TCertificateMap = certificateIdsToRemove?.length
@@ -658,7 +661,7 @@ export const pkiSyncQueueFactory = ({
 
       await PkiSyncFns.removeCertificates(pkiSyncWithCredentials, Object.keys(certificateMap), {
         appConnectionDAL,
-        kmsCoreDomain,
+        dataKeyService,
         certificateSyncDAL,
         certificateDAL,
         certificateMap,

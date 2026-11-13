@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   Meter,
   PlanFeature,
@@ -157,7 +157,8 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -194,7 +195,8 @@ export const certificateAuthorityServiceFactory = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -221,7 +223,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
@@ -240,7 +243,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
@@ -256,7 +260,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
@@ -271,7 +276,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
@@ -286,7 +292,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL
   });
@@ -299,7 +306,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL
   });
   const godaddyFns = GoDaddyCertificateAuthorityFns({
@@ -310,7 +318,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL
   });
   const awsAcmPublicCaFns = AwsAcmPublicCaCertificateAuthorityFns({
@@ -321,7 +330,8 @@ export const certificateAuthorityServiceFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL
   });
@@ -1519,7 +1529,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              kmsCoreDomain,
+              dataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
@@ -1535,7 +1545,7 @@ export const certificateAuthorityServiceFactory = ({
             {
               certificateAuthorityDAL,
               appConnectionDAL,
-              kmsCoreDomain,
+              dataKeyService,
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,

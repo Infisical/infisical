@@ -1,4 +1,4 @@
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
@@ -11,7 +11,7 @@ import { TGitLabDataSourceCredentials, THandleGitLabPushEvent } from "./gitlab-s
 export const gitlabSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
   const handlePushEvent = async ({ payload, token, dataSourceId }: THandleGitLabPushEvent) => {
     if (!payload.total_commits_count || !payload.project) {
@@ -54,7 +54,7 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

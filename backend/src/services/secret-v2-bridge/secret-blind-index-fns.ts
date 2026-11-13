@@ -1,4 +1,4 @@
-import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 export type TSecretValueBlindIndexes = {
   secretValueBlindIndex: string;
@@ -15,15 +15,15 @@ export type TCreateSecretBlindIndexerDTO = {
   // The project's SecretManager cipher pair the caller already holds, so it is not resolved a second time.
   projectCipher: TCipherPair;
   orgId: string;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TCreateOrgSecretBlindIndexerDTO = Omit<TCreateSecretBlindIndexerDTO, "projectCipher">;
 
 // Searching an org by value needs the org digest alone, so this resolves only the org data key
 // rather than paying for a project key it would never use.
-export const createOrgSecretBlindIndexer = async ({ orgId, kmsCoreDomain }: TCreateOrgSecretBlindIndexerDTO) => {
-  const orgCipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+export const createOrgSecretBlindIndexer = async ({ orgId, dataKeyService }: TCreateOrgSecretBlindIndexerDTO) => {
+  const orgCipher = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
 
   return {
     generateOrgLevelBlindIndex: (secretValue: Buffer) => orgCipher.generateSecretBlindIndex(secretValue)
@@ -54,8 +54,8 @@ export const buildSecretBlindIndexer = (projectCipher: TCipherPair, orgCipher: T
 export const createSecretBlindIndexer = async ({
   projectCipher,
   orgId,
-  kmsCoreDomain
+  dataKeyService
 }: TCreateSecretBlindIndexerDTO): Promise<TSecretBlindIndexer> => {
-  const orgCipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+  const orgCipher = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
   return buildSecretBlindIndexer(projectCipher, orgCipher);
 };

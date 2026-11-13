@@ -4,7 +4,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -175,7 +175,8 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectDAL: TProjectDALFactory;
   certificateIssuanceQueue: Pick<
     import("../certificate-authority/certificate-issuance-queue").TCertificateIssuanceQueueFactory,
@@ -350,7 +351,8 @@ export const certificateV3ServiceFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   projectDAL,
   certificateIssuanceQueue,
   certificateRequestService,
@@ -903,7 +905,8 @@ export const certificateV3ServiceFactory = ({
         projectId: profile.projectId,
         customExtensions: resolvedCustomExtensions,
         effectiveAlgorithms,
-        kmsCoreDomain
+        dataKeyService,
+        kmsKeyService
       });
       const effectiveApiConfig = await resolveEffectiveApiConfig({
         applicationId,
@@ -2341,7 +2344,8 @@ export const certificateV3ServiceFactory = ({
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    kmsCoreDomain,
+    dataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateIssuanceQueue,
     certificateRequestService,

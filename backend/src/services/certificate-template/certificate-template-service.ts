@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -33,7 +33,8 @@ type TCertificateTemplateServiceFactoryDep = {
   certificateTemplateDAL: TCertificateTemplateDALFactory;
   certificateTemplateEstConfigDAL: TCertificateTemplateEstConfigDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
@@ -46,7 +47,8 @@ export const certificateTemplateServiceFactory = ({
   certificateTemplateEstConfigDAL,
   certificateAuthorityDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   licenseService
 }: TCertificateTemplateServiceFactoryDep) => {
   const createCertTemplate = async ({
@@ -283,7 +285,7 @@ export const certificateTemplateServiceFactory = ({
 
     let encryptedCaChain: Buffer | undefined;
     if (caChain) {
-      const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(certTemplate.projectId);
+      const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
 
       // validate CA chain
       const certificates = extractX509CertFromChain(caChain)?.map((cert) => new x509.X509Certificate(cert));
@@ -296,7 +298,7 @@ export const certificateTemplateServiceFactory = ({
         throw new BadRequestError({ message: "Invalid certificate chain" });
       }
 
-      const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
+      const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
 
@@ -370,7 +372,7 @@ export const certificateTemplateServiceFactory = ({
 
     const appCfg = getConfig();
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(certTemplate.projectId);
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
 
     const updatedData: TCertificateTemplateEstConfigsUpdate = {
       isEnabled,
@@ -388,7 +390,7 @@ export const certificateTemplateServiceFactory = ({
         throw new BadRequestError({ message: "Invalid certificate chain" });
       }
 
-      const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
+      const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
 
@@ -445,9 +447,9 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(certTemplate.projectId);
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(certTemplate.projectId);
 
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 

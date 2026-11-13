@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -20,9 +20,9 @@ type TGetAppConnectionFunc = (
 const listAzureRegisteredApps = async (
   appConnection: TAzureClientSecretsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
-  const accessToken = await getAzureConnectionAccessToken(appConnection.id, appConnectionDAL, kmsCoreDomain);
+  const accessToken = await getAzureConnectionAccessToken(appConnection.id, appConnectionDAL, dataKeyService);
 
   const graphEndpoint = `https://graph.microsoft.com/v1.0/applications`;
 
@@ -48,12 +48,12 @@ const listAzureRegisteredApps = async (
 export const azureClientSecretsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AzureClientSecrets, connectionId, actor);
 
-    const apps = await listAzureRegisteredApps(appConnection, appConnectionDAL, kmsCoreDomain);
+    const apps = await listAzureRegisteredApps(appConnection, appConnectionDAL, dataKeyService);
 
     return apps.map((app) => ({
       id: app.id,

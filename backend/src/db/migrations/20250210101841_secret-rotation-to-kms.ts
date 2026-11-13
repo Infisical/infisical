@@ -31,9 +31,9 @@ export async function up(knex: Knex): Promise<void> {
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const projectEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   const secretRotations = await knex(TableName.DeprecatedSecretRotationV1)
     .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.DeprecatedSecretRotationV1}.envId`)
@@ -45,7 +45,7 @@ export async function up(knex: Knex): Promise<void> {
     secretRotations.map(async ({ projectId, ...el }) => {
       let projectKmsService = projectEncryptionRingBuffer.getItem(projectId);
       if (!projectKmsService) {
-        projectKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+        projectKmsService = await dataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });

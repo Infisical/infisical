@@ -63,10 +63,6 @@ export type {
   TRotationHistoryEntry
 } from "./services/root-key/service";
 
-// Every KMS Core service in one object, for consumers that still take a single dependency. Joining a transaction
-// goes through the service that owns the call (dataKeyService.within, kmsKeyService.within).
-export type TKmsCoreDomain = TRootKeyService & Omit<TKmsKeyService, "within"> & Omit<TDataKeyService, "within">;
-
 export type TKmsCoreStoreAccess = {
   transactionRunner: TTransactionRunner<TKmsCoreStores>;
   // Outside a transaction: the replica on the server.
@@ -96,41 +92,17 @@ export type TKmsCoreDeps = (
   skipRotationState?: boolean;
 };
 
-const bindAll = <T extends object>(service: T): Omit<T, "within"> => {
-  const bound = {} as Record<string, unknown>;
-  let proto = Object.getPrototypeOf(service) as object | null;
-  while (proto && proto !== Object.prototype) {
-    Object.getOwnPropertyNames(proto).forEach((name) => {
-      const member = (service as Record<string, unknown>)[name];
-      if (name !== "constructor" && name !== "within" && typeof member === "function" && !(name in bound)) {
-        bound[name] = (member as (...args: unknown[]) => unknown).bind(service);
-      }
-    });
-    proto = Object.getPrototypeOf(proto) as object | null;
-  }
-  return bound as Omit<T, "within">;
-};
-
 // The root key, internal KMS keys, org and project keys, HSM and external keys (through hooks), and root key
 // rotation. Owns kms_keys, internal_kms, internal_kms_key_version, external_kms, kms_root_config,
 // kms_kek_history, kms_legacy_encryption_keys, and the key columns on organizations and projects.
 export class KmsCoreModule {
   readonly name = "kms-core";
 
-  // Every service in one object, until consumers take the services they call.
-  readonly service: TKmsCoreDomain;
-
   private constructor(
-    readonly rootKeyService: RootKeyService,
-    readonly kmsKeyService: KmsKeyService,
-    readonly dataKeyService: DataKeyService
-  ) {
-    this.service = {
-      ...bindAll<TRootKeyService>(rootKeyService),
-      ...bindAll<TKmsKeyService>(kmsKeyService),
-      ...bindAll<TDataKeyService>(dataKeyService)
-    };
-  }
+    readonly rootKeyService: TRootKeyService,
+    readonly kmsKeyService: TKmsKeyService,
+    readonly dataKeyService: TDataKeyService
+  ) {}
 
   // Loads the root key (bootstrapping it on a new instance) before any service exists, so none can run without it.
   // Built after KmsCoreEeModule, which may need the HSM to unwrap it.

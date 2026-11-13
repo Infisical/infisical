@@ -4,7 +4,7 @@ import net from "net";
 import pLimit from "p-limit";
 import { z } from "zod";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -89,7 +89,8 @@ export type THostScanDeps = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "find">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
@@ -194,7 +195,7 @@ export const resolveHostConnection = async <TCredentials extends { host: string 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: connection.orgId,
     encryptedCredentials: connection.encryptedCredentials,
-    kmsCoreDomain: deps.kmsCoreDomain,
+    dataKeyService: deps.dataKeyService,
     projectId: connection.projectId
   })) as unknown as TCredentials;
 
@@ -265,7 +266,7 @@ export const loadKeystorePasswords = async (projectId: string, host: TResolvedHo
       )
   );
   if (installationsOnThisHost.length === 0) return passwords;
-  const decrypt = await createPkiInstallationCredentialsDecryptor({ projectId, kmsCoreDomain: deps.kmsCoreDomain });
+  const decrypt = await createPkiInstallationCredentialsDecryptor({ projectId, dataKeyService: deps.dataKeyService });
   installationsOnThisHost.forEach((row) => {
     const { filePath } = row.locationDetails as TPkiInstallationLocationDetails;
     if (!row.encryptedCredentials || !filePath) return;
@@ -700,8 +701,8 @@ export const executeHostScan = async <TConfig extends THostScanTargetConfig>(
       `${definition.label} discovery scan starting [discoveryId=${discoveryId}] [projectId=${discoveryConfig.projectId}]`
     );
 
-    const certificateKmsKeyId = await deps.kmsCoreDomain.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
-    const kmsEncryptor = await deps.kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateKmsKeyId });
+    const certificateKmsKeyId = await deps.dataKeyService.getProjectCertificateKmsKeyId(discoveryConfig.projectId);
+    const kmsEncryptor = await deps.kmsKeyService.encryptWithKmsKey({ kmsId: certificateKmsKeyId });
 
     scanHistoryId = await startScanRun(discoveryId, startedAt, deps);
 

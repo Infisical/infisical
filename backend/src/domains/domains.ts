@@ -9,7 +9,7 @@ import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
-import { KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
+import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
@@ -91,7 +91,7 @@ export const startStandaloneKmsCore = async ({
 }: {
   db: Knex;
   envConfig: TKmsCoreEnvConfig;
-}): Promise<TKmsCoreDomain> => {
+}): Promise<KmsCoreModule> => {
   const { kmsCore } = await buildKmsCore({
     db,
     readKnex: () => db,
@@ -99,7 +99,7 @@ export const startStandaloneKmsCore = async ({
     isHsmEntitled: () => true,
     skipRotationState: true
   });
-  return kmsCore.service;
+  return kmsCore;
 };
 
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;

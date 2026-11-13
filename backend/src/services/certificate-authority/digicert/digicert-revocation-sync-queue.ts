@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import pLimit from "p-limit";
 
 import { TableName } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { OcspCertStatus } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-enums";
 import { getConfig } from "@app/lib/config/env";
@@ -51,7 +51,8 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
@@ -65,7 +66,8 @@ export const digicertRevocationSyncQueueFactory = ({
   certificateDAL,
   certificateBodyDAL,
   appConnectionDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   auditLogService,
   pkiAlertV2Queue,
   certificateAlertEventEmitter
@@ -164,8 +166,8 @@ export const digicertRevocationSyncQueueFactory = ({
     const getKmsDecryptor = async (projectId: string) => {
       const cached = kmsDecryptorsByProjectId.get(projectId);
       if (cached) return cached;
-      const kmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-      const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId });
+      const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
       kmsDecryptorsByProjectId.set(projectId, kmsDecryptor);
       return kmsDecryptor;
     };
@@ -208,7 +210,7 @@ export const digicertRevocationSyncQueueFactory = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       ca.configuration.appConnectionId,
       appConnectionDAL,
-      kmsCoreDomain
+      dataKeyService
     );
     const digicertClient = createDigiCertApiClient(apiKey, baseUrl);
 

@@ -1,4 +1,4 @@
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -9,20 +9,18 @@ export type TPkiSyncCredentials = {
   exportPassword?: string;
 };
 
-type TKmsService = TKmsCoreDomain;
-
 export const encryptPkiSyncCredentials = async ({
   orgId,
   projectId,
   credentials,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   credentials: TPkiSyncCredentials;
-  kmsCoreDomain: TKmsService;
+  dataKeyService: TDataKeyService;
 }): Promise<Buffer> => {
-  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
   );
 
@@ -34,14 +32,14 @@ const decryptPkiSyncCredentials = async ({
   orgId,
   projectId,
   encryptedCredentials,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedCredentials: Buffer;
-  kmsCoreDomain: TKmsService;
+  dataKeyService: TDataKeyService;
 }): Promise<TPkiSyncCredentials> => {
-  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
   );
 
@@ -53,12 +51,12 @@ export const hydratePkiSyncCredentials = async ({
   pkiSync,
   appConnectionDAL,
   projectDAL,
-  kmsCoreDomain
+  dataKeyService
 }: {
   pkiSync: TPkiSyncRaw;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }): Promise<TPkiSyncWithCredentials> => {
   const {
     connection: { id: connectionId, orgId, projectId: appConnectionProjectId }
@@ -74,7 +72,7 @@ export const hydratePkiSyncCredentials = async ({
   const credentials = await decryptAppConnectionCredentials({
     orgId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsCoreDomain,
+    dataKeyService,
     projectId: appConnectionProjectId
   });
 
@@ -83,7 +81,7 @@ export const hydratePkiSyncCredentials = async ({
         orgId,
         projectId: pkiSync.projectId,
         encryptedCredentials: pkiSync.encryptedCredentials,
-        kmsCoreDomain
+        dataKeyService
       })
     : undefined;
 

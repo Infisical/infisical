@@ -8,7 +8,7 @@ import {
   TSecretChangeRequests,
   TUsers
 } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
@@ -83,7 +83,7 @@ type TSecretChangeRequestFnsFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
@@ -187,7 +187,7 @@ export const secretChangeRequestFnsFactory = ({
   identityDAL,
   projectDAL,
   projectEnvDAL,
-  kmsCoreDomain,
+  dataKeyService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
@@ -373,7 +373,7 @@ export const secretChangeRequestFnsFactory = ({
       },
       dependencies: {
         projectDAL,
-        kmsCoreDomain,
+        dataKeyService,
         projectSlackConfigDAL,
         microsoftTeamsService,
         projectMicrosoftTeamsConfigDAL

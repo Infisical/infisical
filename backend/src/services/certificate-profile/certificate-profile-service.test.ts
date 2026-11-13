@@ -5,7 +5,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import type { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -204,7 +204,7 @@ describe("CertificateProfileService", () => {
       .mockResolvedValue(() => Promise.resolve({ cipherTextBlob: Buffer.from("encrypted-data") })),
     decryptWithKmsKey: vi.fn().mockResolvedValue(() => Promise.resolve(Buffer.from("decrypted-ca-chain"))),
     generateKmsKey: vi.fn()
-  } as unknown as TKmsCoreDomain;
+  } as unknown as TDataKeyService & TKmsKeyService;
 
   const mockProjectDAL = {
     findById: vi.fn(),
@@ -297,7 +297,8 @@ describe("CertificateProfileService", () => {
       caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
-      kmsCoreDomain: mockKmsService,
+      dataKeyService: mockKmsService,
+      kmsKeyService: mockKmsService,
       projectDAL: mockProjectDAL,
       resourceMetadataDAL: mockResourceMetadataDAL
     });

@@ -2,7 +2,7 @@
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -178,7 +178,7 @@ export const requestWithAzureKeyVaultGateway = async <T>(
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsCoreDomain: TKmsCoreDomain,
+  dataKeyService: TDataKeyService,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
@@ -211,7 +211,7 @@ export const getAzureConnectionAccessToken = async (
 
       const oauthCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureKeyVaultConnectionCredentials;
@@ -237,7 +237,7 @@ export const getAzureConnectionAccessToken = async (
       const encryptedOAuthCredentials = await encryptAppConnectionCredentials({
         credentials: updatedOAuthCredentials,
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         projectId: appConnection.projectId
       });
 
@@ -250,7 +250,7 @@ export const getAzureConnectionAccessToken = async (
     case AzureKeyVaultConnectionMethod.ClientSecret:
       const clientSecretCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureKeyVaultConnectionClientSecretCredentials;
@@ -281,7 +281,7 @@ export const getAzureConnectionAccessToken = async (
       const encryptedClientCredentials = await encryptAppConnectionCredentials({
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         projectId: appConnection.projectId
       });
 
@@ -292,7 +292,7 @@ export const getAzureConnectionAccessToken = async (
     case AzureKeyVaultConnectionMethod.Certificate:
       const certificateCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureKeyVaultConnectionCertificateCredentials;
@@ -338,7 +338,7 @@ export const getAzureConnectionAccessToken = async (
       const encryptedCertificateCredentials = await encryptAppConnectionCredentials({
         credentials: updatedCertificateCredentials,
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         projectId: appConnection.projectId
       });
 
@@ -351,7 +351,7 @@ export const getAzureConnectionAccessToken = async (
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
       const managedIdentityCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureKeyVaultConnectionManagedIdentityCredentials;
@@ -376,7 +376,7 @@ export const getAzureConnectionAccessToken = async (
       const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
         credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
         orgId: appConnection.orgId,
-        kmsCoreDomain,
+        dataKeyService,
         projectId: appConnection.projectId
       });
 

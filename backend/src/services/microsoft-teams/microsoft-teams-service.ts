@@ -9,7 +9,7 @@ import {
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService, TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
@@ -66,7 +66,8 @@ type TMicrosoftTeamsServiceFactoryDep = {
     | "update"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  rootKeyService: TRootKeyService;
   workflowIntegrationDAL: Pick<
     TWorkflowIntegrationDALFactory,
     "transaction" | "create" | "updateById" | "deleteById" | "update" | "findOne"
@@ -81,7 +82,8 @@ const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 export const microsoftTeamsServiceFactory = ({
   permissionService,
   serverCfgDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  rootKeyService,
   microsoftTeamsIntegrationDAL,
   workflowIntegrationDAL
 }: TMicrosoftTeamsServiceFactoryDep) => {
@@ -141,7 +143,7 @@ export const microsoftTeamsServiceFactory = ({
       serverCfg.encryptedMicrosoftTeamsClientSecret &&
       serverCfg.encryptedMicrosoftTeamsBotId
     ) {
-      const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+      const decryptWithRoot = rootKeyService.decryptWithRootKey();
       const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
       const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
 
@@ -181,7 +183,7 @@ export const microsoftTeamsServiceFactory = ({
         serverCfg?.encryptedMicrosoftTeamsClientSecret &&
         serverCfg?.encryptedMicrosoftTeamsBotId
       ) {
-        const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+        const decryptWithRoot = rootKeyService.decryptWithRootKey();
         const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
         const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
 
@@ -238,7 +240,7 @@ export const microsoftTeamsServiceFactory = ({
         message: "Microsoft Teams app ID, client secret, or bot ID is not set"
       });
     }
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
     const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
     const decryptedBotId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsBotId);
@@ -248,7 +250,7 @@ export const microsoftTeamsServiceFactory = ({
       botAppId: decryptedAppId.toString(),
       botAppPassword: decryptedAppPassword.toString(),
       botId: decryptedBotId.toString(),
-      orgCipher: await kmsCoreDomain.createCipherPairWithDataKey({
+      orgCipher: await dataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: microsoftTeamsIntegration.orgId
       }),
@@ -315,7 +317,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const botAppId = decryptWithRoot(encryptedMicrosoftTeamsAppId);
     const botAppPassword = decryptWithRoot(encryptedMicrosoftTeamsClientSecret);
     const botId = decryptWithRoot(encryptedMicrosoftTeamsBotId);
@@ -323,7 +325,7 @@ export const microsoftTeamsServiceFactory = ({
     await verifyTenantFromCode(tenantId, code, redirectUri, botAppId.toString(), botAppPassword.toString());
 
     // Fetched before the transaction: KMS Core is never called inside one.
-    const orgCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+    const orgCipher = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -426,7 +428,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const clientId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
 
     return clientId.toString();
@@ -625,7 +627,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
     const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
     const decryptedBotId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsBotId);
@@ -635,7 +637,7 @@ export const microsoftTeamsServiceFactory = ({
       botAppId: decryptedAppId.toString(),
       botAppPassword: decryptedAppPassword.toString(),
       botId: decryptedBotId.toString(),
-      orgCipher: await kmsCoreDomain.createCipherPairWithDataKey({
+      orgCipher: await dataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: microsoftTeamsIntegration.orgId
       }),
@@ -751,7 +753,7 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const botAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
     const botAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
 
@@ -760,7 +762,7 @@ export const microsoftTeamsServiceFactory = ({
       clientId: botAppId.toString(),
       clientSecret: botAppPassword.toString(),
       getBotFrameworkToken: true,
-      orgCipher: await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }),
+      orgCipher: await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }),
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId
     });

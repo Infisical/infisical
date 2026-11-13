@@ -7,7 +7,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
@@ -376,7 +376,7 @@ export const assertGithubGroupMembersLinked = ({
 type TGithubOrgSyncServiceFactoryDep = {
   githubOrgSyncDAL: TGithubOrgSyncDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "find" | "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
@@ -406,7 +406,7 @@ export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServic
 export const githubOrgSyncServiceFactory = ({
   githubOrgSyncDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
@@ -492,7 +492,7 @@ export const githubOrgSyncServiceFactory = ({
     if (data.login.toLowerCase() !== githubOrgName.toLowerCase())
       throw new BadRequestError({ message: "Invalid GitHub organisation" });
 
-    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });
@@ -539,7 +539,7 @@ export const githubOrgSyncServiceFactory = ({
         message: `Organization ${orgPermission.orgId} GitHub organization sync config missing.`
       });
 
-    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });
@@ -974,7 +974,7 @@ export const githubOrgSyncServiceFactory = ({
       throw new BadRequestError({ message: "GitHub organization sync is not configured or not active" });
     }
 
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });

@@ -12,7 +12,7 @@ import {
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -191,7 +191,8 @@ type TSignerServiceFactoryDep = {
     | "prepareCodeSigningCertificateImport"
   >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create">;
@@ -366,7 +367,8 @@ export const signerServiceFactory = ({
   internalCertificateAuthorityService,
   digicertFns,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   permissionService,
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
@@ -389,7 +391,8 @@ export const signerServiceFactory = ({
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
     certificateSecretDAL,
-    kmsCoreDomain
+    dataKeyService,
+    kmsKeyService
   };
 
   const $loadSignerResourcePermission = async (
@@ -1760,8 +1763,8 @@ export const signerServiceFactory = ({
       });
     }
 
-    const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(signer.projectId);
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: keyId });
+    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(signer.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
     const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
     const cert = new x509.X509Certificate(decryptedCert);
     const certificatePem = cert.toString("pem");
@@ -1990,7 +1993,8 @@ export const signerServiceFactory = ({
         projectId,
         certificateSecretDAL,
         projectDAL,
-        kmsCoreDomain
+        dataKeyService,
+        kmsKeyService
       });
       certPrivateKey = Buffer.from(creds.certPrivateKey);
       const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
@@ -2196,8 +2200,8 @@ export const signerServiceFactory = ({
       if (!certBody?.encryptedCertificate) {
         throw new BadRequestError({ message: `Certificate body not found for signer '${signer.name}'.` });
       }
-      const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-      const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: keyId });
+      const keyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
       const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
       const cert = new x509.X509Certificate(decryptedCert);
       publicKeyObject = crypto.nativeCrypto.createPublicKey({
@@ -2211,7 +2215,8 @@ export const signerServiceFactory = ({
         projectId,
         certificateSecretDAL,
         projectDAL,
-        kmsCoreDomain
+        dataKeyService,
+        kmsKeyService
       });
 
       if (!certPublicKey) {

@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
@@ -115,7 +115,8 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -647,7 +648,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -840,9 +842,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -851,7 +853,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       await getAzureADCSConnectionCredentials(
         azureCa.configuration.azureAdcsConnectionId,
         appConnectionDAL,
-        kmsCoreDomain
+        dataKeyService
       );
 
     const credentials: {
@@ -1140,9 +1142,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -1150,7 +1152,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       await getAzureADCSConnectionCredentials(
         azureCa.configuration.azureAdcsConnectionId,
         appConnectionDAL,
-        kmsCoreDomain
+        dataKeyService
       );
 
     const credentials: {
@@ -1501,7 +1503,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
     // Get credentials from the Azure ADCS connection
     const { username, password, adcsUrl, sslRejectUnauthorized, sslCertificate } =
-      await getAzureADCSConnectionCredentials(azureAdcsConnectionId, appConnectionDAL, kmsCoreDomain);
+      await getAzureADCSConnectionCredentials(azureAdcsConnectionId, appConnectionDAL, dataKeyService);
 
     const credentials: {
       username: string;

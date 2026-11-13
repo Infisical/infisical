@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
@@ -61,7 +61,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
@@ -79,7 +79,7 @@ export const identityAuthTemplateServiceFactory = ({
   gatewayPoolDAL,
   orgDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   licenseService,
   auditLogService
 }: TIdentityAuthTemplateServiceFactoryDep) => {
@@ -365,7 +365,7 @@ export const identityAuthTemplateServiceFactory = ({
       await $validateTemplateHost((templateFields as TLdapTemplateFields).url, "LDAP URL");
     }
 
-    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -417,7 +417,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -832,7 +832,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -867,7 +867,7 @@ export const identityAuthTemplateServiceFactory = ({
 
     const { docs, totalCount } = await identityAuthTemplateDAL.findByOrgId(actorOrgId, { limit, offset, search });
 
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -906,7 +906,7 @@ export const identityAuthTemplateServiceFactory = ({
 
     const docs = await identityAuthTemplateDAL.findByAuthMethod(authMethod, actorOrgId);
 
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });

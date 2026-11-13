@@ -10,7 +10,7 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -105,7 +105,7 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -153,7 +153,7 @@ export const approvalPolicyServiceFactory = ({
   approvalRequestGrantsDAL,
   userGroupMembershipDAL,
   slackIntegrationDAL,
-  kmsCoreDomain,
+  dataKeyService,
   notificationService,
   permissionService,
   licenseService,
@@ -181,7 +181,7 @@ export const approvalPolicyServiceFactory = ({
     notificationService,
     smtpService,
     slackIntegrationDAL,
-    kmsCoreDomain
+    dataKeyService
   };
 
   const $notify = (args: {

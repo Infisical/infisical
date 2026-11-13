@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -16,12 +16,12 @@ type TGetAppConnectionFunc = (
 export const herokuConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Heroku, connectionId, actor);
     try {
-      const apps = await getHerokuApps({ appConnection, appConnectionDAL, kmsCoreDomain });
+      const apps = await getHerokuApps({ appConnection, appConnectionDAL, dataKeyService });
       return apps;
     } catch (error) {
       logger.error(error, `Failed to establish connection with Heroku for app ${connectionId}`);

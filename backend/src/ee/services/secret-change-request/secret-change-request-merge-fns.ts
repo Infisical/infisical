@@ -2,7 +2,7 @@ import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
@@ -79,7 +79,7 @@ export type TSecretApprovalBridgeCommit = Awaited<
 
 export type TSecretApprovalCommitConflict = { secretId: string; op: SecretOperations };
 
-export type TSecretManagerCipher = Awaited<ReturnType<TKmsCoreDomain["createCipherPairWithDataKey"]>>;
+export type TSecretManagerCipher = Awaited<ReturnType<TDataKeyService["createCipherPairWithDataKey"]>>;
 
 type TMergedFolder = { path: string; environmentSlug: string; environmentName: string };
 

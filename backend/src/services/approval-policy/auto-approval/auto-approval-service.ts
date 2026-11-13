@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -56,7 +56,7 @@ type TAutoApprovalServiceFactoryDep = {
     TAppConnectionServiceFactory,
     "validateAppConnectionUsageById" | "listAvailableAppConnectionsForUser"
   >;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
 };
@@ -92,7 +92,7 @@ export const autoApprovalServiceFactory = ({
   approvalPolicyAutoApprovalDAL,
   appConnectionDAL,
   appConnectionService,
-  kmsCoreDomain,
+  dataKeyService,
   gatewayV2Service,
   gatewayPoolService
 }: TAutoApprovalServiceFactoryDep) => {
@@ -109,7 +109,7 @@ export const autoApprovalServiceFactory = ({
   }): Promise<TAppConnection | null> => {
     const raw = await appConnectionDAL.findById(connectionId);
     if (!raw || raw.orgId !== orgId || (raw.projectId && raw.projectId !== projectId)) return null;
-    return decryptAppConnection(raw, kmsCoreDomain);
+    return decryptAppConnection(raw, dataKeyService);
   };
 
   const validateConfig = async ({

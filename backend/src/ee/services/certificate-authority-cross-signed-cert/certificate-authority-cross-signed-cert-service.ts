@@ -2,7 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -40,7 +40,8 @@ type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
     "findOne" | "findByCaIdForUpdate" | "upsert" | "delete" | "transaction"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
 };
@@ -54,7 +55,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   permissionService,
   licenseService
 }: TCertificateAuthorityCrossSignedCertServiceFactoryDep) => {
@@ -70,8 +72,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     projectId: string,
     crossSignedCert: TCertificateAuthorityCrossSignedCerts
   ) => {
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -144,7 +146,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
     const subCaDepth = await certificateAuthorityDAL.findMaxSubCaDepth(ca.id);
@@ -157,8 +160,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       certificateChain
     });
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
-    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 

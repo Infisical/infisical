@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TExternalKmsDetails, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TExternalKmsDetails, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -19,7 +19,7 @@ import {
 import { TExternalKmsAwsSchema, TExternalKmsGcpSchema } from "./providers/model";
 
 type TExternalKmsServiceFactoryDep = {
-  kmsCoreDomain: TKmsCoreDomain;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
 };
@@ -40,7 +40,7 @@ const typed = (details: TExternalKmsDetails) => ({
 export const externalKmsServiceFactory = ({
   permissionService,
   licenseService,
-  kmsCoreDomain
+  kmsKeyService
 }: TExternalKmsServiceFactoryDep) => {
   const $orgPermission = (
     actor: TCreateExternalKmsDTO["actor"],
@@ -59,7 +59,7 @@ export const externalKmsServiceFactory = ({
     });
 
   const $requireExternalKey = async (kmsId: string) => {
-    const key = await kmsCoreDomain.findKeyById(kmsId);
+    const key = await kmsKeyService.findKeyById(kmsId);
     if (!key?.isExternal) throw new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
     return key;
   };
@@ -83,7 +83,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    return typed(await kmsCoreDomain.createExternalKms({ orgId: actorOrgId, name, description, provider }));
+    return typed(await kmsKeyService.createExternalKms({ orgId: actorOrgId, name, description, provider }));
   };
 
   const updateById = async ({
@@ -107,7 +107,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    return typed(await kmsCoreDomain.updateExternalKms({ kmsId, name, description, provider }));
+    return typed(await kmsKeyService.updateExternalKms({ kmsId, name, description, provider }));
   };
 
   const deleteById = async ({ actor, id: kmsId, actorId, actorOrgId, actorAuthMethod }: TDeleteExternalKmsDTO) => {
@@ -115,30 +115,30 @@ export const externalKmsServiceFactory = ({
     const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-    return typed(await kmsCoreDomain.deleteExternalKms(kmsId));
+    return typed(await kmsKeyService.deleteExternalKms(kmsId));
   };
 
   const list = async ({ actor, actorId, actorOrgId, actorAuthMethod }: TListExternalKmsDTO) => {
     const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
-    return kmsCoreDomain.listExternalKms(actorOrgId);
+    return kmsKeyService.listExternalKms(actorOrgId);
   };
 
   const findById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id: kmsId }: TGetExternalKmsByIdDTO) => {
-    const key = await kmsCoreDomain.findKeyById(kmsId);
+    const key = await kmsKeyService.findKeyById(kmsId);
     if (!key) throw new NotFoundError({ message: `Could not find KMS with ID '${kmsId}'` });
     const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
-    return typed(await kmsCoreDomain.getExternalKms(kmsId));
+    return typed(await kmsKeyService.getExternalKms(kmsId));
   };
 
   const findByName = async ({ actor, actorId, actorOrgId, actorAuthMethod, name }: TGetExternalKmsBySlugDTO) => {
     const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
-    return typed(await kmsCoreDomain.getExternalKmsByName(actorOrgId, name));
+    return typed(await kmsKeyService.getExternalKmsByName(actorOrgId, name));
   };
 
   const fetchGcpKeys = async ({
@@ -159,7 +159,7 @@ export const externalKmsServiceFactory = ({
       });
     }
 
-    return kmsCoreDomain.fetchGcpKeys({ credential, gcpRegion });
+    return kmsKeyService.fetchGcpKeys({ credential, gcpRegion });
   };
 
   return {

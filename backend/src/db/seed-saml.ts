@@ -93,7 +93,7 @@ const main = async () => {
     // ---- Infisical: KMS bootstrap ----
     const superAdminDAL = superAdminDALFactory(db);
     const envConfig = await getMigrationEnvConfig(superAdminDAL);
-    const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db });
+    const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db });
 
     // ---- Infisical: org (SCIM enabled) ----
     let org = await db(TableName.Organization).where({ slug: ORG_SLUG }).first();
@@ -240,7 +240,7 @@ const main = async () => {
     const idpCert = ((await certRes.json()) as { data: string }).data;
 
     // ---- Infisical: active SAML config (entryPoint/issuer/cert KMS-encrypted; unblocks SCIM) ----
-    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });

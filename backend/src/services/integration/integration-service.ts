@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -41,7 +41,7 @@ type TIntegrationServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -59,7 +59,7 @@ export const integrationServiceFactory = ({
   projectBotService,
   secretV2BridgeDAL,
   secretImportDAL,
-  kmsCoreDomain,
+  dataKeyService,
   secretDAL,
   projectFolderGrantDAL,
   orgDAL
@@ -188,7 +188,7 @@ export const integrationServiceFactory = ({
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
 
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: integration.projectId
     });
@@ -241,7 +241,7 @@ export const integrationServiceFactory = ({
         folderDAL,
         secretImportDAL,
         secretDAL,
-        kmsCoreDomain,
+        dataKeyService,
         projectFolderGrantDAL,
         orgDAL,
         actorOrgId

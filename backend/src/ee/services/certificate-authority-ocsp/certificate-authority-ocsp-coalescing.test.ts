@@ -99,8 +99,8 @@ const buildHarness = async () => {
     certificateAuthoritySecretDAL: { findOne: vi.fn() } as never,
     certificateDAL: { find: vi.fn(async () => []), primaryNode: vi.fn(() => undefined) } as never,
     projectDAL: { findById: vi.fn(), findOne: vi.fn(), updateById: vi.fn(), transaction: vi.fn() } as never,
-    kmsCoreDomain: {
-      getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-id"),
+    dataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-id") } as never,
+    kmsKeyService: {
       decryptWithKmsKey: vi.fn(async () => async () => Buffer.from(caCert.rawData)),
       generateKmsKey: vi.fn()
     } as never,

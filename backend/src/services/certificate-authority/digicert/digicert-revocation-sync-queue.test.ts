@@ -102,8 +102,8 @@ const runSync = async ({
     certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(storedBody) },
     projectDAL: {},
     appConnectionDAL: {},
-    kmsCoreDomain: {
-      getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1"),
+    dataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
+    kmsKeyService: {
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
     },
     auditLogService: { createAuditLog: vi.fn() },

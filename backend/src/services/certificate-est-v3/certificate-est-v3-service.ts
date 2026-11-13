@@ -1,6 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
@@ -38,7 +38,8 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   licenseService: TLicenseService;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
@@ -56,7 +57,8 @@ export const certificateEstV3ServiceFactory = ({
   certificateAuthorityDAL,
   certificateDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   licenseService,
   certificateProfileDAL,
   estEnrollmentConfigDAL,
@@ -147,9 +149,9 @@ export const certificateEstV3ServiceFactory = ({
       return;
     }
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -338,7 +340,8 @@ export const certificateEstV3ServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
     const verifiedChains = await Promise.all(
@@ -507,7 +510,8 @@ export const certificateEstV3ServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
     let certificates: x509.X509Certificate[] = [];

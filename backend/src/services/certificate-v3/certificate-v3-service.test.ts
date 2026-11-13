@@ -390,15 +390,17 @@ describe("CertificateV3Service", () => {
         queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined)
       },
       certificateBodyDAL: mockCertificateBodyDAL,
-      kmsCoreDomain: {
+      dataKeyService: {
         getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
-        generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
-        encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
-        decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted"))),
         createCipherPairWithDataKey: vi.fn().mockResolvedValue({
           cipherTextBlob: Buffer.from("encrypted"),
           plainTextKey: Buffer.from("plainkey")
         })
+      } as never,
+      kmsKeyService: {
+        generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
+        encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
+        decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted")))
       } as never,
       projectDAL: {
         findOne: vi.fn().mockResolvedValue({ id: "project-123" }),

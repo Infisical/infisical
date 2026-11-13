@@ -2,7 +2,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { TCertificates } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
@@ -28,12 +28,14 @@ type TIssueSignerCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 type TVerifyCodeSigningEkuDeps = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 const codeSigningEkuMissing = () =>
@@ -48,7 +50,7 @@ const assertIssuedWithCodeSigningEku = (cert: TCertificates) => {
 };
 
 export const verifyCodeSigningEku = async (
-  { certificateBodyDAL, kmsCoreDomain }: TVerifyCodeSigningEkuDeps,
+  { certificateBodyDAL, dataKeyService, kmsKeyService }: TVerifyCodeSigningEkuDeps,
   { certificateId, projectId }: { certificateId: string; projectId: string }
 ): Promise<void> => {
   const certBody = await certificateBodyDAL.findOne({ certId: certificateId });
@@ -58,8 +60,8 @@ export const verifyCodeSigningEku = async (
     });
   }
 
-  const kmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-  const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId });
+  const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
   const decrypted = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
   const cert = new x509.X509Certificate(decrypted);
 
@@ -85,7 +87,8 @@ export const issueSignerCertificate = async (
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
     certificateSecretDAL,
-    kmsCoreDomain
+    dataKeyService,
+    kmsKeyService
   }: TIssueSignerCertificateDeps,
   { caId, projectId, commonName, certificateTtlDays, keyAlgorithm }: TIssueSignerCertificateInput
 ): Promise<{ certificateId: string }> => {
@@ -135,8 +138,8 @@ export const issueSignerCertificate = async (
   const csrPem = csrObj.toString("pem");
 
   // Encrypted before signing, so the key is stored in the same transaction as the certificate.
-  const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
-  const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+  const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+  const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
   const skLeafPem = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey).export({
     format: "pem",
     type: "pkcs8"

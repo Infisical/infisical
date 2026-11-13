@@ -684,7 +684,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const rootKey = await server.services.kmsCoreDomain.getRootKey();
+      const rootKey = await server.services.rootKeyService.getRootKey();
 
       return { rootKey };
     }
@@ -723,7 +723,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      return server.services.kmsCoreDomain.listRotations({
+      return server.services.rootKeyService.listRotations({
         offset: req.query.offset,
         limit: req.query.limit
       });
@@ -761,7 +761,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      const rotation = await server.services.kmsCoreDomain.createRotation({
+      const rotation = await server.services.rootKeyService.createRotation({
         replaceStaged: req.body.replaceStaged
       });
 
@@ -791,7 +791,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.kmsCoreDomain.deleteStagedKey({ label: req.body.label });
+      await server.services.rootKeyService.deleteStagedKey({ label: req.body.label });
 
       void res.status(204);
     }
@@ -817,7 +817,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.kmsCoreDomain.deleteExpiringKey({
+      await server.services.rootKeyService.deleteExpiringKey({
         label: req.body.label,
         force: req.body.force
       });

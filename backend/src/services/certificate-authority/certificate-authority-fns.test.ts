@@ -595,12 +595,12 @@ describe("rebuildCaCrl", () => {
         findOne: vi.fn(async () => ({ id: "project-1", orgId: "org-1", kmsCertificateKeyId: "kms-1" })),
         updateById: vi.fn()
       },
-      kmsCoreDomain: {
+      dataKeyService: { getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1") },
+      kmsKeyService: {
         encryptWithKmsKey: vi.fn(async () => async ({ plainText }: { plainText: Buffer }) => ({
           cipherTextBlob: plainText
         })),
-        decryptWithKmsKey: vi.fn(),
-        getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1")
+        decryptWithKmsKey: vi.fn()
       },
       certificateDAL: {
         find: vi.fn(async () => [
@@ -921,11 +921,8 @@ describe("buildIssuedCertificateChain", () => {
         updateById: vi.fn(),
         transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(undefined))
       } as never,
-      kmsCoreDomain: {
-        decryptWithKmsKey,
-        generateKmsKey: vi.fn(),
-        getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key")
-      } as never
+      dataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key") } as never,
+      kmsKeyService: { decryptWithKmsKey, generateKmsKey: vi.fn() } as never
     });
 
     return { chain, findValidInCaHierarchy, decryptWithKmsKey };
@@ -1042,7 +1039,7 @@ describe("getActiveCaCertificate", () => {
         internalCa: { dn: storedDn, activeCaCertId },
         kmsId: "kms-key",
         certificateAuthorityCertDAL: { findById: vi.fn().mockResolvedValue(caCertRow) },
-        kmsCoreDomain: {
+        kmsKeyService: {
           decryptWithKmsKey: vi
             .fn()
             .mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)

@@ -42,14 +42,14 @@ export async function up(knex: Knex): Promise<void> {
   initLogger();
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
   const updates: { id: string; encryptedConnectionDetails: Buffer }[] = [];
 
   for (const resource of resources) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const { decryptor, encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      const { decryptor, encryptor } = await dataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: resource.projectId
       });

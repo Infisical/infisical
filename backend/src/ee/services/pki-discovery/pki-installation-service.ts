@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
@@ -34,7 +34,7 @@ type TPkiInstallationServiceFactoryDep = {
     "findById" | "findByProjectId" | "countByProjectId" | "findByIdWithCertificates" | "updateById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   queueInstallationRescan: (installationId: string) => Promise<void>;
 };
@@ -44,7 +44,7 @@ export type TPkiInstallationServiceFactory = ReturnType<typeof pkiInstallationSe
 export const pkiInstallationServiceFactory = ({
   pkiCertificateInstallationDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   appConnectionDAL,
   queueInstallationRescan
 }: TPkiInstallationServiceFactoryDep) => {
@@ -183,7 +183,7 @@ export const pkiInstallationServiceFactory = ({
           : await encryptPkiInstallationCredentials({
               projectId: installation.projectId,
               credentials: { keystorePassword },
-              kmsCoreDomain
+              dataKeyService
             });
     }
 

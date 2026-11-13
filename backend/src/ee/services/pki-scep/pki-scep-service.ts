@@ -5,7 +5,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -101,7 +101,8 @@ type TPkiScepServiceFactoryDep = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: TLicenseService;
@@ -137,7 +138,8 @@ export const pkiScepServiceFactory = ({
   certificateRequestDAL,
   certificateBodyDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   appConnectionDAL,
   keyStore,
   licenseService,
@@ -212,8 +214,8 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(profile.projectId);
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const raPrivateKeyDer = await kmsDecryptor({ cipherTextBlob: scepConfig.encryptedRaPrivateKey });
 
     const raCert = new x509.X509Certificate(scepConfig.raCertificate);
@@ -267,7 +269,8 @@ export const pkiScepServiceFactory = ({
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
         projectDAL,
-        kmsCoreDomain
+        dataKeyService,
+        kmsKeyService
       });
 
       const caCertObj = new x509.X509Certificate(caCert);
@@ -296,7 +299,7 @@ export const pkiScepServiceFactory = ({
       scepEnrollmentConfigDAL,
       scepDynamicChallengeDAL,
       appConnectionDAL,
-      kmsCoreDomain,
+      dataKeyService,
       keyStore
     });
 
@@ -477,7 +480,8 @@ export const pkiScepServiceFactory = ({
           certificateAuthorityCertDAL,
           certificateAuthorityDAL,
           projectDAL,
-          kmsCoreDomain
+          dataKeyService,
+          kmsKeyService
         });
         if (isRenewalViaPKCSReq) {
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -668,7 +672,8 @@ export const pkiScepServiceFactory = ({
         certificateAuthorityCertDAL,
         certificateAuthorityDAL,
         projectDAL,
-        kmsCoreDomain
+        dataKeyService,
+        kmsKeyService
       }));
 
     const storedSignerCert =
@@ -1236,8 +1241,8 @@ export const pkiScepServiceFactory = ({
           });
         }
 
-        const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(profile.projectId);
-        const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+        const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+        const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
         const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
 
         const issuedCertDer = Buffer.from(new x509.X509Certificate(decryptedCert).rawData);

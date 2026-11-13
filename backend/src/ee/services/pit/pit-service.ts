@@ -2,7 +2,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TSecretFolders } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
@@ -58,7 +58,7 @@ type TPitServiceFactoryDep = {
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   folderCommitDAL: Pick<TFolderCommitDALFactory, "transaction">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TPitServiceFactory = ReturnType<typeof pitServiceFactory>;
@@ -76,7 +76,7 @@ export const pitServiceFactory = ({
   secretV2BridgeService,
   folderCommitDAL,
   secretQueueService,
-  kmsCoreDomain
+  dataKeyService
 }: TPitServiceFactoryDep) => {
   const getCommitsCount = async ({
     actor,
@@ -716,7 +716,7 @@ export const pitServiceFactory = ({
     let environmentName = environment;
     const deferredReferenceSyncs: Parameters<TSecretQueueFactory["syncSecrets"]>[0][] = [];
     // Fetched before the transaction: KMS Core is never called inside one.
-    const ciphers = await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actorOrgId });
+    const ciphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId });
     const response = await folderCommitDAL.transaction(async (trx) => {
       const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
       if (!targetFolder)

@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   TProjectSlackConfigDALFactory,
   TProjectSlackConfigWithIntegrations
@@ -12,12 +12,12 @@ const handleSlackNotification = async ({
   slackConfig,
   notification,
   orgId,
-  kmsCoreDomain
+  dataKeyService
 }: {
   slackConfig: TProjectSlackConfigWithIntegrations;
   notification: TNotification;
   orgId: string;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }): Promise<void> => {
   let targetChannelIds: string[] = [];
   let isEnabled = false;
@@ -44,7 +44,7 @@ const handleSlackNotification = async ({
     await sendSlackNotification({
       orgId,
       notification,
-      kmsCoreDomain,
+      dataKeyService,
       targetChannelIds,
       slackIntegration: slackConfig
     }).catch((error) => {
@@ -61,18 +61,18 @@ export const triggerSlackNotification = async ({
   notification,
   orgId,
   projectSlackConfigDAL,
-  kmsCoreDomain
+  dataKeyService
 }: {
   projectId: string;
   notification: TNotification;
   orgId: string;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }): Promise<void> => {
   try {
     const config = await projectSlackConfigDAL.getIntegrationDetailsByProject(projectId);
     if (config) {
-      await handleSlackNotification({ slackConfig: config, notification, orgId, kmsCoreDomain });
+      await handleSlackNotification({ slackConfig: config, notification, orgId, dataKeyService });
     }
   } catch (error) {
     logger.error(error, `Error handling Slack notification. Project ID: ${projectId}`);

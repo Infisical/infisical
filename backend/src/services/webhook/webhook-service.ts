@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -31,7 +31,7 @@ type TWebhookServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
@@ -41,7 +41,7 @@ export const webhookServiceFactory = ({
   projectEnvDAL,
   permissionService,
   projectDAL,
-  kmsCoreDomain
+  dataKeyService
 }: TWebhookServiceFactoryDep) => {
   const subscribableEvents = new Set<string>(SUBSCRIBABLE_WEBHOOK_EVENTS);
 
@@ -84,7 +84,7 @@ export const webhookServiceFactory = ({
       });
 
     await blockLocalAndPrivateIpAddresses(webhookUrl);
-    const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor: secretManagerEncryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -175,7 +175,7 @@ export const webhookServiceFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(webhook.projectId), () =>
       projectDAL.findById(webhook.projectId)
     );
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: project.id
     });
@@ -237,7 +237,7 @@ export const webhookServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
     const webhooks = await webhookDAL.findAllWebhooks(projectId, environment, secretPath);
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -277,7 +277,7 @@ export const webhookServiceFactory = ({
       throw error;
     }
 
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: webhook.projectId
     });

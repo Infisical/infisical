@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { HerokuConnectionMethod, THerokuConnection } from "@app/services/app-connection/heroku";
@@ -17,13 +17,13 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 type THerokuSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 const getValidAuthToken = async (
   connection: THerokuConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ): Promise<string> => {
   if (
     connection.method === HerokuConnectionMethod.OAuth &&
@@ -36,7 +36,7 @@ const getValidAuthToken = async (
       connection.orgId,
       connection.projectId,
       appConnectionDAL,
-      kmsCoreDomain
+      dataKeyService
     );
     return authToken;
   }
@@ -71,7 +71,7 @@ export const HerokuSyncFns = {
   syncSecrets: async (
     secretSync: THerokuSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, kmsCoreDomain }: THerokuSyncFactoryDeps
+    { appConnectionDAL, dataKeyService }: THerokuSyncFactoryDeps
   ) => {
     const secretMap = payload.flatten();
     const {
@@ -80,7 +80,7 @@ export const HerokuSyncFns = {
       destinationConfig: { app }
     } = secretSync;
 
-    const authToken = await getValidAuthToken(connection, appConnectionDAL, kmsCoreDomain);
+    const authToken = await getValidAuthToken(connection, appConnectionDAL, dataKeyService);
 
     try {
       const updatedConfigVars: THerokuConfigVars = {};
@@ -115,7 +115,7 @@ export const HerokuSyncFns = {
   removeSecrets: async (
     secretSync: THerokuSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, kmsCoreDomain }: THerokuSyncFactoryDeps
+    { appConnectionDAL, dataKeyService }: THerokuSyncFactoryDeps
   ) => {
     const secretMap = payload.flatten();
     const {
@@ -123,7 +123,7 @@ export const HerokuSyncFns = {
       destinationConfig: { app }
     } = secretSync;
 
-    const authToken = await getValidAuthToken(connection, appConnectionDAL, kmsCoreDomain);
+    const authToken = await getValidAuthToken(connection, appConnectionDAL, dataKeyService);
 
     try {
       const currentConfigVars = await getHerokuConfigVars({ authToken, app });
@@ -152,14 +152,14 @@ export const HerokuSyncFns = {
 
   getSecrets: async (
     secretSync: THerokuSyncWithCredentials,
-    { appConnectionDAL, kmsCoreDomain }: THerokuSyncFactoryDeps
+    { appConnectionDAL, dataKeyService }: THerokuSyncFactoryDeps
   ): Promise<TSecretMap> => {
     const {
       connection,
       destinationConfig: { app }
     } = secretSync;
 
-    const authToken = await getValidAuthToken(connection, appConnectionDAL, kmsCoreDomain);
+    const authToken = await getValidAuthToken(connection, appConnectionDAL, dataKeyService);
 
     const data = await getHerokuConfigVars({ authToken, app });
     const transformed = Object.entries(data).reduce((acc, [key, value]) => {

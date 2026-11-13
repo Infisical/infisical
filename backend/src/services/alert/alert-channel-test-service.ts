@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -23,7 +23,7 @@ export type TAlertChannelTestServiceFactoryDep = {
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
   alertChannelService: Pick<TAlertChannelServiceFactory, "validateRecipients" | "assertRecipientTypesAllowed">;
   alertProviderRegistry: TAlertProviderRegistry;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
 };
@@ -40,7 +40,7 @@ export const alertChannelTestServiceFactory = ({
   alertRecipientResolver,
   alertChannelService,
   alertProviderRegistry,
-  kmsCoreDomain,
+  dataKeyService,
   smtpService,
   keyStore
 }: TAlertChannelTestServiceFactoryDep) => {
@@ -105,7 +105,7 @@ export const alertChannelTestServiceFactory = ({
 
     await $assertChannelOwnersPermit(channel.id, dto);
 
-    const { decryptor } = await getAlertChannelCipher(kmsCoreDomain, {
+    const { decryptor } = await getAlertChannelCipher(dataKeyService, {
       orgId: channel.orgId,
       projectId: channel.projectId
     });

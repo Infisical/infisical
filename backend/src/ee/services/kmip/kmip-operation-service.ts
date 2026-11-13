@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { KmsKeyUsage, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsKeyUsage, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
@@ -23,7 +23,7 @@ import {
 } from "./kmip-types";
 
 type TKmipOperationServiceFactoryDep = {
-  kmsCoreDomain: TKmsCoreDomain;
+  kmsKeyService: TKmsKeyService;
   kmipClientDAL: TKmipClientDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -31,7 +31,7 @@ type TKmipOperationServiceFactoryDep = {
 export type TKmipOperationServiceFactory = ReturnType<typeof kmipOperationServiceFactory>;
 
 export const kmipOperationServiceFactory = ({
-  kmsCoreDomain,
+  kmsKeyService,
   kmipClientDAL,
   permissionService
 }: TKmipOperationServiceFactoryDep) => {
@@ -84,7 +84,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kmsKey = await kmsCoreDomain.generateKmsKey({
+    const kmsKey = await kmsKeyService.generateKmsKey({
       encryptionAlgorithm: algorithm,
       orgId: actorOrgId,
       projectId,
@@ -117,7 +117,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const [key] = await kmsCoreDomain.findKeys({
+    const [key] = await kmsKeyService.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -131,7 +131,7 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot destroy reserved keys" });
     }
 
-    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
@@ -147,7 +147,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kms = await kmsCoreDomain.deleteKey(id);
+    const kms = await kmsKeyService.deleteKey(id);
 
     if (!kms) {
       throw new BadRequestError({
@@ -181,7 +181,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const [key] = await kmsCoreDomain.findKeys({
+    const [key] = await kmsKeyService.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -195,7 +195,7 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot get reserved keys" });
     }
 
-    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
@@ -206,7 +206,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kmsKey = await kmsCoreDomain.getKeyMaterial({
+    const kmsKey = await kmsKeyService.getKeyMaterial({
       kmsId: key.id
     });
 
@@ -244,7 +244,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const [key] = await kmsCoreDomain.findKeys({
+    const [key] = await kmsKeyService.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -288,7 +288,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const [key] = await kmsCoreDomain.findKeys({
+    const [key] = await kmsKeyService.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -302,7 +302,7 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot revoke reserved keys" });
     }
 
-    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
@@ -313,7 +313,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const revokedKey = await kmsCoreDomain.updateKeyAttributes(key.id, { isDisabled: true });
+    const revokedKey = await kmsKeyService.updateKeyAttributes(key.id, { isDisabled: true });
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.REVOKE,
@@ -352,7 +352,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const [key] = await kmsCoreDomain.findKeys({
+    const [key] = await kmsKeyService.findKeys({
       id,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
@@ -366,7 +366,7 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot get reserved keys" });
     }
 
-    const completeKeyDetails = await kmsCoreDomain.findKeyById(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
@@ -411,7 +411,7 @@ export const kmipOperationServiceFactory = ({
     }
 
     // KMIP here only handles symmetric keys, so a project's sign-verify and MAC keys are not KMIP objects.
-    const keys = (await kmsCoreDomain.findKeys({ projectId, isReserved: false, keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT }))
+    const keys = (await kmsKeyService.findKeys({ projectId, isReserved: false, keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT }))
       .filter((key) => !key.isExternal)
       .map((key) => ({
         ...key,
@@ -455,9 +455,9 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    let kmsKey: Awaited<ReturnType<TKmsCoreDomain["importKeyMaterial"]>>;
+    let kmsKey: Awaited<ReturnType<TKmsKeyService["importKeyMaterial"]>>;
     try {
-      kmsKey = await kmsCoreDomain.importKeyMaterial({
+      kmsKey = await kmsKeyService.importKeyMaterial({
         name,
         key: Buffer.from(key, "base64"),
         algorithm,

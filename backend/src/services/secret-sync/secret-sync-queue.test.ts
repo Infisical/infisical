@@ -105,7 +105,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       incrementByAndRefreshExpiryIfUnderLimit: vi.fn(async () => 1),
       decrementByOrDelete: vi.fn(async () => 0)
     },
-    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn(async () => ({ decryptor: () => Buffer.from("") })) },
+    dataKeyService: { createCipherPairWithDataKey: vi.fn(async () => ({ decryptor: () => Buffer.from("") })) },
     auditLogService: { createAuditLog: vi.fn(async () => undefined) },
     telemetryService: { sendPostHogEvents: vi.fn(async () => undefined) },
     licenseService: new FakeLicenseService()

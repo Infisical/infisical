@@ -1,6 +1,6 @@
 import RE2 from "re2";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -31,7 +31,7 @@ type TPamSessionChunkServiceFactoryDep = {
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -48,7 +48,7 @@ export const pamSessionChunkServiceFactory = ({
   pamSessionEventChunkDAL,
   pamAccountDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   appConnectionDAL
 }: TPamSessionChunkServiceFactoryDep) => {
   const resolveRecordingConfig = async (accountId: string): Promise<TPamRecordingResolvedConfig | null> => {
@@ -77,7 +77,7 @@ export const pamSessionChunkServiceFactory = ({
         return null;
       }
 
-      const appConnection = await decryptAppConnection(raw, kmsCoreDomain);
+      const appConnection = await decryptAppConnection(raw, dataKeyService);
 
       return {
         backend: PamRecordingStorageBackend.AwsS3,
@@ -316,7 +316,7 @@ export const pamSessionChunkServiceFactory = ({
       projectId: session.projectId,
       sessionId,
       encryptedSessionKey: session.encryptedSessionKey,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const chunks = await pamSessionEventChunkDAL.findAllBySessionId(sessionId);

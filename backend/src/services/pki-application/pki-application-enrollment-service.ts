@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ResourceType } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -117,7 +117,8 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
 };
@@ -139,7 +140,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateAuthorityCertDAL,
   caKeySourceService,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   projectDAL,
   permissionService
 }: TPkiApplicationEnrollmentServiceFactoryDep) => {
@@ -418,7 +420,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const caChainProvided = typeof config.caChain === "string" && config.caChain.length > 0;
     let encryptedCaChain: Buffer | null = null;
     if (!config.disableBootstrapCaValidation && caChainProvided) {
-      const result = await validateAndEncryptPemCaChain(config.caChain as string, projectId, kmsCoreDomain);
+      const result = await validateAndEncryptPemCaChain(
+        config.caChain as string,
+        projectId,
+        dataKeyService,
+        kmsKeyService
+      );
       encryptedCaChain = result.encryptedCaChain;
     }
 
@@ -510,7 +517,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
 
     const newEabSecret = junction.acmeConfigId
       ? undefined
-      : (await generateAndEncryptAcmeEabSecret(projectId, kmsCoreDomain)).encryptedEabSecret;
+      : (await generateAndEncryptAcmeEabSecret(projectId, dataKeyService, kmsKeyService)).encryptedEabSecret;
 
     return pkiApplicationProfileDAL.transaction(async (tx) => {
       let { acmeConfigId } = junction;
@@ -611,8 +618,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       throw new NotFoundError({ message: "ACME EAB secret is not available." });
     }
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const eabSecret = await kmsDecryptor({ cipherTextBlob: acmeConfig.encryptedEabSecret });
 
     return {
@@ -655,7 +662,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     if (!junction.acmeConfigId) {
       throw new NotFoundError({ message: "ACME enrollment is not configured for this profile." });
     }
-    const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsCoreDomain);
+    const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, dataKeyService, kmsKeyService);
     await acmeEnrollmentConfigDAL.updateById(junction.acmeConfigId, { encryptedEabSecret });
     return { applicationId, applicationName: application.name, profileId };
   };
@@ -802,7 +809,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           certificateAuthoritySecretDAL,
           certificateAuthorityCertDAL,
           projectDAL,
-          kmsCoreDomain,
+          dataKeyService,
+          kmsKeyService,
           caKeySourceService
         }
       });

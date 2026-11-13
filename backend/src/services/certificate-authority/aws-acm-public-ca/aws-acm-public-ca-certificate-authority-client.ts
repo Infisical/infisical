@@ -1,6 +1,6 @@
 import { ACMClient } from "@aws-sdk/client-acm";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -14,19 +14,19 @@ export const createAcmClient = async ({
   appConnectionId,
   region,
   appConnectionDAL,
-  kmsCoreDomain
+  dataKeyService
 }: {
   appConnectionId: string;
   region: AWSRegion;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
     throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
   }
 
-  const decryptedConnection = (await decryptAppConnection(appConnection, kmsCoreDomain)) as TAwsConnection;
+  const decryptedConnection = (await decryptAppConnection(appConnection, dataKeyService)) as TAwsConnection;
   const awsConfig = await getAwsConnectionConfig(decryptedConnection, region);
 
   return new ACMClient({
@@ -40,15 +40,15 @@ export const createAcmClient = async ({
 export const resolveDnsAwsConnection = async ({
   dnsAppConnectionId,
   appConnectionDAL,
-  kmsCoreDomain
+  dataKeyService
 }: {
   dnsAppConnectionId: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
   const dnsAppConnection = await appConnectionDAL.findById(dnsAppConnectionId);
   if (!dnsAppConnection) {
     throw new NotFoundError({ message: `DNS app connection with ID '${dnsAppConnectionId}' not found` });
   }
-  return (await decryptAppConnection(dnsAppConnection, kmsCoreDomain)) as TAwsConnection;
+  return (await decryptAppConnection(dnsAppConnection, dataKeyService)) as TAwsConnection;
 };

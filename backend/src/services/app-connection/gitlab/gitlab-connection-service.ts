@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -17,7 +17,7 @@ type TGetAppConnectionFunc = (
 export const gitlabConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
     try {
@@ -25,7 +25,7 @@ export const gitlabConnectionService = (
       const projects = await listGitLabProjects({
         appConnection,
         appConnectionDAL,
-        kmsCoreDomain,
+        dataKeyService,
         search,
         limit
       });
@@ -43,7 +43,7 @@ export const gitlabConnectionService = (
       const groups = await listGitLabGroups({
         appConnection,
         appConnectionDAL,
-        kmsCoreDomain,
+        dataKeyService,
         search,
         limit
       });

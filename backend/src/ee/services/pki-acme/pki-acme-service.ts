@@ -14,7 +14,7 @@ import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -178,7 +178,8 @@ type TPkiAcmeServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: TLicenseService;
   certManagerService: TCertManagerService;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -209,7 +210,8 @@ export const pkiAcmeServiceFactory = ({
   keyStore,
   licenseService,
   certManagerService,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   certificateV3Service,
   certificatePolicyService,
   certificateRequestService,
@@ -672,8 +674,8 @@ export const pkiAcmeServiceFactory = ({
       if (!effectiveAcmeConfig?.encryptedEabSecret) {
         throw new AcmeExternalAccountRequiredError({ message: "External account binding is not configured" });
       }
-      const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(profile.projectId);
-      const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+      const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
         kmsId: certificateManagerKmsId
       });
       const eabSecret = await kmsDecryptor({ cipherTextBlob: effectiveAcmeConfig.encryptedEabSecret });
@@ -1644,9 +1646,9 @@ export const pkiAcmeServiceFactory = ({
     if (certificate) assertCertificateMaterialAvailable(certificate);
 
     const certBody = await certificateBodyDAL.findOne({ certId: syncedOrder.certificateId });
-    const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(profile.projectId);
+    const certificateManagerKeyId = await dataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
 
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({

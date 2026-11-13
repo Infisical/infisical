@@ -1,5 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
@@ -537,15 +537,15 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
 export const encryptAppConnectionCredentials = async ({
   orgId,
   credentials,
-  kmsCoreDomain,
+  dataKeyService,
   projectId
 }: {
   orgId: string;
   credentials: TAppConnection["credentials"];
-  kmsCoreDomain: TAppConnectionServiceFactoryDep["kmsCoreDomain"];
+  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
   projectId: string | null | undefined;
 }) => {
-  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -567,15 +567,15 @@ export const encryptAppConnectionCredentials = async ({
 export const decryptAppConnectionCredentials = async ({
   orgId,
   encryptedCredentials,
-  kmsCoreDomain,
+  dataKeyService,
   projectId
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
-  kmsCoreDomain: TAppConnectionServiceFactoryDep["kmsCoreDomain"];
+  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
   projectId: string | null | undefined;
 }) => {
-  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
@@ -594,17 +594,17 @@ export const decryptAppConnectionCredentials = async ({
 export const encryptAppConnectionConfiguration = async ({
   orgId,
   configuration,
-  kmsCoreDomain,
+  dataKeyService,
   projectId
 }: {
   orgId: string;
   configuration: TAppConnectionConfiguration;
-  kmsCoreDomain: TAppConnectionServiceFactoryDep["kmsCoreDomain"];
+  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
   projectId: string | null | undefined;
 }) => {
   if (!configuration) return null;
 
-  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -626,17 +626,17 @@ export const encryptAppConnectionConfiguration = async ({
 export const decryptAppConnectionConfiguration = async ({
   orgId,
   encryptedConfiguration,
-  kmsCoreDomain,
+  dataKeyService,
   projectId
 }: {
   orgId: string;
   encryptedConfiguration: Buffer | null | undefined;
-  kmsCoreDomain: TAppConnectionServiceFactoryDep["kmsCoreDomain"];
+  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
   projectId: string | null | undefined;
 }): Promise<TAppConnectionConfiguration> => {
   if (!encryptedConfiguration) return undefined;
 
-  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
@@ -658,7 +658,7 @@ export const validateAppConnectionCredentials = async (
   deps: {
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
     gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-    kmsCoreDomain: TKmsCoreDomain;
+    dataKeyService: TDataKeyService;
     keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
     oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     actorId?: string;
@@ -670,7 +670,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw) =>
       validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, {
         gitHubAppDAL: deps.gitHubAppDAL,
-        kmsCoreDomain: deps.kmsCoreDomain
+        dataKeyService: deps.dataKeyService
       })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -944,7 +944,7 @@ export const decryptAppConnection = async (
     };
     project?: { name: string; id: string; type: string; slug: string } | null;
   },
-  kmsCoreDomain: TAppConnectionServiceFactoryDep["kmsCoreDomain"]
+  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"]
 ) => {
   const { encryptedCredentials, encryptedConfiguration, ...connectionWithoutEncrypted } = appConnection;
 
@@ -958,7 +958,7 @@ export const decryptAppConnection = async (
                 orgId: appConnection.orgId,
                 projectId: appConnection.projectId,
                 encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
-                kmsCoreDomain
+                dataKeyService
               })
             : null
         }
@@ -967,13 +967,13 @@ export const decryptAppConnection = async (
       encryptedCredentials,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
-      kmsCoreDomain
+      dataKeyService
     }),
     configuration: await decryptAppConnectionConfiguration({
       encryptedConfiguration,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
-      kmsCoreDomain
+      dataKeyService
     }),
     credentialsHash: crypto.nativeCrypto.createHash("sha256").update(encryptedCredentials).digest("hex")
   } as TAppConnection;

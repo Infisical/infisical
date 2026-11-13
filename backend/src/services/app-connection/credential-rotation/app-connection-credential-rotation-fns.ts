@@ -1,6 +1,6 @@
 import { AxiosError } from "axios";
 
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 
 import { AppConnectionCredentialRotationStatus } from "./app-connection-credential-rotation-enums";
@@ -103,14 +103,14 @@ export const encryptCredentialRotationGeneratedCredentials = async ({
   orgId,
   projectId,
   generatedCredentials,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -133,14 +133,14 @@ export const decryptCredentialRotationGeneratedCredentials = async ({
   orgId,
   projectId,
   encryptedGeneratedCredentials,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedGeneratedCredentials: Buffer;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -163,14 +163,14 @@ export const encryptStrategyConfig = async ({
   orgId,
   projectId,
   config,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   config: Record<string, unknown>;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -193,14 +193,14 @@ export const decryptStrategyConfig = async <T>({
   orgId,
   projectId,
   encryptedStrategyConfig,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedStrategyConfig: Buffer;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -223,14 +223,14 @@ export const encryptRotationMessage = async ({
   orgId,
   projectId,
   message,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   message: string;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -253,14 +253,14 @@ export const decryptRotationMessage = async ({
   orgId,
   projectId,
   encryptedLastRotationMessage,
-  kmsCoreDomain
+  dataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedLastRotationMessage: Buffer;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+  const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -283,12 +283,12 @@ export const expandCredentialRotation = async (
   { encryptedLastRotationMessage, ...rotation }: TAppConnectionCredentialRotationRaw,
   orgId: string,
   projectId: string | null | undefined,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ): Promise<TAppConnectionCredentialRotation> => {
   let lastRotationMessage: string | null = null;
 
   if (encryptedLastRotationMessage) {
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey(
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
       projectId
         ? {
             type: KmsDataKey.SecretManager,

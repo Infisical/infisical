@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -15,14 +15,14 @@ import { TAzureEntraIdScimSyncWithCredentials } from "./azure-entra-id-scim-sync
 
 type TAzureEntraIdScimSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export const AzureEntraIdScimSyncFns = {
   syncSecrets: async (
     secretSync: TAzureEntraIdScimSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, kmsCoreDomain }: TAzureEntraIdScimSyncFactoryDeps
+    { appConnectionDAL, dataKeyService }: TAzureEntraIdScimSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { servicePrincipalId } = secretSync.destinationConfig;
@@ -49,7 +49,7 @@ export const AzureEntraIdScimSyncFns = {
     const accessToken = await getAzureEntraIdConnectionAccessToken(
       secretSync.connection.id,
       appConnectionDAL,
-      kmsCoreDomain
+      dataKeyService
     );
 
     await request.put(
@@ -113,7 +113,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
 // Fetches service principal display name from Azure Graph API and stores it in destinationConfig
 export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
   { destinationConfig, connectionId },
-  { appConnectionDAL, kmsCoreDomain }
+  { appConnectionDAL, dataKeyService }
 ) => {
   if (!destinationConfig) return destinationConfig;
 
@@ -121,7 +121,7 @@ export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransfor
   if (!servicePrincipalId) return destinationConfig;
 
   try {
-    const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, kmsCoreDomain);
+    const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, dataKeyService);
 
     const { data } = await request.get<{ displayName?: string }>(
       `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipalId as string}`,

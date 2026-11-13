@@ -11,7 +11,7 @@ import {
   TSecretV2TagJunctionInsert,
   TSecretVersionsV2
 } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -186,7 +186,7 @@ type TFolderCommitServiceFactoryDep = {
     "scheduleTreeCheckpoint" | "createFolderTreeCheckpoint"
   >;
   permissionService?: TPermissionServiceFactory;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
     | "findSecretTagsByVersionId"
@@ -250,7 +250,7 @@ export const folderCommitServiceFactory = ({
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   secretTagDAL,
   resourceMetadataDAL,
   eventEmitter
@@ -495,7 +495,7 @@ export const folderCommitServiceFactory = ({
             )
           );
         }
-        pending = kmsCoreDomain
+        pending = dataKeyService
           .createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId })
           .then(({ decryptor: fetched }) => fetched);
       }
@@ -1078,7 +1078,7 @@ export const folderCommitServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) return undefined;
 
-    return prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: project.orgId });
+    return prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: project.orgId });
   };
 
   /**

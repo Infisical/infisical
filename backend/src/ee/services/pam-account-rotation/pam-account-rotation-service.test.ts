@@ -85,7 +85,7 @@ const buildService = (
     permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
     membershipDAL: { findResourceMembershipsForActor: vi.fn() },
     membershipRoleDAL: { find: vi.fn() },
-    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
+    dataKeyService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     keyStore: { acquireLock: vi.fn(async () => ({ release: vi.fn(async () => undefined) })) },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(), assertGatewayBindingInOrg },

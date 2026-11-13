@@ -2,7 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
-import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
@@ -37,7 +37,7 @@ type TSecretApprovalRequestCommitFnsFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findBySecretKeys" | "find">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById">;
@@ -90,7 +90,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
   permissionService,
   folderDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretTagDAL,
@@ -175,7 +175,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
 
     const cipher =
       providedCipher ??
-      (await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }));
+      (await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }));
     const { encryptor: secretManagerEncryptor } = cipher;
 
     const project = await projectDAL.findById(projectId, providedTx);

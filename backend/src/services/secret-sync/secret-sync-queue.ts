@@ -3,7 +3,7 @@ import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -96,7 +96,7 @@ export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 type TSecretSyncQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
@@ -166,7 +166,7 @@ const getRequeueDelay = (failureCount?: number) => {
 export const secretSyncQueueFactory = ({
   queueService,
   cronJob,
-  kmsCoreDomain,
+  dataKeyService,
   appConnectionDAL,
   gitHubAppDAL,
   keyStore,
@@ -227,7 +227,7 @@ export const secretSyncQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    kmsCoreDomain,
+    dataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -245,7 +245,7 @@ export const secretSyncQueueFactory = ({
     secretTagDAL,
     secretVersionTagDAL,
     folderDAL,
-    kmsCoreDomain,
+    dataKeyService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -288,7 +288,7 @@ export const secretSyncQueueFactory = ({
         shouldRetry: false
       });
 
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -307,7 +307,7 @@ export const secretSyncQueueFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService
     });
 
     return buildSyncPayload(
@@ -331,7 +331,7 @@ export const secretSyncQueueFactory = ({
           projectFolderGrantDAL,
           actorOrgId,
           orgDAL,
-          kmsCoreDomain
+          dataKeyService
         }
       }
     );
@@ -414,7 +414,7 @@ export const secretSyncQueueFactory = ({
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
       gitHubAppDAL,
-      kmsCoreDomain,
+      dataKeyService,
       gatewayV2Service,
       gatewayPoolService,
       oidcIssuerService
@@ -543,7 +543,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsCoreDomain,
+        dataKeyService,
         projectId
       });
 
@@ -578,7 +578,7 @@ export const secretSyncQueueFactory = ({
       const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, payload, {
         appConnectionDAL,
         gitHubAppDAL,
-        kmsCoreDomain,
+        dataKeyService,
         gatewayV2Service,
         gatewayPoolService,
         oidcIssuerService,
@@ -740,7 +740,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsCoreDomain,
+        dataKeyService,
         projectId
       });
 
@@ -876,7 +876,7 @@ export const secretSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsCoreDomain,
+        dataKeyService,
         projectId
       });
 
@@ -896,7 +896,7 @@ export const secretSyncQueueFactory = ({
         {
           appConnectionDAL,
           gitHubAppDAL,
-          kmsCoreDomain,
+          dataKeyService,
           gatewayV2Service,
           gatewayPoolService,
           oidcIssuerService
@@ -1063,7 +1063,7 @@ export const secretSyncQueueFactory = ({
         dependencies: {
           projectDAL,
           projectSlackConfigDAL,
-          kmsCoreDomain,
+          dataKeyService,
           microsoftTeamsService,
           projectMicrosoftTeamsConfigDAL
         }

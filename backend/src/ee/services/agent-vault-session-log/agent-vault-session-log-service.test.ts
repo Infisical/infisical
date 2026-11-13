@@ -192,7 +192,7 @@ const build = (overrides: TOverrides = {}) => {
         hasRole: () => overrides.isAdmin ?? true
       }))
     } as never,
-    kmsCoreDomain: {} as never,
+    dataKeyService: {} as never,
     licenseService,
     keyStore: { streamAdd, streamRange } as never,
     objectStorage: { at } as never

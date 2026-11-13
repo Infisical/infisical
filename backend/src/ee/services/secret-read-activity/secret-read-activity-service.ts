@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { setImmediate } from "node:timers/promises";
 
 import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -98,7 +98,7 @@ type TSecretReadActivityServiceFactoryDep = {
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl" | "acquireLock">;
 };
 
@@ -119,7 +119,7 @@ export const secretReadActivityServiceFactory = ({
   identityMetadataDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
-  kmsCoreDomain,
+  dataKeyService,
   keyStore
 }: TSecretReadActivityServiceFactoryDep) => {
   let instanceTrackingStartedAt: Promise<Date | undefined> | undefined;
@@ -184,7 +184,7 @@ export const secretReadActivityServiceFactory = ({
     // Every loaded secret is decrypted once to find the keys it references in its own folder. The edges are indexed
     // by "<referenced folder>:<referenced key>", since scanning a folder for every secret in it would be quadratic.
     // Decrypting is synchronous work, so the loop yields to the event loop between batches, like the reach loop below.
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

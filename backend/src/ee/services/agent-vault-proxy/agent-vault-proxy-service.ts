@@ -7,7 +7,7 @@ import {
   TAgentVaultProxies,
   TAgentVaultSessions
 } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -151,7 +151,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
@@ -210,7 +210,7 @@ export const agentVaultProxyServiceFactory = ({
   projectDAL,
   userDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   licenseService,
   resourceAuthMethodService,
   agentVaultOauthService
@@ -275,7 +275,7 @@ export const agentVaultProxyServiceFactory = ({
   const getProxyForAuth = (proxyId: string) => agentVaultProxyDAL.findByIdWithOrg(proxyId);
 
   const $sealRootCaKey = async (projectId: string, privateKey: string) => {
-    const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -284,7 +284,7 @@ export const agentVaultProxyServiceFactory = ({
 
   const $openRootCa = async (proxy: TAgentVaultProxies): Promise<TProxyRootCa | null> => {
     if (!proxy.rootCaCertificate || !proxy.encryptedRootCaPrivateKey) return null;
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: proxy.projectId
     });
@@ -1133,7 +1133,7 @@ export const agentVaultProxyServiceFactory = ({
       sessionLogKeyNeeded;
     const decryptor = hasSealedValue
       ? (
-          await kmsCoreDomain.createCipherPairWithDataKey({
+          await dataKeyService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId: session.projectId
           })
@@ -1342,7 +1342,7 @@ export const agentVaultProxyServiceFactory = ({
 
     const decryptor = rows.length
       ? (
-          await kmsCoreDomain.createCipherPairWithDataKey({
+          await dataKeyService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId: session.projectId
           })

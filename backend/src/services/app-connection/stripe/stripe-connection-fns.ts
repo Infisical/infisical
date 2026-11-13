@@ -1,6 +1,6 @@
 import { AxiosError } from "axios";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -60,7 +60,7 @@ const REFRESH_LOCK_SETTINGS = { retryCount: 60, retryDelay: 250, retryJitter: 10
 
 export type TStripeConnectionAuthorizationDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -146,7 +146,7 @@ export const validateStripeConnectionCredentials = async (config: TStripeConnect
  */
 const getStoredStripeConnection = async (
   connectionId: string,
-  { appConnectionDAL, kmsCoreDomain }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "kmsCoreDomain">
+  { appConnectionDAL, dataKeyService }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "dataKeyService">
 ) => {
   const appConnection = await appConnectionDAL.transaction((tx) => appConnectionDAL.findById(connectionId, tx));
 
@@ -162,7 +162,7 @@ const getStoredStripeConnection = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsCoreDomain
+    dataKeyService
   })) as TStripeConnectionCredentials;
 
   return { appConnection, credentials };
@@ -211,7 +211,7 @@ const refreshStripeConnection = async (connectionId: string, deps: TStripeConnec
     credentials: { accountId, refreshToken: data.refresh_token },
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
-    kmsCoreDomain: deps.kmsCoreDomain
+    dataKeyService: deps.dataKeyService
   });
 
   try {

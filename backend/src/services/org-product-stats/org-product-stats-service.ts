@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 
@@ -9,7 +9,7 @@ import { TOrgProductStats, TOrgProductStatsDTO } from "./org-product-stats-types
 type TOrgProductStatsServiceFactoryDep = {
   orgProductStatsDAL: TOrgProductStatsDALFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  kmsCoreDomain: TKmsCoreDomain;
+  kmsKeyService: TKmsKeyService;
 };
 
 export type TOrgProductStatsServiceFactory = ReturnType<typeof orgProductStatsServiceFactory>;
@@ -17,7 +17,7 @@ export type TOrgProductStatsServiceFactory = ReturnType<typeof orgProductStatsSe
 export const orgProductStatsServiceFactory = ({
   orgProductStatsDAL,
   keyStore,
-  kmsCoreDomain
+  kmsKeyService
 }: TOrgProductStatsServiceFactoryDep) => {
   const getOrgProductStats = async ({ actorOrgId }: TOrgProductStatsDTO): Promise<TOrgProductStats> => {
     const [
@@ -44,7 +44,7 @@ export const orgProductStatsServiceFactory = ({
       orgProductStatsDAL.countCertificatesForOrg(actorOrgId),
       orgProductStatsDAL.countCertificateAuthoritiesForOrg(actorOrgId),
       orgProductStatsDAL.countSignersForOrg(actorOrgId),
-      kmsCoreDomain.countProjectKeysInOrg(actorOrgId, ProjectType.KMS),
+      kmsKeyService.countProjectKeysInOrg(actorOrgId, ProjectType.KMS),
       orgProductStatsDAL.countKmipClientsForOrg(actorOrgId),
       orgProductStatsDAL.countDataSourcesForOrg(actorOrgId),
       orgProductStatsDAL.countSecretScanningResourcesForOrg(actorOrgId),

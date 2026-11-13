@@ -22,7 +22,7 @@ export const buildInMemoryKmsCore = async ({
     hooks,
     isFipsEnabled
   });
-  return { module, kms: module.service, memory };
+  return { module, memory };
 };
 
 // KMS Core on an integration database. The template database's migrations already bootstrapped a root key with the

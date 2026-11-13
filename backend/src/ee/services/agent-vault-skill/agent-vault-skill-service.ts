@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { TAgentVaultSkillVersions } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -52,7 +52,7 @@ type TAgentVaultSkillServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findByIdInProject" | "lockByIdInProject">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TAgentVaultSkillServiceFactory = ReturnType<typeof agentVaultSkillServiceFactory>;
@@ -64,10 +64,10 @@ export const agentVaultSkillServiceFactory = ({
   agentVaultAccessBundleDAL,
   permissionService,
   membershipDAL,
-  kmsCoreDomain
+  dataKeyService
 }: TAgentVaultSkillServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const $getPermission = async (scoped: TAgentVaultSkillScoped) =>
     (await getAgentVaultPermission({ permissionService }, scoped)).permission;

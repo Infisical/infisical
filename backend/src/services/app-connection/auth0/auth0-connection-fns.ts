@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
@@ -52,7 +52,7 @@ const authorizeAuth0Connection = async ({
 export const getAuth0ConnectionAccessToken = async (
   { id, orgId, credentials, projectId }: TAuth0Connection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsCoreDomain: TKmsCoreDomain
+  dataKeyService: TDataKeyService
 ) => {
   const { expiresAt, accessToken } = credentials;
 
@@ -71,7 +71,7 @@ export const getAuth0ConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsCoreDomain,
+    dataKeyService,
     projectId
   });
 

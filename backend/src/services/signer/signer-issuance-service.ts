@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
 import { TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
@@ -83,7 +83,8 @@ type TSignerIssuanceServiceDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateIssuanceQueue: Pick<
     TCertificateIssuanceQueueFactory,
     "awsPcaFns" | "azureAdCsFns" | "adcsFns" | "digicertFns"
@@ -118,7 +119,8 @@ export const signerIssuanceServiceFactory = ({
   certificateAuthorityDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   certificateIssuanceQueue,
   cronJob,
   hsmConnectorService,
@@ -153,15 +155,15 @@ export const signerIssuanceServiceFactory = ({
   };
 
   const encryptForProject = async (projectId: string, plain: Buffer): Promise<Buffer> => {
-    const kmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-    const encryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId });
+    const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const encryptor = await kmsKeyService.encryptWithKmsKey({ kmsId });
     const { cipherTextBlob } = await encryptor({ plainText: plain });
     return cipherTextBlob;
   };
 
   const decryptForProject = async (projectId: string, cipher: Buffer): Promise<Buffer> => {
-    const kmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-    const decryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId });
+    const kmsId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const decryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
     return decryptor({ cipherTextBlob: cipher });
   };
 
@@ -465,7 +467,7 @@ export const signerIssuanceServiceFactory = ({
     projectId: string
   ): Promise<void> => {
     try {
-      await verifyCodeSigningEku({ certificateBodyDAL, kmsCoreDomain }, { certificateId, projectId });
+      await verifyCodeSigningEku({ certificateBodyDAL, dataKeyService, kmsKeyService }, { certificateId, projectId });
     } catch (ekuErr) {
       const reason = formatSignerIssuanceErrorReason(ekuErr, "Issued certificate failed code-signing EKU verification");
       await markJobFailed(job, reason);

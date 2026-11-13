@@ -27,7 +27,7 @@ export type TDelegatedApprovalCallbackServiceFactory = ReturnType<typeof delegat
 export const delegatedApprovalCallbackServiceFactory = ({
   delegatedApprovalRequestDAL,
   approvalRequestDAL,
-  kmsCoreDomain,
+  dataKeyService,
   eventEmitter
 }: TDelegatedApprovalCallbackServiceFactoryDep) => {
   const getCallbackUrl = () => {
@@ -40,7 +40,7 @@ export const delegatedApprovalCallbackServiceFactory = ({
     const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, primary);
     if (!approvalRequest) return null;
 
-    const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: approvalRequest.projectId
     });
@@ -78,7 +78,7 @@ export const delegatedApprovalCallbackServiceFactory = ({
       throw rejectApprovalCallback("request has no callback token", logContext);
     }
 
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: delegatedRequest.approvalRequestProjectId
     });

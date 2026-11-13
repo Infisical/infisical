@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   decryptLogStream,
@@ -26,7 +26,7 @@ export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServiceFactory>;
@@ -35,7 +35,7 @@ export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
   licenseService,
-  kmsCoreDomain
+  dataKeyService
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -69,7 +69,7 @@ export const auditLogStreamServiceFactory = ({
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
       orgId: actor.orgId,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const logStream = await auditLogStreamDAL.create({
@@ -140,7 +140,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsCoreDomain
+        dataKeyService
       })) as TCustomProviderCredentials;
 
       const oldHeadersMap = decryptedOldCredentials.headers.reduce<Record<string, string>>((acc, header) => {
@@ -170,7 +170,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsCoreDomain
+        dataKeyService
       })) as TSumoLogicProviderCredentials;
 
       (finalCredentials as TSumoLogicProviderCredentials).token = decryptedOldCredentials.token;
@@ -182,7 +182,7 @@ export const auditLogStreamServiceFactory = ({
       const decryptedOldCredentials = (await decryptLogStreamCredentials({
         encryptedCredentials: logStream.encryptedCredentials,
         orgId: logStream.orgId,
-        kmsCoreDomain
+        dataKeyService
       })) as TSplunkProviderCredentials;
 
       (finalCredentials as TSplunkProviderCredentials).port = decryptedOldCredentials.port;
@@ -194,7 +194,7 @@ export const auditLogStreamServiceFactory = ({
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
       orgId: logStream.orgId,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
@@ -235,7 +235,7 @@ export const auditLogStreamServiceFactory = ({
 
     const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
 
-    return decryptLogStream(deletedLogStream, kmsCoreDomain);
+    return decryptLogStream(deletedLogStream, dataKeyService);
   };
 
   const getById = async (logStreamId: string, provider: LogProvider, actor: OrgServiceActor) => {
@@ -259,7 +259,7 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    return decryptLogStream(logStream, kmsCoreDomain);
+    return decryptLogStream(logStream, dataKeyService);
   };
 
   const list = async (actor: OrgServiceActor) => {
@@ -276,7 +276,7 @@ export const auditLogStreamServiceFactory = ({
 
     const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
 
-    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsCoreDomain)));
+    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, dataKeyService)));
   };
 
   return {

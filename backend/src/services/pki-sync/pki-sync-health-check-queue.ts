@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -76,7 +76,8 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
@@ -113,7 +114,8 @@ export const pkiSyncHealthCheckQueueFactory = ({
   keyStore,
   appConnectionDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
@@ -194,7 +196,8 @@ export const pkiSyncHealthCheckQueueFactory = ({
       certificateAuthorityCertDAL,
       certificateSyncDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
     return certificateMap;
@@ -241,7 +244,8 @@ export const pkiSyncHealthCheckQueueFactory = ({
         certificateAuthorityCertDAL,
         certificateSyncDAL,
         projectDAL,
-        kmsCoreDomain
+        dataKeyService,
+        kmsKeyService
       },
       certificateIds
     );
@@ -322,7 +326,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       pkiSync,
       appConnectionDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const certificateMap = await $certificatesForCheck(pkiSync, command);
@@ -421,7 +425,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       orgId: connection.orgId,
       projectId: connection.projectId,
       encryptedCredentials: connection.encryptedCredentials,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const target: THealthCheckTarget = {
@@ -476,7 +480,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       orgId: connection.orgId,
       projectId: connection.projectId,
       encryptedCredentials: connection.encryptedCredentials,
-      kmsCoreDomain
+      dataKeyService
     });
 
     const target: THealthCheckTarget = {

@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -36,7 +36,7 @@ export type TPamValidatorDeps = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
@@ -142,14 +142,14 @@ export const validateRecordingConnection = async (
 };
 
 export const validateRecordingS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsCoreDomain">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "dataKeyService">,
   connectionId: string,
   s3Config: { bucket: string; region?: string; keyPrefix?: string },
   ctx: TActorContext
 ): Promise<TPamRecordingResolvedConfig> => {
   const raw = await enforceAppConnectionConnect(deps, connectionId, ctx);
 
-  const appConnection = await decryptAppConnection(raw, deps.kmsCoreDomain);
+  const appConnection = await decryptAppConnection(raw, deps.dataKeyService);
 
   const resolvedConfig: TPamRecordingResolvedConfig = {
     backend: PamRecordingStorageBackend.AwsS3,
@@ -169,7 +169,7 @@ export const getInheritedRecordingS3Config = (settingsOverrides: unknown, templa
   PamTemplateSettingsSchema.safeParse(templateSettings).data?.recordingS3Config;
 
 export const resolveOverridesS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsCoreDomain">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "dataKeyService">,
   settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
   effectiveConnectionId: string | null | undefined,
   ctx: TActorContext,

@@ -76,9 +76,9 @@ export async function up(knex: Knex): Promise<void> {
   if (!hasReminders) return;
 
   const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const cipherCache =
-    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
   const orgDAL = orgDALFactory(knex as never);
   const projectDAL = projectDALFactory(knex as never);
 
@@ -135,7 +135,7 @@ export async function up(knex: Knex): Promise<void> {
     for (const projectId of new Set(pending.map((reminder) => reminder.projectId))) {
       let cipher = cipherCache.getItem(projectId);
       if (!cipher) {
-        cipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+        cipher = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
         cipherCache.push(projectId, cipher);
       }
       encryptedEmptyConfigByProject.set(

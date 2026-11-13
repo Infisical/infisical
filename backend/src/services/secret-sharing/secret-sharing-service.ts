@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { OrganizationActionScope, OrgMembershipStatus, TOrganizations, TSecretSharing } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -43,7 +43,7 @@ type TSecretSharingServiceFactoryDep = {
   orgAssetDAL: TOrgAssetDALFactory;
   orgDAL: TOrgDALFactory;
   userDAL: TUserDALFactory;
-  kmsCoreDomain: TKmsCoreDomain;
+  rootKeyService: TRootKeyService;
   smtpService: TSmtpService;
   licenseService: TLicenseService;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -77,7 +77,7 @@ export const secretSharingServiceFactory = ({
   orgAssetDAL,
   orgDAL,
   identityDAL,
-  kmsCoreDomain,
+  rootKeyService,
   smtpService,
   userDAL,
   licenseService
@@ -193,7 +193,7 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Secret max views parameter exceeds organization limit" });
     }
 
-    const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
+    const encryptWithRoot = rootKeyService.encryptWithRootKey();
 
     const orgMemberEmails: string[] = [];
 
@@ -373,7 +373,7 @@ export const secretSharingServiceFactory = ({
       throw new BadRequestError({ message: "Secret request has no value set" });
     }
 
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const decryptedSecret = decryptWithRoot(secretRequest.encryptedSecret);
 
     return { ...secretRequest, secretValue: decryptedSecret.toString() };
@@ -492,7 +492,7 @@ export const secretSharingServiceFactory = ({
       });
     }
 
-    const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
+    const encryptWithRoot = rootKeyService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const request = await secretSharingDAL.transaction(async (tx) => {
@@ -526,7 +526,7 @@ export const secretSharingServiceFactory = ({
 
     $validateSharedSecretExpiry(expiresAt);
 
-    const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
+    const encryptWithRoot = rootKeyService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const appCfg = getConfig();
@@ -752,7 +752,7 @@ export const secretSharingServiceFactory = ({
         }
       }
 
-      const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+      const decryptWithRoot = rootKeyService.decryptWithRootKey();
 
       if (!sharedSecret.encryptedSecret) {
         throw new BadRequestError({ message: "Secret has no value specified" });

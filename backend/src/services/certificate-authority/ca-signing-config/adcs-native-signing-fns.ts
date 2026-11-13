@@ -1,6 +1,6 @@
 import RE2 from "re2";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -35,16 +35,16 @@ export const submitCsrToNativeAdcs = async (
   },
   deps: TAdcsNativeGatewayDeps & {
     appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-    kmsCoreDomain: TKmsCoreDomain;
+    dataKeyService: TDataKeyService;
   }
 ): Promise<{ certificate: string; certificateChain: string }> => {
   const { appConnectionId, csr, template } = params;
-  const { appConnectionDAL, kmsCoreDomain, gatewayV2Service, gatewayPoolService } = deps;
+  const { appConnectionDAL, dataKeyService, gatewayV2Service, gatewayPoolService } = deps;
 
   const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
     appConnectionId,
     appConnectionDAL,
-    kmsCoreDomain
+    dataKeyService
   );
 
   const resolvedCaName = await resolveAdcsCaName(

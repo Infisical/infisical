@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { OrganizationActionScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -32,7 +32,8 @@ type TCertManagerExportServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
@@ -48,7 +49,8 @@ export const certManagerExportServiceFactory = ({
   certificateProfileDAL,
   projectDAL,
   orgDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   permissionService
 }: TCertManagerExportServiceFactoryDep) => {
   const allocateUniqueName = (desired: string, taken: Set<string>): string => {
@@ -129,11 +131,11 @@ export const certManagerExportServiceFactory = ({
       });
     }
 
-    const sourceKmsKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(sourceProjectId);
-    const destinationKmsKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(destinationProjectId);
+    const sourceKmsKeyId = await dataKeyService.getProjectCertificateKmsKeyId(sourceProjectId);
+    const destinationKmsKeyId = await dataKeyService.getProjectCertificateKmsKeyId(destinationProjectId);
 
-    const sourceDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: sourceKmsKeyId });
-    const destinationEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: destinationKmsKeyId });
+    const sourceDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: sourceKmsKeyId });
+    const destinationEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: destinationKmsKeyId });
 
     const reencrypt = async (cipherTextBlob: Buffer): Promise<Buffer> => {
       const plainText = await sourceDecryptor({ cipherTextBlob });

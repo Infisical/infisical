@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -122,7 +122,7 @@ export type TTriggerWorkflowNotificationDTO = {
     projectDAL: Pick<TProjectDALFactory, "findById">;
     projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
     projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
-    kmsCoreDomain: TKmsCoreDomain;
+    dataKeyService: TDataKeyService;
     microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   };
 };

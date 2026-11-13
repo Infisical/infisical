@@ -47,32 +47,38 @@ describe("External KMS keys on Postgres", () => {
       isFipsEnabled: () => false,
       skipRotationState: true
     });
-    return { fake, kms: core.service };
+    return { fake, module: core };
   };
 
   test("should store an external key with its provider config, encrypted with the org data key", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { kms } = await build();
+    const { module } = await build();
 
     // Action
-    const created = await kms.createExternalKms({ orgId: tn.org.id, name: "aws-key", provider: awsInputs });
+    const created = await module.kmsKeyService.createExternalKms({
+      orgId: tn.org.id,
+      name: "aws-key",
+      provider: awsInputs
+    });
 
     // Assert
     const stored = await h.db(TableName.ExternalKms).where({ kmsKeyId: created.id }).first();
     expect(stored?.provider).toBe(KmsProviders.Aws);
     expect(stored?.encryptedProviderInputs.toString()).not.toContain("secret");
-    expect((await kms.getExternalKms(created.id)).external.providerInput).toMatchObject({ awsRegion: "us-east-1" });
+    expect((await module.kmsKeyService.getExternalKms(created.id)).external.providerInput).toMatchObject({
+      awsRegion: "us-east-1"
+    });
   });
 
   test("should store nothing when the provider refuses the connection", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { kms, fake } = await build();
+    const { module, fake } = await build();
     fake.failValidation = true;
 
     // Action
-    const result = kms.createExternalKms({ orgId: tn.org.id, name: "refused", provider: awsInputs });
+    const result = module.kmsKeyService.createExternalKms({ orgId: tn.org.id, name: "refused", provider: awsInputs });
 
     // Assert
     await expect(result).rejects.toThrow("AWS error: connection refused");
@@ -82,11 +88,15 @@ describe("External KMS keys on Postgres", () => {
   test("should remove the external config with its key", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { kms } = await build();
-    const created = await kms.createExternalKms({ orgId: tn.org.id, name: "short-lived", provider: awsInputs });
+    const { module } = await build();
+    const created = await module.kmsKeyService.createExternalKms({
+      orgId: tn.org.id,
+      name: "short-lived",
+      provider: awsInputs
+    });
 
     // Action
-    await kms.deleteExternalKms(created.id);
+    await module.kmsKeyService.deleteExternalKms(created.id);
 
     // Assert
     expect(await h.db(TableName.ExternalKms).where({ kmsKeyId: created.id }).first()).toBeUndefined();
@@ -95,22 +105,32 @@ describe("External KMS keys on Postgres", () => {
   test("should keep a project's data readable after switching to an external key and back", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { kms } = await build();
-    const external = await kms.createExternalKms({ orgId: tn.org.id, name: "project-key", provider: awsInputs });
-    const cipher = await kms.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId: tn.project.id });
-    const blob = cipher.encryptor({ plainText: Buffer.from("portable") }).cipherTextBlob;
-
-    // Action
-    await kms.updateProjectSecretManagerKmsKey({
-      projectId: tn.project.id,
-      kms: { type: KmsType.External, kmsId: external.id }
+    const { module } = await build();
+    const external = await module.kmsKeyService.createExternalKms({
+      orgId: tn.org.id,
+      name: "project-key",
+      provider: awsInputs
     });
-    const onExternal = await kms.createCipherPairWithDataKey({
+    const cipher = await module.dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: tn.project.id
     });
-    await kms.updateProjectSecretManagerKmsKey({ projectId: tn.project.id, kms: { type: KmsType.Internal } });
-    const backOnInternal = await kms.createCipherPairWithDataKey({
+    const blob = cipher.encryptor({ plainText: Buffer.from("portable") }).cipherTextBlob;
+
+    // Action
+    await module.dataKeyService.updateProjectSecretManagerKmsKey({
+      projectId: tn.project.id,
+      kms: { type: KmsType.External, kmsId: external.id }
+    });
+    const onExternal = await module.dataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: tn.project.id
+    });
+    await module.dataKeyService.updateProjectSecretManagerKmsKey({
+      projectId: tn.project.id,
+      kms: { type: KmsType.Internal }
+    });
+    const backOnInternal = await module.dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: tn.project.id
     });
@@ -123,8 +143,12 @@ describe("External KMS keys on Postgres", () => {
   test("should hold no transaction open while it calls the provider", async () => {
     // Setup
     const tn = await h.newTenant();
-    const { kms, fake } = await build();
-    const external = await kms.createExternalKms({ orgId: tn.org.id, name: "watched", provider: awsInputs });
+    const { module, fake } = await build();
+    const external = await module.kmsKeyService.createExternalKms({
+      orgId: tn.org.id,
+      name: "watched",
+      provider: awsInputs
+    });
     const openTransactions: number[] = [];
     fake.onCall = async () => {
       const { rows } = (await h.db.raw(
@@ -134,11 +158,14 @@ describe("External KMS keys on Postgres", () => {
     };
 
     // Action
-    await kms.updateProjectSecretManagerKmsKey({
+    await module.dataKeyService.updateProjectSecretManagerKmsKey({
       projectId: tn.project.id,
       kms: { type: KmsType.External, kmsId: external.id }
     });
-    await kms.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId: tn.project.id });
+    await module.dataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: tn.project.id
+    });
 
     // Assert
     expect(openTransactions.length).toBeGreaterThan(0);

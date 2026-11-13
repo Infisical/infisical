@@ -1,7 +1,7 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -258,7 +258,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior,
   projectId,
   projectFolderGrantDAL,
-  kmsCoreDomain,
+  dataKeyService,
   actorOrgId,
   orgDAL,
   abortSignal
@@ -285,7 +285,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   actorOrgId: string;
   abortSignal?: AbortSignal;
 }) => {
@@ -293,7 +293,7 @@ export const fnSecretsV2FromImports = async ({
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
   const projectDecryptors = new Map<string, (value?: Buffer | null) => string>();
   const getProjectDecryptor = async (sourceProjectId: string) => {
-    const { decryptor: sourceDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor: sourceDecryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: sourceProjectId
     });

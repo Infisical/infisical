@@ -40,9 +40,9 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
 
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const orgEncryptionRingBuffer =
-    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   const identityOidcConfig = await knex(TableName.IdentityOidcAuth)
     .join(
@@ -66,7 +66,7 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
       async ({ encryptedSymmetricKey, symmetricKeyKeyEncoding, symmetricKeyTag, symmetricKeyIV, orgId, ...el }) => {
         let orgKmsService = orgEncryptionRingBuffer.getItem(orgId);
         if (!orgKmsService) {
-          orgKmsService = await kmsCoreDomain.createCipherPairWithDataKey({
+          orgKmsService = await dataKeyService.createCipherPairWithDataKey({
             type: KmsDataKey.Organization,
             orgId
           });

@@ -33,11 +33,11 @@ export type THoneyTokenCleanupServiceFactory = ReturnType<typeof honeyTokenClean
 export const honeyTokenCleanupServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
-  kmsCoreDomain,
+  dataKeyService,
   appConnectionDAL
 }: THoneyTokenCleanupServiceFactoryDep) => {
   const providerHooksByType = getHoneyTokenServiceHooksByType({
-    kmsCoreDomain,
+    dataKeyService,
     appConnectionDAL,
     honeyTokenDAL,
     honeyTokenConfigDAL
@@ -46,7 +46,7 @@ export const honeyTokenCleanupServiceFactory = ({
   const $fetchConnection = async (orgId: string, type: HoneyTokenType) => {
     const config = await honeyTokenConfigDAL.findOne({ orgId, type });
     const rawConnection = config?.connectionId ? await appConnectionDAL.findById(config.connectionId) : null;
-    return rawConnection ? decryptAppConnection(rawConnection, kmsCoreDomain) : null;
+    return rawConnection ? decryptAppConnection(rawConnection, dataKeyService) : null;
   };
 
   // Resolves each org's honey token connection once, however many of its tokens are revoked. The credentials
@@ -79,7 +79,7 @@ export const honeyTokenCleanupServiceFactory = ({
         target = { managedBy: HoneyTokenManagedBy.Organization, appConnection };
       }
 
-      const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId: honeyToken.projectId
       });

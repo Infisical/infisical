@@ -1,6 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -55,7 +55,8 @@ type TCertificateAuthorityOcspServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "setItemWithExpiry">;
 };
@@ -98,7 +99,8 @@ export const certificateAuthorityOcspServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   caKeySourceService,
   keyStore
 }: TCertificateAuthorityOcspServiceFactoryDep): TCertificateAuthorityOcspServiceFactory => {
@@ -109,8 +111,8 @@ export const certificateAuthorityOcspServiceFactory = ({
     const caCert = await certificateAuthorityCertDAL.findById(activeCaCertId);
     if (!caCert) return null;
 
-    const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({ kmsId: keyId });
+    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
     const decryptedCaCert = await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate });
 
     const resolved: TResolvedCaCertificate = {
@@ -272,7 +274,8 @@ export const certificateAuthorityOcspServiceFactory = ({
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
           projectDAL,
-          kmsCoreDomain,
+          dataKeyService,
+          kmsKeyService,
           caKeySourceService,
           prefetched: { kmsKeyId: activeCaCert.kmsKeyId }
         });

@@ -14,10 +14,10 @@ export async function up(knex: Knex) {
 
   const superAdminDAL = superAdminDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { rootKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
-  const decryptor = kmsCoreDomain.decryptWithRootKey();
-  const encryptor = kmsCoreDomain.encryptWithRootKey();
+  const decryptor = rootKeyService.decryptWithRootKey();
+  const encryptor = rootKeyService.encryptWithRootKey();
 
   const tasks = existingSuperAdminsWithGithubConnection.map(async (admin) => {
     const overrides = (

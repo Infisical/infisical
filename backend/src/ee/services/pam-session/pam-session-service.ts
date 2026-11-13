@@ -1,6 +1,6 @@
 import RE2 from "re2";
 
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -101,7 +101,7 @@ type TPamSessionServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -127,7 +127,7 @@ export const pamSessionServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   gatewayV2Service,
   gatewayPoolService,
   userDAL,
@@ -138,7 +138,7 @@ export const pamSessionServiceFactory = ({
   telemetryService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
-    const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -327,7 +327,7 @@ export const pamSessionServiceFactory = ({
       const secrets = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
-        kmsCoreDomain
+        dataKeyService
       });
 
       // A gateway fetches credentials per connection, so two can mint at once; without a single
@@ -361,7 +361,7 @@ export const pamSessionServiceFactory = ({
         projectId: session.projectId,
         sessionId,
         encryptedSessionKey: storedSessionKey,
-        kmsCoreDomain
+        dataKeyService
       });
 
       recording = {

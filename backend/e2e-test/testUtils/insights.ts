@@ -1,7 +1,7 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
-import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -38,7 +38,7 @@ export const projectScopedInsightsDepStubs: Pick<
   | "projectBotService"
   | "projectDAL"
   | "userDAL"
-  | "kmsCoreDomain"
+  | "dataKeyService"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -79,8 +79,8 @@ export const projectScopedInsightsDepStubs: Pick<
   userDAL: {
     find: unreachable("userDAL.find")
   },
-  kmsCoreDomain: {
-    createCipherPairWithDataKey: unreachable("kmsCoreDomain.createCipherPairWithDataKey")
+  dataKeyService: {
+    createCipherPairWithDataKey: unreachable("dataKeyService.createCipherPairWithDataKey")
   } as never
 };
 

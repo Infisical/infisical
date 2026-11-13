@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -61,7 +61,8 @@ type TDigiCertCodeSigningFnsDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
@@ -70,7 +71,8 @@ export const digiCertCodeSigningFns = ({
   certificateAuthorityDAL,
   certificateDAL,
   certificateBodyDAL,
-  kmsCoreDomain
+  dataKeyService,
+  kmsKeyService
 }: TDigiCertCodeSigningFnsDeps) => {
   const assertCsOrgValidatedOrContactProvided = async ({
     appConnectionId,
@@ -87,7 +89,7 @@ export const digiCertCodeSigningFns = ({
 
     let isValidated = false;
     try {
-      const { apiKey, baseUrl } = await getDigiCertClientCredentials(appConnectionId, appConnectionDAL, kmsCoreDomain);
+      const { apiKey, baseUrl } = await getDigiCertClientCredentials(appConnectionId, appConnectionDAL, dataKeyService);
       const client = createDigiCertApiClient(apiKey, baseUrl);
       const { validations } = await client.getOrganizationValidations(organizationId);
       isValidated = isDigiCertOrgValidatedForProduct(validations, productNameId);
@@ -152,7 +154,7 @@ export const digiCertCodeSigningFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsCoreDomain
+      dataKeyService
     );
     return { ca, digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
   };
@@ -371,8 +373,8 @@ export const digiCertCodeSigningFns = ({
       return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };
     }
 
-    const certificateManagerKmsId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
-    const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
     });

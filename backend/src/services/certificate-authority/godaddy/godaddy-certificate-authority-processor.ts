@@ -1,5 +1,5 @@
 import { TCertificateRequests } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -62,7 +62,7 @@ export type TGoDaddyCertificateRequestServiceDep = {
 export type TProcessGoDaddyRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TGoDaddyCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -81,7 +81,7 @@ export type TProcessGoDaddyRequestResult =
 
 const getOrCreateClient = async (
   request: TCertificateRequests,
-  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsCoreDomain">,
+  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "dataKeyService">,
   clientCache?: Map<string, TGoDaddyApiClient>
 ): Promise<TGoDaddyApiClient> => {
   if (!request.caId) {
@@ -102,7 +102,7 @@ const getOrCreateClient = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsCoreDomain: deps.kmsCoreDomain
+    dataKeyService: deps.dataKeyService
   })) as TGoDaddyConnection["credentials"];
 
   const client = createGoDaddyApiClient(

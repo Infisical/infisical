@@ -897,7 +897,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
   can exist while the effective settings are null.
 - **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
   share code with it.
-- **Keys.** Mint wraps a per-session log key with `kmsCoreDomain.wrapKey` (label `{sessionId}|v1`), even while session
+- **Keys.** Mint wraps a per-session log key with `dataKeyService.wrapKey` (label `{sessionId}|v1`), even while session
   logs are off. The layout, `sha256(label) || key` under the project data key, must not change: a session can have
   no expiry, so a key wrapped by older code may still need to open. Unwrap only through `openSessionLogKey` or
   `unwrapSessionLogKey` (`agent-vault-session-log-secrets.ts`), so a key copied onto another row is refused. A key

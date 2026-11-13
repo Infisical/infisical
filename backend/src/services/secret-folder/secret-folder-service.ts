@@ -5,7 +5,7 @@ import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
@@ -115,7 +115,7 @@ type TSecretFolderServiceFactoryDep = {
     | "findFolderIdsWithSecrets"
     | "invalidateSecretCacheByProjectId"
   >;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -149,7 +149,7 @@ export const secretFolderServiceFactory = ({
   projectDAL,
   secretChangePolicyService,
   secretV2BridgeDAL,
-  kmsCoreDomain,
+  dataKeyService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -2016,7 +2016,7 @@ export const secretFolderServiceFactory = ({
     // the entire operation: enumerate + lock the source subtree, recreate the tree at the destination, move every
     // folder's secrets (sharing this tx), then delete the emptied source root. a failure anywhere rolls all of
     // it back. side effects (snapshots/syncs/cache) are dispatched after the commit.
-    const moveCiphers = await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actorOrgId });
+    const moveCiphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId });
     const { moveResults } = await folderDAL.transaction(async (tx) => {
       const destinationParentFolder = await folderDAL.findBySecretPath(
         projectId,

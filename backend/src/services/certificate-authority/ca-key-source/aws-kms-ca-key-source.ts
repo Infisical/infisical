@@ -13,7 +13,7 @@ import { AsnConvert } from "@peculiar/asn1-schema";
 import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { ProjectType } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -54,7 +54,7 @@ const AWS_KMS_KEY_DELETION_WINDOW_DAYS = 30;
 type TAwsKmsCaKeySourceDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: TLicenseService;
 };
@@ -71,7 +71,7 @@ const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
 export const awsKmsCaKeySourceFactory = ({
   appConnectionDAL,
   appConnectionService,
-  kmsCoreDomain,
+  dataKeyService,
   projectDAL,
   licenseService
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
@@ -86,7 +86,7 @@ export const awsKmsCaKeySourceFactory = ({
       throw new BadRequestError({ message: `App connection with ID '${appConnectionId}' is not an AWS connection` });
     }
 
-    const decryptedConnection = (await decryptAppConnection(appConnection, kmsCoreDomain)) as TAwsConnection;
+    const decryptedConnection = (await decryptAppConnection(appConnection, dataKeyService)) as TAwsConnection;
     const awsConfig = await getAwsConnectionConfig(
       { ...decryptedConnection, projectType: ProjectType.CertificateManager },
       region as AWSRegion

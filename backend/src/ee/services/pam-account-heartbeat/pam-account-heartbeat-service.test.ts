@@ -87,7 +87,7 @@ const buildService = (
       resolveEffectiveGatewayId: vi.fn(async () => "gw-1"),
       assertGatewayBindingInOrg
     },
-    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
+    dataKeyService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
     projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },
     rotationHandlers

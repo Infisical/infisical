@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
@@ -41,7 +41,8 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
@@ -56,7 +57,8 @@ export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   permissionService,
   licenseService,
   caKeySourceService,
@@ -73,9 +75,9 @@ export const certificateAuthorityCrlServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caCrl.caId);
     if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caCrl.caId}' not found` });
 
-    const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
+    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: keyId
     });
 
@@ -119,9 +121,9 @@ export const certificateAuthorityCrlServiceFactory = ({
 
     const caCrls = await certificateAuthorityCrlDAL.find({ caId: ca.id }, { sort: [["createdAt", "desc"]] });
 
-    const keyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(ca.projectId);
+    const keyId = await dataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsDecryptor = await kmsCoreDomain.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: keyId
     });
 
@@ -201,7 +203,8 @@ export const certificateAuthorityCrlServiceFactory = ({
       certificateAuthoritySecretDAL,
       projectDAL,
       certificateDAL,
-      kmsCoreDomain,
+      dataKeyService,
+      kmsKeyService,
       caKeySourceService,
       keyStore,
       auditLogService,

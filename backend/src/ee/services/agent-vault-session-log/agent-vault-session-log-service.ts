@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -98,7 +98,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
   objectStorage: Pick<TObjectStorageServiceFactory, "at">;
@@ -135,7 +135,7 @@ export const agentVaultSessionLogServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   permissionService,
-  kmsCoreDomain,
+  dataKeyService,
   licenseService,
   keyStore,
   objectStorage
@@ -381,7 +381,7 @@ export const agentVaultSessionLogServiceFactory = ({
         presignedGetUrl: await folder.presignGet(key, AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS)
       }))
     );
-    const sessionKey = await unwrapSessionLogKey(keyScope, kmsCoreDomain);
+    const sessionKey = await unwrapSessionLogKey(keyScope, dataKeyService);
     return { chunks, sessionKey: sessionKey.toString("base64") };
   };
 

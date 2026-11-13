@@ -66,7 +66,7 @@ const buildFns = ({
     },
     folderDAL: { findBySecretPath: vi.fn().mockResolvedValue(FOLDER) },
     projectDAL: { findById: vi.fn().mockResolvedValue(PROJECT) },
-    kmsCoreDomain: { createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }) },
+    dataKeyService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }) },
     secretV2BridgeDAL: {
       findBySecretKeys,
       find: vi.fn(() => Promise.resolve(stored))
@@ -207,7 +207,7 @@ describe("buildSecretApprovalCommits", () => {
     expect(deps.secretVersionV2BridgeDAL.findLatestVersionMany).toHaveBeenCalledWith("folder-1", ["secret-1"], TX);
     expect(deps.secretTagDAL.findManyTagsById).toHaveBeenCalledWith("project-1", ["tag-9"], TX);
     expect(deps.secretValidationRuleService.validateSecrets).toHaveBeenCalledWith(expect.anything(), TX, cipher);
-    expect(deps.kmsCoreDomain.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(deps.dataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 
   test("rejects a create whose key already exists", async () => {

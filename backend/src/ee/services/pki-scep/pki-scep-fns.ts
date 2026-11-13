@@ -3,7 +3,7 @@ import { GeneralName, GeneralNames } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -125,7 +125,8 @@ type TGenerateScepRaCertificateDeps = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: Parameters<typeof getCaCertChains>[0]["kmsCoreDomain"];
+  dataKeyService: Parameters<typeof getCaCertChains>[0]["dataKeyService"];
+  kmsKeyService: Parameters<typeof getCaCertChains>[0]["kmsKeyService"];
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
 };
 
@@ -178,7 +179,8 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthoritySecretDAL: deps.certificateAuthoritySecretDAL,
     projectDAL: deps.projectDAL,
-    kmsCoreDomain: deps.kmsCoreDomain,
+    dataKeyService: deps.dataKeyService,
+    kmsKeyService: deps.kmsKeyService,
     caKeySourceService: deps.caKeySourceService
   });
 
@@ -187,7 +189,8 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthorityCertDAL: deps.certificateAuthorityCertDAL,
     projectDAL: deps.projectDAL,
-    kmsCoreDomain: deps.kmsCoreDomain
+    dataKeyService: deps.dataKeyService,
+    kmsKeyService: deps.kmsKeyService
   });
   const activeChain = chains[chains.length - 1];
   if (!activeChain) {
@@ -239,8 +242,8 @@ export const generateAndEncryptScepRaCertificate = async ({
 }): Promise<{ certificatePem: string; expiresAt: Date; encryptedPrivateKey: Buffer }> => {
   const raCert = await generateScepRaCertificate({ slug, caId, signRaWithCa, deps });
 
-  const certificateManagerKmsId = await deps.kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-  const kmsEncryptor = await deps.kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+  const certificateManagerKmsId = await deps.dataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsEncryptor = await deps.kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
   const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(raCert.privateKeyDer) });
 
   return { certificatePem: raCert.certificatePem, expiresAt: raCert.expiresAt, encryptedPrivateKey: cipherTextBlob };
@@ -254,7 +257,8 @@ export const isSignerCertIssuedByCa = async ({
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
-  kmsCoreDomain
+  dataKeyService,
+  kmsKeyService
 }: {
   signerCertDer: Buffer;
   signerCert?: x509.X509Certificate;
@@ -263,7 +267,8 @@ export const isSignerCertIssuedByCa = async ({
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
 }): Promise<boolean> => {
   try {
     const signerCert = providedSignerCert ?? new x509.X509Certificate(asNonSharedBuffer(signerCertDer));
@@ -277,7 +282,8 @@ export const isSignerCertIssuedByCa = async ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      kmsCoreDomain
+      dataKeyService,
+      kmsKeyService
     });
 
     const verifiedChains = await Promise.all(

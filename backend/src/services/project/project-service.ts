@@ -18,7 +18,7 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   Meter,
   PlanFeature,
@@ -205,7 +205,8 @@ type TProjectServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectAccessRequestDAL: Pick<
@@ -256,7 +257,8 @@ export const projectServiceFactory = ({
   pkiAlertDAL,
   pkiSubscriberDAL,
   keyStore,
-  kmsCoreDomain,
+  dataKeyService,
+  kmsKeyService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   slackIntegrationDAL,
@@ -346,7 +348,7 @@ export const projectServiceFactory = ({
         throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
       }
 
-      const kms = await kmsCoreDomain.getKmsById(kmsKeyId);
+      const kms = await kmsKeyService.getKmsById(kmsKeyId);
 
       if (kms.orgId !== organization.id) {
         throw new ForbiddenRequestError({
@@ -2033,7 +2035,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const secretManagerKmsKey = await kmsCoreDomain.updateProjectSecretManagerKmsKey({
+    const secretManagerKmsKey = await dataKeyService.updateProjectSecretManagerKmsKey({
       projectId,
       kms
     });
@@ -2068,7 +2070,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await kmsCoreDomain.getProjectKeyBackup(projectId);
+    const kmsBackup = await dataKeyService.getProjectKeyBackup(projectId);
     return kmsBackup;
   };
 
@@ -2098,7 +2100,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await kmsCoreDomain.loadProjectKeyBackup(projectId, backup);
+    const kmsBackup = await dataKeyService.loadProjectKeyBackup(projectId, backup);
     return kmsBackup;
   };
 
@@ -2112,8 +2114,8 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const kmsKeyId = await kmsCoreDomain.getProjectSecretManagerKmsKeyId(projectId);
-    const kmsKey = await kmsCoreDomain.getKmsById(kmsKeyId);
+    const kmsKeyId = await dataKeyService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsKeyService.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };
   };

@@ -1,5 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -59,7 +59,7 @@ type TProjectCleanupQueueFactoryDep = {
   >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "deleteById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -75,7 +75,7 @@ export const projectCleanupQueueFactory = ({
   projectDAL,
   membershipUserDAL,
   userDAL,
-  kmsCoreDomain,
+  dataKeyService,
   certificateAuthoritySecretDAL,
   caKeySourceService,
   keyStore,
@@ -222,7 +222,7 @@ export const projectCleanupQueueFactory = ({
       }
 
       // After the commit: KMS Core deletes the reserved keys the project owned once nothing else references them.
-      await kmsCoreDomain
+      await dataKeyService
         .deleteProjectKeys({ orgId: project.orgId, kmsKeyIds: deleted.kmsKeyIds })
         .catch((error) =>
           logger.error(error, `project-hard-delete: failed to delete the project's KMS keys [projectId=${projectId}]`)

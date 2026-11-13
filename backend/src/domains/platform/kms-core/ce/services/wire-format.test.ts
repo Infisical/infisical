@@ -25,12 +25,15 @@ const startOnFixture = async () => {
 describe("KMS wire format (legacy fixtures)", () => {
   test("should decrypt the org and project data-key ciphertext the legacy service wrote", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
+    const { module, fixture } = await startOnFixture();
     const { orgDataKey, projectDataKey } = fixture.vectors;
 
     // Action
-    const org = await kms.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: orgDataKey.orgId });
-    const project = await kms.createCipherPairWithDataKey({
+    const org = await module.dataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgDataKey.orgId
+    });
+    const project = await module.dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: projectDataKey.projectId
     });
@@ -47,11 +50,11 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should decrypt a v01 blob from before a rotation and a v02 blob after it", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
+    const { module, fixture } = await startOnFixture();
     const { cmek } = fixture.vectors;
 
     // Action
-    const decrypt = await kms.decryptWithKmsKey({ kmsId: cmek.kmsId });
+    const decrypt = await module.kmsKeyService.decryptWithKmsKey({ kmsId: cmek.kmsId });
 
     // Assert
     expect(await decrypt({ cipherTextBlob: b64(cmek.v01.cipherTextBlob) })).toEqual(b64(cmek.v01.plainText));
@@ -60,10 +63,10 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should produce blobs the legacy layout expects: v02 with the version for a rotated key", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
+    const { module, fixture } = await startOnFixture();
 
     // Action
-    const encrypt = await kms.encryptWithKmsKey({ kmsId: fixture.vectors.cmek.kmsId });
+    const encrypt = await module.kmsKeyService.encryptWithKmsKey({ kmsId: fixture.vectors.cmek.kmsId });
     const { cipherTextBlob } = await encrypt({ plainText: Buffer.from("x") });
 
     // Assert
@@ -73,17 +76,17 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should open the wrapped key, root key and input key vectors", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
+    const { module, fixture } = await startOnFixture();
     const { wrappedKey, rootKey, inputKey } = fixture.vectors;
 
     // Action
-    const unwrapped = await kms.unwrapKey({
+    const unwrapped = await module.dataKeyService.unwrapKey({
       projectId: wrappedKey.projectId,
       label: wrappedKey.label,
       wrappedKey: b64(wrappedKey.wrapped),
       keyBytes: 32
     });
-    const rootPlain = kms.decryptWithRootKey()(b64(rootKey.cipherTextBlob));
+    const rootPlain = module.rootKeyService.decryptWithRootKey()(b64(rootKey.cipherTextBlob));
     const inputPlain = DataKey.fromBytes(b64(inputKey.key)).decrypt(b64(inputKey.cipherTextBlob));
 
     // Assert
@@ -94,11 +97,11 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should refuse a wrapped key opened under another label", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
+    const { module, fixture } = await startOnFixture();
     const { wrappedKey } = fixture.vectors;
 
     // Action
-    const unwrapped = await kms.unwrapKey({
+    const unwrapped = await module.dataKeyService.unwrapKey({
       projectId: wrappedKey.projectId,
       label: "another-session|v1",
       wrappedKey: b64(wrappedKey.wrapped),
@@ -111,10 +114,10 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should derive the same cookie signing key from the same root key", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
+    const { module, fixture } = await startOnFixture();
 
     // Action
-    const cookieKey = kms.getCookieSigningKey();
+    const cookieKey = module.rootKeyService.getCookieSigningKey();
 
     // Assert
     expect(cookieKey).toBe(fixture.vectors.cookieSigningKey);
@@ -122,12 +125,12 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should restore the legacy backup string into a key that decrypts the project's data", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
+    const { module, fixture } = await startOnFixture();
     const { backup, projectDataKey } = fixture.vectors;
 
     // Action
-    await kms.loadProjectKeyBackup(backup.projectId, backup.secretManager);
-    const project = await kms.createCipherPairWithDataKey({
+    await module.dataKeyService.loadProjectKeyBackup(backup.projectId, backup.secretManager);
+    const project = await module.dataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: backup.projectId
     });
@@ -140,13 +143,13 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should refuse a backup with a tampered hash and keep the current key", async () => {
     // Setup
-    const { kms, fixture, memory } = await startOnFixture();
+    const { module, fixture, memory } = await startOnFixture();
     const { backup } = fixture.vectors;
     const before = memory.platformRows.projects.get(backup.projectId)?.kmsSecretManagerKeyId;
     const tampered = `${backup.secretManager.slice(0, -1)}${backup.secretManager.endsWith("0") ? "1" : "0"}`;
 
     // Action
-    const result = kms.loadProjectKeyBackup(backup.projectId, tampered);
+    const result = module.dataKeyService.loadProjectKeyBackup(backup.projectId, tampered);
 
     // Assert
     await expect(result).rejects.toThrow("Invalid backup");
@@ -155,8 +158,8 @@ describe("KMS wire format (legacy fixtures)", () => {
 
   test("should throw KmsCiphertextUndecryptableError for garbage under an internal key", async () => {
     // Setup
-    const { kms, fixture } = await startOnFixture();
-    const decrypt = await kms.decryptWithKmsKey({ kmsId: fixture.vectors.cmek.kmsId });
+    const { module, fixture } = await startOnFixture();
+    const decrypt = await module.kmsKeyService.decryptWithKmsKey({ kmsId: fixture.vectors.cmek.kmsId });
 
     // Action
     const result = decrypt({ cipherTextBlob: Buffer.alloc(64, 7) });

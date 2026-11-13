@@ -1,13 +1,13 @@
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 export type TAlertEncryptor = (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
 export type TAlertDecryptor = (data: { cipherTextBlob: Buffer }) => Buffer;
 
 export const getAlertChannelCipher = (
-  kmsCoreDomain: TKmsCoreDomain,
+  dataKeyService: TDataKeyService,
   scope: { orgId: string; projectId?: string | null }
 ) =>
-  kmsCoreDomain.createCipherPairWithDataKey(
+  dataKeyService.createCipherPairWithDataKey(
     scope.projectId
       ? { type: KmsDataKey.SecretManager, projectId: scope.projectId }
       : { type: KmsDataKey.Organization, orgId: scope.orgId }

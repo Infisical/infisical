@@ -1,6 +1,6 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AWS_REQUEST_TIMEOUTS, createS3Bucket, TS3Bucket } from "@app/lib/aws/s3";
 import { getConfig } from "@app/lib/config/env";
@@ -35,7 +35,7 @@ const CORS_CHECK_TIMEOUT_MS = 15_000;
 
 type TObjectStorageServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "incrementByIfUnderLimitWithFixedExpiry">;
 };
 
@@ -43,7 +43,7 @@ export type TObjectStorageServiceFactory = ReturnType<typeof objectStorageServic
 
 export const objectStorageServiceFactory = ({
   appConnectionDAL,
-  kmsCoreDomain,
+  dataKeyService,
   keyStore
 }: TObjectStorageServiceFactoryDep) => {
   const registeredNamespaces = new Map<string, TStorageNamespace>();
@@ -104,7 +104,7 @@ export const objectStorageServiceFactory = ({
 
     let credentials: Awaited<ReturnType<typeof getAwsConnectionConfig>>["credentials"];
     try {
-      const connection = await decryptAppConnection(raw, kmsCoreDomain);
+      const connection = await decryptAppConnection(raw, dataKeyService);
       ({ credentials } = await getAwsConnectionConfig(
         { ...connection, projectType: config.projectType } as unknown as TAwsConnectionConfig,
         region,

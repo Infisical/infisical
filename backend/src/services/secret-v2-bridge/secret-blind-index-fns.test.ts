@@ -10,17 +10,17 @@ const fakeCipher = (scope: string) => ({
   generateSecretBlindIndex: async (value: Buffer) => `${scope}:${value.toString()}`
 });
 
-const makeKmsCoreDomain = () => ({
+const makeDataKeyService = () => ({
   createCipherPairWithDataKey: vi.fn(async (ctx: { type: KmsDataKey }) =>
     fakeCipher(ctx.type === KmsDataKey.Organization ? "org" : "project")
   )
 });
 
-const makeIndexer = (kmsCoreDomain = makeKmsCoreDomain()) =>
+const makeIndexer = (dataKeyService = makeDataKeyService()) =>
   createSecretBlindIndexer({
     projectCipher: fakeCipher("project") as never,
     orgId: ORG_ID,
-    kmsCoreDomain: kmsCoreDomain as never
+    dataKeyService: dataKeyService as never
   });
 
 describe("createSecretBlindIndexer", () => {
@@ -63,13 +63,13 @@ describe("createSecretBlindIndexer", () => {
   // A bulk write can carry thousands of values, and each data key resolution can be a round trip to an
   // external KMS, so the pairs are built once for the request rather than once per value.
   it("resolves only the org data key, once, no matter how many values it indexes", async () => {
-    const kmsCoreDomain = makeKmsCoreDomain();
-    const indexer = await makeIndexer(kmsCoreDomain);
+    const dataKeyService = makeDataKeyService();
+    const indexer = await makeIndexer(dataKeyService);
 
     await Promise.all(["a", "b", "c", "d"].map((value) => indexer.generateBlindIndexes(Buffer.from(value))));
 
-    expect(kmsCoreDomain.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
-    expect(kmsCoreDomain.createCipherPairWithDataKey).toHaveBeenCalledWith({
+    expect(dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+    expect(dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledWith({
       type: KmsDataKey.Organization,
       orgId: ORG_ID
     });

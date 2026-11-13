@@ -1,6 +1,6 @@
 import { authenticator } from "otplib";
 
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -19,7 +19,7 @@ import {
 type TTotpServiceFactoryDep = {
   userDAL: TUserDALFactory;
   totpConfigDAL: TTotpConfigDALFactory;
-  kmsCoreDomain: TKmsCoreDomain;
+  rootKeyService: TRootKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   userService: Pick<TUserServiceFactory, "resolveMfaMethodAfterRemoval">;
 };
@@ -30,7 +30,7 @@ export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
 export const totpServiceFactory = ({
   totpConfigDAL,
-  kmsCoreDomain,
+  rootKeyService,
   userDAL,
   keyStore,
   userService
@@ -82,7 +82,7 @@ export const totpServiceFactory = ({
         return unverifiedTotpConfig;
       }
 
-      const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
+      const encryptWithRoot = rootKeyService.encryptWithRootKey();
 
       // create new TOTP configuration
       const secret = authenticator.generateSecret();
@@ -96,7 +96,7 @@ export const totpServiceFactory = ({
     });
 
     const user = await userDAL.findById(userId);
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
 
     const secret = decryptWithRoot(totpConfig.encryptedSecret).toString();
     const otpUrl = authenticator.keyuri(user.username, "Infisical", secret);
@@ -123,7 +123,7 @@ export const totpServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const secret = decryptWithRoot(totpConfig.encryptedSecret).toString();
     const isValid = authenticator.verify({
       token: totp,
@@ -162,7 +162,7 @@ export const totpServiceFactory = ({
       });
     }
 
-    const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
+    const decryptWithRoot = rootKeyService.decryptWithRootKey();
     const secret = decryptWithRoot(totpConfig.encryptedSecret).toString();
     const isValid = authenticator.verify({
       token: totp,

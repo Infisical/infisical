@@ -1,4 +1,4 @@
-import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -12,7 +12,7 @@ import { TAzureDevOpsSyncWithCredentials } from "./azure-devops-sync-types";
 
 type TAzureDevOpsSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsCoreDomain: TKmsCoreDomain;
+  dataKeyService: TDataKeyService;
 };
 
 interface AzureDevOpsVariableGroup {
@@ -33,7 +33,7 @@ interface AzureDevOpsVariableGroupList {
   value: AzureDevOpsVariableGroup[];
 }
 
-export const azureDevOpsSyncFactory = ({ kmsCoreDomain, appConnectionDAL }: TAzureDevOpsSyncFactoryDeps) => {
+export const azureDevOpsSyncFactory = ({ dataKeyService, appConnectionDAL }: TAzureDevOpsSyncFactoryDeps) => {
   const getConnectionAuth = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
     const { credentials } = secretSync.connection;
     const isOAuth = secretSync.connection.method === AzureDevOpsConnectionMethod.OAuth;
@@ -45,7 +45,7 @@ export const azureDevOpsSyncFactory = ({ kmsCoreDomain, appConnectionDAL }: TAzu
       });
     }
 
-    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, kmsCoreDomain);
+    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, dataKeyService);
 
     return { accessToken, orgName, isOAuth };
   };

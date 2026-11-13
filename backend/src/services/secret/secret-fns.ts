@@ -735,7 +735,7 @@ export const createManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   folderCommitService,
   eventEmitter,
-  kmsCoreDomain,
+  dataKeyService,
   resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -755,12 +755,12 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+      const projectCipher = await dataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
       const { encryptor: secretManagerEncryptor } = projectCipher;
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, kmsCoreDomain });
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, dataKeyService });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -930,7 +930,7 @@ export const updateManySecretsRawFnFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   eventEmitter,
-  kmsCoreDomain
+  dataKeyService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
@@ -950,12 +950,12 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+      const projectCipher = await dataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
       const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, kmsCoreDomain });
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, dataKeyService });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,

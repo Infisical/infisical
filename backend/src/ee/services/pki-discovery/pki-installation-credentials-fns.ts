@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 const PkiInstallationCredentialsSchema = z.object({
   keystorePassword: z.string().optional()
@@ -8,30 +8,28 @@ const PkiInstallationCredentialsSchema = z.object({
 
 type TPkiInstallationCredentials = z.infer<typeof PkiInstallationCredentialsSchema>;
 
-type TKmsService = TKmsCoreDomain;
-
 export const encryptPkiInstallationCredentials = async ({
   projectId,
   credentials,
-  kmsCoreDomain
+  dataKeyService
 }: {
   projectId: string;
   credentials: TPkiInstallationCredentials;
-  kmsCoreDomain: TKmsService;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  const { encryptor } = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
   const { cipherTextBlob } = encryptor({ plainText: Buffer.from(JSON.stringify(credentials)) });
   return cipherTextBlob;
 };
 
 export const createPkiInstallationCredentialsDecryptor = async ({
   projectId,
-  kmsCoreDomain
+  dataKeyService
 }: {
   projectId: string;
-  kmsCoreDomain: TKmsService;
+  dataKeyService: TDataKeyService;
 }) => {
-  const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  const { decryptor } = await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
   return (encryptedCredentials: Buffer): TPkiInstallationCredentials =>
     PkiInstallationCredentialsSchema.parse(JSON.parse(decryptor({ cipherTextBlob: encryptedCredentials }).toString()));
 };

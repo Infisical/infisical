@@ -44,7 +44,7 @@ export const auditReportQueueServiceFactory = ({
   auditLogDAL,
   clickhouseAuditLogDAL,
   secretValidationRuleDAL,
-  kmsCoreDomain,
+  dataKeyService,
   insightsDAL,
   dynamicSecretLeaseDAL,
   identityOrgMembershipDAL
@@ -57,7 +57,7 @@ export const auditReportQueueServiceFactory = ({
     auditLogDAL,
     clickhouseAuditLogDAL,
     secretValidationRuleDAL,
-    kmsCoreDomain
+    dataKeyService
   };
 
   const orgGeneratorDAL: TOrgAuditReportGeneratorDALs = {

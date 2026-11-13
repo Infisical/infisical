@@ -22,7 +22,7 @@ export const importDataIntoInfisicalFn = async ({
   projectEnvDAL,
   projectDAL,
   secretDAL,
-  kmsCoreDomain,
+  dataKeyService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -386,7 +386,7 @@ export const importDataIntoInfisicalFn = async ({
     for await (const projectId of createdProjectIds) {
       // The projects were committed a moment ago, so a replica may not have them yet.
       const ciphers = await prepareSecretWriteCiphers({
-        kmsCoreDomain,
+        dataKeyService,
         projectId,
         orgId: actorOrgId,
         readOptions: { readFrom: ReadFrom.Primary }
@@ -409,7 +409,7 @@ export const importDataIntoInfisicalFn = async ({
       [project.kmsSecretManagerKeyId, project.kmsCertificateKeyId].filter((id): id is string => Boolean(id))
     );
     if (kmsKeyIds.length) {
-      await kmsCoreDomain
+      await dataKeyService
         .deleteProjectKeys({ orgId: actorOrgId, kmsKeyIds })
         .catch((cleanupError) =>
           logger.error(

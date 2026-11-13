@@ -40,9 +40,9 @@ const resealInlineSecrets = async (knex: Knex) => {
   if (!hasSecrets) return;
 
   const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
-  const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const { dataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const cipherCache =
-    createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);
+    createCircularCache<Awaited<ReturnType<(typeof dataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   let lastId: string | undefined;
   let resealed = 0;
@@ -67,7 +67,7 @@ const resealInlineSecrets = async (knex: Knex) => {
     for (const row of rows) {
       let cipher = cipherCache.getItem(row.projectId);
       if (!cipher) {
-        cipher = await kmsCoreDomain.createCipherPairWithDataKey({
+        cipher = await dataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: row.projectId
         });
