@@ -687,6 +687,8 @@ const RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE = buildFolderScopedDenyRulesByR
   RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS
 );
 
+const FOLDER_EDITING_ROLES = new Set([SecretFolderRole.Edit, SecretFolderRole.Manage, SecretFolderRole.FullAccess]);
+
 export const recursiveFolderPathGlob = (folderPath: string) => `${folderPath.replace(/\/$/, "")}/**`;
 
 export const buildFolderScopedPrivilegeRules = (
@@ -715,27 +717,40 @@ export const buildFolderScopedPrivilegeRules = (
   const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
     rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
 
-  const rulesFor = (
-    grants: typeof scopedGrants,
-    denyRulesByRole: TFolderRoleRules,
-    rolePermissions: TFolderRoleRules
-  ) => [
-    ...grants.flatMap(({ role, conditions }) => withConditions(denyRulesByRole[role], conditions)),
-    ...grants.flatMap(({ role, conditions }) => withConditions(rolePermissions[role], conditions))
+  // An exact grant is built from the recursive role table when a recursive grant in its environment already lets the
+  // actor create and edit folders, so a higher exact role on a subfolder never takes that away. The two tables differ
+  // only in folder create and edit, from the edit tier up, so a lower exact role still narrows it.
+  const folderEditingEnvironments = new Set(
+    scopedGrants
+      .filter((grant) => grant.isRecursive && FOLDER_EDITING_ROLES.has(grant.role))
+      .map((grant) => grant.conditions.environment)
+  );
+  const usesRecursiveTables = (grant: (typeof scopedGrants)[number]) =>
+    grant.isRecursive || folderEditingEnvironments.has(grant.conditions.environment);
+
+  const rulesFor = (grants: typeof scopedGrants) => [
+    ...grants.flatMap((grant) =>
+      withConditions(
+        (usesRecursiveTables(grant) ? RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE : FOLDER_SCOPED_DENY_RULES_BY_ROLE)[
+          grant.role
+        ],
+        grant.conditions
+      )
+    ),
+    ...grants.flatMap((grant) =>
+      withConditions(
+        (usesRecursiveTables(grant) ? RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS : SECRET_FOLDER_ROLE_PERMISSIONS)[
+          grant.role
+        ],
+        grant.conditions
+      )
+    )
   ];
 
   // if recursive is defined for sub folder as well, we will need to change this, so it is possible to grant permission to sub folder as well.
   return [
-    ...rulesFor(
-      scopedGrants.filter((grant) => grant.isRecursive),
-      RECURSIVE_FOLDER_SCOPED_DENY_RULES_BY_ROLE,
-      RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS
-    ),
-    ...rulesFor(
-      scopedGrants.filter((grant) => !grant.isRecursive),
-      FOLDER_SCOPED_DENY_RULES_BY_ROLE,
-      SECRET_FOLDER_ROLE_PERMISSIONS
-    )
+    ...rulesFor(scopedGrants.filter((grant) => grant.isRecursive)),
+    ...rulesFor(scopedGrants.filter((grant) => !grant.isRecursive))
   ];
 };
 

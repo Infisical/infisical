@@ -303,3 +303,17 @@ func secretsAt(t *testing.T, proj *fixture.Project, secretPath string) map[strin
 	require.Equalf(t, http.StatusOK, got.status, "listing dev:%s as the admin: %s", secretPath, apierr.Body(got.body))
 	return got.values
 }
+
+func folderNamesAt(t *testing.T, proj *fixture.Project, parent string) []string {
+	t.Helper()
+	res, err := proj.Tenant().Admin.API.ListSecretFoldersWithResponse(t.Context(), &api.ListSecretFoldersParams{
+		ProjectId: proj.ID, Environment: "dev", Path: parent,
+	})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing folders in dev:%s returned %d: %s", parent, res.StatusCode(), apierr.Body(res.Body))
+	names := []string{}
+	for _, f := range res.JSON200.Folders {
+		names = append(names, f.Name)
+	}
+	return names
+}

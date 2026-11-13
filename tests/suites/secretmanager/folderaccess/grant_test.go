@@ -587,6 +587,42 @@ func TestFolderAccess_Recursive(t *testing.T) {
 		require.NotContains(t, afterRemove.with, id)
 		require.NotContains(t, afterRemove.without, id)
 	})
+	for _, k := range kinds {
+		t.Run(fmt.Sprintf("should let a %s create and rename folders under an exact edit or higher grant when a recursive edit grant covers the environment", k.name), func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			proj := newProject(t, h.NewTenant(t))
+			oldID := secretmanager.CreateFolder(t, proj, "dev", "/payments/old")
+			secretmanager.CreateFolder(t, proj, "dev", "/billing")
+			member := k.member(t, proj, "no-access")
+			recursive := grantAs(t, proj.Tenant().Admin, proj, member, at("/"), secretmanager.FolderEdit, map[string]any{"isPermissionRecursive": true})
+			require.Equalf(t, http.StatusOK, recursive.status, "granting: %s", recursive.body)
+			secretmanager.GrantFolderAccess(t, proj, member, at("/payments"), secretmanager.FolderManage)
+			secretmanager.GrantFolderAccess(t, proj, member, at("/billing"), secretmanager.FolderRead)
+
+			// Action
+			created, err := member.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
+				ProjectId: proj.ID, Environment: "dev", Path: new("/payments"), Name: "new",
+			})
+			require.NoError(t, err)
+			renamed, err := member.API.UpdateSecretFolderWithResponse(t.Context(), oldID, api.UpdateSecretFolderJSONRequestBody{
+				ProjectId: proj.ID, Environment: "dev", Path: new("/payments"), Name: "renamed",
+			})
+			require.NoError(t, err)
+			narrowed, err := member.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
+				ProjectId: proj.ID, Environment: "dev", Path: new("/billing"), Name: "new",
+			})
+			require.NoError(t, err)
+
+			// Assert
+			require.Equalf(t, http.StatusOK, created.StatusCode(), "creating under /payments: %s", created.Body)
+			require.Equalf(t, http.StatusOK, renamed.StatusCode(), "renaming under /payments: %s", renamed.Body)
+			require.ElementsMatch(t, []string{"new", "renamed"}, folderNamesAt(t, proj, "/payments"))
+			require.Equalf(t, http.StatusForbidden, narrowed.StatusCode(), "creating under /billing: %s", narrowed.Body)
+			require.Empty(t, folderNamesAt(t, proj, "/billing"))
+		})
+	}
 }
 
 func addIdentityToGroup(t *testing.T, tn *harness.Tenant, g *fixture.Group, pr *harness.Principal) {
