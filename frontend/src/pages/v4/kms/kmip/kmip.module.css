@@ -12,9 +12,11 @@
 }
 .value {
   display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--cipher-space-4);
+  min-width: 0;
+}
+.valueText {
   min-width: 0;
   overflow-wrap: anywhere;
 }

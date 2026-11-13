@@ -44,7 +44,7 @@ const CSR_PLACEHOLDER =
 
 const Literal = ({ value, label }: { value: string; label: string }) => (
   <span className={`${css.value} ${css.mono}`}>
-    {value}
+    <span className={css.valueText}>{value}</span>
     <CopyButton value={value} label={label} />
   </span>
 );
