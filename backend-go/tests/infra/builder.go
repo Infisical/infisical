@@ -16,8 +16,12 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 )
 
-// licenseFeaturePath is the path to the compiled license-fns module inside the Node.js container.
-const licenseFeaturePath = "/backend/dist/ee/services/license/license-fns.mjs"
+// The published image has the free tier at the first path until a release moves it to the
+// second, so edit whichever exists.
+var licenseFeaturePaths = []string{
+	"/backend/dist/ee/services/license/license-fns.mjs",
+	"/backend/dist/domains/platform/license/ee/services/license-policy/default-features.mjs",
+}
 
 // Builder configures which services to spin up for an integration test.
 type Builder struct {
@@ -55,7 +59,7 @@ func (b *Builder) WithNodeJSFile(file testcontainers.ContainerFile) *Builder {
 }
 
 // WithEEFeatures enables enterprise license features in the Node.js container
-// by patching the compiled license-fns.mjs before the app starts.
+// by patching the compiled free tier defaults before the app starts.
 // Feature names correspond to properties in getDefaultOnPremFeatures (e.g. "rbac", "groups").
 func (b *Builder) WithEEFeatures(features ...string) *Builder {
 	b.eeFeatures = append(b.eeFeatures, features...)
@@ -76,7 +80,7 @@ func (b *Builder) buildNodeJSCmd() []string {
 		sedExprs = append(sedExprs, fmt.Sprintf("s/%s: false/%s: true/g", feature, feature))
 	}
 
-	sedCmd := fmt.Sprintf("sed -i '%s' %s", strings.Join(sedExprs, "; "), licenseFeaturePath)
+	sedCmd := fmt.Sprintf("sed -i '%s' $(ls %s 2>/dev/null)", strings.Join(sedExprs, "; "), strings.Join(licenseFeaturePaths, " "))
 	return []string{"sh", "-c", sedCmd + " && ./standalone-entrypoint.sh"}
 }
 

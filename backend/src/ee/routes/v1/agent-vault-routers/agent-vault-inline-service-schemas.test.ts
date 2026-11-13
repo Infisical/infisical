@@ -148,3 +148,60 @@ describe("database and SSH services in the inline request schema", () => {
     ).toEqual([]);
   });
 });
+
+describe("hooks in the inline request schema", () => {
+  const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
+
+  test.each([
+    ["http", bearer("token", { hook })],
+    [
+      "mcp",
+      {
+        type: "mcp",
+        serverUrl: "https://mcp.example.com/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "token" },
+        hook
+      }
+    ],
+    [
+      "postgres",
+      {
+        type: "postgres",
+        name: "analytics",
+        host: "db.internal",
+        database: "app",
+        credential: { type: "basic", username: "agent", password: "p" },
+        hook
+      }
+    ],
+    [
+      "ssh",
+      {
+        type: "ssh",
+        name: "bastion",
+        host: "bastion.internal",
+        credential: { type: "basic", username: "agent", password: "p" },
+        hook
+      }
+    ]
+  ])("a %s service takes one", (_type, service) => {
+    expect(issuesOf([service])).toEqual([]);
+  });
+
+  test("a signing secret with braces is not a variable reference", () => {
+    expect(issuesOf([bearer("token", { hook: { ...hook, signingSecret: `{{${"s".repeat(30)}}}` } })])).toEqual([]);
+  });
+
+  test("refuses a short secret and a URL with a query string at the field", () => {
+    expect(
+      issuesOf([
+        bearer("one", { hook: { ...hook, signingSecret: "short" } }),
+        bearer("two", { hostPattern: "b.example.com", hook: { ...hook, url: "https://hooks.example.com/?a=1" } })
+      ]).map((issue) => issue.path)
+    ).toEqual([
+      [0, "hook", "signingSecret"],
+      [1, "hook", "url"]
+    ]);
+  });
+});

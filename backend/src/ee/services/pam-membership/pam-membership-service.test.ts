@@ -140,7 +140,7 @@ const buildService = ({
       })
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    usageMeteringService: { emitForProject: vi.fn() }
+    usageMeteringService: { emit: vi.fn() }
   };
 
   const service = pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]);

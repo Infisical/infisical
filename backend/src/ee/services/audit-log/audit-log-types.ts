@@ -6756,6 +6756,8 @@ interface AgentVaultServiceCreateEvent {
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
     variableKeys?: string[];
+    // The hook's URL when the service was created with one. Its signing secret is never recorded.
+    hookUrl?: string;
   };
 }
 
@@ -6784,6 +6786,11 @@ interface AgentVaultServiceUpdateEvent {
     tlsVerify?: boolean;
     // Present only when the update changed the stored CA the proxy checks the server's certificate against.
     tlsCaChanged?: "set" | "removed" | "replaced";
+    // Present only when the update changed the hook. hookUrl is set when it set the hook, changed its URL or
+    // removed it, and hookSecretReplaced when a new signing secret was saved. The secret itself is never recorded.
+    hookChanged?: "set" | "removed" | "updated";
+    hookUrl?: string;
+    hookSecretReplaced?: boolean;
     hostPattern?: string;
     credentialType?: string;
     // Present when the update connected or reauthorized an OAuth credential.
@@ -7112,6 +7119,7 @@ interface AgentVaultSessionMintEvent {
       description?: string | null;
       serviceType: string;
       serverUrl?: string;
+      transport?: string;
       // Absent for a database or SSH service, which reports host, port and database instead.
       hostPattern?: string;
       host?: string;
@@ -7125,8 +7133,11 @@ interface AgentVaultSessionMintEvent {
       headerName?: string;
       allowedMethods: string[] | null;
       allowedPathPrefixes: string[] | null;
+      // Absent for every type but MCP. Null when the agent can call every tool.
+      allowedTools?: string[] | null;
       customHeaderNames: string[];
       substitutionPlaceholders: string[];
+      hookUrl?: string;
     }[];
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;

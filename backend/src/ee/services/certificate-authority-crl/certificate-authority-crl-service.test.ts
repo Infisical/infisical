@@ -4,6 +4,8 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { describe, expect, test, vi } from "vitest";
 
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
@@ -76,7 +78,7 @@ const buildService = ({
       findOne: vi.fn(async () => ({ id: "project-1", orgId: caOrgId, kmsCertificateKeyId: "kms-1" })),
       transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb({}))
     },
-    licenseService: { getPlan: vi.fn(async () => plan) },
+    licenseService: { getPlan: vi.fn(async () => Plan.restore({ ...testFeatures(), ...plan })) },
     certificateAuthorityCrlDAL: { find: vi.fn(async () => storedCrls) },
     certificateAuthoritySecretDAL: {},
     certificateDAL: {},

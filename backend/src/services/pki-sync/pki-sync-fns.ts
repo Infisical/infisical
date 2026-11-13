@@ -1,9 +1,9 @@
 import RE2 from "re2";
 import { z, ZodSchema } from "zod";
 
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -108,14 +108,10 @@ const PKI_SYNC_LIST_OPTIONS = {
 };
 
 // Creation path only, never pki-sync-queue, so existing syncs keep running after a downgrade.
-export const assertPkiSyncLicense = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
-  orgId: string,
-  errorMessage?: string
-) => {
+export const assertPkiSyncLicense = async (licenseService: TLicenseService, orgId: string, errorMessage?: string) => {
   const plan = await licenseService.getPlan(orgId);
 
-  if (!plan.pkiSyncs) {
+  if (!plan.has(PlanFeature.PkiSyncs)) {
     throw new BadRequestError({
       message:
         errorMessage ||

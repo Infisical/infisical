@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -60,8 +61,7 @@ import {
 import {
   getSessionLogEntitlement,
   getSessionLogNotOnPlanMessage,
-  getSessionLogRetentionDays,
-  TSessionLogLicenseService
+  getSessionLogRetentionDays
 } from "./agent-vault-session-log-license-fns";
 import { TAgentVaultSessionLogDisabledReason } from "./agent-vault-session-log-schemas";
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
@@ -99,7 +99,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "unwrapKey">;
-  licenseService: TSessionLogLicenseService;
+  licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
   objectStorage: Pick<TObjectStorageServiceFactory, "at">;
 };

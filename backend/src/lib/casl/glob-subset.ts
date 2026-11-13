@@ -4,12 +4,13 @@
  *
  * This module compares segment sequences (literal, `*`, `**`) with proper containment semantics,
  * and returns `false` whenever either glob contains any other metacharacter (`?`, `[…]`, `{…}`,
- * extglob `@( )` / `+( )` / `!( )` / `?( )` / `*( )`, or intra-segment `*`).
+ * extglob `@( )` / `+( )` / `!( )` / `?( )` / `*( )`, `|` alternation, `\` escapes, or
+ * intra-segment `*`).
  */
 
 type Segment = { type: "literal"; value: string } | { type: "star" } | { type: "globstar" };
 
-const SEGMENT_METACHARACTER = /[*?[\]{}!()]/;
+const SEGMENT_METACHARACTER = /[*?[\]{}!()|\\]/;
 
 const parseSegments = (glob: string): Segment[] | null => {
   const parts = glob.split("/");
@@ -59,8 +60,10 @@ const segmentMatch = (parent: Segment[], subset: Segment[], pi: number, si: numb
 
   if (pSeg.type === "star") {
     // `*` matches a single segment of any literal/star content, but not a globstar (which spans
-    // multiple segments and is therefore broader than `*`).
+    // multiple segments and is therefore broader than `*`) and not an empty segment, which
+    // picomatch's `*` never matches ("/*" does not match "/").
     if (sSeg.type === "globstar") return false;
+    if (sSeg.type === "literal" && sSeg.value === "") return false;
     return segmentMatch(parent, subset, pi + 1, si + 1);
   }
 
@@ -79,7 +82,7 @@ const segmentMatch = (parent: Segment[], subset: Segment[], pi: number, si: numb
  * Returns true if every string matched by `subsetGlob` is also matched by `parentGlob`.
  *
  * Only reasons about globs whose segments are literals, `*`, or `**`. For any other feature
- * (intra-segment wildcards, `?`, character classes, brace expansion, extglob), returns `false`.
+ * (intra-segment wildcards, `?`, character classes, brace expansion, extglob, `|`, `\`), returns `false`.
  */
 export const isGlobSubsetOfGlob = (parentGlob: string, subsetGlob: string): boolean => {
   if (parentGlob === subsetGlob) return true;

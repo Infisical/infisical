@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
@@ -15,7 +16,6 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
@@ -28,6 +28,7 @@ import {
   TCreateGatewayPoolDTO,
   TDeleteGatewayPoolDTO,
   TGetGatewayPoolByIdDTO,
+  TGatewayPoolMemberFilter,
   TGetPlatformConnectionDetailsByPoolIdDTO,
   TListGatewayPoolsDTO,
   TRemoveGatewayFromPoolDTO,
@@ -42,7 +43,7 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
@@ -77,7 +78,7 @@ export const gatewayPoolServiceFactory = ({
 
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.gatewayPool) {
+    if (!plan.has(PlanFeature.GatewayPool)) {
       throw new BadRequestError({
         message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
       });
@@ -473,14 +474,18 @@ export const gatewayPoolServiceFactory = ({
   // Return gatewayId directly, or pick a random healthy pool member. Null when neither is set.
   const resolveEffectiveGatewayId = async ({
     gatewayId,
-    gatewayPoolId
+    gatewayPoolId,
+    filter,
+    unavailableMessage
   }: {
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
+    filter?: TGatewayPoolMemberFilter;
+    unavailableMessage?: string;
   }): Promise<string | null> => {
     if (gatewayId) return gatewayId;
     if (gatewayPoolId) {
-      const picked = await pickHealthyGateway(gatewayPoolId);
+      const picked = await selectGatewayFromPool({ poolId: gatewayPoolId, filter, unavailableMessage });
       return picked.id;
     }
     return null;

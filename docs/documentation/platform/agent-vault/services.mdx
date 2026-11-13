@@ -40,7 +40,7 @@ You choose a service's type when you pick its template:
     In your Agent Vault project, go to **Services** and select **Add Service**.
   </Step>
   <Step>
-    On the **Choose a template** panel, pick a template. The page for each [service type](#service-types) describes its steps and fields.
+    On the **Choose a template** panel, pick a template. The page for each [service type](#service-types) describes its steps and fields, and [Hooks](/documentation/platform/agent-vault/hooks) describes the **Hook** step.
   </Step>
   <Step>
     On the **Review** step, select **Add Service**. The service appears in the list, and agents can use it once you [add it to an access bundle](#add-a-service-to-an-access-bundle).
@@ -73,7 +73,7 @@ To add services through the API, call the [Add services to access bundle](/api-r
 
 ## Edit a service
 
-To edit a service, go to **Services**, open the service's actions menu, and select **Edit**. A change to a service applies in every access bundle that holds it.
+To edit a service, go to **Services**, open the service's actions menu, and select **Edit**. A change to a service applies in every access bundle that holds it. To let your own server allow or refuse the agent's requests or connections to the service, add a [hook](/documentation/platform/agent-vault/hooks) on the **Hook** step.
 
 ## Remove or delete a service
 

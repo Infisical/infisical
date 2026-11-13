@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/stretchr/testify/require"
 )
@@ -28,6 +29,29 @@ func TestAccessApprovalRequest_Review(t *testing.T) {
 		require.True(t, approved.IsApproved)
 		require.NotNil(t, approved.Privilege)
 		awaitRead(t, g.requester, g.proj, true)
+	})
+
+	t.Run("should grant only the requested folder when a request inside a glob policy is approved", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newGuarded(t, func(b policyBody) { b["secretPath"] = guardedPath + "/**" })
+		requested, sibling := guardedPath+"/api", guardedPath+"/web"
+		for _, folder := range []string{requested, sibling} {
+			secretmanager.CreateFolder(t, g.proj, "dev", folder)
+			secretmanager.CreateSecret(t, g.proj, "dev", secretKey, secretValue, secretmanager.WithPath(folder))
+		}
+		requestID := openRequest(t, g.requester, g.proj, requested, nil)
+
+		// Action
+		approve(t, g.approver, requestID)
+
+		// Assert
+		approved := requestByID(t, g.proj, requestID)
+		require.NotNil(t, approved.PolicyID)
+		require.Equal(t, g.policyID, *approved.PolicyID)
+		awaitReadAt(t, g.requester, g.proj, requested, true)
+		require.Equal(t, http.StatusForbidden, readAt(t, g.requester, g.proj, sibling))
 	})
 
 	t.Run("should close the request and grant nothing when the approver rejects", func(t *testing.T) {

@@ -18,6 +18,11 @@ output-options:
   # routes are hidden by default, and a route with no operationId gets a name derived
   # from its path that changes when the path does.
   include-operation-ids:
+    - createInternalCertificateAuthorityV1
+    - getCertificateAuthorityQuotaV1
+    - importCertificate
+    - listBillableOrganizations
+    - getBillingUsageBreakdown
     - adminBootstrap
     - updateAdminConfig
     - getInstanceStatus
@@ -776,3 +781,27 @@ output-options:
     - kmipRevoke
     - kmipLocate
     - kmipRegister
+    - getAcmeApplicationDirectory
+    - createAcmeApplicationAccount
+    - getAcmeNewNonce
+    - createAcmeOrder
+    - getAcmeOrder
+    - finalizeAcmeOrder
+    - listAcmeOrders
+    - downloadAcmeCertificate
+    - getAcmeAuthorization
+    - respondToAcmeChallenge
+    - getScepOperation
+    - getScepApplicationOperation
+    - postScepApplicationOperation
+    - getCertManagerInstanceState
+    - createAcmeCertificateAuthorityV1
+    - createCertificatePolicy
+    - createCertificateProfile
+    - createPkiApplication
+    - attachPkiApplicationProfiles
+    - setPkiApplicationAcmeEnrollment
+    - revealPkiApplicationAcmeEabSecret
+    - setPkiApplicationScepEnrollment
+    - createCloudflareAppConnection
+    - createDnsMadeEasyAppConnection

@@ -37,6 +37,10 @@ import {
   AgentVaultVariableScope,
   TAgentVaultMemberProvidedField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AgentVaultHookSigningSecretSchema,
+  AgentVaultHookUrlSchema
+} from "@app/ee/services/agent-vault/agent-vault-hook-fns";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import {
   AGENT_VAULT_MAX_NATIVE_SERVICE_NAME_LENGTH,
@@ -548,6 +552,24 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
   .superRefine(addDuplicatePlaceholderIssues)
   .describe(AGENT_VAULT.SERVICE.substitutions);
 
+const hookInputSchema = z.object({
+  url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.SERVICE.hookUrl),
+  signingSecret: AgentVaultHookSigningSecretSchema.describe(AGENT_VAULT.SERVICE.hookSigningSecret)
+});
+const hookCreateField = { hook: hookInputSchema.optional().describe(AGENT_VAULT.SERVICE.hook) };
+const hookUpdateField = {
+  hook: z
+    .object({
+      url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.SERVICE.hookUrl),
+      signingSecret: AgentVaultHookSigningSecretSchema.optional().describe(AGENT_VAULT.SERVICE.updateHookSigningSecret)
+    })
+    .nullable()
+    .optional()
+    .describe(AGENT_VAULT.SERVICE.updateHook)
+};
+const inlineHookField = { hook: hookInputSchema.optional().describe(AGENT_VAULT.SESSION.inlineHook) };
+const hookResponseSchema = z.object({ url: z.string().describe(AGENT_VAULT.SERVICE.hookUrlRead) });
+
 // Checked fully when the service builds its config; bounded here so nothing unreasonable reaches it.
 const AgentVaultNativeHostSchema = z
   .string()
@@ -660,7 +682,8 @@ const nativeCreateArm = <T extends TNativeServiceType>(type: T) =>
       name: AgentVaultNativeNameSchema.describe(AGENT_VAULT.SERVICE.nativeName),
       description: AgentVaultServiceDescriptionSchema.optional().describe(AGENT_VAULT.SERVICE.description),
       ...nativeCreateFields(type),
-      credential: nativeCredentialInputSchema({ ssh: type === AgentVaultServiceType.Ssh })
+      credential: nativeCredentialInputSchema({ ssh: type === AgentVaultServiceType.Ssh }),
+      ...hookCreateField
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -695,7 +718,8 @@ const nativeUpdateArm = <T extends TNativeServiceType>(type: T) =>
               .optional()
               .describe(AGENT_VAULT.SERVICE.updateTls)
           }),
-      credential: nativeCredentialUpdateSchema({ ssh: type === AgentVaultServiceType.Ssh }).optional()
+      credential: nativeCredentialUpdateSchema({ ssh: type === AgentVaultServiceType.Ssh }).optional(),
+      ...hookUpdateField
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -713,6 +737,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       credential: AgentVaultCredentialInputSchema,
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
       substitutions: AgentVaultSubstitutionsInputSchema.optional(),
+      ...hookCreateField,
       serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
       transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden()),
       allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
@@ -729,6 +754,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
       allowedTools: AgentVaultAllowedToolsSchema.optional(),
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      ...hookCreateField,
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
@@ -759,6 +785,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         credential: AgentVaultCredentialUpdateSchema.optional(),
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
         substitutions: AgentVaultSubstitutionsUpdateSchema.optional(),
+        ...hookUpdateField,
         serverUrl: AgentVaultServerUrlSchema.nullable().optional().describe(openApiHidden()),
         transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden()),
         allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
@@ -777,6 +804,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
         allowedTools: AgentVaultAllowedToolsSchema.optional(),
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
+        ...hookUpdateField,
         hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
         allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
         allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
@@ -905,7 +933,8 @@ const nativeInlineArm = <T extends TNativeServiceType>(type: T) =>
         ssh: type === AgentVaultServiceType.Ssh
       }).describe(
         type === AgentVaultServiceType.Ssh ? AGENT_VAULT.SERVICE.sshCredential : AGENT_VAULT.SERVICE.databaseCredential
-      )
+      ),
+      ...inlineHookField
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -923,6 +952,7 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       credential: inlineCredentialInputSchema({ mcp: false }),
       customHeaders: AgentVaultInlineCustomHeadersInputSchema.optional(),
       substitutions: AgentVaultInlineSubstitutionsInputSchema.optional(),
+      ...inlineHookField,
       serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
       transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden()),
       allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
@@ -938,12 +968,12 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       transport: AgentVaultMcpTransportSchema,
       credential: inlineCredentialInputSchema({ mcp: true }).describe(AGENT_VAULT.SESSION.inlineMcpCredential),
       customHeaders: AgentVaultInlineCustomHeadersInputSchema.optional(),
+      ...inlineHookField,
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+      allowedTools: AgentVaultAllowedToolsSchema.optional(),
       substitutions: AgentVaultInlineSubstitutionsInputSchema.optional().describe(openApiHidden()),
-      // Refused by the session service with a message, rather than dropped, so nobody believes the tools are limited.
-      allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
       ...hiddenNativeCreateFields
     })
     .describe(JSON.stringify({ title: "MCP" })),
@@ -993,7 +1023,8 @@ const serviceResponseTypeFields = {
     type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
     serverUrl: z.string().describe(AGENT_VAULT.SERVICE.serverUrlRead),
     transport: z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transportRead),
-    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.mcpHostPatternRead)
+    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.mcpHostPatternRead),
+    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools)
   },
   [AgentVaultServiceType.Postgres]: {
     type: z.literal(AgentVaultServiceType.Postgres).describe(AGENT_VAULT.SERVICE.type),
@@ -1020,7 +1051,8 @@ const serviceResponseTypeFields = {
 const inlineServiceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
-  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead)
+  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
+  hook: hookResponseSchema.nullable().describe(AGENT_VAULT.SESSION.inlineHookRead)
 };
 
 const inlineBearerCredentialSummarySchema = z
@@ -1208,7 +1240,8 @@ const serviceResponseBase = {
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
-  updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
+  updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt),
+  hook: hookResponseSchema.nullable().optional().describe(AGENT_VAULT.SERVICE.hookRead)
 };
 
 const customHeadersResponseSchema = z
@@ -1237,7 +1270,6 @@ const serviceResponseTypeExtras = <TOptional extends boolean>(optionalReferences
   [AgentVaultServiceType.Mcp]: {
     credential: credentialSummarySchemas[AgentVaultServiceType.Mcp],
     customHeaders: customHeadersResponseSchema,
-    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
     variableReferences: variableReferencesField(AgentVaultServiceType.Mcp, optionalReferences)
   },
   [AgentVaultServiceType.Postgres]: {
