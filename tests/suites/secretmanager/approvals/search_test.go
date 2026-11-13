@@ -1,6 +1,8 @@
 package approvals_test
 
 import (
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -112,6 +114,22 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 
 		// Assert
 		require.Equal(t, []uuid.UUID{requests["/services/orders/checkout-api"]}, found)
+	})
+
+	t.Run("should refuse a search longer than 255 characters", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p, _ := requestsByFolder(t, "/**", "/services/orders/checkout-api")
+
+		// Action
+		res, err := p.reviewer.API.ListSecretApprovalRequestsWithResponse(t.Context(), &api.ListSecretApprovalRequestsParams{
+			ProjectId: p.proj.ID, Search: new(strings.Repeat("/", 256)),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusUnprocessableEntity, res.StatusCode())
 	})
 
 	t.Run("should find nothing when no request is under the path searched", func(t *testing.T) {
