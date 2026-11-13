@@ -1,6 +1,6 @@
 import { type FormEvent, useRef, useState } from "react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { Button } from "@infisical/cipher/ui/button";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -20,7 +20,7 @@ import styles from "../auth.module.css";
 
 export const AccountRecoveryEmailPage = () => {
   const preview = useAuthPreview();
-  const scheme = useV4Scheme();
+  const scheme = useScheme();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(preview === "sent" ? "ada@acme.dev" : "");
   const [step, setStep] = useState(preview === "sent" ? 2 : 1);

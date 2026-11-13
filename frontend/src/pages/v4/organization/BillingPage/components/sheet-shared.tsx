@@ -62,7 +62,7 @@ export type CostSummaryRowProps = {
 };
 
 const COST_VALUE_TONE = {
-  warn: "text-[color:var(--v4-warn)]",
+  warn: "text-[color:var(--cipher-warn)]",
   muted: "text-muted-foreground"
 } as const;
 

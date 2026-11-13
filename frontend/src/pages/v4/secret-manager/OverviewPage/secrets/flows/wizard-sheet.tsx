@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Steps } from "@infisical/cipher/ui/multi-step";
 import {
@@ -15,7 +15,7 @@ import {
 import styles from "./flows.module.css";
 
 export function ProviderLogo({ image, size = 20 }: { image?: string; size?: number }) {
-  const theme = useV4Scheme();
+  const theme = useScheme();
   const onLight = image?.replace(/\.(png|svg)$/, ".on-light.$1");
   const [failed, setFailed] = useState<string[]>([]);
   const candidates = [theme === "light" ? onLight : undefined, image].filter(

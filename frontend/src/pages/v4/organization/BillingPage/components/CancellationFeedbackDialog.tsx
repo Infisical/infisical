@@ -13,7 +13,6 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import type { IconName } from "@infisical/cipher/ui/icon";
 import { Media } from "@infisical/cipher/ui/item";
-import { Label } from "@infisical/cipher/ui/label";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 import { SmallText } from "@infisical/cipher/ui/text";
@@ -146,19 +145,15 @@ export const CancellationFeedbackDialog = ({
                   disabled={isSubmitting}
                   className="sm:grid-cols-2"
                 >
-                  {CANCELLATION_REASONS.map((reason) => {
-                    const id = `cancellation-reason-${reason.value}`;
-                    return (
-                      <div key={reason.value} className="flex items-center gap-3">
-                        <RadioGroupItem
-                          id={id}
-                          value={reason.value}
-                          aria-invalid={Boolean(fieldState.error) || undefined}
-                        />
-                        <Label htmlFor={id}>{reason.label}</Label>
-                      </div>
-                    );
-                  })}
+                  {CANCELLATION_REASONS.map((reason) => (
+                    <RadioGroupItem
+                      key={reason.value}
+                      id={`cancellation-reason-${reason.value}`}
+                      value={reason.value}
+                      label={reason.label}
+                      aria-invalid={Boolean(fieldState.error) || undefined}
+                    />
+                  ))}
                 </RadioGroup>
               </Field>
             )}

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { Button } from "@infisical/cipher/ui/button";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -47,7 +47,7 @@ export const EmailStep = ({
   callbackPort,
   isPreview
 }: Props) => {
-  const scheme = useV4Scheme();
+  const scheme = useScheme();
   const { config } = useServerConfig();
   const { mutateAsync, isPending } = useSendVerificationEmail();
   const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);

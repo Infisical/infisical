@@ -440,7 +440,7 @@ function ReconciliationDiagram({
         destination={BEFORE_DESTINATION}
       />
       <div className={styles.diagramDivider}>
-        <Icon name="arrow-down" size="var(--v4-size-icon-xs)" />
+        <Icon name="arrow-down" size="var(--cipher-size-icon-xs)" />
         <span className={flowStyles.eyebrow}>First sync runs</span>
       </div>
       <DiagramSection
@@ -690,7 +690,7 @@ function KeySchemaField({ destinationName }: { destinationName: string }) {
               <div className={styles.keyPreview} aria-hidden="true">
                 <DiagramColumn label="Infisical" rows={[{ name: SAMPLE_KEY }]} />
                 <span className={styles.keyPreviewArrow}>
-                  <Icon icon={ArrowRightIcon} size="var(--v4-size-icon-xs)" />
+                  <Icon icon={ArrowRightIcon} size="var(--cipher-size-icon-xs)" />
                 </span>
                 <DiagramColumn label={destinationName} rows={[{ name: preview(field.value) }]} />
               </div>

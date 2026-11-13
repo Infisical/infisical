@@ -339,7 +339,7 @@ export const interactiveTooltipContent = (text: string) => {
 };
 
 const flatHoverGround =
-  /^background(?:-color)?\s*:\s*(?:var\(--v4-(?:tint|surface|inset|sidebar|line-soft|paper|pop|frame|select)(?:,[^)]*)?\)|#[0-9a-f]{3,8}|rgba?\([^)]*\))\s*$/i;
+  /^background(?:-color)?\s*:\s*(?:var\(--cipher-(?:tint|surface|inset|sidebar|line-soft|paper|pop|frame|select)(?:,[^)]*)?\)|#[0-9a-f]{3,8}|rgba?\([^)]*\))\s*$/i;
 
 /** A :hover rule that paints its own element with a flat ground instead of the shared hover overlay. */
 export const flatHoverBackgrounds = (selector: string, body: string) => {
@@ -784,11 +784,11 @@ export const v4Checks: readonly V4Check[] = [
     message:
       "A four-sided border is a surface edge, so it takes line-soft. Keep line for a standalone rule that touches no other border.",
     appliesTo: isAuthored,
-    css: [/(?:^|[;{\s])border(?:-color)?\s*:[^;{}]*var\(--v4-line\)/g],
+    css: [/(?:^|[;{\s])border(?:-color)?\s*:[^;{}]*var\(--cipher-line\)/g],
     classString: (value) =>
       /(?:^|\s)border(?:-\d+)?(?=\s|$)/.test(value) &&
-      value.includes("border-[color:var(--v4-line)]")
-        ? ["border-[color:var(--v4-line)]"]
+      value.includes("border-[color:var(--cipher-line)]")
+        ? ["border-[color:var(--cipher-line)]"]
         : []
   },
   {
@@ -862,9 +862,9 @@ export const v4Checks: readonly V4Check[] = [
     appliesTo: isAuthored,
     css: [
       /box-shadow\s*:\s*inset\s+(?!-|0(?:px)?\s)[^\s;]+\s+0(?:px)?\s+0(?:px)?\s/g,
-      /border-(?:left|inline-start)(?:-color)?\s*:[^;]*var\(--v4-(?!line\b|size-|space-)[\w-]+\)/g
+      /border-(?:left|inline-start)(?:-color)?\s*:[^;]*var\(--cipher-(?!line\b|size-|space-)[\w-]+\)/g
     ],
-    markup: [/\bborder-[ls](?:-\d+)?-\[color:var\(--v4-(?!line\b)[\w-]+\)\]/g]
+    markup: [/\bborder-[ls](?:-\d+)?-\[color:var\(--cipher-(?!line\b)[\w-]+\)\]/g]
   },
   {
     id: "row-action-reveal",
@@ -956,7 +956,7 @@ export const v4Checks: readonly V4Check[] = [
     id: "flat-hover",
     rule: "translucent-hover",
     message:
-      "Hover grounds use the shared overlay: background var(--v4-hover) (var(--v4-press) while pressed), translucent ink that lands on whatever sits underneath. Never paint a hovered element with a flat ground such as tint, surface or a literal color; where an opaque fill is needed, mix ink at var(--v4-hover-mix) into that ground in srgb.",
+      "Hover grounds use the shared overlay: background var(--cipher-hover) (var(--cipher-press) while pressed), translucent ink that lands on whatever sits underneath. Never paint a hovered element with a flat ground such as tint, surface or a literal color; where an opaque fill is needed, mix ink at var(--cipher-hover-mix) into that ground in srgb.",
     appliesTo: isCss,
     cssBlock: flatHoverBackgrounds
   },

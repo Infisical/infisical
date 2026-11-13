@@ -75,8 +75,8 @@ export const CodeSigningSection = ({ projectId }: { projectId: string }) => {
       onRangeChange={setRange}
       emptyTitle="No signing operations yet"
       series={[
-        { key: "success", label: "Success", color: "var(--v4-ok)" },
-        { key: "failed", label: "Failed", color: "var(--v4-bad)", dashed: true }
+        { key: "success", label: "Success", color: "var(--cipher-ok)" },
+        { key: "failed", label: "Failed", color: "var(--cipher-bad)", dashed: true }
       ]}
       controls={
         <Select

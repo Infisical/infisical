@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { Button } from "@infisical/cipher/ui/button";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Text } from "@infisical/cipher/ui/text";
@@ -41,7 +41,7 @@ export const VerifyCodeStep = ({
   previewError
 }: Props) => {
   const { t } = useTranslation();
-  const scheme = useV4Scheme();
+  const scheme = useScheme();
   const { mutateAsync: resendEmail, isPending: isResending } = useSendVerificationEmail();
   const {
     mutateAsync: verifyCode,

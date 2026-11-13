@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { V4Scope } from "@infisical/cipher/scope";
+import { CipherScope } from "@infisical/cipher/scope";
 
 import { PageTitle } from "@app/components/PageTitle";
 import type { TBrandingConfig } from "@app/hooks/api/secretSharing/types";
@@ -27,14 +27,14 @@ export const BrandedLayout = ({
     <div className={styles.branded} style={theme.page}>
       <PageTitle title={pageTitle} />
       {config.hasLogo && <img src={logoUrl} alt="Logo" className={styles.logo} />}
-      <V4Scope
+      <CipherScope
         theme={theme.panelTheme}
         portalContainer={null}
         className={styles.panel}
         style={theme.panel}
       >
         {children}
-      </V4Scope>
+      </CipherScope>
     </div>
   );
 };

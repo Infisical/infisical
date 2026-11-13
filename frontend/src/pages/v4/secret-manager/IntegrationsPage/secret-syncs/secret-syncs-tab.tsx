@@ -247,7 +247,7 @@ export const SecretSyncsTab = ({
             {sync.description && (
               <Tooltip content={sync.description}>
                 <span data-row-interactive aria-label="Description">
-                  <Icon name="info" size="var(--v4-size-icon-xs)" />
+                  <Icon name="info" size="var(--cipher-size-icon-xs)" />
                 </span>
               </Tooltip>
             )}

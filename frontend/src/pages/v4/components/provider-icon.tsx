@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@infisical/cipher/lib/utils";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { Icon } from "@infisical/cipher/ui/icon";
 
 import styles from "./provider-icon.module.css";
@@ -46,7 +46,7 @@ export function ProviderIcon({
   size?: "sm" | "md" | "lg" | "xl";
   ref?: React.Ref<HTMLImageElement>;
 }) {
-  const src = providerIconPath(icon, useV4Scheme() ?? "light");
+  const src = providerIconPath(icon, useScheme() ?? "light");
   const [failedSrc, setFailedSrc] = React.useState<string>();
   if (failedSrc === src)
     return (

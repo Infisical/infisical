@@ -20,7 +20,7 @@ export const PasswordInput = ({ placeholder = PASSWORD_PLACEHOLDER, ...props }: 
           variant="ghost"
           size="icon-sm"
           iconOnly
-          icon="eye"
+          icon={isVisible ? "eye-off" : "eye"}
           aria-label={isVisible ? "Hide password" : "Show password"}
           aria-pressed={isVisible}
           onClick={() => setIsVisible((current) => !current)}

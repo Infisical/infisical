@@ -1044,7 +1044,7 @@ function SecretRowView({
           />
           <TableCell
             pin="start"
-            pinOffset="var(--v4-size-row)"
+            pinOffset="var(--cipher-size-row)"
             className={styles.nameCell}
             data-override-rule={first.override !== undefined || undefined}
           >
@@ -1078,7 +1078,7 @@ function SecretRowView({
             </TableCell>
             <TableCell
               pin="start"
-              pinOffset="var(--v4-size-row)"
+              pinOffset="var(--cipher-size-row)"
               className={styles.nameCell}
               data-override-rule
             >
@@ -1145,7 +1145,7 @@ function SecretRowView({
             onToggle={() => setExpanded(!expanded)}
             kind="secret"
           />
-          <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
+          <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
             <div className={styles.nameLine}>
               <span className={styles.truncate} title={name}>
                 {name}

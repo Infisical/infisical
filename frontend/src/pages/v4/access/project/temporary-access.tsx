@@ -173,7 +173,9 @@ export const DurationPicker = ({
         disabledReason={disabledReason}
         aria-label={`${label}: ${text}`}
       >
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--v4-space-6)" }}>
+        <span
+          style={{ display: "inline-flex", alignItems: "center", gap: "var(--cipher-space-6)" }}
+        >
           {grant.isTemporary && (expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />)}
           {text}
         </span>

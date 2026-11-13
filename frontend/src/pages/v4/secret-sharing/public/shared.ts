@@ -37,18 +37,18 @@ export const brandTheme = (primary: string, secondary: string) => {
     page: {
       "--brand-page": `linear-gradient(to bottom right, ${shift(primary, isLight(primary) ? -20 : 20)}, ${primary})`
     } as CSSProperties,
-    panelTheme: lightPanel ? "peach" : "dark",
+    panelTheme: lightPanel ? "light" : "dark",
     panel: {
       background: secondary,
       borderColor: line,
-      "--v4-line": line,
-      "--v4-line-soft": line,
-      "--v4-inset": inset,
-      "--v4-surface": inset,
-      "--v4-tint": inset,
-      "--v4-paper": inset,
-      "--v4-control-surface": inset,
-      "--v4-control-surface-hover": inset
+      "--cipher-line": line,
+      "--cipher-line-soft": line,
+      "--cipher-inset": inset,
+      "--cipher-surface": inset,
+      "--cipher-tint": inset,
+      "--cipher-paper": inset,
+      "--cipher-control-surface": inset,
+      "--cipher-control-surface-hover": inset
     } as CSSProperties
   };
 };

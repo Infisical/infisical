@@ -361,8 +361,8 @@ export const PamAccountsPage = () => {
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "var(--v4-space-8)",
-                    marginInlineStart: "var(--v4-space-8)",
+                    gap: "var(--cipher-space-8)",
+                    marginInlineStart: "var(--cipher-space-8)",
                     verticalAlign: "middle"
                   }}
                 >
@@ -395,8 +395,8 @@ export const PamAccountsPage = () => {
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "var(--v4-space-8)",
-                  marginInlineStart: "var(--v4-space-8)",
+                  gap: "var(--cipher-space-8)",
+                  marginInlineStart: "var(--cipher-space-8)",
                   verticalAlign: "middle"
                 }}
               >

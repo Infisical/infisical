@@ -263,7 +263,10 @@ export function AccessInsightsSheet({
                         </TableCell>
                         {columns.map((column) => (
                           <TableCell key={column.action} className={styles.permissionColumn}>
-                            <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+                            <Skeleton
+                              width="var(--cipher-size-glyph)"
+                              height="var(--cipher-size-glyph)"
+                            />
                           </TableCell>
                         ))}
                         <TableActionsCell slots={1} />

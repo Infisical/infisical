@@ -3,7 +3,7 @@
   min-width: 0;
 }
 .pair {
-  max-width: var(--v4-size-measure-field);
+  max-width: var(--cipher-size-measure-field);
 }
 .assets {
   display: flex;
@@ -12,21 +12,21 @@
 .asset {
   display: flex;
   align-items: center;
-  gap: var(--v4-space-12);
-  padding: var(--v4-space-12) var(--v4-space-16);
+  gap: var(--cipher-space-12);
+  padding: var(--cipher-space-12) var(--cipher-space-16);
 }
 .asset + .asset {
-  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
+  border-top: var(--cipher-size-control-border) solid var(--cipher-line-soft);
 }
 .assetPreview {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: var(--v4-size-control-lg);
-  height: var(--v4-size-control-lg);
-  border: var(--v4-size-control-border) solid var(--v4-line-soft);
-  background: var(--v4-inset);
+  width: var(--cipher-size-control-lg);
+  height: var(--cipher-size-control-lg);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  background: var(--cipher-inset);
 }
 .assetImage {
   width: 100%;
@@ -34,10 +34,10 @@
   object-fit: contain;
 }
 .swatch {
-  width: var(--v4-size-nested-sm);
-  height: var(--v4-size-nested-sm);
+  width: var(--cipher-size-nested-sm);
+  height: var(--cipher-size-nested-sm);
   padding: 0;
-  border: var(--v4-size-control-border) solid var(--v4-line-soft);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
   background: none;
 }
 .swatch::-webkit-color-swatch-wrapper {

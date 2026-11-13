@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Controller, type FieldValues, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -133,7 +133,7 @@ const LIGHT_LOGOS: Record<string, string> = {
 };
 
 function ProviderLogo({ type, size = "md" }: { type: SecretRotation; size?: "sm" | "md" }) {
-  const theme = useV4Scheme();
+  const theme = useScheme();
   const { image, name } = SECRET_ROTATION_MAP[type];
   const source = theme === "light" ? (LIGHT_LOGOS[image] ?? image) : image;
   return (
@@ -486,7 +486,7 @@ function RotationSteps({
   const offset = isUpdate ? 0 : 1;
   return (
     <div className="flex min-h-0 flex-1">
-      <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--v4-line-soft)] px-5 py-6">
+      <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--cipher-line-soft)] px-5 py-6">
         <SmallText muted>Setup steps</SmallText>
         <Steps
           orientation="vertical"
@@ -778,7 +778,7 @@ export function SecretRotationFlow({
             ) : (
               <div
                 data-scroll-fade="y"
-                className="min-h-0 flex-1 overflow-y-auto p-[var(--v4-space-overlay-inset)]"
+                className="min-h-0 flex-1 overflow-y-auto p-[var(--cipher-space-overlay-inset)]"
               >
                 <ProviderSelect onSelect={select} />
               </div>

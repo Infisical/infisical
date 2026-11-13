@@ -105,7 +105,7 @@ const NONE = "none";
 const mask = "••••••••••••••••••••••";
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 const indent = (depth?: number) =>
-  depth ? { paddingInlineStart: `calc(var(--v4-space-24) * ${depth})` } : undefined;
+  depth ? { paddingInlineStart: `calc(var(--cipher-space-24) * ${depth})` } : undefined;
 
 function MatrixRow({
   label,
