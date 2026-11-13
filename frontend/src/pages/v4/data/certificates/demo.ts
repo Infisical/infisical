@@ -295,6 +295,105 @@ const store = createFixtureStore<TCertificate[]>([
     tlsServer,
     CertKeyAlgorithm.ML_DSA_65,
     { applicationName: "platform-core", renewBeforeDays: 10 }
+  ),
+  certificate(
+    "4b7d2e90-1c3a-4f86-9e52-a0d8c6b3f714",
+    "auth.acme.dev",
+    ["auth.acme.dev", "login.acme.dev"],
+    "D2:6A:1F:84:C9:3B:07:E5",
+    364,
+    0.4,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { applicationName: "identity-service" }
+  ),
+  certificate(
+    "9a1c5e73-8b2f-4d04-b6e9-3f7a0c2d5e81",
+    "smtp-relay.acme.dev",
+    ["smtp-relay.acme.dev"],
+    "3B:E8:72:0D:A5:4C:91:F6",
+    728,
+    2,
+    tlsServer,
+    CertKeyAlgorithm.RSA_4096,
+    { source: CertSource.Imported, profileId: undefined, profileName: undefined }
+  ),
+  certificate(
+    "f2e86b1d-5a94-4c37-8d0e-7b3c1a9f6e25",
+    "mqtt.iot.acme.internal",
+    ["mqtt.iot.acme.internal"],
+    "8C:15:D9:6E:B0:27:A3:4F",
+    86,
+    4,
+    mtlsClient,
+    CertKeyAlgorithm.ECDSA_P256,
+    { applicationName: "iot-fleet", renewBeforeDays: 3 }
+  ),
+  certificate(
+    "6d0a3f58-e7c1-4b92-a4d6-1e9b5c8f2a07",
+    "cdn-origin.acme.dev",
+    ["cdn-origin.acme.dev", "assets.acme.dev"],
+    "E4:3D:A0:58:1F:C6:7B:92",
+    71,
+    19,
+    tlsServer,
+    CertKeyAlgorithm.ECDSA_P256,
+    { applicationName: "web-dashboard", renewBeforeDays: 30 }
+  ),
+  certificate(
+    "c8b47e12-3d69-4a05-9f1b-6a2e0d7c4b93",
+    "postgres-replica.platform-core.internal",
+    ["postgres-replica.platform-core.internal"],
+    "17:9F:C3:E2:54:0A:B8:6D",
+    313,
+    52,
+    mtlsClient,
+    CertKeyAlgorithm.RSA_2048,
+    { applicationName: "platform-core" }
+  ),
+  certificate(
+    "1e9f4a26-b7d3-4c80-8e15-9c6b2f0a7d34",
+    "status.acme.dev",
+    ["status.acme.dev"],
+    "A9:04:6B:D1:3E:F8:25:C7",
+    24,
+    66,
+    { ...tlsServer, enrollmentType: EnrollmentType.ACME },
+    CertKeyAlgorithm.ECDSA_P256,
+    { renewBeforeDays: 30 }
+  ),
+  certificate(
+    "b5c3d08e-6f2a-4917-a3e4-8d1f7b0c9e62",
+    "ldap.corp.acme.internal",
+    ["ldap.corp.acme.internal"],
+    "52:E7:0C:9B:A6:13:F4:D8",
+    659,
+    71,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { source: CertSource.Discovered, profileId: undefined, profileName: undefined }
+  ),
+  certificate(
+    "7f2b9c41-0e5d-4a68-b3c7-2d4e8a6f1b09",
+    "s3-gateway.acme.dev",
+    ["s3-gateway.acme.dev"],
+    "C0:8E:47:2A:D5:B9:61:3F",
+    276,
+    89,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { applicationName: "storage" }
+  ),
+  certificate(
+    "3c6e1a97-d4b8-4f20-9a5e-0b7c3d2f8e46",
+    "docs.acme.dev",
+    ["docs.acme.dev"],
+    "6F:B2:19:E0:7C:44:A8:D3",
+    247,
+    118,
+    { ...tlsServer, enrollmentType: EnrollmentType.ACME },
+    CertKeyAlgorithm.ECDSA_P256,
+    { renewBeforeDays: 30 }
   )
 ]);
 

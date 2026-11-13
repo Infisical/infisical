@@ -110,6 +110,7 @@ import { Route as v4CertManagerSettingsPageRouteImport } from './pages/v4/cert-m
 import { Route as v4CertManagerRequestsPageRouteImport } from './pages/v4/cert-manager/RequestsPage/route'
 import { Route as v4CertManagerDashboardPageRouteImport } from './pages/v4/cert-manager/DashboardPage/route'
 import { Route as v4CertManagerInventoryPageRouteImport } from './pages/v4/cert-manager/InventoryPage/route'
+import { Route as v4CertManagerExpiringPageRouteImport } from './pages/v4/cert-manager/ExpiringPage/route'
 import { Route as v4ProjectAuditLogsPageCertManagerRouteImport } from './pages/v4/project/AuditLogsPage/cert-manager/route'
 import { Route as v4ProjectAccessControlPageCertManagerRouteImport } from './pages/v4/project/AccessControlPage/cert-manager/route'
 import { Route as v4AdminResourceOverviewPageRouteImport } from './pages/v4/admin/ResourceOverviewPage/route'
@@ -1258,6 +1259,13 @@ const v4CertManagerInventoryPageRouteRoute =
   v4CertManagerInventoryPageRouteImport.update({
     id: '/cert-manager/inventory',
     path: '/cert-manager/inventory',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4CertManagerExpiringPageRouteRoute =
+  v4CertManagerExpiringPageRouteImport.update({
+    id: '/cert-manager/expiring',
+    path: '/cert-manager/expiring',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -4534,6 +4542,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4ProjectAuditLogsPageCertManagerRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/cert-manager/expiring': {
+      id: '/v4/organizations/$orgId/cert-manager/expiring'
+      path: '/cert-manager/expiring'
+      fullPath: '/v4/organizations/$orgId/cert-manager/expiring'
+      preLoaderRoute: typeof v4CertManagerExpiringPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/cert-manager/inventory': {
       id: '/v4/organizations/$orgId/cert-manager/inventory'
       path: '/cert-manager/inventory'
@@ -7148,6 +7163,7 @@ interface v4OrganizationRouteRouteChildren {
   v4RedirectsSecretScanningIndexRedirectRouteRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   v4ProjectAccessControlPageCertManagerRouteRoute: typeof v4ProjectAccessControlPageCertManagerRouteRoute
   v4ProjectAuditLogsPageCertManagerRouteRoute: typeof v4ProjectAuditLogsPageCertManagerRouteRoute
+  v4CertManagerExpiringPageRouteRoute: typeof v4CertManagerExpiringPageRouteRoute
   v4CertManagerInventoryPageRouteRoute: typeof v4CertManagerInventoryPageRouteRoute
   v4CertManagerDashboardPageRouteRoute: typeof v4CertManagerDashboardPageRouteRoute
   v4CertManagerRequestsPageRouteRoute: typeof v4CertManagerRequestsPageRouteRoute
@@ -7209,6 +7225,7 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4ProjectAccessControlPageCertManagerRouteRoute,
   v4ProjectAuditLogsPageCertManagerRouteRoute:
     v4ProjectAuditLogsPageCertManagerRouteRoute,
+  v4CertManagerExpiringPageRouteRoute: v4CertManagerExpiringPageRouteRoute,
   v4CertManagerInventoryPageRouteRoute: v4CertManagerInventoryPageRouteRoute,
   v4CertManagerDashboardPageRouteRoute: v4CertManagerDashboardPageRouteRoute,
   v4CertManagerRequestsPageRouteRoute: v4CertManagerRequestsPageRouteRoute,
@@ -8786,6 +8803,7 @@ export interface FileRoutesByFullPath {
   '/v4/admin/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/access-management': typeof v4ProjectAccessControlPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/audit-logs': typeof v4ProjectAuditLogsPageCertManagerRouteRoute
+  '/v4/organizations/$orgId/cert-manager/expiring': typeof v4CertManagerExpiringPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/requests': typeof v4CertManagerRequestsPageRouteRoute
@@ -9205,6 +9223,7 @@ export interface FileRoutesByTo {
   '/v4/admin/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/access-management': typeof v4ProjectAccessControlPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/audit-logs': typeof v4ProjectAuditLogsPageCertManagerRouteRoute
+  '/v4/organizations/$orgId/cert-manager/expiring': typeof v4CertManagerExpiringPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/requests': typeof v4CertManagerRequestsPageRouteRoute
@@ -9617,6 +9636,7 @@ export interface FileRoutesById {
   '/v4/admin/_v4-admin-shell/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/access-management': typeof v4ProjectAccessControlPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/audit-logs': typeof v4ProjectAuditLogsPageCertManagerRouteRoute
+  '/v4/organizations/$orgId/cert-manager/expiring': typeof v4CertManagerExpiringPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/requests': typeof v4CertManagerRequestsPageRouteRoute
@@ -10053,6 +10073,7 @@ export interface FileRouteTypes {
     | '/v4/admin/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/access-management'
     | '/v4/organizations/$orgId/cert-manager/audit-logs'
+    | '/v4/organizations/$orgId/cert-manager/expiring'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/requests'
@@ -10471,6 +10492,7 @@ export interface FileRouteTypes {
     | '/v4/admin/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/access-management'
     | '/v4/organizations/$orgId/cert-manager/audit-logs'
+    | '/v4/organizations/$orgId/cert-manager/expiring'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/requests'
@@ -10881,6 +10903,7 @@ export interface FileRouteTypes {
     | '/v4/admin/_v4-admin-shell/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/access-management'
     | '/v4/organizations/$orgId/cert-manager/audit-logs'
+    | '/v4/organizations/$orgId/cert-manager/expiring'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/requests'
@@ -11551,6 +11574,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/secret-scanning/",
         "/v4/organizations/$orgId/cert-manager/access-management",
         "/v4/organizations/$orgId/cert-manager/audit-logs",
+        "/v4/organizations/$orgId/cert-manager/expiring",
         "/v4/organizations/$orgId/cert-manager/inventory",
         "/v4/organizations/$orgId/cert-manager/overview",
         "/v4/organizations/$orgId/cert-manager/requests",
@@ -11905,6 +11929,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/cert-manager/audit-logs": {
       "filePath": "v4/project/AuditLogsPage/cert-manager/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/cert-manager/expiring": {
+      "filePath": "v4/cert-manager/ExpiringPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/cert-manager/inventory": {
