@@ -183,8 +183,9 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     tx: Knex
   ) => {
     try {
-      // A diff scan can overlap a full scan of the same resource. Without this, both could take one location as new,
-      // and the second would reopen a finding resolved after the first saved it.
+      // A diff scan can overlap a full scan of the same resource. Without this, both could miss a value's finding and each
+      // create one, splitting the value in two, since nothing else keeps one finding per value; or both could take one
+      // location as new, and the second would fail on the locations' unique index.
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingLocations(resourceId)]);
 
       const findingIdByFingerprint = new Map<string, string>();

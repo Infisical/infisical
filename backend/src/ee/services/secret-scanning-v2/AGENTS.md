@@ -32,7 +32,8 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   that records the scan's progress. Only a location the resource didn't have can create a finding or reopen a
   `resolved` one; a rescan of history must change nothing. False positives and ignored findings just gain the
   location. It takes a per-resource advisory lock (`PgSqlLock.SecretScanningFindingLocations`) first, so a diff scan
-  and a full scan of one resource can't both take a location as new.
+  and a full scan of one resource can't both create a finding for one value (no unique index keeps one finding per
+  value, so the previous release still works after a rollback) or both take a location as new.
 - A fingerprint is `commit:file:rule:line:column` with the scanner's own column, and full and diff scans must build
   the same one for the same leak, or a full scan sees a known leak as a new location and reopens it.
 - Findings from before blind indexes existed have a NULL blind index and one location each, and stay that way.
