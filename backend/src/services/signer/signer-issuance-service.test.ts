@@ -198,11 +198,11 @@ describe("signerIssuanceService attaching an issued certificate", () => {
 
     await service.processJob(JOB_ID);
 
-    const keptCertificate = [
+    const keptCertificate: unknown[] = [
       { id: JOB_ID, status: SignerIssuanceJobStatus.Pending },
       { status: SignerIssuanceJobStatus.Pending, certificateId: NEW_CERT_ID }
     ];
-    const closedJob = [
+    const closedJob: unknown[] = [
       { id: JOB_ID, status: SignerIssuanceJobStatus.Pending },
       expect.objectContaining({
         status: SignerIssuanceJobStatus.Failed,
@@ -696,7 +696,9 @@ describe("signerIssuanceService failing a job", () => {
     expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
       { id: JOB_ID, status: SignerIssuanceJobStatus.Pending },
       expect.objectContaining({
-        externalOrderRef: expect.objectContaining({ digicert: expect.objectContaining({ orderId: 9970 }) }) as object
+        externalOrderRef: expect.objectContaining({
+          digicert: expect.objectContaining({ orderId: 9970 }) as unknown
+        }) as unknown
       })
     );
   });
