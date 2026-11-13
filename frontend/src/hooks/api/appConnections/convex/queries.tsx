@@ -26,11 +26,11 @@ export const useConvexConnectionListDeployments = (
   return useQuery({
     queryKey: convexConnectionKeys.listDeployments(connectionId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TConvexDeployment[]>(
+      const { data } = await apiRequest.get<{ deployments: TConvexDeployment[] }>(
         `/api/v1/app-connections/convex/${connectionId}/deployments`
       );
 
-      return data;
+      return data.deployments;
     },
     ...options
   });

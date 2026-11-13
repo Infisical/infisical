@@ -189,7 +189,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Convex:
       primaryText = destinationConfig.deploymentName;
-      secondaryText = destinationConfig.deploymentUrl;
+      secondaryText = "Convex Deployment";
       break;
     case SecretSync.CloudflareSecretsStore:
       primaryText = destinationConfig.storeName || destinationConfig.storeId;

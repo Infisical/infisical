@@ -7,18 +7,11 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 export const ConvexSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Convex }>();
   const deploymentName = watch("destinationConfig.deploymentName");
-  const deploymentUrl = watch("destinationConfig.deploymentUrl");
 
   return (
-    <>
-      <Detail>
-        <DetailLabel>Deployment</DetailLabel>
-        <DetailValue>{deploymentName}</DetailValue>
-      </Detail>
-      <Detail>
-        <DetailLabel>Deployment URL</DetailLabel>
-        <DetailValue>{deploymentUrl}</DetailValue>
-      </Detail>
-    </>
+    <Detail>
+      <DetailLabel>Deployment</DetailLabel>
+      <DetailValue>{deploymentName}</DetailValue>
+    </Detail>
   );
 };

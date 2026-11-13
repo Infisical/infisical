@@ -5,7 +5,6 @@ import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 export type TConvexSync = TRootSecretSync & {
   destination: SecretSync.Convex;
   destinationConfig: {
-    deploymentUrl: string;
     deploymentName: string;
   };
   connection: {

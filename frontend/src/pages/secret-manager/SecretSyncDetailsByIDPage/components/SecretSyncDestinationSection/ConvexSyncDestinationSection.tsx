@@ -6,20 +6,12 @@ type Props = {
 };
 
 export const ConvexSyncDestinationSection = ({ secretSync }: Props) => {
-  const {
-    destinationConfig: { deploymentName, deploymentUrl }
-  } = secretSync;
+  const { destinationConfig } = secretSync;
 
   return (
-    <>
-      <Detail>
-        <DetailLabel>Deployment</DetailLabel>
-        <DetailValue>{deploymentName}</DetailValue>
-      </Detail>
-      <Detail>
-        <DetailLabel>Deployment URL</DetailLabel>
-        <DetailValue>{deploymentUrl}</DetailValue>
-      </Detail>
-    </>
+    <Detail>
+      <DetailLabel>Deployment</DetailLabel>
+      <DetailValue>{destinationConfig.deploymentName}</DetailValue>
+    </Detail>
   );
 };
