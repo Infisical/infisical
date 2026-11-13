@@ -1,19 +1,22 @@
-import type { InstanceEntitlements, TInstanceFeatures } from "@app/domains/platform/license/ce/module";
+import type { InstanceEntitlements, TInstanceFeatures, TLicenseService } from "@app/domains/platform/license/ce/module";
 
-type TEntitlementsHolder = {
-  get: () => InstanceEntitlements;
-  set: (entitlements: InstanceEntitlements) => void;
-};
+// Innermost override last, so a spec can override inside an override and restore in any order.
+const overrides: InstanceEntitlements[] = [];
 
 // Server-wide, not per org: every org gets the instance's plan. Call the restore in afterAll and keep
 // specs that rely on it in the same file.
 export const overrideLicenseFeatures = (features: Partial<Record<keyof TInstanceFeatures, boolean | number>>) => {
-  const { licenseEntitlements } = (globalThis as unknown as { testServices: { licenseEntitlements: TEntitlementsHolder } })
+  const { licenseService } = (globalThis as unknown as { testServices: { licenseService: TLicenseService } })
     .testServices;
-  const original = licenseEntitlements.get();
-  licenseEntitlements.set(original.withFeatures(features as Partial<TInstanceFeatures>));
+  const overridden = licenseService
+    .getInstanceEntitlements()
+    .withFeatures(features as Partial<TInstanceFeatures>);
+  overrides.push(overridden);
+  // LicenseService reads the instance license only through this method, so the spy covers every check.
+  const spy = vi.spyOn(licenseService, "getInstanceEntitlements").mockImplementation(() => overrides[overrides.length - 1]);
 
   return () => {
-    licenseEntitlements.set(original);
+    overrides.splice(overrides.lastIndexOf(overridden), 1);
+    if (!overrides.length) spy.mockRestore();
   };
 };

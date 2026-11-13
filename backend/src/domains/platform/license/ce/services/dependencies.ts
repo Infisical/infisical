@@ -3,6 +3,12 @@ import { Meter } from "../models/meter";
 import { Plan } from "../models/plan";
 import { TEntitlementOrg, TOrgDeletedResult } from "./helpers/license-server-types";
 
+// The instance's license: resolved once at boot, then replaced only by LicenseService.refreshInstanceEntitlements.
+export type TInstanceEntitlementsCache = {
+  get(): InstanceEntitlements;
+  set(instanceEntitlements: InstanceEntitlements): void;
+};
+
 export type TPlanCache = {
   read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean }>;
   write(rootOrgId: string, plan: Plan): Promise<void>;

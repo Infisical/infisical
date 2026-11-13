@@ -5,13 +5,13 @@ import type { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
 import type { TQueueServiceFactory } from "@app/queue";
 
+import { InstanceEntitlementsCache } from "./data-access/instance-entitlements-cache";
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
 import { InstanceEntitlements } from "./models/instance-entitlements";
 import { TLicensePolicyService, TLicenseServer, TUsageCounter } from "./services/dependencies";
 import { CounterRegistry, seatUsageCounters } from "./services/helpers/usage-counters";
 import { UsageQueue, UsageQueues } from "./services/helpers/usage-queue";
-import { InstanceEntitlementsHolder } from "./services/license/instance-entitlements-holder";
 import { LicenseService, TLicenseService } from "./services/license/service";
 import { TUsageMeteringService, UsageMeteringService } from "./services/usage-metering/service";
 import { TUsageReportService, UsageReportService } from "./services/usage-report/service";
@@ -59,9 +59,6 @@ export class LicenseModule {
 
   readonly usageMeteringService: TUsageMeteringService;
 
-  // Exposed for the e2e suite's license overrides.
-  readonly instanceEntitlementsHolder: InstanceEntitlementsHolder;
-
   private readonly counterRegistry: CounterRegistry;
 
   private readonly usageReportService: TUsageReportService;
@@ -77,7 +74,6 @@ export class LicenseModule {
     instanceEntitlements: InstanceEntitlements
   ) {
     const { keyStore, organizationsProjectsService, licensePolicyService, licenseServer } = deps;
-    this.instanceEntitlementsHolder = new InstanceEntitlementsHolder(instanceEntitlements);
     const usageReportCache = new UsageReportCache(keyStore);
     this.counterRegistry = new CounterRegistry([
       ...seatUsageCounters(organizationsProjectsService),
@@ -87,7 +83,7 @@ export class LicenseModule {
     const usageQueue = new UsageQueue(deps.queueService, licenseServer, usageReportCache, this.counterRegistry);
 
     this.licenseService = new LicenseService(
-      this.instanceEntitlementsHolder,
+      new InstanceEntitlementsCache(instanceEntitlements),
       new PlanCache(keyStore),
       usageQueue,
       organizationsProjectsService,
@@ -132,7 +128,7 @@ export class LicenseModule {
       name: "license-usage-flush",
       pattern: "0 0 * * *",
       runHashTtlS: 60 * 60,
-      enabled: !this.instanceEntitlementsHolder.isCloud() && !this.deps.licensePolicyService.isOffline(),
+      enabled: !this.licenseService.getInstanceEntitlements().isCloud() && !this.deps.licensePolicyService.isOffline(),
       handler: async () => this.usageReportService.flushInstanceUsage()
     });
   }
@@ -145,10 +141,7 @@ export class LicenseModule {
       intervalMs: 10 * 60 * 1000,
       // Throw on failure so startLocalRefresh logs it as a failed run. The last entitlements stay until a
       // refresh succeeds.
-      task: async () => {
-        const refreshed = await this.deps.licensePolicyService.refreshInstanceEntitlements();
-        if (refreshed) this.instanceEntitlementsHolder.set(refreshed);
-      }
+      task: () => this.licenseService.refreshInstanceEntitlements()
     });
   }
 }

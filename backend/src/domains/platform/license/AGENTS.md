@@ -20,7 +20,7 @@ anyone can edit into a paid one.
 | Layer | Holds |
 | --- | --- |
 | `ce/models/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data |
-| `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names |
+| `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names; `InstanceEntitlementsCache` (in memory) |
 | `ce/services/` | `license/`, `usage-metering/`, `usage-report/`, `dependencies.ts` |
 | `ce/services/helpers/` | `UsageQueue`, `usage-counters.ts` (`CounterRegistry` and the seat counters), and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
 | `ee/services/license-policy/` | `LicensePolicyService` (the instance's license: cloud, online or offline key, or community; and cloud org plans), with `default-features.ts` (the free tier only), `license-key.ts` (key parsing, offline key shape), entitlement projection (the only place the free tier is applied), feature mapping |
@@ -36,11 +36,11 @@ Rules:
   pods share them during a rolling deploy.
 - **Only a License Server failure writes the fallback plan** (`fetchPlanOrFallback`). DB or key store errors
   throw, so they never clobber a cached paid plan.
-- **`getPlan` returns a `Plan`, which keeps its props private and frozen.** Check a feature with
+- **`getPlan` returns a `Plan`, which keeps its features private and frozen.** Check a feature with
   `plan.has(PlanFeature.X)` / `plan.assert(PlanFeature.X)`, a product a plan can switch off (null means available)
   with `plan.allows(PlanProduct.X)`, and read data through its getters (`slug`, `rateLimits`, ...). Add a getter only
   for data with no rule attached. `toJSON()` returns a mutable copy for the cache and API responses. Code holding only
-  the instance's feature props wraps them in `Plan.restore(...)` first. A new feature gets a `PlanFeature` member and a `featureNames` entry
+  the instance's features wraps them in `Plan.restore(...)` first. A new feature gets a `PlanFeature` member and a `featureNames` entry
   (the compiler requires both).
 - **Check a numeric limit through the plan, never by reading the field.** Name it with the `PlanLimit` enum (add a
   member for a new limit). `plan.limit(PlanLimit.X)` is the cap the plan enforces (null when uncapped),
@@ -71,6 +71,10 @@ Rules:
   `TUsageCounter` from the owning product domain. organizations-projects never imports License. A meter's
   `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).
+- **The instance license lives in `InstanceEntitlementsCache`** (in memory, per process), not in a service.
+  `LicenseService.refreshInstanceEntitlements` is its only writer, called by the module's background sync and by
+  `refreshPlan` on self-hosted. Inside `LicenseService`, read it only through `this.getInstanceEntitlements()`: the
+  e2e suite's `overrideLicenseFeatures` spies on that method, so a direct cache read would escape the override.
 - **Build it with `LicenseModule.create(deps)`**, which reads the instance license first so nothing runs without
   one. `start()` only registers the usage workers and daily flush. `UsageReportService` stays inside the module: only its queues and cron call it.
 - **CE never sees the usage wire format.** The EE client builds the body and idempotency key and maps responses

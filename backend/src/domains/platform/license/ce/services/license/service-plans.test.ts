@@ -397,3 +397,35 @@ describe("LicenseService.closeDeletedOrg", () => {
     expect(licenseServer.fetches).toHaveLength(1);
   });
 });
+
+describe("LicenseService.refreshInstanceEntitlements", () => {
+  test("should serve the online license's new plan after a refresh", async () => {
+    // Setup
+    const licenseServer = selfHostedLicenseServer();
+    licenseServer.online = true;
+    const { licenseService } = await buildLicense({ licenseServer });
+    licenseServer.instance = { ...licenseServer.instance, features: { ...enterprisePlan(), slug: "pro" } };
+
+    // Action
+    await licenseService.refreshInstanceEntitlements();
+
+    // Assert
+    expect(licenseService.getInstanceEntitlements().plan().slug).toBe("pro");
+  });
+
+  test("should throw and keep the current license when the License Server fails", async () => {
+    // Setup
+    const licenseServer = selfHostedLicenseServer();
+    licenseServer.online = true;
+    const { licenseService } = await buildLicense({ licenseServer });
+    licenseServer.instance = { ...licenseServer.instance, features: { ...enterprisePlan(), slug: "pro" } };
+    licenseServer.refreshFailure = new Error("License Server unreachable");
+
+    // Action
+    const result = licenseService.refreshInstanceEntitlements();
+
+    // Assert
+    await expect(result).rejects.toThrow("License Server unreachable");
+    expect(licenseService.getInstanceEntitlements().plan().slug).toBe("enterprise");
+  });
+});

@@ -1,8 +1,8 @@
 /* eslint-disable class-methods-use-this */
 import { ExternalSystemError } from "@app/domains/lib/errors";
 
-import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../models/instance-entitlements";
-import { Plan, TPlanProps } from "../models/plan";
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsRecord } from "../models/instance-entitlements";
+import { Plan, TPlanFeatures } from "../models/plan";
 import {
   TLicensePolicyService,
   TLicenseServer,
@@ -15,7 +15,7 @@ import { enterprisePlan, testFeatures } from "./test-features";
 
 // Plays both EE's provider and the License Server in memory. Cloud by default.
 export class FakeLicenseServer implements TLicensePolicyService, TLicenseServer {
-  instance: TInstanceEntitlementsProps = {
+  instance: TInstanceEntitlementsRecord = {
     instanceType: InstanceType.Cloud,
     features: testFeatures(),
     licenseId: null,
@@ -28,7 +28,7 @@ export class FakeLicenseServer implements TLicensePolicyService, TLicenseServer 
 
   refreshFailure: Error | null = null;
 
-  plans = new Map<string, TPlanProps>();
+  plans = new Map<string, TPlanFeatures>();
 
   fetches: string[] = [];
 

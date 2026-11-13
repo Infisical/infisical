@@ -1,7 +1,7 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { applyJitter } from "@app/lib/dates";
 
-import { Plan, TPlanProps } from "../models/plan";
+import { Plan, TPlanFeatures } from "../models/plan";
 import { TPlanCache } from "../services/dependencies";
 
 // Same key names and TTLs as the old pods so a rolling deploy shares the cache. Always keyed by root org,
@@ -36,7 +36,7 @@ export class PlanCache implements TPlanCache {
       PlanKeys.passThrough(rootOrgId)
     ]);
     return {
-      plan: plan ? Plan.restore(JSON.parse(plan) as TPlanProps) : null,
+      plan: plan ? Plan.restore(JSON.parse(plan) as TPlanFeatures) : null,
       passThrough: Boolean(passThrough)
     };
   }
@@ -66,7 +66,7 @@ export class PlanCache implements TPlanCache {
   async lastKnown(rootOrgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {
     const [raw] = await this.keyStore.getItems([PlanKeys.lastKnown(rootOrgId)]);
     if (!raw) return null;
-    const { plan, fetchedAt } = JSON.parse(raw) as { plan: TPlanProps; fetchedAt: number };
+    const { plan, fetchedAt } = JSON.parse(raw) as { plan: TPlanFeatures; fetchedAt: number };
     return { plan: Plan.restore(plan), fetchedAt };
   }
 

@@ -56,7 +56,7 @@ import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-e
 import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { Meter, Plan, TPlanProps } from "@app/domains/platform/license/ce/module";
+import { Meter, Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
 import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
@@ -69,7 +69,7 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
-const planWith = (props: Partial<TPlanProps>) => Plan.restore({ ...testFeatures(), ...props });
+const planWith = (features: Partial<TPlanFeatures>) => Plan.restore({ ...testFeatures(), ...features });
 
 const countAgentVaultSeats = (orgId: string) => {
   const organizationsProjectsService = new OrganizationsProjectsModule({ db: testDb }).service;

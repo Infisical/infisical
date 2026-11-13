@@ -3,7 +3,7 @@ import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
@@ -127,7 +127,7 @@ const objectFor = (lastRecordAtMs: number, proxyId = PROXY_ID) => {
 };
 
 type TFeedEntry = [string, string[]];
-type TPlanProps = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
+type TPlanFeatures = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
 
 type TOverrides = {
   proxy?: unknown;
@@ -137,13 +137,13 @@ type TOverrides = {
   feedAddFails?: boolean;
   feedAddHangs?: boolean;
   isAdmin?: boolean;
-  plan?: TPlanProps;
+  plan?: TPlanFeatures;
   planFallback?: boolean;
-  lastKnownPlan?: { plan: TPlanProps; ageMs: number } | null;
+  lastKnownPlan?: { plan: TPlanFeatures; ageMs: number } | null;
   statsFail?: boolean;
 };
 
-const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlanProps = {}) =>
+const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlanFeatures = {}) =>
   ({
     ...testFeatures(),
     agentVaultByoS3: hasExternal,

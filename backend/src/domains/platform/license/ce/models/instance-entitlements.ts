@@ -1,4 +1,4 @@
-import { Plan, TPlanProps } from "./plan";
+import { Plan, TPlanFeatures } from "./plan";
 
 export enum InstanceType {
   OnPrem = "self-hosted",
@@ -14,56 +14,64 @@ export enum InstanceFeature {
   InstanceUserManagement = "instanceUserManagement"
 }
 
-export type TInstanceFeatures = TPlanProps & {
+export type TInstanceFeatures = TPlanFeatures & {
   fips: boolean;
   instanceUserManagement: boolean;
 };
 
-export type TInstanceEntitlementsProps = {
+export type TInstanceEntitlementsRecord = {
   instanceType: InstanceType;
   features: TInstanceFeatures;
-  // Only set on an offline license.
   licenseId: string | null;
   customerId: string | null;
 };
 
 export class InstanceEntitlements {
-  private constructor(private readonly props: TInstanceEntitlementsProps) {}
+  private constructor(
+    readonly instanceType: InstanceType,
+    private readonly features: TInstanceFeatures,
+    // Only set on an offline license.
+    private readonly offlineLicenseId: string | null,
+    private readonly customerId: string | null
+  ) {}
 
-  static restore(props: TInstanceEntitlementsProps): InstanceEntitlements {
-    return new InstanceEntitlements(props);
-  }
-
-  get instanceType(): InstanceType {
-    return this.props.instanceType;
+  static restore({ instanceType, features, licenseId, customerId }: TInstanceEntitlementsRecord): InstanceEntitlements {
+    return new InstanceEntitlements(instanceType, features, licenseId, customerId);
   }
 
   get licenseId(): string {
-    return this.props.licenseId ?? "unknown";
+    return this.offlineLicenseId ?? "unknown";
   }
 
   has(feature: InstanceFeature): boolean {
-    return Boolean(this.props.features[feature]);
+    return Boolean(this.features[feature]);
   }
 
   isCloud(): boolean {
-    return this.props.instanceType === InstanceType.Cloud;
+    return this.instanceType === InstanceType.Cloud;
   }
 
   // Keeps the instance flags on purpose: the admin console reads instanceUserManagement from the org's plan.
   plan(): Plan {
-    return Plan.restore(this.props.features);
+    return Plan.restore(this.features);
   }
 
   // For the e2e suite's license overrides.
   withFeatures(features: Partial<TInstanceFeatures>): InstanceEntitlements {
-    return new InstanceEntitlements({
-      ...this.props,
-      features: { ...this.props.features, ...features }
-    });
+    return new InstanceEntitlements(
+      this.instanceType,
+      { ...this.features, ...features },
+      this.offlineLicenseId,
+      this.customerId
+    );
   }
 
-  toJSON(): TInstanceEntitlementsProps {
-    return this.props;
+  toJSON(): TInstanceEntitlementsRecord {
+    return {
+      instanceType: this.instanceType,
+      features: this.features,
+      licenseId: this.offlineLicenseId,
+      customerId: this.customerId
+    };
   }
 }

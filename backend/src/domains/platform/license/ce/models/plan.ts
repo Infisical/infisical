@@ -9,7 +9,7 @@ export type TPlanNotice = {
   cause: string | null;
 };
 
-export type TPlanProps = {
+export type TPlanFeatures = {
   _id: null;
   slug: string | null;
   productPlans?: {
@@ -269,52 +269,52 @@ export class Plan {
   };
 
   // Cloned so freezing never reaches the caller's object (the instance features, a test's fixture).
-  private readonly props: TPlanProps;
+  private readonly features: TPlanFeatures;
 
-  private constructor(props: TPlanProps) {
-    this.props = deepFreeze(structuredClone(props));
+  private constructor(features: TPlanFeatures) {
+    this.features = deepFreeze(structuredClone(features));
   }
 
-  static restore(props: TPlanProps): Plan {
-    return new Plan(props);
+  static restore(features: TPlanFeatures): Plan {
+    return new Plan(features);
   }
 
   get slug(): string | null {
-    return this.props.slug;
+    return this.features.slug;
   }
 
   // No slug means community edition, or the fallback served while the License Server is down.
   get isPaid(): boolean {
-    return Boolean(this.props.slug);
+    return Boolean(this.features.slug);
   }
 
   get isOffline(): boolean {
-    return Boolean(this.props.isOffline);
+    return Boolean(this.features.isOffline);
   }
 
-  get productPlans(): Readonly<TPlanProps["productPlans"]> {
-    return this.props.productPlans;
+  get productPlans(): Readonly<TPlanFeatures["productPlans"]> {
+    return this.features.productPlans;
   }
 
-  get notices(): Readonly<TPlanProps["notices"]> {
-    return this.props.notices;
+  get notices(): Readonly<TPlanFeatures["notices"]> {
+    return this.features.notices;
   }
 
-  get rateLimits(): Readonly<TPlanProps["rateLimits"]> {
-    return this.props.rateLimits;
+  get rateLimits(): Readonly<TPlanFeatures["rateLimits"]> {
+    return this.features.rateLimits;
   }
 
   // Null keeps logs forever.
   get auditLogsRetentionDays(): number | null {
-    return this.props.auditLogsRetentionDays;
+    return this.features.auditLogsRetentionDays;
   }
 
   get agentVaultSessionLogRetentionDays(): number | null {
-    return this.props.agentVaultSessionLogRetentionDays;
+    return this.features.agentVaultSessionLogRetentionDays;
   }
 
   has(feature: PlanFeature): boolean {
-    return Boolean(this.props[feature]);
+    return Boolean(this.features[feature]);
   }
 
   assert(feature: PlanFeature): void {
@@ -330,19 +330,19 @@ export class Plan {
     switch (name) {
       // Enterprise is uncapped unless it opts into enforcement, and 0 has always meant no cap.
       case PlanLimit.Identities:
-        if (this.props.slug === "enterprise" && !this.props.enforceIdentityLimit) return null;
-        return this.props.identityLimit || null;
+        if (this.features.slug === "enterprise" && !this.features.enforceIdentityLimit) return null;
+        return this.features.identityLimit || null;
       // A contract granting more internal CAs than total CAs is a License Server misconfiguration, so the larger
       // grant wins. Only when both are numbers: the free tier caps maxCas at 1 and leaves maxInternalCas null.
       case PlanLimit.CertificateAuthorities: {
-        const { maxCas, maxInternalCas } = this.props;
+        const { maxCas, maxInternalCas } = this.features;
         return typeof maxCas === "number" && typeof maxInternalCas === "number"
           ? Math.max(maxCas, maxInternalCas)
           : (maxCas ?? null);
       }
       default: {
         // Offline v1 licenses carry a frozen feature snapshot, so a limit added since can be missing.
-        const cap = this.props[name] as number | null | undefined;
+        const cap = this.features[name] as number | null | undefined;
         return typeof cap === "number" ? cap : null;
       }
     }
@@ -360,15 +360,15 @@ export class Plan {
 
   // Whether the plan leaves this product available: only an explicit false switches it off.
   allows(product: PlanProduct): boolean {
-    return this.props[product] !== false;
+    return this.features[product] !== false;
   }
 
   withWorkspacesUsed(workspacesUsed: number): Plan {
-    return new Plan({ ...this.props, workspacesUsed });
+    return new Plan({ ...this.features, workspacesUsed });
   }
 
   // A mutable copy, for the cache and API responses.
-  toJSON(): TPlanProps {
-    return structuredClone(this.props);
+  toJSON(): TPlanFeatures {
+    return structuredClone(this.features);
   }
 }

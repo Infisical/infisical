@@ -173,14 +173,14 @@ describe("Plan.allows", () => {
 });
 
 describe("Plan immutability", () => {
-  test("should not change when the props it was restored from change afterwards", () => {
+  test("should not change when the features it was restored from change afterwards", () => {
     // Setup
-    const props = { ...testFeatures(), rbac: true };
-    const plan = Plan.restore(props);
+    const features = { ...testFeatures(), rbac: true };
+    const plan = Plan.restore(features);
 
     // Action
-    props.rbac = false;
-    props.rateLimits.readLimit = 1;
+    features.rbac = false;
+    features.rateLimits.readLimit = 1;
 
     // Assert
     expect([plan.has(PlanFeature.Rbac), plan.rateLimits.readLimit]).toEqual([

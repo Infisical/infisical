@@ -1,4 +1,4 @@
-import { Plan, PlanFeature, TLicenseService, TPlanProps } from "@app/domains/platform/license/ce/module";
+import { Plan, PlanFeature, TLicenseService, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { logger } from "@app/lib/logger";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -34,7 +34,7 @@ export const getSessionLogEntitlement = async (
   storageType: ObjectStorageType
 ): Promise<{
   entitlement: TSessionLogEntitlement;
-  plan: Pick<TPlanProps, "agentVaultSessionLogRetentionDays"> | null;
+  plan: Pick<TPlanFeatures, "agentVaultSessionLogRetentionDays"> | null;
 }> => {
   const plan = await licenseService.getPlan(orgId);
   const isOnPlan = hasStorageOnPlan(plan, storageType);
@@ -68,5 +68,5 @@ export const getSessionLogEntitlement = async (
 
 // For other plan limits null means no limit, but here it still means the default number of days, so that a plan
 // never keeps logs in default storage forever by accident. Make null mean "keep forever" here if that's ever wanted.
-export const getSessionLogRetentionDays = (plan: Pick<TPlanProps, "agentVaultSessionLogRetentionDays"> | null) =>
+export const getSessionLogRetentionDays = (plan: Pick<TPlanFeatures, "agentVaultSessionLogRetentionDays"> | null) =>
   plan?.agentVaultSessionLogRetentionDays ?? AGENT_VAULT_SESSION_LOG_DEFAULT_RETENTION_DAYS;

@@ -5,10 +5,9 @@ import { logger } from "@app/lib/logger";
 import { InstanceEntitlements } from "../../models/instance-entitlements";
 import { Plan } from "../../models/plan";
 import { SeatUsage } from "../../models/seat-usage";
-import { TLicensePolicyService, TLicenseServer, TPlanCache } from "../dependencies";
+import { TInstanceEntitlementsCache, TLicensePolicyService, TLicenseServer, TPlanCache } from "../dependencies";
 import { TEntitlementOrg, TOrgDeletedResult } from "../helpers/license-server-types";
 import { UsageQueue } from "../helpers/usage-queue";
-import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
 
 export type TRefreshPlanOptions = {
   // After a billing change: keep serving the cached plan and refresh in the background, since the License
@@ -18,6 +17,9 @@ export type TRefreshPlanOptions = {
 
 export type TLicenseService = {
   getInstanceEntitlements(): InstanceEntitlements;
+  // Self-hosted with an online license: reads it from the License Server again. Throws when that fails, and the
+  // current license stays. The module's background sync calls it.
+  refreshInstanceEntitlements(): Promise<void>;
   // Whether LICENSE_KEY or LICENSE_KEY_OFFLINE holds an offline key, whether or not it verifies.
   hasOfflineLicenseKey(): boolean;
   getPlan(orgId: string): Promise<Plan>;
@@ -39,7 +41,7 @@ export type TLicenseService = {
 
 export class LicenseService implements TLicenseService {
   constructor(
-    private readonly instanceEntitlementsHolder: InstanceEntitlementsHolder,
+    private readonly instanceEntitlementsCache: TInstanceEntitlementsCache,
     private readonly planCache: TPlanCache,
     private readonly usageQueue: UsageQueue,
     private readonly organizationsProjectsService: TOrganizationsProjectsService,
@@ -47,8 +49,9 @@ export class LicenseService implements TLicenseService {
     private readonly licenseServer: TLicenseServer
   ) {}
 
+  // Every read goes through here, so there is one place that answers what the instance is licensed for.
   getInstanceEntitlements(): InstanceEntitlements {
-    return this.instanceEntitlementsHolder.get();
+    return this.instanceEntitlementsCache.get();
   }
 
   hasOfflineLicenseKey(): boolean {
@@ -58,7 +61,7 @@ export class LicenseService implements TLicenseService {
   // Self-hosted orgs get the instance license. On cloud, if the License Server is down the org gets the
   // fallback plan until the cache expires.
   async getPlan(orgId: string): Promise<Plan> {
-    const instance = this.instanceEntitlementsHolder.get();
+    const instance = this.getInstanceEntitlements();
     if (!instance.isCloud()) return instance.plan();
 
     // Unknown org: return the fallback without caching it.
@@ -74,7 +77,7 @@ export class LicenseService implements TLicenseService {
 
   async refreshPlan(orgId: string, opts: TRefreshPlanOptions = {}): Promise<void> {
     if (opts.afterBillingChange) {
-      if (!this.instanceEntitlementsHolder.isCloud()) return;
+      if (!this.getInstanceEntitlements().isCloud()) return;
       const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
       try {
         await this.planCache.markForRevalidation(rootOrgId, Boolean(opts.afterBillingChange.checkout));
@@ -83,7 +86,7 @@ export class LicenseService implements TLicenseService {
       }
       return;
     }
-    if (this.instanceEntitlementsHolder.isCloud()) {
+    if (this.getInstanceEntitlements().isCloud()) {
       const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
       if (!rootOrgId) return;
       // Fetch before replacing the cache so a License Server failure keeps the current plan instead of caching
@@ -103,8 +106,12 @@ export class LicenseService implements TLicenseService {
       await this.cachePlan(rootOrgId, fetched);
       return;
     }
+    await this.refreshInstanceEntitlements();
+  }
+
+  async refreshInstanceEntitlements(): Promise<void> {
     const refreshed = await this.licensePolicyService.refreshInstanceEntitlements();
-    if (refreshed) this.instanceEntitlementsHolder.set(refreshed);
+    if (refreshed) this.instanceEntitlementsCache.set(refreshed);
   }
 
   async invalidatePlan(orgId: string): Promise<void> {
@@ -112,7 +119,7 @@ export class LicenseService implements TLicenseService {
   }
 
   async isServingFallbackPlan(orgId: string): Promise<boolean> {
-    if (!this.instanceEntitlementsHolder.isCloud()) return false;
+    if (!this.getInstanceEntitlements().isCloud()) return false;
     return this.planCache.isFallback(await this.organizationsProjectsService.resolveRootOrgId(orgId));
   }
 
@@ -127,14 +134,14 @@ export class LicenseService implements TLicenseService {
   }
 
   async getSeatUsage(orgId: string | null): Promise<SeatUsage> {
-    if (orgId === null || !this.instanceEntitlementsHolder.isCloud()) return this.countSeats(null);
+    if (orgId === null || !this.getInstanceEntitlements().isCloud()) return this.countSeats(null);
     const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
     if (!rootOrgId) throw new EntityNotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return this.countSeats(rootOrgId);
   }
 
   getSeatCountScope(orgId: string): string | null {
-    return this.instanceEntitlementsHolder.isCloud() ? orgId : null;
+    return this.getInstanceEntitlements().isCloud() ? orgId : null;
   }
 
   private async countSeats(orgId: string | null): Promise<SeatUsage> {
