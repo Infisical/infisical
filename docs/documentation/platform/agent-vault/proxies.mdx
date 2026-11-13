@@ -212,6 +212,7 @@ The proxy also returns a 403 for:
 - A request to a port the service's [host pattern](/documentation/platform/agent-vault/http-apis#host-patterns) doesn't name, such as `example.com:8443` for a service on `example.com`, which only covers port `443`
 - A request that breaks the service's [method or path rules](/documentation/platform/agent-vault/http-apis#methods-and-paths), under either traffic policy
 - A request to a service whose [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) aren't set up yet for the session's owner, or, for a session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), for that user
+- A request that the service's [hook](/documentation/platform/agent-vault/hooks) denies
 
 For an [MCP service that allows only some tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools), the proxy also blocks:
 
@@ -329,6 +330,8 @@ Your own CA stays the same when you rotate the proxy's token. To use the CA Infi
 ### APIs with a private certificate authority
 
 The proxy checks the certificate of each API it connects to, the way any HTTPS client does. If an API uses a private certificate authority, the machine running the proxy has to trust that authority. The agent's machine doesn't need to trust it.
+
+The same applies to a service's [hook](/documentation/platform/agent-vault/hooks): every machine that runs the proxy has to reach the hook URL, and has to trust the hook server's certificate authority if that authority is private.
 
 ## Accept connections over SOCKS5
 

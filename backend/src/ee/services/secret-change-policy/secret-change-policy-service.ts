@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
+import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -120,7 +121,7 @@ export const secretChangePolicyServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.has(PlanFeature.SecretApproval)) {
       throw new BadRequestError({
         message:
           "Failed to create secret approval policy due to plan restriction. Upgrade plan to create secret approval policy."
@@ -237,7 +238,7 @@ export const secretChangePolicyServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.has(PlanFeature.SecretApproval)) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."

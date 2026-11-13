@@ -196,9 +196,14 @@ export const SessionDetailSheet = ({
                                   <span className="truncate">{service.name}</span>
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className="max-w-sm">
                                 Sent with this session when it was created, for{" "}
                                 {inlineServiceTarget(service)}
+                                {service.hook && (
+                                  <span className="block break-all">
+                                    Calls the hook at {service.hook.url} first.
+                                  </span>
+                                )}
                               </TooltipContent>
                             </Tooltip>
                           ))}

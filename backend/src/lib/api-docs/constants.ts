@@ -4858,6 +4858,18 @@ export const AGENT_VAULT = {
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Send null to remove a stored one.",
     tlsCaRead:
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
+    hook: "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. The proxy sends the request on only if your server allows it. `url` is where the proxy sends each check, and `signingSecret` is the key it signs them with.",
+    updateHook:
+      "The hook to set or change. Send `url` alone to change only the URL and keep the saved signing secret, or `url` and `signingSecret` to replace both. Send null to remove the hook and its signing secret.",
+    hookUrl:
+      "Where the proxy sends each check: an `https://` or `http://` URL of at most 2048 characters, without a username, password, query string or fragment. Over `http://`, checks and answers are sent unencrypted.",
+    hookSigningSecret:
+      "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
+    updateHookSigningSecret:
+      "The key the proxy signs each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one; required when the service has no hook yet. Never returned once saved.",
+    hookRead:
+      "The service's hook, or null when it has none. Its signing secret is never returned. Left out for members.",
+    hookUrlRead: "Where the proxy sends each check.",
     databaseCredential: "The account the proxy logs in to the database as, a username and password.",
     sshCredential: "The account the proxy logs in to the SSH server as, a username with a password or an SSH key.",
     nativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
@@ -5315,6 +5327,9 @@ export const AGENT_VAULT = {
     inlineServiceId: "The ID of the service sent with this session.",
     inlineServiceNameRead:
       "The name the service was sent with, or its first host if it was sent without one. Shown in session logs and in the proxy's error messages.",
+    inlineHook:
+      "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. Its signing secret is deleted when the session ends.",
+    inlineHookRead: "The service's hook, or null when it was sent without one. Its signing secret is never returned.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",

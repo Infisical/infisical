@@ -1,6 +1,7 @@
 import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
@@ -55,9 +56,11 @@ import {
 } from "../pam/pam-permission";
 import {
   buildPamPolicyRules,
+  outputMaskingGatewayOptions,
   PamPolicyType,
   policyAppliesTo,
   resolveAccessControls,
+  resolveOutputMasking,
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
@@ -104,6 +107,7 @@ type TPamSessionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   userDAL: Pick<TUserDALFactory, "findById">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
@@ -130,6 +134,7 @@ export const pamSessionServiceFactory = ({
   permissionService,
   kmsService,
   gatewayV2Service,
+  gatewayV2DAL,
   gatewayPoolService,
   userDAL,
   pamSessionExpirationService,
@@ -211,6 +216,21 @@ export const pamSessionServiceFactory = ({
     return session;
   };
 
+  // An older gateway ignores rules it does not know, which would show the user unmasked data.
+  const assertGatewayEnforcesOutputMasking = async (
+    gatewayId: string,
+    account: { accountType: string; templatePolicies: unknown }
+  ) => {
+    const { filter } = outputMaskingGatewayOptions(account);
+    if (!filter) return;
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway || !filter(gateway)) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway?.name ?? gatewayId}' must be updated to the latest version before it can enforce this account's output masking`
+      });
+    }
+  };
+
   // Called by the gateway
   const getSessionCredentials = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
@@ -230,6 +250,9 @@ export const pamSessionServiceFactory = ({
     if (!account) {
       throw new NotFoundError({ message: "Account not found" });
     }
+
+    // Before activating the session or claiming recording secrets, so a refused fetch leaves nothing behind.
+    await assertGatewayEnforcesOutputMasking(gatewayId, account);
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
@@ -382,6 +405,9 @@ export const pamSessionServiceFactory = ({
 
     const policyRules = buildPamPolicyRules({
       commandBlockingPatterns,
+      outputMasking: policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType)
+        ? resolveOutputMasking(account.templatePolicies)
+        : null,
       maskingPatterns: parsedSettings.success ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns) : [],
       // Never send a rule the gateway has no way to honour.
       maskingBuiltInDetection:
@@ -714,11 +740,14 @@ export const pamSessionServiceFactory = ({
     });
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
-      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+      ...outputMaskingGatewayOptions(account)
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });
     }
+
+    await assertGatewayEnforcesOutputMasking(effectiveGatewayId, account);
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);

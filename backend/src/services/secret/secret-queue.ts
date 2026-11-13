@@ -11,8 +11,8 @@ import {
   SecretType,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -125,7 +125,7 @@ type TSecretQueueFactoryDep = {
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "deleteReminderBySecretId">;
   projectEventsService: TProjectEventsService;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -585,7 +585,7 @@ export const secretQueueFactory = ({
 
     const plan = await licenseService.getPlan(dto.orgId);
 
-    if (event && plan.eventSubscriptions) {
+    if (event && plan.has(PlanFeature.EventSubscriptions)) {
       for await (const singleEvent of event) {
         await projectEventsService.publish(singleEvent);
       }

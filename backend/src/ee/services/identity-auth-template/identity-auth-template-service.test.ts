@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -130,9 +131,11 @@ const createService = ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       })
     },
-    licenseService: {
-      getPlan: vi.fn().mockResolvedValue({ machineIdentityAuthTemplates: true, gateway: true, gatewayPool: true })
-    },
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, {
+      machineIdentityAuthTemplates: true,
+      gateway: true,
+      gatewayPool: true
+    }),
     auditLogService: { createAuditLog: auditLogCreate }
   } as unknown as Parameters<typeof identityAuthTemplateServiceFactory>[0]);
 

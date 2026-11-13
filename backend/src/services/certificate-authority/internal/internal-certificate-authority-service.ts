@@ -6,10 +6,10 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -38,8 +38,6 @@ import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -168,9 +166,9 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   caKeySourceService: Pick<
     TCaKeySourceServiceFactory,
     "createKey" | "buildSigner" | "describeKey" | "prepareKeyReleases"
@@ -199,14 +197,20 @@ export const internalCertificateAuthorityServiceFactory = ({
   kmsService,
   permissionService,
   licenseService,
-  caSigningConfigDAL,
   usageMeteringService,
+  caSigningConfigDAL,
   caKeySourceService,
   keyStore,
   auditLogService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
+
+  const $getProjectOrgId = async (projectId: string, tx?: Knex) => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    return project.orgId;
+  };
 
   const $isCaCrlAllowed = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
@@ -235,7 +239,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     const plan = await licenseService.getPlan(project.orgId);
-    return plan.pkiOcsp;
+    return plan.has(PlanFeature.PkiOcsp);
   };
 
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
@@ -1680,7 +1684,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       if (!caProject) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
 
       const plan = await licenseService.getPlan(caProject.orgId);
-      if (!plan.pkiExternalIntermediateCa) {
+      if (!plan.has(PlanFeature.PkiExternalIntermediateCa)) {
         throw new BadRequestError({
           message:
             "Failed to import an externally signed certificate for this intermediate CA due to plan restriction. Upgrade plan to use externally signed intermediate CAs."
@@ -2060,6 +2064,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
+    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId, tx);
+
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -2419,8 +2425,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2511,6 +2517,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         );
       }
     }
+
+    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId, tx) : dto.actorOrgId;
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2915,8 +2923,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
 
     return {
       certificate: leafCert,

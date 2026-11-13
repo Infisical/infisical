@@ -1,5 +1,5 @@
+import type { TMeterKey } from "@app/domains/platform/license/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
-import type { TMeteredDimensionKey } from "@app/services/license-client/usage/usage-counters";
 
 export type BillingV2SubState = "active" | "trialing" | "past-due" | "suspended" | "no-subscription";
 
@@ -395,8 +395,7 @@ export type TConfirmBillingV2TrialPaymentDTO = {
   returnPath?: string;
 };
 
-// The metered dimensions the usage breakdown can explain. Values are license-server dimension keys and
-// must match the descriptors in services/license-client/features.ts
+// License Server dimension keys, keep in sync with Meter in domains/platform/license/ce/models/meter.ts.
 export const BillingV2BreakdownDimension = {
   Identities: "identities",
   UserIdentities: "user_identities",
@@ -405,7 +404,7 @@ export const BillingV2BreakdownDimension = {
   InternalCas: "internal_cas",
   ActiveCerts: "active_certs",
   WildcardCerts: "wildcard_certs"
-} as const satisfies Record<string, TMeteredDimensionKey>;
+} as const satisfies Record<string, TMeterKey>;
 
 export type TBillingV2BreakdownDimension =
   (typeof BillingV2BreakdownDimension)[keyof typeof BillingV2BreakdownDimension];

@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -23,6 +24,7 @@ import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { AgentVaultMemberType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
+import { assertAgentVaultHooksOnPlan } from "../agent-vault/agent-vault-hook-fns";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
@@ -69,6 +71,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "wrapKey" | "createCipherPairWithDataKey">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -84,7 +87,8 @@ export const agentVaultSessionServiceFactory = ({
   userDAL,
   orgDAL,
   permissionService,
-  kmsService
+  kmsService,
+  licenseService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -155,6 +159,9 @@ export const agentVaultSessionServiceFactory = ({
     }
 
     const preparedInlineServices = prepareInlineServices(services);
+    if (preparedInlineServices.some((service) => service.hookUrl)) {
+      await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
+    }
 
     const bundles = accessBundles.length
       ? await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } })
@@ -242,6 +249,7 @@ export const agentVaultSessionServiceFactory = ({
         projectId,
         credentialType: service.credentialConfig.type,
         encryptedCredential: secrets?.credential ? seal!(secrets.credential) : null,
+        encryptedHookSecret: secrets?.hookSecret ? seal!({ value: secrets.hookSecret }) : null,
         customHeaders: customHeaders.map((header, index) => ({
           ...header,
           encryptedValue: seal!({ value: secrets!.customHeaders[index] })
