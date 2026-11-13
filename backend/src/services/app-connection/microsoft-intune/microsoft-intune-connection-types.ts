@@ -3,6 +3,7 @@ import z from "zod";
 import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
+import { IntuneRevocationErrorCode } from "./microsoft-intune-connection-enums";
 import {
   CreateMicrosoftIntuneConnectionSchema,
   MicrosoftIntuneConnectionClientSecretOutputCredentialsSchema,
@@ -50,4 +51,21 @@ export type TMicrosoftGraphServicePrincipalEndpointsResponse = {
 export type TIntuneScepValidationResponse = {
   code?: string;
   errorDescription?: string;
+};
+
+export type TIntuneRevocationRequest = {
+  requestContext: string;
+  serialNumber: string;
+  issuerName?: string | null;
+};
+
+export type TIntuneRevocationRequestsResponse = {
+  value?: TIntuneRevocationRequest[];
+};
+
+export type TIntuneRevocationResult = {
+  requestContext: string;
+  succeeded: boolean;
+  errorCode: IntuneRevocationErrorCode;
+  errorMessage: string | null;
 };

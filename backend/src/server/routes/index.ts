@@ -177,6 +177,7 @@ import { pkiDiscoveryScanHistoryDALFactory } from "@app/ee/services/pki-discover
 import { pkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
 import { scepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
+import { scepIntuneRevocationSyncQueueFactory } from "@app/ee/services/pki-scep/pki-scep-intune-revocation-sync-queue";
 import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
@@ -4451,6 +4452,19 @@ export const registerRoutes = async (
     certificateAlertEventEmitter
   });
 
+  const scepIntuneRevocationSyncQueue = scepIntuneRevocationSyncQueueFactory({
+    cronJob,
+    scepEnrollmentConfigDAL,
+    appConnectionDAL,
+    kmsService,
+    projectDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateAuthorityCertDAL,
+    certificateService,
+    auditLogService
+  });
+
   const godaddyCaQueue = godaddyCertificateAuthorityQueueServiceFactory({
     cronJob,
     certificateRequestDAL,
@@ -4880,6 +4894,7 @@ export const registerRoutes = async (
   certificateV3Queue.init();
   digicertCaQueue.init();
   digicertRevocationSyncQueue.init();
+  scepIntuneRevocationSyncQueue.init();
   pamSessionExpirationService.init();
   godaddyCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();

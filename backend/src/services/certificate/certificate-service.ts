@@ -2,7 +2,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ResourceType, TCertificates } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -128,6 +128,8 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   CertStatus,
+  CrlReason,
+  PlatformRevocationOutcome,
   TAssignCertToApplicationDTO,
   TCertificateBasicConstraints,
   TCertificateFingerprints,
@@ -661,52 +663,9 @@ export const certificateServiceFactory = ({
     }
   };
 
-  const revokeCert = async ({
-    id,
-    serialNumber,
-    thumbprint,
-    revocationReason,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TRevokeCertDTO) => {
-    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
-    if (id) {
-      cert = await certificateDAL.findById(id);
-    } else if (serialNumber) {
-      cert = await certificateDAL.findOne({ serialNumber });
-    } else if (thumbprint) {
-      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
-      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
-
-      const matches = await certificateDAL.findByThumbprintInOrg({
-        orgId: actorOrgId,
-        column,
-        fingerprint,
-        limit: 2
-      });
-      if (matches.length > 1) {
-        throw new BadRequestError({
-          message:
-            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
-        });
-      }
-      [cert] = matches;
-    } else {
-      throw new BadRequestError({
-        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
-      });
-    }
-
-    if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
+  const $resolveRevocableCa = async (cert: TCertificates) => {
     if (!cert.caId) {
-      throw new BadRequestError({
-        message: "Cannot revoke imported certificates"
-      });
+      return { notRevocableReason: "Cannot revoke imported certificates" } as const;
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
@@ -714,24 +673,54 @@ export const certificateServiceFactory = ({
     // Check if the CA type supports revocation
     const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
     if (!caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES)) {
-      throw new BadRequestError({
-        message: "Certificate revocation is not supported by this certificate authority type"
-      });
+      return {
+        notRevocableReason: "Certificate revocation is not supported by this certificate authority type"
+      } as const;
     }
 
-    await assertCanRevokeCertificate({
-      certificate: { ...cert, projectId: ca.projectId },
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      permissionService,
-      resourceMetadataDAL
-    });
+    return { ca } as const;
+  };
 
+  const $rebuildCrlAfterRevocation = async (
+    ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>
+  ) => {
+    if (ca.externalCa?.id || getInternalCaExpiredAt(ca.internalCa?.notAfter)) return undefined;
+
+    const crlRegeneration = await rebuildCaCrlAfterChange({
+      caId: ca.id,
+      trigger: CaCrlRegenerationTrigger.Revocation,
+      auditLogService,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      certificateAuthorityCrlDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      certificateDAL,
+      kmsService,
+      caKeySourceService,
+      keyStore
+    });
+    return crlRegeneration.isRegenerated ? undefined : crlRegeneration.reason;
+  };
+
+  const $revokeCertificate = async ({
+    cert,
+    ca,
+    revocationReason,
+    orgId,
+    rebuildCrl
+  }: {
+    cert: TCertificates;
+    ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>;
+    revocationReason: CrlReason;
+    orgId?: string;
+    rebuildCrl: boolean;
+  }) => {
     if (cert.status === CertStatus.REVOKED) {
       throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
     }
+
+    const applicationName = await $resolveApplicationName(cert.applicationId);
 
     if (ca.internalCa?.id && cert.profileId && cert.source === CertificateSource.Imported) {
       if (cert.deletedAt) {
@@ -798,11 +787,13 @@ export const certificateServiceFactory = ({
       }
     });
 
+    const crlWarning = rebuildCrl ? await $rebuildCrlAfterRevocation(ca) : undefined;
+
     if (!cert.deletedAt) {
       await certificateAlertEventEmitter.notify({
         certificateId: revokedCertId,
         projectId: ca.projectId,
-        orgId: actorOrgId,
+        orgId,
         eventType: CertificateApplicationAlertEvent.Revocation,
         applicationId: revokedCertApplicationId
       });
@@ -820,25 +811,6 @@ export const certificateServiceFactory = ({
 
     if (cert.applicationId && !cert.deletedAt) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
-    }
-
-    let crlWarning: string | undefined;
-    if (!ca.externalCa?.id && !getInternalCaExpiredAt(ca.internalCa?.notAfter)) {
-      const crlRegeneration = await rebuildCaCrlAfterChange({
-        caId: ca.id,
-        trigger: CaCrlRegenerationTrigger.Revocation,
-        auditLogService,
-        certificateAuthorityDAL,
-        certificateAuthorityCertDAL,
-        certificateAuthorityCrlDAL,
-        certificateAuthoritySecretDAL,
-        projectDAL,
-        certificateDAL,
-        kmsService,
-        caKeySourceService,
-        keyStore
-      });
-      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
     }
 
     if (!cert.deletedAt) {
@@ -870,10 +842,106 @@ export const certificateServiceFactory = ({
     return {
       revokedAt,
       cert,
-      applicationName: await $resolveApplicationName(cert.applicationId),
+      applicationName,
       ca: caResult,
       crlWarning
     };
+  };
+
+  const revokeCert = async ({
+    id,
+    serialNumber,
+    thumbprint,
+    revocationReason,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TRevokeCertDTO) => {
+    let cert: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
+    if (id) {
+      cert = await certificateDAL.findById(id);
+    } else if (serialNumber) {
+      cert = await certificateDAL.findOne({ serialNumber });
+    } else if (thumbprint) {
+      const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
+      const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
+
+      const matches = await certificateDAL.findByThumbprintInOrg({
+        orgId: actorOrgId,
+        column,
+        fingerprint,
+        limit: 2
+      });
+      if (matches.length > 1) {
+        throw new BadRequestError({
+          message:
+            "Multiple certificates match the provided thumbprint. Revoke by certificate ID or serial number instead"
+        });
+      }
+      [cert] = matches;
+    } else {
+      throw new BadRequestError({
+        message: "Must provide a certificate ID, serial number, or thumbprint to revoke"
+      });
+    }
+
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    const revocableCa = await $resolveRevocableCa(cert);
+    if ("notRevocableReason" in revocableCa) {
+      throw new BadRequestError({ message: revocableCa.notRevocableReason });
+    }
+    const { ca } = revocableCa;
+
+    await assertCanRevokeCertificate({
+      certificate: { ...cert, projectId: ca.projectId },
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      permissionService,
+      resourceMetadataDAL
+    });
+
+    return $revokeCertificate({ cert, ca, revocationReason, orgId: actorOrgId, rebuildCrl: true });
+  };
+
+  const revokeCertAsPlatform = async ({
+    certificateId,
+    revocationReason
+  }: {
+    certificateId: string;
+    revocationReason: CrlReason;
+  }) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      return { outcome: PlatformRevocationOutcome.NotRevocable, reason: "The certificate no longer exists." } as const;
+    }
+    if (cert.status === CertStatus.REVOKED) return { outcome: PlatformRevocationOutcome.AlreadyRevoked } as const;
+
+    const revocableCa = await $resolveRevocableCa(cert);
+    if ("notRevocableReason" in revocableCa) {
+      return { outcome: PlatformRevocationOutcome.NotRevocable, reason: revocableCa.notRevocableReason } as const;
+    }
+
+    const revocation = await $revokeCertificate({ cert, ca: revocableCa.ca, revocationReason, rebuildCrl: false });
+    return { outcome: PlatformRevocationOutcome.Revoked, ...revocation } as const;
+  };
+
+  const rebuildCrlsAfterPlatformRevocations = async (caIds: string[]) => {
+    for (const caId of new Set(caIds)) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await $rebuildCrlAfterRevocation(await certificateAuthorityDAL.findByIdWithAssociatedCa(caId));
+      } catch (err) {
+        logger.error(
+          `Failed to rebuild the CRL after a platform revocation, the hourly CRL rebuild job will retry [caId=${caId}] [error=${err instanceof Error ? err.message : String(err)}]`
+        );
+      }
+    }
   };
 
   /**
@@ -1875,6 +1943,8 @@ export const certificateServiceFactory = ({
     getCertPrivateKey,
     deleteCert,
     revokeCert,
+    revokeCertAsPlatform,
+    rebuildCrlsAfterPlatformRevocations,
     getCertBody,
     importCert,
     getCertBundle,

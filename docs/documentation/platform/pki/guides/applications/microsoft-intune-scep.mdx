@@ -323,6 +323,10 @@ When a certificate crosses the **Renewal threshold**, Intune re-enrolls that dev
 
 Infisical's **Allow cert-based renewal** option stays off for Intune validation, and Infisical rejects an enrollment that tries to enable it. Renewing against an existing certificate would skip the challenge and bypass Intune's per-request validation.
 
+## How revocation works
+
+If you wipe, retire, or unenroll a device, or remove the device from the SCEP profile's assignments, the device's certificate is revoked in Infisical within about 20 minutes.
+
 ## Troubleshooting
 
 <AccordionGroup>

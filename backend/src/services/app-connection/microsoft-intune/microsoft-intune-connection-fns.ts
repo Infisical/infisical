@@ -9,6 +9,8 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { AppConnection } from "../app-connection-enums";
 import { MicrosoftIntuneConnectionMethod } from "./microsoft-intune-connection-enums";
 import {
+  TIntuneRevocationRequestsResponse,
+  TIntuneRevocationResult,
   TIntuneScepValidationResponse,
   TMicrosoftEntraTokenResponse,
   TMicrosoftGraphServicePrincipalEndpointsResponse,
@@ -19,7 +21,11 @@ import {
 // Intune's well-known first-party app id; its service principal exposes the SCEP validation endpoint.
 const INTUNE_WELL_KNOWN_APP_ID = "0000000a-0000-0000-c000-000000000000";
 const SCEP_VALIDATION_SERVICE_NAME = "ScepRequestValidationFEService";
+const PKI_CONNECTOR_SERVICE_NAME = "PkiConnectorFEService";
 const INTUNE_API_VERSION = "2018-02-20";
+const INTUNE_PKI_CONNECTOR_API_VERSION = "5019-05-05";
+export const INTUNE_MAX_REVOCATION_REQUESTS = 500;
+const INTUNE_PKI_CONNECTOR_TIMEOUT_MS = 30_000;
 // Intune returns this (case-insensitively) in the `code` field when a SCEP request passes validation.
 const INTUNE_SUCCESS_CODE = "success";
 
@@ -74,23 +80,33 @@ export const getMicrosoftEntraToken = async (
 
 const INTUNE_SERVICE_HOST = "manage.microsoft.com";
 
-const assertIntuneServiceUri = (uri: string) => {
+const assertIntuneServiceUri = (uri: string, serviceLabel: string) => {
   let parsed: URL;
   try {
     parsed = new URL(uri);
   } catch {
-    throw new BadRequestError({ message: "Microsoft Intune returned a malformed SCEP validation service URL." });
+    throw new BadRequestError({ message: `Microsoft Intune returned a malformed ${serviceLabel} service URL.` });
   }
 
   const isIntuneHost = parsed.hostname === INTUNE_SERVICE_HOST || parsed.hostname.endsWith(`.${INTUNE_SERVICE_HOST}`);
   if (parsed.protocol !== "https:" || !isIntuneHost) {
     throw new BadRequestError({
-      message: `Refusing the SCEP validation service at '${parsed.host}' because it is not an HTTPS ${INTUNE_SERVICE_HOST} endpoint.`
+      message: `Refusing the ${serviceLabel} service at '${parsed.host}' because it is not an HTTPS ${INTUNE_SERVICE_HOST} endpoint.`
     });
   }
 };
 
-export const discoverScepValidationServiceUri = async (graphAccessToken: string) => {
+const discoverIntuneServiceUri = async ({
+  graphAccessToken,
+  serviceName,
+  serviceLabel,
+  notFoundMessage
+}: {
+  graphAccessToken: string;
+  serviceName: string;
+  serviceLabel: string;
+  notFoundMessage: string;
+}) => {
   try {
     const { data } = await request.get<TMicrosoftGraphServicePrincipalEndpointsResponse>(
       `https://graph.microsoft.com/v1.0/servicePrincipals(appId='${INTUNE_WELL_KNOWN_APP_ID}')/endpoints`,
@@ -102,30 +118,44 @@ export const discoverScepValidationServiceUri = async (graphAccessToken: string)
       }
     );
 
-    const endpoint = data.value?.find((e) => e.providerName === SCEP_VALIDATION_SERVICE_NAME);
+    const endpoint = data.value?.find((e) => e.providerName === serviceName);
     if (!endpoint?.uri) {
-      throw new BadRequestError({
-        message:
-          "Could not locate the Intune SCEP validation service. Ensure the Entra application has the Intune 'scep_challenge_provider' permission with admin consent granted."
-      });
+      throw new BadRequestError({ message: notFoundMessage });
     }
 
     const serviceUri = endpoint.uri.replace(/\/+$/, "");
-    assertIntuneServiceUri(serviceUri);
+    assertIntuneServiceUri(serviceUri, serviceLabel);
 
     return serviceUri;
   } catch (err) {
     if (err instanceof BadRequestError) throw err;
     if (err instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to discover the Intune SCEP validation service: ${
+        message: `Failed to discover the Intune ${serviceLabel} service: ${
           (err.response?.data as { error?: { message?: string } })?.error?.message || err.message
         }`
       });
     }
-    throw new InternalServerError({ message: "Failed to discover the Intune SCEP validation service" });
+    throw new InternalServerError({ message: `Failed to discover the Intune ${serviceLabel} service` });
   }
 };
+
+export const discoverScepValidationServiceUri = (graphAccessToken: string) =>
+  discoverIntuneServiceUri({
+    graphAccessToken,
+    serviceName: SCEP_VALIDATION_SERVICE_NAME,
+    serviceLabel: "SCEP validation",
+    notFoundMessage:
+      "Could not locate the Intune SCEP validation service. Ensure the Entra application has the Intune 'scep_challenge_provider' permission with admin consent granted."
+  });
+
+export const discoverPkiConnectorServiceUri = (graphAccessToken: string) =>
+  discoverIntuneServiceUri({
+    graphAccessToken,
+    serviceName: PKI_CONNECTOR_SERVICE_NAME,
+    serviceLabel: "certificate revocation",
+    notFoundMessage: "Could not locate the Intune certificate revocation service for this tenant."
+  });
 
 const intuneScepActionHeaders = (intuneAccessToken: string) => ({
   Authorization: `Bearer ${intuneAccessToken}`,
@@ -230,6 +260,54 @@ export const intuneSendFailureNotification = async ({
   );
 
   assertIntuneNotificationAccepted(data, "failure notification");
+};
+
+const intunePkiConnectorRequestConfig = (intuneAccessToken: string) => ({
+  timeout: INTUNE_PKI_CONNECTOR_TIMEOUT_MS,
+  headers: {
+    Authorization: `Bearer ${intuneAccessToken}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "api-version": INTUNE_PKI_CONNECTOR_API_VERSION,
+    "client-request-id": randomUUID(),
+    UserAgent: INTUNE_CALLER_INFO
+  }
+});
+
+export const intuneDownloadRevocationRequests = async ({
+  intuneAccessToken,
+  serviceUri
+}: {
+  intuneAccessToken: string;
+  serviceUri: string;
+}) => {
+  const { data } = await safeRequest.post<TIntuneRevocationRequestsResponse>(
+    `${serviceUri}/CertificateAuthorityRequests/downloadRevocationRequests`,
+    { downloadParameters: { maxRequests: INTUNE_MAX_REVOCATION_REQUESTS, issuerName: null } },
+    { ...intunePkiConnectorRequestConfig(intuneAccessToken), "axios-retry": { retries: 0 } }
+  );
+
+  return data?.value ?? [];
+};
+
+export const intuneUploadRevocationResults = async ({
+  intuneAccessToken,
+  serviceUri,
+  results
+}: {
+  intuneAccessToken: string;
+  serviceUri: string;
+  results: TIntuneRevocationResult[];
+}) => {
+  const { data } = await safeRequest.post<{ value?: boolean }>(
+    `${serviceUri}/CertificateAuthorityRequests/uploadRevocationResults`,
+    { results },
+    intunePkiConnectorRequestConfig(intuneAccessToken)
+  );
+
+  if (data?.value === false) {
+    throw new BadRequestError({ message: "Microsoft Intune did not accept the certificate revocation results." });
+  }
 };
 
 export const validateMicrosoftIntuneConnectionCredentials = async (config: TMicrosoftIntuneConnectionConfig) => {
