@@ -5095,6 +5095,7 @@ func (e CreateAlertJSONBodyChannelsChannelType) Valid() bool {
 const (
 	CreateAlertJSONBodyChannelsRecipientsPrincipalTypeEmail          CreateAlertJSONBodyChannelsRecipientsPrincipalType = "email"
 	CreateAlertJSONBodyChannelsRecipientsPrincipalTypeGroup          CreateAlertJSONBodyChannelsRecipientsPrincipalType = "group"
+	CreateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectAdmins  CreateAlertJSONBodyChannelsRecipientsPrincipalType = "project-admins"
 	CreateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectMembers CreateAlertJSONBodyChannelsRecipientsPrincipalType = "project-members"
 	CreateAlertJSONBodyChannelsRecipientsPrincipalTypeUser           CreateAlertJSONBodyChannelsRecipientsPrincipalType = "user"
 )
@@ -5105,6 +5106,8 @@ func (e CreateAlertJSONBodyChannelsRecipientsPrincipalType) Valid() bool {
 	case CreateAlertJSONBodyChannelsRecipientsPrincipalTypeEmail:
 		return true
 	case CreateAlertJSONBodyChannelsRecipientsPrincipalTypeGroup:
+		return true
+	case CreateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectAdmins:
 		return true
 	case CreateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectMembers:
 		return true
@@ -5254,6 +5257,7 @@ func (e TestAlertChannelJSONBodyChannelType) Valid() bool {
 const (
 	TestAlertChannelJSONBodyRecipientsPrincipalTypeEmail          TestAlertChannelJSONBodyRecipientsPrincipalType = "email"
 	TestAlertChannelJSONBodyRecipientsPrincipalTypeGroup          TestAlertChannelJSONBodyRecipientsPrincipalType = "group"
+	TestAlertChannelJSONBodyRecipientsPrincipalTypeProjectAdmins  TestAlertChannelJSONBodyRecipientsPrincipalType = "project-admins"
 	TestAlertChannelJSONBodyRecipientsPrincipalTypeProjectMembers TestAlertChannelJSONBodyRecipientsPrincipalType = "project-members"
 	TestAlertChannelJSONBodyRecipientsPrincipalTypeUser           TestAlertChannelJSONBodyRecipientsPrincipalType = "user"
 )
@@ -5264,6 +5268,8 @@ func (e TestAlertChannelJSONBodyRecipientsPrincipalType) Valid() bool {
 	case TestAlertChannelJSONBodyRecipientsPrincipalTypeEmail:
 		return true
 	case TestAlertChannelJSONBodyRecipientsPrincipalTypeGroup:
+		return true
+	case TestAlertChannelJSONBodyRecipientsPrincipalTypeProjectAdmins:
 		return true
 	case TestAlertChannelJSONBodyRecipientsPrincipalTypeProjectMembers:
 		return true
@@ -5593,6 +5599,7 @@ func (e UpdateAlertJSONBodyChannelsChannelType) Valid() bool {
 const (
 	UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeEmail          UpdateAlertJSONBodyChannelsRecipientsPrincipalType = "email"
 	UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeGroup          UpdateAlertJSONBodyChannelsRecipientsPrincipalType = "group"
+	UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectAdmins  UpdateAlertJSONBodyChannelsRecipientsPrincipalType = "project-admins"
 	UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectMembers UpdateAlertJSONBodyChannelsRecipientsPrincipalType = "project-members"
 	UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeUser           UpdateAlertJSONBodyChannelsRecipientsPrincipalType = "user"
 )
@@ -5603,6 +5610,8 @@ func (e UpdateAlertJSONBodyChannelsRecipientsPrincipalType) Valid() bool {
 	case UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeEmail:
 		return true
 	case UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeGroup:
+		return true
+	case UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectAdmins:
 		return true
 	case UpdateAlertJSONBodyChannelsRecipientsPrincipalTypeProjectMembers:
 		return true
@@ -23967,6 +23976,96 @@ func (e CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode) Valid
 	}
 }
 
+// Defines values for GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCodeN400 GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCodeN401 GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCodeN403 GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCodeN404 GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCodeN422 GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCodeN500 GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateCertificatePolicyJSONBodyBasicConstraintsIsCA.
 const (
 	CreateCertificatePolicyJSONBodyBasicConstraintsIsCAAllowed  CreateCertificatePolicyJSONBodyBasicConstraintsIsCA = "allowed"
@@ -25380,6 +25479,111 @@ const (
 func (e CreateCertificateProfile500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateCertificateProfile500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificateJSONBodyExternalMetadata0Type.
+const (
+	Digicert ImportCertificateJSONBodyExternalMetadata0Type = "digicert"
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificateJSONBodyExternalMetadata0Type enum.
+func (e ImportCertificateJSONBodyExternalMetadata0Type) Valid() bool {
+	switch e {
+	case Digicert:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate400JSONResponseBodyStatusCode.
+const (
+	ImportCertificate400JSONResponseBodyStatusCodeN400 ImportCertificate400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate400JSONResponseBodyStatusCode enum.
+func (e ImportCertificate400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate401JSONResponseBodyStatusCode.
+const (
+	ImportCertificate401JSONResponseBodyStatusCodeN401 ImportCertificate401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate401JSONResponseBodyStatusCode enum.
+func (e ImportCertificate401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate403JSONResponseBodyStatusCode.
+const (
+	ImportCertificate403JSONResponseBodyStatusCodeN403 ImportCertificate403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate403JSONResponseBodyStatusCode enum.
+func (e ImportCertificate403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate404JSONResponseBodyStatusCode.
+const (
+	ImportCertificate404JSONResponseBodyStatusCodeN404 ImportCertificate404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate404JSONResponseBodyStatusCode enum.
+func (e ImportCertificate404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate422JSONResponseBodyStatusCode.
+const (
+	ImportCertificate422JSONResponseBodyStatusCodeN422 ImportCertificate422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate422JSONResponseBodyStatusCode enum.
+func (e ImportCertificate422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate500JSONResponseBodyStatusCode.
+const (
+	ImportCertificate500JSONResponseBodyStatusCodeN500 ImportCertificate500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate500JSONResponseBodyStatusCode enum.
+func (e ImportCertificate500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -53280,6 +53484,237 @@ func (e CreateOrganizationGroupMembership500JSONResponseBodyStatusCode) Valid() 
 	}
 }
 
+// Defines values for GetBillingUsageBreakdownParamsScope.
+const (
+	GetBillingUsageBreakdownParamsScopeInstance     GetBillingUsageBreakdownParamsScope = "instance"
+	GetBillingUsageBreakdownParamsScopeOrganization GetBillingUsageBreakdownParamsScope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdownParamsScope enum.
+func (e GetBillingUsageBreakdownParamsScope) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdownParamsScopeInstance:
+		return true
+	case GetBillingUsageBreakdownParamsScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdownParamsDimensionKey.
+const (
+	ActiveCerts      GetBillingUsageBreakdownParamsDimensionKey = "active_certs"
+	Identities       GetBillingUsageBreakdownParamsDimensionKey = "identities"
+	InternalCas      GetBillingUsageBreakdownParamsDimensionKey = "internal_cas"
+	PamIdentities    GetBillingUsageBreakdownParamsDimensionKey = "pam_identities"
+	SecretIdentities GetBillingUsageBreakdownParamsDimensionKey = "secret_identities"
+	UserIdentities   GetBillingUsageBreakdownParamsDimensionKey = "user_identities"
+	WildcardCerts    GetBillingUsageBreakdownParamsDimensionKey = "wildcard_certs"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdownParamsDimensionKey enum.
+func (e GetBillingUsageBreakdownParamsDimensionKey) Valid() bool {
+	switch e {
+	case ActiveCerts:
+		return true
+	case Identities:
+		return true
+	case InternalCas:
+		return true
+	case PamIdentities:
+		return true
+	case SecretIdentities:
+		return true
+	case UserIdentities:
+		return true
+	case WildcardCerts:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown400JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown400JSONResponseBodyStatusCodeN400 GetBillingUsageBreakdown400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown400JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown401JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown401JSONResponseBodyStatusCodeN401 GetBillingUsageBreakdown401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown401JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown403JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown403JSONResponseBodyStatusCodeN403 GetBillingUsageBreakdown403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown403JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown404JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown404JSONResponseBodyStatusCodeN404 GetBillingUsageBreakdown404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown404JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown422JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown422JSONResponseBodyStatusCodeN422 GetBillingUsageBreakdown422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown422JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown500JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown500JSONResponseBodyStatusCodeN500 GetBillingUsageBreakdown500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown500JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations400JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations400JSONResponseBodyStatusCodeN400 ListBillableOrganizations400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations400JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations401JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations401JSONResponseBodyStatusCodeN401 ListBillableOrganizations401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations401JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations403JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations403JSONResponseBodyStatusCodeN403 ListBillableOrganizations403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations403JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations404JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations404JSONResponseBodyStatusCodeN404 ListBillableOrganizations404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations404JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations422JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations422JSONResponseBodyStatusCodeN422 ListBillableOrganizations422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations422JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations500JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations500JSONResponseBodyStatusCodeN500 ListBillableOrganizations500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations500JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetOrganizationPlanParamsRefreshCache.
 const (
 	GetOrganizationPlanParamsRefreshCacheFalse GetOrganizationPlanParamsRefreshCache = "false"
@@ -65545,6 +65980,7 @@ func (e CreateSecretReminderJSONBodyChannelsChannelType) Valid() bool {
 const (
 	CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeEmail          CreateSecretReminderJSONBodyChannelsRecipientsPrincipalType = "email"
 	CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeGroup          CreateSecretReminderJSONBodyChannelsRecipientsPrincipalType = "group"
+	CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeProjectAdmins  CreateSecretReminderJSONBodyChannelsRecipientsPrincipalType = "project-admins"
 	CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeProjectMembers CreateSecretReminderJSONBodyChannelsRecipientsPrincipalType = "project-members"
 	CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeUser           CreateSecretReminderJSONBodyChannelsRecipientsPrincipalType = "user"
 )
@@ -65555,6 +65991,8 @@ func (e CreateSecretReminderJSONBodyChannelsRecipientsPrincipalType) Valid() boo
 	case CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeEmail:
 		return true
 	case CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeGroup:
+		return true
+	case CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeProjectAdmins:
 		return true
 	case CreateSecretReminderJSONBodyChannelsRecipientsPrincipalTypeProjectMembers:
 		return true
@@ -98296,9 +98734,9 @@ type UpdateAccessApprovalPolicy500JSONResponseBodyStatusCode float32
 
 // ListAccessApprovalRequestsParams defines parameters for ListAccessApprovalRequests.
 type ListAccessApprovalRequestsParams struct {
-	ProjectSlug  string  `form:"projectSlug" json:"projectSlug"`
-	AuthorUserId *string `form:"authorUserId,omitempty" json:"authorUserId,omitempty"`
-	EnvSlug      *string `form:"envSlug,omitempty" json:"envSlug,omitempty"`
+	ProjectSlug  string              `form:"projectSlug" json:"projectSlug"`
+	AuthorUserId *openapi_types.UUID `form:"authorUserId,omitempty" json:"authorUserId,omitempty"`
+	EnvSlug      *string             `form:"envSlug,omitempty" json:"envSlug,omitempty"`
 }
 
 // ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 defines parameters for ListAccessApprovalRequests.
@@ -109158,6 +109596,24 @@ type CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode float32
 // CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
 type CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode float32
 
+// GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode float32
+
 // CreateCertificatePolicyJSONBody defines parameters for CreateCertificatePolicy.
 type CreateCertificatePolicyJSONBody struct {
 	Algorithms *struct {
@@ -109537,6 +109993,67 @@ type CreateCertificateProfile422JSONResponseBodyStatusCode float32
 
 // CreateCertificateProfile500JSONResponseBodyStatusCode defines parameters for CreateCertificateProfile.
 type CreateCertificateProfile500JSONResponseBodyStatusCode float32
+
+// ImportCertificateJSONBody defines parameters for ImportCertificate.
+type ImportCertificateJSONBody struct {
+	ApplicationId *openapi_types.UUID `json:"applicationId,omitempty"`
+
+	// CertificatePem The PEM-encoded leaf certificate.
+	CertificatePem string `json:"certificatePem"`
+
+	// ChainPem Optional PEM-encoded chain of intermediate certificates.
+	ChainPem *string `json:"chainPem,omitempty"`
+
+	// Csr Optional PEM-encoded certificate signing request generated from the certificate's private key, typically the one it was issued from. Lets renewal reuse the existing key pair, including automatic renewal, without Infisical holding the private key. Requires a profile backed by a certificate authority that issues from a CSR (not AWS Certificate Manager). The CSR must carry the certificate's public key, can't name anything the certificate doesn't, and must satisfy the profile's certificate policy.
+	Csr *string `json:"csr,omitempty"`
+
+	// ExternalMetadata Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }.
+	ExternalMetadata *ImportCertificateJSONBody_ExternalMetadata `json:"externalMetadata,omitempty"`
+
+	// FriendlyName A friendly name for the certificate.
+	FriendlyName *string `json:"friendlyName,omitempty"`
+
+	// PkiCollectionId The ID of the PKI collection to add the certificate to.
+	PkiCollectionId *string `json:"pkiCollectionId,omitempty"`
+
+	// PrivateKeyPem Optional PEM-encoded private key associated with the certificate.
+	PrivateKeyPem *string `json:"privateKeyPem,omitempty"`
+
+	// ProfileId The certificate profile that will manage this certificate's lifecycle. The certificate must satisfy the profile's certificate policy, or the request is rejected with a 400 naming the attributes that failed. Omit to track the certificate without renewal, reissue or revocation.
+	ProfileId *openapi_types.UUID `json:"profileId,omitempty"`
+}
+
+// ImportCertificateJSONBodyExternalMetadata0 defines parameters for ImportCertificate.
+type ImportCertificateJSONBodyExternalMetadata0 struct {
+	OrderId int                                            `json:"orderId"`
+	Type    ImportCertificateJSONBodyExternalMetadata0Type `json:"type"`
+}
+
+// ImportCertificateJSONBodyExternalMetadata0Type defines parameters for ImportCertificate.
+type ImportCertificateJSONBodyExternalMetadata0Type string
+
+// ImportCertificateJSONBody_ExternalMetadata defines parameters for ImportCertificate.
+type ImportCertificateJSONBody_ExternalMetadata struct {
+	union json.RawMessage
+}
+
+// ImportCertificate400JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate400JSONResponseBodyStatusCode float32
+
+// ImportCertificate401JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate401JSONResponseBodyStatusCode float32
+
+// ImportCertificate403JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate403JSONResponseBodyStatusCode float32
+
+// ImportCertificate404JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate404JSONResponseBodyStatusCode float32
+
+// ImportCertificate422JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate422JSONResponseBodyStatusCode float32
+
+// ImportCertificate500JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate500JSONResponseBodyStatusCode float32
 
 // GetCertManagerInstanceState400JSONResponseBodyStatusCode defines parameters for GetCertManagerInstanceState.
 type GetCertManagerInstanceState400JSONResponseBodyStatusCode float32
@@ -124249,6 +124766,66 @@ type CreateOrganizationGroupMembership422JSONResponseBodyStatusCode float32
 // CreateOrganizationGroupMembership500JSONResponseBodyStatusCode defines parameters for CreateOrganizationGroupMembership.
 type CreateOrganizationGroupMembership500JSONResponseBodyStatusCode float32
 
+// GetBillingUsageBreakdownParams defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdownParams struct {
+	// Scope 'instance' explains usage across the entire self-hosted licence; 'organization' explains one root organization's share of it.
+	Scope *GetBillingUsageBreakdownParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// GetBillingUsageBreakdownParamsScope defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdownParamsScope string
+
+// GetBillingUsageBreakdownParamsDimensionKey defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdownParamsDimensionKey string
+
+// GetBillingUsageBreakdown400JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown400JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown401JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown401JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown403JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown403JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown404JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown404JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown422JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown422JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown500JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown500JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizationsParams defines parameters for ListBillableOrganizations.
+type ListBillableOrganizationsParams struct {
+	// Search Match root organizations whose name or slug contains this.
+	Search *string `form:"search,omitempty" json:"search,omitempty"`
+
+	// Limit Maximum organizations to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of organizations to skip.
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListBillableOrganizations400JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations400JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations401JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations401JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations403JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations403JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations404JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations404JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations422JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations422JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations500JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations500JSONResponseBodyStatusCode float32
+
 // GetOrganizationPlanParams defines parameters for GetOrganizationPlan.
 type GetOrganizationPlanParams struct {
 	RefreshCache *GetOrganizationPlanParamsRefreshCache `form:"refreshCache,omitempty" json:"refreshCache,omitempty"`
@@ -137254,6 +137831,12 @@ type DeleteServiceToken422JSONResponseBodyStatusCode float32
 // DeleteServiceToken500JSONResponseBodyStatusCode defines parameters for DeleteServiceToken.
 type DeleteServiceToken500JSONResponseBodyStatusCode float32
 
+// DeleteUserParams defines parameters for DeleteUser.
+type DeleteUserParams struct {
+	// LastMemberOrganizationIds Comma-separated IDs of the organizations where you are the last member who can sign in, as listed in lastMemberOrganizations by GET /api/v2/users/me/deletion-eligibility. They are deleted with your account, which cancels their subscriptions. The request is refused unless this matches that list exactly, and refused without it while any such organization exists.
+	LastMemberOrganizationIds *string `form:"lastMemberOrganizationIds,omitempty" json:"lastMemberOrganizationIds,omitempty"`
+}
+
 // DeleteUser400JSONResponseBodyStatusCode defines parameters for DeleteUser.
 type DeleteUser400JSONResponseBodyStatusCode float32
 
@@ -139957,6 +140540,9 @@ type CreateCertificatePolicyJSONRequestBody CreateCertificatePolicyJSONBody
 
 // CreateCertificateProfileJSONRequestBody defines body for CreateCertificateProfile for application/json ContentType.
 type CreateCertificateProfileJSONRequestBody CreateCertificateProfileJSONBody
+
+// ImportCertificateJSONRequestBody defines body for ImportCertificate for application/json ContentType.
+type ImportCertificateJSONRequestBody ImportCertificateJSONBody
 
 // SearchSecretsByMetadataJSONRequestBody defines body for SearchSecretsByMetadata for application/json ContentType.
 type SearchSecretsByMetadataJSONRequestBody SearchSecretsByMetadataJSONBody
@@ -149662,6 +150248,42 @@ func (t CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalC
 }
 
 func (t *CreateCertificateProfile200JSONResponseBody_CertificateProfile_ExternalConfigs) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsImportCertificateJSONBodyExternalMetadata0 returns the union data inside the ImportCertificateJSONBody_ExternalMetadata as a ImportCertificateJSONBodyExternalMetadata0
+func (t ImportCertificateJSONBody_ExternalMetadata) AsImportCertificateJSONBodyExternalMetadata0() (ImportCertificateJSONBodyExternalMetadata0, error) {
+	var body ImportCertificateJSONBodyExternalMetadata0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromImportCertificateJSONBodyExternalMetadata0 overwrites any union data inside the ImportCertificateJSONBody_ExternalMetadata as the provided ImportCertificateJSONBodyExternalMetadata0
+func (t *ImportCertificateJSONBody_ExternalMetadata) FromImportCertificateJSONBodyExternalMetadata0(v ImportCertificateJSONBodyExternalMetadata0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeImportCertificateJSONBodyExternalMetadata0 performs a merge with any union data inside the ImportCertificateJSONBody_ExternalMetadata, using the provided ImportCertificateJSONBodyExternalMetadata0
+func (t *ImportCertificateJSONBody_ExternalMetadata) MergeImportCertificateJSONBodyExternalMetadata0(v ImportCertificateJSONBodyExternalMetadata0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ImportCertificateJSONBody_ExternalMetadata) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ImportCertificateJSONBody_ExternalMetadata) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -170751,6 +171373,11 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	CreateInternalCertificateAuthorityV1(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetCertificateAuthorityQuotaV1 performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+	//
+	// Get certificate authority usage against the plan's limits.
+	GetCertificateAuthorityQuotaV1(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateCertificatePolicyWithBody performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
 	// with any type of body and a specified content type.
 	CreateCertificatePolicyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -170766,6 +171393,18 @@ type ClientInterface interface {
 	// CreateCertificateProfile performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request.
 	// Takes a body of the `application/json` content type.
 	CreateCertificateProfile(ctx context.Context, body CreateCertificateProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ImportCertificateWithBody performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Import certificate.
+	ImportCertificateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ImportCertificate performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Import certificate.
+	ImportCertificate(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCertManagerInstanceState performs a GET /api/v1/cert-manager/instance (the `GetCertManagerInstanceState` operationId) request.
 	//
@@ -172037,6 +172676,16 @@ type ClientInterface interface {
 	//
 	// Create organization group membership (link group to current org). Sub-org only: links a parent-org group.
 	CreateOrganizationGroupMembership(ctx context.Context, groupId openapi_types.UUID, body CreateOrganizationGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetBillingUsageBreakdown performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+	//
+	// Break one metered usage dimension down by the organizations and projects its units were created in.
+	GetBillingUsageBreakdown(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListBillableOrganizations performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+	//
+	// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+	ListBillableOrganizations(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOrganizationPlan performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	GetOrganizationPlan(ctx context.Context, organizationId string, params *GetOrganizationPlanParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -174212,7 +174861,7 @@ type ClientInterface interface {
 	DeleteServiceToken(ctx context.Context, serviceTokenId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteUser performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
-	DeleteUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteUser(ctx context.Context, params *DeleteUserParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
 	//
@@ -178869,6 +179518,21 @@ func (c *Client) CreateInternalCertificateAuthorityV1(ctx context.Context, body 
 	return c.Client.Do(req)
 }
 
+// GetCertificateAuthorityQuotaV1 performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+//
+// Get certificate authority usage against the plan's limits.
+func (c *Client) GetCertificateAuthorityQuotaV1(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCertificateAuthorityQuotaV1Request(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateCertificatePolicyWithBody performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
 // with any type of body and a specified content type.
 func (c *Client) CreateCertificatePolicyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -178915,6 +179579,38 @@ func (c *Client) CreateCertificateProfileWithBody(ctx context.Context, contentTy
 // Takes a body of the `application/json` content type.
 func (c *Client) CreateCertificateProfile(ctx context.Context, body CreateCertificateProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateCertificateProfileRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ImportCertificateWithBody performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// Import certificate.
+func (c *Client) ImportCertificateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewImportCertificateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ImportCertificate performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Import certificate.
+func (c *Client) ImportCertificate(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewImportCertificateRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -182995,6 +183691,36 @@ func (c *Client) CreateOrganizationGroupMembershipWithBody(ctx context.Context, 
 // Create organization group membership (link group to current org). Sub-org only: links a parent-org group.
 func (c *Client) CreateOrganizationGroupMembership(ctx context.Context, groupId openapi_types.UUID, body CreateOrganizationGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateOrganizationGroupMembershipRequest(c.Server, groupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetBillingUsageBreakdown performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+//
+// Break one metered usage dimension down by the organizations and projects its units were created in.
+func (c *Client) GetBillingUsageBreakdown(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBillingUsageBreakdownRequest(c.Server, organizationId, dimensionKey, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListBillableOrganizations performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+//
+// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+func (c *Client) ListBillableOrganizations(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListBillableOrganizationsRequest(c.Server, organizationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -189861,8 +190587,8 @@ func (c *Client) DeleteServiceToken(ctx context.Context, serviceTokenId string, 
 }
 
 // DeleteUser performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
-func (c *Client) DeleteUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteUserRequest(c.Server)
+func (c *Client) DeleteUser(ctx context.Context, params *DeleteUserParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteUserRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -191349,7 +192075,7 @@ func NewListAccessApprovalRequestsRequest(server string, params *ListAccessAppro
 
 		if params.AuthorUserId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "authorUserId", *params.AuthorUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "authorUserId", *params.AuthorUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -199014,6 +199740,33 @@ func NewCreateInternalCertificateAuthorityV1RequestWithBody(server string, conte
 	return req, nil
 }
 
+// NewGetCertificateAuthorityQuotaV1Request constructs an http.Request for the GetCertificateAuthorityQuotaV1 method
+func NewGetCertificateAuthorityQuotaV1Request(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/quota")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateCertificatePolicyRequest calls the generic CreateCertificatePolicy builder with application/json body
 func NewCreateCertificatePolicyRequest(server string, body CreateCertificatePolicyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -199075,6 +199828,46 @@ func NewCreateCertificateProfileRequestWithBody(server string, contentType strin
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/cert-manager/certificate-profiles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewImportCertificateRequest calls the generic ImportCertificate builder with application/json body
+func NewImportCertificateRequest(server string, body ImportCertificateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewImportCertificateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewImportCertificateRequestWithBody constructs an http.Request for the ImportCertificate method, with any body, and a specified content type
+func NewImportCertificateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/certificates/import-certificate")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -208130,6 +208923,159 @@ func NewCreateOrganizationGroupMembershipRequestWithBody(server string, groupId 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetBillingUsageBreakdownRequest constructs an http.Request for the GetBillingUsageBreakdown method
+func NewGetBillingUsageBreakdownRequest(server string, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "dimensionKey", dimensionKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/breakdowns/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Scope != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "scope", *params.Scope, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListBillableOrganizationsRequest constructs an http.Request for the ListBillableOrganizations method
+func NewListBillableOrganizationsRequest(server string, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/organizations", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Search != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -224148,7 +225094,7 @@ func NewDeleteServiceTokenRequest(server string, serviceTokenId string) (*http.R
 }
 
 // NewDeleteUserRequest constructs an http.Request for the DeleteUser method
-func NewDeleteUserRequest(server string) (*http.Request, error) {
+func NewDeleteUserRequest(server string, params *DeleteUserParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -224164,6 +225110,33 @@ func NewDeleteUserRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.LastMemberOrganizationIds != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "lastMemberOrganizationIds", *params.LastMemberOrganizationIds, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
@@ -228392,6 +229365,13 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	CreateInternalCertificateAuthorityV1WithResponse(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error)
 
+	// GetCertificateAuthorityQuotaV1WithResponse performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+	//
+	// Get certificate authority usage against the plan's limits.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetCertificateAuthorityQuotaV1WithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCertificateAuthorityQuotaV1Response, error)
+
 	// CreateCertificatePolicyWithBodyWithResponse performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -228411,6 +229391,20 @@ type ClientWithResponsesInterface interface {
 	// CreateCertificateProfileWithResponse performs a POST /api/v1/cert-manager/certificate-profiles (the `CreateCertificateProfile` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	CreateCertificateProfileWithResponse(ctx context.Context, body CreateCertificateProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCertificateProfileResponse, error)
+
+	// ImportCertificateWithBodyWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Import certificate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ImportCertificateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error)
+
+	// ImportCertificateWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Import certificate.
+	ImportCertificateWithResponse(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error)
 
 	// GetCertManagerInstanceStateWithResponse performs a GET /api/v1/cert-manager/instance (the `GetCertManagerInstanceState` operationId) request.
 	//
@@ -230088,6 +231082,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create organization group membership (link group to current org). Sub-org only: links a parent-org group.
 	CreateOrganizationGroupMembershipWithResponse(ctx context.Context, groupId openapi_types.UUID, body CreateOrganizationGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationGroupMembershipResponse, error)
+
+	// GetBillingUsageBreakdownWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+	//
+	// Break one metered usage dimension down by the organizations and projects its units were created in.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetBillingUsageBreakdownWithResponse(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*GetBillingUsageBreakdownResponse, error)
+
+	// ListBillableOrganizationsWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+	//
+	// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListBillableOrganizationsWithResponse(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*ListBillableOrganizationsResponse, error)
 
 	// GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	//
@@ -232945,7 +233953,7 @@ type ClientWithResponsesInterface interface {
 	// DeleteUserWithResponse performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
+	DeleteUserWithResponse(ctx context.Context, params *DeleteUserParams, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
 
 	// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
 	//
@@ -265555,6 +266563,183 @@ func (r CreateInternalCertificateAuthorityV1Response) ContentType() string {
 	return ""
 }
 
+type GetCertificateAuthorityQuotaV1Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CertificateAuthorities struct {
+			// Limit The plan's cap, or null when uncapped.
+			Limit *int `json:"limit"`
+
+			// Used Certificate authorities of every type currently in use.
+			Used int `json:"used"`
+		} `json:"certificateAuthorities"`
+		InternalCertificateAuthorities struct {
+			// Limit The plan's cap, or null when uncapped.
+			Limit *int `json:"limit"`
+
+			// Used Internal certificate authorities currently in use.
+			Used int `json:"used"`
+		} `json:"internalCertificateAuthorities"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                      `json:"error"`
+		Message    interface{}                                                 `json:"message,omitempty"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON200() *struct {
+	CertificateAuthorities struct {
+		// Limit The plan's cap, or null when uncapped.
+		Limit *int `json:"limit"`
+
+		// Used Certificate authorities of every type currently in use.
+		Used int `json:"used"`
+	} `json:"certificateAuthorities"`
+	InternalCertificateAuthorities struct {
+		// Limit The plan's cap, or null when uncapped.
+		Limit *int `json:"limit"`
+
+		// Used Internal certificate authorities currently in use.
+		Used int `json:"used"`
+	} `json:"internalCertificateAuthorities"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON400() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON401() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON403() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON404() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON422() *struct {
+	Error      string                                                      `json:"error"`
+	Message    interface{}                                                 `json:"message,omitempty"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON500() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCertificateAuthorityQuotaV1Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCertificateAuthorityQuotaV1Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCertificateAuthorityQuotaV1Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCertificateAuthorityQuotaV1Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateCertificatePolicyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -266035,6 +267220,183 @@ func (r CreateCertificateProfileResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateCertificateProfileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ImportCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		// Certificate The imported certificate.
+		Certificate string `json:"certificate"`
+
+		// CertificateChain The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.
+		CertificateChain *string `json:"certificateChain,omitempty"`
+
+		// CertificateId The ID of the imported certificate.
+		CertificateId openapi_types.UUID `json:"certificateId"`
+
+		// PrivateKey The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.
+		PrivateKey *string `json:"privateKey,omitempty"`
+
+		// SerialNumber The serial number of the imported certificate.
+		SerialNumber string `json:"serialNumber"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ImportCertificateResponse) GetJSON200() *struct {
+	// Certificate The imported certificate.
+	Certificate string `json:"certificate"`
+
+	// CertificateChain The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.
+	CertificateChain *string `json:"certificateChain,omitempty"`
+
+	// CertificateId The ID of the imported certificate.
+	CertificateId openapi_types.UUID `json:"certificateId"`
+
+	// PrivateKey The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.
+	PrivateKey *string `json:"privateKey,omitempty"`
+
+	// SerialNumber The serial number of the imported certificate.
+	SerialNumber string `json:"serialNumber"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ImportCertificateResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ImportCertificateResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ImportCertificateResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ImportCertificateResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ImportCertificateResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ImportCertificateResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ImportCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ImportCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ImportCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ImportCertificateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -301765,6 +303127,434 @@ func (r CreateOrganizationGroupMembershipResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateOrganizationGroupMembershipResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetBillingUsageBreakdownResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Breakdown struct {
+			// DimensionKey The metered dimension this breakdown explains.
+			DimensionKey string `json:"dimensionKey"`
+
+			// HasProjectDetail Whether units can be attributed to individual projects.
+			HasProjectDetail bool `json:"hasProjectDetail"`
+
+			// ScopedCount The part of the total the scope tree accounts for; equals total for dimensions with no users.
+			ScopedCount float32 `json:"scopedCount"`
+
+			// Scopes Organizations the total is drawn from, largest first.
+			Scopes []struct {
+				// Count Metered units attributed to this organization.
+				Count float32 `json:"count"`
+
+				// IsRoot Whether this is the root organization of the billing tree.
+				IsRoot bool `json:"isRoot"`
+
+				// Name Display name of the organization.
+				Name string `json:"name"`
+
+				// OrgId ID of the organization the units were created in.
+				OrgId string `json:"orgId"`
+
+				// OrgLevelCount Units created on the organization itself rather than in a project.
+				OrgLevelCount float32 `json:"orgLevelCount"`
+
+				// ParentOrgName Display name of the root organization this sub-organization belongs to; null on a root org.
+				ParentOrgName *string `json:"parentOrgName"`
+
+				// Projects Per-project split of this organization's units; empty when the dimension has no project detail.
+				Projects []struct {
+					// Count Metered units created in this project.
+					Count float32 `json:"count"`
+
+					// Id ID of the project the units were created in.
+					Id string `json:"id"`
+
+					// Name Display name of the project.
+					Name string `json:"name"`
+				} `json:"projects"`
+			} `json:"scopes"`
+
+			// Total Live total for the dimension, counted the same way the meter counts it.
+			Total float32 `json:"total"`
+
+			// Unit Singular noun for what is counted, e.g. 'machine identity'.
+			Unit string `json:"unit"`
+
+			// UserCount Human seats in the metered set; 0 for dimensions that count no users.
+			UserCount float32 `json:"userCount"`
+		} `json:"breakdown"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                `json:"error"`
+		Message    interface{}                                           `json:"message,omitempty"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON200() *struct {
+	Breakdown struct {
+		// DimensionKey The metered dimension this breakdown explains.
+		DimensionKey string `json:"dimensionKey"`
+
+		// HasProjectDetail Whether units can be attributed to individual projects.
+		HasProjectDetail bool `json:"hasProjectDetail"`
+
+		// ScopedCount The part of the total the scope tree accounts for; equals total for dimensions with no users.
+		ScopedCount float32 `json:"scopedCount"`
+
+		// Scopes Organizations the total is drawn from, largest first.
+		Scopes []struct {
+			// Count Metered units attributed to this organization.
+			Count float32 `json:"count"`
+
+			// IsRoot Whether this is the root organization of the billing tree.
+			IsRoot bool `json:"isRoot"`
+
+			// Name Display name of the organization.
+			Name string `json:"name"`
+
+			// OrgId ID of the organization the units were created in.
+			OrgId string `json:"orgId"`
+
+			// OrgLevelCount Units created on the organization itself rather than in a project.
+			OrgLevelCount float32 `json:"orgLevelCount"`
+
+			// ParentOrgName Display name of the root organization this sub-organization belongs to; null on a root org.
+			ParentOrgName *string `json:"parentOrgName"`
+
+			// Projects Per-project split of this organization's units; empty when the dimension has no project detail.
+			Projects []struct {
+				// Count Metered units created in this project.
+				Count float32 `json:"count"`
+
+				// Id ID of the project the units were created in.
+				Id string `json:"id"`
+
+				// Name Display name of the project.
+				Name string `json:"name"`
+			} `json:"projects"`
+		} `json:"scopes"`
+
+		// Total Live total for the dimension, counted the same way the meter counts it.
+		Total float32 `json:"total"`
+
+		// Unit Singular noun for what is counted, e.g. 'machine identity'.
+		Unit string `json:"unit"`
+
+		// UserCount Human seats in the metered set; 0 for dimensions that count no users.
+		UserCount float32 `json:"userCount"`
+	} `json:"breakdown"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON400() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON401() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON403() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON404() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON422() *struct {
+	Error      string                                                `json:"error"`
+	Message    interface{}                                           `json:"message,omitempty"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON500() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetBillingUsageBreakdownResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBillingUsageBreakdownResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBillingUsageBreakdownResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBillingUsageBreakdownResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListBillableOrganizationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Organizations []struct {
+			// Id ID of the root organization.
+			Id string `json:"id"`
+
+			// Name Display name of the root organization.
+			Name string `json:"name"`
+
+			// Slug Slug of the root organization.
+			Slug string `json:"slug"`
+		} `json:"organizations"`
+
+		// TotalCount Root organizations matching the search, across every page.
+		TotalCount float32 `json:"totalCount"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON200() *struct {
+	Organizations []struct {
+		// Id ID of the root organization.
+		Id string `json:"id"`
+
+		// Name Display name of the root organization.
+		Name string `json:"name"`
+
+		// Slug Slug of the root organization.
+		Slug string `json:"slug"`
+	} `json:"organizations"`
+
+	// TotalCount Root organizations matching the search, across every page.
+	TotalCount float32 `json:"totalCount"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListBillableOrganizationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListBillableOrganizationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListBillableOrganizationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListBillableOrganizationsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -375828,6 +377618,19 @@ func (c *ClientWithResponses) CreateInternalCertificateAuthorityV1WithResponse(c
 	return ParseCreateInternalCertificateAuthorityV1Response(rsp)
 }
 
+// GetCertificateAuthorityQuotaV1WithResponse performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+//
+// Get certificate authority usage against the plan's limits.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetCertificateAuthorityQuotaV1WithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCertificateAuthorityQuotaV1Response, error) {
+	rsp, err := c.GetCertificateAuthorityQuotaV1(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCertificateAuthorityQuotaV1Response(rsp)
+}
+
 // CreateCertificatePolicyWithBodyWithResponse performs a POST /api/v1/cert-manager/certificate-policies (the `CreateCertificatePolicy` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -375870,6 +377673,32 @@ func (c *ClientWithResponses) CreateCertificateProfileWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseCreateCertificateProfileResponse(rsp)
+}
+
+// ImportCertificateWithBodyWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// Import certificate.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ImportCertificateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error) {
+	rsp, err := c.ImportCertificateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseImportCertificateResponse(rsp)
+}
+
+// ImportCertificateWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Import certificate.
+func (c *ClientWithResponses) ImportCertificateWithResponse(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error) {
+	rsp, err := c.ImportCertificate(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseImportCertificateResponse(rsp)
 }
 
 // GetCertManagerInstanceStateWithResponse performs a GET /api/v1/cert-manager/instance (the `GetCertManagerInstanceState` operationId) request.
@@ -379233,6 +381062,32 @@ func (c *ClientWithResponses) CreateOrganizationGroupMembershipWithResponse(ctx 
 		return nil, err
 	}
 	return ParseCreateOrganizationGroupMembershipResponse(rsp)
+}
+
+// GetBillingUsageBreakdownWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+//
+// Break one metered usage dimension down by the organizations and projects its units were created in.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetBillingUsageBreakdownWithResponse(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*GetBillingUsageBreakdownResponse, error) {
+	rsp, err := c.GetBillingUsageBreakdown(ctx, organizationId, dimensionKey, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBillingUsageBreakdownResponse(rsp)
+}
+
+// ListBillableOrganizationsWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+//
+// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListBillableOrganizationsWithResponse(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*ListBillableOrganizationsResponse, error) {
+	rsp, err := c.ListBillableOrganizations(ctx, organizationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListBillableOrganizationsResponse(rsp)
 }
 
 // GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
@@ -384903,8 +386758,8 @@ func (c *ClientWithResponses) DeleteServiceTokenWithResponse(ctx context.Context
 // DeleteUserWithResponse performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
-	rsp, err := c.DeleteUser(ctx, reqEditors...)
+func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, params *DeleteUserParams, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
+	rsp, err := c.DeleteUser(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -406661,6 +408516,121 @@ func ParseCreateInternalCertificateAuthorityV1Response(rsp *http.Response) (*Cre
 	return response, nil
 }
 
+// ParseGetCertificateAuthorityQuotaV1Response parses an HTTP response from a GetCertificateAuthorityQuotaV1WithResponse call
+func ParseGetCertificateAuthorityQuotaV1Response(rsp *http.Response) (*GetCertificateAuthorityQuotaV1Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCertificateAuthorityQuotaV1Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CertificateAuthorities struct {
+				// Limit The plan's cap, or null when uncapped.
+				Limit *int `json:"limit"`
+
+				// Used Certificate authorities of every type currently in use.
+				Used int `json:"used"`
+			} `json:"certificateAuthorities"`
+			InternalCertificateAuthorities struct {
+				// Limit The plan's cap, or null when uncapped.
+				Limit *int `json:"limit"`
+
+				// Used Internal certificate authorities currently in use.
+				Used int `json:"used"`
+			} `json:"internalCertificateAuthorities"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    interface{}                                                 `json:"message,omitempty"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateCertificatePolicyResponse parses an HTTP response from a CreateCertificatePolicyWithResponse call
 func ParseCreateCertificatePolicyResponse(rsp *http.Response) (*CreateCertificatePolicyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -406946,6 +408916,121 @@ func ParseCreateCertificateProfileResponse(rsp *http.Response) (*CreateCertifica
 			Message    string                                                `json:"message"`
 			ReqId      string                                                `json:"reqId"`
 			StatusCode CreateCertificateProfile500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseImportCertificateResponse parses an HTTP response from a ImportCertificateWithResponse call
+func ParseImportCertificateResponse(rsp *http.Response) (*ImportCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ImportCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			// Certificate The imported certificate.
+			Certificate string `json:"certificate"`
+
+			// CertificateChain The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.
+			CertificateChain *string `json:"certificateChain,omitempty"`
+
+			// CertificateId The ID of the imported certificate.
+			CertificateId openapi_types.UUID `json:"certificateId"`
+
+			// PrivateKey The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.
+			PrivateKey *string `json:"privateKey,omitempty"`
+
+			// SerialNumber The serial number of the imported certificate.
+			SerialNumber string `json:"serialNumber"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -430108,6 +432193,273 @@ func ParseCreateOrganizationGroupMembershipResponse(rsp *http.Response) (*Create
 			Message    string                                                         `json:"message"`
 			ReqId      string                                                         `json:"reqId"`
 			StatusCode CreateOrganizationGroupMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBillingUsageBreakdownResponse parses an HTTP response from a GetBillingUsageBreakdownWithResponse call
+func ParseGetBillingUsageBreakdownResponse(rsp *http.Response) (*GetBillingUsageBreakdownResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBillingUsageBreakdownResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Breakdown struct {
+				// DimensionKey The metered dimension this breakdown explains.
+				DimensionKey string `json:"dimensionKey"`
+
+				// HasProjectDetail Whether units can be attributed to individual projects.
+				HasProjectDetail bool `json:"hasProjectDetail"`
+
+				// ScopedCount The part of the total the scope tree accounts for; equals total for dimensions with no users.
+				ScopedCount float32 `json:"scopedCount"`
+
+				// Scopes Organizations the total is drawn from, largest first.
+				Scopes []struct {
+					// Count Metered units attributed to this organization.
+					Count float32 `json:"count"`
+
+					// IsRoot Whether this is the root organization of the billing tree.
+					IsRoot bool `json:"isRoot"`
+
+					// Name Display name of the organization.
+					Name string `json:"name"`
+
+					// OrgId ID of the organization the units were created in.
+					OrgId string `json:"orgId"`
+
+					// OrgLevelCount Units created on the organization itself rather than in a project.
+					OrgLevelCount float32 `json:"orgLevelCount"`
+
+					// ParentOrgName Display name of the root organization this sub-organization belongs to; null on a root org.
+					ParentOrgName *string `json:"parentOrgName"`
+
+					// Projects Per-project split of this organization's units; empty when the dimension has no project detail.
+					Projects []struct {
+						// Count Metered units created in this project.
+						Count float32 `json:"count"`
+
+						// Id ID of the project the units were created in.
+						Id string `json:"id"`
+
+						// Name Display name of the project.
+						Name string `json:"name"`
+					} `json:"projects"`
+				} `json:"scopes"`
+
+				// Total Live total for the dimension, counted the same way the meter counts it.
+				Total float32 `json:"total"`
+
+				// Unit Singular noun for what is counted, e.g. 'machine identity'.
+				Unit string `json:"unit"`
+
+				// UserCount Human seats in the metered set; 0 for dimensions that count no users.
+				UserCount float32 `json:"userCount"`
+			} `json:"breakdown"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    interface{}                                           `json:"message,omitempty"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListBillableOrganizationsResponse parses an HTTP response from a ListBillableOrganizationsWithResponse call
+func ParseListBillableOrganizationsResponse(rsp *http.Response) (*ListBillableOrganizationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListBillableOrganizationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Organizations []struct {
+				// Id ID of the root organization.
+				Id string `json:"id"`
+
+				// Name Display name of the root organization.
+				Name string `json:"name"`
+
+				// Slug Slug of the root organization.
+				Slug string `json:"slug"`
+			} `json:"organizations"`
+
+			// TotalCount Root organizations matching the search, across every page.
+			TotalCount float32 `json:"totalCount"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

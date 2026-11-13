@@ -203,8 +203,8 @@ func (t *Tenant) signUpAdmin(tt *testing.T, orgName string) *Principal {
 
 // SetPlan changes this tenant's entitlements, and proves the change took effect.
 //
-// A stub on its own does nothing: getPlan caches per organization in Redis for 900
-// seconds. Verify reads the plan back with refreshCache=true, which busts that cache
+// A stub on its own does nothing: getPlan caches per root organization in Redis for
+// about 900 seconds. Verify reads the plan back with refreshCache=true, which busts that cache
 // through the API and asserts the stub produced what was asked for in one call.
 func (t *Tenant) SetPlan(tt *testing.T, p license.Plan) {
 	tt.Helper()
@@ -218,7 +218,7 @@ func (t *Tenant) SetPlan(tt *testing.T, p license.Plan) {
 
 // Verify reads the resolved plan back and fails if it is not what was asked for.
 //
-// The stub speaks License Server keys while the plan speaks TFeatureSet fields, and
+// The stub speaks License Server keys while the plan speaks Plan fields, and
 // feature-mapping.ts warns that a wrong key means the feature is never projected.
 // That failure is silent: it surfaces later as a 403 in a test that looks unrelated
 // to licensing. This turns it into a failure at tenant creation, naming the field.
@@ -242,13 +242,13 @@ func (t *Tenant) Verify(tt *testing.T, want license.Plan) {
 		if !planMatches(lookup(got, field), expected) {
 			tt.Fatalf("tenant %s: asked for %s=%v, the instance resolved %v.\n"+
 				"Likely a wrong License Server feature key; see "+
-				"backend/src/services/license-client/feature-mapping.ts",
+				"backend/src/domains/platform/license/ee/services/license-policy/feature-mapping.ts",
 				t.OrgSlug, field, expected, lookup(got, field))
 		}
 	}
 }
 
-// lookup resolves a TFeatureSet field, which may be nested.
+// lookup resolves a Plan field, which may be nested.
 //
 // feature-mapping.ts records the target as a dotted path for nested fields, and the
 // rate limits are what use it: "rateLimits.readLimit" is an object member, not a key

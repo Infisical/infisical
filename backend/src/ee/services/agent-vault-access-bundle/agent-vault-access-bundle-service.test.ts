@@ -2,6 +2,8 @@ import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { TAgentVaultServices } from "@app/db/schemas";
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
@@ -97,7 +99,9 @@ const buildService = ({
       })
     })
   };
-  const licenseService = { getPlan: vi.fn().mockResolvedValue({ agentVaultHooks: hooksOnPlan }) };
+  const licenseService = {
+    getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
+  };
   const service = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL: {
       findByIdInProject: vi.fn().mockResolvedValue({ id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID }),

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/samlidp"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
@@ -248,5 +249,27 @@ func TestSAMLLogin_Attributes(t *testing.T) {
 			metadata[kv.Key] = kv.Value
 		}
 		require.Equal(t, map[string]string{"department": "Engineering", "costcenter": "cc-42"}, metadata)
+	})
+}
+
+func TestSAMLLogin_SeatLimit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should refuse a new user through SAML when the plan's member limit is reached, and add no membership", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+		s.Tenant.NewMachineIdentity(t)
+		s.Tenant.SetPlan(t, license.SeatLimited(1))
+		alice := s.Person()
+
+		// Action
+		res := s.SPLogin(t, alice)
+
+		// Assert
+		require.NotEqual(t, http.StatusOK, res.StatusCode())
+		require.Contains(t, string(res.Body), "member limit reached")
+		require.Nil(t, fixture.MembershipOf(t, s.Tenant, alice.Email))
 	})
 }

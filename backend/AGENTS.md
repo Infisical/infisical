@@ -46,6 +46,8 @@ Run both suites from the repo root, which is the same entry point CI uses:
 - `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
 - `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
 - `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
+- `make test-api-integration`: `./src/**/*.integration-test.ts` (see `src/domains/AGENTS.md`). Runs on the host,
+  not the FIPS image, since Testcontainers needs Docker. `SPEC=` works the same
 - `make up-rotation-databases` — start the databases the secret rotation specs need, required
   only for a full run (`docker-compose.e2e-dbs.yml`, and the Oracle image is large)
 - `make down-test-suite-containers` — stop everything when finished
@@ -114,7 +116,7 @@ copy drifts on its own.
 `isTestMode` branches. Replace the module instead, from `test.alias` in
 `vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
 a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
-are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+are the worked examples, and the License domain's `./default-features` alias is the precedent.
 
 Four things decide whether this works:
 
@@ -240,11 +242,15 @@ site that receives a plain `Buffer`.
 
 ## Architecture
 
+### Domain Modules (new structure)
+
+New backend code goes in domain modules under `src/domains/` (one folder per capability, `ce/` and `ee/` editions, class-based `module.ts`). Read [`src/domains/AGENTS.md`](src/domains/AGENTS.md) before touching one, and follow its "Migrating a legacy module" checklist when moving a service there. The sections below cover the older `src/services/` layout, which sticks around until each service moves.
+
 ### Service Factory + Manual DI
 
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
 
-The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
+The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: `createDomains` and `await domains.license.start()` right after the cron job (legacy services depend on domains, never the reverse, and queue workers read the license as soon as they start), DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
 
 See `secretServiceFactory` in `src/services/secret/secret-service.ts` for a representative factory with ~20 dependencies. See `src/services/user/user-service.ts` for a simpler example (~8 dependencies).
 
@@ -977,7 +983,7 @@ Enterprise code lives in `src/ee/`:
 - `src/ee/services/` — service modules (access approval, audit log, dynamic secrets, external KMS, gateway, KMIP, LDAP, OIDC, PAM, PKI, SAML, SCIM, secret approval/rotation/replication, etc.)
 - `src/ee/routes/v1/`, `src/ee/routes/v2/` — EE route files
 
-EE routes register before community routes so they can override/extend endpoints. Feature gating via license service (`src/ee/services/license/license-service.ts`) which validates online/offline licenses, caches feature sets in keystore with 5-minute TTL, and exposes `getPlan()` to check feature availability.
+EE routes register before community routes so they can override/extend endpoints. Licensing lives in the License domain (`src/domains/platform/license/`, read its `AGENTS.md` first). For feature gating take `licenseService: TLicenseService` and call `getPlan(orgId)`: check with `plan.has(PlanFeature.Rbac)` or refuse with `plan.assert(PlanFeature.Rbac)`, which names the feature in the error, and check numeric limits through `plan.exceeds(PlanLimit.X, used)`, never by reading the field. For usage take `usageMeteringService: TUsageMeteringService`: `emit(orgId, Meter.X)` after a metered write commits, `syncSeats(orgId)` after a member change commits. License never joins your transaction: read `getSeatUsage(orgId)` before opening it and check with `seatUsage.assertAvailable(plan)` inside it.
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/AGENTS.md`](src/ee/services/pam/AGENTS.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
@@ -1205,7 +1211,7 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 
 ## Wiring a New Feature (Checklist)
 
-1. Create service module in `src/services/<name>/` (or `src/ee/services/<name>/` for EE) with DAL, service, and types files
+1. Create service module in `src/services/<name>/` (or `src/ee/services/<name>/` for EE) with DAL, service, and types files. New capabilities can be a domain in `src/domains/` instead (see [`src/domains/AGENTS.md`](src/domains/AGENTS.md))
 2. If adding DB tables: create migration via `npm run migration:new`, run it, then `npm run generate:schema`
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { logger } from "@app/lib/logger";
 
 import { identityAwsAuthServiceFactory } from "./identity-aws-auth-service";
@@ -89,7 +90,7 @@ const makeService = (awsAuth: Partial<TAwsAuthRow> = {}, authMethods: string[] =
     keyStore: { setItemWithExpiryNX: vi.fn().mockResolvedValue(null) } as never,
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ ipAllowlisting: true }) } as never,
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { ipAllowlisting: true }),
     identityAccessTokenService: {
       issueIdentityAccessToken,
       invalidateTrustedIpsCache: vi.fn().mockResolvedValue(undefined)
