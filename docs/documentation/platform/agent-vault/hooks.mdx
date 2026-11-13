@@ -41,6 +41,10 @@ You can add a hook when you add a service, or later when you edit it. Each proxy
       </Step>
       <Step>
         In **Signing Secret**, enter the secret your server checks signatures with. If you're editing a service that already has a hook, leave the field as it is to keep the saved secret.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/service-hook.png" alt="The Hook step of the github service, with Use a Hook turned on, the hook URL https://hooks.example.com/agent-vault/github, and a saved signing secret" />
+        </Frame>
       </Step>
       <Step>
         Select **Continue**, then select **Add Service**, or **Save** if you're editing the service.
@@ -331,6 +335,14 @@ Each refusal adds a row to the session logs:
 
 - **HTTP APIs and MCP servers:** A denied request shows as **Blocked** with "The hook refused this request:" followed by your `reason`, and a failed hook call shows as **Error** with "The hook didn't give a usable answer, so the request wasn't sent."
 - **Databases and SSH servers:** A denied connection shows "The hook refused this connection:" followed by your `reason` (or your `message`, if you sent no `reason`), and a failed hook call shows "The hook didn't give a usable answer, so the connection wasn't opened."
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-hook-denied.png" alt="The session logs of a session, with a PUT request to merge a pull request shown as Blocked, and hovering over Blocked shows: The hook refused this request: merge to main needs approval (rule protect-main)" />
+</Frame>
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-logs-hook-connection.png" alt="The session logs of a session, with a connection to the orders-db PostgreSQL service shown as Blocked and expanded to read: The hook refused this connection: orders-db access outside 09:00-18:00 UTC" />
+</Frame>
 
 The session's owner and the project's admins can read the session logs, and the proxy also writes `reason` to its own log, so don't put anything in `reason` that those readers shouldn't see.
 
