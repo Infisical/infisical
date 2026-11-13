@@ -19,8 +19,7 @@ const community = (): InstanceEntitlements =>
   InstanceEntitlements.restore({
     instanceType: InstanceType.OnPrem,
     features: communityFeatures(),
-    licenseId: null,
-    customerId: null
+    licenseId: null
   });
 
 // Verified against the public key in the image; never reaches the License Server.
@@ -48,8 +47,7 @@ const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitleme
   return InstanceEntitlements.restore({
     instanceType: InstanceType.EnterpriseOnPremOffline,
     features: { ...features, slug: "enterprise", isOffline: true },
-    licenseId: contents.license.licenseId,
-    customerId: contents.license.customerId
+    licenseId: contents.license.licenseId
   });
 };
 
@@ -113,8 +111,7 @@ export class LicensePolicyService implements TLicensePolicyService {
     return InstanceEntitlements.restore({
       instanceType: InstanceType.EnterpriseOnPrem,
       features: selfHostedLicenseFeatures(entitlements),
-      licenseId: null,
-      customerId: null
+      licenseId: null
     });
   }
 }

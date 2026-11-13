@@ -64,7 +64,6 @@ export const testFeatures = (): TInstanceFeatures => ({
   agentVaultSessionLogRetentionDays: 30,
   secretSyncLimit: null,
   maxPamAccounts: null,
-  // PKI / Cert Manager
   pkiAcme: true,
   pkiEst: false,
   pkiScep: false,
@@ -86,7 +85,6 @@ export const testFeatures = (): TInstanceFeatures => ({
   maxCertificates: null,
   maxWildcardCertificates: null,
   maxSansPerCertificate: null,
-  // product gating
   pam: null,
   certManager: null,
   secretsTemporaryAccess: null,

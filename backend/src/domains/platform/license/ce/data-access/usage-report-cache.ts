@@ -3,7 +3,7 @@ import { applyJitter } from "@app/lib/dates";
 
 import { TUsageReportCache } from "../services/dependencies";
 
-// Same key names and TTLs as the old pods so a rolling deploy reads what they wrote.
+// Key names and TTLs are frozen: old pods share them during a rolling deploy.
 const UsageKeys = {
   reconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}`,
   lastReported: (reportOrgId: string, meterKey: string) => `license-usage-last-reported-${reportOrgId}-${meterKey}`

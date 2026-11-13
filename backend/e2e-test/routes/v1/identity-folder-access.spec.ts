@@ -192,10 +192,7 @@ describe("Identity folder access CRUD", () => {
     let directIdentityId: string;
     let firstGroup: { id: string; name: string; slug: string; orgId: string };
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
-    let removalDeps: Omit<
-      Parameters<typeof removeIdentitiesFromGroup>[0],
-      "group" | "identityIds" | "licenseService"
-    >;
+    let removalDeps: Omit<Parameters<typeof removeIdentitiesFromGroup>[0], "group" | "identityIds">;
 
     const createProjectGroup = async () => {
       const slug = `identity-folder-reap-grp-${alphaNumericNanoId(8)}`.toLowerCase();

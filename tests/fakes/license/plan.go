@@ -83,6 +83,14 @@ func (p Plan) With(f Feature, value any) Plan {
 	return out
 }
 
+// SeatLimited caps members and identities at n. It is a pro plan because Infisical
+// does not enforce the cap on enterprise.
+func SeatLimited(n int) Plan {
+	p := Enterprise().With(MaxIdentityLimit, n)
+	p.Slug = "pro"
+	return p
+}
+
 func (p Plan) clone() Plan {
 	out := Plan{Slug: p.Slug, Features: make(map[string]any, len(p.Features))}
 	maps.Copy(out.Features, p.Features)

@@ -12,8 +12,7 @@ export class FakeLicenseService implements TLicenseService {
   instance: TInstanceEntitlementsRecord = {
     instanceType: InstanceType.Cloud,
     features: testFeatures(),
-    licenseId: null,
-    customerId: null
+    licenseId: null
   };
 
   plans = new Map<string, TPlanFeatures>();

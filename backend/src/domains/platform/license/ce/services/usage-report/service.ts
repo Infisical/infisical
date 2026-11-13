@@ -25,11 +25,13 @@ export class UsageReportService implements TUsageReportService {
     private readonly organizationsProjectsService: TOrganizationsProjectsService
   ) {}
 
+  // Skips unpaid cloud orgs: they have no license on the server, so a report would 404. observedAt is stamped at
+  // count time, not enqueue: a retry recounts, and a new count sent with the old time would be dropped as a dupe
+  // while recordReported still records it. A no-license or not-priced outcome is final: no retry, no record.
   async handleUsageEvent(orgId: string, dimensionKey: string): Promise<void> {
     if (!this.licenseServer.canReportUsage()) return;
 
     const cloud = this.isCloud();
-    // On cloud an unpaid org has no license on the server, so a report would just 404.
     if (cloud && !(await this.licenseService.getPlan(orgId)).isPaid) return;
 
     const meter = Meter.fromKey(dimensionKey);
@@ -47,8 +49,6 @@ export class UsageReportService implements TUsageReportService {
 
     try {
       const value = await counter.count(cloud ? reportOrgId : null);
-      // Stamp at count time, not enqueue: a retry recounts, and a new count sent with the first attempt's time
-      // would be dropped by the server as a dupe while recordReported still records it.
       const observedAt = new Date();
       const lastReported = await this.usageReportCache.lastReported(reportOrgId, dimensionKey);
       if (lastReported === value) return;
@@ -59,7 +59,6 @@ export class UsageReportService implements TUsageReportService {
         observedAt,
         source: this.source
       });
-      // Final answer: don't retry, don't record.
       if (outcome !== "reported") {
         logger.info(
           `usage-event-queue: ${outcome === "no-license" ? "license not found" : "dimension not priced on this license"}, skipping [orgId=${reportOrgId}] [dimensionKey=${dimensionKey}]`
@@ -104,8 +103,8 @@ export class UsageReportService implements TUsageReportService {
     }
   }
 
-  // Self-hosted true-up: a daily backstop on top of event-driven reports. Each meter is emitted once at the
-  // instance identity, where it counts the whole instance and is skipped when unchanged.
+  // Self-hosted daily backstop on top of event-driven reports. Emits each meter once for the whole instance; the
+  // worker skips unchanged ones.
   flushInstanceUsage(): void {
     if (!this.licenseServer.canReportUsage()) return;
     this.usageQueue.emitAll(SELF_HOSTED_LICENSE_ORG_ID);

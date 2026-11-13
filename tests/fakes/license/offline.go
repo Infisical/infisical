@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Sits next to signing.mjs in the built image (see backend/src/lib/crypto/signing.ts).
+// PublicKeyPath sits next to signing.mjs in the built image (see backend/src/lib/crypto/signing.ts).
 const PublicKeyPath = "/app/dist/lib/crypto/license_public_key.pem"
 
 // Signer fakes Infisical's license signing key. The instance only trusts it once you
@@ -28,7 +28,7 @@ type Signer struct {
 	PublicKeyFile string
 }
 
-// Generated, not committed: secret scanning would flag a private key in the repo.
+// NewSigner generates its key instead of committing one: secret scanning would flag it.
 func NewSigner() (*Signer, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -72,8 +72,8 @@ func V2(licenseID string, p Plan) OfflineLicense {
 	}
 }
 
-// The instance verifies against JSON.stringify of the parsed license, so sign compact
-// JSON with HTML escaping off to match byte for byte.
+// Key signs l as compact JSON with HTML escaping off, to match the JSON.stringify the
+// instance verifies against byte for byte.
 func (s *Signer) Key(l OfflineLicense) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

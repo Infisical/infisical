@@ -56,7 +56,7 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t, harness.WithPlan(license.Enterprise().Without(license.RBAC)))
 		sub := fixture.NewSubOrg(t, tn)
-		subScope := license.Open(t, fixture.FakenetAdmin(t, tn), sub.ID.String())
+		subScope := fixture.LicenseServer(t, tn, sub.ID)
 
 		// Action
 		plan := fixture.Plan(t, sub.Admin.API, sub.ID.String(), true)
@@ -72,7 +72,7 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 
 		// Action
 		fixture.Plan(t, sub.Admin.API, sub.ID.String(), true)
@@ -91,7 +91,7 @@ func TestOrganizationPlan_Read(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)
 		before := len(root.State(t).EntitlementFetches)
 
@@ -111,7 +111,7 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		root.Fail(t, http.MethodGet, "/v1/organizations/"+tn.OrgID.String()+"/entitlements", http.StatusServiceUnavailable, fakenet.Times(1))
 		refresh := api.GetOrganizationPlanParamsRefreshCache("true")
 
@@ -130,7 +130,7 @@ func TestOrganizationPlan_Read(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		// The plan carries the project count, so creating a project drops the cached plan.
 		fixture.NewProject(t, tn)
 		root.Fail(t, http.MethodGet, "/v1/organizations/"+tn.OrgID.String()+"/entitlements", http.StatusServiceUnavailable, fakenet.Times(1))
@@ -153,7 +153,7 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		fixture.Plan(t, sub.Admin.API, sub.ID.String(), false)
 		before := len(root.State(t).EntitlementFetches)
 
@@ -163,5 +163,4 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		// Assert
 		require.Equal(t, before, len(root.State(t).EntitlementFetches))
 	})
-
 }

@@ -27,9 +27,8 @@ const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>
     ];
   });
 
-// Overlays the License Server's entitlements on the given base. A key v2 omits keeps the base value, while a null
-// is written through because that is how v2 says "no limit" (eg unlimited audit log retention). The base is
-// passed in because self-hosted and cloud start from different defaults.
+// Overlays v2 entitlements on a base (self-hosted and cloud start from different ones). An omitted key keeps the
+// base value; a null is written through, since that's how v2 says "no limit".
 export const applyEntitlements = (base: TInstanceFeatures, entitlements: TEntitlementsResponse): TInstanceFeatures => {
   const plan = JSON.parse(JSON.stringify(base)) as Record<string, unknown> & { rateLimits: Record<string, unknown> };
   plan.slug = entitlements?.slug;
@@ -63,10 +62,8 @@ export const applyEntitlements = (base: TInstanceFeatures, entitlements: TEntitl
   return plan as unknown as TInstanceFeatures;
 };
 
-// Every cloud plan includes default storage for session logs, free orgs included, unless the org's plan or an override
-// turns it off. The License Server's default for the key is off, which is what self-hosted licenses get, so only a
-// value a plan or override set is taken here. Without entitlements (the stand-in plan while the License Server can't
-// be reached) it's on.
+// Every cloud plan (free included) gets default session log storage unless a plan or override turns it off. The
+// License Server defaults the key to off for self-hosted, so only a plan or override value counts (none: on).
 const withCloudPlanDefaults = (
   plan: TInstanceFeatures,
   entitlements: TEntitlementsResponse | null
@@ -85,7 +82,7 @@ const withSelfHostedLicenseBase = (defaults: TInstanceFeatures): TInstanceFeatur
 // What an unlicensed self-hosted instance gets.
 export const communityFeatures = (): TInstanceFeatures => getDefaultOnPremFeatures();
 
-// A cloud org's plan. Without entitlements (the License Server can't be read) it's the free tier with cloud defaults.
+// A cloud org's plan. Without entitlements (License Server unreadable) it's the free tier with cloud defaults.
 export const cloudPlanFeatures = (entitlements: TEntitlementsResponse | null): TInstanceFeatures =>
   withCloudPlanDefaults(
     entitlements ? applyEntitlements(getDefaultOnPremFeatures(), entitlements) : getDefaultOnPremFeatures(),
@@ -96,8 +93,8 @@ export const cloudPlanFeatures = (entitlements: TEntitlementsResponse | null): T
 export const selfHostedLicenseFeatures = (entitlements: TEntitlementsResponse): TInstanceFeatures =>
   applyEntitlements(withSelfHostedLicenseBase(getDefaultOnPremFeatures()), entitlements);
 
-// A v1 offline key's features are a snapshot frozen when the key was issued, so they are layered over current
-// defaults: otherwise every flag added since reads as undefined, withdrawing features the license paid for.
+// A v1 offline key is a snapshot from when it was issued, so layer it over current defaults: otherwise every flag
+// added since reads as undefined and withdraws a paid feature.
 export const offlineV1LicenseFeatures = (features: TInstanceFeatures): TInstanceFeatures => ({
   ...withSelfHostedLicenseBase(getDefaultOnPremFeatures()),
   ...features

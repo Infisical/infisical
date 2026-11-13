@@ -13,7 +13,7 @@ export class PamModule {
     this.usageCounters = [
       {
         meter: Meter.PamIdentities,
-        count: (orgId) => organizationsProjectsService.countProjectIdentities(ProjectType.PAM, orgId ?? undefined)
+        count: (orgId) => organizationsProjectsService.countProjectIdentities(ProjectType.PAM, orgId)
       }
     ];
   }

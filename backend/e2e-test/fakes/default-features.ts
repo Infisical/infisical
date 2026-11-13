@@ -1,8 +1,7 @@
 import type { TInstanceFeatures } from "@app/domains/platform/license/ce/module";
 
-// Stands in for the free tier (src/domains/platform/license/ee/services/license-policy/default-features.ts) and grants
-// everything, so specs aren't gated by plan features. Wired up by test.alias in vitest.e2e.config.mts; nothing under
-// src/ references this file.
+// Stands in for the free tier (src/domains/platform/license/ee/services/license-policy/default-features.ts) so
+// specs aren't gated by plan features. Swapped in by test.alias in vitest.e2e.config.mts, so nothing imports it.
 
 export const getDefaultOnPremFeatures = () => {
   return {

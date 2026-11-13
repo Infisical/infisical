@@ -4,8 +4,8 @@ import { applyJitter } from "@app/lib/dates";
 import { Plan, TPlanFeatures } from "../models/plan";
 import { TPlanCache } from "../services/dependencies";
 
-// Same key names and TTLs as the old pods so a rolling deploy shares the cache. Always keyed by root org,
-// since the License Server answers for the root.
+// Key names and TTLs are frozen: old pods share the cache during a rolling deploy. Keyed by root org, since the
+// License Server answers for the root.
 const PlanKeys = {
   plan: (rootOrgId: string) => `infisical-cloud-plan-${rootOrgId}`,
   // Marks a cached plan as the fallback (License Server was down), not a real answer.

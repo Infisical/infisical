@@ -70,7 +70,8 @@ func Listen(ctx context.Context, adminURL, prefix string, wholeHosts ...string) 
 //
 // Called by whatever mints the credential, before handing it to Infisical. Nothing
 // can publish under a credential Infisical has not received, so no event for it can
-// arrive before its buffer exists.
+// arrive before its buffer exists. Tracking a scope twice keeps the first buffer, so
+// events between the two calls aren't dropped.
 func Track(tt *testing.T, adminURL, host, key string) {
 	tt.Helper()
 	st := streamFor(tt, adminURL)
@@ -78,8 +79,6 @@ func Track(tt *testing.T, adminURL, host, key string) {
 
 	st.mu.Lock()
 	if _, ok := st.buffers[id]; ok {
-		// Already tracked by this test, such as a plan set at tenant creation and a
-		// handle opened later; replacing the buffer would drop what arrived between.
 		st.mu.Unlock()
 		return
 	}

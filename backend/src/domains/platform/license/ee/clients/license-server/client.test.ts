@@ -27,7 +27,6 @@ const selfHosted = (auth: TLicenseServerConnection["auth"] = { getToken: async (
 const respond = (status: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers });
 
-// Answers every request with the given status and JSON body.
 const stubFetch = (status: number, body: unknown, headers: Record<string, string> = {}) => {
   const fetchMock = vi.fn(async () => respond(status, body, headers));
   vi.stubGlobal("fetch", fetchMock);
@@ -228,8 +227,7 @@ describe("LicenseServerClient.fromConfig", () => {
   });
 });
 
-// Region is insert-only on the license server: it is read only by the call that creates the license,
-// so every license-creating call has to carry this deployment's region or the org is recorded as "us".
+// Region is insert-only on the license server, so every license-creating call must send it or the org lands in "us".
 describe("LicenseServerClient region on license-creating calls", () => {
   test("buyProduct sends the deployment region alongside the payload", async () => {
     const fetchMock = stubFetch(200, { outcome: "subscription_updated" });

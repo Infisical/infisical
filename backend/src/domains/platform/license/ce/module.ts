@@ -110,12 +110,11 @@ export class LicenseModule {
     return this.counterRegistry.all().map((counter) => counter.meter.key);
   }
 
-  // Call once at boot.
+  // Call once at boot. Counts are DB-heavy, so the usage worker is rate limited to spare the read replica.
   start(): void {
     this.deps.queueService.start(
       UsageQueues.usageEvent,
       (job) => this.usageReportService.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
-      // Counts are DB-heavy, so rate limit the backlog instead of hammering the read replica.
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
     this.deps.queueService.start(
@@ -133,14 +132,13 @@ export class LicenseModule {
     });
   }
 
+  // The task throws on failure so startLocalRefresh logs a failed run; the last entitlements stay until one succeeds.
   startBackgroundSync() {
     if (!this.deps.isProductionMode || !this.deps.licensePolicyService.hasOnlineLicense()) return undefined;
     logger.info("Setting up background sync process to refresh the instance license from License Server v2");
     return this.deps.startLocalRefresh({
       name: "self-hosted-license-sync",
       intervalMs: 10 * 60 * 1000,
-      // Throw on failure so startLocalRefresh logs it as a failed run. The last entitlements stay until a
-      // refresh succeeds.
       task: () => this.licenseService.refreshInstanceEntitlements()
     });
   }

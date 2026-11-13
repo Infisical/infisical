@@ -66,8 +66,7 @@ type TLicenseServerAuth = { getToken: () => Promise<string>; invalidate?: () => 
 export type TLicenseServerConnection = {
   serverUrl: string;
   auth: TLicenseServerAuth;
-  // A self-hosted license is one tenant: its key identifies the license, so its reads carry no org and it
-  // has no billing.
+  // A self-hosted license is one tenant: its key identifies it, so reads carry no org and there's no billing.
   isSelfHosted: boolean;
   reportsUsage: boolean;
   region?: string;
@@ -91,8 +90,7 @@ type TUsageSnapshotBody = {
   source: string;
 };
 
-// One metered fact for a sum or count meter. The license server dedups on event_id, so a retry must
-// resend the same id; quantity is ignored for a count meter, which counts each event once.
+// The license server dedups on event_id, so a retry must resend the same id. A count meter ignores quantity.
 type TUsageEventBody = {
   event_id: string;
   dimension_key: string;
@@ -106,15 +104,13 @@ type TUsageEventResultBody = {
   status: "accepted" | "deduped";
 };
 
-// Issuer/audience/subject match the license server's in-code constants (it validates iss/aud against
-// them). They are public claims, not per-deployment config, so they live here rather than in env.
+// Must match the license server's hardcoded iss/aud/sub. Public claims, not per-deployment config, so not in env.
 const SERVICE_TOKEN_ISSUER = "infisical-cloud";
 const SERVICE_TOKEN_AUDIENCE = "infisical-license-server";
 const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
 const ORG_DELETED_TIMEOUT_MS = 30_000;
 
-// The license server verifies this short-lived RS256 JWT with our public key, so the private key itself is
-// never sent.
+// Short-lived RS256 JWT the license server checks with our public key, so the private key is never sent.
 const mintServiceToken = (signingKey: string): string =>
   jwt.sign({}, signingKey, {
     algorithm: "RS256",
@@ -234,18 +230,17 @@ const parseBody = async <T>(res: Response, schema: TSchema<T>): Promise<T> => {
   return schema.parse(await res.json());
 };
 
-// Dormant when unconfigured or on an offline license: reads return nothing, changes throw.
+// Dormant when unconfigured or on an offline license: reads return nothing, changes throw. An offline license
+// also lives in LICENSE_KEY, but sending it would break the air gap and leak the signed credential.
 export class LicenseServerClient implements TLicenseServer, TLicenseServerBilling, TLicenseServerEntitlements {
   constructor(private readonly connection: TLicenseServerConnection | null) {}
 
   static fromConfig({ envConfig, isOffline }: TLicenseServerClientConfig): LicenseServerClient {
-    // An offline license lives in LICENSE_KEY too, but sending it would break the air gap and leak the signed
-    // credential, so stay dormant.
     if (isOffline) return new LicenseServerClient(null);
     return new LicenseServerClient(connect(envConfig));
   }
 
-  // False for unlicensed self-hosted or offline licenses, so callers can skip work that would no-op anyway.
+  // False for unlicensed self-hosted or offline licenses, so callers can skip work that would no-op.
   isEnabled(): boolean {
     return this.connection !== null;
   }
@@ -254,8 +249,7 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     return this.connection?.reportsUsage ?? false;
   }
 
-  // Not cached here, the domain caches the plan. Null when the License Server can't be read so the caller
-  // falls back.
+  // Not cached here (the domain caches the plan). Null when the License Server can't be read, so the caller falls back.
   async getEntitlements(org: TEntitlementOrg): Promise<TEntitlementsResponse | null> {
     const conn = this.connection;
     if (!conn) return null;
@@ -279,8 +273,8 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     return parseBody(await send(conn, "GET", path), catalogResponseSchema);
   }
 
-  // A 404 (no license yet) and a 200 with no status both mean "no subscription". Other failures throw, so a
-  // paying org isn't shown the free state during an outage.
+  // A 404 (no license yet) or a 200 with no status means "no subscription". Other failures throw so a paying org
+  // isn't shown the free state during an outage, and a schema mismatch is logged loudly since it can hide a paid one.
   async getSubscription(orgId: string): Promise<TSubscriptionResponse | null> {
     const conn = this.connection;
     if (!conn) return null;
@@ -291,8 +285,6 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
 
     const parsed = subscriptionResponseSchema.safeParse(await res.json());
     if (!parsed.success) {
-      // Never read a schema mismatch as "no subscription" silently: that hides a real, often paid, one behind
-      // the free state. Log it so contract drift is visible, then degrade.
       logger.error(
         { err: parsed.error },
         licenseErrorMessage(readLicenseRequestId(res), `/subscription failed schema validation [orgId=${orgId}]`)
@@ -326,8 +318,8 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     });
   }
 
-  // Region is insert-only on the License Server, read only by the call that creates the license, so every
-  // call that can create one (buyProduct, changeCommitments, startTrial) sends it.
+  // Region is insert-only on the License Server, so every call that can create a license (buyProduct,
+  // changeCommitments, startTrial) sends it.
   buyProduct(orgId: string, payload: TBuyProductPayload) {
     return this.billingRequest("POST", orgId, "/subscription/products", checkoutResultSchema, {
       body: { ...payload, region: this.connection?.region }
@@ -381,8 +373,8 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     });
   }
 
-  // Cancels the subscription right away and closes the org's licenses. The timeout lets the outbox retry a
-  // stalled call instead of holding its worker.
+  // Cancels the subscription and closes the org's licenses. The timeout lets the outbox retry a stalled call
+  // instead of holding its worker.
   deleteOrganization(orgId: string) {
     return this.billingRequest("DELETE", orgId, "", orgDeletedResultSchema, { timeoutMs: ORG_DELETED_TIMEOUT_MS });
   }
@@ -407,9 +399,8 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     return "reported";
   }
 
-  // The server accepts or rejects each request as a whole, so a chunk that fails stops the rest; chunks
-  // already sent are safe to resend because of event_id dedup. Any 422, or a 404 "license not found", is the
-  // server's final answer for the batch.
+  // The server takes or rejects each request whole, so a failed chunk stops the rest; resending sent chunks is
+  // safe thanks to event_id dedup. A 422 or a 404 "license not found" is final for the batch.
   async reportEvents(orgId: string, events: TMeteringEvent[], source: TUsageSource): Promise<TMeteringEventsOutcome> {
     const conn = this.connection;
     if (!conn?.reportsUsage) return { status: "reported", accepted: 0, deduped: 0 };

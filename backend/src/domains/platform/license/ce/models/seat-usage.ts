@@ -18,8 +18,8 @@ export class SeatUsage {
     return new SeatUsage(users, users + identities);
   }
 
-  // Read the usage before opening the transaction that adds the member, then check it inside. via is the
-  // provisioning method, shown in the refusal.
+  // Read usage before the transaction that adds the member, then call this inside it. via (the provisioning
+  // method) shows in the refusal.
   assertAvailable(plan: Plan, via?: string): void {
     if (!plan.exceeds(PlanLimit.Identities, this.identitiesUsed)) return;
     throw new RuleViolationError({

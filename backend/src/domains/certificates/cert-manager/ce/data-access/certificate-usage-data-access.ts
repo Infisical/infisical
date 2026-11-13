@@ -47,8 +47,9 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     }
   }
 
-  // Code signing is licensed separately, so skip signer certs. Keyed on the signer, not the EKU (callers
-  // set the EKU and could dodge the quota with it), and on quotaKey so the whole renewal chain is covered.
+  // Code signing is licensed separately, so skip signer certs. Keyed on the signer, not the EKU (callers set
+  // the EKU and could dodge the quota), and on quotaKey so the whole renewal chain is covered. The signer must
+  // be in the same project, so a tenant can't exempt certs by matching someone else's signer names.
   private excludeSignerCertificates(qb: Knex.QueryBuilder) {
     return qb.whereNotExists((sub) => {
       void sub
@@ -56,7 +57,6 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
         .from(`${TableName.PkiSigners} as s`)
         .join(`${TableName.Certificate} as sc`, "sc.id", "s.certificateId")
         .whereRaw(`sc."quotaKey" = ??`, [`${TableName.Certificate}.quotaKey`])
-        // Same project, so a tenant can't exempt certs by matching someone else's signer names.
         .whereRaw(`s."projectId" = ??`, [`${TableName.Certificate}.projectId`]);
     });
   }
@@ -131,7 +131,7 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
   }
 
   // Each quotaKey lands in exactly one org so the split adds up to the billed total. Earliest issuance
-  // wins (org id breaks ties) so it's stable between reads.
+  // wins (org id breaks ties) so it's stable between reads. A quotaKey is wildcard if any of its rows is.
   async getActiveCertificateOrgBreakdown(orgId?: string): Promise<TCertificateOrgUnitCount[]> {
     try {
       const attributed = this.activeQuotaCertificates(orgId)
@@ -146,7 +146,6 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
           quotaKey: `${TableName.Certificate}.quotaKey`,
           orgId: `${TableName.Project}.orgId`
         })
-        // A quotaKey is wildcard if any of its rows is.
         .select(
           this.db.raw(`bool_or(??) OVER (PARTITION BY ??) as "hasWildcard"`, [
             `${TableName.Certificate}.hasWildcard`,

@@ -97,7 +97,7 @@ func TestCertificateUsage_Report(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 
 		// Action
 		requireImported(t, importCert(t, sub.Admin.API, "reported.quota.test"))

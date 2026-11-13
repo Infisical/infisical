@@ -87,7 +87,6 @@ func TestLicenseFake_Usage(t *testing.T) {
 		require.Contains(t, out, `"status":"deduped"`)
 		require.Len(t, org.State(t).UsageEvents, 1)
 	})
-
 }
 
 func TestLicenseFake_SelfHosted(t *testing.T) {

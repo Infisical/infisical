@@ -23,7 +23,6 @@ export type TInstanceEntitlementsRecord = {
   instanceType: InstanceType;
   features: TInstanceFeatures;
   licenseId: string | null;
-  customerId: string | null;
 };
 
 export class InstanceEntitlements {
@@ -31,12 +30,11 @@ export class InstanceEntitlements {
     readonly instanceType: InstanceType,
     private readonly features: TInstanceFeatures,
     // Only set on an offline license.
-    private readonly offlineLicenseId: string | null,
-    private readonly customerId: string | null
+    private readonly offlineLicenseId: string | null
   ) {}
 
-  static restore({ instanceType, features, licenseId, customerId }: TInstanceEntitlementsRecord): InstanceEntitlements {
-    return new InstanceEntitlements(instanceType, features, licenseId, customerId);
+  static restore({ instanceType, features, licenseId }: TInstanceEntitlementsRecord): InstanceEntitlements {
+    return new InstanceEntitlements(instanceType, features, licenseId);
   }
 
   get licenseId(): string {
@@ -58,20 +56,14 @@ export class InstanceEntitlements {
 
   // For the e2e suite's license overrides.
   withFeatures(features: Partial<TInstanceFeatures>): InstanceEntitlements {
-    return new InstanceEntitlements(
-      this.instanceType,
-      { ...this.features, ...features },
-      this.offlineLicenseId,
-      this.customerId
-    );
+    return new InstanceEntitlements(this.instanceType, { ...this.features, ...features }, this.offlineLicenseId);
   }
 
   toJSON(): TInstanceEntitlementsRecord {
     return {
       instanceType: this.instanceType,
       features: this.features,
-      licenseId: this.offlineLicenseId,
-      customerId: this.customerId
+      licenseId: this.offlineLicenseId
     };
   }
 }

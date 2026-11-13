@@ -39,7 +39,6 @@ const resolve = async ({
   onlineEntitlements,
   onlineFails = false
 }: TResolveOptions) => {
-  // The client answers null when the License Server can't be read.
   const licenseServerClient: TLicenseServerEntitlements = {
     getEntitlements: async () => (onlineFails ? null : (onlineEntitlements ?? null))
   };
@@ -210,7 +209,7 @@ describe("LicensePolicyService.refreshInstanceEntitlements", () => {
 
 const ROOT_ORG: TEntitlementOrg = { id: "root-org", name: "Acme", slug: "acme" };
 
-// Answers every read with the given entitlements, or null as when the License Server can't be read.
+// null mimics an unreachable License Server.
 const cloudPolicy = (answer: TEntitlementsResponse | null) => {
   const asked: TEntitlementOrg[] = [];
   const policy = new LicensePolicyService(

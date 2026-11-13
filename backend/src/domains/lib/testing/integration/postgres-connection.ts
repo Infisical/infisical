@@ -73,9 +73,8 @@ export const listHarnessDatabases = async (admin: Knex, prefix: string) => {
   return result.rows.map((row) => row.datname);
 };
 
-// knex won't register primaryNode()/replicaNode() twice, but a test file can open several DBs, so we
-// register once and look the client up by config. Lives on globalThis since knex loads once per process
-// but this module loads once per test file.
+// knex can't register primaryNode()/replicaNode() twice and a file can open several DBs, so register once and
+// look the client up by config. On globalThis since knex loads once per process, this module once per file.
 const registryKey = Symbol.for("infisical.integration-test.knex-by-client");
 
 type TRegistry = WeakMap<object, TDbClient>;

@@ -5,10 +5,6 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { TOrganization, TOrganizationDataAccess } from "../services/dependencies";
 
-type TOrganizationRow = { id: string; name: string; slug: string };
-
-const toOrganization = (row: TOrganizationRow): TOrganization => ({ id: row.id, name: row.name, slug: row.slug });
-
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
   ProjectType.SecretScanning,
@@ -41,8 +37,8 @@ export class OrganizationDataAccess implements TOrganizationDataAccess {
       const row = (await this.knex()(TableName.Organization)
         .where("id", orgId)
         .select("id", "name", "slug")
-        .first()) as TOrganizationRow | undefined;
-      return row ? toOrganization(row) : null;
+        .first()) as TOrganization | undefined;
+      return row ?? null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find organization" });
     }

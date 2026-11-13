@@ -11,8 +11,7 @@ const licensed = (instanceType: InstanceType) =>
       rbac: true,
       fips: true
     },
-    licenseId: "lic-1",
-    customerId: null
+    licenseId: "lic-1"
   });
 
 describe("InstanceEntitlements.plan", () => {
@@ -48,8 +47,7 @@ describe("InstanceEntitlements.withFeatures", () => {
     const instance = InstanceEntitlements.restore({
       instanceType: InstanceType.OnPrem,
       features: testFeatures(),
-      licenseId: null,
-      customerId: null
+      licenseId: null
     });
 
     // Action
@@ -66,8 +64,7 @@ describe("InstanceEntitlements.licenseId", () => {
     const instance = InstanceEntitlements.restore({
       instanceType: InstanceType.OnPrem,
       features: testFeatures(),
-      licenseId: null,
-      customerId: null
+      licenseId: null
     });
 
     // Action

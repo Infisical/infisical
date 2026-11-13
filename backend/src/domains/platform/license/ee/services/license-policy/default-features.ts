@@ -1,8 +1,7 @@
 import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 
-// The free tier, and the base every plan starts from. Only entitlement-projection.ts imports this, and only as
-// "./default-features": the e2e suite aliases that specifier to e2e-test/fakes/default-features.ts, which grants
-// everything, and the BDD workflow edits this file by path.
+// The free tier and the base of every plan. Import it only from entitlement-projection.ts as "./default-features":
+// the e2e suite aliases that specifier to a fake that grants everything, and the BDD workflow edits this file by path.
 
 // Literal so that flipping a default to try a feature locally fails type-check instead of getting committed.
 type TDefaultOnPremFeatures = TInstanceFeatures & {

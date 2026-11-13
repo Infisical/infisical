@@ -9,8 +9,8 @@ import type { TMeteringEventInput } from "../usage-metering/service";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types";
 import { CounterRegistry } from "./usage-counters";
 
-// Same names as the old pods so their queued jobs still run. Typed against the queue catalog without importing
-// it, since the queue module is in an import cycle with crypto.
+// Names are frozen: old pods share these queues during a rolling deploy. Typed against the queue catalog without
+// importing it, since the queue module is in an import cycle with crypto.
 export const UsageQueues = {
   usageEvent: "usage-event" as QueueName.UsageEvent,
   usageEventJob: "usage-event-job" as QueueJobs.UsageEvent,
@@ -66,9 +66,8 @@ export class UsageQueue {
     this.counterRegistry.all().forEach((counter) => this.emit(orgId, counter.meter));
   }
 
-  // Reports only go out on metered writes, so a lost report (or an expired last-reported value) would stay
-  // wrong until the next write. Once per interval per org, the first plan read resends every meter; the
-  // worker skips the ones that didn't change.
+  // Reports only go out on metered writes, so a lost report would stay wrong until the next write. Once per
+  // interval per org, the first plan read resends every meter; the worker skips unchanged ones.
   reconcile(orgId: string): void {
     if (!this.licenseServer.isEnabled()) return;
 

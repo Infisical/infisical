@@ -20,8 +20,7 @@ export type TPlanFeatures = {
     trialEndsAt: string | null;
   }[];
   notices?: TPlanNotice[];
-  // True when features are sourced from an offline (air-gapped) license; the billing UI renders a
-  // read-only offline banner instead of the live billing surface.
+  // Offline (air-gapped) license: the billing UI shows a read-only banner instead of live billing.
   isOffline?: boolean;
   tier: number;
   workspaceLimit: number | null;
@@ -84,13 +83,11 @@ export type TPlanFeatures = {
   secretSyncLimit: number | null;
   maxPamAccounts: number | null;
 
-  // PKI / Cert Manager
   pkiAcme: boolean;
   pkiEst: boolean;
   pkiScep: boolean;
   pkiPqc: boolean;
-  // caCrl defaults on, so self-hosted OSS keeps it; the License Server's free-plan default is what
-  // withholds it on cloud.
+  // On by default so self-hosted OSS keeps it; on cloud the License Server's free-plan default withholds it.
   caCrl: boolean;
   pkiOcsp: boolean;
   pkiAwsKmsSigning: boolean;
@@ -107,8 +104,8 @@ export type TPlanFeatures = {
   maxCas: number | null;
   maxInternalCas: number | null;
   maxCertificates: number | null;
-  // Wildcards have no separate boolean gate: 0 means the plan does not include them at all, which is
-  // how the free tier withholds them. A wildcard certificate counts against maxCertificates too.
+  // No boolean gate: 0 means not included (how the free tier withholds them). Wildcards count against
+  // maxCertificates too.
   maxWildcardCertificates: number | null;
   maxSansPerCertificate: number | null;
 
@@ -328,12 +325,11 @@ export class Plan {
   // The cap this plan enforces, or null when it has none.
   limit(name: PlanLimit): number | null {
     switch (name) {
-      // Enterprise is uncapped unless it opts into enforcement, and 0 has always meant no cap.
+      // Enterprise is uncapped unless it opts into enforcement; 0 has always meant no cap.
       case PlanLimit.Identities:
         if (this.features.slug === "enterprise" && !this.features.enforceIdentityLimit) return null;
         return this.features.identityLimit || null;
-      // A contract granting more internal CAs than total CAs is a License Server misconfiguration, so the larger
-      // grant wins. Only when both are numbers: the free tier caps maxCas at 1 and leaves maxInternalCas null.
+      // More internal CAs than total is a License Server misconfig, so the larger wins (free tier sets only maxCas).
       case PlanLimit.CertificateAuthorities: {
         const { maxCas, maxInternalCas } = this.features;
         return typeof maxCas === "number" && typeof maxInternalCas === "number"
@@ -341,7 +337,7 @@ export class Plan {
           : (maxCas ?? null);
       }
       default: {
-        // Offline v1 licenses carry a frozen feature snapshot, so a limit added since can be missing.
+        // Offline v1 licenses are a frozen snapshot, so a newer limit can be missing.
         const cap = this.features[name] as number | null | undefined;
         return typeof cap === "number" ? cap : null;
       }

@@ -68,10 +68,10 @@ export const startOnce = async <T>(name: string, start: () => Promise<T>): Promi
   });
 };
 
-// Other workers may still use it after this one exits, so global teardown removes it by label instead.
+// Not stopped when this worker exits since others may still use it; global teardown removes it by label. The
+// run is marked before the container exists, so teardown still runs if a start fails halfway.
 export const container = (image: string) => {
   const runId = getRunId();
-  // Recorded before the container exists, so teardown still runs if a start fails halfway.
   markContainersUsed(runId);
   return new GenericContainer(image).withLabels({ [RUN_LABEL]: runId });
 };

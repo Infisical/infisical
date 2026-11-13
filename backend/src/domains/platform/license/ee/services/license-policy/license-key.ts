@@ -1,4 +1,4 @@
-import { getConfig, TEnvConfig } from "@app/lib/config/env";
+import { TEnvConfig } from "@app/lib/config/env";
 
 import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 import { TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
@@ -26,8 +26,7 @@ export type TOfflineLicense = {
   issuedAt: string;
   expiresAt: string | null;
   terminatesAt: string | null;
-  // v1 (or absent) offline licenses carry the legacy feature-flag set directly; version 2 licenses
-  // carry License Server v2 entitlements, which we project into the same feature shape.
+  // Absent or 1: the legacy feature-flag set. 2: License Server v2 entitlements, projected into the same shape.
   version?: number;
   features: TInstanceFeatures;
   entitlements?: TEntitlementsResponse;
@@ -49,14 +48,8 @@ const isOfflineKey = (licenseKey: string): boolean => {
 };
 
 export const getLicenseKeyConfig = (
-  config?: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE">
+  cfg: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE">
 ): TLicenseKeyConfig => {
-  const cfg = config || getConfig();
-
-  if (!cfg) {
-    return { isValid: false };
-  }
-
   const licenseKey = cfg.LICENSE_KEY;
 
   if (licenseKey) {
@@ -69,7 +62,7 @@ export const getLicenseKeyConfig = (
 
   const offlineLicenseKey = cfg.LICENSE_KEY_OFFLINE;
 
-  // backwards compatibility
+  // Legacy env var, still read for offline keys.
   if (offlineLicenseKey) {
     if (isOfflineKey(offlineLicenseKey)) {
       return { isValid: true, licenseKey: offlineLicenseKey, type: LicenseType.Offline };

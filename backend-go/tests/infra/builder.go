@@ -16,8 +16,8 @@ import (
 	"github.com/infisical/api/internal/database/pg"
 )
 
-// The published image has license-fns at the first path until a release moves it to the second, so we
-// edit whichever exists.
+// The published image has license-fns at the first path until a release moves it to the
+// second, so edit whichever exists.
 var licenseFeaturePaths = []string{
 	"/backend/dist/ee/services/license/license-fns.mjs",
 	"/backend/dist/domains/platform/license/ee/service/license-fns.mjs",

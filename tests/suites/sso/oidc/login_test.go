@@ -198,9 +198,7 @@ func TestOIDCLogin_SeatLimit(t *testing.T) {
 		// Setup
 		o := setup(t)
 		o.Tenant.NewMachineIdentity(t)
-		limited := license.Enterprise().With(license.MaxIdentityLimit, 1)
-		limited.Slug = "pro"
-		o.Tenant.SetPlan(t, limited)
+		o.Tenant.SetPlan(t, license.SeatLimited(1))
 		alice := o.Person()
 
 		// Action

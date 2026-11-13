@@ -3851,8 +3851,8 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     licenseService,
-    usageMeteringService,
     caSigningConfigDAL,
+    usageMeteringService,
     caKeySourceService,
     keyStore,
     auditLogService
@@ -5032,7 +5032,7 @@ export const registerRoutes = async (
   // Expose services globally for e2e tests (only available inside the encapsulated plugin context)
   if (process.env.NODE_ENV === "test") {
     // @ts-expect-error type - expose for e2e test access
-    globalThis.testServices = { ...server.services };
+    globalThis.testServices = server.services;
   }
 
   // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches

@@ -83,9 +83,7 @@ func TestMachineIdentity_Create(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		createIdentity(t, tn, api.CreateMachineIdentityJSONRequestBody{})
-		limited := license.Enterprise().With(license.MaxIdentityLimit, 1)
-		limited.Slug = "pro"
-		tn.SetPlan(t, limited)
+		tn.SetPlan(t, license.SeatLimited(1))
 		name := "i-" + id.Short()
 
 		// Action

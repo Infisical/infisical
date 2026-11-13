@@ -13,8 +13,7 @@ export class SecretsModule {
     this.usageCounters = [
       {
         meter: Meter.SecretIdentities,
-        count: (orgId) =>
-          organizationsProjectsService.countProjectIdentities(ProjectType.SecretManager, orgId ?? undefined)
+        count: (orgId) => organizationsProjectsService.countProjectIdentities(ProjectType.SecretManager, orgId)
       }
     ];
   }

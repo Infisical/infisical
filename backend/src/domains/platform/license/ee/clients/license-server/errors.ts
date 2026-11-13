@@ -1,14 +1,12 @@
 import { ExternalSystemError, RuleViolationError } from "@app/domains/lib/errors";
 import { logger } from "@app/lib/logger";
 
-// Every error raised from a license-server interaction is formatted through here, so one grep on
-// licenseRequestId ties a failure in our logs to the exact request in the license server's. The id
-// falls back to "unknown" rather than being omitted, so the field is always there to match on.
+// Every license server error is formatted with this id, so grepping licenseRequestId ties our log to the server's.
+// It falls back to "unknown" so the field is always there to match on.
 const LICENSE_REQUEST_ID_HEADER = "x-request-id";
 
-// Carried as the thrown error's name instead of the default "BadRequest"/"InternalServerError", so a
-// failure that originated at the license server is attributable without matching on message text (the
-// error handler logs error.name and labels the error metrics with it).
+// Used as the thrown error's name so license server failures show up by name in logs and error metrics
+// (the error handler labels them with error.name), not by matching message text.
 const LICENSE_SERVER_ERROR_NAME = "LicenseServerError";
 
 export const readLicenseRequestId = (res: Response): string => res.headers.get(LICENSE_REQUEST_ID_HEADER) ?? "unknown";
@@ -16,9 +14,8 @@ export const readLicenseRequestId = (res: Response): string => res.headers.get(L
 export const licenseErrorMessage = (requestId: string, message: string): string =>
   `license-client: [licenseRequestId=${requestId}] ${message}`;
 
-// Friendly, action-oriented copy for the license server's machine error codes (details.code). Resolved
-// here so the whole billing surface throws a user-facing message the frontend just renders (no per-code
-// branching in the UI). Falls back to the server's own message when the code is unknown/absent.
+// User-facing copy for the license server's details.code, so the frontend just renders the message with no
+// per-code branching. Unknown codes fall back to the server's own message.
 const BILLING_ERROR_MESSAGES: Record<string, string> = {
   commitment_decrease_locked: "Commitments can't be reduced until the final window before your renewal.",
   cap_exceeded: "That amount is above the limit available on your plan.",
@@ -47,10 +44,9 @@ const BILLING_ERROR_MESSAGES: Record<string, string> = {
   lock_held: "Another billing change is in progress. Please try again in a moment."
 };
 
-// Surface the license server's message on 4xx (caller-actionable, e.g. "cannot remove the last
-// product; cancel the subscription instead"); when it has none, fall back to the generic error
-// default rather than a status code the customer can't act on. 5xx bodies may carry internal detail,
-// so those stay generic.
+// A 4xx surfaces the friendly copy for details.code, else the server's `message` (written for the customer),
+// else a generic one; the code stays in details for callers that branch on it. 5xx bodies may carry internal
+// detail, so those stay generic.
 export const throwIfResponseError = async (res: Response): Promise<void> => {
   if (res.ok) {
     return;
@@ -61,9 +57,6 @@ export const throwIfResponseError = async (res: Response): Promise<void> => {
       message?: string;
       details?: { code?: string };
     } | null;
-    // Resolve the contract's machine code (details.code) to friendly copy so the message thrown here is
-    // user-facing; keep the code in details for any caller that still branches on it. Otherwise fall back
-    // to the envelope's `message`, which is written for the customer (`error` is the class name).
     const code = body?.details?.code;
     const message = (code && BILLING_ERROR_MESSAGES[code]) || body?.message;
     logger.warn(licenseErrorMessage(requestId, `request rejected [status=${res.status}] [code=${code ?? "none"}]`));
@@ -80,8 +73,7 @@ export const throwIfResponseError = async (res: Response): Promise<void> => {
   });
 };
 
-// Carries the license server's HTTP status and parsed message, so the client can tell a final no from
-// something worth retrying.
+// Keeps the HTTP status so the client can tell a final no from something worth retrying.
 export class UsageReportError extends Error {
   readonly status: number;
 

@@ -10,32 +10,29 @@ import { TEntitlementOrg, TOrgDeletedResult } from "../helpers/license-server-ty
 import { UsageQueue } from "../helpers/usage-queue";
 
 export type TRefreshPlanOptions = {
-  // After a billing change: keep serving the cached plan and refresh in the background, since the License
-  // Server may not have applied the change yet.
+  // Keep serving the cached plan and refresh in the background: the License Server may not have applied the change yet.
   afterBillingChange?: { checkout?: boolean };
 };
 
 export type TLicenseService = {
   getInstanceEntitlements(): InstanceEntitlements;
-  // Self-hosted with an online license: reads it from the License Server again. Throws when that fails, and the
-  // current license stays. The module's background sync calls it.
+  // Self-hosted online license only. Throws on failure and the current license stays.
   refreshInstanceEntitlements(): Promise<void>;
   // Whether LICENSE_KEY or LICENSE_KEY_OFFLINE holds an offline key, whether or not it verifies.
   hasOfflineLicenseKey(): boolean;
   getPlan(orgId: string): Promise<Plan>;
   refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void>;
-  // Drops the cache without refetching now.
+  // Drops the cache without refetching.
   invalidatePlan(orgId: string): Promise<void>;
   isServingFallbackPlan(orgId: string): Promise<boolean>;
   getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null>;
   // Cloud only. Safe to repeat; throws so the caller can retry.
   closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult>;
-  // Root org's tree on cloud, whole instance on self-hosted or when orgId is null. To enforce a limit when adding
-  // a member, read this before the transaction and check it with seatUsage.assertAvailable.
+  // Root org's tree on cloud, whole instance on self-hosted or for null. To enforce a limit when adding a member,
+  // read it before the transaction and check it with seatUsage.assertAvailable inside.
   getSeatUsage(orgId: string | null): Promise<SeatUsage>;
-  // The org to count seats for (lockAndCountBillableOrgActors resolves its root), or null for the whole instance
-  // (self-hosted). For a seat check that must be atomic with its insert, pass it to organizationsProjectsService.within(tx)
-  // .lockAndCountBillableOrgActors inside the transaction and read the counts with SeatUsage.fromBillableActors.
+  // The org to count seats for, or null for the whole instance (self-hosted). For a check atomic with its insert,
+  // pass it to organizationsProjectsService.within(tx).lockAndCountBillableOrgActors inside the transaction.
   getSeatCountScope(orgId: string): string | null;
 };
 
@@ -49,7 +46,7 @@ export class LicenseService implements TLicenseService {
     private readonly licenseServer: TLicenseServer
   ) {}
 
-  // Every read goes through here, so there is one place that answers what the instance is licensed for.
+  // Read the instance license only through here: the e2e suite's overrideLicenseFeatures spies on this method.
   getInstanceEntitlements(): InstanceEntitlements {
     return this.instanceEntitlementsCache.get();
   }
@@ -58,13 +55,12 @@ export class LicenseService implements TLicenseService {
     return this.licensePolicyService.isOffline();
   }
 
-  // Self-hosted orgs get the instance license. On cloud, if the License Server is down the org gets the
-  // fallback plan until the cache expires.
+  // Self-hosted orgs get the instance license. On cloud, an unknown org gets the fallback uncached, and a License
+  // Server outage serves the fallback until the cache expires.
   async getPlan(orgId: string): Promise<Plan> {
     const instance = this.getInstanceEntitlements();
     if (!instance.isCloud()) return instance.plan();
 
-    // Unknown org: return the fallback without caching it.
     const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
     if (!rootOrgId) return this.licensePolicyService.fallbackPlan();
 
@@ -75,6 +71,8 @@ export class LicenseService implements TLicenseService {
     return plan;
   }
 
+  // On cloud, fetch before replacing the cache so a License Server failure keeps the current plan. The org is read
+  // outside the try so a DB error isn't blamed on the License Server.
   async refreshPlan(orgId: string, opts: TRefreshPlanOptions = {}): Promise<void> {
     if (opts.afterBillingChange) {
       if (!this.getInstanceEntitlements().isCloud()) return;
@@ -89,8 +87,6 @@ export class LicenseService implements TLicenseService {
     if (this.getInstanceEntitlements().isCloud()) {
       const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
       if (!rootOrgId) return;
-      // Fetch before replacing the cache so a License Server failure keeps the current plan instead of caching
-      // the fallback over it. The org is read outside the try so a DB error isn't blamed on the License Server.
       const rootOrg = await this.rootOrg(rootOrgId);
       let fetched: Plan;
       try {
@@ -148,8 +144,7 @@ export class LicenseService implements TLicenseService {
     return SeatUsage.fromBillableActors(await this.organizationsProjectsService.countBillableOrgActors(orgId));
   }
 
-  // Only a License Server failure caches the fallback. DB or key store errors throw instead, so they can never
-  // overwrite a cached paid plan.
+  // Only a License Server failure caches the fallback. DB or key store errors throw, so they never clobber a paid plan.
   private async fetchPlanOrFallback(rootOrgId: string): Promise<Plan> {
     const rootOrg = await this.rootOrg(rootOrgId);
     let fetched: Plan;
@@ -175,7 +170,7 @@ export class LicenseService implements TLicenseService {
     return plan;
   }
 
-  // Pass-through mode (after a billing change): reads get the cached plan while one caller at a time refreshes it.
+  // After a billing change, reads get the cached plan while one caller at a time refreshes it.
   private revalidateInBackground(rootOrgId: string) {
     void (async () => {
       if (!(await this.planCache.acquireRevalidateLock(rootOrgId))) return;

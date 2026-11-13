@@ -16,7 +16,7 @@ export type TOrganizationDataAccess = {
 export type TBillableActorDataAccess = {
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
-  countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number>;
+  countProjectIdentities(projectType: ProjectType, orgId: string | null): Promise<number>;
   countProjectIdentitiesByKind(
     projectType: ProjectType,
     orgId?: string

@@ -18,8 +18,7 @@ export class FakeLicenseServer implements TLicensePolicyService, TLicenseServer 
   instance: TInstanceEntitlementsRecord = {
     instanceType: InstanceType.Cloud,
     features: testFeatures(),
-    licenseId: null,
-    customerId: null
+    licenseId: null
   };
 
   online = false;

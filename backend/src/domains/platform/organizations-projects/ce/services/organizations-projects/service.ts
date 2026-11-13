@@ -28,7 +28,7 @@ export type TOrganizationsProjectsService = {
   // Org members in a Secret Manager/KMS project or in none. Null orgId = whole instance.
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
-  countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number>;
+  countProjectIdentities(projectType: ProjectType, orgId: string | null): Promise<number>;
   countProjectIdentitiesByKind(
     projectType: ProjectType,
     orgId?: string
@@ -80,7 +80,7 @@ export class OrganizationsProjectsService implements TOrganizationsProjectsServi
     return this.billableActorDataAccess.getBillableIdentityOwnershipBreakdown(orgId);
   }
 
-  countProjectIdentities(projectType: ProjectType, orgId?: string) {
+  countProjectIdentities(projectType: ProjectType, orgId: string | null) {
     return this.billableActorDataAccess.countProjectIdentities(projectType, orgId);
   }
 

@@ -38,12 +38,13 @@ export type TOpenDatabase = {
   close(): Promise<void>;
 };
 
+// Durability is off since the data only lives for the run; max_locks matches the dev DB. The ready line
+// logs twice because the entrypoint starts Postgres to init, stops it, then starts it for real.
 const startPostgresServer = async (): Promise<TPostgresServer> => {
   if (process.env.INTEGRATION_POSTGRES_URL) return parsePostgresUrl(process.env.INTEGRATION_POSTGRES_URL);
 
   const started = await container(POSTGRES_IMAGE)
     .withEnvironment({ POSTGRES_USER: "infisical", POSTGRES_PASSWORD: "infisical", POSTGRES_DB: "postgres" })
-    // Durability off since the data only lives for the run. max_locks matches the dev DB.
     .withCommand([
       "postgres",
       "-c",
@@ -56,7 +57,6 @@ const startPostgresServer = async (): Promise<TPostgresServer> => {
       "full_page_writes=off"
     ])
     .withExposedPorts(5432)
-    // The entrypoint starts Postgres to init, stops it, then starts it for real, hence 2.
     .withWaitStrategy(Wait.forLogMessage(/database system is ready to accept connections/, 2))
     .start();
 
@@ -89,16 +89,17 @@ const templateName = async () => {
   return `${DATABASE_PREFIX}tpl_${hash.digest("hex").slice(0, 16)}`;
 };
 
+// startOnce serialises workers in this run; the advisory lock serialises runs sharing a server. Built under
+// another name and renamed at the end, so a crash mid-migration never leaves a template that looks done. Stale
+// templates are dropped unforced, so one another run is still cloning stays until a later build.
 const buildTemplate = async (server: TPostgresServer): Promise<{ name: string }> => {
   const name = await templateName();
   const admin = connectMaintenance(server);
 
   try {
-    // startOnce serialises workers in this run; the advisory lock serialises runs sharing a server.
     await admin.raw("SELECT pg_advisory_lock(?)", [TEMPLATE_LOCK_KEY]);
     if (await databaseExists(admin, name)) return { name };
 
-    // Built under another name and renamed at the end, so a crash mid-migration never leaves a template that looks done.
     const building = `${name}_building`;
     await dropDatabase(admin, building);
     await createDatabase(admin, building);
@@ -118,7 +119,6 @@ const buildTemplate = async (server: TPostgresServer): Promise<{ name: string }>
     await admin.raw("ALTER DATABASE ?? RENAME TO ??", [building, name]);
 
     const stale = (await listHarnessDatabases(admin, `${DATABASE_PREFIX}tpl_`)).filter((other) => other !== name);
-    // Not forced: a template another run is cloning stays, and a later build drops it.
     await Promise.all(stale.map((other) => dropDatabase(admin, other, { force: false }).catch(() => undefined)));
 
     return { name };

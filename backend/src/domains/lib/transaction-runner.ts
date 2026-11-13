@@ -39,13 +39,13 @@ export const unsealTransaction = (tx: TTransaction): Knex.Transaction => {
   return trx;
 };
 
+// logger is optional: only the server initialises it, tests and scripts run without it.
 export const runAfterCommitHooks = async (hooks: Array<() => Promise<void>>) => {
   for (const hook of hooks) {
     try {
       // eslint-disable-next-line no-await-in-loop
       await hook();
     } catch (error) {
-      // The logger is only initialised by the server; tests and scripts run without it.
       logger?.error(error, "afterCommit hook failed after the transaction committed");
     }
   }

@@ -76,9 +76,8 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     }
   }
 
-  async countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number> {
+  async countProjectIdentities(projectType: ProjectType, orgId: string | null): Promise<number> {
     try {
-      // .as() on a union builder is typed as any, so cast before counting.
       const row = (await this.knex()
         .count("* as count")
         .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
@@ -272,7 +271,8 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
   }
 
   // Shared by the meter and the usage breakdown so the breakdown can't disagree with what gets billed.
-  private projectIdentityEntities(projectType: ProjectType, orgId?: string) {
+  // Shaped to hit the partial unique indexes. Pending group members (invited, not joined) don't take a seat.
+  private projectIdentityEntities(projectType: ProjectType, orgId?: string | null) {
     const db = this.knex;
     const scopedOrgIds = () => {
       const qb = db()(TableName.Organization).select(`${TableName.Organization}.id`);
@@ -311,7 +311,6 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
       return qb;
     };
 
-    // Shaped to hit the partial unique indexes.
     const directUsers = db()(TableName.Membership)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .whereNotNull(`${TableName.Membership}.actorUserId`)
@@ -331,8 +330,6 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
             .whereIn(`${TableName.Membership}.actorIdentityId`, orgIdentityIds())
             .select(db().raw("'i' as kind"))
             .select(`${TableName.Membership}.actorIdentityId as entityId`),
-        // A group assigned to a project brings its members in. Pending group members (invited, not
-        // joined) don't take a seat.
         (qb) =>
           void qb
             .from(TableName.UserGroupMembership)

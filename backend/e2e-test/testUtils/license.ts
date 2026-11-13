@@ -4,7 +4,8 @@ import type { InstanceEntitlements, TInstanceFeatures, TLicenseService } from "@
 const overrides: InstanceEntitlements[] = [];
 
 // Server-wide, not per org: every org gets the instance's plan. Call the restore in afterAll and keep
-// specs that rely on it in the same file.
+// specs that rely on it in the same file. LicenseService reads the instance license only through
+// getInstanceEntitlements, so spying on it covers every check.
 export const overrideLicenseFeatures = (features: Partial<Record<keyof TInstanceFeatures, boolean | number>>) => {
   const { licenseService } = (globalThis as unknown as { testServices: { licenseService: TLicenseService } })
     .testServices;
@@ -12,7 +13,6 @@ export const overrideLicenseFeatures = (features: Partial<Record<keyof TInstance
     .getInstanceEntitlements()
     .withFeatures(features as Partial<TInstanceFeatures>);
   overrides.push(overridden);
-  // LicenseService reads the instance license only through this method, so the spy covers every check.
   const spy = vi.spyOn(licenseService, "getInstanceEntitlements").mockImplementation(() => overrides[overrides.length - 1]);
 
   return () => {

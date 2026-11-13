@@ -3,7 +3,6 @@ package license
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -27,8 +26,8 @@ type service struct{}
 func (service) Host() string { return Host }
 
 // Scope is the license key on self-hosted and the org in the path on cloud. Self-hosted
-// usage reports all say "self-hosted", so the key is the only thing telling two
-// isolated stacks apart. Instance-wide endpoints carry neither and share one scope.
+// usage reports all say "self-hosted", so only the key tells two isolated stacks apart.
+// Instance-wide endpoints carry neither and share one scope.
 func (service) Scope(r *http.Request) (string, bool) {
 	if key := r.Header.Get("X-API-KEY"); key != "" {
 		return key, true
@@ -44,11 +43,9 @@ func (service) Scope(r *http.Request) (string, bool) {
 
 // New returns a fully entitled organization.
 //
-// Entitled by default, and that is not a convenience. When the License Server call
-// fails, getPlan writes the OSS defaults into the plan cache for the full TTL
-// rather than leaving it empty, so a single unanswered call poisons that
-// organization for about fifteen minutes. With the default in the fake there is nothing to install and no window in
-// which an organization can be asked about before the answer exists.
+// Entitled by default on purpose: when the License Server call fails, getPlan caches
+// the OSS defaults for the full TTL, so one unanswered call poisons that org for about
+// fifteen minutes. A default leaves no window where an org is asked about too early.
 func (service) New(events fakenet.Emitter) fakenet.Fake {
 	return &Org{state: State{Plan: Enterprise()}, events: events}
 }
@@ -72,7 +69,6 @@ type State struct {
 type EntitlementFetch struct {
 	OrgName string `json:"orgName"`
 	OrgSlug string `json:"orgSlug"`
-	Region  string `json:"region"`
 }
 
 type UsageSnapshot struct {
@@ -94,10 +90,6 @@ type UsageEvent struct {
 type SnapshotReceived struct{ UsageSnapshot }
 
 func (SnapshotReceived) EventName() string { return "license.usage-snapshot-received" }
-
-type UsageEventReceived struct{ UsageEvent }
-
-func (UsageEventReceived) EventName() string { return "license.usage-event-received" }
 
 type Org struct {
 	mu     sync.Mutex
@@ -122,7 +114,7 @@ func (o *Org) routes() *http.ServeMux {
 	entitlements := func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		o.mu.Lock()
-		o.state.EntitlementFetches = append(o.state.EntitlementFetches, EntitlementFetch{OrgName: q.Get("org_name"), OrgSlug: q.Get("org_slug"), Region: q.Get("region")})
+		o.state.EntitlementFetches = append(o.state.EntitlementFetches, EntitlementFetch{OrgName: q.Get("org_name"), OrgSlug: q.Get("org_slug")})
 		payload := o.state.Payload()
 		o.mu.Unlock()
 		writeJSON(w, http.StatusOK, payload)
@@ -152,8 +144,7 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, http.StatusOK, map[string]any{"accepted": len(body.Snapshots)})
 	})
 
-	// The real server dedups on event_id, so a retry of an accepted batch is not
-	// counted twice.
+	// The real server dedups on event_id, so a retried batch isn't counted twice.
 	mux.HandleFunc("POST /v1/organizations/{orgId}/usage-events", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Events []UsageEvent `json:"events"`
@@ -167,7 +158,6 @@ func (o *Org) routes() *http.ServeMux {
 			Status  string `json:"status"`
 		}
 		results := make([]result, 0, len(body.Events))
-		var accepted []UsageEvent
 		o.mu.Lock()
 		for _, e := range body.Events {
 			if o.hasEvent(e.EventID) {
@@ -175,18 +165,13 @@ func (o *Org) routes() *http.ServeMux {
 				continue
 			}
 			o.state.UsageEvents = append(o.state.UsageEvents, e)
-			accepted = append(accepted, e)
 			results = append(results, result{EventID: e.EventID, Status: "accepted"})
 		}
 		o.mu.Unlock()
-		for _, e := range accepted {
-			o.events.Publish(UsageEventReceived{e})
-		}
 		writeJSON(w, http.StatusOK, map[string]any{"results": results})
 	})
 
-	// Self-hosted swaps its license key for a short-lived token it sends on every later
-	// call. Scope already resolved the key.
+	// Self-hosted trades its license key for a short-lived token it sends on later calls.
 	mux.HandleFunc("POST /api/auth/v1/license-login", func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("X-API-KEY")
 		o.mu.Lock()
@@ -282,7 +267,5 @@ func orgFromPath(path string) string {
 func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(body); err != nil {
-		_, _ = fmt.Fprint(w, "{}")
-	}
+	_ = json.NewEncoder(w).Encode(body)
 }
