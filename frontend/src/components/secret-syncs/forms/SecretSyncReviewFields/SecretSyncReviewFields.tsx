@@ -158,14 +158,14 @@ const FailureAlertReview = ({
   // Alerts step, so the review must not promise one to anyone else.
   if (!canManage) {
     return (
-      <DetailValue className="text-muted italic">
+      <DetailValue>
         No alert. Adding one needs permission to edit secret syncs in this environment and path.
       </DetailValue>
     );
   }
 
   if (!isFailureAlertEnabled) {
-    return <DetailValue className="text-muted italic">No alert</DetailValue>;
+    return <DetailValue>No alert</DetailValue>;
   }
 
   return (
