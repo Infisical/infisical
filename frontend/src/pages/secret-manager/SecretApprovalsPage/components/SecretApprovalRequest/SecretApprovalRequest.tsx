@@ -84,7 +84,10 @@ import {
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import {
+  fetchSecretApprovalRequestList,
+  secretApprovalRequestKeys
+} from "@app/hooks/api/secretApprovalRequest/queries";
 import {
   SecretApprovalRequestOrderBy,
   TBulkChangeRequestResult,
@@ -105,7 +108,7 @@ enum ChangeRequestOrderBy {
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
 
-const MAX_BULK_SELECTION = 25;
+const MAX_BULK_SELECTION = 100;
 
 type Props = {
   onConfigurePolicies: () => void;
@@ -132,6 +135,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   );
   const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
   const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
+  const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -152,21 +156,21 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
     setUserTablePreference("changeRequestsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const {
-    data,
-    isPending: isApprovalRequestLoading,
-    refetch
-  } = useGetSecretApprovalRequests({
+  const listFilters = {
     projectId,
     status: statusFilter,
     environment: envFilter,
     committer: committerFilter,
     search: debouncedSearchFilter,
-    limit,
-    offset,
     orderBy: sort?.column as SecretApprovalRequestOrderBy | undefined,
     orderDirection: sort?.direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
-  });
+  };
+
+  const {
+    data,
+    isPending: isApprovalRequestLoading,
+    refetch
+  } = useGetSecretApprovalRequests({ ...listFilters, limit, offset });
 
   const totalApprovalCount = data?.totalCount ?? 0;
   const secretApprovalRequests = data?.approvals ?? [];
@@ -263,6 +267,46 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
       ...prev,
       ...Object.fromEntries(unselected.slice(0, available).map((request) => [request.id, request]))
     }));
+  };
+
+  const canSelectAllMatching =
+    isOpenTab &&
+    isPageSelected &&
+    totalApprovalCount > secretApprovalRequests.length &&
+    selectedCount < Math.min(totalApprovalCount, MAX_BULK_SELECTION);
+
+  const selectAllMatching = async () => {
+    setIsSelectingAllMatching(true);
+    try {
+      const { approvals, totalCount } = await fetchSecretApprovalRequestList({
+        ...listFilters,
+        limit: MAX_BULK_SELECTION,
+        offset: 0
+      });
+      setSelectedRequests((prev) => {
+        const unselected = approvals.filter(({ id }) => !prev[id]);
+        const available = Math.max(0, MAX_BULK_SELECTION - Object.keys(prev).length);
+        return {
+          ...prev,
+          ...Object.fromEntries(
+            unselected.slice(0, available).map((request) => [request.id, request])
+          )
+        };
+      });
+      if (totalCount > MAX_BULK_SELECTION) {
+        createNotification({
+          type: "info",
+          text: `You can select up to ${MAX_BULK_SELECTION} change requests at once, so only the first ${MAX_BULK_SELECTION} of ${totalCount} were selected`
+        });
+      }
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Could not load the matching change requests. Try again."
+      });
+    } finally {
+      setIsSelectingAllMatching(false);
+    }
   };
 
   const handleBulkComplete = (results: TBulkChangeRequestResult[]) => {
@@ -750,6 +794,18 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         </CardContent>
       </Card>
       <SelectedActionBar selectedCount={selectedCount} onClearSelection={clearSelection}>
+        {canSelectAllMatching && (
+          <Button
+            variant="ghost"
+            size="xs"
+            isPending={isSelectingAllMatching}
+            onClick={selectAllMatching}
+          >
+            {totalApprovalCount > MAX_BULK_SELECTION
+              ? `Select First ${MAX_BULK_SELECTION}`
+              : `Select All ${totalApprovalCount}`}
+          </Button>
+        )}
         <Button variant="project" size="xs" onClick={() => setIsBulkReviewOpen(true)}>
           <GitMergeIcon />
           Review & Merge

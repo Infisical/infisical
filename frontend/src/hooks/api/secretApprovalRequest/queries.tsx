@@ -1,4 +1,5 @@
 import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
@@ -48,7 +49,7 @@ export const secretApprovalRequestKeys = {
   ]
 };
 
-const fetchSecretApprovalRequestList = async ({
+export const fetchSecretApprovalRequestList = async ({
   projectId,
   environment,
   committer,
@@ -150,6 +151,29 @@ export const useGetSecretApprovalRequestDetails = ({
     enabled: Boolean(id) && (options?.enabled ?? true)
   });
 
+const DETAILS_LIST_CONCURRENCY = 6;
+let activeDetailsListFetches = 0;
+const queuedDetailsListFetches: (() => void)[] = [];
+
+const fetchSecretApprovalRequestDetailsQueued = async (id: string) => {
+  if (activeDetailsListFetches < DETAILS_LIST_CONCURRENCY) {
+    activeDetailsListFetches += 1;
+  } else {
+    await new Promise<void>((resolve) => {
+      queuedDetailsListFetches.push(resolve);
+    });
+  }
+  try {
+    return await fetchSecretApprovalRequestDetails({ id });
+  } finally {
+    const next = queuedDetailsListFetches.shift();
+    if (next) next();
+    else activeDetailsListFetches -= 1;
+  }
+};
+
+const isRateLimited = (error: unknown) => isAxiosError(error) && error.response?.status === 429;
+
 export const useGetSecretApprovalRequestDetailsList = ({
   ids,
   enabled = true
@@ -160,8 +184,18 @@ export const useGetSecretApprovalRequestDetailsList = ({
   useQueries({
     queries: ids.map((id) => ({
       queryKey: secretApprovalRequestKeys.detail({ id }),
-      queryFn: () => fetchSecretApprovalRequestDetails({ id }),
-      enabled
+      queryFn: () => fetchSecretApprovalRequestDetailsQueued(id),
+      enabled,
+      retry: (failureCount: number, error: unknown) =>
+        failureCount < (isRateLimited(error) ? 3 : 1),
+      retryDelay: (failureCount: number, error: unknown) => {
+        const retryAfter = Number(
+          isAxiosError(error) ? error.response?.headers["retry-after"] : undefined
+        );
+        if (isRateLimited(error))
+          return Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 60_000;
+        return Math.min(1000 * 2 ** failureCount, 30_000);
+      }
     }))
   });
 
