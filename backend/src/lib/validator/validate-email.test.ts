@@ -1,4 +1,4 @@
-import { isAliasedEmail, normalizeEmail } from "./validate-email";
+import { isAliasedEmail, isDisposableEmail, normalizeEmail } from "./validate-email";
 
 describe("normalizeEmail", () => {
   test("strips sub-addressing on every provider", () => {
@@ -73,5 +73,13 @@ describe("isAliasedEmail", () => {
     expect(isAliasedEmail("first.last@gmail.com")).toBe(true);
     expect(isAliasedEmail("dave@infisical.example")).toBe(false);
     expect(isAliasedEmail("first.last@company.com")).toBe(false);
+  });
+});
+
+describe("isDisposableEmail", () => {
+  test("matches only a listed domain, whatever its case or surrounding whitespace", async () => {
+    expect(await isDisposableEmail("alice@Mailinator.COM ")).toBe(true);
+    expect(await isDisposableEmail(["alice@corp.com", " bob@MAILINATOR.com"])).toBe(true);
+    expect(await isDisposableEmail(["alice@corp.com", "bob@corpmailinator.com"])).toBe(false);
   });
 });

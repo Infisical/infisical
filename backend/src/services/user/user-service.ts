@@ -16,7 +16,7 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -417,6 +417,12 @@ export const userServiceFactory = ({
     const startTime = new Date();
     const normalizedNewEmail = sanitizeEmail(newEmail);
     validateEmail(normalizedNewEmail);
+    if (await isDisposableEmail(normalizedNewEmail)) {
+      throw new BadRequestError({
+        message: `Email address '${normalizedNewEmail}' is from a disposable email provider. Use a different email address.`,
+        name: "RequestEmailChangeOTP"
+      });
+    }
     const changeEmailOTP = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user)
@@ -554,6 +560,12 @@ export const userServiceFactory = ({
   }: TUpdateUserEmailDTO & { otpCode: string }) => {
     const newEmail = sanitizeEmail(unsanitizedEmail);
     validateEmail(newEmail);
+    if (await isDisposableEmail(newEmail)) {
+      throw new BadRequestError({
+        message: `Email address '${newEmail}' is from a disposable email provider. Use a different email address.`,
+        name: "UpdateUserEmail"
+      });
+    }
 
     const changedUser = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
