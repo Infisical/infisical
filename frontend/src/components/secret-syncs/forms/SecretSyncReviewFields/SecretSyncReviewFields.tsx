@@ -17,7 +17,7 @@ import {
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
   ALERT_EVENT_TYPE_LABELS,
@@ -30,6 +30,7 @@ import {
 } from "@app/hooks/api/alerts";
 import { SecretSync, useDuplicateDestinationCheck } from "@app/hooks/api/secretSyncs";
 
+import { canManageFailureAlert } from "../SecretSyncAlertsFields";
 import {
   AwsParameterStoreDestinationReviewFields,
   AwsParameterStoreSyncOptionsReviewFields
@@ -146,11 +147,23 @@ const describeChannel = (channel: TChannelForm) => {
 
 const FailureAlertReview = ({
   isFailureAlertEnabled,
-  channels
+  channels,
+  canManage
 }: {
   isFailureAlertEnabled: boolean;
   channels: TChannelForm[];
+  canManage: boolean;
 }) => {
+  // The form only creates the alert for someone who can edit the sync, whether or not they opened the
+  // Alerts step, so the review must not promise one to anyone else.
+  if (!canManage) {
+    return (
+      <DetailValue className="text-muted italic">
+        No alert. Adding one needs permission to edit secret syncs in this environment and path.
+      </DetailValue>
+    );
+  }
+
   if (!isFailureAlertEnabled) {
     return <DetailValue className="text-muted italic">No alert</DetailValue>;
   }
@@ -176,6 +189,7 @@ const FailureAlertReview = ({
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
+  const { permission } = useProjectPermission();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
 
@@ -505,7 +519,15 @@ export const SecretSyncReviewFields = () => {
       <DetailGroup>
         <DetailGroupHeader className="border-b border-border pb-2">Alerts</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-4">
-          <FailureAlertReview isFailureAlertEnabled={isFailureAlertEnabled} channels={channels} />
+          <FailureAlertReview
+            isFailureAlertEnabled={isFailureAlertEnabled}
+            channels={channels}
+            canManage={canManageFailureAlert(permission, {
+              environment: environment?.slug,
+              secretPath,
+              connectionId: connection?.id
+            })}
+          />
         </div>
       </DetailGroup>
     </div>

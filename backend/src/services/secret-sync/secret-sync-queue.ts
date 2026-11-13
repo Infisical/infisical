@@ -399,14 +399,23 @@ export const secretSyncQueueFactory = ({
         break;
     }
 
-    await emitSecretSyncFailed(eventEmitter, {
-      orgId: secretSync.connection.orgId,
-      projectId: secretSync.projectId,
-      syncId: secretSync.id,
-      action,
-      failureMessage,
-      attemptedAt: new Date()
-    });
+    // Runs on the job's last attempt, after the failed status committed, so a throw here would also drop the
+    // in-app, Slack and Teams notices queued below.
+    try {
+      await emitSecretSyncFailed(eventEmitter, {
+        orgId: secretSync.connection.orgId,
+        projectId: secretSync.projectId,
+        syncId: secretSync.id,
+        action,
+        failureMessage,
+        attemptedAt: new Date()
+      });
+    } catch (error) {
+      logger.error(
+        error,
+        `SecretSync: failed to emit failure alert event [syncId=${secretSync.id}] [action=${action}]`
+      );
+    }
 
     await queueService.queue(
       QueueName.AppConnectionSecretSync,

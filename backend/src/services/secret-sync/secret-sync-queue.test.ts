@@ -148,7 +148,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       opts: { attempts: 1 }
     });
 
-  return { state, runSync, runJob, secretSyncDAL, eventEmitter, alertService };
+  return { state, runSync, runJob, secretSyncDAL, eventEmitter, alertService, queueService };
 };
 
 const syncSecrets = vi.mocked(SecretSyncFns.syncSecrets);
@@ -359,6 +359,21 @@ describe("failure alert event", () => {
     await runSync(1);
 
     expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("a failed emit still queues the in-app and integration notices", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const { runSync, eventEmitter, queueService } = createHarness(healthy);
+    eventEmitter.emit.mockRejectedValueOnce(new Error("connection reset"));
+
+    await expect(runSync(ATTEMPTS)).rejects.toThrow("upstream 500");
+
+    expect(queueService.queue).toHaveBeenCalledWith(
+      QueueName.AppConnectionSecretSync,
+      QueueJobs.SecretSyncSendActionFailedNotifications,
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   test("is emitted when lock contention ends a sync", async () => {
