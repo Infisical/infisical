@@ -1,4 +1,5 @@
 import { createMongoAbility } from "@casl/ability";
+import { useRouterState } from "@tanstack/react-router";
 
 import {
   ProjectPermissionCertificateActions,
@@ -295,8 +296,90 @@ const store = createFixtureStore<TCertificate[]>([
     tlsServer,
     CertKeyAlgorithm.ML_DSA_65,
     { applicationName: "platform-core", renewBeforeDays: 10 }
+  ),
+  certificate(
+    "4c2b7e19-a05d-4f38-9b6e-1d8f3a2c7e50",
+    "auth.acme.dev",
+    ["auth.acme.dev", "login.acme.dev"],
+    "D2:6A:0F:83:B1:4C:E9:35",
+    89,
+    1,
+    tlsServer,
+    CertKeyAlgorithm.ECDSA_P256,
+    {
+      applicationName: "identity",
+      renewBeforeDays: 14,
+      renewalError:
+        "The issuing CA rejected the renewal request: the tls-server policy no longer allows ECDSA P-256 keys."
+    }
+  ),
+  certificate(
+    "b71d3f0a-6e28-4c95-8a14-5f9c2e7b0d63",
+    "ldap.corp.acme.internal",
+    ["ldap.corp.acme.internal"],
+    "3B:E7:52:C9:0D:16:A8:7F",
+    362,
+    3,
+    mtlsClient,
+    CertKeyAlgorithm.RSA_2048,
+    { source: CertSource.Discovered }
+  ),
+  certificate(
+    "e9a40c6d-2f17-4b83-b5d0-7c3e1a9f6b24",
+    "smtp-relay.acme.dev",
+    ["smtp-relay.acme.dev"],
+    "8F:21:D4:6B:93:0E:C5:1A",
+    361,
+    4,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { source: CertSource.Imported, hasPrivateKey: false }
+  ),
+  certificate(
+    "1f5c8b3e-7a60-4d29-9e47-b2d0c6a8f315",
+    "metrics.platform-core.internal",
+    ["metrics.platform-core.internal"],
+    "C9:04:7E:B5:28:F3:61:DA",
+    71,
+    19,
+    mtlsClient,
+    CertKeyAlgorithm.ECDSA_P256,
+    { applicationName: "platform-core", renewBeforeDays: 14 }
+  ),
+  certificate(
+    "6a93e2d7-0b4f-4c16-a8e5-3d7f9b1c0e82",
+    "cdn.acme.dev",
+    ["cdn.acme.dev", "static.acme.dev", "assets.acme.dev", "img.acme.dev"],
+    "5A:B8:3C:E1:07:94:2F:D6",
+    32,
+    58,
+    { ...tlsServer, enrollmentType: EnrollmentType.ACME },
+    CertKeyAlgorithm.ECDSA_P256,
+    { applicationName: "web-dashboard", renewBeforeDays: 30 }
+  ),
+  certificate(
+    "d0c47a8b-5e3f-4129-b6d8-9a2e7f1c4b05",
+    "sso.acme.dev",
+    ["sso.acme.dev"],
+    "E4:0D:9A:72:C6:3B:85:1F",
+    294,
+    71,
+    tlsServer,
+    CertKeyAlgorithm.RSA_3072,
+    { applicationName: "identity" }
   )
 ]);
+
+const DEMO_SCENARIOS = ["loading", "empty", "error"] as const;
+const useDemoScenario = () =>
+  useRouterState({
+    select: (state) => {
+      const value = (state.location.search as { scenario?: unknown }).scenario;
+      return DEMO_SCENARIOS.find((scenario) => scenario === value);
+    }
+  });
+const recovered = createFixtureStore(false);
+const recover = () => recovered.update(() => true);
 
 const installation = (
   id: string,
@@ -477,6 +560,8 @@ export const certificatesDemo: CertificatesAdapter = {
       isMultiInstance: false
     }),
   useCertificates: (dto) => {
+    const scenario = useDemoScenario();
+    const isRecovered = recovered.use();
     const needle = dto.search?.trim().toLowerCase();
     const statuses = asList(dto.status);
     const algorithms = asList(dto.keyAlgorithm);
@@ -506,10 +591,23 @@ export const certificatesDemo: CertificatesAdapter = {
       .filter((cert) => within(cert.notAfter, dto.notAfterFrom, dto.notAfterTo))
       .filter((cert) => within(cert.notBefore, dto.notBeforeFrom, dto.notBeforeTo))
       .sort((a, b) => a[sortKey].localeCompare(b[sortKey]) * direction);
-    return result({
-      certificates: matched.slice(dto.offset, dto.offset + dto.limit),
-      totalCount: matched.length
-    });
+    if (scenario === "loading")
+      return { data: undefined, isPending: true, error: null, refetch: recover };
+    if (scenario === "error" && !isRecovered)
+      return {
+        data: undefined,
+        isPending: false,
+        error: new Error("The demo scenario simulates a timeout."),
+        refetch: recover
+      };
+    const shown = scenario === "empty" ? [] : matched;
+    return {
+      ...result({
+        certificates: shown.slice(dto.offset, dto.offset + dto.limit),
+        totalCount: shown.length
+      }),
+      refetch: recover
+    };
   },
   useDashboardStats: () => {
     const certs = store.use().filter((cert) => !cert.deletedAt);

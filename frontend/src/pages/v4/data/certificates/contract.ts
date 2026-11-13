@@ -36,9 +36,10 @@ export type TListCertificatesDTO = Parameters<typeof useListWorkspaceCertificate
 
 export type CertificatesAdapter = {
   useInstanceState: (orgId: string) => V4QueryResult<TCertManagerInstanceState>;
-  useCertificates: (
-    dto: TListCertificatesDTO
-  ) => V4QueryResult<{ certificates: TCertificate[]; totalCount: number }>;
+  useCertificates: (dto: TListCertificatesDTO) => V4QueryResult<{
+    certificates: TCertificate[];
+    totalCount: number;
+  }> & { refetch: () => unknown };
   useDashboardStats: (projectId: string) => V4QueryResult<TDashboardStats>;
   useActivityTrend: (projectId: string, range?: string) => V4QueryResult<TActivityTrendResponse>;
   usePqcTrend: (projectId: string, range?: string) => V4QueryResult<TPqcTrendResponse>;
