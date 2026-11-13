@@ -1,12 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
+import { EntityNotFoundError, ExternalSystemError, RuleViolationError } from "@app/domains/lib/errors";
 import { isAwsError } from "@app/lib/aws/error";
 import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgres";
 
 import {
   BadRequestError,
+  ClientClosedRequestError,
   CryptographyError,
+  DailyQuotaExceededError,
   DatabaseError,
   ForbiddenRequestError,
   GatewayTimeoutError,
@@ -32,6 +35,7 @@ export const ERROR_TYPES = [
   "db",
   "timeout",
   "network",
+  "client_closed",
   "cryptography",
   "policy",
   "scim",
@@ -65,9 +69,9 @@ export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof UnauthorizedError) return "auth";
   if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError || err instanceof PermissionBoundaryError)
     return "permission";
-  if (err instanceof RateLimitError) return "rate_limit";
-  if (err instanceof NotFoundError) return "not_found";
-  if (err instanceof BadRequestError) return "validation";
+  if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
+  if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return "not_found";
+  if (err instanceof BadRequestError || err instanceof RuleViolationError) return "validation";
   // A varchar(n) overflow is a rejected input, so it should not inflate the db-error rate.
   if (err instanceof DatabaseError)
     return hasPostgresErrorCode(err, PostgresErrorCode.StringDataRightTruncation) ? "validation" : "db";
@@ -76,7 +80,8 @@ export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof PolicyViolationError) return "policy";
   if (err instanceof ScimRequestError) return "scim";
   if (err instanceof OidcAuthError) return "oidc";
-  if (err instanceof InternalServerError) return "internal";
+  if (err instanceof InternalServerError || err instanceof ExternalSystemError) return "internal";
+  if (err instanceof ClientClosedRequestError) return "client_closed";
 
   if (isAwsError(err, "ThrottlingException")) return "rate_limit";
 

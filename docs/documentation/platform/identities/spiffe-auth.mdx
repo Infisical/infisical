@@ -93,9 +93,11 @@ In the following steps, we explore how to create and use identities to access th
 
     <Tabs>
       <Tab title="Static">
-        Best for air-gapped environments or environments where the trust bundle does not change frequently. You provide the SPIRE JWKS JSON directly.
+        Best for air-gapped environments or environments where the trust bundle doesn't change frequently. You paste your SPIRE server's trust bundle directly.
 
-        - **CA Bundle JWKS (required):** The JWKS JSON containing the public keys used to verify JWT-SVID signatures. You can obtain this from your SPIRE server's bundle endpoint or via `spire-server bundle show -format jwks`.
+        - **CA Bundle JWKS (required):** The output of `spire-server bundle show -format spiffe`, which holds the public keys Infisical uses to verify JWT-SVID signatures
+
+        Paste the bundle as SPIRE prints it. Infisical uses only the JWT-SVID signing keys in the bundle, so you don't need to remove the X.509-SVID keys or the `spiffe_sequence` field.
       </Tab>
       <Tab title="HTTPS Web Bundle">
         Best for dynamic environments where keys rotate regularly. Infisical automatically fetches and caches the trust bundle from a SPIRE bundle endpoint.

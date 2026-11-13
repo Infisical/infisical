@@ -6,9 +6,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { CertStatus } from "@app/services/certificate/certificate-types";
+import { ActorType } from "@app/services/auth/auth-type";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 import { certificateEstV3ServiceFactory, TCertificateEstV3ServiceFactory } from "./certificate-est-v3-service";
@@ -69,6 +73,10 @@ vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => (
   assertCaInProfileProject: vi.fn()
 }));
 
+vi.mock("@app/services/certificate-common/certificate-csr-utils", () => ({
+  extractCertificateRequestFromCSR: vi.fn().mockReturnValue({ commonName: "different.example.com" })
+}));
+
 vi.mock("@app/services/project/project-fns", () => ({
   getProjectKmsCertificateKeyId: vi.fn(() => Promise.resolve("mock-kms-id"))
 }));
@@ -79,6 +87,7 @@ vi.mock("../../ee/services/certificate-est/certificate-est-fns", () => ({
 
 describe("CertificateEstV3Service", () => {
   let service: TCertificateEstV3ServiceFactory;
+  let licenseService: FakeLicenseService;
 
   const mockCertificateV3Service = {
     signCertificateFromProfile: vi.fn()
@@ -108,10 +117,6 @@ describe("CertificateEstV3Service", () => {
   const mockKmsService = {
     decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn(() => Promise.resolve(Buffer.from("mock-decrypted")))),
     generateKmsKey: vi.fn()
-  };
-
-  const mockLicenseService = {
-    getPlan: vi.fn()
   };
 
   const mockCertificateProfileDAL = {
@@ -162,7 +167,11 @@ describe("CertificateEstV3Service", () => {
     validity: { max: "90d" }
   };
 
+  const mockAuditLogService = { createCollapsedAuditLog: vi.fn() };
+  const mockPkiApplicationDAL = { findById: vi.fn() };
+
   beforeEach(async () => {
+    licenseService = new FakeLicenseService().setPlan(mockProject.orgId, mockPlan);
     service = certificateEstV3ServiceFactory({
       certificateV3Service: mockCertificateV3Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
@@ -170,16 +179,17 @@ describe("CertificateEstV3Service", () => {
       certificateDAL: mockCertificateDAL,
       projectDAL: mockProjectDAL,
       kmsService: mockKmsService,
-      licenseService: mockLicenseService,
+      licenseService,
       certificateProfileDAL: mockCertificateProfileDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
-      certificatePolicyDAL: mockCertificatePolicyDAL
+      certificatePolicyDAL: mockCertificatePolicyDAL,
+      pkiApplicationDAL: mockPkiApplicationDAL as never,
+      auditLogService: mockAuditLogService
     });
 
     mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
     mockEstEnrollmentConfigDAL.findById.mockResolvedValue(mockEstConfig);
     mockProjectDAL.findOne.mockResolvedValue(mockProject);
-    mockLicenseService.getPlan.mockResolvedValue(mockPlan);
     mockCertificatePolicyDAL.findById.mockResolvedValue(mockPolicy);
     mockCertificateDAL.findOne.mockResolvedValue(null);
   });
@@ -277,7 +287,7 @@ describe("CertificateEstV3Service", () => {
     });
 
     it("should throw error when PKI EST is not available in plan", async () => {
-      mockLicenseService.getPlan.mockResolvedValue({ pkiEst: false });
+      licenseService.setPlan(mockProject.orgId, { pkiEst: false });
 
       await expect(
         service.simpleEnrollByProfile({
@@ -302,6 +312,34 @@ describe("CertificateEstV3Service", () => {
           sslClientCert: ""
         })
       ).rejects.toThrow(BadRequestError);
+    });
+
+    it("records an issuance failure when the profile's default TTL exceeds the policy maximum", async () => {
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue({ ...mockProfile, defaults: { ttlDays: 365 } });
+
+      await expect(
+        service.simpleEnrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: "",
+          auditLogInfo: { ipAddress: "127.0.0.1", actor: { type: ActorType.PLATFORM, metadata: {} } }
+        })
+      ).rejects.toThrow("exceeds the policy's maximum validity");
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId: "profile-123" } },
+          event: expect.objectContaining({
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.SIGN,
+              enrollmentType: EnrollmentType.EST,
+              certificateProfileId: "profile-123"
+            })
+          })
+        })
+      );
     });
 
     it("should use flow default TTL when profile has no defaultTtlDays", async () => {
@@ -414,6 +452,41 @@ describe("CertificateEstV3Service", () => {
       ).rejects.toThrow(BadRequestError);
     });
 
+    it("records a renew failure when the CSR subject doesn't match the client certificate", async () => {
+      const { Pkcs10CertificateRequest } = await import("@peculiar/x509");
+      (Pkcs10CertificateRequest as any).mockImplementation(() => ({
+        subject: "CN=different.example.com",
+        extensions: []
+      }));
+      mockCertificateDAL.findOne.mockResolvedValue({ id: "cert-old", status: CertStatus.ACTIVE });
+
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----"),
+          auditLogInfo: { ipAddress: "127.0.0.1", actor: { type: ActorType.PLATFORM, metadata: {} } }
+        })
+      ).rejects.toThrow("Subject mismatch");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-123",
+          actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId: "profile-123" } },
+          event: expect.objectContaining({
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.RENEW,
+              enrollmentType: EnrollmentType.EST,
+              certificateProfileId: "profile-123",
+              originalCertificateId: "cert-old",
+              error: "Subject mismatch"
+            })
+          })
+        })
+      );
+    });
+
     it("should throw error when approval is required for re-enrollment", async () => {
       mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
         status: CertificateRequestStatus.PENDING_APPROVAL,
@@ -440,6 +513,25 @@ describe("CertificateEstV3Service", () => {
           sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
         })
       ).rejects.toThrow(UnauthorizedError);
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
+    });
+
+    it("should reject re-enrollment when the client certificate was deleted", async () => {
+      mockCertificateDAL.findOne.mockResolvedValue({
+        status: CertStatus.ACTIVE,
+        deletedAt: new Date(),
+        commonName: "device.example.com",
+        serialNumber: "01"
+      });
+
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+        })
+      ).rejects.toThrow("was deleted and can no longer be re-enrolled");
 
       expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
     });

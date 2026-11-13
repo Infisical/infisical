@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vit
 
 import { crypto as infisicalCrypto } from "@app/lib/crypto";
 
-import { validateIamIdentity, validateIdTokenIdentity } from "./identity-gcp-auth-fns";
+import { hasGcpTrustBinding, validateIamIdentity, validateIdTokenIdentity } from "./identity-gcp-auth-fns";
 
 const { getFederatedSignonCerts, verifySignedJwtWithCertsAsync, requestGet } = vi.hoisted(() => ({
   getFederatedSignonCerts: vi.fn(),
@@ -254,5 +254,30 @@ describe("validateIamIdentity", () => {
         jwt: signIamJwt({ payload: { sub: SERVICE_ACCOUNT, aud: "another-identity-id" } })
       })
     ).rejects.toThrow("Invalid audience in GCP IAM Token");
+  });
+});
+
+describe("hasGcpTrustBinding", () => {
+  test.each([
+    { type: "gce", allowedServiceAccounts: null, allowedProjects: null },
+    { type: "gce", allowedServiceAccounts: "", allowedProjects: "  " },
+    { type: "gce", allowedServiceAccounts: ",", allowedProjects: ", ," },
+    { type: "iam", allowedServiceAccounts: ", ", allowedProjects: "my-project" }
+  ])("is false when no usable entry is set: %o", (binding) => {
+    expect(hasGcpTrustBinding(binding)).toBe(false);
+  });
+
+  test("is true for a service account on either type", () => {
+    expect(hasGcpTrustBinding({ type: "iam", allowedServiceAccounts: "sa@p.iam.gserviceaccount.com" })).toBe(true);
+    expect(hasGcpTrustBinding({ type: "gce", allowedServiceAccounts: "sa@p.iam.gserviceaccount.com" })).toBe(true);
+  });
+
+  test("is true for a project only on a GCE identity", () => {
+    expect(hasGcpTrustBinding({ type: "gce", allowedProjects: "my-project" })).toBe(true);
+    expect(hasGcpTrustBinding({ type: "iam", allowedProjects: "my-project" })).toBe(false);
+  });
+
+  test("ignores empty entries around a real one", () => {
+    expect(hasGcpTrustBinding({ type: "iam", allowedServiceAccounts: ", sa@p.iam.gserviceaccount.com," })).toBe(true);
   });
 });

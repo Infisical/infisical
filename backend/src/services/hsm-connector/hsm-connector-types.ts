@@ -68,4 +68,10 @@ export type THsmConnectorSanitized = {
   updatedAt: Date;
 };
 
+export type THsmConnectorKey = {
+  keyLabel: string;
+  keyId: string;
+  keyAlgorithm: string;
+};
+
 export type THsmConnectorServiceActor = OrgServiceActor;

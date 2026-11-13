@@ -13,8 +13,11 @@ import {
 
 import {
   assertClonedRepositoryWithinSizeLimit,
+  convertPatchLineToFileLineNumber,
   parseScanErrorMessage,
   planCommitBatches,
+  replaceNonChangesWithNewlines,
+  repositoryHasCommits,
   SecretScanningSizeLimitError
 } from "./secret-scanning-v2-fns";
 
@@ -189,6 +192,20 @@ describe("planCommitBatches", () => {
     }
   };
 
+  test("reports an empty repository as having no commits", async () => {
+    await withRepo(async (repoPath) => {
+      expect(await repositoryHasCommits(repoPath)).toBe(false);
+    });
+  });
+
+  test("reports a repository with a commit as having commits", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+
+      expect(await repositoryHasCommits(repoPath)).toBe(true);
+    });
+  });
+
   test("resumes past the commits it already scanned", async () => {
     await withRepo(async (repoPath) => {
       await commit(repoPath, "a", "2020-01-01T00:00:00Z");
@@ -281,5 +298,31 @@ describe("planCommitBatches", () => {
       expect(plan.resumed).toBe(false);
       expect(plan.batches).toHaveLength(2);
     });
+  });
+});
+
+describe("convertPatchLineToFileLineNumber", () => {
+  // The scanner numbers lines from 1, so the line a finding is reported on is its index in the scanned content plus 1.
+  const scannedLineOf = (patch: string, text: string) =>
+    replaceNonChangesWithNewlines(patch).split("\n").indexOf(text) + 1;
+
+  test("maps an added file's lines to the same lines", () => {
+    const patch = "@@ -0,0 +1,2 @@\n+one\n+two";
+
+    expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "one"))).toBe(1);
+    expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "two"))).toBe(2);
+  });
+
+  test("counts context lines but not removed ones, and restarts at each hunk", () => {
+    const patch = "@@ -1,3 +1,3 @@\n keep\n-old\n+new\n keep\n@@ -10,1 +10,2 @@\n context\n+added";
+
+    expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "new"))).toBe(2);
+    expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "added"))).toBe(11);
+  });
+
+  test("skips a patch's file headers", () => {
+    const patch = "--- a/file.txt\n+++ b/file.txt\n@@ -4,0 +5,1 @@\n+secret";
+
+    expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "secret"))).toBe(5);
   });
 });

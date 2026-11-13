@@ -3,13 +3,19 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import {
+  OrganizationActionScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TGatewaysV2Update,
+  TRelays
+} from "@app/db/schemas";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -18,14 +24,14 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
   getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -35,6 +41,8 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountType } from "../pam/pam-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -47,6 +55,7 @@ import {
   TGcpAuthMethodConfig,
   TKubernetesAuthMethodConfig
 } from "../resource-auth-method/resource-auth-method-types";
+import { issueGatewayServerCertificate } from "./gateway-v2-certificate-fns";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
@@ -76,6 +85,8 @@ type TGatewayV2ServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByGatewayId" | "countByGatewayIds">;
+  pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findByGatewayId" | "countByGatewayIds">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
     | "initAtCreate"
@@ -103,6 +114,8 @@ export const gatewayV2ServiceFactory = ({
   dynamicSecretDAL,
   identityKubernetesAuthDAL,
   pkiDiscoveryConfigDAL,
+  pamAccountDAL,
+  pamAccountTemplateDAL,
   resourceAuthMethodService
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
@@ -132,6 +145,9 @@ export const gatewayV2ServiceFactory = ({
       if (orgGatewayConfigV2) return orgGatewayConfigV2;
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgGatewayV2Init(orgId)]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedOrgGatewayConfigV2 = await orgGatewayConfigV2DAL.findOne({ orgId }, tx);
+      if (lockedOrgGatewayConfigV2) return lockedOrgGatewayConfigV2;
 
       // generate root CA
       const rootCaKeyAlgorithm = CertKeyAlgorithm.RSA_2048;
@@ -316,15 +332,23 @@ export const gatewayV2ServiceFactory = ({
 
     const gatewayIds = gateways.map((g) => g.id);
 
-    const [appConnectionsCounts, dynamicSecretsCounts, kubernetesAuthsCounts, pkiDiscoveryConfigsCounts] =
-      await Promise.all([
-        Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-        Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-        Promise.all(
-          gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
-        ),
-        Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count }))))
-      ]);
+    const [
+      appConnectionsCounts,
+      dynamicSecretsCounts,
+      kubernetesAuthsCounts,
+      pkiDiscoveryConfigsCounts,
+      pamAccountsCounts,
+      pamAccountTemplatesCounts
+    ] = await Promise.all([
+      Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(
+        gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
+      ),
+      Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      pamAccountDAL.countByGatewayIds(gatewayIds),
+      pamAccountTemplateDAL.countByGatewayIds(gatewayIds)
+    ]);
 
     const countMap = new Map<string, number>();
 
@@ -340,6 +364,12 @@ export const gatewayV2ServiceFactory = ({
     for (const { id, count } of pkiDiscoveryConfigsCounts) {
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
+    for (const { id, count } of pamAccountsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pamAccountTemplatesCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
 
     return gateways.map((gateway) => ({
       ...gateway,
@@ -351,11 +381,14 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     targetHost,
     targetPort,
+    // Named in the signed cert so the gateway need not trust a port out of the request body.
+    additionalTargetPorts,
     transport
   }: {
     gatewayId: string;
     targetHost: string;
     targetPort: number;
+    additionalTargetPorts?: number[];
     transport?: GatewayTransport;
   }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
@@ -424,9 +457,13 @@ export const gatewayV2ServiceFactory = ({
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
 
+    const allowedPorts = [targetPort, ...(additionalTargetPorts ?? [])].filter(
+      (port, index, ports) => port > 0 && ports.indexOf(port) === index
+    );
     const routingInfo = {
       targetHost,
-      targetPort
+      targetPort,
+      ...(allowedPorts.length > 1 ? { targetPorts: allowedPorts } : {})
     };
 
     const routingExtension = new x509.Extension(
@@ -712,47 +749,13 @@ export const gatewayV2ServiceFactory = ({
       ["sign"]
     );
 
-    const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const gatewayServerCertIssuedAt = new Date();
-    const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
-    const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
-
-    const subjectAlternativeNames: x509.JsonGeneralName[] = [
-      { type: "dns", value: "localhost" },
-      { type: "ip", value: "127.0.0.1" },
-      { type: "ip", value: "::1" }
-    ];
-    if (gateway.directAddress) {
-      const { host } = parseDirectAddress(gateway.directAddress);
-      subjectAlternativeNames.push(net.isIP(host) ? { type: "ip", value: host } : { type: "dns", value: host });
-    }
-
-    const gatewayServerCertExtensions: x509.Extension[] = [
-      new x509.BasicConstraintsExtension(false),
-      await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
-      await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
-      new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-      new x509.KeyUsagesExtension(
-        // eslint-disable-next-line no-bitwise
-        x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
-        true
-      ),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
-      new x509.SubjectAlternativeNameExtension(subjectAlternativeNames)
-    ];
-
-    const gatewayServerSerialNumber = createSerialNumber();
-    const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
-      serialNumber: gatewayServerSerialNumber,
-      subject: `O=${orgId},CN=Gateway`,
-      issuer: gatewayServerCaCert.subject,
-      notBefore: getNotBeforeWithClockSkew(gatewayServerCertIssuedAt),
-      notAfter: getNotAfterWithClockSkew(gatewayServerCertExpireAt),
-      signingKey: gatewayServerCaPrivateKey,
-      publicKey: gatewayServerKeys.publicKey,
-      signingAlgorithm: alg,
-      extensions: gatewayServerCertExtensions
-    });
+    const { certificate: gatewayServerCertificate, privateKey: gatewayServerCertPrivateKey } =
+      await issueGatewayServerCertificate({
+        orgId,
+        gateway,
+        caCertificate: gatewayServerCaCert,
+        caPrivateKey: gatewayServerCaPrivateKey
+      });
 
     const relayCredentials = relayName
       ? await relayService.getCredentialsForGateway({
@@ -784,6 +787,24 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
+  // Revoking clears a gateway's transports and bumps its token version. A connect authenticated just
+  // before the revoke would otherwise write them back after it, so the write only lands while the
+  // version the request authenticated with is still current.
+  const $writeAgentTransports = async (
+    gatewayId: string,
+    tokenVersion: number | undefined,
+    transports: Pick<TGatewaysV2Update, "directAddress" | "directHeartbeat" | "heartbeat" | "relayId">
+  ) => {
+    if (tokenVersion === undefined) {
+      throw new UnauthorizedError({ message: "Gateway token has been revoked" });
+    }
+    const [updated] = await gatewayV2DAL.update({ id: gatewayId, tokenVersion }, transports);
+    if (!updated) {
+      throw new UnauthorizedError({ message: "Gateway token has been revoked" });
+    }
+    return updated;
+  };
+
   const registerGateway = async ({
     orgId,
     actorId,
@@ -791,7 +812,8 @@ export const gatewayV2ServiceFactory = ({
     actorAuthMethod,
     relayName,
     directAddress,
-    name
+    name,
+    tokenVersion
   }: {
     orgId: string;
     actorId: string;
@@ -800,6 +822,8 @@ export const gatewayV2ServiceFactory = ({
     relayName?: string;
     directAddress?: string;
     name?: string;
+    /** The gateway access token's version, when a gateway agent is the actor. */
+    tokenVersion?: number;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -832,7 +856,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
+      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
@@ -1061,7 +1085,11 @@ export const gatewayV2ServiceFactory = ({
     orgPermission: OrgServiceActor;
     capabilities?: {
       pkcs11?: boolean;
+      pkcs11MlDsa?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;
+      clickhouseNativeProtocol?: boolean;
+      certificateScan?: boolean;
+      windowsCertificateScan?: boolean;
       supported_account_types?: string[];
     };
   }) => {
@@ -1148,6 +1176,15 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
+    // app_connections.gatewayId has no foreign key, so nothing in the database stops a delete that
+    // would leave a connection routing through a gateway that no longer exists.
+    const appConnections = await appConnectionDAL.findByGatewayId(gateway.id);
+    if (appConnections.length) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway.name}' is used by app connection(s) ${appConnections.map((c) => `'${c.name}'`).join(", ")}. Remove the gateway from those connections before deleting it.`
+      });
+    }
+
     try {
       return await gatewayV2DAL.deleteById(gateway.id);
     } catch (err) {
@@ -1202,6 +1239,12 @@ export const gatewayV2ServiceFactory = ({
       }
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.GatewayPamSessionKey(gateway.id)]);
+      // Re-read under the lock: a request that waited on it must return the key the first one
+      // stored rather than replace it.
+      const lockedGateway = await gatewayV2DAL.findById(gateway.id, tx);
+      if (lockedGateway?.encryptedPamSessionKey) {
+        return decryptor({ cipherTextBlob: lockedGateway.encryptedPamSessionKey });
+      }
 
       const newPamSessionKey = crypto.randomBytes(32);
       const { cipherTextBlob: encryptedPamSessionKey } = encryptor({ plainText: newPamSessionKey });
@@ -1296,18 +1339,23 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    const [appConnections, dynamicSecrets, kubernetesAuths, pkiDiscoveryConfigs] = await Promise.all([
-      appConnectionDAL.findByGatewayId(gatewayId),
-      dynamicSecretDAL.findByGatewayId(gatewayId),
-      identityKubernetesAuthDAL.findByGatewayId(gatewayId),
-      pkiDiscoveryConfigDAL.findByGatewayId(gatewayId)
-    ]);
+    const [appConnections, dynamicSecrets, kubernetesAuths, pkiDiscoveryConfigs, pamAccounts, pamAccountTemplates] =
+      await Promise.all([
+        appConnectionDAL.findByGatewayId(gatewayId),
+        dynamicSecretDAL.findByGatewayId(gatewayId),
+        identityKubernetesAuthDAL.findByGatewayId(gatewayId),
+        pkiDiscoveryConfigDAL.findByGatewayId(gatewayId),
+        pamAccountDAL.findByGatewayId(gatewayId),
+        pamAccountTemplateDAL.findByGatewayId(gatewayId)
+      ]);
 
     return {
       appConnections,
       dynamicSecrets,
       kubernetesAuths,
-      pkiDiscoveryConfigs
+      pkiDiscoveryConfigs,
+      pamAccounts,
+      pamAccountTemplates
     };
   };
 
@@ -1320,6 +1368,74 @@ export const gatewayV2ServiceFactory = ({
   };
 
   // --- V3 service methods ---
+
+  const $assertCanEditGateway = async (orgPermission: OrgServiceActor, gatewayId: string) => {
+    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: gateway.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.EditGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    return gateway;
+  };
+
+  // Setting an auth method dials the customer's cluster, so the two halves of an update cannot
+  // share a transaction. Checking the name first means the ordinary rejection lands before the
+  // auth method is committed; the unique violation in renameGateway still covers the race.
+  const assertGatewayNameAvailable = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
+    if (gateway.name === name) return;
+
+    const existing = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, name });
+    if (existing && existing.id !== gatewayId) {
+      throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+    }
+  };
+
+  const renameGateway = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
+    if (gateway.name === name) return { gateway, previousName: name };
+
+    try {
+      const renamed = await gatewayV2DAL.updateById(gateway.id, { name });
+      return { gateway: renamed, previousName: gateway.name };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+      }
+
+      throw err;
+    }
+  };
 
   const createGateway = async ({
     orgId,
@@ -1414,13 +1530,16 @@ export const gatewayV2ServiceFactory = ({
     actorId,
     actorType,
     relayName,
-    directAddress
+    directAddress,
+    tokenVersion
   }: {
     orgId: string;
     actorId: string;
     actorType: ActorType;
     relayName?: string;
     directAddress?: string;
+    /** The gateway access token's version the request authenticated with. */
+    tokenVersion?: number;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -1451,7 +1570,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
+      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
@@ -1484,6 +1603,8 @@ export const gatewayV2ServiceFactory = ({
     enrollGateway,
     // V3
     createGateway,
+    renameGateway,
+    assertGatewayNameAvailable,
     connectGateway
   };
 };

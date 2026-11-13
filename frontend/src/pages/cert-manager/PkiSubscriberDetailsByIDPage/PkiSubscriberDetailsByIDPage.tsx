@@ -1,22 +1,20 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import { PageHeader } from "@app/components/v3";
+  PageHeader
+} from "@app/components/v3";
+import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionPkiSubscriberActions,
@@ -28,6 +26,7 @@ import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LegacyPkiDeprecationAlert } from "../components/LegacyPkiDeprecationAlert";
 import { PkiSubscriberModal } from "../PkiSubscribersPage/components/PkiSubscriberModal";
 import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from "./components";
 
@@ -41,7 +40,8 @@ const Page = () => {
     select: (el) => el.subscriberName
   });
   const { data } = useGetPkiSubscriber({
-    subscriberName
+    subscriberName,
+    projectId
   });
 
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
@@ -54,7 +54,7 @@ const Page = () => {
   const onRemoveSubscriberSubmit = async (subscriberNameToDelete: string) => {
     if (!projectId) return;
 
-    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete });
+    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete, projectId });
 
     createNotification({
       text: "Successfully deleted subscriber",
@@ -63,25 +63,23 @@ const Page = () => {
 
     handlePopUpClose("deletePkiSubscriber");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
+      to: "/organizations/$orgId/cert-manager/subscribers",
       params: {
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }
     });
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
+    <div className="mx-auto flex flex-col justify-between bg-page">
       {data && (
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             backLink={
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/subscribers"
+                to="/organizations/$orgId/cert-manager/subscribers"
                 params={{
-                  orgId: currentOrg.id,
-                  projectId
+                  orgId: currentOrg.id
                 }}
               >
                 <FontAwesomeIcon icon={faChevronLeft} />
@@ -93,31 +91,23 @@ const Page = () => {
             description="Manage PKI subscriber"
           >
             <DropdownMenu>
-              <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-project data-[state=open]:text-project">
-                  <Tooltip content="More options">
-                    <Button variant="outline_bg">More</Button>
-                  </Tooltip>
-                </div>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">More</Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="p-1">
+              <DropdownMenuContent align="end">
                 <ProjectPermissionCan
                   I={ProjectPermissionPkiSubscriberActions.Delete}
                   a={ProjectPermissionSub.PkiSubscribers}
                 >
                   {(isAllowed) => (
                     <DropdownMenuItem
-                      className={twMerge(
-                        isAllowed
-                          ? "hover:bg-danger! hover:text-white!"
-                          : "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
                       onClick={() =>
                         handlePopUpOpen("deletePkiSubscriber", {
                           subscriberName: data.name
                         })
                       }
-                      disabled={!isAllowed}
+                      isDisabled={!isAllowed}
+                      variant="danger"
                     >
                       Delete PKI Subscriber
                     </DropdownMenuItem>
@@ -126,28 +116,32 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex">
-            <div className="mr-4 w-96">
-              <PkiSubscriberDetailsSection
-                subscriberName={data.name}
-                handlePopUpOpen={handlePopUpOpen}
-              />
-            </div>
-            <div className="w-full">
-              <PkiSubscriberCertificatesSection subscriberName={data.name} />
+          <div className="flex flex-col gap-8">
+            <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
+            <div className="flex">
+              <div className="mr-4 w-96">
+                <PkiSubscriberDetailsSection
+                  subscriberName={data.name}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              </div>
+              <div className="w-full">
+                <PkiSubscriberCertificatesSection subscriberName={data.name} />
+              </div>
             </div>
           </div>
         </div>
       )}
       <PkiSubscriberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to remove the PKI subscriber: ${
           (popUp?.deletePkiSubscriber?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiSubscriber", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveSubscriberSubmit(
             (popUp?.deletePkiSubscriber?.data as { subscriberName: string })?.subscriberName
           )
@@ -158,12 +152,9 @@ const Page = () => {
 };
 
 export const PkiSubscriberDetailsByIDPage = () => {
-  const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Subscriber" })}</title>
-      </Helmet>
+      <PageTitle title="PKI Subscriber" />
       <ProjectPermissionCan
         I={ProjectPermissionPkiSubscriberActions.Read}
         a={ProjectPermissionSub.PkiSubscribers}

@@ -104,6 +104,26 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
 
                 Certificate Manager Owner is needed if you enable certificate removal on a sync, or if you attach a sync to a certificate map. `roles/certificatemanager.editor` grants no delete permissions, and maintaining a map entry replaces or removes it.
             </Tab>
+            <Tab title="ACME DNS validation">
+                Add the required permissions for [ACME certificate authorities](/documentation/platform/pki/ca/acme-ca) that validate domains through Google Cloud DNS.
+
+                Grant the **DNS Administrator** (`roles/dns.admin`) and **Service Usage Viewer** (`roles/serviceusage.serviceUsageViewer`) roles on the project that holds your public managed zone. DNS Administrator lets Infisical list your projects and zones and create and delete the challenge TXT records. Service Usage Viewer lets Infisical check which projects have the Cloud DNS API enabled.
+
+                Then enable the Google Cloud APIs that Infisical uses on that same project:
+
+                ```bash
+                gcloud services enable \
+                    dns.googleapis.com \
+                    cloudresourcemanager.googleapis.com \
+                    serviceusage.googleapis.com \
+                    --project=PROJECT_ID
+                ```
+            </Tab>
+            <Tab title="Secret Rotation">
+                Add the **Service Account Key Admin** role so Infisical can create and delete keys for [GCP service account key rotations](/documentation/platform/secret-rotation/gcp-service-account-key).
+
+                If you add the role here, it applies to every service account in the project. To allow rotation for specific service accounts only, skip the role here and grant it on each of those service accounts, as described in [the rotation guide](/documentation/platform/secret-rotation/gcp-service-account-key#step-1-configure-the-service-account-for-infisical).
+            </Tab>
         </Tabs>
         After configuring the appropriate roles, press "DONE".
     </Step>

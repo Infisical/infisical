@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  DEFAULT_CRL_VALIDITY_DAYS,
   MAX_DISTRIBUTION_POINT_URL_LENGTH,
   MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
 } from "@app/hooks/api/ca";
@@ -8,8 +9,9 @@ import { InternalCaType } from "@app/hooks/api/ca/enums";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
+import { crlValidityDaysSchema } from "@app/pages/cert-manager/components/CrlValidityDaysField";
 
-import { HSM_SUPPORTED_CA_KEY_ALGORITHMS } from "./types";
+import { isKeyAlgorithmSupportedByKeySource } from "./types";
 
 const isValidDate = (dateString: string) => !Number.isNaN(new Date(dateString).getTime());
 
@@ -55,11 +57,15 @@ export const caWizardSchema = z
     commonName: z.string().trim().default(""),
     keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
     hsmConnectorId: z.string().uuid().optional().nullable(),
+    appConnectionId: z.string().uuid().optional().nullable(),
+    region: z.string().optional().nullable(),
     keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).default(CertKeyAlgorithm.ECDSA_P256),
     notAfter: z.string().trim().default(""),
     maxPathLength: z.string().default("-1"),
+    isOcspEnabled: z.boolean().default(false),
     disableManagedCrlDistributionPointUrl: z.boolean().default(false),
-    crlDistributionPointUrls: distributionPointUrlsSchema.default([])
+    crlDistributionPointUrls: distributionPointUrlsSchema.default([]),
+    crlValidityDays: crlValidityDaysSchema.default(DEFAULT_CRL_VALIDITY_DAYS)
   })
   .refine(
     (data) =>
@@ -84,15 +90,17 @@ export const caWizardSchema = z
     message: "Pick an HSM Connector.",
     path: ["hsmConnectorId"]
   })
-  .refine(
-    (data) =>
-      data.keySource !== CertKeySource.Hsm ||
-      HSM_SUPPORTED_CA_KEY_ALGORITHMS.includes(data.keyAlgorithm),
-    {
-      message:
-        "This algorithm is not supported by HSM-backed keys. Pick RSA 2048, RSA 4096, ECDSA P256, or ECDSA P384.",
-      path: ["keyAlgorithm"]
-    }
-  );
+  .refine((data) => data.keySource !== CertKeySource.AwsKms || Boolean(data.appConnectionId), {
+    message: "Pick an AWS connection.",
+    path: ["appConnectionId"]
+  })
+  .refine((data) => data.keySource !== CertKeySource.AwsKms || Boolean(data.region), {
+    message: "Pick an AWS region.",
+    path: ["region"]
+  })
+  .refine((data) => isKeyAlgorithmSupportedByKeySource(data.keySource, data.keyAlgorithm), {
+    message: "This algorithm is not supported by the selected key source.",
+    path: ["keyAlgorithm"]
+  });
 
 export type CaWizardForm = z.infer<typeof caWizardSchema>;

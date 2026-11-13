@@ -129,6 +129,7 @@ export type TValidateSecretsDTO = {
   envId: string;
   secretPath: string;
   secrets: TSecretToValidate[];
+  excludedSecretIds?: string[];
 };
 
 export type TFindConstraintsForGeneratedSecretDTO = {

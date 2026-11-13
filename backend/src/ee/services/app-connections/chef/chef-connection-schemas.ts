@@ -35,7 +35,14 @@ export const ChefConnectionUserKeyCredentialsSchema = z.object({
     .trim()
     .min(1, "Private key required")
     .max(16384, "Private key cannot exceed 16384 characters")
-    .describe(AppConnections.CREDENTIALS.CHEF.privateKey)
+    .describe(AppConnections.CREDENTIALS.CHEF.privateKey),
+  dataBagSecret: z
+    .string()
+    .trim()
+    .min(1, "Data bag secret cannot be empty")
+    .max(4096, "Data bag secret cannot exceed 4096 characters")
+    .optional()
+    .describe(AppConnections.CREDENTIALS.CHEF.dataBagSecret)
 });
 
 const BaseChefConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Chef) });

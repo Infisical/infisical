@@ -1,7 +1,5 @@
-/* eslint-disable no-nested-ternary */
-/* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
@@ -14,12 +12,17 @@ import {
   HourglassIcon,
   LucideIcon,
   PlusIcon,
+  RefreshCwIcon,
   SearchIcon,
   ShieldBanIcon,
-  TimerIcon
+  TimerIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  SecretAccessRequestsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import {
   Badge,
   Button,
@@ -38,6 +41,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -46,6 +50,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -64,6 +69,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
@@ -84,18 +90,29 @@ import {
   useGetAccessApprovalRequests,
   useGetAccessRequestsCount
 } from "@app/hooks/api/accessApproval/queries";
+import {
+  isDelegatedDispatchRetrying,
+  noteDelegatedDispatchRetryStatuses,
+  useDelegatedDispatchRetryVersion
+} from "@app/hooks/api/accessApproval/retrying-delegated-dispatch";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
+import {
+  DelegatedApprovalRequestStatus,
+  useDelegatedApprovalOptions
+} from "@app/hooks/api/delegatedApprovals";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 
-import { RequestAccessModal } from "./components/RequestAccessModal";
-import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
 import {
+  ENTIRE_SCOPE_PATH,
   formatAccessDuration,
   getAccessRequestState,
+  getRequestedSecretPath,
   parseAccessDurationMs
 } from "./AccessApprovalRequest.utils";
+import { RequestAccessModal } from "./components/RequestAccessModal";
+import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
 
 enum AccessRequestOrderBy {
   Duration = "duration",
@@ -117,31 +134,24 @@ const CLOSED_REQUEST_FILTERS: { label: string; value: ClosedRequestFilter }[] = 
 
 export const AccessApprovalRequest = ({
   projectSlug,
-  projectId
+  projectId,
+  onConfigurePolicies
 }: {
   projectSlug: string;
   projectId: string;
+  onConfigurePolicies: () => void;
 }) => {
-  const [selectedRequest, setSelectedRequest] = useState<
-    | (TAccessApprovalRequest & {
-        user: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
-        isRequestedByCurrentUser: boolean;
-        isSelfApproveAllowed: boolean;
-        isApprover: boolean;
-        isDisabled?: boolean;
-      })
-    | null
-  >(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   const { handlePopUpOpen, popUp, handlePopUpClose } = usePopUp([
     "requestAccess",
-    "reviewRequest",
-    "upgradePlan"
+    "reviewRequest"
   ] as const);
   const { permission } = useProjectPermission();
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const canReadMembers = permission.can(
     ProjectPermissionMemberActions.Read,
     ProjectPermissionSub.Member
@@ -210,18 +220,47 @@ export const AccessApprovalRequest = ({
     projectSlug
   });
 
-  const { data: policies, isPending: policiesLoading } = useGetAccessApprovalPolicies({
-    projectSlug
-  });
+  const {
+    data: policies,
+    isPending: policiesLoading,
+    isSuccess: arePoliciesLoaded
+  } = useGetAccessApprovalPolicies({ projectSlug });
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
 
   const {
     data: requests,
     refetch: refetchRequests,
-    isPending: areRequestsPending
+    isPending: areRequestsPending,
+    isFetching: areRequestsFetching
   } = useGetAccessApprovalRequests({
     projectSlug,
     authorUserId: validRequestedByFilter,
     envSlug: validEnvFilter
+  });
+  useDelegatedDispatchRetryVersion();
+  const requestsCameFromFetch = useRef(false);
+
+  useEffect(() => {
+    if (areRequestsFetching) {
+      requestsCameFromFetch.current = true;
+      return;
+    }
+    if (!requestsCameFromFetch.current || !requests) return;
+
+    requestsCameFromFetch.current = false;
+    noteDelegatedDispatchRetryStatuses(
+      requests.map((request) => ({
+        id: request.id,
+        status: request.delegatedApproval?.status
+      }))
+    );
+  }, [areRequestsFetching, requests]);
+
+  const { data: delegatedApprovalOptions } = useDelegatedApprovalOptions({
+    enabled: Boolean(requests?.some((request) => request.delegatedApproval))
   });
 
   const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
@@ -262,6 +301,7 @@ export const AccessApprovalRequest = ({
         return (
           environmentName?.toLowerCase().includes(searchValue) ||
           environmentDisplayName?.toLowerCase().includes(searchValue) ||
+          getRequestedSecretPath(request).toLowerCase().includes(searchValue) ||
           `${requestedByUser?.email ?? ""} ${requestedByUser?.firstName ?? ""} ${requestedByUser?.lastName ?? ""}`
             .toLowerCase()
             .includes(searchValue)
@@ -305,8 +345,8 @@ export const AccessApprovalRequest = ({
           );
           break;
         case AccessRequestOrderBy.SecretPath:
-          comparison = (requestOne.policy.secretPath ?? "").localeCompare(
-            requestTwo.policy.secretPath ?? ""
+          comparison = getRequestedSecretPath(requestOne).localeCompare(
+            getRequestedSecretPath(requestTwo)
           );
           break;
         case AccessRequestOrderBy.RequestedBy:
@@ -383,14 +423,16 @@ export const AccessApprovalRequest = ({
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
       const userReviewStatus = request.reviewers.find(({ userId }) => userId === user.id)?.status;
-      const canBypass =
-        !request.policy.bypassers.length || request.policy.bypassers.includes(user.id);
+      const canBypass = request.policy.bypassers.length
+        ? request.policy.bypassers.includes(user.id)
+        : request.policy.allowedSelfApprovals;
 
       let displayData: {
         label: string;
-        type: "warning" | "danger" | "success";
+        type: "warning" | "danger" | "success" | "info";
         tooltipContent?: string;
         icon: LucideIcon | null;
+        isIconSpinning?: boolean;
       } = {
         label: "",
         type: "warning",
@@ -452,7 +494,40 @@ export const AccessApprovalRequest = ({
           type: "danger",
           icon: ShieldBanIcon
         };
-      else if (userReviewStatus === ApprovalStatus.APPROVED) {
+      else if (isDelegatedDispatchRetrying(request.id))
+        displayData = {
+          label: "Retrying",
+          type: "info",
+          icon: RefreshCwIcon,
+          isIconSpinning: true
+        };
+      else if (request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch)
+        displayData = {
+          label: "Not Submitted",
+          type: "danger",
+          icon: TriangleAlertIcon,
+          tooltipContent: request.delegatedApproval.statusReason ?? undefined
+        };
+      else if (request.delegatedApproval) {
+        const delegatedApprovalName = delegatedApprovalOptions?.find(
+          (option) => option.type === request.policy.delegatedApproval?.type
+        )?.name;
+        displayData =
+          request.delegatedApproval.status === DelegatedApprovalRequestStatus.PendingDispatch
+            ? {
+                label: "Submitting",
+                type: "info",
+                icon: RefreshCwIcon,
+                isIconSpinning: true
+              }
+            : {
+                label: delegatedApprovalName
+                  ? `Pending in ${delegatedApprovalName}`
+                  : "Pending External Review",
+                type: "warning",
+                icon: HourglassIcon
+              };
+      } else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
           label: "Pending Additional Reviews",
           type: "warning",
@@ -478,44 +553,52 @@ export const AccessApprovalRequest = ({
         isSelfApproveAllowed
       };
     },
-    [user]
+    [user, delegatedApprovalOptions]
   );
 
   const handleSelectRequest = useCallback(
     (request: TAccessApprovalRequest) => {
-      const details = generateRequestDetails(request);
-      const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
-
       navigate({ search: (prev) => ({ ...prev, requestId: request.id }) });
-
-      setSelectedRequest({
-        ...request,
-        user: details.isRequestedByCurrentUser
-          ? user
-          : memberUser || {
-              firstName: request.requestedByUser?.firstName,
-              lastName: request.requestedByUser?.lastName,
-              email: request.requestedByUser?.email
-            },
-        isRequestedByCurrentUser: details.isRequestedByCurrentUser,
-        isSelfApproveAllowed: details.isSelfApproveAllowed,
-        isApprover: details.isApprover
-      });
-
+      setSelectedRequestId(request.id);
       handlePopUpOpen("reviewRequest");
     },
-    [generateRequestDetails, membersGroupById, user, setSelectedRequest, handlePopUpOpen]
+    [navigate, handlePopUpOpen]
   );
+
+  // The polled list is the source of truth, so the open sheet follows a dispatch that fails or
+  // completes instead of showing the snapshot it was opened with.
+  const selectedRequest = useMemo(() => {
+    if (!selectedRequestId) return null;
+    const request = requests?.find((r) => r.id === selectedRequestId);
+    if (!request) return null;
+
+    const details = generateRequestDetails(request);
+    const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+
+    return {
+      ...request,
+      user: details.isRequestedByCurrentUser
+        ? user
+        : memberUser || {
+            firstName: request.requestedByUser?.firstName,
+            lastName: request.requestedByUser?.lastName,
+            email: request.requestedByUser?.email
+          },
+      isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+      isSelfApproveAllowed: details.isSelfApproveAllowed,
+      isApprover: details.isApprover
+    };
+  }, [selectedRequestId, requests, generateRequestDetails, membersGroupById, user]);
 
   const isFiltered = Boolean(
     search ||
-      validEnvFilter ||
-      validRequestedByFilter ||
-      (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
+    validEnvFilter ||
+    validRequestedByFilter ||
+    (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
   );
 
   useEffect(() => {
-    if (requestId && !selectedRequest && requests?.length) {
+    if (requestId && !selectedRequestId && requests?.length) {
       const foundRequest = requests.find((r) => r.id === requestId);
       if (foundRequest) {
         handleSelectRequest(foundRequest);
@@ -540,8 +623,9 @@ export const AccessApprovalRequest = ({
                 <Button
                   onClick={() => {
                     if (subscription && !subscription?.secretApproval) {
-                      handlePopUpOpen("upgradePlan", {
-                        text: "Access requests feature can be unlocked if you upgrade to Infisical Pro plan."
+                      openUpgradeGate({
+                        intent: SecretAccessRequestsUpgradeIntent,
+                        paywallKey: "secret-manager.access-approval-request"
                       });
                       return;
                     }
@@ -583,7 +667,7 @@ export const AccessApprovalRequest = ({
               <InputGroupInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by requesting user or environment..."
+                placeholder="Search by requesting user, environment or path..."
               />
             </InputGroup>
             <div className="flex shrink-0 items-center">
@@ -690,6 +774,14 @@ export const AccessApprovalRequest = ({
                     : "Approved, rejected, revoked, or expired access requests will appear here."}
                 </EmptyDescription>
               </EmptyHeader>
+              {canCreatePolicies && arePoliciesLoaded && !policies?.length && (
+                <EmptyContent>
+                  <Button variant="project" size="sm" onClick={onConfigurePolicies}>
+                    <PlusIcon />
+                    Configure Policy
+                  </Button>
+                </EmptyContent>
+              )}
             </Empty>
           )}
           {Boolean(!filteredRequests?.length && isFiltered && !areRequestsPending) && (
@@ -807,16 +899,10 @@ export const AccessApprovalRequest = ({
                     !isRequestExpired(request);
                   const environmentDisplayName =
                     environmentNamesBySlug[request.environmentName] ?? request.environmentName;
+                  const requestedSecretPath = getRequestedSecretPath(request);
 
                   return (
-                    <TableRow
-                      key={request.id}
-                      tabIndex={0}
-                      onClick={() => handleSelectRequest(request)}
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter") handleSelectRequest(request);
-                      }}
-                    >
+                    <TableRow key={request.id} linked>
                       <TableCell>
                         {request.isTemporary ? (
                           <Badge variant="info">
@@ -832,9 +918,25 @@ export const AccessApprovalRequest = ({
                           <Badge variant="neutral">Permanent</Badge>
                         )}
                       </TableCell>
-                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
-                      <TableCell title={request.policy.secretPath ?? undefined}>
-                        {request.policy.secretPath}
+                      <TableCell>
+                        <RowLink
+                          from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                          to="."
+                          search={(prev) => ({ ...prev, requestId: request.id })}
+                        >
+                          {environmentDisplayName}
+                        </RowLink>
+                      </TableCell>
+                      <TableCell title={requestedSecretPath}>
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-mono">{requestedSecretPath}</span>
+                          {requestedSecretPath === ENTIRE_SCOPE_PATH && (
+                            <Badge variant="warning">
+                              <TriangleAlertIcon />
+                              Entire Scope
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {requester ? (
@@ -866,7 +968,15 @@ export const AccessApprovalRequest = ({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Badge variant={details.displayData.type}>
-                                  {StatusIcon && <StatusIcon />}
+                                  {StatusIcon && (
+                                    <StatusIcon
+                                      className={
+                                        details.displayData.isIconSpinning
+                                          ? "animate-spin"
+                                          : undefined
+                                      }
+                                    />
+                                  )}
                                   <span className="whitespace-nowrap">
                                     {details.displayData.label}
                                   </span>
@@ -876,7 +986,13 @@ export const AccessApprovalRequest = ({
                             </Tooltip>
                           ) : (
                             <Badge variant={details.displayData.type}>
-                              {StatusIcon && <StatusIcon />}
+                              {StatusIcon && (
+                                <StatusIcon
+                                  className={
+                                    details.displayData.isIconSpinning ? "animate-spin" : undefined
+                                  }
+                                />
+                              )}
                               <span className="whitespace-nowrap">{details.displayData.label}</span>
                             </Badge>
                           )}
@@ -902,11 +1018,7 @@ export const AccessApprovalRequest = ({
                           )}
                         </div>
                       </TableCell>
-                      <TableCell
-                        variant="action"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton variant="ghost" size="xs" aria-label="Request actions">
@@ -914,9 +1026,15 @@ export const AccessApprovalRequest = ({
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleSelectRequest(request)}>
-                              <EyeIcon />
-                              View Request
+                            <DropdownMenuItem asChild>
+                              <Link
+                                from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                                to="."
+                                search={(prev) => ({ ...prev, requestId: request.id })}
+                              >
+                                <EyeIcon />
+                                View Request
+                              </Link>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -968,29 +1086,14 @@ export const AccessApprovalRequest = ({
             }
 
             handlePopUpClose("reviewRequest");
-            setSelectedRequest(null);
+            setSelectedRequestId(null);
             refetchRequests();
-          }}
-          onUpdate={(request) => {
-            // scott: this isn't ideal but our current use of state makes this complicated...
-            // we shouldn't be using state like this...
-            handleSelectRequest({
-              ...selectedRequest,
-              isTemporary: request.isTemporary,
-              temporaryRange: request.temporaryRange,
-              reviewers: []
-            });
           }}
           canBypass={generateRequestDetails(selectedRequest).canBypass}
         />
       )}
 
-      <UpgradePlanModal
-        paywallKey="secret-manager.access-approval-request"
-        text={popUp.upgradePlan.data?.text}
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={() => handlePopUpClose("upgradePlan")}
-      />
+      {upgradeGate}
     </>
   );
 };

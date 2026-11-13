@@ -1,5 +1,4 @@
 import crypto from "crypto";
-
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +17,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import {
   useGetMicrosoftTeamsClientId,
   useGetMicrosoftTeamsIntegrationById,
@@ -44,6 +44,7 @@ const microsoftTeamsFormSchema = z.object({
 type TMicrosoftTeamsFormData = z.infer<typeof microsoftTeamsFormSchema>;
 
 export const MicrosoftTeamsIntegrationForm = ({ id, onClose, onBack }: Props) => {
+  const scopeVariant = useScopeVariant();
   const {
     control,
     handleSubmit,
@@ -225,7 +226,7 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose, onBack }: Props) =>
         </DialogClose>
         <Button
           type="submit"
-          variant="org"
+          variant={scopeVariant}
           isPending={isSubmitting}
           isDisabled={!isDirty || isSubmitting}
         >

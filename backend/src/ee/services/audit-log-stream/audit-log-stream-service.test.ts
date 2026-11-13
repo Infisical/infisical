@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+
 import { LogProvider, StreamMode } from "./audit-log-stream-enums";
 import { auditLogStreamServiceFactory, TAuditLogStreamServiceFactoryDep } from "./audit-log-stream-service";
 import { TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
@@ -38,9 +40,16 @@ const buildService = () => {
     updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk }))
   };
 
+  const licenseService = new FakeLicenseService();
+  licenseService.defaultPlan = {
+    ...licenseService.defaultPlan,
+    auditLogStreams: true,
+    auditLogStreamLimit: 5
+  };
+
   const deps = {
     auditLogStreamDAL,
-    licenseService: { getPlan: vi.fn(async () => ({ auditLogStreams: true, auditLogStreamLimit: 5 })) },
+    licenseService,
     permissionService: {
       getOrgPermission: vi.fn(async () => ({ permission: { relevantRuleFor: () => ({ inverted: false }) } }))
     },

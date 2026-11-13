@@ -29,6 +29,7 @@ type PasswordFieldProps = {
   error?: ReactHookFormFieldError;
   submitCount: number;
   variant?: InputGroupProps["variant"];
+  isRequired?: boolean;
 };
 
 export const PasswordField = ({
@@ -41,7 +42,8 @@ export const PasswordField = ({
   placeholder,
   error,
   submitCount,
-  variant = "default"
+  variant = "default",
+  isRequired = false
 }: PasswordFieldProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +55,14 @@ export const PasswordField = ({
 
   return (
     <Field data-invalid={Boolean(error)}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <FieldLabel htmlFor={id}>
+        {label}
+        {isRequired && (
+          <span aria-hidden className="text-danger">
+            *
+          </span>
+        )}
+      </FieldLabel>
       <InputGroup variant={variant}>
         <InputGroupInput
           {...registration}
@@ -62,6 +71,7 @@ export const PasswordField = ({
           placeholder={placeholder}
           autoComplete="new-password"
           aria-invalid={Boolean(error)}
+          aria-required={isRequired || undefined}
           aria-describedby={showRequirements ? requirementsId : undefined}
           onFocus={() => setIsFocused(true)}
           onBlur={(event) => {
@@ -78,6 +88,7 @@ export const PasswordField = ({
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
+      {!showRequirements && error?.message && <FieldError>{error.message}</FieldError>}
       <AnimatedCollapse isOpen={showRequirements}>
         <div id={requirementsId} className="flex flex-col gap-1 pt-1" aria-live="polite">
           {visibleRequirements.map(({ code, isMet, message }) => (

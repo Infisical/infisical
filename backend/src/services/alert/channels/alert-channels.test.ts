@@ -1,20 +1,47 @@
+import { validateHeaderValue } from "node:http";
+
+import { render } from "@react-email/components";
+import React from "react";
+
+import { BadRequestError } from "@app/lib/errors";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE, safeRequest } from "@app/lib/validator";
+import { AlertNotificationTemplate } from "@app/services/smtp/emails/AlertNotificationTemplate";
+
 import {
   AlertChannelType,
   DIRECTED_ALERT_CHANNEL_TYPES,
   SlackChannelConfigSchema,
-  TAlertPayload
+  TAlertPayload,
+  WEBHOOK_MAX_HEADERS_LENGTH,
+  WebhookAuthType,
+  WebhookChannelConfigSchema
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./alert-channel-registry";
 import { buildSlackPayload } from "./alert-channel-slack-fns";
-import { buildWebhookPayload } from "./alert-channel-webhook-fns";
+import {
+  assertWebhookUrlUnchangedForKeptCredentials,
+  buildWebhookPayload,
+  sendWebhookNotification
+} from "./alert-channel-webhook-fns";
 
 // logger is `export let logger` assigned by initLogger(), which unit tests don't run, so the
 // delivery-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
+}));
+
+const { configState } = vi.hoisted(() => ({
+  configState: { isCloud: false, ALERT_WEBHOOK_ALLOW_HTTP: false, ALERT_WEBHOOK_ALLOW_INTERNAL_IP: false }
+}));
+
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => configState }));
+
+vi.mock("@app/lib/validator", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/validator")>()),
+  safeRequest: { post: vi.fn(async () => ({ status: 200, data: {} })) }
 }));
 
 const samplePayload = (): TAlertPayload => ({
@@ -61,6 +88,73 @@ const baseCtx = () => ({
   }
 });
 
+const CERT_A_URL = "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-a";
+
+const payloadWithFirstItemUrl = (): TAlertPayload => {
+  const payload = samplePayload();
+  payload.items[0].url = CERT_A_URL;
+  return payload;
+};
+
+const captureEmailSubstitutions = async (payload: TAlertPayload) => {
+  let substitutions: object | undefined;
+  await sendEmailNotification({
+    ...baseCtx(),
+    payload,
+    config: {},
+    recipient: { email: "user@example.com" },
+    deps: {
+      smtpService: {
+        sendMail: async (opts: { substitutions: object }) => {
+          substitutions = opts.substitutions;
+        }
+      }
+    }
+  });
+  return substitutions;
+};
+
+describe("item links", () => {
+  test("email links an item's title only when the item has a url, and keeps the overview button", async () => {
+    const html = await render(
+      React.createElement(AlertNotificationTemplate, {
+        ...(await captureEmailSubstitutions(payloadWithFirstItemUrl())),
+        siteUrl: "https://app.infisical.com"
+      } as React.ComponentProps<typeof AlertNotificationTemplate>)
+    );
+    expect(html).toContain(`href="${CERT_A_URL}"`);
+    expect(html).toContain(">api.prod.example.com</a>");
+    expect(html).not.toContain(">web.example.com</a>");
+    expect(html).toContain('href="https://app.infisical.com/inventory"');
+  });
+
+  test("slack links an item's name only when the item has a url, and keeps the overview button", () => {
+    const blocks = buildSlackPayload(payloadWithFirstItemUrl()).attachments?.[0].blocks ?? [];
+    const names = blocks.flatMap((block) =>
+      block.type === "section" && "fields" in block && block.fields ? [block.fields[0].text] : []
+    );
+    expect(names).toEqual([`*Name:*\n<${CERT_A_URL}|api.prod.example.com>`, "*Name:*\nweb.example.com"]);
+    expect(JSON.stringify(blocks.find((block) => block.type === "actions"))).toContain(
+      '"url":"https://app.infisical.com/inventory"'
+    );
+  });
+
+  test("slack still escapes a linked name", () => {
+    const payload = payloadWithFirstItemUrl();
+    payload.items[0].title = "<!channel> a&b";
+    const fields = buildSlackPayload(payload).attachments?.[0].blocks.find(
+      (block) => block.type === "section" && "fields" in block
+    );
+    expect(JSON.stringify(fields)).toContain(`<${CERT_A_URL}|&lt;!channel&gt; a&amp;b>`);
+  });
+
+  test("webhook includes the url on the items that have one", () => {
+    const { items } = buildWebhookPayload(payloadWithFirstItemUrl()).data;
+    expect(items[0].url).toBe(CERT_A_URL);
+    expect(items[1]).not.toHaveProperty("url");
+  });
+});
+
 describe("alert channel registry", () => {
   test("exposes all four channels with correct directed flags", () => {
     expect(ALERT_CHANNEL_REGISTRY[AlertChannelType.EMAIL].directed).toBe(true);
@@ -96,6 +190,25 @@ describe("buildWebhookPayload", () => {
     expect(wh.data.metadata.totalItems).toBe(2);
     expect(wh.data.items).toHaveLength(2);
     expect(wh.data.alert.condition).toBe("30d");
+  });
+
+  test("carries each item's typed resource for receivers that act on it", () => {
+    const payload = samplePayload();
+    payload.items[0].resource = { serialNumber: "abc", notAfter: "2026-10-04T23:59:00.000Z" };
+    expect(buildWebhookPayload(payload).data.items[0].resource).toEqual({
+      serialNumber: "abc",
+      notAfter: "2026-10-04T23:59:00.000Z"
+    });
+  });
+
+  test("prefers the provider's source and exposes the alert's resource id", () => {
+    const payload = samplePayload();
+    payload.webhookSource = "/applications/app-1/alerts/alert-1";
+    payload.alert.resourceId = "app-1";
+    const wh = buildWebhookPayload(payload);
+    expect(wh.source).toBe("/applications/app-1/alerts/alert-1");
+    expect(wh.data.alert.resourceId).toBe("app-1");
+    expect(buildWebhookPayload(samplePayload()).data.alert).not.toHaveProperty("resourceId");
   });
 
   test("uses an org-less source when there is no project", () => {
@@ -166,6 +279,305 @@ describe("buildPagerDutyEvent", () => {
     expect(pd.payload.custom_details.identifier).toBe("4B:3E:2F:A1");
     expect(pd.payload.custom_details.fields.Expires).toBe("2025-11-12");
   });
+
+  test("uses the target's own summary and severity when the provider sets them", () => {
+    const payload = samplePayload();
+    const item = {
+      ...payload.items[1],
+      summary: "Certificate 'web.example.com' expires on November 10, 2025",
+      severity: "info" as const
+    };
+    const pd = buildPagerDutyEvent(payload, item, "a".repeat(32));
+
+    expect(pd.payload.summary).toBe("Certificate 'web.example.com' expires on November 10, 2025");
+    expect(pd.payload.severity).toBe("info");
+  });
+
+  test("falls back to the alert summary and severity for targets without their own", () => {
+    const payload = samplePayload();
+    const pd = buildPagerDutyEvent(payload, payload.items[0], "a".repeat(32));
+
+    expect(pd.payload.summary).toBe("2 certificates expiring within 30d — api.prod.example.com");
+    expect(pd.payload.severity).toBe("warning");
+  });
+});
+
+describe("WebhookChannelConfigSchema headers", () => {
+  const withHeaders = (headers: unknown) =>
+    WebhookChannelConfigSchema.safeParse({ url: "https://example.com/hook", headers });
+
+  test("rejects the headers Infisical sets itself", () => {
+    const result = withHeaders([{ key: "Content-Type", value: "text/plain" }]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Header 'Content-Type' is set by Infisical and cannot be overridden");
+    ["X-Infisical-Signature", "Content-Length", "Transfer-Encoding", "Connection", "Host"].forEach((key) => {
+      expect(withHeaders([{ key, value: "x" }]).success).toBe(false);
+    });
+  });
+
+  test("sends people to Authentication for the Authorization header", () => {
+    const result = withHeaders([{ key: "authorization", value: "Bearer abc" }]);
+    expect(result.error?.issues[0].message).toBe("Use Authentication to set the 'Authorization' header");
+  });
+
+  test("rejects duplicate names regardless of case", () => {
+    const result = withHeaders([
+      { key: "X-Env", value: "a" },
+      { key: "x-env", value: "b" }
+    ]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Header names must be unique");
+  });
+
+  test("rejects names that are not HTTP tokens", () => {
+    expect(withHeaders([{ key: "X Bad", value: "a" }]).success).toBe(false);
+  });
+
+  test("accepts exactly the header values Node can send", () => {
+    const values = [
+      "Bearer abc123",
+      "a\tb",
+      "café",
+      "a\u00a0b",
+      "a\r\nX-Injected: b",
+      "a\u0000b",
+      "a\u001bb",
+      "a\u007fb",
+      "10€",
+      "привет",
+      "ok👍",
+      "abc\u200bdef"
+    ];
+    values.forEach((value) => {
+      let sendable = true;
+      try {
+        validateHeaderValue("X-Test", value);
+      } catch {
+        sendable = false;
+      }
+      expect(withHeaders([{ key: "X-Test", value }]).success).toBe(sendable);
+    });
+  });
+
+  test("names the header whose value can't be sent", () => {
+    const result = withHeaders([{ key: "X-Env", value: "prod\u200b" }]);
+    expect(result.error?.issues[0].message).toBe(
+      "The value for header 'X-Env' has a character that can't be sent in an HTTP header, such as an emoji, a control character, or an invisible space. Re-enter the value"
+    );
+  });
+});
+
+describe("WebhookChannelConfigSchema authentication", () => {
+  const parse = (config: Record<string, unknown>) =>
+    WebhookChannelConfigSchema.safeParse({ url: "https://example.com/hook", ...config });
+
+  test("requires the fields of the chosen type", () => {
+    expect(parse({ authType: WebhookAuthType.BEARER }).error?.issues[0].message).toBe(
+      "Enter a token for bearer authentication"
+    );
+    expect(parse({ authType: WebhookAuthType.BASIC, basicUsername: "ops" }).error?.issues[0].message).toBe(
+      "Enter a password for basic authentication"
+    );
+    expect(parse({ authType: WebhookAuthType.HEADER, authHeaderValue: "k" }).error?.issues[0].message).toBe(
+      "Enter a header name for API key authentication"
+    );
+  });
+
+  test("drops the fields of authentication types that are not in use", () => {
+    const result = parse({
+      authType: WebhookAuthType.BASIC,
+      basicUsername: "ops",
+      basicPassword: "pw",
+      authCredentials: "stale-token"
+    });
+    expect(result.data).toEqual({
+      url: "https://example.com/hook",
+      authType: WebhookAuthType.BASIC,
+      basicUsername: "ops",
+      basicPassword: "pw"
+    });
+    expect(parse({ authCredentials: "stale-token" }).data).toEqual({ url: "https://example.com/hook" });
+  });
+
+  test("rejects a basic auth username with a colon", () => {
+    expect(
+      parse({ authType: WebhookAuthType.BASIC, basicUsername: "a:b", basicPassword: "pw" }).error?.issues[0].message
+    ).toBe("The username cannot contain ':'");
+  });
+
+  test("rejects a custom header that repeats the API key header", () => {
+    const result = parse({
+      authType: WebhookAuthType.HEADER,
+      authHeaderName: "X-API-Key",
+      authHeaderValue: "k",
+      headers: [{ key: "x-api-key", value: "other" }]
+    });
+    expect(result.error?.issues[0].message).toBe("Header 'X-API-Key' is already set by Authentication");
+  });
+
+  test("counts authentication toward the combined header length", () => {
+    const authCredentials = "a".repeat(WEBHOOK_MAX_HEADERS_LENGTH - "X-Env".length - "prod".length);
+    expect(
+      parse({ authType: WebhookAuthType.BEARER, authCredentials, headers: [{ key: "X-Env", value: "prod" }] }).success
+    ).toBe(true);
+
+    const result = parse({
+      authType: WebhookAuthType.BEARER,
+      authCredentials: `${authCredentials}a`,
+      headers: [{ key: "X-Env", value: "prod" }]
+    });
+    expect(result.error?.issues[0].message).toBe(
+      `Authentication and custom headers can add up to at most ${WEBHOOK_MAX_HEADERS_LENGTH} characters`
+    );
+  });
+});
+
+describe("assertWebhookUrlUnchangedForKeptCredentials", () => {
+  const stored = {
+    url: "https://api.example.com/sources/abc",
+    authType: WebhookAuthType.BEARER,
+    authCredentials: "abc"
+  };
+
+  test("refuses to keep saved credentials when the URL changed, even on the same host", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://api.example.com/sources/attacker", authType: WebhookAuthType.BEARER },
+        stored
+      )
+    ).toThrow(
+      "Enter the authentication credentials again because the webhook URL changed. Saved credentials are only sent to the URL they were saved with"
+    );
+  });
+
+  test("allows a changed URL when the credentials are entered again", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://other.example.com/hook", authType: WebhookAuthType.BEARER, authCredentials: "new" },
+        stored
+      )
+    ).not.toThrow();
+  });
+
+  test("keeps saved credentials when only the host case differs", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://API.example.com/sources/abc", authType: WebhookAuthType.BEARER },
+        stored
+      )
+    ).not.toThrow();
+  });
+
+  test("keeps the signing secret on a URL change, since it is never sent", () => {
+    expect(() =>
+      assertWebhookUrlUnchangedForKeptCredentials(
+        { url: "https://other.example.com/hook" },
+        { url: "https://example.com/hook", signingSecret: "s3cr3t" }
+      )
+    ).not.toThrow();
+  });
+});
+
+describe("sendWebhookNotification", () => {
+  const send = async (config: Record<string, unknown>) => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    await sendWebhookNotification({ ...baseCtx(), config: { url: "https://example.com/hook", ...config } });
+    expect(post).toHaveBeenCalledTimes(1);
+    return post.mock.calls[0];
+  };
+
+  test("sends the custom headers next to the ones Infisical sets", async () => {
+    const [url, , options] = await send({ signingSecret: "s3cr3t", headers: [{ key: "X-Env", value: "prod" }] });
+    expect(url).toBe("https://example.com/hook");
+    expect(options?.headers).toMatchObject({ "X-Env": "prod", "Content-Type": "application/json" });
+    expect(options?.headers?.["x-infisical-signature"]).toMatch(/^t=\d+,v1=[0-9a-f]{64}$/);
+  });
+
+  test("sends each authentication type", async () => {
+    const [, , bearer] = await send({ authType: WebhookAuthType.BEARER, authCredentials: "abc" });
+    expect(bearer?.headers).toMatchObject({ Authorization: "Bearer abc" });
+
+    const [, , basic] = await send({ authType: WebhookAuthType.BASIC, basicUsername: "ops", basicPassword: "pw" });
+    expect(basic?.headers).toMatchObject({ Authorization: `Basic ${Buffer.from("ops:pw").toString("base64")}` });
+
+    const [, , header] = await send({
+      authType: WebhookAuthType.HEADER,
+      authHeaderName: "X-API-Key",
+      authHeaderValue: "k"
+    });
+    expect(header?.headers).toMatchObject({ "X-API-Key": "k" });
+  });
+});
+
+describe("webhook alert self-hosting flags", () => {
+  beforeEach(() => {
+    configState.isCloud = false;
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = false;
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = false;
+  });
+
+  const schemeError = (url: string) =>
+    WebhookChannelConfigSchema.safeParse({ url }).error?.issues.map((issue) => issue.message);
+
+  test("refuses HTTP by default and names the flag on self-hosted", () => {
+    expect(schemeError("http://example.com/hook")).toEqual([expect.stringContaining("'ALERT_WEBHOOK_ALLOW_HTTP'")]);
+  });
+
+  test("refuses HTTP on Cloud without mentioning environment variables", () => {
+    configState.isCloud = true;
+    expect(schemeError("http://example.com/hook")).toEqual(["Webhook URL must use HTTPS."]);
+  });
+
+  test("accepts HTTP with ALERT_WEBHOOK_ALLOW_HTTP, but no other scheme", () => {
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = true;
+    expect(WebhookChannelConfigSchema.safeParse({ url: "http://example.com/hook" }).success).toBe(true);
+    expect(WebhookChannelConfigSchema.safeParse({ url: "ftp://example.com/hook" }).success).toBe(false);
+  });
+
+  test("leaves Slack strict with both flags on", () => {
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = true;
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = true;
+    expect(SlackChannelConfigSchema.safeParse({ webhookUrl: "http://hooks.slack.com/services/T/B/x" }).success).toBe(
+      false
+    );
+  });
+
+  test("passes ALERT_WEBHOOK_ALLOW_INTERNAL_IP to the request", async () => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = true;
+    await sendWebhookNotification({ ...baseCtx(), config: { url: "https://example.com/hook" } });
+    expect(post.mock.calls[0][2]).toMatchObject({ allowPrivateIps: true });
+  });
+
+  test("names ALERT_WEBHOOK_ALLOW_INTERNAL_IP when a private address is refused on self-hosted", async () => {
+    vi.mocked(safeRequest.post).mockRejectedValueOnce(
+      new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE })
+    );
+    await expect(
+      sendWebhookNotification({ ...baseCtx(), config: { url: "https://internal.example/hook" } })
+    ).rejects.toThrow(/'ALERT_WEBHOOK_ALLOW_INTERNAL_IP'/);
+  });
+
+  test("does not mention environment variables for a refused private address on Cloud", async () => {
+    configState.isCloud = true;
+    vi.mocked(safeRequest.post).mockRejectedValueOnce(
+      new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE })
+    );
+    await expect(
+      sendWebhookNotification({ ...baseCtx(), config: { url: "https://internal.example/hook" } })
+    ).rejects.toThrow("Webhook URL points to a private or local address, which is not allowed.");
+  });
+
+  test("fails a stored HTTP channel readably once the HTTP flag is off", async () => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    const result = sendWebhookNotification({ ...baseCtx(), config: { url: "http://example.com/hook" } });
+    await expect(result).rejects.toBeInstanceOf(BadRequestError);
+    await expect(result).rejects.toThrow(/^Webhook URL must use HTTPS\. If you are self-hosting/);
+    expect(post).not.toHaveBeenCalled();
+  });
 });
 
 describe("SlackChannelConfigSchema webhook allowlist", () => {
@@ -225,6 +637,54 @@ describe("sendEmailNotification (directed)", () => {
     const result = await sendEmailNotification(ctx);
     expect(result.success).toBe(true);
     expect(sentTo).toEqual(["external@example.com"]);
+  });
+
+  test("lists at most 50 items and counts the rest so a large run renders quickly", async () => {
+    let substitutions: { items: unknown[]; remainingCount: number } | undefined;
+    const payload = samplePayload();
+    payload.items = Array.from({ length: 120 }, (_, index) => ({
+      id: `cert-${index}`,
+      title: `cert-${index}.example.com`
+    }));
+    const ctx = {
+      ...baseCtx(),
+      payload,
+      config: {},
+      recipient: { email: "user@example.com" },
+      deps: {
+        smtpService: {
+          sendMail: async (opts: { substitutions: object }) => {
+            substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };
+          }
+        }
+      }
+    };
+
+    await sendEmailNotification(ctx);
+
+    expect(substitutions?.items).toHaveLength(50);
+    expect(substitutions?.remainingCount).toBe(70);
+  });
+
+  test("shows every item and no remainder when the run is small", async () => {
+    let substitutions: { items: unknown[]; remainingCount: number } | undefined;
+    const ctx = {
+      ...baseCtx(),
+      config: {},
+      recipient: { email: "user@example.com" },
+      deps: {
+        smtpService: {
+          sendMail: async (opts: { substitutions: object }) => {
+            substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };
+          }
+        }
+      }
+    };
+
+    await sendEmailNotification(ctx);
+
+    expect(substitutions?.items).toHaveLength(2);
+    expect(substitutions?.remainingCount).toBe(0);
   });
 
   test("fails when there is no recipient", async () => {

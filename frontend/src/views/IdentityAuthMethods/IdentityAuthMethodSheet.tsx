@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { subject } from "@casl/ability";
-import { useParams } from "@tanstack/react-router";
 import { LockIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -37,7 +36,7 @@ import {
   ProjectPermissionSub,
   useOrganization
 } from "@app/context";
-import { usePopUp, useScopeVariant } from "@app/hooks";
+import { usePopUp, useRouteProjectId, useScopeVariant } from "@app/hooks";
 import {
   IdentityAuthMethod,
   identityAuthToNameMap,
@@ -117,7 +116,7 @@ export const IdentityAuthMethodSheet = ({
   isLockedOut,
   onMutated
 }: Props) => {
-  const { projectId } = useParams({ strict: false });
+  const projectId = useRouteProjectId();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const scopeVariant = useScopeVariant();

@@ -4,9 +4,10 @@ import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -42,6 +43,8 @@ import {
 } from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
+import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import {
@@ -51,8 +54,6 @@ import {
   identityLockoutLockKey,
   persistIdentityLockoutState
 } from "../identity/identity-fns";
-import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -78,7 +79,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -208,7 +209,7 @@ export const identityLdapAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     const plan = await licenseService.getPlan(identity.orgId);
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message:
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
@@ -378,27 +379,6 @@ export const identityLdapAuthServiceFactory = ({
       actorOrgId
     });
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -425,13 +405,13 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message: "Failed to add LDAP Auth to identity due to plan restriction. Upgrade plan to add LDAP Auth."
       });
     }
 
-    if (templateId && !plan.machineIdentityAuthTemplates) {
+    if (templateId && !plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -440,7 +420,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -457,73 +437,76 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
-      const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: identityMembershipOrg.scopeOrgId
-      });
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
 
-      const template = templateId
-        ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
-        : undefined;
-      if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
-        throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
-      }
+    const template = templateId
+      ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
+      : undefined;
+    if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
+      throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
+    }
 
-      let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
-      if (template) {
-        ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
-        if (!ldapConfig.bindDN || !ldapConfig.bindPass || !ldapConfig.searchBase || !ldapConfig.url) {
-          throw new BadRequestError({
-            message: `LDAP auth template '${template.name}' is missing a bind DN, bind password, search base, or URL. Update the template before attaching it to an identity.`
-          });
-        }
-      } else {
-        if (!bindDN || !bindPass || !searchBase || !url) {
-          throw new BadRequestError({
-            message: "Invalid request. Missing bind DN, bind pass, search base, or URL."
-          });
-        }
-        ldapConfig = {
-          bindDN,
-          bindPass,
-          searchBase,
-          url,
-          ldapCaCertificate
-        };
-      }
-
-      const { cipherTextBlob: encryptedBindPass } = encryptor({
-        plainText: Buffer.from(ldapConfig.bindPass)
-      });
-
-      const { cipherTextBlob: encryptedBindDN } = encryptor({
-        plainText: Buffer.from(ldapConfig.bindDN)
-      });
-
-      let encryptedLdapCaCertificate: Buffer | undefined;
-      if (ldapConfig.ldapCaCertificate) {
-        const { cipherTextBlob: encryptedCertificate } = encryptor({
-          plainText: Buffer.from(ldapConfig.ldapCaCertificate)
-        });
-
-        encryptedLdapCaCertificate = encryptedCertificate;
-      }
-
-      const isConnected = await testLDAPConfig({
-        bindDN: ldapConfig.bindDN,
-        bindPass: ldapConfig.bindPass,
-        caCert: ldapConfig.ldapCaCertificate || "",
-        url: ldapConfig.url
-      });
-
-      if (!isConnected) {
+    let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
+    if (template) {
+      ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
+      if (!ldapConfig.bindDN || !ldapConfig.bindPass || !ldapConfig.searchBase || !ldapConfig.url) {
         throw new BadRequestError({
-          message:
-            "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct."
+          message: `LDAP auth template '${template.name}' is missing a bind DN, bind password, search base, or URL. Update the template before attaching it to an identity.`
         });
       }
+    } else {
+      if (!bindDN || !bindPass || !searchBase || !url) {
+        throw new BadRequestError({
+          message: "Invalid request. Missing bind DN, bind pass, search base, or URL."
+        });
+      }
+      ldapConfig = {
+        bindDN,
+        bindPass,
+        searchBase,
+        url,
+        ldapCaCertificate
+      };
+    }
 
+    const { cipherTextBlob: encryptedBindPass } = encryptor({
+      plainText: Buffer.from(ldapConfig.bindPass)
+    });
+
+    const { cipherTextBlob: encryptedBindDN } = encryptor({
+      plainText: Buffer.from(ldapConfig.bindDN)
+    });
+
+    let encryptedLdapCaCertificate: Buffer | undefined;
+    if (ldapConfig.ldapCaCertificate) {
+      const { cipherTextBlob: encryptedCertificate } = encryptor({
+        plainText: Buffer.from(ldapConfig.ldapCaCertificate)
+      });
+
+      encryptedLdapCaCertificate = encryptedCertificate;
+    }
+
+    const isConnected = await testLDAPConfig({
+      bindDN: ldapConfig.bindDN,
+      bindPass: ldapConfig.bindPass,
+      caCert: ldapConfig.ldapCaCertificate || "",
+      url: ldapConfig.url
+    });
+
+    if (!isConnected) {
+      throw new BadRequestError({
+        message:
+          "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct."
+      });
+    }
+
+    const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityLdapAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -627,27 +610,6 @@ export const identityLdapAuthServiceFactory = ({
       actorOrgId
     });
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -674,7 +636,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message: "Failed to update LDAP Auth due to plan restriction. Upgrade plan to update LDAP Auth."
       });
@@ -682,7 +644,11 @@ export const identityLdapAuthServiceFactory = ({
 
     // only a link change is new template use; a re-sent current templateId must not
     // break routine edits for orgs that have since downgraded
-    if (templateId && templateId !== identityLdapAuth.templateId && !plan.machineIdentityAuthTemplates) {
+    if (
+      templateId &&
+      templateId !== identityLdapAuth.templateId &&
+      !plan.has(PlanFeature.MachineIdentityAuthTemplates)
+    ) {
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -691,7 +657,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -792,6 +758,9 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const updatedLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityLdapAuthDAL.updateById(
         identityLdapAuth.id,
         {
@@ -918,32 +887,6 @@ export const identityLdapAuthServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have LDAP Auth attached"
       });
-    }
-
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
 
     await assertIdentityAuthAccessAllowed(

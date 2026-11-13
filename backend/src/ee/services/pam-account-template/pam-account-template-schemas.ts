@@ -3,8 +3,8 @@ import { z } from "zod";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { patternsStringSchema } from "../pam/pam-policies";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { patternsStringSchema } from "../pam/pam-policies";
 
 export const PamRotationConfigSchema = z.object({
   enabled: z.boolean(),
@@ -21,7 +21,8 @@ export const DEFAULT_HEARTBEAT_CONFIG: TPamHeartbeatConfig = { enabled: true, in
 
 export const PamRecordingS3ConfigSchema = z.object({
   bucket: z.string().trim().min(1),
-  region: z.nativeEnum(AWSRegion),
+  // S3-compatible connections take the region from their endpoint
+  region: z.nativeEnum(AWSRegion).optional(),
   keyPrefix: z.string().trim().optional()
 });
 

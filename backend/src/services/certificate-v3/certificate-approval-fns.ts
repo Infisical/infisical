@@ -1,8 +1,10 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -13,10 +15,6 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -41,9 +39,17 @@ import { TCertificatePolicyServiceFactory } from "@app/services/certificate-poli
 import { TCertificateRequest, TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  CertificateApplicationAlertEvent,
+  TCertificateAlertEventEmitter,
+  TCertificateAlertEventInput
+} from "@app/services/certificate/certificate-alert-events";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
@@ -104,13 +110,11 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  usageCounterDAL: Pick<
-    TUsageCounterDALFactory,
-    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
-  >;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
 };
 
 export type TCertificateApprovalService = {
@@ -218,7 +222,7 @@ export const certificateApprovalServiceFactory = (
     kmsService,
     projectDAL,
     licenseService,
-    usageCounterDAL,
+    certManagerService,
     keyStore,
     certificatePolicyService,
     certificateIssuanceQueue,
@@ -226,8 +230,12 @@ export const certificateApprovalServiceFactory = (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
-    pkiAlertV2Queue
+    pkiAlertV2Queue,
+    certificateAlertEventEmitter
   } = deps;
+
+  const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
+    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateApplicationAlertEvent.Issuance }, tx);
 
   const $queueIssuanceAlert = async (certificateId: string, projectId: string, applicationId?: string | null) => {
     try {
@@ -593,7 +601,7 @@ export const certificateApprovalServiceFactory = (
       altNames: (mappedReconstructedRequest.subjectAlternativeNames ?? [])
         .map((san: { value: string }) => san.value)
         .join(","),
-      deps: { projectDAL, licenseService, usageCounterDAL, keyStore },
+      deps: { projectDAL, licenseService, certManagerService, keyStore },
       isApprovedRequest: true
     });
 
@@ -681,6 +689,16 @@ export const certificateApprovalServiceFactory = (
           certificateId: newCert.id,
           tx
         });
+
+        await $emitIssuanceAlert(
+          {
+            certificateId: newCert.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId: certRequest.applicationId
+          },
+          tx
+        );
       }
     });
 
@@ -741,7 +759,7 @@ export const certificateApprovalServiceFactory = (
       projectId: profile.projectId,
       commonName: certRequest.commonName,
       altNames: (altNames ?? []).map((san) => san.value).join(","),
-      deps: { projectDAL, licenseService, usageCounterDAL, keyStore },
+      deps: { projectDAL, licenseService, certManagerService, keyStore },
       isApprovedRequest: true
     });
 
@@ -938,6 +956,16 @@ export const certificateApprovalServiceFactory = (
         await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
       }
 
+      await $emitIssuanceAlert(
+        {
+          certificateId: processResult.certificateData.id,
+          projectId: profile.projectId,
+          orgId: profile.project?.orgId,
+          applicationId
+        },
+        tx
+      );
+
       return processResult;
     });
 
@@ -1097,6 +1125,16 @@ export const certificateApprovalServiceFactory = (
           tx
         });
 
+        await $emitIssuanceAlert(
+          {
+            certificateId: certificateRecord.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId
+          },
+          tx
+        );
+
         return { ...certResult, cert: certificateRecord };
       });
 
@@ -1230,7 +1268,7 @@ export const certificateApprovalServiceFactory = (
         projectId: targetProfile.projectId,
         commonName: certificateRequestInput.commonName,
         altNames: (altNames ?? []).map((san) => san.value).join(","),
-        deps: { projectDAL, licenseService, usageCounterDAL, keyStore },
+        deps: { projectDAL, licenseService, certManagerService, keyStore },
         isApprovedRequest: true
       });
 

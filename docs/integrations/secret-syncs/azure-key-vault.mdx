@@ -18,7 +18,7 @@ description: "Learn how to configure a Azure Key Vault Sync for Infisical."
 </Note>
 
 <Note>
-  Secrets in Infisical that contain an underscore (`_`) will be converted to a hyphen (`-`) when synced to Azure Key Vault.
+  Azure Key Vault secret names can contain hyphens (`-`) but they can't contain underscores (`_`). Infisical converts each underscore in a secret name to a hyphen when syncing to Azure Key Vault, so If two or more secret names become the same vault name, the sync will stop and reports those names.
 </Note>
 
 

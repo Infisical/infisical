@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, useEffect, useState } from "react";
+import { InputHTMLAttributes, useEffect, useRef, useState } from "react";
 import { Folder } from "lucide-react";
 
 import { useProject } from "@app/context";
@@ -6,7 +6,7 @@ import { useDebounce } from "@app/hooks";
 import { useGetFoldersByEnv } from "@app/hooks/api";
 
 import { Input } from "../../generic/Input";
-import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
+import { Popover, PopoverAnchor, PopoverContent } from "../../generic/Popover";
 import { cn } from "../../utils";
 
 type BaseProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "onChange"> & {
@@ -29,8 +29,12 @@ const SecretPathInputBase = ({
   value: propValue,
   folderNames: folderNamesProp,
   isError,
+  onKeyDown,
+  onFocus,
+  onBlur,
   ...props
 }: BaseProps) => {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState(propValue ?? "");
   const [secretPath, setSecretPath] = useState("/");
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -39,7 +43,7 @@ const SecretPathInputBase = ({
   const [debouncedInputValue] = useDebounce(inputValue, 200);
   const { folderNames: folders } = useGetFoldersByEnv({
     path: secretPath,
-    environments: [environment || ""],
+    environments: folderNamesProp === undefined ? [environment ?? ""] : [],
     projectId
   });
 
@@ -65,6 +69,7 @@ const SecretPathInputBase = ({
       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 
     setSuggestions(filteredSuggestions);
+    setHighlightedIndex(-1);
   }, [debouncedInputValue, folders, folderNamesProp]);
 
   const handleSuggestionSelect = (selectedIndex: number) => {
@@ -83,45 +88,63 @@ const SecretPathInputBase = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const mod = (n: number, m: number) => ((n % m) + m) % m;
-    if (e.key === "ArrowDown") {
+    const canSelect =
+      isInputFocused && suggestions.length > 0 && !props.readOnly && !props.disabled;
+    if (canSelect && e.key === "ArrowDown") {
+      e.preventDefault();
       setHighlightedIndex((prev) => mod(prev + 1, suggestions.length));
-    } else if (e.key === "ArrowUp") {
-      setHighlightedIndex((prev) => mod(prev - 1, suggestions.length));
-    } else if (e.key === "Enter" && highlightedIndex >= 0) {
+    } else if (canSelect && e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+    } else if (canSelect && e.key === "Enter" && highlightedIndex >= 0) {
+      e.preventDefault();
       handleSuggestionSelect(highlightedIndex);
     }
-    if (["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
-      e.preventDefault();
-    }
+    onKeyDown?.(e);
+    if (e.key === "Enter") e.preventDefault();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsInputFocus(true);
     onChange?.(e.target.value);
     setInputValue(e.target.value);
   };
 
   return (
     <Popover
-      open={suggestions.length > 0 && isInputFocused}
-      onOpenChange={() => setHighlightedIndex(-1)}
+      open={suggestions.length > 0 && isInputFocused && !props.readOnly && !props.disabled}
+      onOpenChange={(open) => {
+        if (!open) setIsInputFocus(false);
+        setHighlightedIndex(-1);
+      }}
     >
-      <PopoverTrigger asChild>
+      <PopoverAnchor asChild ref={inputRef}>
         <Input
           {...props}
           type="text"
           autoComplete="off"
           isError={isError}
           onKeyDown={handleKeyDown}
-          onFocus={() => setIsInputFocus(true)}
-          onBlur={() => setIsInputFocus(false)}
+          onFocus={(e) => {
+            setIsInputFocus(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsInputFocus(false);
+            onBlur?.(e);
+          }}
           value={inputValue}
           onChange={handleInputChange}
           className={containerClassName}
         />
-      </PopoverTrigger>
+      </PopoverAnchor>
       <PopoverContent
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          if (e.target === inputRef.current) e.preventDefault();
+        }}
         className="p-1"
         style={{
           width: "var(--radix-popover-trigger-width)",
@@ -161,7 +184,7 @@ const SecretPathInputWithProjectContext = ({
   return (
     <SecretPathInputBase
       projectId={currentProject?.id || ""}
-      environment={environment || currentProject?.environments?.[0].slug}
+      environment={environment ?? currentProject?.environments?.[0]?.slug}
       {...props}
     />
   );

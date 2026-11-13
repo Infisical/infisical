@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form";
+import slugify from "@sindresorhus/slugify";
 
 import {
   Field,
@@ -8,11 +9,48 @@ import {
   Input,
   TextArea
 } from "@app/components/v3";
+import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import { TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
 
-import { TSecretSyncForm } from "./schemas";
+import { getSecretSyncDestinationConfig, TSecretSyncForm } from "./schemas";
+
+const getSuggestedSyncName = ({
+  destination,
+  destinationConfig,
+  connection,
+  environment
+}: TSecretSyncForm) => {
+  const parsedConfig = getSecretSyncDestinationConfig(destination, destinationConfig);
+  let destinationLabel = "";
+  if (parsedConfig) {
+    try {
+      destinationLabel = getSecretSyncDestinationColValues({
+        destination,
+        destinationConfig: parsedConfig,
+        connection
+      } as TSecretSync).primaryText;
+    } catch {
+      destinationLabel = "";
+    }
+  }
+
+  const environmentSlug = environment?.slug
+    ? slugify(environment.slug, { lowercase: true, decamelize: false })
+    : "";
+  const prefix = slugify(`${SECRET_SYNC_MAP[destination].name} ${destinationLabel}`, {
+    lowercase: true,
+    decamelize: false
+  })
+    .slice(0, environmentSlug ? Math.max(0, 63 - environmentSlug.length) : 64)
+    .replace(/-+$/, "");
+
+  return [prefix, environmentSlug].filter(Boolean).join("-");
+};
 
 export const SecretSyncDetailsFields = () => {
-  const { control } = useFormContext<TSecretSyncForm>();
+  const { control, getValues } = useFormContext<TSecretSyncForm>();
+  const suggestedName = getSuggestedSyncName(getValues());
 
   return (
     <>
@@ -26,7 +64,7 @@ export const SecretSyncDetailsFields = () => {
               id="sync-name"
               value={value ?? ""}
               onChange={onChange}
-              placeholder="my-secret-sync"
+              suggestedValue={suggestedName}
               isError={Boolean(error)}
               autoFocus
               autoComplete="off"

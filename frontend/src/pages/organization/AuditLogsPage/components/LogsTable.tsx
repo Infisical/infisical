@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Ban, FileText, Loader2Icon } from "lucide-react";
+import { Ban, FileText, Loader2Icon, Lock } from "lucide-react";
 
 import {
   Button,
@@ -9,14 +9,16 @@ import {
   EmptyTitle,
   Skeleton,
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
-import { usePopUp, useScopeVariant } from "@app/hooks";
+import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus, useGetAuditLogs } from "@app/hooks/api";
 import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
@@ -33,7 +35,8 @@ const AUDIT_LOG_LIMIT = 30;
 
 export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
   const { data: status } = useFetchServerStatus();
-  const scopeVariant = useScopeVariant();
+  const { subscription } = useSubscription();
+  const isOnPlan = subscription.auditLogs;
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["logDetails"] as const);
 
   // Determine the project ID for filtering
@@ -49,12 +52,25 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
       },
       filterProjectId,
       {
-        refetchInterval
+        refetchInterval,
+        enabled: isOnPlan
       }
     );
 
+  if (!isOnPlan) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Lock />
+          </EmptyMedia>
+          <EmptyTitle>Upgrade your plan to view audit logs</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   const isEmpty = !isPending && !data?.pages?.[0].length;
-  const totalLoaded = data?.pages?.reduce((sum, page) => sum + page.length, 0) ?? 0;
 
   if (isEmpty) {
     return (
@@ -75,7 +91,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
 
   return (
     <div>
-      <Table>
+      <Table hasAttachedFooter={!isPending}>
         <TableHeader>
           <TableRow>
             <TableHead className="w-16">
@@ -105,7 +121,6 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
             ))}
           {isPending &&
             Array.from({ length: 8 }).map((_, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <TableRow key={`logs-skeleton-${i + 1}`}>
                 <TableCell>
                   <Skeleton className="h-4 w-full" />
@@ -124,16 +139,21 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
         </TableBody>
       </Table>
       {!isPending && (
-        <Button
-          className="mt-4"
-          isFullWidth
-          variant={scopeVariant}
-          isPending={isFetchingNextPage}
-          isDisabled={isFetchingNextPage || !hasNextPage}
-          onClick={() => fetchNextPage()}
-        >
-          {hasNextPage ? `Load More (${totalLoaded} loaded)` : `End of logs (${totalLoaded} total)`}
-        </Button>
+        <TableAttachedFooter>
+          {hasNextPage ? (
+            <Button
+              size="lg"
+              variant="ghost"
+              isFullWidth
+              isPending={isFetchingNextPage}
+              onClick={() => fetchNextPage()}
+            >
+              Load More
+            </Button>
+          ) : (
+            <span className="text-xs text-muted">End of logs</span>
+          )}
+        </TableAttachedFooter>
       )}
       <AuditLogDetailsSheet
         isOpen={popUp.logDetails.isOpen}

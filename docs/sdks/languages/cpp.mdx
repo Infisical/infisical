@@ -168,7 +168,7 @@ The `TSecret` class is the class that's returned by all secret methods (get/list
 - `getRotationId(): std::string`: If the secret is a rotation secret, this will return the rotation ID of the secret. If it's a regular secret, this will return an empty string.
 - `getSecretPath(): std::string`: Returns the secret path of the secret.
 - `getSkipMultilineEncoding(): bool`: Returns whether or not skip multiline encoding is enabled for the secret or not.
-`getIsRotatedSecret(): bool`: Returns wether or not the secret is a rotated secret. If `true`, then `getRotationId()` returns the ID of the rotation.
+`getIsRotatedSecret(): bool`: Returns whether or not the secret is a rotated secret. If `true`, then `getRotationId()` returns the ID of the rotation.
 
 
 
@@ -308,7 +308,7 @@ const auto secrets = client.secrets().listSecrets(listSecretsOptions);
 - `withProjectId(string)`: Specify the ID of the project to fetch secrets from.
 - `withSecretPath(string)`: Specify the secret path to fetch secrets from. Defaults to `/`
 - `withExpandSecretReferences(bool)` _(optional)_: Whether or not to expand secret references automatically. Defaults to `true`.
-- `withRecursive(bool)` _(optional)_: Wether or not to recursively fetch secrets from sub-folders. If set to true, all secrets from the secret path specified with `withSecretPath()` and downwards will be fetched.
+- `withRecursive(bool)` _(optional)_: Whether or not to recursively fetch secrets from sub-folders. If set to true, all secrets from the secret path specified with `withSecretPath()` and downwards will be fetched.
 - `withAddSecretsToEnvironmentVariables(bool)` _(optional)_: If set to true, the fetched secrets will be automatically set as environment variables, making them accessible with `std::getenv` or equivalent by secret key.
 - `build()`: Returns the `ListSecretsOptions` class that can be passed into the `listSecrets()` method.
 

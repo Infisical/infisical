@@ -1,3 +1,4 @@
+import { MouseEventHandler, ReactNode } from "react";
 import {
   BanIcon,
   CheckIcon,
@@ -16,9 +17,18 @@ export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "
 type Props = {
   status: EnvironmentStatus;
   hasOverride?: boolean;
+  children?: ReactNode;
+  className?: string;
+  onClick?: MouseEventHandler<HTMLTableCellElement>;
 };
 
-export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) => {
+export const ResourceEnvironmentStatusCell = ({
+  status,
+  hasOverride,
+  children,
+  className,
+  onClick
+}: Props) => {
   let tooltipContent: string;
   let Icon: LucideIcon;
   let iconClassName: string;
@@ -56,30 +66,35 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) =>
   return (
     <TableCell
       className={twMerge(
-        "relative border-r text-center last:border-r-0",
+        "relative border-r last:border-r-0",
         status === "present" && "text-success",
         status === "empty" && "text-warning",
         status === "missing" && "text-danger",
         status === "no-access" && "text-accent",
-        status === "imported" && "text-import"
+        status === "imported" && "text-import",
+        className
       )}
+      onClick={onClick}
     >
       {hasOverride && (
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="absolute top-5 right-0 bottom-0 flex w-5 flex-col rounded-tl border-t border-l border-override/50 bg-override/15">
-              <GitBranchIcon className="m-auto size-3 text-override" />
+              <GitBranchIcon className="m-auto size-3 text-override-foreground" />
             </div>
           </TooltipTrigger>
           <TooltipContent>Has personal override</TooltipContent>
         </Tooltip>
       )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Icon className={twMerge(iconClassName, "inline-block")} />
-        </TooltipTrigger>
-        <TooltipContent>{tooltipContent}</TooltipContent>
-      </Tooltip>
+      <div className={twMerge("flex items-center justify-between gap-2", hasOverride && "pr-4")}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Icon className={twMerge(iconClassName, "size-4 shrink-0")} />
+          </TooltipTrigger>
+          <TooltipContent>{tooltipContent}</TooltipContent>
+        </Tooltip>
+        {children}
+      </div>
     </TableCell>
   );
 };

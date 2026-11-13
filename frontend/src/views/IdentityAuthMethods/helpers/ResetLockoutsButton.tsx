@@ -1,5 +1,4 @@
 import { subject } from "@casl/ability";
-import { useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { VariablePermissionCan } from "@app/components/permissions";
@@ -10,6 +9,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/context";
+import { useRouteProjectId } from "@app/hooks";
 import {
   IdentityAuthMethod,
   useClearIdentityLdapAuthLockouts,
@@ -26,7 +26,7 @@ export const ResetLockoutsButton = ({ identityId, authMethod, onSuccess }: Props
   const universal = useClearIdentityUniversalAuthLockouts();
   const ldap = useClearIdentityLdapAuthLockouts();
 
-  const { projectId } = useParams({ strict: false });
+  const projectId = useRouteProjectId();
 
   let mutation: typeof universal | typeof ldap | null = null;
   if (authMethod === IdentityAuthMethod.UNIVERSAL_AUTH) mutation = universal;

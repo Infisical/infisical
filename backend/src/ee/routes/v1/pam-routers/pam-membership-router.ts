@@ -15,6 +15,14 @@ const MemberSchema = z.object({
   userId: z.string().uuid().nullable().optional(),
   identityId: z.string().uuid().nullable().optional(),
   groupId: z.string().uuid().nullable().optional(),
+  email: z.string().nullable().optional().describe("The user's email. Null for group and identity members."),
+  username: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "The user's username, which adding members by email matches against. Null for group and identity members."
+    ),
   role: z.string(),
   isActive: z.boolean(),
   expiresAt: z.date().nullable().optional(),
@@ -29,6 +37,8 @@ const MemberResultSchema = z.object({
   role: z.string(),
   createdAt: z.date()
 });
+
+export const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
 
 const actorCtx = (req: {
   internalPamProjectId: string;
@@ -437,7 +447,6 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
 };
 
 export const registerPamFolderMembershipRouter = async (server: FastifyZodProvider) => {
-  const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
   const folderParam = z.object({ folderId: z.string().uuid().describe("The ID of the folder") });
 
   server.route({

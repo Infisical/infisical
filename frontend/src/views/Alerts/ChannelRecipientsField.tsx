@@ -1,22 +1,37 @@
-import { useEffect, useRef, useState } from "react";
-import { UserIcon, UsersIcon } from "lucide-react";
+import { useState } from "react";
+import { LucideIcon, MailIcon, UserIcon, UsersIcon } from "lucide-react";
 
-import { FilterableSelect } from "@app/components/v3";
+import { Combobox } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { isValidEmail } from "@app/helpers/email";
 import {
   useGetOrganizationGroups,
   useGetOrgUsers,
   useGetWorkspaceUsers,
   useListWorkspaceGroups
 } from "@app/hooks/api";
-import { AlertPrincipalType, TAlertChannelRecipient } from "@app/hooks/api/alerts";
+import {
+  ALERT_PROJECT_RECIPIENT_LABELS,
+  AlertPrincipalType,
+  TAlertChannelRecipient
+} from "@app/hooks/api/alerts";
 
 type RecipientOption = {
   principalType: AlertPrincipalType;
   principalId: string;
   label: string;
-  groupLabel: "Users" | "Groups";
+  groupLabel: "Project" | "Users" | "Groups" | "Emails";
 };
+
+const projectOptions = (projectId: string): RecipientOption[] =>
+  ([AlertPrincipalType.ProjectMembers, AlertPrincipalType.ProjectAdmins] as const).map(
+    (principalType) => ({
+      principalType,
+      principalId: projectId,
+      label: ALERT_PROJECT_RECIPIENT_LABELS[principalType],
+      groupLabel: "Project"
+    })
+  );
 
 const userLabel = (user: { firstName?: string; lastName?: string; username?: string }): string =>
   user.username || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Unknown user";
@@ -39,21 +54,26 @@ const buildOptions = (
   }))
 ];
 
-const formatOptionLabel = (option: RecipientOption) => (
-  <span className="flex items-center gap-2">
-    {option.principalType === AlertPrincipalType.Group ? (
-      <UsersIcon className="size-3.5 text-muted" />
-    ) : (
-      <UserIcon className="size-3.5 text-muted" />
-    )}
-    {option.label}
-  </span>
-);
+const RECIPIENT_ICONS: Partial<Record<AlertPrincipalType, LucideIcon>> = {
+  [AlertPrincipalType.User]: UserIcon,
+  [AlertPrincipalType.Email]: MailIcon
+};
+
+const formatOptionLabel = (option: RecipientOption) => {
+  const Icon = RECIPIENT_ICONS[option.principalType] ?? UsersIcon;
+  return (
+    <span className="flex items-center gap-2">
+      <Icon className="size-3.5 text-muted" />
+      {option.label}
+    </span>
+  );
+};
 
 type SelectProps = {
   value: TAlertChannelRecipient[];
   onChange: (recipients: TAlertChannelRecipient[]) => void;
   isError?: boolean;
+  allowEmailAddresses?: boolean;
 };
 
 const RecipientSelect = ({
@@ -61,18 +81,26 @@ const RecipientSelect = ({
   labelledOptions,
   value,
   onChange,
-  isError
+  isError,
+  allowEmailAddresses
 }: SelectProps & { options: RecipientOption[]; labelledOptions?: RecipientOption[] }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
-  }, []);
+  const [inputValue, setInputValue] = useState("");
 
   const byKey = new Map(
     (labelledOptions ?? options).map((o) => [`${o.principalType}-${o.principalId}`, o])
   );
+  const email = inputValue.trim().toLowerCase();
+  const canAddEmail =
+    allowEmailAddresses &&
+    isValidEmail(email) &&
+    !value.some((recipient) => recipient.principalId === email);
+  const emailOption: RecipientOption = {
+    principalType: AlertPrincipalType.Email,
+    principalId: email,
+    label: email,
+    groupLabel: "Emails"
+  };
+
   const selected = value.map(
     (recipient): RecipientOption =>
       byKey.get(`${recipient.principalType}-${recipient.principalId}`) ?? {
@@ -84,35 +112,36 @@ const RecipientSelect = ({
   );
 
   return (
-    <div ref={containerRef}>
-      <FilterableSelect<RecipientOption>
-        isMulti
-        placeholder="Add users or groups..."
-        options={options}
-        value={selected}
-        isError={isError}
-        groupBy="groupLabel"
-        getGroupHeaderLabel={(groupValue) => groupValue}
-        getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
-        getOptionLabel={(option) => option.label}
-        formatOptionLabel={formatOptionLabel}
-        menuPortalTarget={menuPortalTarget ?? undefined}
-        menuPosition="fixed"
-        menuPlacement="auto"
-        onChange={(newValue) =>
-          onChange(
-            (newValue as RecipientOption[]).map((option) => ({
-              principalType: option.principalType,
-              principalId: option.principalId
-            }))
-          )
-        }
-      />
-    </div>
+    <Combobox
+      multiple
+      placeholder={
+        allowEmailAddresses ? "Add users, groups, or emails..." : "Add users or groups..."
+      }
+      searchAriaLabel="Search recipients"
+      options={canAddEmail ? [...options, emailOption] : options}
+      onInputValueChange={setInputValue}
+      value={selected}
+      includeMissingSelectedOptions={false}
+      isError={isError}
+      getOptionGroup={(option) => option.groupLabel}
+      getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
+      getOptionKeywords={(option) => [`${option.principalType}-${option.principalId}`]}
+      getOptionLabel={(option) => option.label}
+      renderOption={formatOptionLabel}
+      renderValue={formatOptionLabel}
+      onValueChange={(newValue) =>
+        onChange(
+          newValue.map((option) => ({
+            principalType: option.principalType,
+            principalId: option.principalId
+          }))
+        )
+      }
+    />
   );
 };
 
-const canReceiveAlerts = (membership: { isActive: boolean; status: string }) =>
+export const canReceiveAlerts = (membership: { isActive: boolean; status: string }) =>
   membership.isActive && membership.status !== "invited";
 
 const OrgRecipientSelect = ({ orgId, ...props }: SelectProps & { orgId: string }) => {
@@ -133,8 +162,9 @@ const OrgRecipientSelect = ({ orgId, ...props }: SelectProps & { orgId: string }
 const ProjectRecipientSelect = ({
   projectId,
   orgId,
+  allowProjectRecipients,
   ...props
-}: SelectProps & { projectId: string; orgId: string }) => {
+}: SelectProps & { projectId: string; orgId: string; allowProjectRecipients?: boolean }) => {
   const { data: users = [] } = useGetWorkspaceUsers(projectId, true);
   const { data: orgUsers = [] } = useGetOrgUsers(orgId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
@@ -149,23 +179,32 @@ const ProjectRecipientSelect = ({
   );
 
   const groupOptions = groups.map((membership) => membership.group);
+  const projectWide = projectOptions(projectId);
 
   return (
     <RecipientSelect
-      options={buildOptions(eligibleUsers, groupOptions)}
-      labelledOptions={buildOptions(users, groupOptions)}
+      options={[
+        ...(allowProjectRecipients ? projectWide : []),
+        ...buildOptions(eligibleUsers, groupOptions)
+      ]}
+      labelledOptions={[...projectWide, ...buildOptions(users, groupOptions)]}
       {...props}
     />
   );
 };
 
-type Props = SelectProps & { projectId?: string };
+type Props = SelectProps & { projectId?: string; allowProjectRecipients?: boolean };
 
-export const ChannelRecipientsField = ({ projectId, ...props }: Props) => {
+export const ChannelRecipientsField = ({ projectId, allowProjectRecipients, ...props }: Props) => {
   const { currentOrg } = useOrganization();
 
   return projectId ? (
-    <ProjectRecipientSelect projectId={projectId} orgId={currentOrg.id} {...props} />
+    <ProjectRecipientSelect
+      projectId={projectId}
+      orgId={currentOrg.id}
+      allowProjectRecipients={allowProjectRecipients}
+      {...props}
+    />
   ) : (
     <OrgRecipientSelect orgId={currentOrg.id} {...props} />
   );

@@ -4,6 +4,8 @@ sidebarTitle: "Azure DevOps"
 description: "Learn how to configure an Azure DevOps Connection for Infisical."
 ---
 
+import AzureOAuthAppConfigurationServicePrincipal from "/snippets/app-connections/azure/oauth-app-configuration-service-principal.mdx";
+
 Infisical currently supports three methods for connecting to Azure DevOps, which are OAuth, Azure DevOps Personal Access Token and Client Secrets.
 
 <Accordion title="Azure OAuth on a Self-Hosted Instance">
@@ -137,6 +139,8 @@ Infisical currently supports three methods for connecting to Azure DevOps, which
                     <Tip>
                         You can find the **Organization Name** on https://dev.azure.com/
                     </Tip>
+
+                    <AzureOAuthAppConfigurationServicePrincipal />
                 </Step>
                 <Step title="Grant Access">
                     You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,

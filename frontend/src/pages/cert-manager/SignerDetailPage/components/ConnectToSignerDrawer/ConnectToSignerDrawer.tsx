@@ -357,7 +357,7 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
           <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
             {step === 1 && (
               <>
-                <h2 className="text-lg font-semibold text-foreground">Choose your signing tool</h2>
+                <h2 className="text-lg font-normal text-foreground">Choose your signing tool</h2>
                 <p className="mt-1 mb-6 text-sm text-muted">
                   Pick the tool you already sign with. Infisical plugs into it, so your build keeps
                   working the same way.
@@ -384,9 +384,7 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
             )}
             {step === 2 && (
               <>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Choose how you authenticate
-                </h2>
+                <h2 className="text-lg font-normal text-foreground">Choose how you authenticate</h2>
                 <p className="mt-1 mb-6 text-sm text-muted">
                   Pick how the signing tool proves who it is to Infisical during signing operations.
                 </p>
@@ -410,7 +408,7 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
             )}
             {step === 3 && (
               <>
-                <h2 className="text-lg font-semibold text-foreground">Install &amp; sign</h2>
+                <h2 className="text-lg font-normal text-foreground">Install &amp; sign</h2>
                 <p className="mt-1 mb-6 text-sm text-muted">
                   {method === Method.Ksp
                     ? "Install the Infisical Key Storage Provider, then sign with Microsoft signtool."

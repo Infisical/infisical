@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 import { AxiosError } from "axios";
-import { ClipboardCheckIcon, CopyIcon, LinkIcon } from "lucide-react";
+import { BracesIcon, ClipboardCheckIcon, CopyIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
   IconButton,
-  Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -46,9 +45,8 @@ const ResolvedValueContent = ({ environment, secretPath, secretKey }: Props) => 
 
   if (isPending) {
     return (
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-9 w-full" />
+      <div className="p-3">
+        <Skeleton className="h-4 w-full" />
       </div>
     );
   }
@@ -59,7 +57,7 @@ const ResolvedValueContent = ({ environment, secretPath, secretKey }: Props) => 
     const isForbidden = apiError?.error === ApiErrorTypes.CustomForbiddenError;
 
     return (
-      <p className="text-sm text-danger">
+      <p className="p-3 text-sm text-danger">
         {isForbidden
           ? "You do not have permission to view one of the referenced secrets."
           : "Failed to resolve secret value."}
@@ -77,32 +75,29 @@ const ResolvedValueContent = ({ environment, secretPath, secretKey }: Props) => 
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="mb-2 flex items-center justify-between border-b border-border pb-2">
-        <Label className="text-sm font-normal text-foreground" htmlFor="resolved-secret-value">
-          Resolved Value
-        </Label>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              variant="ghost-muted"
-              size="xs"
-              onClick={handleCopy}
-              aria-label="Copy resolved value"
-            >
-              {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>{isCopied ? "Copied" : "Copy"}</TooltipContent>
-        </Tooltip>
-      </div>
+    <div className="relative">
       <SecretInput
-        containerClassName="font-mono"
-        id="resolved-secret-value"
+        aria-label="Resolved secret value"
+        containerClassName="min-h-9 py-2 pr-10 pl-3 font-mono"
         isReadOnly
         isVisible
         value={data?.value ?? ""}
+        variant="plain"
       />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <IconButton
+            variant="ghost-muted"
+            size="xs"
+            className="absolute top-1/2 right-2 -translate-y-1/2"
+            onClick={handleCopy}
+            aria-label="Copy resolved value"
+          >
+            {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+          </IconButton>
+        </TooltipTrigger>
+        <TooltipContent>{isCopied ? "Copied" : "Copy"}</TooltipContent>
+      </Tooltip>
     </div>
   );
 };
@@ -125,12 +120,9 @@ export const ResolvedSecretValuePopover = ({
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
             <IconButton
-              variant="ghost-muted"
+              variant="ghost"
               size="xs"
-              className={twMerge(
-                "absolute -top-1 -left-1",
-                isDisabled && "cursor-not-allowed opacity-50"
-              )}
+              className={twMerge("size-7 border-0", isDisabled && "cursor-not-allowed opacity-50")}
               aria-label="View resolved secret value"
               aria-disabled={isDisabled}
               onClick={(e) => {
@@ -139,7 +131,7 @@ export const ResolvedSecretValuePopover = ({
               }}
               onMouseDown={(e) => e.preventDefault()}
             >
-              <LinkIcon />
+              <BracesIcon className="size-3.5" />
             </IconButton>
           </PopoverTrigger>
         </TooltipTrigger>
@@ -148,8 +140,8 @@ export const ResolvedSecretValuePopover = ({
         </TooltipContent>
       </Tooltip>
       <PopoverContent
-        align="start"
-        className="w-96"
+        align="end"
+        className="w-96 p-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >

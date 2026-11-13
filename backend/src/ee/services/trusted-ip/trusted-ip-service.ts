@@ -1,13 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TTrustedIpDALFactory } from "./trusted-ip-dal";
@@ -16,7 +16,7 @@ import { TTrustedIpServiceFactory } from "./trusted-ip-types";
 type TTrustedIpServiceFactoryDep = {
   trustedIpDAL: TTrustedIpDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -72,7 +72,7 @@ export const trustedIpServiceFactory = ({
       projectDAL.findById(projectId)
     );
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.ipAllowlisting)
+    if (!plan.has(PlanFeature.IpAllowlisting))
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
@@ -120,7 +120,7 @@ export const trustedIpServiceFactory = ({
       projectDAL.findById(projectId)
     );
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.ipAllowlisting)
+    if (!plan.has(PlanFeature.IpAllowlisting))
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
@@ -168,7 +168,7 @@ export const trustedIpServiceFactory = ({
       projectDAL.findById(projectId)
     );
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.ipAllowlisting)
+    if (!plan.has(PlanFeature.IpAllowlisting))
       throw new BadRequestError({
         message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });

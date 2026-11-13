@@ -1,0 +1,18 @@
+{/* The tab titles match the method tabs in Step 1 of the AWS connection page. Keep them identical. */}
+
+<Tabs>
+    <Tab title="Assume Role (Recommended)">
+        - **Name**: A descriptive name for the connection
+        - **Description** (optional): A note for future reference
+        - **Method**: **Assume Role (Recommended)**
+        - **Role ARN**: The role's ARN, shown in the **Summary** section of the role in the IAM console
+        - **STS Endpoint URL** (optional): A regional AWS STS endpoint to use instead of AWS's default, such as `https://sts.us-east-1.amazonaws.com` (leave it empty unless your network can't reach the default)
+    </Tab>
+    <Tab title="Access Key">
+        - **Name**: A descriptive name for the connection
+        - **Description** (optional): A note for future reference
+        - **Method**: **Access Key**
+        - **Access Key ID**: The access key ID you copied from the IAM user
+        - **Secret Access Key**: The secret access key you copied from the IAM user
+    </Tab>
+</Tabs>

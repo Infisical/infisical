@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -12,33 +12,32 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
-import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
-import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
-import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
-import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
+import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
   TAddUsersToWorkspaceDTO,
@@ -56,16 +55,14 @@ type TProjectMembershipServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageMeteringService: TUsageMeteringService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
-  secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
-  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -73,7 +70,6 @@ type TProjectMembershipServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
@@ -90,10 +86,8 @@ export const projectMembershipServiceFactory = ({
   secretReminderRecipientsDAL,
   notificationService,
   additionalPrivilegeDAL,
-  accessApprovalPolicyApproverDAL,
-  accessApprovalPolicyDAL,
-  secretApprovalPolicyApproverDAL,
-  secretApprovalPolicyDAL,
+  approvalPolicyDAL,
+  approvalRequestDAL,
   membershipUserDAL,
   userDAL,
   userAliasDAL,
@@ -108,40 +102,39 @@ export const projectMembershipServiceFactory = ({
     projectId: string,
     actionLabel = "Cannot remove user from project"
   ) => {
-    const accessApprovers = await accessApprovalPolicyApproverDAL.find({
-      $in: { approverUserId: userIds }
+    const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      projectId,
+      type: ApprovalPolicyType.SecretAccess,
+      userIds
     });
-    if (accessApprovers.length > 0) {
-      const policyIds = [...new Set(accessApprovers.map((a) => a.policyId))];
-      const policies = await accessApprovalPolicyDAL.find({
-        $in: { [`${TableName.AccessApprovalPolicy}.id` as "id"]: policyIds },
-        projectId,
-        deletedAt: null
+    if (secretAccessPolicies.length > 0) {
+      const policyNames = secretAccessPolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `${actionLabel}: user is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
       });
-      if (policies.length > 0) {
-        const policyNames = policies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `${actionLabel}: user is an approver in access approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
     }
 
-    const secretApprovers = await secretApprovalPolicyApproverDAL.find({
-      $in: { approverUserId: userIds }
+    const secretChangePolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      projectId,
+      type: ApprovalPolicyType.SecretChange,
+      userIds
     });
-    if (secretApprovers.length > 0) {
-      const policyIds = [...new Set(secretApprovers.map((a) => a.policyId))];
-      const policies = await secretApprovalPolicyDAL.find({
-        $in: { [`${TableName.SecretApprovalPolicy}.id` as "id"]: policyIds },
-        projectId,
-        deletedAt: null
+    if (secretChangePolicies.length > 0) {
+      const policyNames = secretChangePolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `${actionLabel}: user is an approver in secret approval ${secretChangePolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
       });
-      if (policies.length > 0) {
-        const policyNames = policies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `${actionLabel}: user is an approver in secret approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
+    }
+
+    const openSecretChangeRequests = await approvalRequestDAL.findOpenSecretChangeRequestsWhereSubjectIsApprover({
+      projectId,
+      userIds
+    });
+    if (openSecretChangeRequests.length > 0) {
+      const requestSlugs = openSecretChangeRequests.map((request) => request.slug).join(", ");
+      throw new BadRequestError({
+        message: `${actionLabel}: user is an approver on open secret approval ${openSecretChangeRequests.length > 1 ? "requests" : "request"}: ${requestSlugs}`
+      });
     }
   };
 
@@ -298,6 +291,16 @@ export const projectMembershipServiceFactory = ({
       }
     });
 
+    const deactivatedUserIds = new Set(orgMembers.filter((el) => !el.isActive).map((el) => el.actorUserId));
+    if (deactivatedUserIds.size) {
+      const deactivatedUsers = orgMembershipUsernames.filter((el) => deactivatedUserIds.has(el.id));
+      throw new BadRequestError({
+        message: `${deactivatedUsers.map((el) => `'${el.email || el.username}'`).join(", ")} ${
+          deactivatedUsers.length === 1 ? "is" : "are"
+        } deactivated in this organization. Reactivate them before adding them to this project.`
+      });
+    }
+
     const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
       [ProjectMembershipRole.Member],
       projectId
@@ -325,6 +328,10 @@ export const projectMembershipServiceFactory = ({
     );
 
     await membershipUserDAL.transaction(async (tx) => {
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: actorOrgId, userIds: orgMembers.map(({ actorUserId }) => actorUserId as string) },
+        tx
+      );
       const projectMemberships = await membershipUserDAL.insertMany(
         orgMembers.map(({ actorUserId }) => ({
           scopeProjectId: projectId,
@@ -375,9 +382,9 @@ export const projectMembershipServiceFactory = ({
         }
       });
     }
-    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
-    usageMeteringService.emitForProject(projectId, PamIdentities.key);
-    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     return orgMembers;
   };
 
@@ -464,15 +471,25 @@ export const projectMembershipServiceFactory = ({
         tx
       });
 
-      await additionalPrivilegeDAL.delete(
-        {
-          projectId,
-          $in: {
-            actorUserId: projectMembers.map((membership) => membership.user.id)
-          }
-        },
+      const lockedMemberships = await lockMembershipsById(
+        projectMembers.map(({ id }) => id),
         tx
       );
+      const lockedMembershipIds = new Set(lockedMemberships.map(({ id }) => id));
+      const actorUserIds = projectMembers
+        .filter(({ id }) => lockedMembershipIds.has(id))
+        .map((membership) => membership.user.id);
+      if (actorUserIds.length) {
+        await additionalPrivilegeDAL.delete(
+          {
+            projectId,
+            $in: {
+              actorUserId: actorUserIds
+            }
+          },
+          tx
+        );
+      }
 
       const deletedMemberships = await membershipUserDAL.delete(
         {
@@ -529,9 +546,9 @@ export const projectMembershipServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
 
-    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
-    usageMeteringService.emitForProject(projectId, PamIdentities.key);
-    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities);
     return memberships;
   };
 
@@ -580,6 +597,14 @@ export const projectMembershipServiceFactory = ({
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
       await assertProductWillRetainAdmin({ project, excludeMembershipIds: [actorMembership.id], tx });
 
+      const [lockedMembership] = await lockMembershipsById([actorMembership.id], tx);
+      if (!lockedMembership) {
+        throw new BadRequestError({
+          message:
+            "Your membership in this project changed before the leave completed. Leave the project again if you still want to remove it."
+        });
+      }
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
@@ -596,16 +621,7 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      const membership = (
-        await membershipUserDAL.delete(
-          {
-            scope: AccessScope.Project,
-            scopeProjectId: project.id,
-            actorUserId: actorId
-          },
-          tx
-        )
-      )?.[0];
+      const membership = await membershipUserDAL.deleteById(lockedMembership.id, tx);
 
       await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {
@@ -625,9 +641,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Failed to leave project" });
     }
 
-    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
-    usageMeteringService.emitForProject(projectId, PamIdentities.key);
-    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    usageMeteringService.emit(project.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(project.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities);
     return deletedMembership;
   };
 

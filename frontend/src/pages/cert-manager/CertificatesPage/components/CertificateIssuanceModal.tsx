@@ -522,7 +522,7 @@ export const CertificateIssuanceModal = ({
     async (formData: FormData) => {
       if (!currentProject?.slug || !currentProject?.id) {
         createNotification({
-          text: "Project not found. Please refresh and try again.",
+          text: "Certificate Manager could not be loaded. Please refresh and try again.",
           type: "error"
         });
         return;
@@ -559,10 +559,9 @@ export const CertificateIssuanceModal = ({
           handlePopUpToggle("issueCertificate", false);
           if (currentOrg?.id && currentProject?.id && response.certificate.certificateId) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+              to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
               params: {
                 orgId: currentOrg.id,
-                projectId: currentProject.id,
                 certificateId: response.certificate.certificateId
               },
               ...(applicationName && { search: { fromApplication: applicationName } })
@@ -670,7 +669,7 @@ export const CertificateIssuanceModal = ({
       overrideContent={
         cert ? (
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-            <h4 className="text-sm font-medium text-foreground">Certificate Details</h4>
+            <h4 className="text-sm font-normal text-foreground">Certificate Details</h4>
             <p className="mt-1 text-sm text-muted">Serial Number: {cert.serialNumber}</p>
             <p className="text-sm text-muted">Certificate Id: {cert.id}</p>
             <p className="text-sm text-muted">Common Name: {cert.commonName}</p>

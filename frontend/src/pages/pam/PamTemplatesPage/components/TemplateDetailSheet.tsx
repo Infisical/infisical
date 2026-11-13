@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type JSX, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -34,12 +34,17 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
-import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { APP_CONNECTION_MAP, getAppConnectionProviderName } from "@app/helpers/appConnections";
+import {
+  AppConnection,
+  useListAppConnections,
+  useListAvailableAppConnectionsForApps
+} from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
+  getRotationIntervalOptions,
   isRotatablePamAccountType,
   maxGeneratedPasswordLength,
-  PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
   pamAccountTypeSupportsSessionLogMasking,
   PamPolicyType,
@@ -47,6 +52,7 @@ import {
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
 } from "@app/hooks/api/pam";
+import { PAM_RECORDING_CONNECTION_APPS } from "@app/hooks/api/pam/constants";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
@@ -95,7 +101,7 @@ const buildSettingsSchema = (maxPwLength: number) =>
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["recordingConnectionId"],
-            message: "Select an AWS connection"
+            message: "Select a connection"
           });
         }
         if (!data.s3Bucket?.trim()) {
@@ -275,10 +281,11 @@ const SettingsTab = ({
   const { data: template, isLoading } = useGetPamAccountTemplate(templateId);
   const updateTemplate = useUpdatePamAccountTemplate({ skipValidationToast: true });
   const { currentProject } = useProject();
-  const { data: awsConnections = [] } = useListAvailableAppConnections(
-    AppConnection.AWS,
+  const { connections: recordingConnections } = useListAvailableAppConnectionsForApps(
+    PAM_RECORDING_CONNECTION_APPS,
     currentProject.id
   );
+  const { data: appConnections = [] } = useListAppConnections();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
   const maxPwLength = maxGeneratedPasswordLength(template?.type);
@@ -398,8 +405,15 @@ const SettingsTab = ({
   const gatewayPoolId = watch("gatewayPoolId");
   const policies = watch("policies");
   const storageBackend = watch("recordingStorageBackend");
+  const recordingConnectionApp = recordingConnections.find(
+    (conn) => conn.id === watch("recordingConnectionId")
+  )?.app;
   const rotationEnabled = watch("settings.rotationEnabled");
   const heartbeatEnabled = watch("settings.heartbeatEnabled");
+  const savedSettings = (template.settings ?? {}) as {
+    rotation?: { intervalSeconds?: number | null };
+    heartbeat?: { intervalSeconds?: number | null };
+  };
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const supportsSessionLogMasking = pamAccountTypeSupportsSessionLogMasking(template.type);
@@ -407,8 +421,13 @@ const SettingsTab = ({
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
+  // These only change how an approval is reached, so they follow Require Approval
+  const approvalDependentPolicies = [
+    PamPolicyType.AllowAutoApproval,
+    PamPolicyType.AllowBreakGlass
+  ];
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
-    (p) => POLICY_EDITORS[p.key] && (p.key !== PamPolicyType.AllowBreakGlass || requiresApproval)
+    (p) => POLICY_EDITORS[p.key] && (!approvalDependentPolicies.includes(p.key) || requiresApproval)
   );
 
   const onSubmit = (data: SettingsForm) => {
@@ -420,7 +439,9 @@ const SettingsTab = ({
     if (data.recordingStorageBackend === "aws-s3" && data.s3Bucket) {
       settings.recordingS3Config = {
         bucket: data.s3Bucket,
-        region: data.s3Region || "us-east-1",
+        ...(recordingConnectionApp === AppConnection.S3Compatible
+          ? {}
+          : { region: data.s3Region || "us-east-1" }),
         ...(data.s3KeyPrefix ? { keyPrefix: data.s3KeyPrefix } : {})
       };
     } else {
@@ -509,6 +530,7 @@ const SettingsTab = ({
           }
           createNotification({ type: "error", text: "Failed to update template" });
         },
+        // oxlint-disable-next-line react/no-unstable-nested-components -- a callback that builds a toast, not a component
         onSuccess: async (result) => {
           createNotification({ type: "success", text: "Template updated" });
           const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
@@ -565,7 +587,7 @@ const SettingsTab = ({
                   if (value === null || value === undefined) delete next[p.key];
                   else next[p.key] = value;
                   if (p.key === PamPolicyType.RequiresApproval && value !== true) {
-                    delete next[PamPolicyType.AllowBreakGlass];
+                    approvalDependentPolicies.forEach((key) => delete next[key]);
                   }
                   setValue("policies", next, { shouldDirty: true });
                 }}
@@ -719,11 +741,13 @@ const SettingsTab = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
-                            <SelectItem key={option.seconds} value={String(option.seconds)}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
+                          {getRotationIntervalOptions(savedSettings.rotation?.intervalSeconds).map(
+                            (option) => (
+                              <SelectItem key={option.seconds} value={String(option.seconds)}>
+                                {option.label}
+                              </SelectItem>
+                            )
+                          )}
                         </SelectContent>
                       </Select>
                       <FieldDescription>
@@ -778,11 +802,13 @@ const SettingsTab = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper">
-                        {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
-                          <SelectItem key={option.seconds} value={String(option.seconds)}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
+                        {getRotationIntervalOptions(savedSettings.heartbeat?.intervalSeconds).map(
+                          (option) => (
+                            <SelectItem key={option.seconds} value={String(option.seconds)}>
+                              {option.label}
+                            </SelectItem>
+                          )
+                        )}
                       </SelectContent>
                     </Select>
                     <FieldDescription>
@@ -848,7 +874,7 @@ const SettingsTab = ({
                       </SelectTrigger>
                       <SelectContent position="popper">
                         <SelectItem value="postgres">Internal Database</SelectItem>
-                        <SelectItem value="aws-s3">AWS S3</SelectItem>
+                        <SelectItem value="aws-s3">S3 Bucket</SelectItem>
                       </SelectContent>
                     </Select>
                   </FieldContent>
@@ -885,28 +911,40 @@ const SettingsTab = ({
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field>
-                      <FieldLabel>AWS Connection</FieldLabel>
+                      <FieldLabel>Connection</FieldLabel>
                       <FieldContent>
                         <Select
                           value={field.value ?? ""}
                           onValueChange={(v) => field.onChange(v || null)}
                         >
                           <SelectTrigger className="w-full" isError={!!fieldState.error}>
-                            <SelectValue placeholder="Select an AWS connection" />
+                            <SelectValue placeholder="Select a connection" />
                           </SelectTrigger>
                           <SelectContent position="popper">
-                            {awsConnections.map((conn) => (
-                              <SelectItem key={conn.id} value={conn.id}>
-                                {conn.name}
-                              </SelectItem>
-                            ))}
+                            {recordingConnections.length === 0 && (
+                              <div className="px-2 py-3 text-center text-xs text-muted">
+                                No AWS or S3-Compatible Storage connections found. Create one from
+                                the App Connections page.
+                              </div>
+                            )}
+                            {recordingConnections.map((conn) => {
+                              const connection = appConnections.find(({ id }) => id === conn.id);
+                              const providerName = connection
+                                ? getAppConnectionProviderName(connection)
+                                : APP_CONNECTION_MAP[conn.app].name;
+                              return (
+                                <SelectItem key={conn.id} value={conn.id}>
+                                  {conn.name} <span className="text-muted">({providerName})</span>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         {fieldState.error ? (
                           <FieldError>{fieldState.error.message}</FieldError>
                         ) : (
                           <FieldDescription>
-                            The AWS connection used to authenticate with S3.
+                            The AWS or S3-Compatible Storage connection used to access the bucket.
                           </FieldDescription>
                         )}
                       </FieldContent>
@@ -932,18 +970,20 @@ const SettingsTab = ({
                   )}
                 />
 
-                <Controller
-                  name="s3Region"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Region</FieldLabel>
-                      <FieldContent>
-                        <Input {...field} placeholder="us-east-1" />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+                {recordingConnectionApp !== AppConnection.S3Compatible && (
+                  <Controller
+                    name="s3Region"
+                    control={control}
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel>Region</FieldLabel>
+                        <FieldContent>
+                          <Input {...field} placeholder="us-east-1" />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                )}
 
                 <Controller
                   name="s3KeyPrefix"

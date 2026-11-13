@@ -1,0 +1,41 @@
+---
+title: "Stripe connection"
+sidebarTitle: "Stripe"
+description: "Learn how to configure a Stripe Connection for Infisical."
+---
+
+Infisical supports connecting to Stripe through an installed Stripe App, so it can create and expire restricted API keys on your behalf for [Stripe API key rotation](/documentation/platform/secret-rotation/stripe-api-key).
+
+## Setup Stripe connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Stripe** option from the connection options modal.
+
+    ![Select Stripe Connection](/images/app-connections/stripe/select-stripe-option.png)
+  </Step>
+  <Step title="Connect to Stripe">
+    Enter a **Name** for the connection, then select **Connect to Stripe**. You'll be redirected to Stripe to install the Infisical app and choose the account Infisical should manage API keys for.
+
+    ![Stripe Connection Form](/images/app-connections/stripe/connection-form.png)
+  </Step>
+  <Step title="Install and authorize">
+    Review the permissions and install the app on the Stripe account you want to connect. Stripe redirects you back to Infisical once you approve it.
+
+    ![Install Stripe App](/images/app-connections/stripe/install-app.png)
+  </Step>
+  <Step title="Connection created">
+    Your **Stripe Connection** is now available for use in your Infisical projects.
+
+    ![Stripe Connection Created](/images/app-connections/stripe/connection-created.png)
+  </Step>
+</Steps>
+
+<Info>
+  Uninstalling the app from the Stripe side, or having Stripe revoke it, breaks the connection. Reconnect from Infisical to restore it.
+</Info>

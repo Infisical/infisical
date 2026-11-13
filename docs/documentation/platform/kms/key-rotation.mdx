@@ -1,0 +1,54 @@
+---
+title: "Rotate keys"
+description: "Replace a key's key material without changing your applications."
+---
+
+When you rotate a key, Infisical creates new key material for it and increases the key's version by one. The key keeps its ID and name, so your applications keep working without any changes:
+
+- Infisical encrypts new data with the new key material
+- Infisical keeps every earlier version of the key material, and decrypts each ciphertext with the version that encrypted it
+- Infisical doesn't re-encrypt data you encrypted before the rotation. To move that data to the new key material, decrypt the data and encrypt it again
+
+You can rotate only Encrypt/Decrypt keys. To replace a Sign/Verify or Generate/Verify MAC key, create a new key and update your applications to use it.
+
+<Warning>
+  Only Infisical has the earlier versions of the key material. If a system keeps its own copy of the key material, it gets only the new version after the rotation, and can't decrypt data it encrypted with an earlier version:
+
+  - **KMIP clients**: Don't rotate a key that a [KMIP client](/documentation/platform/kms/kmip) uses. Create a new key for the client instead
+  - **Exported keys**: An export contains only the current version. If you keep exported key material as a backup, [export the key](/documentation/platform/kms/export-import) again after each rotation, and keep every export
+</Warning>
+
+## Prerequisites
+
+- An [Encrypt/Decrypt key](/documentation/platform/kms/keys#create-a-key) that isn't disabled
+- The **Admin** or **Member** role in the key's project
+
+## Rotate a key
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the key's row, then select **Rotate Key**.
+      </Step>
+      <Step>
+        Type `confirm`, then select **Rotate**.
+      </Step>
+    </Steps>
+
+    The key's **Version** column shows the new version.
+  </Tab>
+  <Tab title="API">
+    Call [the rotate key endpoint](/api-reference/endpoints/kms/keys/rotate) with the key's ID:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/rotate \
+      --header 'Authorization: Bearer <access-token>'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+  </Tab>
+</Tabs>

@@ -1,8 +1,8 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, ServerIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -62,7 +62,7 @@ const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <KmipServerPageHeader
         kmipServer={kmipServer}
         orgId={orgId}
@@ -94,10 +94,8 @@ export const KmipServerDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.kmip-server")} />
+      <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
         I={OrgKmipServerPermissionActions.ListKmipServers}

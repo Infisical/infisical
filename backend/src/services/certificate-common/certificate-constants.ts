@@ -13,6 +13,18 @@ export const PKI_TEXT_COLUMN_MAX_LENGTH = 255;
 
 export const PKI_ALT_NAMES_COLUMN_MAX_LENGTH = 4096;
 
+/**
+ * Post-quantum keys and signatures (ML-DSA, SLH-DSA) make PEM CSRs far larger than RSA/ECDSA ones;
+ * an SLH-DSA-256f CSR alone is over 60 KB.
+ */
+export const CSR_MAX_LENGTH = 128 * 1024;
+
+export const csrSchema = z
+  .string()
+  .trim()
+  .min(1, "CSR cannot be empty")
+  .max(CSR_MAX_LENGTH, "CSR cannot exceed 128 KB");
+
 const MAX_CERTIFICATE_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 
 /**
@@ -326,6 +338,12 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
 } as const;
 
 export const DEFAULT_CRL_VALIDITY_DAYS = 7;
+export const MIN_CRL_VALIDITY_DAYS = 1;
+export const MAX_CRL_VALIDITY_DAYS = 365;
+export const CRL_REBUILD_MAX_LEAD_HOURS = 24;
+export const CRL_REBUILD_LEAD_HOURS_PER_VALIDITY_DAY = 12;
+export const CRL_VALIDITY_TOLERANCE_HOURS = 1;
+export const CRL_REVOCATION_CATCH_UP_MARGIN_MINUTES = 5;
 
 /**
  * Certificates we mint just-in-time are verified by gateways, relays, and agents on hosts whose
@@ -367,6 +385,7 @@ export enum CertExtensionCriticality {
 }
 
 export const CUSTOM_EXTENSION_PRESET_OIDS = {
+  TLS_FEATURE: "1.3.6.1.5.5.7.1.24",
   NTDS_SID: "1.3.6.1.4.1.311.25.2",
   MS_CERTIFICATE_TEMPLATE_NAME: "1.3.6.1.4.1.311.20.2",
   MS_CERTIFICATE_TEMPLATE_INFORMATION: "1.3.6.1.4.1.311.21.7"
@@ -397,6 +416,17 @@ export const RESERVED_CERT_EXTENSION_OID_MESSAGES: Record<string, string> = {
     "OID 1.3.6.1.5.5.7.1.1 is the authority information access extension, which Infisical manages, so it cannot be used as a custom extension.",
   "1.3.6.1.4.1.311.20.2.3":
     "Use a UPN subject alternative name instead of declaring OID 1.3.6.1.4.1.311.20.2.3 as a custom extension."
+};
+
+// Mirrored by ISSUER_GENERATED_EXTENSION_LABELS in the frontend's shared certificate-constants.ts,
+// which filters the renewal form. Add an OID to one and the two disagree.
+export const ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS: Record<string, string> = {
+  "1.3.6.1.4.1.11129.2.4.2": "signed certificate timestamp list",
+  "1.3.6.1.4.1.11129.2.4.3": "precertificate poison",
+  "1.3.6.1.4.1.11129.2.4.5": "OCSP signed certificate timestamp list",
+  "1.3.101.75": "certificate transparency information",
+  "1.3.6.1.4.1.311.21.1": "certification authority version",
+  "1.3.6.1.4.1.311.21.2": "previous certification authority certificate hash"
 };
 
 export const CERT_EXTENSION_OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";

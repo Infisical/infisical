@@ -1,69 +1,73 @@
 ---
 title: "Set up SSH certificate authentication"
 sidebarTitle: "SSH certificate auth"
-description: "Configure certificate-based SSH access to eliminate static credentials."
+description: "Let people connect to SSH servers with short-lived certificates instead of stored credentials."
 ---
 
-This guide walks through setting up SSH certificate authentication. Instead of managing passwords or SSH keys, Infisical mints a short-lived certificate for each [session](/documentation/platform/pam/sessions/overview) — valid only for that session, so there's nothing to rotate or revoke.
+With certificate authentication, an [SSH account](/documentation/platform/pam/accounts/ssh) stores no password or private key. Each account has its own certificate authority (CA), and when someone launches a [session](/documentation/platform/pam/sessions/overview), Infisical signs a certificate that's valid only for that session. The server accepts the certificate because it trusts the account's CA.
+
+This guide creates an SSH account that uses certificate authentication, then configures the server to trust the account's CA.
 
 ## Prerequisites
 
-- Admin access to the [folder](/documentation/platform/pam/folders/overview) where you'll create the [account](/documentation/platform/pam/accounts/overview)
-- Root/sudo access on the target server
-- The server must be reachable from your [Gateway](/documentation/platform/gateways/gateway-deployment)
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- Root access on the server
+- A [Gateway](/documentation/platform/gateways/overview) that can reach the server on its SSH port
 
-## Steps
+## Step 1: Create the SSH account
 
 <Steps>
-  <Step title="Create the SSH Account">
-    1. Go to **Privileged Access Management → Accounts** and select **Add Account**
-    2. Select your folder and an SSH [template](/documentation/platform/pam/templates/overview)
-    3. Fill in the connection details (host, port, username)
-    4. Set **Authentication Method** to **Certificate**
-    5. Select **Create**
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Configure the Server">
-    Open the account you just created. You'll see a **CA Setup** section.
-
-    <Tabs>
-      <Tab title="Automated Setup">
-        Copy the setup command from the account page and run it on your server. The script downloads the CA public key, configures sshd to trust it, and restarts the service.
-      </Tab>
-      <Tab title="Manual Setup">
-        1. Copy the **CA Public Key** from the account page
-        2. Save it to `/etc/ssh/infisical_ca.pub` on the server
-        3. Add to sshd_config: `TrustedUserCAKeys /etc/ssh/infisical_ca.pub`
-        4. Restart sshd: `sudo systemctl restart sshd`
-      </Tab>
-    </Tabs>
-
-    Verify the setup:
-    ```bash
-    sudo sshd -T | grep trustedusercakeys
-    ```
+  <Step>
+    Select the **Folder** and an SSH **Account Template**, then select **Next**.
   </Step>
-  <Step title="Connect">
-    Your team can now connect from the **Accounts** page — either in the browser or using the CLI proxy.
-
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
+  <Step>
+    Enter a **Name**, and the server's **Host** and **Port**. If the template doesn't set a Gateway, select one under **Gateway**.
+  </Step>
+  <Step>
+    Select **Certificate** as the **Auth Method**, enter the **Username** to log in as, and select **Create**.
   </Step>
 </Steps>
 
-## Why certificates?
+## Step 2: Configure the server to trust the account's CA
 
-- **No static credentials** to rotate or leak
-- **Short-lived** and valid only for the session
-- **Per-account CAs** so compromising one doesn't affect others
-- **Automatic** key management for users
+<Steps>
+  <Step>
+    On the **Accounts** page, open the options menu of the account you created and select **Configure**. Under **SSH CA setup required**, select **Copy install command**.
+  </Step>
+  <Step>
+    Run the command on the server. The command downloads a setup script and runs it as root.
+
+    The script adds the account's CA public key to the file that the `TrustedUserCAKeys` setting in `sshd_config` points to. If `sshd_config` has no `TrustedUserCAKeys` setting, the script adds the key to `/etc/ssh/infisical_ca.pub` and adds the setting. It then checks the configuration with `sshd -t` and restarts the SSH service.
+  </Step>
+  <Step>
+    Check that the server trusts the CA file:
+
+    ```bash
+    sudo sshd -T | grep -i trustedusercakeys
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The command contains your Infisical access token, which it uses to download the script. To read the script before you run it, run the command without `| sudo bash`.
+</Note>
+
+## Step 3: Connect to the server
+
+Anyone with access to the account can now launch a session on it from the **Accounts** page, in the browser or through the CLI. To learn how, see [Connect to an account](/documentation/platform/pam/accounts/connect).
+
+If a session fails to authenticate, check that the account's **Username** exists on the server and that the setup script finished without errors.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View SSH session recordings.
+  <Card title="Access control" icon="shield-half" href="/documentation/platform/pam/concepts/access-control">
+    Control who can manage PAM and who can connect to each account.
   </Card>
-  <Card title="Team Access Guide" icon="users" href="/documentation/platform/pam/guides/team-access">
-    Grant team access to databases.
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
+    Review and end the connections that people and agents make to your accounts.
   </Card>
 </CardGroup>

@@ -33,7 +33,9 @@ const getGraphicVariant = (key: string): GraphicVariant => {
   return "prioritize-destination";
 };
 
-const getShortDestinationName = (name: string) => name.split(" ")[0];
+// "Digital Ocean" is a two-word vendor; the first word alone is not the name.
+const getShortDestinationName = (name: string) =>
+  name.startsWith("Digital Ocean") ? "Digital Ocean" : name.split(" ")[0];
 
 const getBehaviorCopy = (
   key: SecretSyncInitialSyncBehavior,
@@ -344,7 +346,7 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
   const currentInitialBehavior = watch("syncOptions.initialSyncBehavior");
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const keySchema = watch("syncOptions.keySchema");
-  const includeAllSubFolders = Boolean(watch("syncOptions.includeAllSubFolders"));
+  const includeAllSubFolders = Boolean(watch("includeAllSubFolders"));
 
   // Vercel "sensitive" secrets cannot be read back, so importing destination secrets is impossible.
   // Force the initial sync behavior to OverwriteDestination whenever sensitive is enabled.

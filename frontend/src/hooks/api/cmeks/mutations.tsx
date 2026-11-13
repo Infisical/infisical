@@ -48,13 +48,15 @@ export const useUpdateCmek = () => {
       name,
       description,
       isDisabled,
-      hasDeleteProtection
+      hasDeleteProtection,
+      isPublicKeyPublished
     }: TUpdateCmek) => {
       const { data } = await apiRequest.patch(`/api/v1/kms/keys/${keyId}`, {
         name,
         description,
         isDisabled,
-        hasDeleteProtection
+        hasDeleteProtection,
+        isPublicKeyPublished
       });
 
       return data;

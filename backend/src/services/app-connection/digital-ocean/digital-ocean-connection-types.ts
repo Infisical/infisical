@@ -39,4 +39,6 @@ export type TDigitalOceanApp = {
     }>;
     envs?: TDigitalOceanVariable[];
   };
+  in_progress_deployment?: { id: string; phase?: string };
+  pending_deployment?: { id: string };
 };

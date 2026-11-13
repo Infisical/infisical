@@ -10,8 +10,13 @@ import {
   DetailValue,
   Separator
 } from "@app/components/v3";
-import { BOOLEAN_SYNC_OPTION_FIELDS, VALUE_SYNC_OPTION_FIELDS } from "@app/helpers/pkiSyncs";
-import { TPkiSync } from "@app/hooks/api/pkiSyncs";
+import {
+  BOOLEAN_SYNC_OPTION_FIELDS,
+  getSyncOptionDisplayValue,
+  getUnusedExportOptionKeys,
+  VALUE_SYNC_OPTION_FIELDS
+} from "@app/helpers/pkiSyncs";
+import { PkiSyncExportFormat, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   pkiSync: TPkiSync;
@@ -21,6 +26,9 @@ const DESTINATION_OWNED_OPTIONS = new Set<string>(["exportFormat"]);
 
 export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
   const syncOptions = pkiSync.syncOptions as Record<string, unknown> | undefined;
+  const unusedOptionKeys = getUnusedExportOptionKeys(
+    syncOptions?.exportFormat as PkiSyncExportFormat | undefined
+  );
 
   return (
     <>
@@ -32,7 +40,7 @@ export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
             <DetailGroup>
               {BOOLEAN_SYNC_OPTION_FIELDS.map(({ key, label }) => {
                 const value = syncOptions?.[key];
-                if (typeof value !== "boolean") return null;
+                if (typeof value !== "boolean" || unusedOptionKeys.has(key)) return null;
 
                 return (
                   <Detail key={key}>
@@ -46,17 +54,21 @@ export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
                 );
               })}
               {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
-                if (DESTINATION_OWNED_OPTIONS.has(key)) return null;
+                if (DESTINATION_OWNED_OPTIONS.has(key) || unusedOptionKeys.has(key)) return null;
 
-                const value = syncOptions?.[key];
-                if (value === undefined || value === null || value === "") return null;
+                const displayValue = getSyncOptionDisplayValue(
+                  pkiSync.destination,
+                  key,
+                  syncOptions?.[key]
+                );
+                if (displayValue === null) return null;
 
                 return (
                   <Detail key={key}>
                     <DetailLabel>{label}</DetailLabel>
                     <DetailValue>
                       <Badge variant="neutral" className="max-w-full truncate">
-                        {String(value)}
+                        {displayValue}
                       </Badge>
                     </DetailValue>
                   </Detail>

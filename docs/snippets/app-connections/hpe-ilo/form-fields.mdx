@@ -1,0 +1,9 @@
+- **Name**: A descriptive name for the connection
+- **Description** (optional): A note for future reference
+- **Gateway** (optional): The [Gateway](/documentation/platform/gateways/overview) Infisical connects through, if Infisical can't reach the iLO directly
+- **Hostname**: The hostname or IP address of the iLO, without `https://` or a port (for example, `ilo.example.com`)
+- **Port** (optional): The HTTPS port of the iLO (defaults to `443`)
+- **Username**: The login name of the [iLO local account](#prerequisites) Infisical signs in with
+- **Password**: The password of the iLO account
+- **SSL Certificate** (optional): On the **SSL** tab, the CA certificate in PEM format that signed the iLO's TLS certificate
+- **Reject Unauthorized**: On the **SSL** tab, whether Infisical refuses to connect when it can't verify the iLO's TLS certificate (on by default; for a self-signed certificate, enter its CA certificate in **SSL Certificate** instead of turning this off)

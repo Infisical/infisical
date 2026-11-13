@@ -131,7 +131,7 @@ export const RoleAssignmentRow = ({
                 <SelectTrigger id={roleSelectId} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper" className="z-[70]">
+                <SelectContent position="popper">
                   {rolesForSelect.map(({ name, slug, id }) => {
                     const isAssignable = assignableRoleSlugs.has(slug);
                     return (
@@ -176,7 +176,6 @@ export const RoleAssignmentRow = ({
           </Tooltip>
           <PopoverContent
             side="right"
-            className="z-[70]"
             onWheel={(e) => e.stopPropagation()}
             onOpenAutoFocus={(e) => e.preventDefault()}
           >

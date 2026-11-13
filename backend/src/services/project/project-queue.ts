@@ -7,47 +7,31 @@ import {
   ProjectMembershipRole,
   ProjectUpgradeStatus,
   ProjectVersion,
-  SecretApprovalRequestsSecretsSchema,
   SecretKeyEncoding,
   SecretsSchema,
   SecretVersionsSchema,
   TableName,
   TIntegrationAuths,
-  TSecretApprovalRequestsSecrets,
   TSecrets,
   TSecretVersions
 } from "@app/db/schemas";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
-import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import {
-  decryptIntegrationAuths,
-  decryptSecretApprovals,
-  decryptSecrets,
-  decryptSecretVersions,
-  SymmetricKeySize
-} from "@app/lib/crypto";
+import { decryptIntegrationAuths, decryptSecrets, decryptSecretVersions, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
-import { JobState } from "@app/queue/queue-service";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
-import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
@@ -56,21 +40,19 @@ export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 
 type TProjectQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  keyStore: Pick<TKeyStoreFactory, "deleteItems">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "bulkUpdateNoVersionIncrement" | "delete">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findProjectSecretsWithNullBlindIndex" | "batchSetBlindIndexes">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "find" | "create" | "delete" | "insertMany">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "find">;
-  secretApprovalSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "delete" | "create">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   integrationAuthDAL: TIntegrationAuthDALFactory;
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "transaction" | "updateById" | "setProjectUpgradeStatus" | "find">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "findOne" | "transaction" | "updateById" | "setProjectUpgradeStatus" | "find" | "findById"
+  >;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
@@ -78,16 +60,11 @@ type TProjectQueueFactoryDep = {
 
 export const projectQueueFactory = ({
   queueService,
-  keyStore,
   secretDAL,
-  secretV2BridgeDAL,
-  kmsService,
   folderDAL,
   userDAL,
   secretVersionDAL,
   integrationAuthDAL,
-  secretApprovalRequestDAL,
-  secretApprovalSecretDAL,
   projectKeyDAL,
   projectBotDAL,
   projectEnvDAL,
@@ -166,7 +143,6 @@ export const projectQueueFactory = ({
       });
       const secrets: TSecrets[] = [];
       const secretVersions: TSecretVersions[] = [];
-      const approvalSecrets: TSecretApprovalRequestsSecrets[] = [];
       const folderSecretVersionIdsToDelete: string[] = [];
 
       for (const folder of projectFolders) {
@@ -194,24 +170,12 @@ export const projectQueueFactory = ({
         );
         folderSecretVersionIdsToDelete.push(...deletedSecretVersions.map((el) => el.id));
 
-        const approvalRequests = await secretApprovalRequestDAL.find({
-          status: RequestState.Open,
-          folderId: folder.id
-        });
-        const secretApprovals = await secretApprovalSecretDAL.find({
-          $in: {
-            requestId: approvalRequests.map((el) => el.id)
-          }
-        });
-
         secrets.push(...folderSecrets);
         secretVersions.push(...folderSecretVersions);
-        approvalSecrets.push(...secretApprovals);
       }
 
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
       const decryptedSecretVersions = decryptSecretVersions(secretVersions, userPrivateKey, oldProjectKey);
-      const decryptedApprovalSecrets = decryptSecretApprovals(approvalSecrets, userPrivateKey, oldProjectKey);
       const decryptedIntegrationAuths = decryptIntegrationAuths(projectIntegrationAuths, userPrivateKey, oldProjectKey);
 
       // Get the existing bot and the existing project keys for the members of the project
@@ -385,7 +349,6 @@ export const projectQueueFactory = ({
 
         const updatedSecrets: TSecrets[] = [];
         const updatedSecretVersions: TSecretVersions[] = [];
-        const updatedSecretApprovals: TSecretApprovalRequestsSecrets[] = [];
         const updatedIntegrationAuths: TIntegrationAuths[] = [];
         for (const rawSecret of decryptedSecrets) {
           const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
@@ -485,53 +448,6 @@ export const projectQueueFactory = ({
           updatedSecretVersions.push(payload);
         }
 
-        for (const rawSecretApproval of decryptedApprovalSecrets) {
-          const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
-            plaintext: rawSecretApproval.decrypted.secretKey,
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
-          const secretValueEncrypted = crypto
-            .encryption()
-            .symmetric()
-            .encrypt({
-              plaintext: rawSecretApproval.decrypted.secretValue || "",
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-          const secretCommentEncrypted = crypto
-            .encryption()
-            .symmetric()
-            .encrypt({
-              plaintext: rawSecretApproval.decrypted.secretComment || "",
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-
-          const payload: TSecretApprovalRequestsSecrets = {
-            ...rawSecretApproval.original,
-            keyEncoding: SecretKeyEncoding.UTF8,
-
-            secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-            secretKeyIV: secretKeyEncrypted.iv,
-            secretKeyTag: secretKeyEncrypted.tag,
-
-            secretValueCiphertext: secretValueEncrypted.ciphertext,
-            secretValueIV: secretValueEncrypted.iv,
-            secretValueTag: secretValueEncrypted.tag,
-
-            secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-            secretCommentIV: secretCommentEncrypted.iv,
-            secretCommentTag: secretCommentEncrypted.tag
-          } as const;
-
-          if (!SecretApprovalRequestsSecretsSchema.safeParse(payload).success) {
-            throw new Error(`Invalid secret approval payload: ${JSON.stringify(payload)}`);
-          }
-
-          updatedSecretApprovals.push(payload);
-        }
-
         for (const integrationAuth of decryptedIntegrationAuths) {
           const access = crypto.encryption().symmetric().encrypt({
             plaintext: integrationAuth.decrypted.access,
@@ -579,19 +495,12 @@ export const projectQueueFactory = ({
         if (updatedSecretVersions.length !== secretVersions.length) {
           throw new Error("Failed to update some secret versions");
         }
-        if (updatedSecretApprovals.length !== approvalSecrets.length) {
-          throw new Error("Failed to update some secret approvals");
-        }
         if (updatedIntegrationAuths.length !== projectIntegrationAuths.length) {
           throw new Error("Failed to update some integration auths");
         }
 
         const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(updatedSecrets, tx);
         const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(updatedSecretVersions, tx);
-        const secretApprovalUpdates = await secretApprovalSecretDAL.bulkUpdateNoVersionIncrement(
-          updatedSecretApprovals,
-          tx
-        );
         const integrationAuthUpdates = await integrationAuthDAL.bulkUpdate(
           updatedIntegrationAuths.map((el) => ({
             filter: { id: el.id },
@@ -616,7 +525,6 @@ export const projectQueueFactory = ({
         if (
           secretUpdates.length !== updatedSecrets.length ||
           secretVersionUpdates.length !== updatedSecretVersions.length ||
-          secretApprovalUpdates.length !== updatedSecretApprovals.length ||
           integrationAuthUpdates.length !== updatedIntegrationAuths.length
         ) {
           throw new Error("Parts of the upgrade failed. Some secrets were not updated");
@@ -655,122 +563,7 @@ export const projectQueueFactory = ({
     logger.error(err, "Upgrade project failed", job?.data);
   });
 
-  const startSecretBlindIndexMigration = async (projectId: string) => {
-    const jobId = `enable-blind-index-project-${projectId}`;
-
-    const existingJob = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
-    if (existingJob) {
-      const state = await existingJob.getState();
-      if (state === "completed" || state === "failed") {
-        await existingJob.remove();
-      } else {
-        logger.info(`Job for project ${projectId} already exists, skipping`);
-        return;
-      }
-    }
-
-    await queueService.queue(
-      QueueName.SecretBlindIndexMigration,
-      QueueJobs.SecretBlindIndexMigration,
-      { projectId },
-      {
-        // 1 minute, we don't use it after it's complete, just making sure any race condition can still fetch the job
-        removeOnComplete: { age: 60 },
-        // 1 day, this gives us time to display the error to the customer
-        removeOnFail: { age: 24 * 3600 },
-        jobId
-      }
-    );
-  };
-
-  queueService.start(QueueName.SecretBlindIndexMigration, async (job) => {
-    const { projectId } = job.data;
-    const BATCH_SIZE = 1000;
-
-    logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
-
-    const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    let totalProcessed = 0;
-
-    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
-    while (true) {
-      const secrets = await secretV2BridgeDAL.findProjectSecretsWithNullBlindIndex(projectId, BATCH_SIZE);
-
-      if (secrets.length === 0) break;
-
-      const updates: { id: string; secretValueBlindIndex: string }[] = [];
-      for (const secret of secrets) {
-        if (secret.encryptedValue) {
-          const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
-          const blindIndex = await generateSecretBlindIndex(decryptedValue);
-          updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
-        }
-      }
-
-      if (updates.length > 0) {
-        await secretV2BridgeDAL.batchSetBlindIndexes(updates);
-      }
-
-      totalProcessed += updates.length;
-      logger.info(
-        `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
-      );
-
-      // Prevents job from being marked as stalled
-      await job.updateProgress(totalProcessed);
-
-      if (secrets.length < BATCH_SIZE) break;
-
-      // pause between batches to avoid saturating the CPU
-      const jitter = 100 + Math.floor(Math.random() * 100);
-      await new Promise((resolve) => {
-        setTimeout(resolve, jitter);
-      });
-    }
-
-    await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
-
-    await keyStore.deleteItems({
-      pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*`
-    });
-
-    logger.info(
-      `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`
-    );
-  });
-
-  queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
-    logger.error(err, `SecretBlindIndexMigration: failed [projectId=${job?.data.projectId}]`);
-  });
-
-  const getJobState = async (projectId: string): Promise<{ status: JobState; message?: string }> => {
-    const jobId = `enable-blind-index-project-${projectId}`;
-    const job = await queueService.getJob(QueueName.SecretBlindIndexMigration, jobId);
-
-    if (!job) {
-      return { status: JobState.NotFound };
-    }
-
-    const state = await job.getState();
-
-    if (state === JobState.Failed) {
-      return { status: JobState.Failed, message: job.failedReason ?? "Unknown error" };
-    }
-
-    if (state === JobState.Completed) {
-      return { status: JobState.Completed };
-    }
-
-    return { status: JobState.Pending };
-  };
-
   return {
-    upgradeProject,
-    startSecretBlindIndexMigration,
-    getJobState
+    upgradeProject
   };
 };

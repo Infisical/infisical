@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
@@ -15,8 +15,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";
@@ -25,6 +25,7 @@ import { sendEmailNotificationWithRetry } from "./pki-alert-v2-channel-email-fns
 import { sendPagerDutyNotificationWithRetry } from "./pki-alert-v2-channel-pagerduty-fns";
 import { sendSlackNotificationWithRetry, validateSlackWebhookUrl } from "./pki-alert-v2-channel-slack-fns";
 import { sendWebhookNotification } from "./pki-alert-v2-channel-webhook-fns";
+import { LEGACY_ALERT_WRITES_BLOCKED } from "./pki-alert-v2-constants";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
 import {
@@ -73,7 +74,7 @@ type TPkiAlertV2ServiceFactoryDep = {
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -97,6 +98,15 @@ export const pkiAlertV2ServiceFactory = ({
   projectDAL,
   pkiApplicationDAL
 }: TPkiAlertV2ServiceFactoryDep) => {
+  const $assertLegacyAlertWritesAllowed = () => {
+    if (LEGACY_ALERT_WRITES_BLOCKED) {
+      throw new BadRequestError({
+        message:
+          "Legacy PKI alerts can no longer be created or edited. Use the alerts API (/api/v1/alerts) or the Alerting section of an application instead. Existing legacy alerts can still be viewed and deleted."
+      });
+    }
+  };
+
   const $assertCanActOnAlert = async (
     action: ProjectPermissionActions,
     projectId: string,
@@ -227,6 +237,8 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateAlertV2DTO): Promise<TAlertV2Response> => {
+    $assertLegacyAlertWritesAllowed();
+
     if (!applicationId) {
       throw new BadRequestError({
         message: "Alerts must be created inside an Application. Open the Application's Alerts tab and click Add Alert."
@@ -243,7 +255,7 @@ export const pkiAlertV2ServiceFactory = ({
     const nonEmailChannel = channels.find((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (nonEmailChannel) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseAlerting) {
+      if (!plan.has(PlanFeature.PkiEnterpriseAlerting)) {
         throw new BadRequestError({
           message: `Failed to create alert with a ${nonEmailChannel.channelType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
         });
@@ -398,6 +410,8 @@ export const pkiAlertV2ServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateAlertV2DTO): Promise<TAlertV2Response> => {
+    $assertLegacyAlertWritesAllowed();
+
     let alert = await pkiAlertV2DAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
     if (applicationId && alert.applicationId !== applicationId) {
@@ -432,7 +446,7 @@ export const pkiAlertV2ServiceFactory = ({
     const addedChannelTypes = channels?.filter((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (addedChannelTypes?.length) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseAlerting) {
+      if (!plan.has(PlanFeature.PkiEnterpriseAlerting)) {
         const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId);
         const existingTypes = new Set(existingChannels.map((channel) => channel.channelType));
         const newChannel = addedChannelTypes.find((channel) => !existingTypes.has(channel.channelType));

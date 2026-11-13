@@ -8,18 +8,20 @@ import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
+import { getClientDisconnectSignal } from "@app/server/lib/client-disconnect";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
   SecretProtectionType
 } from "@app/services/secret/secret-types";
-import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedTagSchema, secretRawSchema } from "../sanitizedSchemas";
@@ -68,6 +70,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       hide: false,
       operationId: "listSecretsV4",
@@ -200,7 +203,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
+      // References expanded with the reader's own overrides are credited to the secrets they resolved to.
+      const referencedSecretIds: string[] = [];
       const result = await server.services.secret.getSecretsRaw({
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -219,10 +225,33 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         includeImports: req.query.includeImports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
-        ifNoneMatch: req.headers["if-none-match"]
+        ifNoneMatch: req.headers["if-none-match"],
+        abortSignal: getClientDisconnectSignal(reply)
       });
 
       const { secrets, imports, etag, notModified } = result;
+
+      // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordBulkRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          environment,
+          secretPath,
+          recursive: req.query.recursive,
+          isFiltered: Boolean(req.query.tagSlugs?.length || req.query.metadataFilter?.length),
+          includeImports: req.query.includeImports,
+          expandSecretReferences: req.query.expandSecretReferences,
+          includesPersonalOverrides: req.query.includePersonalOverrides,
+          notModified,
+          etag,
+          secrets,
+          imports,
+          referencedSecretIds:
+            req.query.includePersonalOverrides && req.query.expandSecretReferences ? referencedSecretIds : undefined
+        });
+      }
 
       if (etag) {
         void reply.header("ETag", etag);
@@ -280,9 +309,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         secretId: z.string()
       }),
+      querystring: z.object({
+        viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue)
+      }),
       response: {
         200: z.object({
           secret: secretRawSchema.extend({
+            secretValueHidden: z.boolean(),
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
@@ -298,8 +331,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        secretId
+        secretId,
+        viewSecretValue: req.query.viewSecretValue
       });
+
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId: secret.workspace,
+          secretIds: [secret.id],
+          referencesExpanded: false
+        });
+      }
 
       return { secret };
     }
@@ -363,7 +407,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         throw new BadRequestError({ message: "You must provide  workspaceId" });
       }
 
+      const referencedSecretIds: string[] = [];
       const secret = await server.services.secret.getSecretByNameRaw({
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -379,6 +425,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         includeImports: req.query.includeImports,
         version: req.query.version
       });
+
+      if (req.query.viewSecretValue) {
+        // A personal secret expands through the reader's own overrides, so the secrets its references resolved to are
+        // credited in place of matching references by key.
+        const usesOverrides = req.query.type === SecretType.Personal && req.query.expandSecretReferences;
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: usesOverrides ? [secret.id, ...referencedSecretIds] : [secret.id],
+          referencesExpanded: usesOverrides ? false : req.query.expandSecretReferences
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -627,7 +686,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
           .nullable()
           .describe(RAW_SECRETS.UPDATE.secretReminderRepeatDays),
-        secretReminderRecipients: z.string().array().optional().describe(RAW_SECRETS.UPDATE.secretReminderRecipients),
+        secretReminderRecipients: z
+          .string()
+          .uuid()
+          .array()
+          .optional()
+          .describe(RAW_SECRETS.UPDATE.secretReminderRecipients),
         newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
         secretComment: z.string().optional().describe(RAW_SECRETS.UPDATE.secretComment)
       }),
@@ -1569,6 +1633,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment
       });
+
+      if (value !== undefined) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: [secret.id],
+          referencesExpanded: true
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId,

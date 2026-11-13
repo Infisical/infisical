@@ -67,7 +67,8 @@ export enum ProjectPermissionCmekActions {
   GenerateMac = "generate-mac",
   VerifyMac = "verify-mac",
   Rotate = "rotate",
-  ExportPrivateKey = "export-private-key"
+  ExportPrivateKey = "export-private-key",
+  PublishPublicKey = "publish-public-key"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
@@ -271,7 +272,8 @@ export enum ProjectPermissionSecretEventActions {
 }
 
 export enum ProjectPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 export enum ProjectPermissionInsightsActions {
@@ -309,6 +311,7 @@ export enum ProjectPermissionAgentVaultAccessBundleActions {
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
+  Edit = "edit",
   Revoke = "revoke"
 }
 
@@ -320,6 +323,13 @@ export enum ProjectPermissionAgentVaultProxyActions {
   // Issuing a replacement enrollment token mints a credential that enrolls a new box, so it is not Edit.
   IssueToken = "issue-token",
   Revoke = "revoke"
+}
+
+export enum ProjectPermissionAgentVaultSkillActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
 }
 
 export enum ProjectPermissionApprovalRequestActions {
@@ -401,6 +411,7 @@ export enum ProjectPermissionSub {
   AgentVaultAccessBundles = "agent-vault-access-bundles",
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
+  AgentVaultSkills = "agent-vault-skills",
   Insights = "insights"
 }
 
@@ -417,7 +428,8 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
       "assignableAction"
     ],
     [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
-    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"]
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: ["identityId"],
@@ -722,6 +734,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
   | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
+  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -1677,6 +1690,13 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultSkills).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSkillActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequests).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApprovalRequestActions).describe(
       "Describe what action an entity can take."
@@ -1980,15 +2000,15 @@ export const buildServiceTokenProjectPermission = (
         // Folder read is implied-for-all, so it isn't granted explicitly for read-scoped tokens.
         if (canRead && subject !== ProjectPermissionSub.SecretFolders) {
           if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
-            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
-            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
             can(ProjectPermissionSecretActions.ReadValue, subject, {
+              // CASL's per-action condition schema doesn't expose $glob, but the conditionsMatcher
+              // resolves it at runtime; same pattern is used in the legacy branch.
+              // @ts-expect-error see above
               secretPath: { $glob: secretPath },
               environment
             });
-            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
-            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
             can(ProjectPermissionSecretActions.DescribeSecret, subject, {
+              // @ts-expect-error see the ReadValue grant above
               secretPath: { $glob: secretPath },
               environment
             });

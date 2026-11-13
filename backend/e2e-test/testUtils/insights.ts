@@ -1,7 +1,7 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -22,10 +22,7 @@ const unreachable = (method: string) => (): never => {
 };
 
 // Specs supply their own getOrgPermission; this fills the other half of the permissionService contract.
-const unreachableGetProjectPermission: Pick<
-  TInsightsServiceFactoryDep["permissionService"],
-  "getProjectPermission"
-> = {
+const unreachableGetProjectPermission: Pick<TInsightsServiceFactoryDep["permissionService"], "getProjectPermission"> = {
   getProjectPermission: unreachable("permissionService.getProjectPermission")
 };
 
@@ -63,6 +60,8 @@ export const projectScopedInsightsDepStubs: Pick<
     findStaleByProject: unreachable("secretV2BridgeDAL.findStaleByProject"),
     countStaleByProject: unreachable("secretV2BridgeDAL.countStaleByProject"),
     findDuplicatedSecretValues: unreachable("secretV2BridgeDAL.findDuplicatedSecretValues"),
+    findDuplicatedSecretValuesInOrg: unreachable("secretV2BridgeDAL.findDuplicatedSecretValuesInOrg"),
+    findSecretsWithMatchingValue: unreachable("secretV2BridgeDAL.findSecretsWithMatchingValue"),
     countByProject: unreachable("secretV2BridgeDAL.countByProject")
   },
   dynamicSecretDAL: {
@@ -93,7 +92,8 @@ export const usageInsightsDepStubs: Pick<
   "orgDAL" | "identityOrgMembershipDAL" | "dynamicSecretLeaseDAL"
 > = {
   orgDAL: {
-    countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers")
+    countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers"),
+    findById: unreachable("orgDAL.findById")
   },
   identityOrgMembershipDAL: {
     countSecretManagerProjectIdentities: unreachable("identityOrgMembershipDAL.countSecretManagerProjectIdentities")
@@ -107,7 +107,11 @@ export const usageInsightsDepStubs: Pick<
 // share one set of stubs for that gate and flip the two toggles to exercise the two rejection paths.
 export const buildOrgInsightsGateStubs = () => {
   let canReadInsights = true;
-  let planHasInsights = true;
+  const licenseService = new FakeLicenseService();
+  const setPlanHasInsights = (hasPlan: boolean) => {
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, secretAccessInsights: hasPlan as false };
+  };
+  setPlanHasInsights(true);
 
   const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
     createMongoAbility<OrgPermissionSet>(
@@ -130,15 +134,11 @@ export const buildOrgInsightsGateStubs = () => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    licenseService: {
-      getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
-    } as TInsightsServiceFactoryDep["licenseService"],
+    licenseService,
     setCanReadInsights: (canRead: boolean) => {
       canReadInsights = canRead;
     },
-    setPlanHasInsights: (hasPlan: boolean) => {
-      planHasInsights = hasPlan;
-    }
+    setPlanHasInsights
   };
 };
 

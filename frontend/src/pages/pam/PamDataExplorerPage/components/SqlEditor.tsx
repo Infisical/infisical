@@ -13,7 +13,7 @@ const infisicalTheme = EditorView.theme({
   "&.cm-editor": { backgroundColor: "var(--color-card)" },
   ".cm-scroller": {
     overflow: "auto",
-    fontFamily: "ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace",
+    fontFamily: "var(--font-mono)",
     backgroundColor: "var(--color-card)",
     scrollbarWidth: "thin",
     scrollbarColor: "var(--color-scrollbar-track-thumb) transparent"
@@ -168,7 +168,6 @@ export function SqlEditor({
       view.destroy();
       viewRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return <div ref={containerRef} className="h-full w-full" />;

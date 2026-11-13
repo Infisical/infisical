@@ -1,3 +1,4 @@
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   TGitLabDataSource,
   TGitLabDataSourceOption
@@ -6,9 +7,11 @@ import { DiscriminativePick } from "@app/types";
 
 import {
   SecretScanningDataSource,
+  SecretScanningFindingConfidence,
+  SecretScanningFindingOrderBy,
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus,
-  SecretScanningResource,
+  SecretScanningResourceOrderBy,
   SecretScanningScanStatus,
   SecretScanningScanType
 } from "../enums";
@@ -25,10 +28,15 @@ export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScanStatus: SecretScanningScanStatus | null;
   lastScanStatusMessage: string | null;
   unresolvedFindings: number | null;
+  resourceCount: number;
 };
 
 export type TListSecretScanningDataSources = {
   dataSources: TSecretScanningDataSourceWithDetails[];
+};
+
+export type TListSecretScanningBasicDataSources = {
+  dataSources: TSecretScanningDataSource[];
 };
 
 export type TSecretScanningDataSourceOption =
@@ -44,7 +52,15 @@ export type TSecretScanningDataSourceResponse = { dataSource: TSecretScanningDat
 
 export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
   TSecretScanningDataSource,
-  "name" | "config" | "description" | "connectionId" | "type" | "isAutoScanEnabled" | "projectId"
+  | "name"
+  | "config"
+  | "description"
+  | "connectionId"
+  | "type"
+  | "isHistoricalScanEnabled"
+  | "isScanNewCommitsEnabled"
+  | "isDiscoveryEnabled"
+  | "projectId"
 >;
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
@@ -71,10 +87,33 @@ export type TTriggerSecretScanningDataSourceDTO = {
   projectId: string;
 };
 
+export type TAddSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceName: string;
+  // required for query invalidation
+  projectId: string;
+};
+
+export type TAddAllSecretScanningResourcesDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  // required for query invalidation
+  projectId: string;
+};
+
+export type TRemoveSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceId: string;
+  // required for query invalidation
+  projectId: string;
+};
+
 export type TUpdateSecretScanningFinding = {
   findingId: string;
   status: SecretScanningFindingStatus;
-  remarks?: string | null;
+  triageComment?: string | null;
   // required for query invalidation
   projectId: string;
 };
@@ -91,7 +130,6 @@ export type TGetSecretScanningDataSource = {
 export type TSecretScanningResourceWithDetails = {
   id: string;
   dataSourceId: string;
-  type: SecretScanningResource;
   externalId: string;
   name: string;
   createdAt: string;
@@ -104,6 +142,34 @@ export type TSecretScanningResourceWithDetails = {
 
 export type TListSecretScanningResourcesResponse = {
   resources: TSecretScanningResourceWithDetails[];
+  totalCount: number;
+};
+
+export type TListSecretScanningResourcesDTO = TGetSecretScanningDataSource & {
+  search?: string;
+  orderBy: SecretScanningResourceOrderBy;
+  orderDirection: OrderByDirection;
+  offset: number;
+  limit: number;
+};
+
+export type TSecretScanningResource = Pick<
+  TSecretScanningResourceWithDetails,
+  "id" | "dataSourceId" | "externalId" | "name" | "createdAt" | "updatedAt"
+>;
+
+export type TListSecretScanningBasicResourcesResponse = {
+  resources: TSecretScanningResource[];
+};
+
+export type TSecretScanningAvailableResource = {
+  externalId: string;
+  name: string;
+  isIncluded: boolean;
+};
+
+export type TListSecretScanningAvailableResourcesResponse = {
+  resources: TSecretScanningAvailableResource[];
 };
 
 export type TSecretScanningScanWithDetails = {
@@ -111,6 +177,9 @@ export type TSecretScanningScanWithDetails = {
   createdAt: string;
   resourceId: string;
   type: SecretScanningScanType;
+  triggeredByUserId?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
   status: SecretScanningScanStatus;
   statusMessage?: string | null;
   unresolvedFindings: number;
@@ -137,14 +206,19 @@ export type TGetSecretScanningConfigResponse = {
 
 export type TSecretScanningFinding = {
   id: string;
+  resourceId: string;
+  resourceName: string;
+  dataSourceId: string;
   dataSourceName: string;
   dataSourceType: SecretScanningDataSource;
-  resourceName: string;
-  resourceType: SecretScanningResource;
   rule: string;
   severity: SecretScanningFindingSeverity;
+  confidence?: SecretScanningFindingConfidence | null;
   status: SecretScanningFindingStatus;
-  remarks?: string;
+  triageComment?: string | null;
+  triagedByUserId?: string | null;
+  triagedAt?: string | null;
+  resolvedAt?: string | null;
   fingerprint: string;
   // TODO scott: this will need to be type differentiated once we add other scan types
   details: {
@@ -172,6 +246,18 @@ export type TSecretScanningFinding = {
   updatedAt: string;
 };
 
+export type TListSecretScanningFindingsDTO = {
+  projectId: string;
+  status?: SecretScanningFindingStatus;
+  dataSourceId?: string;
+  resourceId?: string;
+  orderBy: SecretScanningFindingOrderBy;
+  orderDirection: OrderByDirection;
+  offset: number;
+  limit: number;
+};
+
 export type TListSecretScanningFindingsResponse = {
   findings: TSecretScanningFinding[];
+  totalCount: number;
 };

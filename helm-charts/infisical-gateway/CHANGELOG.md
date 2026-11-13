@@ -1,4 +1,7 @@
-## 1.6.0 (Unreleased)
+## 1.6.1 (Unreleased)
+* Bumped the default CLI image from `0.43.134` to `0.44.6`.
+
+## 1.6.0 (September 29, 2026)
 * Added GCP auth enrollment (`gateway.enrollment.method: gcp`). The gateway proves its identity with a token from the GCP metadata server, so no credential is distributed to the cluster or the VM.
 * Added `gateway.enrollment.gcp.gatewayId`, `gateway.enrollment.gcp.type` and `gateway.enrollment.gcp.serviceAccountKeyFilePath`.
 * Added `extraVolumes` and `extraVolumeMounts`, which are what mount a service account key file for `gateway.enrollment.gcp.type: iam`. Setting `serviceAccountKeyFilePath` without them now fails the render instead of crash-looping the pod on a missing file.

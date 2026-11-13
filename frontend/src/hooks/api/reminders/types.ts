@@ -1,3 +1,5 @@
+import { TAlertChannelInput } from "../alerts/types";
+
 export type CreateReminderDTO = {
   message?: string | null;
   repeatDays?: number | null;
@@ -5,6 +7,7 @@ export type CreateReminderDTO = {
   fromDate?: Date | null;
   secretId: string;
   recipients?: string[];
+  channels?: TAlertChannelInput[];
 };
 
 export type DeleteReminderDTO = {
@@ -12,4 +15,4 @@ export type DeleteReminderDTO = {
   reminderId: string;
 };
 
-export type Reminder = { id: string } & CreateReminderDTO;
+export type Reminder = { id: string } & Omit<CreateReminderDTO, "channels">;

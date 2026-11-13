@@ -9,6 +9,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { netbiosFromDomainFqdn } from "@app/lib/ldap/ldap-search-fns";
 
 import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema
+} from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import {
   GcpServiceAccountAuthMethod,
   PamAccountType,
   PamPostgresAuthMethod,
@@ -16,11 +21,6 @@ import {
   PamSshAuthMethod
 } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
-import {
-  PamAccountSettingsOverridesSchema,
-  PamTemplateSettingsSchema
-} from "../pam-account-template/pam-account-template-schemas";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 const resolveSrv = promisify(dns.resolveSrv);
 
@@ -46,6 +46,13 @@ const boundedOptionalString = (max: number) =>
     .max(max)
     .transform((v) => v || undefined)
     .optional();
+
+// Clearing a number input submits "" rather than undefined, which coercion would read as port 0.
+const optionalPort = () =>
+  z.preprocess(
+    (v) => (v === null || (typeof v === "string" && v.trim() === "") ? undefined : v),
+    z.coerce.number().int().min(1).max(65535).optional()
+  );
 
 const normalizeDelimitedStringList = (value: unknown): unknown => {
   if (Array.isArray(value)) return value;
@@ -101,19 +108,21 @@ export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
 export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.133";
 
+const postgresConnectionDetails = z.object({
+  host: z.string().trim().min(1).max(255),
+  port: z.coerce.number(),
+  database: z.string().trim().min(1).max(255),
+  sslEnabled: z.boolean(),
+  sslRejectUnauthorized: z.boolean(),
+  sslCertificate: optionalTrimmedString
+});
+
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
     icon: "Postgres.png",
     connectionStringSchemes: ["postgres", "postgresql"],
-    connectionDetails: z.object({
-      host: z.string().trim().min(1).max(255),
-      port: z.coerce.number(),
-      database: z.string().trim().min(1).max(255),
-      sslEnabled: z.boolean(),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: optionalTrimmedString
-    }),
+    connectionDetails: postgresConnectionDetails,
     credentials: withLegacyAuthMethod(
       PamAccountType.Postgres,
       z.discriminatedUnion("authMethod", [
@@ -189,6 +198,41 @@ export const ACCOUNT_TYPE_CONFIGS = {
         showWhen: { field: "sslEnabled", equals: true },
         tooltip:
           "The CA certificate used to verify the server. Amazon RDS and Aurora publish one per region, e.g. https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem"
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.CockroachDB]: {
+    name: "CockroachDB",
+    icon: "CockroachDB.png",
+    connectionStringSchemes: ["postgres", "postgresql"],
+    connectionDetails: postgresConnectionDetails.extend({
+      port: z.coerce.number().int().min(1).max(65535),
+      sslCertificate: boundedOptionalString(10_240)
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(63),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: { defaultValue: 26257 },
+      sslEnabled: { label: "SSL Enabled", defaultValue: true },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        defaultValue: true,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
       },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
@@ -596,14 +640,24 @@ export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.ClickHouse]: {
     name: "ClickHouse",
     icon: "ClickHouse.png",
-    connectionDetails: z.object({
-      host: z.string().trim().min(1).max(255),
-      port: z.coerce.number().int().min(1).max(65535),
-      database: z.string().trim().min(1).max(255),
-      sslEnabled: z.boolean(),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: boundedOptionalString(16384)
-    }),
+    connectionDetails: z
+      .object({
+        host: z.string().trim().min(1).max(255),
+        port: optionalPort(),
+        nativePort: optionalPort(),
+        database: z.string().trim().min(1).max(255),
+        sslEnabled: z.boolean(),
+        sslRejectUnauthorized: z.boolean(),
+        sslCertificate: boundedOptionalString(16384)
+      })
+      .refine((v) => v.port !== undefined || v.nativePort !== undefined, {
+        message: "Set the HTTP port, the native port, or both",
+        path: ["port"]
+      })
+      .refine((v) => v.port === undefined || v.port !== v.nativePort, {
+        message: "The HTTP and native ports must differ",
+        path: ["nativePort"]
+      }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
       password: boundedOptionalString(256)
@@ -611,9 +665,16 @@ export const ACCOUNT_TYPE_CONFIGS = {
     sanitizedCredentials: z.object({ username: z.string() }),
     ui: {
       port: {
+        label: "HTTP Port",
         defaultValue: 8123,
         tooltip:
-          "The HTTP interface port: 8123 for plain HTTP, 8443 for HTTPS. Sessions never use the native protocol on 9000."
+          "The HTTP interface port: 8123 for plain HTTP, 8443 for HTTPS. Leave it empty if the server only serves the native protocol."
+      },
+      nativePort: {
+        label: "Native Port",
+        defaultValue: 9000,
+        tooltip:
+          "The native TCP port, usually 9000 for plain TCP or 9440 with SSL. clickhouse-client and other native drivers need it. Leave it empty if the server only serves HTTP."
       },
       database: {
         defaultValue: "default",
@@ -756,7 +817,12 @@ export const ACCOUNT_TYPE_CONFIGS = {
       authMethod: z.string()
     }),
     ui: {
-      serviceAccountEmail: { label: "Service Account Email" },
+      serviceAccountEmail: {
+        label: "Service Account Email",
+        description:
+          'The service account ID must end with "{{organizationIdPrefix}}", e.g. service-account-{{organizationIdPrefix}}@my-project.iam.gserviceaccount.com',
+        descriptionWhen: { field: "credentials.authMethod", equals: GcpServiceAccountAuthMethod.Impersonation }
+      },
       authMethod: {
         label: "Auth Method",
         tooltip:
@@ -968,6 +1034,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
           showWhen?: TFieldConditionHint;
           forceWhen?: readonly TFieldForcedRuleHint[];
           tooltip?: string;
+          description?: string;
+          descriptionWhen?: TFieldConditionHint;
           options?: { label: string; value: string; docsUrl?: string }[];
         }
       >;
@@ -987,6 +1055,7 @@ export type TWindowsAdConnectionDetails = z.infer<
 
 export const SQL_ROTATABLE_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
+  PamAccountType.CockroachDB,
   PamAccountType.MySQL,
   PamAccountType.MsSQL,
   PamAccountType.OracleDB
@@ -1049,16 +1118,20 @@ export const extractGatewayTarget = async (
   switch (accountType) {
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
+    case PamAccountType.CockroachDB:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
     case PamAccountType.OracleDB:
     case PamAccountType.Redis:
-    case PamAccountType.ClickHouse:
     case PamAccountType.Windows:
       return {
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
       };
+    case PamAccountType.ClickHouse: {
+      const { host, port, nativePort } = validated as { host: string; port?: number; nativePort?: number };
+      return { host, port: port ?? nativePort };
+    }
     case PamAccountType.Kubernetes: {
       const { url } = validated as { url: string };
       const parsed = new URL(url);
@@ -1131,14 +1204,38 @@ export const resolveSelectedHost = (
   return requestedHost || hosts[0];
 };
 
-// The account type the gateway sees. Windows AD is brokered through the Windows RDP protocol
+// The account type the gateway sees: Windows AD rides its RDP protocol, CockroachDB its Postgres protocol
+const GATEWAY_ACCOUNT_TYPE_ALIASES: Partial<Record<PamAccountType, PamAccountType>> = {
+  [PamAccountType.WindowsAd]: PamAccountType.Windows,
+  [PamAccountType.CockroachDB]: PamAccountType.Postgres
+};
+
 export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType =>
-  accountType === PamAccountType.WindowsAd ? PamAccountType.Windows : accountType;
+  GATEWAY_ACCOUNT_TYPE_ALIASES[accountType] ?? accountType;
 
 export const gatewaySupportsAccountType = (
   accountType: PamAccountType,
   supportedTypes: string[] | undefined
 ): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
+
+export const webAccessUnavailableReason = (
+  accountType: PamAccountType,
+  connectionDetails: Record<string, unknown>
+): string | null => {
+  if (accountType !== PamAccountType.ClickHouse) return null;
+  if ((connectionDetails as { port?: number }).port !== undefined) return null;
+  return "Web access needs ClickHouse's HTTP interface. Set an HTTP port on this account, or connect with a native client through the CLI.";
+};
+
+// An absent flag means a gateway too old to report it, which is exactly the case this guards.
+export const gatewaySupportsClickHouseNative = (capabilities: { clickhouseNativeProtocol?: boolean } | null) =>
+  Boolean(capabilities?.clickhouseNativeProtocol);
+
+export const requiresClickHouseNative = (
+  accountType: PamAccountType,
+  connectionDetails: Record<string, unknown>
+): boolean =>
+  accountType === PamAccountType.ClickHouse && (connectionDetails as { nativePort?: number }).nativePort !== undefined;
 
 export const buildSessionGatewayConnectionDetails = (
   accountType: PamAccountType,
@@ -1239,8 +1336,8 @@ export const getAccountAccessibilityIssues = (account: {
 
     const hasRecordingConfig = Boolean(
       parsedTemplateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
-        (account.recordingConnectionId || account.templateRecordingConnectionId) &&
-        (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
+      (account.recordingConnectionId || account.templateRecordingConnectionId) &&
+      (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
     );
     if (!hasRecordingConfig) issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
   }
@@ -1298,7 +1395,13 @@ export const PamFieldDescriptorSchema = z.object({
     .optional(),
 
   // Info tooltip shown next to the label
-  tooltip: z.string().optional()
+  tooltip: z.string().optional(),
+
+  // Help text shown under the field
+  description: z.string().optional(),
+
+  // Only show the description when the referenced field equals this value
+  descriptionWhen: PamFieldConditionSchema.optional()
 });
 
 type PamFieldDescriptor = z.infer<typeof PamFieldDescriptorSchema>;
@@ -1328,6 +1431,8 @@ type TFieldUiHint = {
   showWhen?: TFieldConditionHint;
   forceWhen?: readonly TFieldForcedRuleHint[];
   tooltip?: string;
+  description?: string;
+  descriptionWhen?: TFieldConditionHint;
   options?: { label: string; value: string; docsUrl?: string }[];
 };
 
@@ -1394,7 +1499,9 @@ const describeField = (
     ...(hint.defaultValue !== undefined ? { defaultValue: hint.defaultValue } : {}),
     ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {}),
     ...(hint.forceWhen ? { forceWhen: [...hint.forceWhen] } : {}),
-    ...(hint.tooltip ? { tooltip: hint.tooltip } : {})
+    ...(hint.tooltip ? { tooltip: hint.tooltip } : {}),
+    ...(hint.description ? { description: hint.description } : {}),
+    ...(hint.descriptionWhen ? { descriptionWhen: hint.descriptionWhen } : {})
   };
 };
 

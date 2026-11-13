@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { pkiApplicationKeys } from "@app/hooks/api/pkiApplications/queries";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 
 import { certificateProfileKeys } from "./queries";
 import {
@@ -15,6 +16,7 @@ export const useCreateCertificateProfile = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TCertificateProfile, object, TCreateCertificateProfileDTO>({
+    meta: { handledErrorCodes: [ApiErrorTypes.ConflictError] },
     mutationFn: async (data) => {
       const { data: response } = await apiRequest.post<{
         certificateProfile: TCertificateProfile;
@@ -34,6 +36,7 @@ export const useUpdateCertificateProfile = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TCertificateProfile, object, TUpdateCertificateProfileDTO>({
+    meta: { handledErrorCodes: [ApiErrorTypes.ConflictError] },
     mutationFn: async ({ profileId, ...data }) => {
       const { data: response } = await apiRequest.patch<{
         certificateProfile: TCertificateProfile;

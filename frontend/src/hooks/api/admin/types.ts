@@ -80,8 +80,10 @@ export type TServerConfig = {
   defaultAuthOrgAuthEnforced?: boolean | null;
   enabledLoginMethods: LoginMethod[] | null;
   passwordPolicy: TPasswordPolicy;
+  pkcs12PasswordPolicy: TPasswordPolicy;
   authConsentContent?: string;
   pageFrameContent?: string;
+  allowedStorageHostnames?: string[] | null;
   invalidatingCache: boolean;
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;

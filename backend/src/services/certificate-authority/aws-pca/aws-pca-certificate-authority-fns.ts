@@ -27,9 +27,20 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import {
+  appendCustomExtensions,
+  assertAwsPcaCustomExtensionLimit,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
+import { buildIdempotencyToken } from "@app/services/certificate-common/certificate-issuance-utils";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -42,14 +53,6 @@ import {
   getSanOtherNameOid,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
-import {
-  appendCustomExtensions,
-  assertAwsPcaCustomExtensionLimit,
-  TResolvedCustomExtension
-} from "@app/services/certificate-common/certificate-extension-fns";
-import { buildIdempotencyToken } from "@app/services/certificate-common/certificate-issuance-utils";
-import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
-import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -823,27 +826,24 @@ export const AwsPcaCertificateAuthorityFns = ({
 
     let certificateId: string;
 
-    const parsedFields = extractCertificateFields(Buffer.from(certificatePem), customExtensions);
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj, customExtensions);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: commonName,
-          commonName,
-          altNames: altNames.map((san) => san.value).join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages,
-          extendedKeyUsages,
-          keyAlgorithm,
-          signatureAlgorithm,
           projectId: ca.projectId,
-          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
-          ...parsedFields
+          friendlyName: parsedFields.commonName ?? commonName,
+          commonName: parsedFields.commonName ?? commonName,
+          altNames: parsedFields.altNames ?? altNames.map((san) => san.value).join(","),
+          keyUsages: parsedFields.keyUsages ?? keyUsages,
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
+          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
       );

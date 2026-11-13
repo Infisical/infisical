@@ -2,7 +2,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType, TCertificateRequests } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -17,9 +18,10 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
+  CertificateIssuanceOperation,
   domainComponentsSchema,
   resolvedCustomExtensionSchema
 } from "@app/services/certificate-common/certificate-constants";
@@ -27,13 +29,18 @@ import {
   describeCustomExtensionValue,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
+import { recordCertificateRequestFailure } from "./certificate-request-fns";
 import {
   CertificateRequestStatus,
   TAttachCertificateToRequestDTO,
@@ -54,6 +61,10 @@ type TCertificateRequestServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "stopJobById" | "cancelActiveJob">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
+  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "cancelPendingRequest">;
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -151,7 +162,11 @@ export const certificateRequestServiceFactory = ({
   resourceMetadataDAL,
   queueService,
   userDAL,
-  identityDAL
+  identityDAL,
+  certificateProfileDAL,
+  certificateAuthorityDAL,
+  auditLogService,
+  digicertFns
 }: TCertificateRequestServiceFactoryDep) => {
   const $resolveApplicationName = async (applicationId?: string | null) => {
     if (!applicationId) return null;
@@ -355,14 +370,15 @@ export const certificateRequestServiceFactory = ({
     } | null;
 
     // If no certificate is attached, return basic info
-    if (!certificateRequest.certificate) {
+    if (!certificateRequest.certificate || certificateRequest.certificate.deletedAt) {
       return {
         certificateRequest: {
           status: certificateRequest.status as CertificateRequestStatus,
           certificate: null,
-          certificateId: null,
+          certificateId: certificateRequest.certificate?.id ?? null,
           privateKey: null,
-          serialNumber: null,
+          serialNumber: certificateRequest.certificate?.serialNumber ?? null,
+          certificateDeletedAt: certificateRequest.certificate?.deletedAt ?? null,
           errorMessage: certificateRequest.errorMessage || null,
           pendingMessage: certificateRequest.pendingMessage || null,
           commonName: certificateRequest.commonName || null,
@@ -463,17 +479,34 @@ export const certificateRequestServiceFactory = ({
     };
   };
 
+  const recordIssuanceFailure = (
+    certificateRequest: TCertificateRequests,
+    options: { operation?: CertificateIssuanceOperation; originalCertificateId?: string; error?: unknown } = {}
+  ) =>
+    recordCertificateRequestFailure(
+      { auditLogService, certificateAuthorityDAL, certificateProfileDAL, pkiApplicationDAL },
+      { certificateRequest, ...options }
+    );
+
   const updateCertificateRequestStatus = async ({
     certificateRequestId,
     status,
-    errorMessage
+    errorMessage,
+    operation,
+    originalCertificateId,
+    error
   }: TUpdateCertificateRequestStatusDTO) => {
     const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certificateRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    return certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
+    const updated = await certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
+    // A null result means the request already left pending, so its failure was recorded then.
+    if (updated && status === CertificateRequestStatus.FAILED) {
+      await recordIssuanceFailure(updated, { operation, originalCertificateId, error });
+    }
+    return updated;
   };
 
   const attachCertificateToRequest = async ({
@@ -671,6 +704,16 @@ export const certificateRequestServiceFactory = ({
       actorLabel = identity?.name ? `identity ${identity.name}` : "identity";
     }
 
+    if (previousStatus === CertificateRequestStatus.PENDING_VALIDATION && certificateRequest.caId) {
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateRequest.caId);
+      if (ca?.externalCa?.type === CaType.DIGICERT) {
+        await digicertFns.cancelPendingRequest({
+          caId: certificateRequest.caId,
+          metadata: certificateRequest.metadata
+        });
+      }
+    }
+
     const updated = await certificateRequestDAL.transitionFromPending(
       certificateRequestId,
       CertificateRequestStatus.FAILED,
@@ -733,6 +776,7 @@ export const certificateRequestServiceFactory = ({
     getCertificateRequest,
     getCertificateFromRequest,
     updateCertificateRequestStatus,
+    recordIssuanceFailure,
     attachCertificateToRequest,
     cancelCertificateRequest,
     listCertificateRequests

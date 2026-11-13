@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams } from "@tanstack/react-router";
 import { HelpCircleIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -37,7 +36,7 @@ import {
   superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
-import { useScopeVariant } from "@app/hooks";
+import { useRouteProjectId, useScopeVariant } from "@app/hooks";
 import { useAddIdentityJwtAuth, useUpdateIdentityJwtAuth } from "@app/hooks/api";
 import { IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
 import { useGetIdentityJwtAuth } from "@app/hooks/api/identities/queries";
@@ -125,9 +124,7 @@ export const IdentityJwtAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-  const { projectId } = useParams({
-    strict: false
-  });
+  const projectId = useRouteProjectId();
   const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityJwtAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityJwtAuth();

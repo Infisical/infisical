@@ -8,8 +8,8 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import {
   EnrollmentType,
@@ -367,6 +367,17 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByCaId = async (caId: string, tx?: Knex): Promise<Pick<TCertificateProfile, "id" | "slug">[]> => {
+    try {
+      const certificateProfiles = (await (tx || db)(TableName.PkiCertificateProfile)
+        .where({ caId })
+        .select("id", "slug")) as Pick<TCertificateProfile, "id" | "slug">[];
+      return certificateProfiles;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate profiles by ca id" });
+    }
+  };
+
   const findByProjectId = async (
     projectId: string,
     options: {
@@ -688,6 +699,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         });
       }
 
+      query = status === CertStatus.DELETED ? query.whereNotNull("deletedAt") : query.whereNull("deletedAt");
+
       if (status) {
         switch (status) {
           case CertStatus.ACTIVE:
@@ -716,13 +729,15 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .select((tx || db).ref("notAfter").withSchema(TableName.Certificate))
         .select((tx || db).ref("revokedAt").withSchema(TableName.Certificate))
         .select((tx || db).ref("createdAt").withSchema(TableName.Certificate))
+        .select((tx || db).ref("deletedAt").withSchema(TableName.Certificate))
         .orderBy("createdAt", "desc")
         .offset(offset)
         .limit(limit);
 
       return certificates.map((cert) => ({
         ...cert,
-        revokedAt: cert.revokedAt ?? null
+        revokedAt: cert.revokedAt ?? null,
+        deletedAt: cert.deletedAt ?? null
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get certificates by profile" });
@@ -738,6 +753,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .where("status", "active")
         .where("notAfter", ">", now)
         .whereNull("revokedAt")
+        .whereNull("deletedAt")
         .orderBy("createdAt", "desc")
         .first();
 
@@ -766,6 +782,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     findByIdWithOwnerOrgId,
     findByIdWithConfigs,
     findBySlugAndProjectId,
+    findByCaId,
     findByProjectId,
     countByProjectId,
     findByNameAndProjectId,

@@ -1,13 +1,16 @@
+import { getGitHubSyncSecretTypeName, JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
+  GitHubSyncSecretType,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
 import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus-deploy-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 import { VercelSyncScope } from "@app/hooks/api/secretSyncs/types/vercel-sync";
@@ -49,6 +52,12 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           break;
         default:
           throw new Error(`Unhandled GitHub Scope Destination Col Values ${destination}`);
+      }
+      if (
+        destinationConfig.secretType &&
+        destinationConfig.secretType !== GitHubSyncSecretType.Actions
+      ) {
+        secondaryText = `${getGitHubSyncSecretTypeName(destinationConfig.secretType)} - ${secondaryText}`;
       }
       break;
     case SecretSync.GCPSecretManager:
@@ -178,6 +187,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.scriptId;
       secondaryText = "Script ID";
       break;
+    case SecretSync.CloudflareSecretsStore:
+      primaryText = destinationConfig.storeName || destinationConfig.storeId;
+      secondaryText = "Secrets Store";
+      break;
     case SecretSync.Zabbix:
       if (destinationConfig.scope === ZabbixSyncScope.Host) {
         primaryText = destinationConfig.hostName;
@@ -208,6 +221,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Rundeck:
       primaryText = destinationConfig.project;
       secondaryText = destinationConfig.path;
+      break;
+    case SecretSync.Portainer:
+      primaryText = `Stack #${destinationConfig.stackId}`;
+      secondaryText = `Environment #${destinationConfig.environmentId}`;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       primaryText = destinationConfig.appName;
@@ -293,12 +310,23 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = secretSync.connection.name;
       secondaryText = "Daytona Organization";
       break;
+    case SecretSync.Keeper:
+      primaryText = destinationConfig.folderName || destinationConfig.folderUid;
+      secondaryText = "Shared Folder";
+      break;
     case SecretSync.Spacelift:
       primaryText = destinationConfig.contextName;
       secondaryText =
         destinationConfig.configType === "environment-variable"
           ? "environment variables"
           : "file mount";
+      break;
+    case SecretSync.Jenkins:
+      primaryText =
+        destinationConfig.scope === JenkinsSyncScope.Folder
+          ? destinationConfig.folderPath
+          : JENKINS_SYNC_SCOPE_LABELS[JenkinsSyncScope.Global];
+      secondaryText = "Credentials";
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

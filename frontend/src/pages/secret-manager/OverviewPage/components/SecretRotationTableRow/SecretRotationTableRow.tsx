@@ -36,7 +36,6 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
-import { useToggle } from "@app/hooks";
 import {
   SecretRotation,
   SecretRotationStatus,
@@ -64,7 +63,6 @@ type Props = {
   isSecretRotationInEnv: (name: string, env: string) => boolean;
   getSecretRotationByName: (slug: string, name: string) => TSecretRotationV2 | undefined;
   getSecretRotationStatusesByName: (name: string) => (SecretRotationStatus | null)[] | undefined;
-  tableWidth: number;
   isSelected: boolean;
   onToggleRotationSelect: (name: string, isShiftKey: boolean) => void;
   onEdit: (secretRotation: TSecretRotationV2) => void;
@@ -75,6 +73,8 @@ type Props = {
   onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -90,7 +90,6 @@ export const SecretRotationTableRow = ({
   secretRotationName,
   environments = [],
   isSecretRotationInEnv,
-  tableWidth,
   getSecretRotationByName,
   getSecretRotationStatusesByName,
   isSelected,
@@ -102,9 +101,10 @@ export const SecretRotationTableRow = ({
   onReconcile,
   onCheckActiveCredentials,
   activityId,
-  onActivityChange
+  onActivityChange,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
 
   const handleCheckActiveCredentials = async (secretRotation: TSecretRotationV2) => {
@@ -339,7 +339,7 @@ export const SecretRotationTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
+        onClick={isSingleEnvView ? undefined : () => onExpandedChange(!isExpanded)}
         className={twMerge(
           "group hover:z-10",
           (isExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
@@ -354,28 +354,28 @@ export const SecretRotationTableRow = ({
           )}
         >
           <div className="flex h-full items-center justify-center [&>svg]:size-4">
-            <Checkbox
-              variant="project"
-              id={`checkbox-${secretRotationName}`}
-              isChecked={isSelected}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleRotationSelect(secretRotationName, e.shiftKey);
-              }}
-              className={twMerge("hidden group-hover:flex", isSelected && "flex")}
-            />
             {!isSingleEnvView && isExpanded ? (
-              <ChevronDownIcon
-                className={twMerge("block", "group-hover:!hidden", isSelected && "!hidden")}
-              />
+              <ChevronDownIcon />
             ) : (
-              <RefreshCwIcon
-                className={twMerge(
-                  "block text-secret-rotation",
-                  "group-hover:!hidden",
-                  isSelected && "!hidden"
-                )}
-              />
+              <>
+                <Checkbox
+                  variant="project"
+                  id={`checkbox-${secretRotationName}`}
+                  isChecked={isSelected}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleRotationSelect(secretRotationName, e.shiftKey);
+                  }}
+                  className={twMerge("hidden group-hover:flex", isSelected && "flex")}
+                />
+                <RefreshCwIcon
+                  className={twMerge(
+                    "block text-secret-rotation",
+                    "group-hover:!hidden",
+                    isSelected && "!hidden"
+                  )}
+                />
+              </>
             )}
           </div>
         </TableCell>
@@ -465,18 +465,23 @@ export const SecretRotationTableRow = ({
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
-              <Table containerClassName="rounded-none border-0">
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
                       Environment
                     </TableHead>
-                    <TableHead className="w-full" />
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

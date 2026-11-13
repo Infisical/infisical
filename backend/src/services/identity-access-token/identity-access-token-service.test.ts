@@ -1,3 +1,5 @@
+import * as x509 from "@peculiar/x509";
+import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
@@ -5,9 +7,13 @@ import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
-import { signIdentityAccessToken, verifyAccessTokenJwt } from "./identity-access-token-fns";
+import {
+  computeCertificateThumbprint,
+  signIdentityAccessToken,
+  verifyAccessTokenJwt
+} from "./identity-access-token-fns";
 import { identityAccessTokenServiceFactory } from "./identity-access-token-service";
-import { TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
+import { CERTIFICATE_THUMBPRINT_CLAIM, TIdentityAccessTokenJwtPayload } from "./identity-access-token-types";
 
 const MAX_AGE = 7_776_000;
 const AUTH_SECRET = "test-auth-secret";
@@ -54,7 +60,7 @@ const createService = ({
   const keyStore = {
     getItem: vi.fn().mockResolvedValue(null),
     getItemPrimary: vi.fn(),
-    incrementBy: vi.fn(),
+    decrementIfExists: vi.fn(),
     setItemWithExpiry: vi.fn(),
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
     incrementSeededWithExpiry: vi.fn().mockResolvedValue(1),
@@ -331,14 +337,14 @@ describe("identityAccessTokenServiceFactory", () => {
   test("keeps usage counters in Redis", async () => {
     const { service, keyStore } = createService();
     keyStore.getItem.mockResolvedValue("1");
-    keyStore.incrementBy.mockResolvedValue(0);
+    keyStore.decrementIfExists.mockResolvedValue(0);
 
     await expect(
       service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
     ).resolves.toMatchObject({
       identityId: "identity-id"
     });
-    expect(keyStore.incrementBy).toHaveBeenCalledWith("identity-token-uses-remaining:identity-id:token-id", -1);
+    expect(keyStore.decrementIfExists).toHaveBeenCalledWith("identity-token-uses-remaining:identity-id:token-id");
   });
 
   test("reseeds a lost Redis usage counter from JWT claims", async () => {
@@ -352,10 +358,179 @@ describe("identityAccessTokenServiceFactory", () => {
     });
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       "identity-token-uses-remaining:identity-id:token-id",
-      MAX_AGE,
+      MAX_AGE + MARKER_SKEW_SECONDS,
       2
     );
-    expect(keyStore.incrementBy).not.toHaveBeenCalled();
+    expect(keyStore.decrementIfExists).not.toHaveBeenCalled();
+  });
+
+  test("reseeds a lost counter to outlive every renewed JWT, not just the one presented", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue(null);
+
+    // The presented JWT has 10 minutes left, but the token's maxTTL budget allows renewed JWTs for
+    // another 90 minutes, and they all share this counter.
+    await service.fnValidateIdentityAccessTokenFast(
+      createTokenClaims({
+        numUsesLimit: 3,
+        exp: NOW_SECONDS + 600,
+        accessTokenTTL: 3600,
+        accessTokenMaxTTL: 7200,
+        creationEpoch: NOW_SECONDS - 1800
+      }),
+      "10.0.0.1"
+    );
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-token-uses-remaining:identity-id:token-id",
+      5400 + MARKER_SKEW_SECONDS,
+      2
+    );
+  });
+
+  test("reseeds a lost counter for a legacy JWT with no exp to last through the legacy window", async () => {
+    // Thirty days into the legacy window, with the row's maxTTL budget long spent. The JWT still
+    // authenticates, so the counter has to outlive it rather than the spent budget.
+    const thirtyDays = 30 * 24 * 60 * 60;
+    vi.setSystemTime(new Date(ENFORCED_AT.getTime() + thirtyDays * 1000));
+    const { service, keyStore } = createService({
+      tokenRow: createLegacyTokenRow({ accessTokenNumUsesLimit: 3 })
+    });
+    const legacyClaims = verifyAccessTokenJwt(signLegacyUniversalAuthAccessToken({}, { expiresIn: undefined }));
+    expect(legacyClaims.exp).toBeUndefined();
+
+    await expect(service.fnValidateIdentityAccessTokenFast(legacyClaims, "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-token-uses-remaining:identity-id:legacy-token-id",
+      MAX_AGE - thirtyDays + MARKER_SKEW_SECONDS,
+      2
+    );
+  });
+
+  test("does not reseed a lost counter for a JWT that expired after it was verified", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-token-uses-remaining:")) {
+        vi.setSystemTime(new Date((NOW_SECONDS + 3600) * 1000));
+      }
+      return null;
+    });
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
+    ).rejects.toThrow(jwt.TokenExpiredError);
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
+      expect.stringContaining("identity-token-uses-remaining:"),
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  test("rejects without recreating a counter that expired between the read and the decrement", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("2");
+    keyStore.decrementIfExists.mockResolvedValue(null);
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
+    ).rejects.toThrow("could not be recorded");
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
+      expect.stringContaining("identity-token-uses-remaining:"),
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  test("seeds the usage counter at issuance to expire with the token, not the ceiling", async () => {
+    const { service, keyStore } = createService();
+
+    await service.issueIdentityAccessToken({
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      subOrganizationId: null,
+      accessTokenTTL: 600,
+      accessTokenMaxTTL: 0,
+      accessTokenNumUsesLimit: 1,
+      accessTokenPeriod: 0,
+      accessTokenTrustedIps: []
+    });
+
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      expect.stringMatching(/^identity-token-uses-remaining:identity-id:/),
+      600 + MARKER_SKEW_SECONDS,
+      1
+    );
+  });
+
+  test("reseeds the usage counter on renewal to expire with the renewed token", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 2,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("1");
+
+    await service.renewAccessToken({ accessToken });
+
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-token-uses-remaining:identity-id:token-id",
+      3600 + MARKER_SKEW_SECONDS,
+      1
+    );
+  });
+
+  test("does not renew with a fresh budget when the JWT expired after it was verified", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 2,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-token-uses-remaining:")) {
+        vi.setSystemTime(new Date((NOW_SECONDS + 3600) * 1000));
+      }
+      return null;
+    });
+
+    await expect(service.renewAccessToken({ accessToken })).rejects.toThrow(jwt.TokenExpiredError);
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
+      expect.stringContaining("identity-token-uses-remaining:"),
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   test("does not require Redis counters for unlimited-use tokens", async () => {
@@ -369,7 +544,7 @@ describe("identityAccessTokenServiceFactory", () => {
       expect.anything(),
       expect.anything()
     );
-    expect(keyStore.incrementBy).not.toHaveBeenCalled();
+    expect(keyStore.decrementIfExists).not.toHaveBeenCalled();
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       "identity-trusted-ips:identity-id:universal-auth",
       300,
@@ -974,5 +1149,168 @@ describe("identityAccessTokenServiceFactory", () => {
       "token has been revoked"
     );
     expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalled();
+  });
+});
+
+describe("certificate-bound access tokens", () => {
+  let previousFipsEnabled: string | undefined;
+  let boundPem: string;
+  let otherPem: string;
+  let boundThumbprint: string;
+
+  const makeCertificatePem = async (commonName: string) => {
+    const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: `CN=${commonName}`,
+      notBefore: new Date("2020-01-01T00:00:00Z"),
+      notAfter: new Date("2040-01-01T00:00:00Z"),
+      signingAlgorithm: alg,
+      keys
+    });
+    return cert.toString("pem");
+  };
+
+  const asHeader = (pem: string) => encodeURIComponent(pem);
+
+  const signBoundToken = (overrides: { numUsesLimit?: number } = {}) =>
+    signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: overrides.numUsesLimit ?? 0,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {},
+      cnf: { [CERTIFICATE_THUMBPRINT_CLAIM]: boundThumbprint }
+    }).accessToken;
+
+  beforeAll(async () => {
+    previousFipsEnabled = process.env.FIPS_ENABLED;
+    process.env.FIPS_ENABLED = "false";
+    await crypto.initialize({} as never, {} as never, {} as never);
+    x509.cryptoProvider.set(globalThis.crypto);
+    boundPem = await makeCertificatePem("bound-client");
+    otherPem = await makeCertificatePem("other-client");
+    boundThumbprint = computeCertificateThumbprint(new crypto.nativeCrypto.X509Certificate(boundPem).raw);
+  });
+
+  afterAll(() => {
+    if (previousFipsEnabled === undefined) {
+      delete process.env.FIPS_ENABLED;
+    } else {
+      process.env.FIPS_ENABLED = previousFipsEnabled;
+    }
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_SECONDS * 1000));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("thumbprint is the base64url SHA-256 of the certificate DER", () => {
+    const der = new crypto.nativeCrypto.X509Certificate(boundPem).raw;
+    expect(boundThumbprint).toBe(crypto.nativeCrypto.createHash("sha256").update(der).digest("base64url"));
+    for (const char of ["+", "/", "="]) expect(boundThumbprint).not.toContain(char);
+  });
+
+  test("accepts a bound token when the matching certificate is presented", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(boundPem))
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("uses the leaf when the proxy forwards a full chain", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(`${boundPem}\n${otherPem}`))
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("rejects a bound token when no certificate is presented", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1")).rejects.toThrow(
+      "no client certificate was presented"
+    );
+  });
+
+  test("rejects a bound token when a different certificate is presented", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(otherPem))).rejects.toThrow(
+      "does not match the certificate the access token is bound to"
+    );
+  });
+
+  test("rejects a bound token when the certificate header cannot be parsed", async () => {
+    const { service } = createService();
+    const claims = verifyAccessTokenJwt(signBoundToken());
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", "%E0%A4%A")).rejects.toThrow(
+      "client certificate header could not be read"
+    );
+  });
+
+  test("does not spend a token use when the certificate does not match", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("3");
+    const claims = verifyAccessTokenJwt(signBoundToken({ numUsesLimit: 3 }));
+
+    await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", asHeader(otherPem))).rejects.toThrow();
+    expect(keyStore.decrementIfExists).not.toHaveBeenCalled();
+  });
+
+  test("ignores the certificate header for unbound tokens", async () => {
+    const { service } = createService();
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1", asHeader(otherPem))
+    ).resolves.toMatchObject({ identityId: "identity-id" });
+  });
+
+  test("renewal keeps the binding when the matching certificate is presented", async () => {
+    const { service } = createService();
+
+    const renewed = await service.renewAccessToken({
+      accessToken: signBoundToken(),
+      clientCertificate: asHeader(boundPem)
+    });
+
+    expect(verifyAccessTokenJwt(renewed.accessToken).cnf).toEqual({
+      [CERTIFICATE_THUMBPRINT_CLAIM]: boundThumbprint
+    });
+  });
+
+  test("renewal requires the bound certificate", async () => {
+    const { service } = createService();
+
+    await expect(service.renewAccessToken({ accessToken: signBoundToken() })).rejects.toThrow(
+      "Cannot renew: access token is bound to a client certificate, but no client certificate was presented"
+    );
+    await expect(
+      service.renewAccessToken({ accessToken: signBoundToken(), clientCertificate: asHeader(otherPem) })
+    ).rejects.toThrow("Cannot renew: the presented client certificate does not match");
   });
 });

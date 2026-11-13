@@ -21,6 +21,7 @@ export enum TableName {
   CertificateAuthorityCert = "certificate_authority_certs",
   CertificateAuthoritySecret = "certificate_authority_secret",
   CertificateAuthorityCrl = "certificate_authority_crl",
+  CertificateAuthorityCrossSignedCert = "certificate_authority_cross_signed_certs",
   Certificate = "certificates",
   CertificateBody = "certificate_bodies",
   CertificateRequests = "certificate_requests",
@@ -72,7 +73,6 @@ export enum TableName {
   UserSecretActivation = "user_secret_activation",
   SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
-  RateLimit = "rate_limit",
   // dropped with the SSH product; member kept for historical migrations
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
@@ -153,6 +153,7 @@ export enum TableName {
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
   AuditLogStreamOutbox = "audit_log_stream_outbox",
+  AuditLogSettings = "audit_log_settings",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
@@ -161,6 +162,7 @@ export enum TableName {
   DynamicSecretLease = "dynamic_secret_leases",
   SecretV2 = "secrets_v2",
   SecretReferenceV2 = "secret_references_v2",
+  SecretReadActivity = "secret_read_activity",
   SecretVersionV2 = "secret_versions_v2",
   SecretApprovalRequestSecretV2 = "secret_approval_requests_secrets_v2",
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
@@ -278,11 +280,25 @@ export enum TableName {
   AgentVaultService = "agent_vault_services",
   AgentVaultServiceCustomHeader = "agent_vault_service_custom_headers",
   AgentVaultServiceSubstitution = "agent_vault_service_substitutions",
+  AgentVaultVariable = "agent_vault_variables",
+  AgentVaultServiceVariableReference = "agent_vault_service_variable_references",
+  AgentVaultPersonalValue = "agent_vault_personal_values",
+  AgentVaultPersonalValueReference = "agent_vault_personal_value_references",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
+  AgentVaultSessionInlineService = "agent_vault_session_inline_services",
+  AgentVaultSessionStats = "agent_vault_session_stats",
+  AgentVaultDelegation = "agent_vault_delegations",
+  AgentVaultDelegationSubject = "agent_vault_delegation_subjects",
   AgentVaultProxy = "agent_vault_proxies",
+  AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  AgentVaultSkill = "agent_vault_skills",
+  AgentVaultSkillVersion = "agent_vault_skill_versions",
+  AgentVaultAccessBundleSkill = "agent_vault_access_bundle_skills",
+  AgentVaultAccessBundleService = "agent_vault_access_bundle_services",
+  // Dropped; kept only for the migrations that create and drop it.
+  AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
-  VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
@@ -319,11 +335,18 @@ export enum TableName {
   ApprovalPolicySteps = "approval_policy_steps",
   ApprovalPolicyStepApprovers = "approval_policy_step_approvers",
   ApprovalPolicyBypassers = "approval_policy_bypassers",
+  ApprovalPolicyAutoApprovalInputs = "approval_policy_auto_approval_inputs",
+  ApprovalPolicyAutoApprovalRules = "approval_policy_auto_approval_rules",
+  ApprovalPolicyAutoApprovalConditions = "approval_policy_auto_approval_conditions",
+  ApprovalPolicySecretEnvironment = "approval_policy_secret_environments",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
+  SecretChangeRequests = "secret_change_requests",
+  DelegatedApprovalPolicies = "delegated_approval_policies",
+  DelegatedApprovalRequests = "delegated_approval_requests",
 
   // Code Signing
   PkiSigners = "pki_signers",
@@ -355,7 +378,8 @@ export enum TableName {
   DeprecatedSecretRotationV1 = "secret_rotations",
   DeprecatedSecretRotationOutput = "secret_rotation_outputs",
   DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
-  DeprecatedApiKey = "api_keys"
+  DeprecatedApiKey = "api_keys",
+  DeprecatedRateLimit = "rate_limit"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

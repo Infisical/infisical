@@ -18,7 +18,7 @@ const resolveCertManagerProjectId = async (
 
   if (projects.length === 0) {
     throw new BadRequestError({
-      message: "This organization has no Certificate Manager project. Contact your administrator."
+      message: "Certificate Manager has not been set up for this organization. Contact your administrator."
     });
   }
 

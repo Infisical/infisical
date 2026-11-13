@@ -8,6 +8,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   TCertificateAuthority,
   TCertificateAuthorityInput
@@ -22,7 +23,8 @@ export const registerCertificateAuthorityEndpoints = <
   caType,
   createSchema,
   updateSchema,
-  responseSchema
+  responseSchema,
+  updateResponseSchema = responseSchema
 }: {
   caType: CaType;
   server: FastifyZodProvider;
@@ -37,6 +39,7 @@ export const registerCertificateAuthorityEndpoints = <
     configuration?: I["configuration"];
   }>;
   responseSchema: z.ZodTypeAny;
+  updateResponseSchema?: z.ZodTypeAny;
 }) => {
   const caTypeNameForOpId = caType
     .split("-")
@@ -144,8 +147,10 @@ export const registerCertificateAuthorityEndpoints = <
     handler: async (req) => {
       const body = req.body as {
         projectId?: string;
-        configuration?: { keySource?: string; hsmConnectorId?: string };
+        configuration?: { isOcspEnabled?: boolean; crlValidityDays?: number };
       };
+      const createdOcspSetting = body.configuration?.isOcspEnabled;
+      const createdCrlValidityDays = body.configuration?.crlValidityDays;
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, projectId: body.projectId ?? req.internalCertManagerProjectId, type: caType },
         req.permission
@@ -159,8 +164,9 @@ export const registerCertificateAuthorityEndpoints = <
           metadata: {
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
-            keySource: body.configuration?.keySource,
-            hsmConnectorId: body.configuration?.hsmConnectorId
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration),
+            ...(typeof createdOcspSetting === "boolean" && { isOcspEnabled: createdOcspSetting }),
+            ...(typeof createdCrlValidityDays === "number" && { crlValidityDays: createdCrlValidityDays })
           }
         }
       });
@@ -195,12 +201,17 @@ export const registerCertificateAuthorityEndpoints = <
       }),
       body: updateSchema,
       response: {
-        200: responseSchema
+        200: updateResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id } = req.params;
+      const updatedConfiguration = (
+        req.body as { configuration?: { isOcspEnabled?: boolean; crlValidityDays?: number } }
+      ).configuration;
+      const updatedOcspSetting = updatedConfiguration?.isOcspEnabled;
+      const updatedCrlValidityDays = updatedConfiguration?.crlValidityDays;
 
       const certificateAuthority = (await server.services.certificateAuthority.updateCertificateAuthority(
         {
@@ -219,7 +230,9 @@ export const registerCertificateAuthorityEndpoints = <
           metadata: {
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
-            status: certificateAuthority.status
+            status: certificateAuthority.status,
+            ...(typeof updatedOcspSetting === "boolean" && { isOcspEnabled: updatedOcspSetting }),
+            ...(typeof updatedCrlValidityDays === "number" && { crlValidityDays: updatedCrlValidityDays })
           }
         }
       });
@@ -273,7 +286,8 @@ export const registerCertificateAuthorityEndpoints = <
           type: EventType.DELETE_CA,
           metadata: {
             name: certificateAuthority.name,
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration)
           }
         }
       });

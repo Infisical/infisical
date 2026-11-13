@@ -1,0 +1,130 @@
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+
+import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
+import { ApprovalPolicyType, ApprovalRequestGrantStatus } from "../approval-policy-enums";
+import { TApprovalActor, TApprovalResource } from "../approval-policy-types";
+import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
+import {
+  createSecretAccessGrantWithPrivilege,
+  getSecretAccessAllowedSelfApprovals,
+  getSecretAccessRequestData,
+  hasSameAccessCriteria,
+  isSecretAccessBreakGlassEligible,
+  resolveSecretAccessPolicyForPath,
+  validateSecretAccessConstraints
+} from "./secret-access-policy-fns";
+import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
+import { TSecretAccessPolicy, TSecretAccessPolicyInputs, TSecretAccessRequestData } from "./secret-access-policy-types";
+
+type TSecretAccessApprovalGlobalResourceDep = {
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findSecretAccessPoliciesByEnvId" | "findStepsByPolicyId" | "findBypassersByPolicyId"
+  >;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "lockUserProjectMemberships">;
+};
+
+export type TSecretAccessApprovalGlobalResource = ReturnType<typeof secretAccessApprovalGlobalResourceFactory>;
+
+export const secretAccessApprovalGlobalResourceFactory = ({
+  approvalPolicyDAL,
+  approvalRequestGrantsDAL,
+  additionalPrivilegeDAL,
+  membershipDAL
+}: TSecretAccessApprovalGlobalResourceDep) =>
+  ({
+    matchPolicy: async (projectId, inputs) => {
+      const policies = await approvalPolicyDAL.findSecretAccessPoliciesByEnvId({ projectId, envId: inputs.envId });
+      const policy = resolveSecretAccessPolicyForPath(policies, inputs.secretPath);
+      if (!policy) return null;
+
+      const [steps, bypassers] = await Promise.all([
+        approvalPolicyDAL.findStepsByPolicyId(policy.id),
+        approvalPolicyDAL.findBypassersByPolicyId(policy.id)
+      ]);
+
+      return { ...policy, steps, bypassers } as TSecretAccessPolicy;
+    },
+
+    canAccess: async (projectId, actorId, inputs) => {
+      const grants = await approvalRequestGrantsDAL.find({
+        granteeUserId: actorId,
+        type: ApprovalPolicyType.SecretAccess,
+        status: ApprovalRequestGrantStatus.Active,
+        projectId,
+        revokedAt: null
+      });
+
+      const now = new Date();
+
+      return (
+        grants.find(
+          (grant) =>
+            (!grant.expiresAt || new Date(grant.expiresAt) > now) &&
+            hasSameAccessCriteria(SecretAccessPolicyRequestDataSchema.safeParse(grant.attributes).data ?? null, inputs)
+        ) ?? null
+      );
+    },
+
+    validateConstraints: (policy, requestData) =>
+      validateSecretAccessConstraints(policy.constraints.constraints, requestData),
+
+    postApprovalTxRoutine: async (request, tx, breakGlass?: { bypassReason: string }) => {
+      const { requesterId } = request;
+      if (!requesterId) {
+        throw new NotFoundError({ message: "The user who created this access request no longer exists" });
+      }
+
+      // Same membership rows removal locks, held across the privilege insert below. A privilege written
+      // after that delete survives and takes effect if the user is added back.
+      if (
+        !(await membershipDAL.lockUserProjectMemberships({ projectId: request.projectId, userId: requesterId }, tx))
+      ) {
+        throw new BadRequestError({
+          message:
+            "The user who created this access request is no longer a member of this project, so access cannot be granted."
+        });
+      }
+
+      const grant = await createSecretAccessGrantWithPrivilege(
+        {
+          projectId: request.projectId,
+          requestId: request.id,
+          granteeUserId: requesterId,
+          data: getSecretAccessRequestData(request),
+          breakGlass
+        },
+        { approvalRequestGrantsDAL, additionalPrivilegeDAL },
+        tx
+      );
+
+      return { grantId: grant.id };
+    },
+
+    isBreakGlassEligible: async ({
+      policy,
+      bypassers,
+      actor,
+      userGroupIds
+    }: {
+      policy: {
+        enforcementLevel: string;
+        constraints?: unknown;
+        allowedSelfApprovals?: boolean;
+      };
+      bypassers: { type: string; id?: string | null }[];
+      actor: Pick<TApprovalActor, "id">;
+      userGroupIds: Set<string>;
+    }) =>
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: policy.enforcementLevel,
+        allowedSelfApprovals: getSecretAccessAllowedSelfApprovals(policy),
+        bypassers,
+        actorUserId: actor.id,
+        actorGroupIds: userGroupIds
+      })
+  }) satisfies TApprovalResource<TSecretAccessPolicyInputs, TSecretAccessPolicy, TSecretAccessRequestData>;

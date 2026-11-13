@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
@@ -59,8 +59,9 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
           orgId: req.permission.orgId
         },
         data: {
-          roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
-          usernames: usernamesAndEmails
+          roles: [],
+          usernames: usernamesAndEmails,
+          skipUsersWithOrgAccess: true
         }
       });
 

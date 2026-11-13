@@ -5,7 +5,7 @@ description: "Issue certificates through the Infisical UI, Agent, or API with op
 ---
 
 <Tip>
-  New to Certificate Manager? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
+  New to Infisical Certificate Management? Start with [Issue Your First Certificate](/documentation/platform/pki/quick-starts/issue-first-certificate).
 </Tip>
 
 API enrollment is the default method for issuing certificates through the Infisical UI, the Infisical Agent, or direct API calls. It's the most flexible option — use it for manual one-off requests, automated pipelines, or server-driven auto-renewal where Infisical manages the certificate lifecycle.
@@ -28,6 +28,20 @@ API enrollment is the default method for issuing certificates through the Infisi
   </Card>
   <Card title="One-Off Requests" icon="pointer">
     Issue certificates manually through the UI when needed.
+  </Card>
+</CardGroup>
+
+## Guides
+
+<CardGroup cols={2}>
+  <Card title="Infisical Agent" icon="bot" href="/documentation/platform/pki/guides/applications/infisical-agent">
+    Issue and renew certificates automatically with the Infisical Agent.
+  </Card>
+  <Card title="Infisical Agent reference" icon="book-open" href="/documentation/platform/pki/reference/infisical-agent">
+    Every configuration option for the Agent's certificate management mode.
+  </Card>
+  <Card title="Kubernetes (Infisical Issuer)" icon="settings" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-issuer">
+    Issue and renew Kubernetes TLS certificates with the Infisical cert-manager issuer.
   </Card>
 </CardGroup>
 
@@ -56,7 +70,7 @@ API enrollment is the default method for issuing certificates through the Infisi
     | **Renew Before Days** | How many days before expiration to trigger renewal |
     
     <Info>
-      Auto-renewal only works for certificates with server-managed private keys. Certificates issued via CSR are not eligible.
+      Auto-renewal needs Infisical to hold either the certificate's private key or a CSR generated from it. If you issue a certificate from your own CSR, Infisical keeps that CSR, so the certificate can auto-renew on the same key pair.
     </Info>
   </Step>
 </Steps>
@@ -183,7 +197,7 @@ When auto-renewal is enabled, Infisical automatically renews certificates before
 3. The new certificate is pushed to any configured [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview)
 
 <Info>
-  Auto-renewal only works for certificates with server-managed keys. Certificates issued via CSR must be renewed by the client.
+  Auto-renewal needs Infisical to hold either the certificate's private key or a CSR generated from it. If Infisical holds only the CSR, it sends that CSR to the certificate authority again, so the renewed certificate works with the private key your client already has.
 </Info>
 
 ## What's next?

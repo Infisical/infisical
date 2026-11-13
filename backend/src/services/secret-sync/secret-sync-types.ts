@@ -39,7 +39,7 @@ import {
   TGitHubSyncListItem,
   TGitHubSyncWithCredentials
 } from "@app/services/secret-sync/github";
-import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { TSecretSyncWithFolder } from "@app/services/secret-sync/secret-sync-dal";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TWindmillSync,
@@ -114,6 +114,12 @@ import {
   TCloudflarePagesSyncWithCredentials
 } from "./cloudflare-pages/cloudflare-pages-types";
 import {
+  TCloudflareSecretsStoreSync,
+  TCloudflareSecretsStoreSyncInput,
+  TCloudflareSecretsStoreSyncListItem,
+  TCloudflareSecretsStoreSyncWithCredentials
+} from "./cloudflare-secrets-store";
+import {
   TCloudflareWorkersSync,
   TCloudflareWorkersSyncInput,
   TCloudflareWorkersSyncListItem,
@@ -160,6 +166,18 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TJenkinsSync,
+  TJenkinsSyncInput,
+  TJenkinsSyncListItem,
+  TJenkinsSyncWithCredentials
+} from "./jenkins/jenkins-sync-types";
+import {
+  TKeeperSync,
+  TKeeperSyncInput,
+  TKeeperSyncListItem,
+  TKeeperSyncWithCredentials
+} from "./keeper/keeper-sync-types";
+import {
   TLaravelForgeSync,
   TLaravelForgeSyncInput,
   TLaravelForgeSyncListItem,
@@ -180,6 +198,12 @@ import {
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
+import {
+  TPortainerSync,
+  TPortainerSyncInput,
+  TPortainerSyncListItem,
+  TPortainerSyncWithCredentials
+} from "./portainer/portainer-sync-types";
 import { TQoverySync, TQoverySyncInput, TQoverySyncListItem, TQoverySyncWithCredentials } from "./qovery";
 import {
   TRailwaySync,
@@ -267,11 +291,13 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
+  | TCloudflareSecretsStoreSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
   | TRundeckSync
+  | TPortainerSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -287,7 +313,9 @@ export type TSecretSync =
   | THasuraCloudSync
   | TCloud66Sync
   | TSpaceliftSync
-  | TDaytonaSync;
+  | TDaytonaSync
+  | TKeeperSync
+  | TJenkinsSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -316,11 +344,13 @@ export type TSecretSyncWithCredentials =
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
+  | TCloudflareSecretsStoreSyncWithCredentials
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
   | TRundeckSyncWithCredentials
+  | TPortainerSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -338,7 +368,9 @@ export type TSecretSyncWithCredentials =
   | THasuraCloudSyncWithCredentials
   | TCloud66SyncWithCredentials
   | TSpaceliftSyncWithCredentials
-  | TDaytonaSyncWithCredentials;
+  | TDaytonaSyncWithCredentials
+  | TKeeperSyncWithCredentials
+  | TJenkinsSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -367,11 +399,13 @@ export type TSecretSyncInput =
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
+  | TCloudflareSecretsStoreSyncInput
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
   | TRundeckSyncInput
+  | TPortainerSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -389,7 +423,9 @@ export type TSecretSyncInput =
   | THasuraCloudSyncInput
   | TCloud66SyncInput
   | TSpaceliftSyncInput
-  | TDaytonaSyncInput;
+  | TDaytonaSyncInput
+  | TKeeperSyncInput
+  | TJenkinsSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -419,11 +455,13 @@ export type TSecretSyncListItem =
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem
+  | TCloudflareSecretsStoreSyncListItem
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
   | TRundeckSyncListItem
+  | TPortainerSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
@@ -440,7 +478,9 @@ export type TSecretSyncListItem =
   | THasuraCloudSyncListItem
   | TCloud66SyncListItem
   | TSpaceliftSyncListItem
-  | TDaytonaSyncListItem;
+  | TDaytonaSyncListItem
+  | TKeeperSyncListItem
+  | TJenkinsSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
@@ -477,6 +517,7 @@ export type TCreateSecretSyncDTO = Pick<TSecretSync, "syncOptions" | "destinatio
   projectId: string;
   secretPath: string;
   environment: string;
+  includeAllSubFolders?: boolean;
   isAutoSyncEnabled?: boolean;
 };
 
@@ -523,9 +564,13 @@ export type TSyncSecretsResult = {
   createdSecretKeys: string[];
   updatedSecretKeys: string[];
   deletedSecretKeys: string[];
+  // Something the user has to act on although the sync succeeded; saved as the sync's last message.
+  message?: string;
 };
 
-export type TSecretSyncRaw = NonNullable<Awaited<ReturnType<TSecretSyncDALFactory["findById"]>>>;
+// ReturnType<> resolves findById's includeFolderPath generic to boolean, a union whose members may
+// lack `folder`, so the default row (path resolved) is named here directly.
+export type TSecretSyncRaw = TSecretSyncWithFolder;
 
 export type TQueueSecretSyncsByPathDTO = {
   secretPath: string;
@@ -623,6 +668,7 @@ export type TPreSaveTransformSyncOptionsParams = {
 
 export type TPreSaveTransformDestinationConfigParams = {
   destinationConfig: Record<string, unknown> | undefined;
+  existingDestinationConfig?: Record<string, unknown>;
   connectionId: string;
 };
 

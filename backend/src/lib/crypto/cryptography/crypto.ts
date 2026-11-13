@@ -1,7 +1,7 @@
 // NOTE: DO NOT USE crypto-js ANYWHERE EXCEPT THIS FILE.
 // We use crypto-js purely to get around our native node crypto FIPS restrictions in FIPS mode.
 
-import crypto, { subtle } from "node:crypto";
+import crypto from "node:crypto";
 
 import bcrypt from "bcrypt";
 import jwtDep from "jsonwebtoken";
@@ -11,7 +11,6 @@ import naclUtils from "tweetnacl-util";
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
@@ -97,14 +96,11 @@ const cryptographyFactory = () => {
     return $fipsEnabled;
   };
 
-  const verifyFipsLicense = (licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">) => {
+  // isFipsLicensed is the instance license's fips entitlement, read at boot.
+  const verifyFipsLicense = (isFipsLicensed: boolean) => {
     const appCfg = getConfig();
 
-    if (
-      !appCfg.isDevelopmentMode &&
-      isFipsModeEnabled({ skipInitializationCheck: true }) &&
-      !licenseService.onPremFeatures?.fips
-    ) {
+    if (!appCfg.isDevelopmentMode && isFipsModeEnabled({ skipInitializationCheck: true }) && !isFipsLicensed) {
       throw new CryptographyError({
         message: "FIPS mode is enabled but your license does not include FIPS support. Please contact support."
       });
@@ -479,12 +475,15 @@ const cryptographyFactory = () => {
       createDecipheriv: crypto.createDecipheriv,
       createPublicKey: crypto.createPublicKey,
       createPrivateKey: crypto.createPrivateKey,
+      privateDecrypt: crypto.privateDecrypt,
       getRandomValues: crypto.getRandomValues,
       randomUUID: crypto.randomUUID,
+      // The same object as node:crypto's webcrypto.subtle, but DOM-typed: @peculiar/x509 expects DOM
+      // CryptoKeys, and @types/node's key usages have outgrown TypeScript's DOM lib.
       subtle: {
-        generateKey: subtle.generateKey.bind(subtle),
-        importKey: subtle.importKey.bind(subtle),
-        exportKey: subtle.exportKey.bind(subtle)
+        generateKey: globalThis.crypto.subtle.generateKey.bind(globalThis.crypto.subtle),
+        importKey: globalThis.crypto.subtle.importKey.bind(globalThis.crypto.subtle),
+        exportKey: globalThis.crypto.subtle.exportKey.bind(globalThis.crypto.subtle)
       },
       constants: crypto.constants,
       X509Certificate: crypto.X509Certificate,

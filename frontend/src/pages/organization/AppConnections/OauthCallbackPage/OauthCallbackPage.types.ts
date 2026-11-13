@@ -7,7 +7,8 @@ import {
   TGitHubConnection,
   TGitHubRadarConnection,
   TGitLabConnection,
-  THerokuConnection
+  THerokuConnection,
+  TStripeConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -63,6 +64,9 @@ export type AzureDevOpsFormData = BaseFormData &
 export type HerokuFormData = BaseFormData &
   Pick<THerokuConnection, "name" | "method" | "description">;
 
+export type StripeFormData = BaseFormData &
+  Pick<TStripeConnection, "name" | "method" | "description">;
+
 export type FormDataMap = {
   [AppConnection.GitHub]: GitHubFormData & { app: AppConnection.GitHub };
   [AppConnection.GitHubRadar]: GitHubRadarFormData & { app: AppConnection.GitHubRadar };
@@ -79,5 +83,8 @@ export type FormDataMap = {
   };
   [AppConnection.Heroku]: HerokuFormData & {
     app: AppConnection.Heroku;
+  };
+  [AppConnection.Stripe]: StripeFormData & {
+    app: AppConnection.Stripe;
   };
 };

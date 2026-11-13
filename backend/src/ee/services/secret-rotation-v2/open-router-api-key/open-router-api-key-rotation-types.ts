@@ -25,6 +25,7 @@ export type TOpenRouterApiKeyRotationGeneratedCredentials = z.infer<
 
 export interface TOpenRouterApiKeyRotationParameters {
   name: string;
+  workspaceId?: string;
   limit?: number | null;
   limitReset?: "daily" | "weekly" | "monthly" | null;
   includeByokInLimit?: boolean | null;

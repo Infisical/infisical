@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { AlertTriangleIcon, PlusIcon, SearchIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CodeSigningUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -23,6 +22,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -36,9 +36,10 @@ import {
 import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub,
-  useOrganization,
+  useProject,
   useSubscription
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   getSignerStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
@@ -47,7 +48,6 @@ import {
   useListSigners
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
@@ -57,14 +57,16 @@ type Props = {
 };
 
 export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleCreateSigner = () => {
     if (!subscription.pkiCodeSigning) {
-      handlePopUpOpen("upgradePlan");
+      openUpgradeGate({
+        intent: CodeSigningUpgradeIntent,
+        paywallKey: "cert-manager.signers"
+      });
       return;
     }
     onCreateSigner();
@@ -136,22 +138,19 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             <TableBody>
               {!isLoading &&
                 signers.map((signer) => (
-                  <TableRow
-                    key={signer.id}
-                    className="cursor-pointer hover:bg-surface-hover"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
-                        params: {
-                          orgId: currentOrg.id,
-                          projectId,
-                          signerId: signer.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{signer.name}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
+                  <TableRow key={signer.id} className="hover:bg-surface-hover" linked>
+                    <TableCell>
+                      <RowLink
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `code-signing/${signer.id}`
+                        )!}
+                      >
+                        {signer.name}
+                      </RowLink>
+                    </TableCell>
+                    <TableCell data-row-interactive className="cursor-default">
                       {signer.certificateFailureReason &&
                       (signer.status === SignerStatus.Failed ||
                         signer.status === SignerStatus.Pending) ? (
@@ -227,12 +226,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
           />
         )}
       </CardContent>
-      <UpgradePlanModal
-        paywallKey="cert-manager.signers"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Code signing is available on Infisical's Enterprise plan."
-      />
+      {upgradeGate}
     </Card>
   );
 };

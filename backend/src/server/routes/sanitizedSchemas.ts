@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   CertificateAuthoritiesSchema,
+  DynamicSecretLeasesSchema,
   DynamicSecretsSchema,
   HoneyTokensSchema,
   IdentityProjectAdditionalPrivilegeSchema,
@@ -15,6 +16,7 @@ import {
   SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import {
   SanitizedProxiedServiceBaseSchema,
@@ -282,6 +284,10 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
+export const SanitizedDynamicSecretLeaseSchema = DynamicSecretLeasesSchema.omit({
+  encryptedLeaseData: true
+});
+
 export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   id: true,
   name: true,
@@ -294,6 +300,8 @@ export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   createdAt: true,
   updatedAt: true
 }).extend({
+  config: AwsHoneyTokenRowConfigSchema,
+  folderId: z.string().uuid(),
   environment: z.object({
     id: z.string(),
     name: z.string(),
@@ -331,6 +339,7 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   upgradeStatus: true,
   pitVersionLimit: true,
   kmsCertificateKeyId: true,
+  kmsSecretManagerKeyId: true,
   auditLogsRetentionDays: true,
   hasDeleteProtection: true,
   secretSharing: true,

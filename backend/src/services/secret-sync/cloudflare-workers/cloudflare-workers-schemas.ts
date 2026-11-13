@@ -12,6 +12,7 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { CloudflareWorkersVariableType } from "./cloudflare-workers-constants";
 
 const CloudflareWorkersSyncDestinationConfigSchema = z.object({
   scriptId: z
@@ -22,7 +23,11 @@ const CloudflareWorkersSyncDestinationConfigSchema = z.object({
       const re2 = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/);
       return re2.test(val);
     }, "Invalid script ID format")
-    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId)
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId),
+  variableType: z
+    .nativeEnum(CloudflareWorkersVariableType)
+    .optional()
+    .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.variableType)
 });
 
 const CloudflareWorkersSyncAdditionalOptionsSchema = z.object({
@@ -50,7 +55,14 @@ export const CreateCloudflareWorkersSyncSchema = GenericCreateSecretSyncFieldsSc
   CloudflareWorkersSyncOptionsConfig,
   CloudflareWorkersSyncAdditionalOptionsSchema
 ).extend({
-  destinationConfig: CloudflareWorkersSyncDestinationConfigSchema
+  // New syncs always get a type. It stays optional elsewhere because syncs created before it existed have
+  // none, and those keep skipping same-name plaintext and JSON variables.
+  destinationConfig: CloudflareWorkersSyncDestinationConfigSchema.extend({
+    variableType: z
+      .nativeEnum(CloudflareWorkersVariableType)
+      .default(CloudflareWorkersVariableType.Secret)
+      .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.variableType)
+  })
 });
 
 export const UpdateCloudflareWorkersSyncSchema = GenericUpdateSecretSyncFieldsSchema(

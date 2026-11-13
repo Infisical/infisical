@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
@@ -9,16 +9,12 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import {
+  SecretSyncMoveWarning,
+  useSecretSyncMoveWarning
+} from "@app/components/secret-syncs/SecretSyncMoveWarning";
+import {
   Alert,
   AlertDescription,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertTitle,
   Button,
   Combobox,
@@ -51,6 +47,13 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
+import {
+  overviewCountBucket,
+  OverviewFlowHandle,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
+import { SecretConflictsDialog } from "../SecretConflictsDialog";
 import { type CopySecretsErrorKind, getCopySecretsErrorKind } from "./copySecrets.data";
 import type {
   CopySecretsAttributes,
@@ -114,6 +117,34 @@ const CopySecretsSession = ({
   onOpenChange,
   onCompleted
 }: Props & { invocation: CopySecretsInvocation }) => {
+  const overviewTelemetry = useOverviewTelemetry();
+  const [telemetry] = useState(overviewTelemetry);
+  const sessionOwner = useRef<object>(undefined);
+  const sessionFlow = useRef<OverviewFlowHandle>(undefined);
+  const flow = {
+    action: "copy" as const,
+    resourceType: "mixed" as const,
+    source: invocation.origin === "toolbar" ? ("menu" as const) : invocation.origin,
+    destination: "environment" as const
+  };
+  useEffect(() => {
+    sessionOwner.current = {};
+    sessionFlow.current = telemetry.openFlow(flow, { cancelOnScopeChange: false });
+    return () => {
+      sessionFlow.current?.flow({ phase: "canceled" });
+      sessionFlow.current = undefined;
+      sessionOwner.current = undefined;
+    };
+  }, [telemetry, invocation.origin]);
+  const closeSheet = (open: boolean, owner = sessionOwner.current) => {
+    if (!owner || owner !== sessionOwner.current) return;
+    if (!open) sessionFlow.current?.flow({ phase: "canceled" });
+    onOpenChange(open);
+    if (!open) {
+      sessionFlow.current = undefined;
+      sessionOwner.current = undefined;
+    }
+  };
   const initialState = getInitialCopyState(invocation, environments);
   const [sourceEnvironmentSlug, setSourceEnvironmentSlug] = useState(
     initialState.sourceEnvironmentSlug
@@ -193,6 +224,21 @@ const CopySecretsSession = ({
     destinationRootPath: normalizedDestinationPath,
     includeValues
   });
+  const secretSyncWarning = useSecretSyncMoveWarning(
+    projectId,
+    sourceEnvironmentSlug &&
+      destinationEnvironmentSlug &&
+      isSourcePathSettled &&
+      isDestinationPathSettled
+      ? requestGroups.map((group) => ({
+          source: { environment: sourceEnvironmentSlug, secretPath: group.sourcePath },
+          destination: {
+            environment: destinationEnvironmentSlug,
+            secretPath: group.destinationPath
+          }
+        }))
+      : []
+  );
   const destinationFolderPaths = getCopyDestinationFolderPaths({
     folderPaths: selectedFolderPaths,
     sourceRootPath: normalizedSourcePath,
@@ -326,6 +372,8 @@ const CopySecretsSession = ({
     if (destinationErrorKind === "forbidden") return "Destination access is required";
     if (isDestinationLoading) return "Loading destination secrets";
     if (!selectedItemCount) return "Select at least one secret or folder";
+    if (secretSyncWarning.isChecking) return "Checking the destination for secret syncs";
+    if (secretSyncWarning.isBlockingSubmit) return "Confirm the secret sync warning to copy";
     if (
       destinationFolderSteps.some(
         ({ parentPath }) => !canCreateFoldersAt(destinationEnvironmentSlug, parentPath)
@@ -345,7 +393,15 @@ const CopySecretsSession = ({
     shouldOverwrite: boolean;
     skippedSecretIds?: string[];
   }) => {
+    const owner = sessionOwner.current;
     setIsSubmitting(true);
+    const attempt = telemetry.startFlow({
+      ...flow,
+      countBucket: overviewCountBucket(selectedItemCount)
+    });
+    let receivedCount = 0;
+    let receivedApprovalCount = 0;
+    let receivedFolderCount = 0;
     try {
       const skippedIds = new Set(skippedSecretIds);
       const copiedSecretIds = selectedIds.filter((id) => !skippedIds.has(id));
@@ -363,6 +419,7 @@ const CopySecretsSession = ({
           path: parentPath,
           name
         });
+        receivedFolderCount += 1;
       }, Promise.resolve());
 
       const results = await copyRequestGroups.reduce<Promise<Array<{ approvalCount: number }>>>(
@@ -385,6 +442,10 @@ const CopySecretsSession = ({
                 value: group.includeValues
               }
             });
+            receivedCount += response.results.filter((result) => !("approval" in result)).length;
+            receivedApprovalCount += response.results.filter(
+              (result) => "approval" in result
+            ).length;
             return [
               ...chunks,
               { approvalCount: response.results.filter((result) => "approval" in result).length }
@@ -396,6 +457,13 @@ const CopySecretsSession = ({
       );
 
       const approvalCount = results.reduce((count, result) => count + result.approvalCount, 0);
+      attempt.flow({
+        ...flow,
+        phase: overviewResponsePhase(receivedCount + receivedFolderCount, approvalCount, 0),
+        countBucket: overviewCountBucket(copiedSecretIds.length + selectedFolderPaths.length),
+        responseCountBucket: overviewCountBucket(receivedCount + receivedFolderCount),
+        approvalCountBucket: overviewCountBucket(receivedApprovalCount)
+      });
       const skippedCount = skippedSecretIds.length;
       let notificationText = `${copiedSecretIds.length} ${
         copiedSecretIds.length === 1 ? "secret" : "secrets"
@@ -424,9 +492,20 @@ const CopySecretsSession = ({
             : "success",
         text: notificationText
       });
-      onCompleted?.(copiedSecretIds);
-      onOpenChange(false);
+      if (owner && owner === sessionOwner.current) {
+        onCompleted?.(copiedSecretIds);
+        closeSheet(false, owner);
+      }
     } catch {
+      attempt.flow({
+        ...flow,
+        phase:
+          receivedCount + receivedFolderCount + receivedApprovalCount
+            ? "partial-response"
+            : "failed",
+        responseCountBucket: overviewCountBucket(receivedCount + receivedFolderCount),
+        approvalCountBucket: overviewCountBucket(receivedApprovalCount)
+      });
       // Mutation failures are surfaced by the global React Query error handler.
     } finally {
       setIsSubmitting(false);
@@ -573,7 +652,7 @@ const CopySecretsSession = ({
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
+      <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && closeSheet(open)}>
         <SheetContent size="workspace" className="w-full sm:w-3/4">
           <form
             className="flex min-h-0 flex-1 flex-col"
@@ -592,13 +671,13 @@ const CopySecretsSession = ({
             <div className="@container/copy-sheet flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
               <div className="grid min-h-0 flex-1 gap-4 @xl/copy-sheet:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] @xl/copy-sheet:grid-rows-[auto_minmax(0,1fr)] @xl/copy-sheet:gap-x-2 @xl/copy-sheet:gap-y-3">
                 <section
-                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-1 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-rows-subgrid"
+                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-1 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-cols-[minmax(0,1fr)] @xl/copy-sheet:grid-rows-subgrid"
                   aria-labelledby="copy-source-contents-heading"
                 >
-                  <div className="flex flex-col gap-2">
+                  <div className="flex min-w-0 flex-col gap-2">
                     <h3
                       id="copy-source-contents-heading"
-                      className="text-sm font-medium text-foreground"
+                      className="text-sm font-normal text-foreground"
                     >
                       Source
                     </h3>
@@ -667,7 +746,7 @@ const CopySecretsSession = ({
                       </p>
                     )}
                   </div>
-                  <div className="min-h-0 flex-1">{sourceContent}</div>
+                  <div className="min-h-0 min-w-0 flex-1">{sourceContent}</div>
                 </section>
                 <div
                   className="flex items-center justify-center text-muted @xl/copy-sheet:col-start-2 @xl/copy-sheet:row-start-2"
@@ -677,13 +756,13 @@ const CopySecretsSession = ({
                   <ArrowRightIcon className="hidden size-4 @xl/copy-sheet:block" />
                 </div>
                 <section
-                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-3 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-rows-subgrid"
+                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-3 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-cols-[minmax(0,1fr)] @xl/copy-sheet:grid-rows-subgrid"
                   aria-labelledby="copy-destination-contents-heading"
                 >
-                  <div className="flex flex-col gap-2">
+                  <div className="flex min-w-0 flex-col gap-2">
                     <h3
                       id="copy-destination-contents-heading"
-                      className="text-sm font-medium text-foreground"
+                      className="text-sm font-normal text-foreground"
                     >
                       Destination
                     </h3>
@@ -733,7 +812,7 @@ const CopySecretsSession = ({
                       </p>
                     )}
                   </div>
-                  <div className="min-h-0 flex-1">{destinationContent}</div>
+                  <div className="min-h-0 min-w-0 flex-1">{destinationContent}</div>
                 </section>
               </div>
 
@@ -742,6 +821,13 @@ const CopySecretsSession = ({
                 <span className="font-mono text-foreground">{normalizedDestinationPath}</span>,
                 including empty folders. Managed secrets, dynamic secrets, and imports are excluded.
               </p>
+
+              <SecretSyncMoveWarning
+                warning={secretSyncWarning}
+                projectId={projectId}
+                noun={selectedFolderPaths.length ? "items" : "secrets"}
+                verb="copied"
+              />
             </div>
 
             <SheetFooter className="flex-wrap items-center border-t">
@@ -780,7 +866,7 @@ const CopySecretsSession = ({
                 type="button"
                 variant="ghost"
                 isDisabled={isSubmitting}
-                onClick={() => onOpenChange(false)}
+                onClick={() => closeSheet(false)}
               >
                 Cancel
               </Button>
@@ -806,44 +892,19 @@ const CopySecretsSession = ({
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Resolve Secret Conflicts</AlertDialogTitle>
-            <AlertDialogDescription>
-              These secrets already exist at the destination. Overwrite them or copy only secrets
-              without conflicts.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <ul className="max-h-64 overflow-y-auto rounded-md border border-border bg-container">
-            {conflictingSecrets.map(
-              ({ sourceSecretId, name, destinationPath: conflictDestinationPath }) => (
-                <li
-                  key={sourceSecretId}
-                  className="flex min-w-0 flex-col gap-1 border-b border-border px-3 py-2 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                >
-                  <span className="font-mono text-sm break-all text-foreground">{name}</span>
-                  <span className="font-mono text-xs break-all text-muted">
-                    {conflictDestinationPath}
-                  </span>
-                </li>
-              )
-            )}
-          </ul>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="outline" onClick={() => handleConflictResolution("skip")}>
-              Skip conflicts
-            </AlertDialogAction>
-            <AlertDialogAction
-              variant="danger"
-              onClick={() => handleConflictResolution("overwrite")}
-            >
-              Overwrite conflicts
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SecretConflictsDialog
+        isOpen={isConflictDialogOpen}
+        onOpenChange={setIsConflictDialogOpen}
+        conflicts={conflictingSecrets.map(
+          ({ sourceSecretId, name, destinationPath: location }) => ({
+            id: sourceSecretId,
+            name,
+            location
+          })
+        )}
+        description="These secrets already exist at the destination. Overwrite them or copy only secrets without conflicts."
+        onResolve={handleConflictResolution}
+      />
     </>
   );
 };

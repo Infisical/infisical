@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { useIsNamedByProduct } from "@app/components/organization/ProductAccess";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
@@ -11,11 +12,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  RowLink,
   TableCell,
   TableRow
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLucideIcon,
+  getProjectTitle
+} from "@app/helpers/project";
 import { useGetUserProjects } from "@app/hooks/api";
 import { TGroupProject } from "@app/hooks/api/groups/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -31,7 +38,6 @@ type Props = {
 
 export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
   const { data: workspaces } = useGetUserProjects();
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
   const isAccessible = useMemo(() => {
@@ -44,34 +50,47 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
     return workspaceIds.has(project.id);
   }, [workspaces, project]);
 
+  const projectType = project.type as ProjectType;
+  const productName = getProjectTitle(projectType);
+  const ProductIcon = getProjectLucideIcon(projectType);
+  const isNamedByProduct = useIsNamedByProduct()(projectType);
+  const membershipLabel = isNamedByProduct ? productName : project.name;
+
+  const projectLink =
+    getInstancePinningLink(
+      currentOrg.id,
+      { id: project.id, type: project.type as ProjectType },
+      "access-management"
+    ) ??
+    ({
+      to: `${getProjectBaseURL(project.type as ProjectType)}/access-management`,
+      params: { orgId: currentOrg.id, projectId: project.id }
+    } as const);
+  const projectSearch = { selectedTab: "groups" };
+
   return (
     <TableRow
       key={`group-project-${project.id}`}
-      onClick={() => {
-        if (isAccessible) {
-          navigate({
-            to: `${getProjectBaseURL(project.type as ProjectType)}/access-management` as const,
-            params: {
-              orgId: currentOrg?.id || "",
-              projectId: project.id
-            },
-            search: {
-              selectedTab: "groups"
-            }
-          });
-          return;
-        }
-
-        createNotification({
-          text: "Unable to access project",
-          type: "error"
-        });
-      }}
+      linked={isAccessible}
+      onClick={
+        isAccessible
+          ? undefined
+          : () => createNotification({ text: `Unable to access ${membershipLabel}`, type: "error" })
+      }
     >
-      <TableCell className="max-w-0 truncate">{project.name}</TableCell>
-      <TableCell>{getProjectTitle(project.type as ProjectType)}</TableCell>
+      <TableCell className="max-w-0 truncate">
+        <RowLink {...projectLink} search={projectSearch} disabled={!isAccessible}>
+          <span className="flex min-w-0 items-center gap-2">
+            <ProductIcon className="size-4 shrink-0 text-muted" />
+            <span className="truncate">{productName}</span>
+          </span>
+        </RowLink>
+      </TableCell>
+      <TableCell className="max-w-0 truncate">
+        {isNamedByProduct ? <span className="text-muted">-</span> : project.name}
+      </TableCell>
       <TableCell>{format(new Date(project.joinedGroupAt), "yyyy-MM-dd")}</TableCell>
-      <TableCell>
+      <TableCell data-row-interactive>
         <DropdownMenu>
           <DropdownMenuTrigger>
             <IconButton variant="ghost" size="xs">
@@ -79,23 +98,10 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              isDisabled={!isAccessible}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate({
-                  to: `${getProjectBaseURL(project.type as ProjectType)}/access-management` as const,
-                  params: {
-                    orgId: currentOrg?.id || "",
-                    projectId: project.id
-                  },
-                  search: {
-                    selectedTab: "groups"
-                  }
-                });
-              }}
-            >
-              Access Project
+            <DropdownMenuItem asChild isDisabled={!isAccessible}>
+              <Link {...projectLink} search={projectSearch}>
+                {isNamedByProduct ? `Open ${productName}` : "Open Project"}
+              </Link>
             </DropdownMenuItem>
             <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
               {(isAllowed) => (
@@ -106,11 +112,12 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
                     e.stopPropagation();
                     handlePopUpOpen("removeProjectFromGroup", {
                       projectId: project.id,
-                      projectName: project.name
+                      projectType: project.type,
+                      projectName: membershipLabel
                     });
                   }}
                 >
-                  Remove From Project
+                  {isNamedByProduct ? `Remove From ${productName}` : "Remove From Project"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>

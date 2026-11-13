@@ -1,20 +1,25 @@
 import { PamAccessGrantStatus, PamAccessRequestStatus } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
-type StatusInfo = { variant: "warning" | "success" | "danger" | "neutral"; label: string };
+type StatusInfo = {
+  variant: "warning" | "success" | "danger" | "neutral";
+  label: string;
+  isAutoApproved?: boolean;
+};
 
 const STATUS_BADGE: Record<string, StatusInfo> = {
   [PamAccessRequestStatus.Pending]: { variant: "warning", label: "Pending Review" },
   [PamAccessRequestStatus.Approved]: { variant: "success", label: "Approved" },
   [PamAccessRequestStatus.Rejected]: { variant: "danger", label: "Rejected" },
   [PamAccessRequestStatus.Expired]: { variant: "neutral", label: "Expired" },
+  [PamAccessRequestStatus.Cancelled]: { variant: "neutral", label: "Cancelled" },
   [PamAccessGrantStatus.Revoked]: { variant: "danger", label: "Revoked" }
 };
 
 // The underlying request status stays "approved" after approval; the grant carries the real
 // post-approval state. A revoked grant shows "Revoked", and a grant past its expiry shows "Expired".
 export const getRequestStatusInfo = (
-  request: Pick<TPamAccessRequest, "status" | "grantExpiresAt" | "grantStatus">
+  request: Pick<TPamAccessRequest, "status" | "grantExpiresAt" | "grantStatus" | "autoApprovedAt">
 ): StatusInfo => {
   if (request.status === PamAccessRequestStatus.Approved) {
     if (request.grantStatus === PamAccessGrantStatus.Revoked)
@@ -22,6 +27,9 @@ export const getRequestStatusInfo = (
     const grantExpired =
       !!request.grantExpiresAt && new Date(request.grantExpiresAt).getTime() <= Date.now();
     if (grantExpired) return STATUS_BADGE[PamAccessRequestStatus.Expired];
+    if (request.autoApprovedAt) {
+      return { variant: "success", label: "Auto-approved", isAutoApproved: true };
+    }
   }
 
   return STATUS_BADGE[request.status] ?? STATUS_BADGE[PamAccessRequestStatus.Pending];

@@ -1,11 +1,14 @@
 import { z } from "zod";
 
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
+  MAX_CRL_VALIDITY_DAYS,
+  MIN_CRL_VALIDITY_DAYS,
   PKI_TEXT_COLUMN_MAX_LENGTH,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
@@ -15,6 +18,14 @@ import {
   GenericUpdateCertificateAuthorityFieldsSchema
 } from "../certificate-authority-schemas";
 import { distributionPointUrlsSchema, validateCaDateField } from "../certificate-authority-validators";
+
+const crlValidityDaysSchema = z
+  .number()
+  .int()
+  .min(MIN_CRL_VALIDITY_DAYS)
+  .max(MAX_CRL_VALIDITY_DAYS)
+  .optional()
+  .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlValidityDays);
 
 type TInternalCertificateAuthorityConfiguration = {
   type: InternalCaType;
@@ -32,12 +43,19 @@ type TInternalCertificateAuthorityConfiguration = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
   hsmKeyLabel?: string;
+  appConnectionId?: string;
+  appConnectionName?: string;
+  hsmConnectorName?: string;
+  region?: AWSRegion;
+  externalKeyId?: string;
   dn?: string | null;
   parentCaId?: string | null;
   serialNumber?: string | null;
   activeCaCertId?: string | null;
   crlDistributionPointUrls?: string[];
   disableManagedCrlDistributionPointUrl?: boolean;
+  isOcspEnabled?: boolean;
+  crlValidityDays?: number;
 };
 
 export const InternalCertificateAuthorityConfigurationSchema = z
@@ -70,7 +88,21 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .uuid()
       .optional()
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
-    hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
+    hsmKeyLabel: z
+      .string()
+      .optional()
+      .describe(
+        JSON.stringify({ deprecated: true, description: CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel })
+      ),
+    appConnectionId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.appConnectionId),
+    appConnectionName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.appConnectionName),
+    hsmConnectorName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorName),
+    region: z.nativeEnum(AWSRegion).optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.region),
+    externalKeyId: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.externalKeyId),
     dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
     parentCaId: z.string().uuid().nullish(),
     serialNumber: z.string().trim().nullish(),
@@ -82,7 +114,9 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .boolean()
       .optional()
       .default(false)
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
+    isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled),
+    crlValidityDays: crlValidityDaysSchema
   })
   .refine(
     (data) => {
@@ -96,18 +130,38 @@ export const InternalCertificateAuthorityConfigurationSchema = z
         "At least one of the fields commonName, organization, ou, country, province, or locality must be non-empty",
       path: []
     }
-  ) as unknown as z.ZodType<TInternalCertificateAuthorityConfiguration>;
+  )
+  .refine((data) => data.keySource === CertKeySource.AwsKms || (!data.appConnectionId && !data.region), {
+    message: "appConnectionId and region can only be set when keySource is 'aws-kms'",
+    path: ["keySource"]
+  })
+  .refine((data) => data.keySource !== CertKeySource.AwsKms || !data.hsmConnectorId, {
+    message: "hsmConnectorId cannot be set when keySource is 'aws-kms'",
+    path: ["keySource"]
+  }) as unknown as z.ZodType<TInternalCertificateAuthorityConfiguration>;
 
 export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.INTERNAL),
   configuration: InternalCertificateAuthorityConfigurationSchema
 });
 
-export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
-  CaType.INTERNAL
-).extend({
-  configuration: InternalCertificateAuthorityConfigurationSchema
+export const UpdateInternalCertificateAuthorityResponseSchema = InternalCertificateAuthoritySchema.extend({
+  crlWarning: z.string().optional().describe(CertificateAuthorities.UPDATE_INTERNAL_RESPONSE.crlWarning)
 });
+
+export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.INTERNAL)
+  .extend({
+    configuration: InternalCertificateAuthorityConfigurationSchema
+  })
+  .refine(
+    ({ configuration }) =>
+      !configuration.externalKeyId && !configuration.appConnectionName && !configuration.hsmConnectorName,
+    {
+      message:
+        "externalKeyId, appConnectionName and hsmConnectorName are read-only and cannot be set when creating a certificate authority",
+      path: ["configuration"]
+    }
+  );
 
 export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
   crlDistributionPointUrls: distributionPointUrlsSchema
@@ -116,7 +170,9 @@ export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
   disableManagedCrlDistributionPointUrl: z
     .boolean()
     .optional()
-    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
+  isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled),
+  crlValidityDays: crlValidityDaysSchema
 });
 
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(

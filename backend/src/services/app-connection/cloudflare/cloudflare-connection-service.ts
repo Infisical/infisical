@@ -1,11 +1,14 @@
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
+  getCloudflareErrorMessage,
   listCloudflarePagesProjects,
   listCloudflarePermissionGroups,
   listCloudflareR2Buckets,
+  listCloudflareSecretsStores,
   listCloudflareWorkersScripts,
   listCloudflareZones
 } from "./cloudflare-connection-fns";
@@ -43,6 +46,22 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
         `Failed to list Cloudflare Workers scripts for Cloudflare connection [connectionId=${connectionId}]`
       );
       return [];
+    }
+  };
+
+  const listSecretsStores = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
+    try {
+      const stores = await listCloudflareSecretsStores(appConnection);
+      return stores;
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to list Cloudflare Secrets Stores for Cloudflare connection [connectionId=${connectionId}]`
+      );
+      throw new BadRequestError({
+        message: `Failed to list Cloudflare Secrets Stores: ${getCloudflareErrorMessage(error)}`
+      });
     }
   };
 
@@ -88,6 +107,7 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
   return {
     listPagesProjects,
     listWorkersScripts,
+    listSecretsStores,
     listZones,
     listPermissionGroups,
     listR2Buckets

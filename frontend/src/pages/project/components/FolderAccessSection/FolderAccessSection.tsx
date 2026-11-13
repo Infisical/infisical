@@ -12,6 +12,10 @@ import {
   UsersIcon
 } from "lucide-react";
 
+import {
+  FolderAccessControlsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
@@ -48,7 +52,8 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import {
   TFolderAccess,
@@ -82,6 +87,9 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const { projectId, currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const [isGrantOpen, setIsGrantOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<TFolderAccess | null>(null);
@@ -89,18 +97,25 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
 
   const userAccess = useListUserFolderAccess({
     projectId,
-    userId: actor.type === "user" ? actor.id : ""
+    userId: actor.type === "user" ? actor.id : "",
+    enabled: hasFolderRbacPlan
   });
   const identityAccess = useListIdentityFolderAccess({
     projectId,
-    identityId: actor.type === "identity" ? actor.id : ""
+    identityId: actor.type === "identity" ? actor.id : "",
+    enabled: hasFolderRbacPlan
   });
   const {
-    data: folderAccess,
-    isPending,
-    isError,
+    data,
+    isPending: isQueryPending,
+    isError: isQueryError,
     refetch
   } = actor.type === "user" ? userAccess : identityAccess;
+  // a disabled query stays pending and keeps grants cached from before a plan change, so without
+  // the plan its state is ignored and the card shows the plan-gated empty state
+  const folderAccess = hasFolderRbacPlan ? data : undefined;
+  const isPending = hasFolderRbacPlan && isQueryPending;
+  const isError = hasFolderRbacPlan && isQueryError;
 
   const deleteUserAccess = useDeleteUserFolderAccess();
   const deleteIdentityAccess = useDeleteIdentityFolderAccess();
@@ -120,6 +135,13 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const actorNoun = actor.type === "user" ? "user" : "machine identity";
 
   const openGrantSheet = (source: FolderAccessGrantSheetSource) => {
+    if (!hasFolderRbacPlan) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent,
+        paywallKey: "project.folder-access-section"
+      });
+      return;
+    }
     setIsGrantOpen(true);
     analytics.captureForOrganization(AnalyticsEvent.FolderAccessGrantSheetOpened, currentOrg.id, {
       source,
@@ -280,7 +302,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                         {!hideActions && (
                           <TableCell variant="action">
                             <div className="flex items-center justify-end">
-                              <Tooltip disableHoverableContent>
+                              <Tooltip>
                                 <TooltipTrigger>
                                   <IconButton
                                     variant="ghost"
@@ -299,7 +321,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                                   {canManage ? "Manage Access" : "Access Restricted"}
                                 </TooltipContent>
                               </Tooltip>
-                              <Tooltip disableHoverableContent>
+                              <Tooltip>
                                 <TooltipTrigger>
                                   <IconButton
                                     variant="ghost"
@@ -329,13 +351,22 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
               </Table>
             ) : (
               <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
-                  <EmptyDescription>
-                    Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
-                    project roles within it
-                  </EmptyDescription>
-                </EmptyHeader>
+                {hasFolderRbacPlan ? (
+                  <EmptyHeader>
+                    <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
+                    <EmptyDescription>
+                      Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
+                      project roles within it
+                    </EmptyDescription>
+                  </EmptyHeader>
+                ) : (
+                  <EmptyHeader>
+                    <EmptyTitle>Folder access controls aren&apos;t on your plan</EmptyTitle>
+                    <EmptyDescription>
+                      Upgrade to grant this {actorNoun} access to specific folders
+                    </EmptyDescription>
+                  </EmptyHeader>
+                )}
                 {!hideActions && (
                   <EmptyContent>
                     <Button
@@ -367,6 +398,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
         }}
       />
       <RemoveFolderAccessDialog
+        isRoleContextKnown={false}
         actor={dialogActor}
         onOpenChange={(isOpen) => {
           if (!isOpen) setDeleteTarget(null);
@@ -376,6 +408,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
         folderPath={deleteTarget?.secretPath ?? ""}
         environmentName={deleteTarget ? environmentNameOf(deleteTarget.environment) : ""}
       />
+      {upgradeGate}
     </>
   );
 };

@@ -10,6 +10,7 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccessPamRequestAutoApprovedTemplate,
   AccessPamRequestBypassedTemplate,
   AccessPamRequestTemplate,
   AccountDeletionConfirmationTemplate,
@@ -27,6 +28,7 @@ import {
   HealthAlertTemplate,
   HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
+  LegacyPkiDeprecationTemplate,
   MfaRecoveryCodeUsedTemplate,
   NativeIntegrationDeprecationOrgAdminTemplate,
   NativeIntegrationDeprecationProjectAdminTemplate,
@@ -36,6 +38,7 @@ import {
   OrgAdminProjectFolderGrantAccessTemplate,
   OrganizationAssignmentTemplate,
   OrganizationInvitationTemplate,
+  PamFolderAdminAccessTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
   PkiApprovalRequestNeedsReviewTemplate,
@@ -49,7 +52,6 @@ import {
   SecretLeakIncidentTemplate,
   SecretReminderTemplate,
   SecretRequestCompletedTemplate,
-  SecretRotationFailedTemplate,
   SecretScanningScanFailedTemplate,
   SecretScanningSecretsDetectedTemplate,
   SecretSyncFailedTemplate,
@@ -61,7 +63,7 @@ import {
 } from "./emails";
 import DynamicSecretLeaseRevocationFailedTemplate from "./emails/DynamicSecretLeaseRevocationFailedTemplate";
 
-export type TSmtpConfig = SMTPTransport.Options;
+export type TSmtpConfig = SMTPTransport.Options & Pick<SMTPTransport.MailOptions, "from">;
 export type TSmtpAttachment = {
   filename: string;
   content: Buffer | string;
@@ -90,11 +92,13 @@ export enum SmtpTemplates {
   AccessApprovalRequestUpdated = "accessApprovalRequestUpdated",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
   AccessPamRequestBypassed = "accessPamRequestBypassed",
+  AccessPamRequestAutoApproved = "accessPamRequestAutoApproved",
   AccessPamRequest = "accessPamRequest",
   PkiApprovalRequestNeedsReview = "pkiApprovalRequestNeedsReview",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
+  LegacyPkiDeprecation = "legacyPkiDeprecation",
   NativeIntegrationDeprecationOrgAdmin = "nativeIntegrationDeprecationOrgAdmin",
   NativeIntegrationDeprecationProjectAdmin = "nativeIntegrationDeprecationProjectAdmin",
   OrgInvite = "organizationInvitation",
@@ -114,9 +118,9 @@ export enum SmtpTemplates {
   ExternalImportFailed = "externalImportFailed",
   ExternalImportStarted = "externalImportStarted",
   SecretRequestCompleted = "secretRequestCompleted",
-  SecretRotationFailed = "secretRotationFailed",
   ProjectAccessRequest = "projectAccess",
   OrgAdminProjectDirectAccess = "orgAdminProjectFolderGrantAccess",
+  PamFolderAdminAccess = "pamFolderAdminAccess",
   OrgAdminBreakglassAccess = "orgAdminBreakglassAccess",
   ServiceTokenExpired = "serviceTokenExpired",
   SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
@@ -146,6 +150,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SubOrgInvite]: SubOrganizationInvitationTemplate,
   [SmtpTemplates.OrgAssignment]: OrganizationAssignmentTemplate,
   [SmtpTemplates.NewDeviceJoin]: NewDeviceLoginTemplate,
+  [SmtpTemplates.LegacyPkiDeprecation]: LegacyPkiDeprecationTemplate,
   [SmtpTemplates.NativeIntegrationDeprecationOrgAdmin]: NativeIntegrationDeprecationOrgAdminTemplate,
   [SmtpTemplates.NativeIntegrationDeprecationProjectAdmin]: NativeIntegrationDeprecationProjectAdminTemplate,
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,
@@ -162,6 +167,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.ExternalImportSuccessful]: ExternalImportSucceededTemplate,
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
   [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
+  [SmtpTemplates.AccessPamRequestAutoApproved]: AccessPamRequestAutoApprovedTemplate,
   [SmtpTemplates.AccessPamRequest]: AccessPamRequestTemplate,
   [SmtpTemplates.PkiApprovalRequestNeedsReview]: PkiApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,
@@ -174,9 +180,9 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.UnlockAccount]: UnlockAccountTemplate,
   [SmtpTemplates.ServiceTokenExpired]: ServiceTokenExpiryNoticeTemplate,
   [SmtpTemplates.SecretReminder]: SecretReminderTemplate,
-  [SmtpTemplates.SecretRotationFailed]: SecretRotationFailedTemplate,
   [SmtpTemplates.SecretSyncFailed]: SecretSyncFailedTemplate,
   [SmtpTemplates.OrgAdminProjectDirectAccess]: OrgAdminProjectFolderGrantAccessTemplate,
+  [SmtpTemplates.PamFolderAdminAccess]: PamFolderAdminAccessTemplate,
   [SmtpTemplates.ProjectAccessRequest]: ProjectAccessRequestTemplate,
   [SmtpTemplates.SecretApprovalRequestNeedsReview]: SecretApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.OAuthPasswordReset]: OAuthPasswordResetTemplate,

@@ -82,7 +82,7 @@ export const CalendarEventDetail = ({ event }: { event: CalendarEvent }) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="truncate text-sm font-semibold">{title}</h3>
+        <h3 className="truncate text-sm font-normal">{title}</h3>
         <Badge variant={isRotation ? "info" : "warning"}>
           {isRotation ? <RefreshCwIcon /> : <BellIcon />}
           {isRotation ? "Rotation" : "Reminder"}

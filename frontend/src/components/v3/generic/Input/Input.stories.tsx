@@ -18,6 +18,11 @@ import { Input } from "./Input";
  *
  * The component fills its parent's width by design — let the parent (`Field`,
  * `FieldGroup`, or a custom container) decide how wide the input should be.
+ *
+ * Input sets `data-1p-ignore` so 1Password does not offer to fill product fields.
+ * Fields whose `autoComplete` names an email, password or username (for example
+ * `username`, `current-password`, `new-password`) are left fillable. Pass
+ * `data-1p-ignore` or `data-1p-ignore={false}` to override the default.
  */
 const meta = {
   title: "Generic/Input",
@@ -34,6 +39,10 @@ const meta = {
     variant: {
       control: "select",
       options: ["default", "outlined"]
+    },
+    size: {
+      control: "select",
+      options: ["default", "sm"]
     },
     isError: {
       control: "boolean"
@@ -54,6 +63,7 @@ const meta = {
   args: {
     type: "text",
     variant: "default",
+    size: "default",
     placeholder: "Enter text...",
     isError: false,
     disabled: false,
@@ -94,6 +104,21 @@ export const Outlined: Story = {
       description: {
         story:
           "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms and search controls."
+      }
+    }
+  }
+};
+
+export const Small: Story = {
+  args: {
+    size: "sm",
+    placeholder: "File name"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Compact 24px input for inline editing inside dense UI, such as renaming an entry in a file tree. Use the default size in forms."
       }
     }
   }

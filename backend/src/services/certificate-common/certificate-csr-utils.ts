@@ -4,6 +4,13 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
+  createDistinguishedName,
+  extractDnParts,
+  keyAlgorithmToAlgCfg
+} from "../certificate-authority/certificate-authority-fns";
+import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
+import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
@@ -13,13 +20,6 @@ import {
   TAltNameType
 } from "../certificate/certificate-types";
 import {
-  createDistinguishedName,
-  extractDnParts,
-  keyAlgorithmToAlgCfg
-} from "../certificate-authority/certificate-authority-fns";
-import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
-import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import {
   GENERAL_NAME_TYPES_WITH_OTHER_NAME,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard,
@@ -28,6 +28,7 @@ import {
 import {
   appendCustomExtensions,
   describeCustomExtensionValue,
+  isIssuerGeneratedExtensionOid,
   isReservedExtensionOid,
   TIssuedCustomExtension
 } from "./certificate-extension-fns";
@@ -47,6 +48,61 @@ export const parseCsr = (csr: string): x509.Pkcs10CertificateRequest => {
   } catch {
     throw new BadRequestError({
       message: "The certificate signing request could not be parsed. Supply a PEM-encoded PKCS#10 request."
+    });
+  }
+};
+
+const SUBJECT_ALT_NAME_OID = "2.5.29.17";
+
+const normalizeName = (name: string) => name.trim().toLowerCase();
+
+const namesIn = (subject: x509.X509Certificate | x509.Pkcs10CertificateRequest): string[] => {
+  const commonNames = subject.subjectName.getField("CN");
+  const sanExtension = subject.extensions.find((extension) => extension.type === SUBJECT_ALT_NAME_OID);
+  const altNames = sanExtension ? new x509.GeneralNames(sanExtension.value).items.map((item) => item.value) : [];
+  return [...commonNames, ...altNames].filter((name) => name.trim().length > 0);
+};
+
+const toCanonicalSpki = (publicKey: x509.PublicKey) =>
+  crypto.nativeCrypto
+    .createPublicKey({ key: Buffer.from(publicKey.rawData), format: "der", type: "spki" })
+    .export({ format: "der", type: "spki" });
+
+// Renewal resubmits a stored CSR as "reuse the existing key pair", so it must be signed by, and carry
+// the public key of, the certificate it is stored against.
+export const assertCsrMatchesCertificate = async (csrPem: string, certificate: x509.X509Certificate) => {
+  const csr = parseCsr(csrPem);
+
+  const isSignatureValid = await csr.verify().catch(() => false);
+  if (!isSignatureValid) {
+    throw new BadRequestError({
+      message:
+        "The certificate signing request's signature is invalid, so it can't be shown to come from the certificate's private key. Supply the CSR exactly as it was generated."
+    });
+  }
+
+  let isSameKey: boolean;
+  try {
+    isSameKey = toCanonicalSpki(csr.publicKey).equals(toCanonicalSpki(certificate.publicKey));
+  } catch {
+    isSameKey = false;
+  }
+
+  if (!isSameKey) {
+    throw new BadRequestError({
+      message:
+        "The certificate signing request was generated from a different key than the certificate. Supply the CSR the certificate was issued from, or one generated from the same private key."
+    });
+  }
+
+  // CAs that issue from the CSR's own names (internal CA without a SAN override, ADCS, ACME) would
+  // otherwise put names on a renewal that no policy check saw. A CA adding names at issuance is
+  // fine, so the CSR only has to stay within the certificate's names, not match them exactly.
+  const certificateNames = new Set(namesIn(certificate).map(normalizeName));
+  const unknownNames = namesIn(csr).filter((name) => !certificateNames.has(normalizeName(name)));
+  if (unknownNames.length > 0) {
+    throw new BadRequestError({
+      message: `The certificate signing request includes ${unknownNames.map((name) => `'${name}'`).join(", ")}, which the certificate doesn't. Supply the CSR the certificate was issued from.`
     });
   }
 };
@@ -124,8 +180,10 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
     };
   }
 
+  // openssl x509 -x509toreq copies the old issuer's extensions in. Asking a new CA to repeat them
+  // gets the request rejected or produces a certificate that fails validation.
   const csrCustomExtensions = csrObj.extensions
-    .filter((extension) => !isReservedExtensionOid(extension.type))
+    .filter((extension) => !isReservedExtensionOid(extension.type) && !isIssuerGeneratedExtensionOid(extension.type))
     .map((extension) => ({
       oid: extension.type,
       value:

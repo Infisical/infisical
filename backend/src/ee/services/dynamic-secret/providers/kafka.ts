@@ -1,0 +1,305 @@
+import { pbkdf2, randomBytes } from "node:crypto";
+import { promisify } from "node:util";
+
+import {
+  AclFilter,
+  AclOperations,
+  AclPermissionTypes,
+  alterUserScramCredentialsV0,
+  apiVersionsV3,
+  clientSoftwareName,
+  clientSoftwareVersion,
+  Connection,
+  createAclsV3,
+  deleteAclsV3,
+  describeAclsV3,
+  describeUserScramCredentialsV0,
+  findErrorBy,
+  metadataV9,
+  ResourcePatternTypes,
+  ResourceTypes,
+  ScramMechanisms
+} from "@platformatic/kafka";
+import { customAlphabet } from "nanoid";
+import { z } from "zod";
+
+import { TDynamicSecrets } from "@app/db/schemas";
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { getTlsServerNameOptions } from "@app/lib/tls";
+
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
+import { verifyHostInputValidity } from "../dynamic-secret-fns";
+import { DynamicSecretKafkaSchema, TDynamicProviderFns } from "./models";
+import { generateUsername } from "./templateUtils";
+
+type TKafkaProviderInputs = z.infer<typeof DynamicSecretKafkaSchema>;
+
+const pbkdf2Async = promisify(pbkdf2);
+
+// Kafka's minimum, and the kafka-configs.sh default
+const SCRAM_ITERATIONS = 4096;
+
+// Lease users get both credentials so clients can use whichever mechanism the broker listener enables
+const SCRAM_CREDENTIALS = [
+  { mechanism: ScramMechanisms.SCRAM_SHA_256, digest: "sha256", keyLength: 32 },
+  { mechanism: ScramMechanisms.SCRAM_SHA_512, digest: "sha512", keyLength: 64 }
+] as const;
+
+const REQUIRED_APIS = [alterUserScramCredentialsV0.api, createAclsV3.api, deleteAclsV3.api];
+
+const generatePassword = () => {
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
+  return customAlphabet(charset, 64)();
+};
+
+const getPrincipalAclFilter = (username: string): AclFilter => ({
+  resourceType: ResourceTypes.ANY,
+  resourceName: null,
+  resourcePatternType: ResourcePatternTypes.ANY,
+  principal: `User:${username}`,
+  host: null,
+  operation: AclOperations.ANY,
+  permissionType: AclPermissionTypes.ANY
+});
+
+// The library wraps the actual reason (bad credentials, TLS failure, broker error) in generic errors, as a
+// cause or as the per-request errors of an aggregate
+const getErrorMessage = (err: unknown): string => {
+  if (err instanceof AggregateError) {
+    return (err.errors as { message: string; serverErrorMessage?: string | null }[])
+      .map((error) => error.serverErrorMessage || error.message)
+      .join(" ");
+  }
+  const { message, cause } = err as Error;
+  return cause ? `${message} ${getErrorMessage(cause)}` : message;
+};
+
+const deleteKafkaUser = async (connection: Connection, username: string) => {
+  // ACLs go first: deleting the credential only blocks new logins, while open connections lose access with their ACLs
+  const aclError = await deleteAclsV3.api.async(connection, [getPrincipalAclFilter(username)]).then(
+    () => null,
+    (err: Error) => err
+  );
+  // The credentials are deleted even if the ACLs couldn't be, since a failed create leaves no lease to retry from.
+  // One request per credential, as Kafka requires; a credential already gone counts as deleted so that a
+  // revoke retried after a partial failure, or a cleanup after a partial create, can still finish
+  await Promise.all(
+    SCRAM_CREDENTIALS.map(({ mechanism }) =>
+      alterUserScramCredentialsV0.api.async(connection, [{ name: username, mechanism }], []).catch((err: Error) => {
+        if (!findErrorBy(err, "apiId", "RESOURCE_NOT_FOUND")) throw err;
+      })
+    )
+  );
+  if (aclError) throw aclError;
+};
+
+// Writing credentials for an existing user would hand the lease that user's ACLs or super user rights, and revoking
+// the lease would then delete them
+const assertNewKafkaUser = async (connection: Connection, username: string) => {
+  const hasScramCredentials = () =>
+    describeUserScramCredentialsV0.api.async(connection, [{ name: username }]).then(
+      () => true,
+      (err: Error) => {
+        if (findErrorBy(err, "apiId", "RESOURCE_NOT_FOUND")) return false;
+        throw err;
+      }
+    );
+  const hasAcls = async () =>
+    (await describeAclsV3.api.async(connection, getPrincipalAclFilter(username))).resources.length > 0;
+
+  if ((await hasScramCredentials()) || (await hasAcls())) {
+    throw new BadRequestError({
+      message: "A Kafka user with the generated username already exists. Create the lease again to get a new username."
+    });
+  }
+};
+
+export const KafkaProvider = (): TDynamicProviderFns => {
+  // Hosts are checked in $withConnection right before each connection, so a bootstrap server that doesn't resolve
+  // falls through to the next one instead of failing the whole operation
+  const validateProviderInputs = async (inputs: unknown) => DynamicSecretKafkaSchema.parseAsync(inputs);
+
+  // KRaft brokers forward admin requests to the controller, so the configured broker is enough. ZooKeeper
+  // clusters only accept SCRAM changes on the controller itself, so there every request goes to it instead.
+  const $withConnection = async <T>(
+    providerInputs: TKafkaProviderInputs,
+    errorPrefix: string,
+    callback: (connection: Connection) => Promise<T>,
+    sensitiveTokens: string[] = []
+  ) => {
+    const connections: Connection[] = [];
+    // every host is checked right before connecting, including the controller's address, which comes from the broker
+    const connect = async (host: string, port: number) => {
+      const [hostIp] = await verifyHostInputValidity({ host, isDynamicSecret: true });
+      const connection = new Connection("infisical", {
+        sasl: {
+          mechanism: providerInputs.saslMechanism,
+          username: providerInputs.username,
+          password: providerInputs.password
+        },
+        ...(providerInputs.sslEnabled && {
+          tls: {
+            ca: providerInputs.ca || undefined,
+            rejectUnauthorized: providerInputs.sslRejectUnauthorized,
+            ...getTlsServerNameOptions(host)
+          }
+        })
+      });
+      connections.push(connection);
+      await connection.connect(hostIp, port);
+      return connection;
+    };
+
+    try {
+      // like Kafka clients, use the first bootstrap server that connects
+      const connection = await providerInputs.bootstrapServers.reduce<Promise<Connection>>(
+        (previous, { host, port }) => previous.catch(() => connect(host, port)),
+        Promise.reject(new Error("No bootstrap servers configured"))
+      );
+      const { apiKeys, finalizedFeatures } = await apiVersionsV3.api.async(
+        connection,
+        clientSoftwareName,
+        String(clientSoftwareVersion)
+      );
+      const isSupportedCluster = REQUIRED_APIS.every(({ key, version }) =>
+        apiKeys.some(
+          ({ apiKey, minVersion, maxVersion }) => apiKey === key && minVersion <= version && version <= maxVersion
+        )
+      );
+      if (!isSupportedCluster) {
+        throw new BadRequestError({
+          message: "Kafka dynamic secrets require Kafka 2.7 or later with ZooKeeper, or 3.5 or later with KRaft."
+        });
+      }
+      // only KRaft clusters report metadata.version
+      if (finalizedFeatures?.some(({ name }) => name === "metadata.version")) return await callback(connection);
+
+      const { brokers, controllerId } = await metadataV9.api.async(connection, []);
+      const controller = brokers.find(({ nodeId }) => nodeId === controllerId);
+      if (!controller) throw new BadRequestError({ message: "The Kafka cluster has no active controller." });
+      return await callback(await connect(controller.host, controller.port));
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: getErrorMessage(err),
+        tokens: [
+          ...sensitiveTokens,
+          providerInputs.password,
+          providerInputs.username,
+          ...providerInputs.bootstrapServers.map(({ host }) => host)
+        ]
+      });
+      throw new BadRequestError({ message: `${errorPrefix}: ${sanitizedErrorMessage}` });
+    } finally {
+      await Promise.all(connections.map((connection) => connection.close()));
+    }
+  };
+
+  const validateConnection = async (inputs: unknown) => {
+    const providerInputs = await validateProviderInputs(inputs);
+
+    const isAuthorizerEnabled = await $withConnection(providerInputs, "Failed to connect with provider", (connection) =>
+      describeAclsV3.api.async(connection, getPrincipalAclFilter(providerInputs.username)).then(
+        () => true,
+        (err: Error) => {
+          if (findErrorBy(err, "apiId", "SECURITY_DISABLED")) return false;
+          throw err;
+        }
+      )
+    );
+
+    if (!isAuthorizerEnabled) {
+      throw new BadRequestError({
+        message:
+          "ACLs are not enabled on this Kafka cluster. Set 'authorizer.class.name' on your brokers so lease users are limited to the ACLs you configure."
+      });
+    }
+    return true;
+  };
+
+  const create = async (data: {
+    inputs: unknown;
+    usernameTemplate?: string | null;
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
+  }) => {
+    const { inputs, usernameTemplate, identity, dynamicSecret } = data;
+    const providerInputs = await validateProviderInputs(inputs);
+
+    // A template can produce a fixed name, which could match a user Infisical can't detect, such as a super user
+    // defined only in a broker's JAAS configuration, so every lease user also gets a random suffix
+    const username = `${await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity
+    })}-${alphaNumericNanoId(8)}`;
+    const password = generatePassword();
+    const upsertions = await Promise.all(
+      SCRAM_CREDENTIALS.map(async ({ mechanism, digest, keyLength }) => {
+        const salt = randomBytes(32);
+        const saltedPassword = await pbkdf2Async(password, salt, SCRAM_ITERATIONS, keyLength, digest);
+        return { name: username, mechanism, iterations: SCRAM_ITERATIONS, salt, saltedPassword };
+      })
+    );
+
+    await $withConnection(
+      providerInputs,
+      "Failed to create lease from provider",
+      async (connection) => {
+        await assertNewKafkaUser(connection, username);
+        try {
+          // Kafka accepts one credential change per user per request
+          await Promise.all(
+            upsertions.map((upsertion) => alterUserScramCredentialsV0.api.async(connection, [], [upsertion]))
+          );
+          await createAclsV3.api.async(
+            connection,
+            providerInputs.acls.map((acl) => ({
+              resourceType: ResourceTypes[acl.resourceType],
+              resourceName: acl.resourceName,
+              resourcePatternType: ResourcePatternTypes[acl.patternType],
+              principal: `User:${username}`,
+              host: "*",
+              operation: AclOperations[acl.operation],
+              permissionType: AclPermissionTypes[acl.permissionType]
+            }))
+          );
+        } catch (err) {
+          // no lease will be saved to revoke whatever was already created
+          await deleteKafkaUser(connection, username).catch((cleanupErr) =>
+            logger.error(cleanupErr, `Failed to clean up Kafka user [username=${username}]`)
+          );
+          throw err;
+        }
+      },
+      [username, password]
+    );
+
+    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+  };
+
+  const revoke = async (inputs: unknown, entityId: string) => {
+    const providerInputs = await validateProviderInputs(inputs);
+    await $withConnection(
+      providerInputs,
+      "Failed to revoke lease from provider",
+      (connection) => deleteKafkaUser(connection, entityId),
+      [entityId]
+    );
+    return { entityId };
+  };
+
+  const renew = async (_inputs: unknown, entityId: string) => {
+    return { entityId };
+  };
+
+  return {
+    validateProviderInputs,
+    validateConnection,
+    create,
+    revoke,
+    renew
+  };
+};

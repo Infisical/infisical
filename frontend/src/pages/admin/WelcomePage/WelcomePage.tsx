@@ -1,9 +1,9 @@
-import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Building2, KeyRound, ServerCog } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { PageTitle } from "@app/components/PageTitle";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 
 type Props = {
@@ -15,10 +15,8 @@ export const WelcomePage = ({ organizationId }: Props) => {
 
   return (
     <AuthPageLayout variant="focused" contentClassName="max-w-xl">
-      <Helmet>
-        <title>Instance ready | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Instance Ready" />
+      <link rel="icon" href="/infisical.ico" />
       <AuthPagePanel>
         <CardHeader className="gap-0">
           <div className="relative mb-8 flex size-10 items-center justify-center bg-project text-black">
@@ -28,7 +26,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
           <CardTitle className="font-alliance text-3xl leading-tight font-normal">
             Your instance is ready.
           </CardTitle>
-          <CardDescription className="mt-2 max-w-lg font-alliance text-base leading-relaxed">
+          <CardDescription className="mt-2 max-w-lg font-sans text-base leading-relaxed">
             Choose where you want to go next:
           </CardDescription>
         </CardHeader>
@@ -48,7 +46,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <Building2 className="size-5 text-foreground" />
-                  <span className="font-alliance text-base font-medium text-foreground">
+                  <span className="font-sans text-base font-medium text-foreground">
                     Go to dashboard
                   </span>
                 </span>
@@ -67,7 +65,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <ServerCog className="size-5 text-foreground" />
-                  <span className="font-alliance text-base font-medium text-foreground">
+                  <span className="font-sans text-base font-medium text-foreground">
                     Access server console
                   </span>
                 </span>

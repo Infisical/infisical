@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Combobox } from "./Combobox";
 import {
   ComboboxStoryFrame,
+  DialogCreationFromEmptyQuery as DialogCreationFromEmptyQueryStory,
   DismissedPendingCreation as DismissedPendingCreationStory,
   OpaqueOptionFields as OpaqueOptionFieldsStory,
   PreserveNewQueryDuringCreation as PreserveNewQueryDuringCreationStory,
@@ -46,3 +47,4 @@ export const PreserveNewQueryDuringCreation: Story = {
 };
 export const UnmountedPendingCreation: Story = { ...UnmountedPendingCreationStory };
 export const ValidatedCreation: Story = { ...ValidatedCreationStory };
+export const DialogCreationFromEmptyQuery: Story = { ...DialogCreationFromEmptyQueryStory };

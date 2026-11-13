@@ -18,9 +18,8 @@ import {
   FieldDescription,
   FieldLabel
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
-import { useGetOrgUsers } from "@app/hooks/api";
 import {
   useAddAgentVaultMembers,
   useListAgentVaultMembers,
@@ -28,7 +27,6 @@ import {
 } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
 import { ProductRoleField } from "./ProductRoleField";
 
@@ -39,9 +37,12 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
+// The ?requesterEmail= link resolves against the candidate list (group-only members included); existing
+// members are caught by requesterMatch. Both fetch a page since the search is a substring match.
 export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const addMembers = useAddAgentVaultMembers();
+  const addMembers = useAddAgentVaultMembers(projectId);
   const navigate = useNavigate({ from: "" });
   const requesterEmail = useSearch({
     strict: false,
@@ -51,6 +52,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   // A page, not one row: the search is a substring match, so another member can outrank the requester.
   // One buried under twenty still falls through, costing an add the server reports as already a member.
   const { data: requesterMatch } = useListAgentVaultMembers(
+    projectId,
     { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 20 },
     Boolean(requesterEmail)
   );
@@ -62,12 +64,15 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const { data: availableData, isFetching: isCandidatesFetching } =
     useListAvailableAgentVaultMembers(
+      projectId,
       { actorType: AgentVaultMemberType.User, search: debouncedSearch.trim() || undefined },
       isOpen
     );
-  // Only the ?requesterEmail= deep link needs the whole roster: it resolves an address the candidate
-  // list legitimately may not hold, because that user may already be a member.
-  const { data: orgUsers = [] } = useGetOrgUsers(requesterEmail ? currentOrg.id : "");
+  const { data: requesterCandidates } = useListAvailableAgentVaultMembers(
+    projectId,
+    { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 20 },
+    Boolean(requesterEmail)
+  );
 
   const candidates = useMemo<TCandidate[]>(() => {
     return (availableData?.actors ?? []).map((actor) => {
@@ -80,19 +85,24 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const isCandidateListTruncated = (availableData?.totalCount ?? 0) > candidates.length;
 
   const memberUsernames = useMemo(
-    () => new Set((requesterMatch?.members ?? []).map((member) => member.actor.username)),
+    () => new Set((requesterMatch?.members ?? []).map((member) => member.username)),
     [requesterMatch]
   );
 
-  const requesterStatus = useMemo(
-    () => getRequesterStatus(requesterEmail, orgUsers, memberUsernames),
-    [requesterEmail, orgUsers, memberUsernames]
-  );
-  // getRequesterStatus returns the org membership id; this select is keyed by user id.
-  const requesterUserId = useMemo(
-    () => orgUsers.find((orgUser) => orgUser.id === requesterStatus.userId)?.user.id,
-    [orgUsers, requesterStatus.userId]
-  );
+  const requesterStatus = useMemo(() => {
+    const requester = requesterEmail
+      ? requesterCandidates?.actors.find(
+          (actor) => actor.username === requesterEmail || actor.email === requesterEmail
+        )
+      : undefined;
+    const name = `${requester?.firstName ?? ""} ${requester?.lastName ?? ""}`.trim();
+    return {
+      isProjectUser: Boolean(requesterEmail) && memberUsernames.has(requesterEmail as string),
+      userLabel: name || requester?.email || requester?.username || "",
+      userId: requester?.id
+    };
+  }, [requesterEmail, requesterCandidates, memberUsernames]);
+  const requesterUserId = requesterStatus.userId;
 
   // Deps stay primitive on purpose: keying off the candidate list would re-run on any refetch and
   // re-select a requester the admin had just removed.
@@ -135,7 +145,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
           createNotification({
             text: members.length
               ? `${addedText}${skipped.length ? `. ${skipped.length} already had access.` : ""}`
-              : `${skipped.length === 1 ? "That user already has" : `All ${skipped.length} already have`} access to Agent Vault`,
+              : `${skipped.length === 1 ? "That user already has" : `All ${skipped.length} already have`} access to this project`,
             type: members.length ? "success" : "info"
           });
           handleClose();
@@ -203,7 +213,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         {requesterEmail && requesterStatus.isProjectUser && (
           <Alert variant="danger">
             <AlertDescription>
-              The requested user already has access to Agent Vault.
+              The requested user already has access to this project.
             </AlertDescription>
           </Alert>
         )}

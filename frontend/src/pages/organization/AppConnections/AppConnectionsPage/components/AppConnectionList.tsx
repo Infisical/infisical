@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { Loader2Icon, Search } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  EnterpriseAppConnectionsUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import {
   Empty,
   EmptyDescription,
@@ -24,6 +27,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 type Props = {
   onSelect: (app: AppConnection) => void;
   projectType?: ProjectType;
+  // Limits the choices, for flows that only work with some apps
+  apps?: AppConnection[];
 };
 
 const ProviderCard = ({ app, onClick }: { app: AppConnection; onClick: () => void }) => {
@@ -56,13 +61,16 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
 );
 
-export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
+export const AppConnectionsSelect = ({ onSelect, projectType, apps }: Props) => {
   const { subscription } = useSubscription();
   const { isPending, data: appConnectionOptions } = useAppConnectionOptions(projectType);
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
 
-  const visibleOptions = useMemo(() => appConnectionOptions ?? [], [appConnectionOptions]);
+  const visibleOptions = useMemo(
+    () => (appConnectionOptions ?? []).filter((option) => !apps || apps.includes(option.app)),
+    [appConnectionOptions, apps]
+  );
 
   const handleSelect = (app: AppConnection) => {
     if (APP_CONNECTION_MAP[app].enterprise && !subscription.enterpriseAppConnections) {
@@ -189,10 +197,10 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
         <a
           target="_blank"
           rel="noopener noreferrer"
-          href="https://infisical.com/slack"
+          href="https://community.infisical.com"
           className="underline underline-offset-2 hover:text-foreground"
         >
-          Let us know on Slack
+          Let us know in the community forum
         </a>{" "}
         or{" "}
         <a
@@ -206,12 +214,14 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
         .
       </p>
 
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.app-connection-list"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="All App Connections can be unlocked if you switch to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...EnterpriseAppConnectionsUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </div>
   );

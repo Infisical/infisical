@@ -1,5 +1,6 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteConfirmDialog } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useDeleteAgentVaultAccessBundle } from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundle } from "@app/hooks/api/agentVault/types";
 
@@ -10,7 +11,8 @@ type Props = {
 };
 
 export const DeleteAccessBundleDialog = ({ accessBundle, onOpenChange, onDeleted }: Props) => {
-  const deleteAccessBundle = useDeleteAgentVaultAccessBundle();
+  const { projectId } = useProject();
+  const deleteAccessBundle = useDeleteAgentVaultAccessBundle(projectId);
 
   const handleDelete = async () => {
     try {
@@ -26,11 +28,11 @@ export const DeleteAccessBundleDialog = ({ accessBundle, onOpenChange, onDeleted
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={Boolean(accessBundle)}
       onOpenChange={onOpenChange}
       title={`Delete "${accessBundle?.name}"`}
-      description="Its services and access grants are deleted with it. Any active session associated with this bundle loses access at the next proxy poll. This cannot be undone."
+      description="Its access grants are deleted with it, and its services stay in the project. Any active session associated with this bundle loses access at the next proxy poll. This cannot be undone."
       confirmKey={accessBundle?.name ?? ""}
       isPending={deleteAccessBundle.isPending}
       onConfirm={handleDelete}

@@ -35,6 +35,7 @@ import {
   OrgIcon,
   Pagination,
   ProjectIcon,
+  RowLink,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -51,7 +52,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectDisplayName
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -64,6 +69,7 @@ import {
   useCountOrgIdentityMemberships,
   useSearchOrgIdentityMemberships
 } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
@@ -136,11 +142,15 @@ const ManagedByCell = ({
   isSubOrganization,
   isSubOrgIdentity
 }: ManagedByCellProps) => {
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+
   if (scope === SearchIdentitiesScope.ProjectScope) {
     return (
       <Badge variant="project">
         <ProjectIcon />
-        {project?.name ?? "Project"}
+        {project
+          ? getProjectDisplayName(project, Boolean(certManagerInstance?.isMultiInstance))
+          : "Project"}
       </Badge>
     );
   }
@@ -387,27 +397,23 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
   const isSubOrgIdentity = currentOrg.id === orgId;
   const isProjectScoped = scope === SearchIdentitiesScope.ProjectScope;
 
-  const navigateToIdentity = () => {
-    if (isProjectScoped && project) {
-      navigate({
-        to: `${getProjectBaseURL(project.type)}/identities/$identityId` as const,
-        params: {
-          orgId: currentOrg.id,
-          projectId: project.id,
-          identityId: id
-        }
-      });
-      return;
-    }
-    navigate({
-      to: "/organizations/$orgId/identities/$identityId",
-      params: { identityId: id, orgId: currentOrg.id }
-    });
-  };
+  const identityLink =
+    isProjectScoped && project
+      ? (getInstancePinningLink(currentOrg.id, project, `identities/${id}`) ??
+        ({
+          to: `${getProjectBaseURL(project.type)}/identities/$identityId`,
+          params: { orgId: currentOrg.id, projectId: project.id, identityId: id }
+        } as const))
+      : ({
+          to: "/organizations/$orgId/identities/$identityId",
+          params: { identityId: id, orgId: currentOrg.id }
+        } as const);
 
   return (
-    <TableRow className="cursor-pointer" onClick={navigateToIdentity}>
-      <TableCell isTruncatable>{name}</TableCell>
+    <TableRow linked>
+      <TableCell isTruncatable>
+        <RowLink {...identityLink}>{name}</RowLink>
+      </TableCell>
       <TableCell>
         <IdentityRoleBadges roles={membershipRoles ?? []} />
       </TableCell>
@@ -443,7 +449,7 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
             isSubOrgIdentity={isSubOrgIdentity}
             authMethods={authMethods ?? []}
             activeLockoutAuthMethods={activeLockoutAuthMethods}
-            onEdit={navigateToIdentity}
+            onEdit={() => navigate(identityLink)}
             onDelete={() => onDelete({ identityId: id, name })}
             onManageAuth={(authMethod) => onManageAuth({ identityId: id, authMethod })}
             onAddAuthMethod={() =>

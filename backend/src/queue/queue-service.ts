@@ -12,22 +12,24 @@ import {
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
+import { TAuditLogCollapsedFlushJobData } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import {
-  TScanFullRepoEventPayload,
-  TScanPushEventPayload
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import {
+  TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import {
+  TScanFullRepoEventPayload,
+  TScanPushEventPayload
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
-import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
+import { buildRedisFromConfig, createThrottledRedisErrorLogger, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
 import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
@@ -59,16 +61,16 @@ import {
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
-  TFailedIntegrationSyncEmailsPayload,
-  TIntegrationSyncPayload,
-  TSyncSecretsDTO
-} from "@app/services/secret/secret-types";
-import {
   TQueueSecretSyncImportSecretsByIdDTO,
   TQueueSecretSyncRemoveSecretsByIdDTO,
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import {
+  TFailedIntegrationSyncEmailsPayload,
+  TIntegrationSyncPayload,
+  TSyncSecretsDTO
+} from "@app/services/secret/secret-types";
 import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
@@ -120,17 +122,22 @@ export enum QueueName {
   PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
+  PkiDiscoveryRescan = "pki-discovery-rescan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   AuditLogStreamOutbox = "audit-log-stream-outbox",
+  AuditLogCollapsedFlush = "audit-log-collapsed-flush",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   ProjectEnvHardDelete = "project-env-hard-delete",
+  HoneyTokenCleanup = "honey-token-cleanup",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event",
-  IntegrationDeprecationNotice = "integration-deprecation-notice"
+  MeteringEvent = "metering-event",
+  IntegrationDeprecationNotice = "integration-deprecation-notice",
+  LegacyPkiDeprecationNotice = "legacy-pki-deprecation-notice"
 }
 
 export enum QueueJobs {
@@ -185,6 +192,7 @@ export enum QueueJobs {
   // name carry it, and the drain branch on QueueName.SecretScanningV2 matches on it.
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
+  SecretScanningV2DataSourceEvent = "secret-scanning-v2-data-source-event",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
   CaIssueCertificateFromProfile = "ca-issue-certificate-from-profile",
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
@@ -202,11 +210,13 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  PkiDiscoveryRescanInstallation = "pki-discovery-rescan-installation",
   AppConnectionCredentialRotationQueueRotations = "app-connection-credential-rotation-queue-rotations",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   AuditLogStreamFlush = "audit-log-stream-flush",
+  AuditLogCollapsedFlush = "audit-log-collapsed-flush-job",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
@@ -217,10 +227,13 @@ export enum QueueJobs {
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
   ProjectEnvHardDelete = "project-env-hard-delete-job",
+  HoneyTokenCleanup = "honey-token-cleanup-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job",
-  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
+  MeteringEvent = "metering-event-job",
+  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice",
+  SendLegacyPkiDeprecationNotice = "send-legacy-pki-deprecation-notice"
 }
 
 export enum JobState {
@@ -488,6 +501,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretScanningV2SendNotification;
         payload: TQueueSecretScanningSendNotification;
+      }
+    | {
+        name: QueueJobs.SecretScanningV2DataSourceEvent;
+        payload: TQueueSecretScanningDataSourceEvent;
       };
   [QueueName.SecretScanningV2FullScan]: {
     name: QueueJobs.SecretScanningV2FullScan;
@@ -570,6 +587,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
       };
+  [QueueName.PkiDiscoveryRescan]: {
+    name: QueueJobs.PkiDiscoveryRescanInstallation;
+    payload: { installationId: string };
+  };
   [QueueName.AppConnectionCredentialRotation]:
     | {
         name: QueueJobs.AppConnectionCredentialRotationQueueRotations;
@@ -590,6 +611,10 @@ export type TQueueJobTypes = {
   [QueueName.AuditLogStreamOutbox]: {
     name: QueueJobs.AuditLogStreamFlush;
     payload: TAuditLogStreamFlushJobData;
+  };
+  [QueueName.AuditLogCollapsedFlush]: {
+    name: QueueJobs.AuditLogCollapsedFlush;
+    payload: TAuditLogCollapsedFlushJobData;
   };
   [QueueName.CaAutoRenewal]:
     | {
@@ -616,20 +641,37 @@ export type TQueueJobTypes = {
     name: QueueJobs.ProjectEnvHardDelete;
     payload: { envId: string; projectId: string };
   };
+  [QueueName.HoneyTokenCleanup]: {
+    name: QueueJobs.HoneyTokenCleanup;
+    payload: { honeyTokenId: string };
+  };
   [QueueName.SignerAutoRenewal]: {
     name: QueueJobs.SignerDailyAutoRenewal;
     payload: undefined;
   };
   [QueueName.SecretBlindIndexMigration]: {
     name: QueueJobs.SecretBlindIndexMigration;
-    payload: { projectId: string };
+    // `scope` is absent on jobs queued before the org-wide walk shipped.
+    payload: { scope: "org"; orgId: string } | { scope: "project"; projectId: string } | { projectId: string };
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
     payload: { orgId: string; dimensionKey: string };
   };
+  [QueueName.MeteringEvent]: {
+    name: QueueJobs.MeteringEvent;
+    payload: {
+      orgId: string;
+      events: { eventId: string; dimensionKey: string; quantity: number; occurredAt: string }[];
+    };
+  };
   [QueueName.IntegrationDeprecationNotice]: {
     name: QueueJobs.SendIntegrationDeprecationNotice;
+    // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
+    payload: { orgId: string; period: string };
+  };
+  [QueueName.LegacyPkiDeprecationNotice]: {
+    name: QueueJobs.SendLegacyPkiDeprecationNotice;
     // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
     payload: { orgId: string; period: string };
   };
@@ -731,6 +773,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   const workerContainer: Partial<
     Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
   > = {};
+
+  // One logger for every worker, so an outage hitting all of them still logs one line per error per window.
+  const workerErrorLogger = createThrottledRedisErrorLogger("queue-workers", "Queue worker error");
 
   // Observable gauge for queue depth. The SDK invokes the callback on each export (every 30s for OTLP
   // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
@@ -931,6 +976,10 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     worker.on("active", (job) => {
       logger.debug({ queue: name, job: job.name, jobId: job.id }, "Queue job picked up by a worker");
     });
+
+    // The worker's own blocking connection is a duplicate with no listeners, and BullMQ only reports its
+    // errors (and run-loop errors) through this event.
+    worker.on("error", (err) => workerErrorLogger.log(err, undefined, { queue: name }));
 
     workerContainer[name] = worker;
   };

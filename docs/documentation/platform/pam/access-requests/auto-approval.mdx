@@ -1,0 +1,140 @@
+---
+title: "Auto-approval"
+sidebarTitle: "Auto-approval"
+description: "Approve PAM access requests as soon as they're submitted when the records that requesters link from other services pass the folder's rules."
+---
+
+Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule checks a record that the requester links from another service, such as a Jira ticket. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
+
+Auto-approval has two settings, each managed by a different role:
+
+- A [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership) turns on **Allow Auto-Approval** in an account [template](/documentation/platform/pam/templates/overview), so the accounts that use the template can be auto-approved
+- A [Folder Admin](/documentation/platform/pam/concepts/access-control#folder-and-account-memberships) adds rules on the folder's **Approvals** tab to set the conditions a request has to meet
+
+## Supported services
+
+Infisical reads linked records through an [app connection](/integrations/app-connections/overview) to their service:
+
+| Service | Record that requesters link | App connection |
+| --- | --- | --- |
+| Jira Cloud and Jira Data Center | Jira ticket | [Jira connection](/integrations/app-connections/jira) |
+
+## Prerequisites
+
+- Accounts that [require approval](/documentation/platform/pam/access-requests/overview#set-up-approval)
+- An app connection to a [supported service](#supported-services), whose user can read the records that requesters will link
+
+## Turn on auto-approval in a template
+
+To let a template's accounts be auto-approved:
+
+<Steps>
+  <Step>
+    In Privileged Access Management, select **Account Templates** in the sidebar, then open the template.
+  </Step>
+  <Step>
+    On the **General** tab, turn on **Allow Auto-Approval**. The policy only appears while **Require Approval** is on.
+  </Step>
+  <Step>
+    Select **Save Changes**.
+  </Step>
+</Steps>
+
+If an account's template doesn't allow auto-approval, the folder's rules don't apply to the account: its request form doesn't ask for any records, and its requests wait for an approver. If the folder also has no approvers, the account's requests are refused.
+
+## Add rules to a folder
+
+The **Auto-Approval** card on the folder's **Approvals** tab has two parts:
+
+- **Request Form Fields**: the optional fields on the request form where requesters link records from other services, such as a Jira ticket
+- **Rules**: the conditions a request has to meet to be approved without an approver
+
+A request is approved if every condition in at least one rule passes.
+
+To add rules:
+
+<Steps>
+  <Step>
+    On the **Accounts** page, select the folder's three dot menu, select **Configure**, then open the **Approvals** tab.
+  </Step>
+  <Step>
+    In the **Auto-Approval** card, under **Request Form Fields**, select **Add Field** and choose the record to ask for, such as **Jira ticket** for your Jira connection.
+  </Step>
+  <Step>
+    Under **Rules**, select **Add Rule**, then replace the rule's default name with one that describes what the rule checks, such as `Approved change ticket`. Approvers see this name on every request the rule approves. A new rule starts with the **hasn't been used before** and **is assigned to the requester** checks on each record the folder asks for.
+  </Step>
+  <Step>
+    Select **Add Condition** and choose a [check](#checks), such as **Jira ticket has status**, then choose its values if it takes any.
+  </Step>
+  <Step>
+    Repeat the previous step for each check the rule needs, then select **Save Changes**.
+  </Step>
+</Steps>
+
+## Checks
+
+Each condition runs one check on a linked record, and the checks available depend on the record's service. If a check takes values, the record passes when it matches any of them.
+
+<Warning>
+  If a record has an **is assigned to the requester** check, add that check to every rule that checks the record. Without it, a requester can link a record that belongs to someone else and still pass the rule. Keep the **hasn't been used before** check too. Without it, one approved record can grant access any number of times.
+</Warning>
+
+Every linked record also has a **hasn't been used before** check. It passes only if no earlier approved request in the folder linked the same record. Use it when one approval in the other service should grant access only once.
+
+### Jira ticket
+
+| Check | Passes when |
+| --- | --- |
+| **is assigned to the requester** | The ticket's assignee has the same email address in Jira as the requester has in Infisical (it never passes if Jira hides the assignee's email address, through the assignee's profile on Jira Cloud or the **User email visibility** setting on Jira Data Center) |
+| **is approved in Jira** | The ticket is a Jira Service Management request, and its latest approval was approved |
+| **has status** | The ticket's status is one of the values |
+| **is in project** | The ticket is in one of the projects |
+| **is of type** | The ticket's type is one of the values |
+| **has label** | The ticket has at least one of the labels |
+
+To require sign-off in Jira, use **is approved in Jira** rather than **has status**. Only the approvers on a Jira Service Management request can decide its approval, while the requester might be able to change the ticket's status.
+
+## Request access with a linked record
+
+If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#request-access) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
+
+After you submit the request, the confirmation message shows whether a rule approved it:
+
+- If a rule approved it, the access you asked for starts right away
+- If no rule approved it, the request waits for an approver, and the message shows why the rule that came closest didn't pass
+- If no rule approved it and the folder has no approvers, the request is rejected (the message shows why the rule that came closest didn't pass)
+
+If you turn on **Break glass** in the form, the record fields disappear, because [break-glass](/documentation/platform/pam/access-requests/break-glass) requests skip the rules.
+
+## Review auto-approval results
+
+The outcome of the rules shows up in these places:
+
+- **Approval Requests**: for each request waiting on your approval, the **Auto-approval status** section shows the linked records and why each rule failed (select a rule to see all of its conditions)
+- Notifications: approvers get an email and an in-app notification when a rule approves a request
+- The folder's **Approvals** tab: under **Access Requests**, auto-approved requests have the **Auto-approved** status. Hover over it to see the rule that approved the request. A Folder Admin can revoke the access from an auto-approved request, as with any other approved request
+- The [audit log](/documentation/platform/pam/auditing): each auto-approval adds a **PAM Access Request Auto-Approved** event with the rule, its conditions, the linked records, the account, and the folder
+
+## How Infisical checks the rules
+
+Infisical checks the rules once, when the request is submitted, by reading each linked record from its service at that moment:
+
+- Later changes in the service don't affect the result, so closing a ticket doesn't revoke access that a rule granted, and a pending request isn't approved when its record passes later
+- If no record was linked, or Infisical can't read the record (the service doesn't respond or rejects the connection's credentials, the record doesn't exist, or the connection's user can't see it), every condition on that record fails
+- A record can be linked to any number of requests, and each request passes as long as the record still passes the rule (unless the rule also requires that the record **hasn't been used before**)
+- Rules only apply to requests from users. A machine identity's request waits for the folder's approvers, or is rejected if the folder has none
+
+<Warning>
+  Infisical trusts what the linked service reports. It can't tell whether a requester approved their own ticket or assigned another person's ticket to themselves before linking it. Prevent both in the service itself. For example, in Jira Service Management, exclude the reporter and assignee from approving requests, and limit who can assign tickets.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Access requests" icon="key" href="/documentation/platform/pam/access-requests/overview">
+    Gate accounts behind approval and seat the folder's approvers.
+  </Card>
+  <Card title="App connections" icon="plug" href="/integrations/app-connections/overview">
+    Connect Infisical to the services that auto-approval reads records from.
+  </Card>
+</CardGroup>

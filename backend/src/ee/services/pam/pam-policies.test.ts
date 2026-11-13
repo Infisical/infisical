@@ -96,6 +96,7 @@ describe("validatePolicyValues", () => {
 describe("resolveAccessControls", () => {
   const DEFAULTS = {
     requiresApproval: false,
+    allowAutoApproval: false,
     allowBreakGlass: false,
     requireReason: false,
     requireMfa: false,
@@ -148,6 +149,16 @@ describe("resolveAccessControls", () => {
         [PamPolicyType.AllowBreakGlass]: "true"
       }).allowBreakGlass
     ).toBe(false);
+  });
+
+  test("auto-approval only resolves alongside the approval it decides", () => {
+    expect(
+      resolveAccessControls({
+        [PamPolicyType.RequiresApproval]: true,
+        [PamPolicyType.AllowAutoApproval]: true
+      }).allowAutoApproval
+    ).toBe(true);
+    expect(resolveAccessControls({ [PamPolicyType.AllowAutoApproval]: true }).allowAutoApproval).toBe(false);
   });
 
   test("treats the boolean gates as strict: only literal true enables them", () => {

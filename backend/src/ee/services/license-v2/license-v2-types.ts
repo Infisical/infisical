@@ -1,5 +1,5 @@
+import type { TMeterKey } from "@app/domains/platform/license/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
-import type { TMeteredDimensionKey } from "@app/services/license-client/usage/usage-counters";
 
 export type BillingV2SubState = "active" | "trialing" | "past-due" | "suspended" | "no-subscription";
 
@@ -15,6 +15,40 @@ export type BillingV2Dim = {
   // When true, the matching cadence's price is a usage overage rate, not a buyer-selected quantity.
   meteredMonthly?: boolean;
   meteredAnnual?: boolean;
+  // How a metered dimension's period total is rated ("sum" | "count" | "last") and its price bands.
+  aggregation?: string;
+  bands?: BillingV2Bands;
+};
+
+// One band of a metered price, in dollars. upTo is inclusive and null on the last band; unitPrice is
+// dollars per unit (fractions of a cent are kept), flatFee is charged once the band is reached.
+export type BillingV2Band = {
+  upTo: number | null;
+  unitPrice: number;
+  flatFee: number;
+};
+
+export type BillingV2Bands = {
+  mode: "graduated" | "volume";
+  tiers: BillingV2Band[];
+};
+
+// A metered dimension's current billing window: usage rated by the License Server, priced through the
+// org's pinned bands. Dates are formatted for display; amounts are dollars.
+export type BillingV2MeteredUsage = {
+  periodStart: string | null;
+  periodEnd: string | null;
+  asOf: string | null;
+  estimatedAmount: number | null;
+  currentTier: number;
+  nextTierAt: number | null;
+  earlierInPeriod: {
+    periodStart: string | null;
+    periodEnd: string | null;
+    used: number;
+    estimatedAmount: number | null;
+  }[];
+  trial: boolean;
 };
 
 // A comparison row's cells are keyed by plan tier ("pro" | "advanced" | "enterprise" | ...) so the UI
@@ -111,6 +145,9 @@ export type BillingV2EntitlementDim = {
   onDemandRate?: number;
   rate?: number;
   freeBand?: number;
+  // Metered only: this period's rated usage and the pinned bands it is priced with.
+  usage?: BillingV2MeteredUsage;
+  bands?: BillingV2Bands;
   onDemandAmount: number;
   // Annual-commitment lifecycle, present only for a real per_resource commitment. canDecreaseNow is
   // false until the final window before renewal (a decrease is rejected until then); renewalDate and
@@ -144,6 +181,8 @@ export type BillingV2Entitlement = {
   trialPlanName?: string;
   trialPlanEndsAt?: string | null;
   trialPlanDaysLeft?: number | null;
+  trialPaymentDueAt?: string | null;
+  trialPlanPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line (e.g. feature-only entitlements).
   renewsOn?: string | null;
@@ -165,6 +204,8 @@ export type BillingV2NextCharge = {
   productKeys: string[];
   cadence: "monthly" | "annual" | null;
   hasUsage: boolean;
+  // What metered usage so far this period prices to (dollars); null when nothing metered is rated.
+  estimatedUsage: number | null;
 };
 
 // Header billing summary. monthlyRecurring and annualCommitted are two independent clocks (never
@@ -181,6 +222,7 @@ export type BillingV2Trial = {
   planTier: string | null;
   basePlanTier: string | null;
   outcome: string;
+  endedReason: string | null;
   endedDetail: string | null;
   endedAt: string | null;
   endedDaysAgo: number | null;
@@ -212,6 +254,10 @@ export type BillingV2Overview = {
   trials: BillingV2Trial[];
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.
   onDemandAmount: number;
+  // Earliest trial payment deadline across products, for the page banner; null when none is waiting.
+  trialPaymentDue: { dueAt: string; productKeys: string[] } | null;
+  // A renewal invoice that needs approval or was declined. Named apart from `payment` (the card on file).
+  paymentAlert: { state: "needs_action" | "failed"; actionUrl: string } | null;
   checkoutFrozen: boolean;
   selfServe: boolean;
 };
@@ -319,6 +365,7 @@ export type TRemoveBillingV2ProductDTO = {
 // prices at the current server time; a client-supplied proration instant is never accepted. productId
 // is required: it names the product so the server resolves the trialing plan and creates/attaches the
 // subscription when there isn't one yet (a trialing org). Not trialing it → product_not_trialing.
+// Checkout also happens when the card on file needs the customer to approve the charge.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   actor: OrgServiceActor;
@@ -333,6 +380,7 @@ export type TStartBillingV2TrialDTO = {
   plan: string;
   // Billing email for the trial; a trial has no Stripe customer yet, so the server needs it up front.
   email?: string;
+  returnPath?: string;
 };
 
 export type TCancelBillingV2TrialDTO = {
@@ -341,13 +389,13 @@ export type TCancelBillingV2TrialDTO = {
   productId: string;
 };
 
-export type TBillingV2SubscriptionLifecycleDTO = {
+export type TConfirmBillingV2TrialPaymentDTO = {
   orgId: string;
   actor: OrgServiceActor;
+  returnPath?: string;
 };
 
-// The metered dimensions the usage breakdown can explain. Values are license-server dimension keys and
-// must match the descriptors in services/license-client/features.ts
+// License Server dimension keys, keep in sync with Meter in domains/platform/license/ce/models/meter.ts.
 export const BillingV2BreakdownDimension = {
   Identities: "identities",
   UserIdentities: "user_identities",
@@ -356,7 +404,7 @@ export const BillingV2BreakdownDimension = {
   InternalCas: "internal_cas",
   ActiveCerts: "active_certs",
   WildcardCerts: "wildcard_certs"
-} as const satisfies Record<string, TMeteredDimensionKey>;
+} as const satisfies Record<string, TMeterKey>;
 
 export type TBillingV2BreakdownDimension =
   (typeof BillingV2BreakdownDimension)[keyof typeof BillingV2BreakdownDimension];

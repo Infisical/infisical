@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,8 +5,8 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
   PageHeader
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -34,11 +34,12 @@ import {
   CaCertDetailsSection,
   CaCertificatesSection,
   CaCrlsSection,
+  CaCrossSignedCertSection,
   CaDetailsSection,
-  CaDistributionPointsSection,
   CaGenerateRootCertModal,
   CaIssuerUrlSection,
   CaRenewalModal,
+  CaRevocationSection,
   CaSigningConfigSection
 } from "./components";
 
@@ -62,8 +63,6 @@ const Page = () => {
     caId,
     type: CaType.INTERNAL
   }) as { data: TInternalCertificateAuthority };
-
-  const projectId = currentProject?.id || "";
 
   const cameFromProfile = search.from === "profile" && Boolean(search.profileId);
 
@@ -95,10 +94,9 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
+      to: "/organizations/$orgId/cert-manager/certificate-authorities",
       params: {
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -115,15 +113,14 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
                 <PageHeader
                   backLink={
                     cameFromProfile && search.profileId ? (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                        to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
                         params={{
                           orgId: currentOrg.id,
-                          projectId,
                           profileId: search.profileId
                         }}
                         search={{
@@ -136,10 +133,9 @@ const Page = () => {
                       </Link>
                     ) : (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                        to="/organizations/$orgId/cert-manager/certificate-authorities"
                         params={{
-                          orgId: currentOrg.id,
-                          projectId
+                          orgId: currentOrg.id
                         }}
                       >
                         <FontAwesomeIcon icon={faChevronLeft} />
@@ -190,9 +186,10 @@ const Page = () => {
                       caName={data.name}
                       handlePopUpOpen={handlePopUpOpen}
                     />
+                    <CaCrossSignedCertSection caId={data.id} />
                     <CaIssuerUrlSection caId={data.id} />
                     <CaCrlsSection caId={data.id} />
-                    <CaDistributionPointsSection caId={data.id} />
+                    <CaRevocationSection caId={data.id} />
                   </div>
                 </div>
               </div>
@@ -203,15 +200,15 @@ const Page = () => {
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
         }?`}
-        subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
-        onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={onRemoveCaSubmit}
+        description="This action will delete other CAs and certificates below it in your CA hierarchy."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
+        confirmKey="confirm"
+        onConfirm={onRemoveCaSubmit}
       />
     </div>
   );
@@ -220,10 +217,8 @@ const Page = () => {
 export const CertAuthDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Certificate Authority</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Certificate Authority" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

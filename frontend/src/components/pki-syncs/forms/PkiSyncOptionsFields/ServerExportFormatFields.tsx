@@ -2,6 +2,8 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Info } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
   Field,
   FieldContent,
   FieldDescription,
@@ -19,7 +21,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { PemCertificateExtension, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import {
+  isKeystoreExportFormat,
+  PemCertificateExtension,
+  PKI_SYNC_EXPORT_FORMAT_LABELS,
+  PkiSyncExportFormat,
+  usePkiSyncOption
+} from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
 
@@ -29,6 +37,15 @@ type Props = {
 
 export const ServerExportFormatFields = ({ isUpdate }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
+  const { syncOption } = usePkiSyncOption(watch("destination"));
+  const exportFormat = watch("syncOptions.exportFormat");
+  const isKeystore = isKeystoreExportFormat(exportFormat);
+  const isJksBlockedByFips = Boolean(
+    syncOption?.unsupportedExportFormats?.includes(PkiSyncExportFormat.Jks)
+  );
+
+  const keystoreLabel = exportFormat === PkiSyncExportFormat.Jks ? "JKS" : "PKCS#12";
+  const keystoreFile = exportFormat === PkiSyncExportFormat.Jks ? ".jks keystore" : ".pfx bundle";
 
   return (
     <>
@@ -45,7 +62,8 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
                 </TooltipTrigger>
                 <TooltipContent className="max-w-sm">
                   PEM writes separate certificate, chain, and key files. PKCS#12 writes a single
-                  password-protected .pfx bundle.
+                  password-protected .pfx bundle. Java KeyStore writes a password-protected .jks
+                  keystore for Java servers such as Tomcat and WebLogic.
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
@@ -57,15 +75,36 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper">
-                <SelectItem value={PkiSyncExportFormat.Pem}>PEM</SelectItem>
-                <SelectItem value={PkiSyncExportFormat.Pkcs12}>PKCS#12 (.pfx)</SelectItem>
+                {Object.values(PkiSyncExportFormat).map((format) => {
+                  const isDisabled = format === PkiSyncExportFormat.Jks && isJksBlockedByFips;
+                  return (
+                    <SelectItem
+                      key={format}
+                      value={format}
+                      disabled={isDisabled}
+                      description={isDisabled ? "Not available in FIPS mode" : undefined}
+                    >
+                      {PKI_SYNC_EXPORT_FORMAT_LABELS[format]}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             <FieldError errors={[error]} />
+            {value === PkiSyncExportFormat.Jks && isJksBlockedByFips && (
+              <Alert variant="warning">
+                <Info />
+                <AlertDescription>
+                  JKS isn&apos;t available in FIPS mode. The format can only protect private keys
+                  with cryptography that is not FIPS-approved, so this sync will not deliver
+                  certificates. Switch the export format to PEM.
+                </AlertDescription>
+              </Alert>
+            )}
           </Field>
         )}
       />
-      {watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pem && (
+      {exportFormat === PkiSyncExportFormat.Pem && (
         <Controller
           control={control}
           name="syncOptions.pemCertificateExtension"
@@ -100,7 +139,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
           )}
         />
       )}
-      {watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pem && (
+      {exportFormat === PkiSyncExportFormat.Pem && (
         <Controller
           control={control}
           name="syncOptions.combineCertificateChain"
@@ -127,22 +166,22 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
           )}
         />
       )}
-      {watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pkcs12 && (
+      {isKeystore && (
         <Controller
           control={control}
           name="credentials.exportPassword"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel>
-                PKCS#12 password
+                {keystoreLabel} password
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     {isUpdate
-                      ? "Protects the .pfx bundle. Leave blank to keep the current password."
-                      : "Protects the .pfx bundle."}
+                      ? `Protects the ${keystoreFile}. Leave blank to keep the current password.`
+                      : `Protects the ${keystoreFile}.`}
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -158,7 +197,64 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
           )}
         />
       )}
-      {watch("syncOptions.exportFormat") !== PkiSyncExportFormat.Pkcs12 && (
+      {isKeystore && (
+        <Controller
+          control={control}
+          name="syncOptions.keystoreAlias"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Keystore alias
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The alias of the private key entry, for example the value of Tomcat&apos;s
+                    certificateKeyAlias. Defaults to the certificate&apos;s file name. Each renewal
+                    replaces the entry under this alias.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                value={value ?? ""}
+                onChange={onChange}
+                placeholder="Defaults to the certificate file name"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      )}
+      {exportFormat === PkiSyncExportFormat.Jks && (
+        <Controller
+          control={control}
+          name="syncOptions.includeTruststore"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="include-truststore">Include truststore</Label>
+                  <FieldDescription>
+                    When enabled, a separate .truststore.jks file holding the certificate&apos;s CA
+                    chain and root CA as trusted entries is written next to the keystore. It uses
+                    the same password.
+                  </FieldDescription>
+                </FieldContent>
+                <Toggle
+                  id="include-truststore"
+                  variant="project"
+                  checked={value ?? false}
+                  onCheckedChange={onChange}
+                />
+              </Field>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      )}
+      {!isKeystore && (
         <Controller
           control={control}
           name="syncOptions.includePrivateKey"

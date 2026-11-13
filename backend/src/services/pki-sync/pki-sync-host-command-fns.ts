@@ -21,6 +21,7 @@ export enum HostCommandVariable {
   CertificateDirectory = "certificateDirectory",
   CertificateFiles = "certificateFiles",
   CommonName = "commonName",
+  ExportPassword = "exportPassword",
   Pkcs12Password = "pkcs12Password"
 }
 
@@ -175,6 +176,7 @@ export const renderHostCommandContext = (
       [HostCommandVariable.CertificateDirectory, context.certificateDirectory],
       [HostCommandVariable.CertificateFiles, context.certificateFiles.join("\n")],
       [HostCommandVariable.CommonName, context.commonName],
+      [HostCommandVariable.ExportPassword, context.pkcs12Password],
       [HostCommandVariable.Pkcs12Password, context.pkcs12Password]
     ]),
     toShellLiteral

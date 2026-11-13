@@ -3,12 +3,14 @@ import { z } from "zod";
 import { Auth0ClientSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/auth0-client-secret-rotation-schema";
 import { AwsIamUserSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/aws-iam-user-secret-rotation-schema";
 import { AzureClientSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/azure-client-secret-rotation-schema";
+import { ClickHouseCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/clickhouse-credentials-rotation-schema";
 import { DatabricksServicePrincipalSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/databricks-service-principal-secret-rotation-schema";
 import { LdapPasswordRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/ldap-password-rotation-schema";
 import { MongoDBCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mongodb-credentials-rotation-schema";
 import { MsSqlCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mssql-credentials-rotation-schema";
 import { MySqlCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mysql-credentials-rotation-schema";
 import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/postgres-credentials-rotation-schema";
+import { channelFormSchema, TChannelForm, toChannelInput } from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
@@ -22,6 +24,7 @@ import { DatadogApiKeyRotationSchema } from "./datadog-api-key-rotation-schema";
 import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-schema";
+import { GcpServiceAccountKeyRotationSchema } from "./gcp-service-account-key-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
 import { LiteLLMApiKeyRotationSchema } from "./litellm-api-key-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
@@ -31,11 +34,57 @@ import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotati
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
 import { SalesforceOauthCredentialsRotationSchema } from "./salesforce-oauth-credentials-rotation-schema";
 import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair-rotation-schema";
+import { StripeApiKeyRotationSchema } from "./stripe-api-key-rotation-schema";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
 import { WindowsLocalAccountRotationSchema } from "./windows-local-account-rotation-schema";
 
-export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
+const FailureAlertChannelsSchema = z
+  .array(channelFormSchema)
+  .min(1, "At least one channel is required");
+
+type TSavedFailureAlert = {
+  enabled: boolean;
+  channels: TChannelForm[];
+};
+
+export const serializeFailureAlertChannels = (channels: TChannelForm[]) =>
+  JSON.stringify(channels.map(toChannelInput));
+
+// Channels are only checked while the alert is on, so a hidden, half-filled channel can't block
+// saving the rotation. A saved alert the user left untouched isn't checked either: recipient cleanup
+// can leave it with an empty, disabled channel, and saving the rotation doesn't send the alert again.
+const buildFailureAlertSchema = (savedAlert?: TSavedFailureAlert) => {
+  const savedChannels = savedAlert ? serializeFailureAlertChannels(savedAlert.channels) : undefined;
+
+  return z
+    .object({
+      isFailureAlertEnabled: z.boolean(),
+      channels: z.custom<TChannelForm[]>()
+    })
+    .superRefine(({ isFailureAlertEnabled, channels }, ctx) => {
+      if (!isFailureAlertEnabled) return;
+      if (savedAlert?.enabled && savedChannels === serializeFailureAlertChannels(channels)) {
+        return;
+      }
+
+      const result = FailureAlertChannelsSchema.safeParse(channels);
+      if (result.success) return;
+
+      result.error.issues.forEach((issue) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: issue.message,
+          path: ["channels", ...issue.path]
+        });
+      });
+    });
+};
+
+export const SecretRotationV2FormSchema = (
+  isUpdate: boolean,
+  savedFailureAlert?: TSavedFailureAlert
+) =>
   z
     .intersection(
       z.discriminatedUnion("type", [
@@ -66,9 +115,12 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         FireworksApiKeyRotationSchema,
         SnowflakeUserKeyPairRotationSchema,
         CloudflareApiTokenRotationSchema,
-        CloudflareR2AccessKeyRotationSchema
+        CloudflareR2AccessKeyRotationSchema,
+        StripeApiKeyRotationSchema,
+        GcpServiceAccountKeyRotationSchema,
+        ClickHouseCredentialsRotationSchema
       ]),
-      z.object({ id: z.string().optional() })
+      z.object({ id: z.string().optional() }).and(buildFailureAlertSchema(savedFailureAlert))
     )
     .superRefine((val, ctx) => {
       if (isUpdate) return;

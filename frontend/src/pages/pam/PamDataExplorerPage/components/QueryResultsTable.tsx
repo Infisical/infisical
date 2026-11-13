@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { Spinner } from "@app/components/v2";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
+import { Spinner } from "@app/components/v3/generic/Spinner";
 
 import type { FieldInfo } from "../data-explorer-types";
 
@@ -72,7 +72,7 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
   if (isRunning) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Spinner className="size-5" />
+        <Spinner size="xs" />
       </div>
     );
   }
@@ -91,6 +91,16 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted">Run a query to see results</p>
+      </div>
+    );
+  }
+
+  if (result.rows.length === 0 && result.isTruncated) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-muted">
+          The first row is too large to display. Select fewer or smaller columns.
+        </p>
       </div>
     );
   }

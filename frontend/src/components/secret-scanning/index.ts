@@ -1,3 +1,3 @@
-export * from "./CreateSecretScanningDataSourceModal";
-export * from "./EditSecretScanningDataSourceModal";
+export * from "./CreateSecretScanningDataSourceSheet";
+export * from "./EditSecretScanningDataSourceSheet";
 export * from "./SecretScanningScanStatus";

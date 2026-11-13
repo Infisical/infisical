@@ -1,5 +1,4 @@
-import { Helmet } from "react-helmet";
-
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
@@ -10,12 +9,10 @@ export const NetworkingPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Infisical | Networking</title>
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <PageTitle title="Networking" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-page text-foreground-inverse">
-        <div className="flex w-full max-w-8xl flex-col gap-8">
+        <div className="flex w-full max-w-8xl flex-col">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title="Networking"

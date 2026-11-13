@@ -80,17 +80,17 @@ export const DataExplorerClientMessageSchema = z.discriminatedUnion("type", [
 
 export type TDataExplorerClientMessage = z.infer<typeof DataExplorerClientMessageSchema>;
 
-const SchemasResponseSchema = CorrelatedBaseSchema.extend({
+export const SchemasResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.Schemas),
   data: z.array(z.object({ name: z.string() }))
 });
 
-const TablesResponseSchema = CorrelatedBaseSchema.extend({
+export const TablesResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.Tables),
   data: z.array(z.object({ name: z.string(), tableType: z.string() }))
 });
 
-const TableDetailResponseSchema = TabScopedBaseSchema.extend({
+export const TableDetailResponseSchema = TabScopedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.TableDetail),
   transactionOpen: z.boolean(),
   data: z.object({
@@ -115,7 +115,7 @@ const TableDetailResponseSchema = TabScopedBaseSchema.extend({
   })
 });
 
-const QueryResultResponseSchema = TabScopedBaseSchema.extend({
+export const QueryResultResponseSchema = TabScopedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.QueryResult),
   rows: z.array(z.record(z.string(), z.unknown())),
   fields: z.array(z.object({ name: z.string() })),
@@ -126,7 +126,7 @@ const QueryResultResponseSchema = TabScopedBaseSchema.extend({
   executionTimeMs: z.number()
 });
 
-const ErrorResponseSchema = CorrelatedBaseSchema.extend({
+export const ErrorResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.Error),
   connectionId: z.string().uuid().optional(),
   transactionOpen: z.boolean().optional(),
@@ -135,18 +135,18 @@ const ErrorResponseSchema = CorrelatedBaseSchema.extend({
   hint: z.string().optional()
 });
 
-const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({
+export const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.ConnectionOpened),
   connectionId: z.string().uuid(),
   nativeConnectionId: z.number().nullable()
 });
 
-const ConnectionOpenFailedResponseSchema = CorrelatedBaseSchema.extend({
+export const ConnectionOpenFailedResponseSchema = CorrelatedBaseSchema.extend({
   type: z.literal(DataExplorerServerMessageType.ConnectionOpenFailed),
   error: z.string()
 });
 
-const ConnectionClosedResponseSchema = z.object({
+export const ConnectionClosedResponseSchema = z.object({
   type: z.literal(DataExplorerServerMessageType.ConnectionClosed),
   connectionId: z.string().uuid(),
   reason: z.string()

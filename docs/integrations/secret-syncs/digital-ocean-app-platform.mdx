@@ -53,7 +53,13 @@ description: "Learn how to configure a DigitalOcean App Platform Sync for Infisi
                 <Note>
                     We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
                 </Note>
+                <Note>
+                    DigitalOcean only accepts environment variable names that contain letters, digits, and underscores and don't start with a digit. Infisical checks each secret name after applying the Key Schema and if any name contains a hyphen or another character DigitalOcean rejects, the sync fails without changing the app and lists the invalid names. Rename those secrets or change the Key Schema, then sync again.
+                </Note>
                 - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+                <Note>
+                    If a deployment is running or pending for the app, the sync fails without changing the app. Wait for the deployment to finish, then sync again.
+                </Note>
                 - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
             </Step>
             <Step title="Configure details">
@@ -76,7 +82,7 @@ description: "Learn how to configure a DigitalOcean App Platform Sync for Infisi
             </Step>
         </Steps>
     </Tab>
-    
+
     <Tab title="API">
         To create a **DigitalOcean App Platform Sync**, make an API request to the [Create DigitalOcean Sync](/api-reference/endpoints/secret-syncs/digital-ocean-app-platform/create) API endpoint.
 
@@ -153,4 +159,5 @@ description: "Learn how to configure a DigitalOcean App Platform Sync for Infisi
         }
         ```
     </Tab>
+
 </Tabs>

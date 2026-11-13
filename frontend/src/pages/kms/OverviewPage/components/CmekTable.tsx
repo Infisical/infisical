@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -8,11 +8,14 @@ import {
   DownloadIcon,
   EllipsisIcon,
   FileSignatureIcon,
+  GlobeIcon,
+  GlobeLockIcon,
   ImportIcon,
   InfoIcon,
+  KeyIcon,
+  LinkIcon,
   LockIcon,
   PencilIcon,
-  PlusIcon,
   RotateCwIcon,
   SearchIcon,
   TrashIcon,
@@ -23,11 +26,9 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Spinner } from "@app/components/v2";
 import {
   Badge,
   Button,
-  ButtonGroup,
   Card,
   CardAction,
   CardContent,
@@ -51,6 +52,7 @@ import {
   Pagination,
   SelectedActionBar,
   Skeleton,
+  Spinner,
   Table,
   TableBody,
   TableCell,
@@ -69,7 +71,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { kmsKeyUsageOptions } from "@app/helpers/kms";
+import { formatKmsKeyAlgorithm, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -116,6 +118,44 @@ const getStatusBadgeProps = (
   }
   return { variant: "success", label: "Active" };
 };
+
+const copyToClipboard = async (value: string, label: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    createNotification({ type: "info", text: `${label} copied to clipboard` });
+  } catch {
+    createNotification({
+      type: "error",
+      text: `Couldn't copy the ${label}. Allow clipboard access in your browser and try again.`
+    });
+  }
+};
+
+const KeyAction = ({
+  children,
+  onClick,
+  disabledReason,
+  variant
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabledReason?: string;
+  variant?: "danger";
+}) => (
+  <Tooltip open={disabledReason ? undefined : false}>
+    <TooltipTrigger asChild>
+      <DropdownMenuItem
+        onClick={onClick}
+        isDisabled={Boolean(disabledReason)}
+        isDisabledFocusable={Boolean(disabledReason)}
+        variant={variant}
+      >
+        {children}
+      </DropdownMenuItem>
+    </TooltipTrigger>
+    <TooltipContent side="left">{disabledReason}</TooltipContent>
+  </Tooltip>
+);
 
 export const CmekTable = () => {
   const { currentProject } = useProject();
@@ -210,6 +250,22 @@ export const CmekTable = () => {
     });
   };
 
+  const handleTogglePublicKeyPublished = async ({
+    id: keyId,
+    name,
+    isPublicKeyPublished
+  }: TCmek) => {
+    await updateCmek.mutateAsync({
+      keyId,
+      projectId,
+      isPublicKeyPublished: !isPublicKeyPublished
+    });
+    createNotification({
+      text: `Public key of "${name}" ${isPublicKeyPublished ? "unpublished" : "published"}`,
+      type: "success"
+    });
+  };
+
   const handleBulkExport = async () => {
     if (selectedKeyIds.length > 100) {
       createNotification({ text: "Cannot export more than 100 keys at once", type: "error" });
@@ -273,6 +329,9 @@ export const CmekTable = () => {
     ProjectPermissionCmekActions.ExportPrivateKey,
     ProjectPermissionSub.Cmek
   );
+  const cannotPublishPublicKey =
+    cannotEditKey ||
+    permission.cannot(ProjectPermissionCmekActions.PublishPublicKey, ProjectPermissionSub.Cmek);
   const cannotReadKey = permission.cannot(
     ProjectPermissionCmekActions.Read,
     ProjectPermissionSub.Cmek
@@ -325,61 +384,58 @@ export const CmekTable = () => {
         <CardHeader>
           <CardTitle>
             Keys
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms" />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/keys" />
           </CardTitle>
           <CardDescription>Manage keys and perform cryptographic operations.</CardDescription>
           <CardAction>
-            <ButtonGroup>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Create}
-                a={ProjectPermissionSub.Cmek}
-              >
-                {(isAllowed) => (
-                  <Tooltip open={!isAllowed ? undefined : false}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        className="rounded-r-none"
-                        variant="project"
-                        onClick={() => handlePopUpOpen("upsertKey", null)}
-                        isDisabled={!isAllowed}
-                      >
-                        <PlusIcon className="mr-2 size-4" />
-                        Add Key
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Access Denied</TooltipContent>
-                  </Tooltip>
-                )}
-              </ProjectPermissionCan>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton variant="project" aria-label="More key options">
-                    <ChevronDownIcon />
-                  </IconButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
-                    a={ProjectPermissionSub.Cmek}
-                  >
-                    {(isAllowed) => (
-                      <Tooltip open={!isAllowed ? undefined : false}>
-                        <TooltipTrigger className="block w-full">
-                          <DropdownMenuItem
-                            onClick={() => handlePopUpOpen("importKeys")}
-                            isDisabled={!isAllowed}
-                          >
-                            <ImportIcon className="size-4" />
-                            Import Keys
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">Access Restricted</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </ProjectPermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ButtonGroup>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="project">
+                  <ChevronDownIcon />
+                  Add Key
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={ProjectPermissionSub.Cmek}
+                >
+                  {(isAllowed) => (
+                    <Tooltip open={!isAllowed ? undefined : false}>
+                      <TooltipTrigger className="block w-full">
+                        <DropdownMenuItem
+                          onClick={() => handlePopUpOpen("upsertKey", null)}
+                          isDisabled={!isAllowed}
+                        >
+                          <KeyIcon className="size-4" />
+                          Create Key
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Access Restricted</TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={ProjectPermissionSub.Cmek}
+                >
+                  {(isAllowed) => (
+                    <Tooltip open={!isAllowed ? undefined : false}>
+                      <TooltipTrigger className="block w-full">
+                        <DropdownMenuItem
+                          onClick={() => handlePopUpOpen("importKeys")}
+                          isDisabled={!isAllowed}
+                        >
+                          <ImportIcon className="size-4" />
+                          Import Keys
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Access Restricted</TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -397,7 +453,7 @@ export const CmekTable = () => {
                 placeholder="Search keys by name or ID..."
               />
             </InputGroup>
-            {isFetching && <Spinner size="xs" />}
+            {isFetching && <Spinner size="xs" label="Loading keys" />}
           </div>
 
           {!isPending && keys.length === 0 ? (
@@ -484,8 +540,13 @@ export const CmekTable = () => {
                       isDisabled,
                       isExportable,
                       hasDeleteProtection,
-                      keyUsage
+                      keyUsage,
+                      isPublicKeyPublished,
+                      kid,
+                      jwksUrl
                     } = cmek;
+                    // A disabled key's URL returns 404, so it isn't shown as public
+                    const isPublicKeyServed = isPublicKeyPublished && !isDisabled;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
                     const isSelected = selectedKeyIds.includes(id);
 
@@ -496,6 +557,21 @@ export const CmekTable = () => {
                     const cannotExportKey = isAsymmetricKey
                       ? (cannotExportPrivateKey || !isExportable) && cannotReadKey
                       : cannotExportPrivateKey || !isExportable;
+                    const disabledKeyReason = isDisabled ? "This key is disabled" : undefined;
+                    let exportDisabledReason = disabledKeyReason;
+                    if (cannotExportKey) {
+                      exportDisabledReason =
+                        cannotExportPrivateKey && (!isAsymmetricKey || cannotReadKey)
+                          ? "Access Restricted"
+                          : "This key was created as non-exportable";
+                    }
+                    let deleteDisabledReason: string | undefined;
+                    if (cannotDeleteKey) {
+                      deleteDisabledReason = "Access Restricted";
+                    } else if (hasDeleteProtection) {
+                      deleteDisabledReason =
+                        "Disable delete protection on this key before deleting it";
+                    }
 
                     return (
                       <TableRow
@@ -591,9 +667,23 @@ export const CmekTable = () => {
                             </Tooltip>
                           </div>
                         </TableCell>
-                        <TableCell className="uppercase">{algorithm}</TableCell>
+                        <TableCell>{formatKmsKeyAlgorithm(algorithm)}</TableCell>
                         <TableCell>
-                          <Badge variant={variant}>{label}</Badge>
+                          <div className="flex items-center gap-1">
+                            <Badge variant={variant}>{label}</Badge>
+                            {isPublicKeyServed && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="info">Public</Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {jwksUrl
+                                    ? `Public key published at ${jwksUrl}`
+                                    : "Public key published"}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{version}</TableCell>
                         <TableCell>
@@ -619,84 +709,127 @@ export const CmekTable = () => {
                               <DropdownMenuContent align="end" className="min-w-[160px]">
                                 {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
                                   <>
-                                    <DropdownMenuItem
+                                    <KeyAction
                                       onClick={() => handlePopUpOpen("encryptData", cmek)}
-                                      isDisabled={cannotEncryptData || isDisabled}
+                                      disabledReason={
+                                        cannotEncryptData ? "Access Restricted" : disabledKeyReason
+                                      }
                                     >
                                       <LockIcon className="mr-2 size-4" />
                                       Encrypt Data
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
+                                    </KeyAction>
+                                    <KeyAction
                                       onClick={() => handlePopUpOpen("decryptData", cmek)}
-                                      isDisabled={cannotDecryptData || isDisabled}
+                                      disabledReason={
+                                        cannotDecryptData ? "Access Restricted" : disabledKeyReason
+                                      }
                                     >
                                       <UnlockIcon className="mr-2 size-4" />
                                       Decrypt Data
-                                    </DropdownMenuItem>
+                                    </KeyAction>
                                   </>
                                 )}
                                 {keyUsage === KmsKeyUsage.SIGN_VERIFY && (
                                   <>
-                                    <DropdownMenuItem
+                                    <KeyAction
                                       onClick={() => handlePopUpOpen("signData", cmek)}
-                                      isDisabled={cannotSignData || isDisabled}
+                                      disabledReason={
+                                        cannotSignData ? "Access Restricted" : disabledKeyReason
+                                      }
                                     >
                                       <FileSignatureIcon className="mr-2 size-4" />
                                       Sign Data
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
+                                    </KeyAction>
+                                    <KeyAction
                                       onClick={() => handlePopUpOpen("verifyData", cmek)}
-                                      isDisabled={cannotVerifyData || isDisabled}
+                                      disabledReason={
+                                        cannotVerifyData ? "Access Restricted" : disabledKeyReason
+                                      }
                                     >
                                       <CircleCheckIcon className="mr-2 size-4" />
                                       Verify Data
-                                    </DropdownMenuItem>
+                                    </KeyAction>
+                                    {kid && (
+                                      <KeyAction
+                                        onClick={() => handleTogglePublicKeyPublished(cmek)}
+                                        disabledReason={
+                                          cannotPublishPublicKey ? "Access Restricted" : undefined
+                                        }
+                                      >
+                                        {isPublicKeyPublished ? (
+                                          <GlobeLockIcon className="mr-2 size-4" />
+                                        ) : (
+                                          <GlobeIcon className="mr-2 size-4" />
+                                        )}
+                                        {isPublicKeyPublished ? "Unpublish" : "Publish"} Public Key
+                                      </KeyAction>
+                                    )}
+                                    {isPublicKeyServed && jwksUrl && (
+                                      <KeyAction
+                                        onClick={() => copyToClipboard(jwksUrl, "JWKS URL")}
+                                      >
+                                        <LinkIcon className="mr-2 size-4" />
+                                        Copy JWKS URL
+                                      </KeyAction>
+                                    )}
+                                    {isPublicKeyServed && kid && (
+                                      <KeyAction onClick={() => copyToClipboard(kid, "kid")}>
+                                        <CopyIcon className="mr-2 size-4" />
+                                        Copy kid
+                                      </KeyAction>
+                                    )}
                                   </>
                                 )}
                                 {keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC && (
                                   <>
-                                    <DropdownMenuItem
+                                    <KeyAction
                                       onClick={() => handlePopUpOpen("generateMac", cmek)}
-                                      isDisabled={cannotGenerateMac || isDisabled}
+                                      disabledReason={
+                                        cannotGenerateMac ? "Access Restricted" : disabledKeyReason
+                                      }
                                     >
                                       <FileSignatureIcon className="mr-2 size-4" />
                                       Generate MAC
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
+                                    </KeyAction>
+                                    <KeyAction
                                       onClick={() => handlePopUpOpen("verifyMac", cmek)}
-                                      isDisabled={cannotVerifyMac || isDisabled}
+                                      disabledReason={
+                                        cannotVerifyMac ? "Access Restricted" : disabledKeyReason
+                                      }
                                     >
                                       <CircleCheckIcon className="mr-2 size-4" />
                                       Verify MAC
-                                    </DropdownMenuItem>
+                                    </KeyAction>
                                   </>
                                 )}
-                                <DropdownMenuItem
+                                <KeyAction
                                   onClick={() => handlePopUpOpen("exportKey", cmek)}
-                                  isDisabled={cannotExportKey || isDisabled}
+                                  disabledReason={exportDisabledReason}
                                 >
                                   <DownloadIcon className="mr-2 size-4" />
                                   Export Key
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
+                                </KeyAction>
+                                <KeyAction
                                   onClick={() => handlePopUpOpen("upsertKey", cmek)}
-                                  isDisabled={cannotEditKey}
+                                  disabledReason={cannotEditKey ? "Access Restricted" : undefined}
                                 >
                                   <PencilIcon className="mr-2 size-4" />
                                   Edit Key
-                                </DropdownMenuItem>
+                                </KeyAction>
                                 {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
-                                  <DropdownMenuItem
+                                  <KeyAction
                                     onClick={() => handlePopUpOpen("rotateKey", cmek)}
-                                    isDisabled={cannotRotateKey || isDisabled}
+                                    disabledReason={
+                                      cannotRotateKey ? "Access Restricted" : disabledKeyReason
+                                    }
                                   >
                                     <RotateCwIcon className="mr-2 size-4" />
                                     Rotate Key
-                                  </DropdownMenuItem>
+                                  </KeyAction>
                                 )}
-                                <DropdownMenuItem
+                                <KeyAction
                                   onClick={() => handleDisableCmek(cmek)}
-                                  isDisabled={cannotEditKey}
+                                  disabledReason={cannotEditKey ? "Access Restricted" : undefined}
                                 >
                                   {isDisabled ? (
                                     <CircleCheckIcon className="mr-2 size-4" />
@@ -704,28 +837,15 @@ export const CmekTable = () => {
                                     <CircleXIcon className="mr-2 size-4" />
                                   )}
                                   {isDisabled ? "Enable" : "Disable"} Key
-                                </DropdownMenuItem>
-                                <Tooltip
-                                  open={cannotDeleteKey || hasDeleteProtection ? undefined : false}
+                                </KeyAction>
+                                <KeyAction
+                                  onClick={() => handlePopUpOpen("deleteKey", cmek)}
+                                  disabledReason={deleteDisabledReason}
+                                  variant="danger"
                                 >
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <DropdownMenuItem
-                                        onClick={() => handlePopUpOpen("deleteKey", cmek)}
-                                        isDisabled={cannotDeleteKey || hasDeleteProtection}
-                                        variant="danger"
-                                      >
-                                        <TrashIcon className="mr-2 size-4" />
-                                        Delete Key
-                                      </DropdownMenuItem>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left">
-                                    {cannotDeleteKey
-                                      ? "Access Restricted"
-                                      : "Disable delete protection on this key before deleting it"}
-                                  </TooltipContent>
-                                </Tooltip>
+                                  <TrashIcon className="mr-2 size-4" />
+                                  Delete Key
+                                </KeyAction>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>

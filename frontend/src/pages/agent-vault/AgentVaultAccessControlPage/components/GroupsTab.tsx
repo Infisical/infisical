@@ -9,7 +9,7 @@ import {
   Button,
   Card,
   CardContent,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -48,6 +48,7 @@ import { ProductRoleDialog } from "./ProductRoleDialog";
 type TGroupMember = TAgentVaultProductMemberOf<AgentVaultMemberType.Group>;
 
 export const GroupsTab = () => {
+  const { projectId } = useProject();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
@@ -55,13 +56,13 @@ export const GroupsTab = () => {
     getUserTablePreference("agentVaultAccessControlTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data, isPending } = useListAgentVaultMembers({
+  const { data, isPending } = useListAgentVaultMembers(projectId, {
     actorType: AgentVaultMemberType.Group,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const revokeMembers = useRevokeAgentVaultMembers();
+  const revokeMembers = useRevokeAgentVaultMembers(projectId);
 
   const rows = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -77,9 +78,9 @@ export const GroupsTab = () => {
   const handleRemove = async () => {
     try {
       if (!groupToRemove) return;
-      await revokeMembers.mutateAsync({ groupIds: [groupToRemove.actor.id] });
+      await revokeMembers.mutateAsync({ groupIds: [groupToRemove.id] });
       createNotification({
-        text: `"${groupToRemove.actor.name}" removed`,
+        text: `"${groupToRemove.name}" removed`,
         type: "success"
       });
       setGroupToRemove(null);
@@ -153,8 +154,8 @@ export const GroupsTab = () => {
             {!isPending &&
               rows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell isTruncatable className="min-w-32" title={row.actor.name}>
-                    <HighlightText text={row.actor.name} highlight={debouncedSearch} />
+                  <TableCell isTruncatable className="min-w-32" title={row.name}>
+                    <HighlightText text={row.name} highlight={debouncedSearch} />
                   </TableCell>
                   <TableCell>
                     <ProductRoleBadge role={row.role} />
@@ -209,17 +210,17 @@ export const GroupsTab = () => {
       <ProductRoleDialog
         member={groupToEdit}
         onOpenChange={() => setGroupToEdit(null)}
-        subject={groupToEdit?.actor.name ?? ""}
+        subject={groupToEdit?.name ?? ""}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(groupToRemove)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);
         }}
-        title={`Remove "${groupToRemove?.actor.name ?? ""}"`}
-        description="Everyone in the group loses Agent Vault access, along with every access bundle granted to the group."
-        confirmKey={groupToRemove?.actor.name ?? ""}
+        title={`Remove "${groupToRemove?.name ?? ""}"`}
+        description="Everyone in the group loses access to this project, along with every access bundle granted to the group."
+        confirmKey={groupToRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={revokeMembers.isPending}
         onConfirm={handleRemove}

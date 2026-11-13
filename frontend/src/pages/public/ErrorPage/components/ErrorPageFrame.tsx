@@ -1,8 +1,8 @@
 import { ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { ActivityIcon, CheckIcon, CopyIcon, MonitorCheckIcon, ShieldCheckIcon } from "lucide-react";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { PageTitle } from "@app/components/PageTitle";
 import { Badge, Button, Card } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 
@@ -28,7 +28,7 @@ export const useErrorPageTimestamp = () => {
 };
 
 type Props = {
-  helmetTitle?: string;
+  pageTitle: string;
   badgeIcon: ReactNode;
   badgeText: string;
   heading: ReactNode;
@@ -45,7 +45,7 @@ type Props = {
 // ProjectAccessError): vault backdrop, two-column card, badge + heading + actions on the left,
 // "What We Know" status column on the right.
 export const ErrorPageFrame = ({
-  helmetTitle,
+  pageTitle,
   badgeIcon,
   badgeText,
   heading,
@@ -95,11 +95,7 @@ export const ErrorPageFrame = ({
         isFullScreen ? "min-h-screen bg-linear-to-tr from-card via-page-deep to-card" : "min-h-full"
       }`}
     >
-      {helmetTitle && (
-        <Helmet>
-          <title>{helmetTitle}</title>
-        </Helmet>
-      )}
+      <PageTitle title={pageTitle} />
       {isFullScreen && <AuthPageBackground />}
       <Card className="relative z-10 grid w-full max-w-5xl gap-0 overflow-hidden p-0 lg:grid-cols-[1fr_26rem]">
         <div className="flex flex-col p-8">
@@ -109,7 +105,7 @@ export const ErrorPageFrame = ({
               {badgeIcon}
               {badgeText}
             </Badge>
-            <h1 className="text-3xl font-semibold text-foreground">{heading}</h1>
+            <h1 className="text-3xl font-normal text-foreground">{heading}</h1>
             <p className="max-w-md text-sm leading-relaxed text-accent">{description}</p>
             <div className="flex flex-wrap items-center gap-2.5">{actions}</div>
             <p className="text-xs text-muted">
@@ -125,9 +121,9 @@ export const ErrorPageFrame = ({
                 className="underline underline-offset-4 hover:text-foreground"
                 target="_blank"
                 rel="noopener noreferrer"
-                href="https://infisical.com/slack"
+                href="https://community.infisical.com"
               >
-                join us on Slack
+                join the community forum
               </a>
               .
             </p>

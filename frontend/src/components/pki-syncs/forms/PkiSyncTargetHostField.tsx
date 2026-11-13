@@ -3,7 +3,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Info } from "lucide-react";
 
 import {
-  CreatableSelect,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
@@ -67,7 +67,7 @@ export const PkiSyncTargetHostField = ({ applicationId }: Props) => {
       control={control}
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">
-          <FieldLabel>
+          <FieldLabel htmlFor="pki-sync-target-host">
             Target Host
             <Tooltip>
               <TooltipTrigger asChild>
@@ -81,6 +81,7 @@ export const PkiSyncTargetHostField = ({ applicationId }: Props) => {
           </FieldLabel>
           {isError ? (
             <Input
+              id="pki-sync-target-host"
               value={value ?? ""}
               onChange={(event) => onChange(event.target.value)}
               placeholder="server01.corp.example.com"
@@ -88,15 +89,16 @@ export const PkiSyncTargetHostField = ({ applicationId }: Props) => {
               isError={Boolean(error)}
             />
           ) : (
-            <CreatableSelect
+            <Combobox
+              id="pki-sync-target-host"
               value={value ? { value, label: value } : null}
-              onChange={(newValue) => onChange((newValue as { value: string } | null)?.value ?? "")}
-              onCreateOption={(inputValue) => onChange(inputValue.trim())}
-              onInputChange={(inputValue) => setSearch(inputValue)}
+              onValueChange={(newValue) => onChange(newValue?.value ?? "")}
+              creation={{ onCreate: (inputValue) => onChange(inputValue.trim()) }}
+              onInputValueChange={setSearch}
               options={options}
               isLoading={isPending}
-              isClearable
-              noOptionsMessage={() => "No machines match search"}
+              getOptionLabel={(option) => option.label}
+              getOptionValue={(option) => option.value}
               placeholder="Select or enter a host..."
               isDisabled={!canSetTargetHost}
               isError={Boolean(error)}

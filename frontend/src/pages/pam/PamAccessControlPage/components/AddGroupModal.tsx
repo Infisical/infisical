@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -12,8 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useGetOrganizationGroups, useListWorkspaceGroups } from "@app/hooks/api";
@@ -79,12 +79,14 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
         {availableGroups.length ? (
           <div className="flex flex-col gap-5">
             <Field>
-              <FieldLabel>
+              <FieldLabel htmlFor="pam-add-group">
                 Group <span className="text-product-pam">*</span>
               </FieldLabel>
-              <FilterableSelect
+              <Combobox
+                id="pam-add-group"
+                isClearable={false}
                 value={selectedGroup}
-                onChange={(val) => setSelectedGroup(val as { id: string; name: string } | null)}
+                onValueChange={setSelectedGroup}
                 getOptionValue={(option) => option.id}
                 getOptionLabel={(option) => option.name}
                 options={availableGroups}

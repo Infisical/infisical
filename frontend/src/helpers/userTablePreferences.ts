@@ -1,7 +1,8 @@
 const TABLE_PREFERENCES_KEY = "userTablePreferences";
 
 export enum PreferenceKey {
-  PerPage = "perPage"
+  PerPage = "perPage",
+  SessionScope = "sessionScope"
 }
 
 interface TableSpecificPreferences {

@@ -21,6 +21,7 @@ import {
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
 import { useCreateGateway } from "@app/hooks/api/gateways-v2";
 import { slugSchema } from "@app/lib/schemas";
@@ -37,6 +38,7 @@ type Props = {
 };
 
 const Content = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const navigate = useNavigate({ from: ROUTE_PATHS.Organization.NetworkingPage.path });
@@ -105,7 +107,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </DialogClose>
         <Button
-          variant="org"
+          variant={scopeVariant}
           type="submit"
           isPending={isPending || isSubmitting}
           isDisabled={!isNameProvided}

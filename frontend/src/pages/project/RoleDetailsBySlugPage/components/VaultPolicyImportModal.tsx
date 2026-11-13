@@ -26,6 +26,7 @@ import {
   TextArea
 } from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
   useGetVaultMounts,
@@ -53,6 +54,7 @@ const defaultVaultConnectionId = (appConnections: TAvailableAppConnection[]) =>
   appConnections.length === 1 ? appConnections[0].id : null;
 
 const Content = ({ onClose, appConnections }: ContentProps) => {
+  const scopeVariant = useScopeVariant();
   const rootForm = useFormContext<TFormSchema>();
   const hasAppConnections = appConnections.length > 0;
   const { isSubOrganization } = useOrganization();
@@ -374,7 +376,7 @@ path "secret/metadata/prod/*" {
           <Button variant="ghost">Cancel</Button>
         </SheetClose>
         <Button
-          variant="project"
+          variant={scopeVariant}
           onClick={handleTranslateAndApply}
           isDisabled={!hclPolicy.trim() || isLoadingMounts || !mounts}
         >
