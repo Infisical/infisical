@@ -19,6 +19,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useUpdateAgentVaultSessionLabel } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
@@ -34,7 +35,8 @@ type Props = {
 };
 
 export const EditSessionLabelDialog = ({ session, onOpenChange }: Props) => {
-  const updateLabel = useUpdateAgentVaultSessionLabel();
+  const { projectId } = useProject();
+  const updateLabel = useUpdateAgentVaultSessionLabel(projectId);
 
   const {
     control,

@@ -14,6 +14,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
+import { clickhouseCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/clickhouse-credentials/clickhouse-credentials-rotation-fns";
 import { cloudflareApiTokenRotationFactory } from "@app/ee/services/secret-rotation-v2/cloudflare-api-token/cloudflare-api-token-rotation-fns";
 import { cloudflareR2AccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/cloudflare-r2-access-key/cloudflare-r2-access-key-rotation-fns";
 import { convexAccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/convex-access-key/convex-access-key-rotation-fns";
@@ -66,13 +67,14 @@ import {
 import { sqlCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials";
 import { snowflakeUserKeyPairRotationFactory } from "@app/ee/services/secret-rotation-v2/snowflake-user-key-pair/snowflake-user-key-pair-rotation-fns";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { takeRowScanWindow } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -123,6 +125,7 @@ import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-rout
 import { openAIServiceAccountRotationFactory } from "./openai-service-account/openai-service-account-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
+import { emitSecretRotationFailed, SECRET_ROTATION_RESOURCE_TYPE } from "./secret-rotation-v2-events";
 import { stripeApiKeyRotationFactory } from "./stripe-api-key/stripe-api-key-rotation-fns";
 import { supabaseApiKeyRotationFactory } from "./supabase-api-key/supabase-api-key-rotation-fns";
 import { unixLinuxLocalAccountRotationFactory } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns";
@@ -179,6 +182,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources" | "findOrphanedResourceIds">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -188,6 +192,8 @@ export type TSecretRotationV2ServiceFactoryDep = {
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
 
 const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
+const ORPHAN_REAP_BATCH_SIZE = 500;
+const MAX_ORPHAN_REAP_BATCHES = 20;
 
 type TRotationFactoryImplementation = TRotationFactory<
   TSecretRotationV2WithConnection,
@@ -227,7 +233,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.CloudflareApiToken]: cloudflareApiTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.CloudflareR2AccessKey]: cloudflareR2AccessKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.StripeApiKey]: stripeApiKeyRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.GcpServiceAccountKey]: gcpServiceAccountKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.GcpServiceAccountKey]: gcpServiceAccountKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.ClickHouseCredentials]: clickhouseCredentialsRotationFactory as TRotationFactoryImplementation
 };
 
 export class SecretRotationInProgressError extends BadRequestError {
@@ -255,6 +262,7 @@ export const secretRotationV2ServiceFactory = ({
   queueService,
   folderCommitService,
   eventEmitter,
+  alertService,
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService,
@@ -296,15 +304,12 @@ export const secretRotationV2ServiceFactory = ({
     ).length > 0;
 
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
-    const appCfg = getConfig();
-    if (!appCfg.isSmtpConfigured) return; // comment out if testing email sending
-
-    const { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } = secretRotation;
+    const { name, type, projectId, id } = secretRotation;
 
     await queueService.queue(
       QueueName.SecretRotationV2,
       QueueJobs.SecretRotationV2SendNotification,
-      { secretRotation: { name, type, projectId, lastRotationAttemptedAt, folder, environment, id } },
+      { secretRotation: { name, type, projectId, id } },
       {
         jobId: `secret-rotation-v2-notifications-${secretRotation.id}`,
         attempts: 5,
@@ -1016,6 +1021,10 @@ export const secretRotationV2ServiceFactory = ({
           });
         }
 
+        await alertService.deleteAlertsForDeletedResources(
+          { resourceType: SECRET_ROTATION_RESOURCE_TYPE, resourceIds: [rotationId] },
+          tx
+        );
         return secretRotationV2DAL.deleteById(rotationId, tx);
       });
 
@@ -1558,6 +1567,7 @@ export const secretRotationV2ServiceFactory = ({
         });
 
         let isStatusChange = false;
+        const attemptedAt = new Date();
         const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
           isStatusChange =
             (
@@ -1568,17 +1578,27 @@ export const secretRotationV2ServiceFactory = ({
               )
             ).length > 0;
 
-          return secretRotationV2DAL.updateById(
+          const failedRotation = await secretRotationV2DAL.updateById(
             secretRotation.id,
             {
               rotationStatus: SecretRotationStatus.Failed,
               lastRotationJobId: jobId,
-              lastRotationAttemptedAt: new Date(),
+              lastRotationAttemptedAt: attemptedAt,
               encryptedLastRotationMessage: encryptedMessage,
               nextRotationAt: getNextUtcRotationInterval(secretRotation.rotateAtUtc as TSecretRotationV2["rotateAtUtc"])
             },
             tx
           );
+
+          if (shouldSendNotification) {
+            await emitSecretRotationFailed(
+              eventEmitter,
+              { orgId: connection.orgId, projectId, rotationId: secretRotation.id, attemptedAt },
+              tx
+            );
+          }
+
+          return failedRotation;
         });
 
         if (isStatusChange) recordSecretRotationStatusChangeMetric({ type, newStatus: "failed" });
@@ -2256,6 +2276,29 @@ export const secretRotationV2ServiceFactory = ({
     };
   };
 
+  // Deleting a rotation reaps its alerts inline. This covers rotations removed by cascade (folder,
+  // environment or project deletion), which no rotation code sees and which nothing cascades to because
+  // alerts.resourceId has no foreign key.
+  const reapOrphanedRotationAlerts = async () => {
+    for (let batch = 0; batch < MAX_ORPHAN_REAP_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each batch is deleted before the next is read
+      const orphanedRotationIds = await alertService.findOrphanedResourceIds({
+        resourceType: SECRET_ROTATION_RESOURCE_TYPE,
+        resourceTable: TableName.SecretRotationV2,
+        limit: ORPHAN_REAP_BATCH_SIZE
+      });
+      if (orphanedRotationIds.length === 0) return;
+
+      // eslint-disable-next-line no-await-in-loop -- see above
+      await alertService.deleteAlertsForDeletedResources({
+        resourceType: SECRET_ROTATION_RESOURCE_TYPE,
+        resourceIds: orphanedRotationIds
+      });
+      if (orphanedRotationIds.length < ORPHAN_REAP_BATCH_SIZE) return;
+    }
+    logger.warn(`Stopped reaping orphaned secret rotation alerts after ${MAX_ORPHAN_REAP_BATCHES} batches`);
+  };
+
   return {
     listSecretRotationOptions,
     listSecretRotationsByProjectId,
@@ -2272,6 +2315,7 @@ export const secretRotationV2ServiceFactory = ({
     getDashboardSecretRotations,
     getQuickSearchSecretRotations,
     reconcileLocalAccountRotation,
-    checkSecretRotationCredentials
+    checkSecretRotationCredentials,
+    reapOrphanedRotationAlerts
   };
 };

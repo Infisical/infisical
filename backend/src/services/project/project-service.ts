@@ -23,6 +23,7 @@ import {
   getRestoredLeaseRevocationJobId,
   TDynamicSecretLeaseQueueServiceFactory
 } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
+import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -213,6 +214,7 @@ type TProjectServiceFactoryDep = {
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
   dynamicSecretQueueService: Pick<
     TDynamicSecretLeaseQueueServiceFactory,
@@ -233,8 +235,7 @@ const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
   [ProjectType.SecretScanning]: "Secret Scanning",
-  [ProjectType.PAM]: "Privileged Access Manager",
-  [ProjectType.AgentVault]: "Agent Vault"
+  [ProjectType.PAM]: "Privileged Access Manager"
 };
 
 export const projectServiceFactory = ({
@@ -272,6 +273,7 @@ export const projectServiceFactory = ({
   groupDAL,
   projectAccessRequestDAL,
   usageMeteringService,
+  honeyTokenCleanupService,
   dynamicSecretLeaseDAL,
   dynamicSecretQueueService,
   secretV2BridgeDAL,
@@ -310,10 +312,13 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
-    if (type === ProjectType.AgentVault || type === ProjectType.PAM) {
+    if (type === ProjectType.PAM) {
       throw new BadRequestError({
         message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[type]} projects cannot be created directly. One is created for your organization automatically.`
       });
+    }
+    if (type === ProjectType.AgentVault && template !== InfisicalProjectTemplate.Default) {
+      throw new BadRequestError({ message: "Agent Vault projects don't use project templates" });
     }
 
     const organization = await orgDAL.findOne({ id: actorOrgId });
@@ -723,7 +728,7 @@ export const projectServiceFactory = ({
             }
           }
         }
-      } else if (createDefaultEnvs) {
+      } else if (createDefaultEnvs && type !== ProjectType.AgentVault) {
         envs = await projectEnvDAL.insertMany(
           DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
           tx
@@ -866,12 +871,6 @@ export const projectServiceFactory = ({
       });
     }
 
-    if (project.type === ProjectType.AgentVault) {
-      throw new BadRequestError({
-        message: "Agent Vault projects cannot be deleted."
-      });
-    }
-
     if (project.type === ProjectType.CertificateManager) {
       const certManagerProjects = await projectDAL.find({
         orgId: project.orgId,
@@ -920,6 +919,10 @@ export const projectServiceFactory = ({
           message: `Project '${project.name}' can't be deleted while it shares secrets with other projects: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Revoke their access in Project Settings → Policies → Cross-Project Secret Sharing first, then retry.`
         });
       }
+
+      // Once soft-deleted the project's KMS key no longer resolves, so the honey token credentials can only
+      // be decrypted, and their provider users revoked, before this point.
+      await honeyTokenCleanupService.revokeProjectHoneyTokens(project.id);
 
       // This returns immediately (one UPDATE) and the project disappears from every read, but the
       // expensive cascade runs asynchronously in the hard-delete worker once deleteAfter passes. Only
@@ -1136,12 +1139,25 @@ export const projectServiceFactory = ({
     }
   };
 
-  const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
-    const workspaces = (
-      actor === ActorType.IDENTITY
-        ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type)
-    ).map((workspace) => ({
+  const getProjects = async ({
+    actorId,
+    actor,
+    includeRoles,
+    actorAuthMethod,
+    actorOrgId,
+    type,
+    limit,
+    offset
+  }: TListProjectsDTO) => {
+    const { projects: actorProjects, totalCount } = await projectDAL.findActorProjects({
+      actorType: actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+      actorId,
+      orgIds: [actorOrgId],
+      projectType: type,
+      limit,
+      offset
+    });
+    const workspaces = actorProjects.map((workspace) => ({
       ...workspace,
       deletedEnvironments: [] as {
         id: string;
@@ -1195,10 +1211,10 @@ export const projectServiceFactory = ({
         })
       );
 
-      return workspacesWithRoles;
+      return { projects: workspacesWithRoles, totalCount };
     }
 
-    return workspaces;
+    return { projects: workspaces, totalCount };
   };
 
   const getAccessibleProjectsWithSubOrgs = async ({
@@ -1254,9 +1270,9 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    // The org-scoped products own one implicit project each, so its name, slug and delete protection are
-    // not the caller's to change. Create and delete are already guarded; this route was not.
-    if (project.type === ProjectType.AgentVault || project.type === ProjectType.PAM) {
+    // PAM owns one implicit project per org, so its name, slug and delete protection are not the caller's to
+    // change. Create and delete are already guarded; this route was not.
+    if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type]} is managed for your organization and cannot be renamed or reconfigured here.`
       });
@@ -2560,8 +2576,7 @@ export const projectServiceFactory = ({
 
     const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
       [ProjectType.CertificateManager]: "cert-manager",
-      [ProjectType.PAM]: "pam",
-      [ProjectType.AgentVault]: "agent-vault"
+      [ProjectType.PAM]: "pam"
     };
     const orgScopedPath = orgScopedProductPath[project.type as ProjectType];
 

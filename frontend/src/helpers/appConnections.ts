@@ -61,6 +61,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
+import { ClickHouseConnectionMethod } from "@app/hooks/api/appConnections/types/clickhouse-connection";
 import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
@@ -76,6 +77,7 @@ import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
 import { ImpervaConnectionMethod } from "@app/hooks/api/appConnections/types/imperva-connection";
+import { JenkinsConnectionMethod } from "@app/hooks/api/appConnections/types/jenkins-connection";
 import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-connection";
 import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
@@ -422,6 +424,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "DATABASE",
     description: "Connect to a MongoDB database."
   },
+  [AppConnection.ClickHouse]: {
+    name: "ClickHouse",
+    image: "ClickHouse.png",
+    category: "DATABASE",
+    description: "Connect to a ClickHouse database."
+  },
   [AppConnection.LaravelForge]: {
     name: "Laravel Forge",
     image: "Laravel Forge.png",
@@ -577,7 +585,7 @@ export const APP_CONNECTION_MAP: Record<
     description: "GraphQL API and data access for Hasura Cloud."
   },
   [AppConnection.OVH]: {
-    name: "OVH Cloud",
+    name: "OVHcloud",
     image: "OVH.png",
     category: "CLOUD",
     description: "Account and service access for OVHcloud."
@@ -717,6 +725,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Jira.svg",
     category: "PRODUCTIVITY",
     description: "Atlassian Jira Cloud and Data Center."
+  },
+  [AppConnection.Jenkins]: {
+    name: "Jenkins",
+    image: "Jenkins.png",
+    category: "CI/CD",
+    description: "Credentials and folder access for Jenkins."
   }
 };
 
@@ -830,6 +844,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
     case JiraConnectionMethod.ApiToken:
+    case JenkinsConnectionMethod.ApiToken:
       return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
@@ -841,6 +856,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case ClickHouseConnectionMethod.UsernameAndPassword:
     case UltraDNSConnectionMethod.UsernamePassword:
       return { name: "Username & Password", icon: LockIcon };
     case SnowflakeConnectionMethod.UsernameAndToken:
@@ -935,6 +951,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "API Key", icon: KeyRoundIcon };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
+    case OVHConnectionMethod.Token:
+      return { name: "Token", icon: KeyRoundIcon };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

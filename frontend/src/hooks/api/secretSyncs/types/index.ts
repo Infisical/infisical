@@ -31,6 +31,7 @@ import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TJenkinsSync } from "./jenkins-sync";
 import { TKeeperSync } from "./keeper-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
@@ -118,7 +119,8 @@ export type TSecretSync =
   | TSpaceliftSync
   | TDaytonaSync
   | TDenoDeploySync
-  | TKeeperSync;
+  | TKeeperSync
+  | TJenkinsSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
@@ -134,7 +136,7 @@ export type TCreateSecretSyncDTO = DiscriminativePick<
   | "syncOptions"
   | "destination"
   | "isAutoSyncEnabled"
-> & { environment: string; secretPath: string; projectId: string };
+> & { environment: string; secretPath: string; includeAllSubFolders?: boolean; projectId: string };
 
 export type TUpdateSecretSyncDTO = Partial<
   Omit<TCreateSecretSyncDTO, "destination" | "projectId">

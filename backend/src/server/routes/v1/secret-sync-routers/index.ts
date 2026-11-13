@@ -31,6 +31,7 @@ import { registerHasuraCloudSyncRouter } from "./hasura-cloud-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHerokuSyncRouter } from "./heroku-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
+import { registerJenkinsSyncRouter } from "./jenkins-sync-router";
 import { registerKeeperSyncRouter } from "./keeper-sync-router";
 import { registerLaravelForgeSyncRouter } from "./laravel-forge-sync-router";
 import { registerNetlifySyncRouter } from "./netlify-sync-router";
@@ -109,5 +110,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Spacelift]: registerSpaceliftSyncRouter,
   [SecretSync.Daytona]: registerDaytonaSyncRouter,
   [SecretSync.DenoDeploy]: registerDenoDeploySyncRouter,
-  [SecretSync.Keeper]: registerKeeperSyncRouter
+  [SecretSync.Keeper]: registerKeeperSyncRouter,
+  [SecretSync.Jenkins]: registerJenkinsSyncRouter
 };

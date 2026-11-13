@@ -80,6 +80,7 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { JENKINS_SYNC_LIST_OPTION, JenkinsSyncFns } from "./jenkins";
 import { KEEPER_SYNC_LIST_OPTION, KeeperSyncFns } from "./keeper";
 import { LARAVEL_FORGE_SYNC_LIST_OPTION, LaravelForgeSyncFns } from "./laravel-forge";
 import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
@@ -159,7 +160,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
   [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
   [SecretSync.DenoDeploy]: DENO_DEPLOY_SYNC_LIST_OPTION,
-  [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION
+  [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION,
+  [SecretSync.Jenkins]: JENKINS_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -338,7 +340,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).syncSecrets(secretSync, payload);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.syncSecrets(secretSync, payload);
@@ -391,6 +395,8 @@ export const SecretSyncFns = {
         return RundeckSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Portainer:
         return PortainerSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Jenkins:
+        return JenkinsSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -485,7 +491,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).getSecrets(secretSync);
       case SecretSync.Humanitec:
         secretMap = await HumanitecSyncFns.getSecrets(secretSync);
@@ -561,6 +569,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Portainer:
         secretMap = await PortainerSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
+        break;
+      case SecretSync.Jenkins:
+        secretMap = await JenkinsSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
@@ -681,7 +692,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).removeSecrets(secretSync, payload);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.removeSecrets(secretSync, payload);
@@ -734,6 +747,8 @@ export const SecretSyncFns = {
         return RundeckSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Portainer:
         return PortainerSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Jenkins:
+        return JenkinsSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:

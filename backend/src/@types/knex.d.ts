@@ -22,6 +22,9 @@ import {
   TAdditionalPrivilegesUpdate,
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundleServices,
+  TAgentVaultAccessBundleServicesInsert,
+  TAgentVaultAccessBundleServicesUpdate,
   TAgentVaultAccessBundleSkills,
   TAgentVaultAccessBundleSkillsInsert,
   TAgentVaultAccessBundleSkillsUpdate,
@@ -65,6 +68,9 @@ import {
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultSessionStats,
+  TAgentVaultSessionStatsInsert,
+  TAgentVaultSessionStatsUpdate,
   TAgentVaultSkills,
   TAgentVaultSkillsInsert,
   TAgentVaultSkillsUpdate,
@@ -170,6 +176,9 @@ import {
   TCertificateAuthorityCrl,
   TCertificateAuthorityCrlInsert,
   TCertificateAuthorityCrlUpdate,
+  TCertificateAuthorityCrossSignedCerts,
+  TCertificateAuthorityCrossSignedCertsInsert,
+  TCertificateAuthorityCrossSignedCertsUpdate,
   TCertificateAuthoritySecret,
   TCertificateAuthoritySecretInsert,
   TCertificateAuthoritySecretUpdate,
@@ -936,6 +945,11 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrl,
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
+    >;
+    [TableName.CertificateAuthorityCrossSignedCert]: KnexOriginal.CompositeTableType<
+      TCertificateAuthorityCrossSignedCerts,
+      TCertificateAuthorityCrossSignedCertsInsert,
+      TCertificateAuthorityCrossSignedCertsUpdate
     >;
     [TableName.InternalCertificateAuthority]: KnexOriginal.CompositeTableType<
       TInternalCertificateAuthorities,
@@ -1927,6 +1941,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
     >;
+    [TableName.AgentVaultSessionStats]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionStats,
+      TAgentVaultSessionStatsInsert,
+      TAgentVaultSessionStatsUpdate
+    >;
     [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultSkills,
       TAgentVaultSkillsInsert,
@@ -1936,6 +1955,11 @@ declare module "knex/types/tables" {
       TAgentVaultSkillVersions,
       TAgentVaultSkillVersionsInsert,
       TAgentVaultSkillVersionsUpdate
+    >;
+    [TableName.AgentVaultAccessBundleService]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundleServices,
+      TAgentVaultAccessBundleServicesInsert,
+      TAgentVaultAccessBundleServicesUpdate
     >;
     [TableName.AgentVaultAccessBundleSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultAccessBundleSkills,

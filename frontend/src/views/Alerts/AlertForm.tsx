@@ -56,14 +56,15 @@ type Props = {
 };
 
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
-const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
+export const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
   [AlertEventType.PamAccessRequested]: "Access requested alert",
   [AlertEventType.PamAccessRequestApproved]: "Request approved alert",
   [AlertEventType.PamAccessRequestDenied]: "Request denied alert",
   [AlertEventType.PamAccessRequestBypassed]: "Break-glass alert",
-  [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert"
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert",
+  [AlertEventType.SecretRotationFailed]: "Rotation failure alert"
 };
 const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Partial<Record<AlertEventType, string>> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",

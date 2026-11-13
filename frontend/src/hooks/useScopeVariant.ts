@@ -1,7 +1,7 @@
 import { useLocation, useParams } from "@tanstack/react-router";
 
 import { useOrganization } from "@app/context";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
+import { getOrgScopedProductFromPath, isAgentVaultProjectPath } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export type ScopeVariant = "org" | "project" | "sub-org" | "av" | "ss";
@@ -17,7 +17,7 @@ export const useScopeVariant = (): ScopeVariant => {
   const { isSubOrganization } = useOrganization();
 
   const orgScopedProduct = getOrgScopedProductFromPath(pathname);
-  if (orgScopedProduct === ProjectType.AgentVault) return "av";
+  if (isAgentVaultProjectPath(pathname)) return "av";
   if (orgScopedProduct === ProjectType.SecretScanning) return "ss";
   if (projectId || orgScopedProduct === ProjectType.CertificateManager) return "project";
   if (isSubOrganization) return "sub-org";

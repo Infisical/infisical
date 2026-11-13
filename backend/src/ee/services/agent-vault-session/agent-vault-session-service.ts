@@ -1,10 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -25,7 +27,10 @@ import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vau
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
-import { TAgentVaultSessionInlineServiceDALFactory } from "./agent-vault-session-inline-service-dal";
+import {
+  TAgentVaultInlineServiceInsert,
+  TAgentVaultSessionInlineServiceDALFactory
+} from "./agent-vault-session-inline-service-dal";
 import {
   assertNoAccessBundleConflicts,
   prepareInlineServices,
@@ -40,8 +45,6 @@ import {
   TUpdateSessionLabelDTO
 } from "./agent-vault-session-types";
 
-// V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
-export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
 export const AGENT_VAULT_SESSION_DEFAULT_TTL = "7d";
 export const AGENT_VAULT_SESSION_TTL_NEVER = "never";
 // Past roughly 1e8 days the expiry overflows Date and Postgres rejects the row as a 500. A century is
@@ -56,7 +59,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultSessionInlineServiceDAL: Pick<
     TAgentVaultSessionInlineServiceDALFactory,
-    "insertMany" | "findSummariesBySessionIds" | "deleteSecretsBySessionId"
+    "insertForSession" | "findSummariesBySessionIds" | "deleteSecretsBySessionId"
   >;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findByAccessBundleId">;
@@ -120,7 +123,7 @@ export const agentVaultSessionServiceFactory = ({
   const mintSession = async ({
     projectId,
     ctx,
-    accessBundles,
+    accessBundle,
     services = [],
     actorName,
     actorEmail,
@@ -129,6 +132,8 @@ export const agentVaultSessionServiceFactory = ({
     label
   }: TMintSessionDTO) => {
     const caller = requireSessionActor(ctx);
+    // The rest of mint, the junction table and resolve all work on a list; a session holds at most one bundle.
+    const accessBundles = accessBundle ? [accessBundle] : [];
     const ttl = resolveSessionTtl(requestedTtl, Boolean(onBehalfOf));
 
     const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
@@ -147,12 +152,6 @@ export const agentVaultSessionServiceFactory = ({
       throw new ForbiddenRequestError({
         message: "Only an Agent Vault admin can send services with a session. Name an access bundle instead."
       });
-    }
-    if (accessBundles.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
-      throw new BadRequestError({ message: "A session carries one access bundle. Name only one." });
-    }
-    if (new Set(accessBundles).size !== accessBundles.length) {
-      throw new BadRequestError({ message: "You've named the same access bundle more than once. Name it only once." });
     }
 
     const preparedInlineServices = prepareInlineServices(services);
@@ -181,6 +180,7 @@ export const agentVaultSessionServiceFactory = ({
       const notGrantedToIdentity = firstUnreachable(identityReach);
       if (notGrantedToIdentity) {
         throw new BadRequestError({
+          name: "AccessBundleNotGranted",
           message: `No access bundle named '${notGrantedToIdentity}' is granted to this machine identity. A session on behalf of a user can use only bundles granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the bundle to the machine identity.`
         });
       }
@@ -196,6 +196,7 @@ export const agentVaultSessionServiceFactory = ({
       const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
       if (notGrantedToUser) {
         throw new BadRequestError({
+          name: "AccessBundleNotGranted",
           message: `No access bundle named '${notGrantedToUser}' is granted to '${onBehalfOfUser.identifier}'. Check the name, or ask an Agent Vault admin to grant it to them.`
         });
       }
@@ -207,38 +208,50 @@ export const agentVaultSessionServiceFactory = ({
       const notGranted = firstUnreachable(accessBundleIds);
       if (notGranted) {
         throw new BadRequestError({
+          name: "AccessBundleNotGranted",
           message: `No access bundle named '${notGranted}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
         });
       }
     }
 
-    if (preparedInlineServices.length) {
-      const bundlesWithServices = await Promise.all(
-        accessBundles.map(async (name) => {
-          const bundle = bundlesByName.get(name)!;
-          return { name: bundle.name, services: await agentVaultServiceDAL.findByAccessBundleId(bundle.id) };
-        })
-      );
-      bundlesWithServices.forEach((bundle) => assertNoAccessBundleConflicts(preparedInlineServices, bundle));
-    }
+    // A fast failure only: the check that counts runs again in the transaction, under the lock renames take.
+    const assertNoBundleConflicts = async (tx?: Knex) => {
+      if (!preparedInlineServices.length) return;
+      for (const name of accessBundles) {
+        const bundle = bundlesByName.get(name)!;
+        // eslint-disable-next-line no-await-in-loop
+        const bundleServices = await agentVaultServiceDAL.findByAccessBundleId(bundle.id, tx);
+        assertNoAccessBundleConflicts(preparedInlineServices, { name: bundle.name, services: bundleServices });
+      }
+    };
+    await assertNoBundleConflicts();
 
     // Sealed before the transaction: with an external KMS this is a network call, and the transaction stays short.
-    let sealInlineSecrets: ((plainText: Buffer) => Buffer) | null = null;
+    // Each value is sealed on its own, the way a project's services keep them, so the two can share one table.
+    let seal: ((value: unknown) => Buffer) | null = null;
     if (preparedInlineServices.some((service) => service.secrets)) {
       const { encryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      sealInlineSecrets = (plainText) => encryptor({ plainText }).cipherTextBlob;
+      seal = (value) => encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;
     }
-    const inlineServiceRows = preparedInlineServices.map(({ secrets, customHeaders, substitutions, ...service }) => ({
-      ...service,
-      credentialType: service.credentialConfig.type,
-      // Serialized here because the pg driver writes a bare array as a Postgres array, which a jsonb column refuses.
-      customHeaders: JSON.stringify(customHeaders),
-      substitutions: JSON.stringify(substitutions),
-      encryptedSecrets: secrets ? sealInlineSecrets!(Buffer.from(JSON.stringify(secrets))) : null
-    }));
+    const inlineServiceRows: TAgentVaultInlineServiceInsert[] = preparedInlineServices.map(
+      ({ secrets, customHeaders, substitutions, ...service }) => ({
+        ...service,
+        projectId,
+        credentialType: service.credentialConfig.type,
+        encryptedCredential: secrets?.credential ? seal!(secrets.credential) : null,
+        customHeaders: customHeaders.map((header, index) => ({
+          ...header,
+          encryptedValue: seal!({ value: secrets!.customHeaders[index] })
+        })),
+        substitutions: substitutions.map((substitution, index) => ({
+          ...substitution,
+          encryptedValue: seal!({ value: secrets!.substitutions[index] })
+        }))
+      })
+    );
 
     const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
     const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
@@ -268,6 +281,10 @@ export const agentVaultSessionServiceFactory = ({
     };
 
     const { session, insertedInlineServices } = await agentVaultSessionDAL.transaction(async (tx) => {
+      if (preparedInlineServices.length && accessBundles.length) {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
+        await assertNoBundleConflicts(tx);
+      }
       const created = await agentVaultSessionDAL.createWithId(
         {
           id: sessionId,
@@ -291,8 +308,8 @@ export const agentVaultSessionServiceFactory = ({
         tx
       );
 
-      const inserted = await agentVaultSessionInlineServiceDAL.insertMany(
-        inlineServiceRows.map((row) => ({ ...row, sessionId: created.id })),
+      const inserted = await agentVaultSessionInlineServiceDAL.insertForSession(
+        { sessionId: created.id, services: inlineServiceRows },
         tx
       );
 
@@ -305,11 +322,7 @@ export const agentVaultSessionServiceFactory = ({
         label: session.label ?? null,
         expiresAt: session.expiresAt ?? null,
         createdAt: session.createdAt,
-        accessBundles: accessBundles.map((name, position) => ({
-          id: bundlesByName.get(name)!.id,
-          name,
-          position
-        })),
+        accessBundle: accessBundle ? { id: bundlesByName.get(accessBundle)!.id, name: accessBundle } : null,
         services: insertedInlineServices
           .sort((a, b) => a.position - b.position)
           .map((row) => toInlineServiceSummary(row))

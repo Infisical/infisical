@@ -21,6 +21,7 @@ export enum TableName {
   CertificateAuthorityCert = "certificate_authority_certs",
   CertificateAuthoritySecret = "certificate_authority_secret",
   CertificateAuthorityCrl = "certificate_authority_crl",
+  CertificateAuthorityCrossSignedCert = "certificate_authority_cross_signed_certs",
   Certificate = "certificates",
   CertificateBody = "certificate_bodies",
   CertificateRequests = "certificate_requests",
@@ -286,6 +287,7 @@ export enum TableName {
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultSessionInlineService = "agent_vault_session_inline_services",
+  AgentVaultSessionStats = "agent_vault_session_stats",
   AgentVaultDelegation = "agent_vault_delegations",
   AgentVaultDelegationSubject = "agent_vault_delegation_subjects",
   AgentVaultProxy = "agent_vault_proxies",
@@ -293,6 +295,7 @@ export enum TableName {
   AgentVaultSkill = "agent_vault_skills",
   AgentVaultSkillVersion = "agent_vault_skill_versions",
   AgentVaultAccessBundleSkill = "agent_vault_access_bundle_skills",
+  AgentVaultAccessBundleService = "agent_vault_access_bundle_services",
   // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 

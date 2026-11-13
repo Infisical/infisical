@@ -57,6 +57,22 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
 /**
  * Check if a certificate authority type supports a specific capability
  */
+// Whether a CA issues a certificate from a CSR it is handed. A Record, so a new CA type fails to compile
+// until someone decides, because renewing on a key pair Infisical doesn't hold depends on it.
+const CA_ISSUES_FROM_CSR: Record<CaType, boolean> = {
+  [CaType.INTERNAL]: true,
+  [CaType.ACME]: true,
+  [CaType.AZURE_AD_CS]: true,
+  [CaType.ADCS]: true,
+  [CaType.AWS_PCA]: true,
+  [CaType.DIGICERT]: true,
+  [CaType.AWS_ACM_PUBLIC_CA]: false,
+  [CaType.VENAFI_TPP]: true,
+  [CaType.GODADDY]: true
+};
+
+export const caIssuesFromCsr = (caType: CaType): boolean => CA_ISSUES_FROM_CSR[caType];
+
 export const caSupportsCapability = (caType: CaType, capability: CaCapability): boolean => {
   const capabilities = CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP[caType] || [];
   return capabilities.includes(capability);

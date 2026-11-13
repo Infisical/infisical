@@ -70,7 +70,8 @@ func TestSecretSync_RecursivePermissions(t *testing.T) {
 
 		// Action
 		res := s.update(t, actor.API, map[string]any{
-			"syncOptions": map[string]any{"initialSyncBehavior": "overwrite-destination", "includeAllSubFolders": true},
+			"includeAllSubFolders": true,
+			"syncOptions":          map[string]any{"initialSyncBehavior": "overwrite-destination"},
 		})
 
 		// Assert
@@ -101,18 +102,16 @@ func TestSecretSync_RecursiveConflicts(t *testing.T) {
 
 	t.Run("should accept turning subfolders off although the subtree now holds a duplicate key", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `The checks an update runs read the options it is about to store. A request
-			that carries syncOptions replaces them outright, so this one stores a sync
-			without subfolders and has nothing to flatten.`)
+		spec.Why(t, `The checks an update runs read the setting it is about to store, so a
+			request that turns subfolders off stores a sync without them and has nothing
+			to flatten.`)
 
 		// Setup
 		proj, conn, _ := setup(t)
 		s := recursiveSyncWithLateDuplicate(t, proj, conn, "/reports")
 
 		// Action
-		res := s.update(t, proj.Tenant().Admin.API, map[string]any{
-			"syncOptions": map[string]any{"initialSyncBehavior": "overwrite-destination"},
-		})
+		res := s.update(t, proj.Tenant().Admin.API, map[string]any{"includeAllSubFolders": false})
 
 		// Assert
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "turning subfolders off returned %s", apierr.Body(res.Body))
@@ -148,7 +147,8 @@ func TestSecretSync_RecursiveConflicts(t *testing.T) {
 
 		// Action
 		res := s.update(t, proj.Tenant().Admin.API, map[string]any{
-			"syncOptions": map[string]any{"initialSyncBehavior": "overwrite-destination", "includeAllSubFolders": true},
+			"includeAllSubFolders": true,
+			"syncOptions":          map[string]any{"initialSyncBehavior": "overwrite-destination"},
 		})
 
 		// Assert
@@ -275,6 +275,6 @@ func recursiveSyncWithLateDuplicate(tt *testing.T, p *fixture.Project, conn *fix
 
 func includesSubFolders(tt *testing.T, s *sync) bool {
 	tt.Helper()
-	v := s.get(tt).JSON200.SecretSync.SyncOptions.IncludeAllSubFolders
+	v := s.get(tt).JSON200.SecretSync.IncludeAllSubFolders
 	return v != nil && *v
 }

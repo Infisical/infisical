@@ -325,6 +325,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     templateId,
     accountType,
     search,
+    filterByAction,
     ...ctx
   }: TListPamAccountsDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
@@ -333,7 +334,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts] },
+      { allOf: [ResourcePermissionPamResourceActions.ReadAccounts, ...(filterByAction ? [filterByAction] : [])] },
       ctx
     );
     if (folderIds.length === 0 && accountIds.length === 0) return [];

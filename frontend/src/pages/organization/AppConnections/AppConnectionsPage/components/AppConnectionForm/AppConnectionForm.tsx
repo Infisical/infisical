@@ -33,6 +33,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
+import { ClickHouseConnectionForm } from "./ClickHouseConnectionForm";
 import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
@@ -61,6 +62,7 @@ import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
+import { JenkinsConnectionForm } from "./JenkinsConnectionForm";
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
@@ -228,7 +230,9 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
   const renderForm = () => {
     switch (app) {
       case AppConnection.AWS:
-        return <AwsConnectionForm onSubmit={onSubmit} projectType={projectType} />;
+        return (
+          <AwsConnectionForm onSubmit={onSubmit} projectType={projectType} projectId={projectId} />
+        );
       case AppConnection.GitHub:
         return <GitHubConnectionForm projectId={projectId} onSubmit={onSubmit} />;
       case AppConnection.GitHubRadar:
@@ -333,6 +337,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <RedisConnectionForm onSubmit={onSubmit} />;
       case AppConnection.MongoDB:
         return <MongoDBConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ClickHouse:
+        return <ClickHouseConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Qovery:
@@ -415,6 +421,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <RundeckConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -501,6 +509,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
             appConnection={appConnection}
             onSubmit={onSubmit}
             projectType={appConnection.project?.type}
+            projectId={appConnection.projectId}
           />
         );
       case AppConnection.GitHub:
@@ -658,6 +667,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <RedisConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.MongoDB:
         return <MongoDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.ClickHouse:
+        return <ClickHouseConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OctopusDeploy:
         return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Qovery:
@@ -734,6 +745,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />

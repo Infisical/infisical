@@ -25,6 +25,7 @@ import {
   InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { AGENT_VAULT_NO_CONTROL_CHARS_RE } from "@app/helpers/agentVaultControlChars";
 import {
   normalizeVariableKey,
@@ -107,9 +108,10 @@ const VariableForm = ({
   onCreated,
   scope = AgentVaultVariableScope.Global
 }: Omit<Props, "onCloseAutoFocus">) => {
+  const { projectId } = useProject();
   const isPersonal = scope === AgentVaultVariableScope.Personal;
-  const createVariable = useCreateAgentVaultVariable();
-  const updateVariable = useUpdateAgentVaultVariable();
+  const createVariable = useCreateAgentVaultVariable(projectId);
+  const updateVariable = useUpdateAgentVaultVariable(projectId);
   const isUpdate = Boolean(variable);
   const usedByCount = variable?.usedByServices.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
@@ -147,7 +149,7 @@ const VariableForm = ({
     key !== variable?.key
       ? key
       : null;
-  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], {
+  const { existing } = useAgentVaultVariableKeyStatus(projectId, lookupKey ? [lookupKey] : [], {
     isCached: false,
     scope
   });

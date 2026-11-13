@@ -17,14 +17,6 @@ import { GlobPatternTooltip, ProjectPermissionCan } from "@app/components/permis
 import {
   Alert,
   AlertDescription,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertTitle,
   Badge,
   Button,
@@ -35,6 +27,7 @@ import {
   CardHeader,
   CardTitle,
   Combobox,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -548,7 +541,6 @@ export const SecretValidationRulesSection = () => {
 
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const { data: rules = [], isLoading } = useListSecretValidationRules(
     { projectId: currentProject.id },
@@ -841,46 +833,17 @@ export const SecretValidationRulesSection = () => {
         )}
       </CardContent>
 
-      <AlertDialog
-        open={deleteRuleId !== null}
+      <ConfirmationAlertDialog
+        isOpen={deleteRuleId !== null}
         onOpenChange={(open) => {
-          if (!open) {
-            setDeleteRuleId(null);
-            setDeleteConfirmation("");
-          }
+          if (!open) setDeleteRuleId(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Validation Rule</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this rule? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="w-full pb-4">
-            <p className="mb-2 text-sm text-muted">
-              Enter the rule name{" "}
-              <span className="font-medium text-foreground">{ruleToDelete?.name}</span> to confirm
-              the deletion
-            </p>
-            <Input
-              value={deleteConfirmation}
-              onChange={(e) => setDeleteConfirmation(e.target.value)}
-              placeholder={ruleToDelete?.name}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              onClick={handleDelete}
-              disabled={deleteConfirmation !== ruleToDelete?.name}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Delete "${ruleToDelete?.name ?? "validation rule"}"`}
+        description="Secrets are no longer checked against this rule. This cannot be undone."
+        confirmKey={ruleToDelete?.name ?? ""}
+        isPending={deleteRule.isPending}
+        onConfirm={handleDelete}
+      />
 
       <Sheet open={sheetState.open} onOpenChange={(open) => !open && handleClose()}>
         <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">

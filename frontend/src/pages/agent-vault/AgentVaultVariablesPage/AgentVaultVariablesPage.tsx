@@ -3,7 +3,7 @@ import { BracesIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useOrganization, useProjectPermission, useProject } from "@app/context";
 import { AgentVaultVariableScope } from "@app/hooks/api/agentVault";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -13,6 +13,7 @@ import { VariablesCard } from "./components/VariablesCard";
 // Global variables are an admin's alone, so a member sees only their personal ones, without tabs. Nobody can see
 // anyone else's personal variables, admins included.
 export const AgentVaultVariablesPage = () => {
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
@@ -29,9 +30,9 @@ export const AgentVaultVariablesPage = () => {
 
   const updateTab = (value: string) => {
     navigate({
-      to: "/organizations/$orgId/agent-vault/variables",
+      to: "/organizations/$orgId/projects/agent-vault/$projectId/variables",
       search: (prev) => ({ ...prev, selectedTab: value }),
-      params: { orgId: currentOrg.id }
+      params: { orgId: currentOrg.id, projectId }
     });
   };
 

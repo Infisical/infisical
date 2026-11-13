@@ -10,8 +10,15 @@ export enum AlertPrincipalType {
   GROUP = "group",
   EMAIL = "email",
   // Everyone in the channel's project at send time. principalId is the project id.
-  PROJECT_MEMBERS = "project-members"
+  PROJECT_MEMBERS = "project-members",
+  // Everyone holding the admin role in the channel's project at send time. principalId is the project id.
+  PROJECT_ADMINS = "project-admins"
 }
+
+export const PROJECT_WIDE_PRINCIPAL_TYPES: string[] = [
+  AlertPrincipalType.PROJECT_MEMBERS,
+  AlertPrincipalType.PROJECT_ADMINS
+];
 
 export enum AlertTriggerType {
   Scheduled = "scheduled",
@@ -58,11 +65,13 @@ export const toAlertActor = (dto: TGenericPermission): TGenericPermission => ({
 type TAlertRecipientPolicy = {
   atOrgScope?: boolean;
   allowEmailAddresses?: boolean;
+  allowProjectAdmins?: boolean;
 };
 
 export type TAlertRecipientScope = {
   projectId: string | null;
   allowEmailAddresses: boolean;
+  allowProjectAdmins?: boolean;
 };
 
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;

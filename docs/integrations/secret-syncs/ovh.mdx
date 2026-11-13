@@ -1,12 +1,12 @@
 ---
-title: "OVH Cloud sync"
-sidebarTitle: "OVH Cloud"
-description: "Learn how to configure an OVH Cloud Sync for Infisical."
+title: "OVHcloud sync"
+sidebarTitle: "OVHcloud"
+description: "Learn how to configure an OVHcloud sync for Infisical."
 ---
 
 **Prerequisites:**
     - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
-    - Create an [OVH Cloud Connection](/integrations/app-connections/ovh)
+    - Create an [OVHcloud connection](/integrations/app-connections/ovh)
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -16,16 +16,16 @@ description: "Learn how to configure an OVH Cloud Sync for Infisical."
 
                 ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
             </Step>
-            <Step title="Select OVH Cloud">
-                ![Select OVH Cloud](/images/secret-syncs/ovh/select-option.png)
+            <Step title="Select OVHcloud">
+                ![Select OVHcloud](/images/secret-syncs/ovh/select-option.png)
             </Step>
             <Step title="Configure Source">
-                Configure the **Source** from where secrets should be retrieved, then click **Next**.
+                Configure the **Source** from where secrets should be retrieved, then select **Next**.
 
                 ![Configure Source](/images/secret-syncs/ovh/sync-source.png)
 
-                - **Environment**: The project environment to retrieve secrets from.
-                - **Secret Path**: The folder path to retrieve secrets from.
+                - **Environment**: the project environment to retrieve secrets from
+                - **Secret Path**: the folder path to retrieve secrets from
 
                 <Tip>
                     If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
@@ -36,62 +36,63 @@ description: "Learn how to configure an OVH Cloud Sync for Infisical."
 
                 ![Configure Destination](/images/secret-syncs/ovh/sync-destination.png)
 
-                - **OVH Cloud Connection**: The OVH Cloud Connection to authenticate with.
-                - **Path**: The path in OVH OKMS where secrets will be stored as key/value pairs (e.g. `app/production`). Allowed characters are alphanumerics, dots, dashes, underscores, and single slashes between segments.
+                - **OVHcloud Connection**: the OVHcloud connection to authenticate with
+                - **Path**: the path in OVHcloud KMS where Infisical stores the secrets as key-value pairs, such as `app/production` (letters, numbers, dots, dashes, underscores, and single slashes between segments)
 
-                After configuring these parameters, click the **Next** button to continue to the Sync Options step.
+                After you configure these fields, select **Next** to continue to the **Sync Options** step.
 
                 <Note>
-                    If the **path** you provide does not exist in OVH OKMS, it will be created.
+                    If the path you enter doesn't exist in OVHcloud KMS, Infisical creates it.
                 </Note>
                 <Note>
-                    All Infisical secrets under the selected source path are packed as key/value pairs into a **single** OVH OKMS secret at the destination path. OVH OKMS caps each secret at **64 KB** (total JSON payload), so keep the combined size of all synced secrets within that limit.
+                    Infisical stores all the secrets under the selected source path as key-value pairs in one OVHcloud KMS secret at the destination path. OVHcloud KMS limits each secret to 64 KB (total JSON payload), so keep the combined size of all synced secrets within that limit.
                 </Note>
             </Step>
             <Step title="Configure Sync Options">
-                Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+                Configure the **Sync Options** to specify how secrets should be synced, then select **Next**.
 
                 ![Configure Options](/images/secret-syncs/ovh/sync-options.png)
 
-                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
-                    - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
-                    - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over OVH Cloud when keys conflict.
-                    - **Import Secrets (Prioritize OVH Cloud)**: Imports secrets from the destination endpoint before syncing, prioritizing values from OVH Cloud over Infisical when keys conflict.
-                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
+                - **Initial Sync Behavior**: how Infisical resolves the initial sync
+                    - **Overwrite Destination Secrets**: removes any secrets at the destination endpoint that aren't in Infisical
+                    - **Import Secrets (Prioritize Infisical)**: imports secrets from the destination endpoint before syncing, and keeps the Infisical value when keys conflict
+                    - **Import Secrets (Prioritize OVHcloud)**: imports secrets from the destination endpoint before syncing, and keeps the OVHcloud value when keys conflict
+                - **Key Schema**: a template for how secret names are transformed when syncing, with `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment
                 <Note>
                     We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
                 </Note>
-                - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
-                - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+                - **Auto-Sync Enabled**: if enabled, Infisical syncs secrets from the source location automatically when they change (disable it to sync manually only)
+                - **Disable Secret Deletion**: if enabled, Infisical doesn't remove secrets from the sync destination (enable it if you manage some secrets manually outside of Infisical)
             </Step>
             <Step title="Configure Details">
-                Configure the **Details** of your OVH Cloud Sync, then click **Next**.
+                Configure the **Details** of your OVHcloud sync, then select **Next**.
 
                 ![Configure Details](/images/secret-syncs/ovh/sync-details.png)
 
-                - **Name**: The name of your sync. Must be slug-friendly.
-                - **Description**: An optional description for your sync.
+                - **Name**: the name of your sync, which must be slug-friendly
+                - **Description**: an optional description for your sync
             </Step>
             <Step title="Review Configuration">
-                Review your OVH Cloud Sync configuration, then click **Create Sync**.
+                Review your OVHcloud sync configuration, then select **Create Sync**.
 
                 ![Confirm Configuration](/images/secret-syncs/ovh/sync-review.png)
             </Step>
             <Step title="Sync Created">
-                If enabled, your OVH Cloud Sync will begin syncing your secrets to the destination endpoint.
+                If the sync is enabled, your OVHcloud sync starts syncing your secrets to the destination endpoint.
 
                 ![Sync Created](/images/secret-syncs/ovh/sync-created.png)
             </Step>
         </Steps>
     </Tab>
     <Tab title="API">
-        To create an **OVH Cloud Sync**, make an API request to the [Create OVH Cloud Sync](/api-reference/endpoints/secret-syncs/ovh/create) API endpoint.
+        To create an OVHcloud sync, send a request to the [Create OVHcloud Sync](/api-reference/endpoints/secret-syncs/ovh/create) endpoint.
 
         ### Sample request
 
         ```bash Request
         curl    --request POST \
                 --url https://app.infisical.com/api/v1/secret-syncs/ovh \
+                --header 'Authorization: Bearer <your-infisical-access-token>' \
                 --header 'Content-Type: application/json' \
                 --data '{
                     "name": "my-ovh-sync",

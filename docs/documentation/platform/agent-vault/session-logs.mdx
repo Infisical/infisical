@@ -1,27 +1,27 @@
 ---
 title: "Session logs"
 sidebarTitle: "Logs"
-description: "Keep an encrypted record of every request an AI agent makes, stored by Infisical or in your own Amazon S3 bucket."
+description: "Keep an encrypted record of every request, statement, and command an AI agent makes, stored by Infisical or in your own Amazon S3 bucket."
 ---
 
 import SelfHostedInstance from "/snippets/app-connections/aws/self-hosted-instance.mdx";
 import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
 import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
 
-A session log is a record of every request an agent makes during a [session](/documentation/platform/agent-vault/sessions): the method, host, path, status code, whether the proxy attached a credential, and for an [MCP server](/documentation/platform/agent-vault/mcp-servers), the tool the agent called. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
+A session log is a record of what an agent does during a [session](/documentation/platform/agent-vault/sessions). For each HTTP request, it holds the method, host, path, status code, whether the proxy attached a credential, and for an [MCP server](/documentation/platform/agent-vault/mcp-servers), the tool the agent called. For a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh), it holds each statement, command, and file transfer. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
 
 The proxy encrypts the records before they leave your network, and Infisical stores them for you. If you self-host Infisical, session logs need an enterprise license, and your server administrator [sets up where Infisical stores them](/self-hosting/guides/session-log-storage).
 
 ## Viewing session logs
 
-You can view a session's logs if you created the session or you're an Agent Vault admin, for up to 30 days after they're recorded if Infisical stores them (see [Retention](#retention)).
+You can view a session's logs if you created the session or you're an admin of its Agent Vault project, for up to 30 days after they're recorded if Infisical stores them (see [Retention](#retention)).
 
 <Tabs>
 <Tab title="In Infisical">
-  Go to **Sessions** and select **View Session Logs** on the session's row. You can filter the requests by outcome and search them by host, path, method, tool, or service. While the session is active, new requests appear as the proxy uploads them.
+  Go to **Sessions** and select **View Session Logs** on the session's row. You can filter the rows by outcome and search them by host, path, method, tool, or service, or by the text of a database or SSH row, such as a statement or a command's output. While the session is active, new rows appear as the proxy uploads them.
 
   <Frame>
-    <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
+    <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for the Review PR #1486 session, listing each request's time, method, host, path, upstream status, and outcome: brokered requests to GitHub, Anthropic, and Slack, a DELETE blocked by the service's method rules, and requests to registry.npmjs.org and pastebin.com blocked by the proxy's traffic policy" />
   </Frame>
 </Tab>
 <Tab title="Through the API" id="reading-session-logs-through-the-api">
@@ -42,7 +42,7 @@ You can view a session's logs if you created the session or you're an Agent Vaul
       Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey`, base64 decoded. The first 12 bytes of the chunk are the IV, and the last 16 bytes are the authentication tag. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`.
     </Step>
     <Step>
-      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase:
+      Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase (`discovery` for **Listed Services**, and `skills` for **Fetched Skills**):
 
       ```json
       {
@@ -72,10 +72,41 @@ You can view a session's logs if you created the session or you're an Agent Vaul
       }
       ```
 
-      - `serviceType`: `http` or `mcp`, or `null` if no service matched the request
+      - `serviceType`: `http`, `mcp`, `postgres`, `mysql`, or `ssh`, or `null` if no service matched the request
       - `mcp`: left out for other requests to an MCP service, such as the `GET` that opens an event stream
       - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body, or if a method or tool name holds characters other than letters, digits, and `_ . : / -` or is longer than 128 characters
       - `mcp.truncated`: `true` if the request held more than 8 calls and the rest weren't recorded (left out otherwise)
+
+      If a record is for a database or SSH service, `method` is `POSTGRES`, `MYSQL`, or `SSH`, `path` is empty, `status` is `0`, and the record has a `native` object with what the connection did:
+
+      ```json
+      {
+        "method": "POSTGRES",
+        "host": "analytics-db.internal",
+        "port": "5432",
+        "path": "",
+        "status": 0,
+        "decision": "brokered",
+        "service": "analytics",
+        "serviceType": "postgres",
+        "native": {
+          "statement": "SELECT count(*) FROM orders",
+          "result": "SELECT 1"
+        }
+      }
+      ```
+
+      Each field of `native` is left out if it's empty:
+
+      - `native.statement`: A PostgreSQL or MySQL statement
+      - `native.result`: The statement's result, such as `SELECT 1`, or the error PostgreSQL returned
+      - `native.command`: An SSH command, in the record written when the command starts
+      - `native.stdin`: Input the agent piped into an SSH command
+      - `native.output`: Output from an SSH command or shell
+      - `native.file`: An `scp` or `sftp` file operation
+      - `native.shell`: `true` for output from an interactive SSH shell
+      - `native.note`: A message from the proxy, such as that the agent forwarded a port, or how many records the proxy dropped because the session log was full
+      - `native.truncated`: `true` if the proxy cut the text short
     </Step>
   </Steps>
 
@@ -121,17 +152,17 @@ You can view a session's logs if you created the session or you're an Agent Vaul
 
 ## What gets recorded
 
-Each request produces one record with:
+Each HTTP request produces one record with:
 
 | Field | What it holds |
 | --- | --- |
 | **Time** | When the request was made |
 | **Method**, **Host**, **Path** | Where the request went, for example `POST api.github.com/repos/acme/web/issues` |
-| **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code the proxy returned, such as `403` or `502` |
+| **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code the proxy returned, such as `403` or `502`. For **Listed Services** and **Fetched Skills** requests, it's the status code Infisical returned |
 | **Outcome** | What the proxy did with the request |
 | **Service** | The service that matched the request, if any |
 
-The outcome is one of four:
+The outcome is one of six:
 
 | Outcome | What happened |
 | --- | --- |
@@ -139,8 +170,12 @@ The outcome is one of four:
 | **Passthrough** | No service matched, or the matching service has no credential. The proxy forwarded the request without a credential |
 | **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests) |
 | **Error** | The proxy couldn't reach the destination host |
+| **Listed Services** | The agent asked the proxy for the [services the session can use](/documentation/platform/agent-vault/service-discovery), and the proxy got the list from Infisical |
+| **Fetched Skills** | The proxy got the session's [skills](/documentation/platform/agent-vault/skills) from Infisical, such as when `infisical agent-vault run` installs them |
 
-Request and response bodies, headers, and query strings aren't recorded. For a request to an MCP server, the proxy reads only the method and tool name of each call from the request body.
+For HTTP requests, the proxy doesn't record bodies, headers, or query strings. For a request to an MCP server, the proxy reads only the method and tool name of each call from the request body.
+
+If the session log fills up before the proxy uploads it, the proxy drops rows, then adds a row that says how many it dropped.
 
 ### MCP tool calls
 
@@ -152,6 +187,25 @@ If a request matched an MCP service, its row shows an **MCP** badge and the call
 The proxy never records a tool's arguments or results.
 
 If the agent sent several calls in one request, the row shows the first one. If the proxy can't read the calls, such as from a compressed body, the row shows the request path.
+
+### Database and SSH connections
+
+For a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh), each row is one thing the connection did, shown with the service type, such as **PostgreSQL**, in place of the method. Select a row to see everything it recorded and copy it.
+
+- **PostgreSQL and MySQL:** A statement and its result, such as `SELECT 42` when PostgreSQL returns 42 rows, but never the rows themselves
+- **SSH commands:** A row with the command when it starts, then rows with the input the agent piped into it and its output, written every minute while it runs
+- **SSH file transfers:** One `scp` or `sftp` file operation
+- **SSH shells:** What the shell printed, in rows of up to 64 KB or one minute
+
+Each statement and command is recorded up to 8 KB, its result or output up to 64 KB, and an SSH command's piped input up to 8 KB. A row that was cut short says so. If an agent forwards a port through an SSH service, a row says so, but the forwarded traffic isn't recorded.
+
+#### Sensitive values in the log
+
+The proxy records statements, commands, and piped input as the agent wrote them, without hiding anything:
+
+- If the agent puts a password in a statement or command, such as in `ALTER USER`, `IDENTIFIED BY`, or input piped to `sudo -S`, the log holds the password
+- In an SSH shell, the log holds typed input only if the shell didn't echo it, so a password typed at a prompt is recorded
+- For PostgreSQL, the values bound to a prepared statement are recorded with the statement, so the log can hold values from your database (MySQL records the statement without them)
 
 ## Storing session logs in your own S3 bucket
 
@@ -169,7 +223,7 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
 
 ### Prerequisites
 
-- The [Admin role](/documentation/platform/agent-vault/access-control) in Agent Vault
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
 - An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) to store the records in
 - Permission in AWS to edit the bucket's CORS configuration, create IAM roles, and attach policies to them
 
@@ -177,7 +231,11 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Administration** > **Settings** and select **Configure** or **Set Up Session Logs** on the **Session Logs** card.
+    In your Agent Vault project, go to **Administration** > **Settings** > **Session Logs** and select **Configure** or **Set Up Session Logs**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/settings-session-logs.png" alt="The Session Logs settings page of the project, showing session logs enabled in default storage, and its Configure button" />
+    </Frame>
   </Step>
   <Step>
     Turn on **Enable**, then under **Storage**, select **External storage**.
@@ -187,9 +245,17 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
   </Step>
   <Step>
     Optionally, enter a **Key Prefix** to store session logs under one path in a bucket you also use for other data.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-start.png" alt="The Session Logs dialog with Enable turned on, External storage selected, no AWS connection yet, and a region, bucket, and key prefix filled in" />
+    </Frame>
   </Step>
   <Step>
     Select **View AWS Setup**. Infisical shows an **IAM policy** with your bucket and key prefix already filled in, so you can paste it into AWS as it is.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-aws-setup.png" alt="The AWS Setup dialog on the IAM Policy tab, showing a policy that allows s3:PutObject and s3:GetObject under the agent-vault prefix and s3:ListBucket on the bucket" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -216,7 +282,7 @@ Infisical assumes this role to write session logs to the bucket.
 <SelfHostedInstance />
 
 <Steps>
-  <CreateIamRole externalId="organization" />
+  <CreateIamRole externalId="agent-vault-project" />
 </Steps>
 
 #### Attach the IAM policy
@@ -250,7 +316,7 @@ Go back to the **Session Logs** dialog.
     </Note>
   </Step>
   <Step>
-     Enter a **Name**, keep the **Assume Role (Recommended)** method, paste the role's ARN into **Role ARN**, and select **Connect to AWS**. Infisical creates the connection in Agent Vault and selects it.
+     Enter a **Name**, keep the **Assume Role (Recommended)** method, paste the role's ARN into **Role ARN**, and select **Connect to AWS**. Infisical creates the connection in your Agent Vault project and selects it.
   </Step>
   <Step>
     Select **Save**.
@@ -258,7 +324,7 @@ Go back to the **Session Logs** dialog.
 </Steps>
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on and an AWS connection, region, bucket, and key prefix filled in" />
+  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on, External storage selected, and the acme-session-logs AWS connection, us-east-1 region, acme-agent-vault bucket, and agent-vault key prefix filled in" />
 </Frame>
 
 When you save, Infisical checks that the bucket exists and that the IAM user or role can write to it. If either check fails, Infisical shows the error and doesn't save the settings. If your browser can't read from the bucket, the **Session Logs** card shows a warning after you save.
@@ -268,6 +334,12 @@ When you save, Infisical checks that the bucket exists and that the IAM user or 
 </Check>
 
 ## Managing session logs
+
+The **Session Logs** card on the **Settings** page shows the current settings:
+
+<Frame>
+  <img src="/images/platform/agent-vault/settings-session-logs-enabled.png" alt="The Session Logs settings page showing session logs enabled in external storage, with the acme-session-logs connection, us-east-1 region, acme-agent-vault bucket, and agent-vault key prefix" />
+</Frame>
 
 ### Turning session logs off
 
@@ -284,10 +356,10 @@ If you use external storage, session logs use one AWS connection at a time, whic
 
 To update the connection's AWS credentials, open the menu next to **Configure** on the **Session Logs** card and select **Edit AWS Credentials**. If the connection belongs to your organization, update its credentials under **Integrations** in your organization instead.
 
-To add or delete Agent Vault's AWS connections, select **Manage Connections** from the same menu:
+To add or delete the project's AWS connections, select **Manage Connections** from the same menu:
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing Agent Vault's AWS connections, with the one session logs use marked In Use" />
+  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing the project's two Assume Role AWS connections, with acme-session-logs marked In Use" />
 </Frame>
 
 You can't delete a connection while session logs use it. To delete the connection, first turn session logs off, select a different connection, or switch to default storage in the **Session Logs** dialog.
@@ -309,6 +381,8 @@ If you use external storage, don't modify or add files in the folder that sessio
 
 ## Troubleshooting
 
-If the AWS connection returns an error, a red alert icon appears next to **Settings** in the Agent Vault sidebar, and the **Settings** page shows the error.
+If the AWS connection returns an error, a red alert icon appears next to **Settings** in the project's sidebar, and **Settings** > **Session Logs** shows the error.
+
+If you set up external storage before your organization had Agent Vault projects, the IAM role's trust policy may require your Organization ID as the External ID. Infisical now sends the ID of the Agent Vault project instead, so it can't assume the role. In AWS, change the `sts:ExternalId` value in the role's trust policy to the project's ID (see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)).
 
 If you use default storage and session logs can't be read, contact Infisical support, or your server administrator if you self-host.

@@ -28,10 +28,10 @@ vi.mock("jwks-rsa", () => ({
 }));
 
 const safeGet = vi.fn<(url: string) => Promise<{ data: { jwks_uri?: string; issuer?: string } }>>();
-const buildSsrfSafeAgent = vi.fn<(url: string) => Promise<undefined>>();
+const buildSsrfSafeJwksFetcher = vi.fn<(url: string, options?: { timeoutMs?: number }) => Promise<undefined>>();
 vi.mock("@app/lib/validator/safe-request", () => ({
   safeRequest: { get: (url: string) => safeGet(url) },
-  buildSsrfSafeAgent: (url: string) => buildSsrfSafeAgent(url)
+  buildSsrfSafeJwksFetcher: (url: string, options?: { timeoutMs?: number }) => buildSsrfSafeJwksFetcher(url, options)
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -139,7 +139,7 @@ afterAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  buildSsrfSafeAgent.mockResolvedValue(undefined);
+  buildSsrfSafeJwksFetcher.mockResolvedValue(undefined);
   getSigningKey.mockResolvedValue({ getPublicKey: () => PUBLIC_KEY_PEM });
 });
 
@@ -467,16 +467,16 @@ describe("verifySubjectToken", () => {
     await expect(verify("not-a-jwt")).rejects.toThrow(/not a well-formed JWT/);
   });
 
-  test("pins the JWKS connection to the validated IPs", async () => {
+  test("fetches the JWKS through the SSRF-safe fetcher", async () => {
     const oidcConfig = buildOidcConfig();
 
     await verify(signSubjectToken(), oidcConfig);
 
-    expect(buildSsrfSafeAgent).toHaveBeenCalledWith(oidcConfig.jwksUri);
+    expect(buildSsrfSafeJwksFetcher).toHaveBeenCalledWith(oidcConfig.jwksUri, { timeoutMs: 10_000 });
   });
 
   test("rejects a JWKS URI that resolves to a private address", async () => {
-    buildSsrfSafeAgent.mockRejectedValue(new Error("Local IPs not allowed as URL"));
+    buildSsrfSafeJwksFetcher.mockRejectedValue(new Error("Local IPs not allowed as URL"));
 
     await expect(verify(signSubjectToken())).rejects.toThrow(/Could not load signing keys/);
   });
@@ -489,17 +489,17 @@ describe("verifySubjectToken", () => {
     await Promise.all([verify(token, oidcConfig), verify(token, oidcConfig), verify(token, oidcConfig)]);
     await verify(token, oidcConfig);
 
-    expect(buildSsrfSafeAgent).toHaveBeenCalledTimes(1);
+    expect(buildSsrfSafeJwksFetcher).toHaveBeenCalledTimes(1);
   });
 
   test("retries after a failed JWKS client build instead of caching the failure", async () => {
     const oidcConfig = buildOidcConfig();
     const token = signSubjectToken();
 
-    buildSsrfSafeAgent.mockRejectedValueOnce(new Error("Local IPs not allowed as URL"));
+    buildSsrfSafeJwksFetcher.mockRejectedValueOnce(new Error("Local IPs not allowed as URL"));
     await expect(verify(token, oidcConfig)).rejects.toThrow(/Could not load signing keys/);
 
     await expect(verify(token, oidcConfig)).resolves.toMatchObject({ subject: SUBJECT });
-    expect(buildSsrfSafeAgent).toHaveBeenCalledTimes(2);
+    expect(buildSsrfSafeJwksFetcher).toHaveBeenCalledTimes(2);
   });
 });

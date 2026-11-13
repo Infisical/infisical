@@ -40,7 +40,8 @@ import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
-  useProjectPermission
+  useProjectPermission,
+  useProject
 } from "@app/context";
 import {
   fromDraftFiles,
@@ -93,6 +94,7 @@ const SkillSheetBody = ({
   updateSkill,
   registerRequestClose
 }: TSkillSheetBodyProps) => {
+  const { projectId } = useProject();
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { hasProjectRole, permission } = useProjectPermission();
@@ -112,7 +114,7 @@ const SkillSheetBody = ({
     error: skillError,
     isFetching: isSkillFetching,
     refetch: refetchSkill
-  } = useGetAgentVaultSkill(shownSkillId);
+  } = useGetAgentVaultSkill(projectId, shownSkillId);
   const [viewedVersion, setViewedVersion] = useState<number | null>(null);
   const [edit, setEdit] = useState<TEditState | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -131,12 +133,12 @@ const SkillSheetBody = ({
     error: versionError,
     isFetching: isVersionFetching,
     refetch: refetchVersion
-  } = useGetAgentVaultSkillVersion(shownSkillId, olderVersionNumber);
+  } = useGetAgentVaultSkillVersion(projectId, shownSkillId, olderVersionNumber);
   const versionData = useMemo(() => {
     if (olderVersionNumber !== undefined) return olderVersionData;
     return skill && { version: skill.latestVersion, files: skill.files };
   }, [olderVersionNumber, olderVersionData, skill]);
-  const restoreVersion = useRestoreAgentVaultSkillVersion();
+  const restoreVersion = useRestoreAgentVaultSkillVersion(projectId);
 
   const original = useMemo(() => toDraftFiles(versionData?.files ?? []), [versionData]);
   // From the picked number, not the loaded data, so the latest draft isn't shown as editable while it loads or fails.
@@ -322,7 +324,7 @@ const SkillSheetBody = ({
       return (
         <Empty className="m-4 border">
           <EmptyHeader>
-            <Spinner size="sm" />
+            <Spinner size="sm" variant="av" />
           </EmptyHeader>
         </Empty>
       );
@@ -534,7 +536,9 @@ const SkillSheetBody = ({
         onDeleted={async () => {
           if (!skill) return;
           await closeSheet();
-          queryClient.removeQueries({ queryKey: agentVaultKeys.skill(currentOrg.id, skill.id) });
+          queryClient.removeQueries({
+            queryKey: agentVaultKeys.skill(currentOrg.id, projectId, skill.id)
+          });
         }}
       />
 
@@ -551,6 +555,7 @@ const SkillSheetBody = ({
 
 /** A skill's files, opened from the `skillId` search param of the page it is on. */
 export const SkillSheet = () => {
+  const { projectId } = useProject();
   const { id: skillId, closeSheet } = useAgentVaultSheetState("skillId");
 
   // Kept while the sheet animates closed, so its contents don't change under it.
@@ -558,7 +563,7 @@ export const SkillSheet = () => {
   if (skillId) lastSkillIdRef.current = skillId;
   const shownSkillId = skillId ?? lastSkillIdRef.current ?? "";
 
-  const updateSkill = useUpdateAgentVaultSkill();
+  const updateSkill = useUpdateAgentVaultSkill(projectId);
   const requestCloseRef = useRef<() => void>(closeSheet);
 
   return (

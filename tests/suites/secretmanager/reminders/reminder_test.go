@@ -67,7 +67,7 @@ func TestSecretReminder(t *testing.T) {
 		})
 
 		// Action
-		res, err := tn.Admin.API.ListProjectSecretsDetailsWithResponse(t.Context(), &api.ListProjectSecretsDetailsParams{
+		res, err := tn.Admin.API.ListProjectSecretsDetailsWithResponse(t.Context(), api.ListProjectSecretsDetailsJSONRequestBody{
 			ProjectId: proj.ID, Environment: "dev", Search: new("LISTING"),
 		})
 
