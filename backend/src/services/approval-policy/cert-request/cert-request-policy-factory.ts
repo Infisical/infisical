@@ -249,9 +249,10 @@ export const certRequestApprovalResourceFactory = ({
       approvalRequestId: request.id
     });
     if (renewal && request.status === ApprovalRequestStatus.Rejected) {
-      // The daily job raises its requests with no requester, so a rejected one would otherwise be raised again.
+      // A rejected request the daily job raised would otherwise be raised again the next day. Requests raised
+      // before the flag existed fall back to having no requester, which a deleted requester also matches.
       await certificateRenewalService.recordRejectedRenewal(renewal.certificateId, {
-        raisedByAutoRenewal: !request.requesterId && !request.machineIdentityId
+        raisedByAutoRenewal: renewal.raisedByAutoRenewal ?? (!request.requesterId && !request.machineIdentityId)
       });
     }
   }
