@@ -7,8 +7,8 @@ const API_CONTENT_SECURITY_POLICY = [
   "form-action 'none'"
 ].join("; ");
 
-// Documents keep their allowlist in the page (the SPA's meta tag); sent as a header, the SPA's would
-// overflow a default 4k proxy buffer. frame-ancestors 'self' matches helmet's X-Frame-Options.
+// The SPA keeps its allowlist in a meta tag; it is too large to send as a header.
+// frame-ancestors overrides X-Frame-Options, so keep it in line with helmet's frameguard.
 const DOCUMENT_CONTENT_SECURITY_POLICY = ["frame-ancestors 'self'", "base-uri 'self'", "object-src 'none'"].join("; ");
 
 // Device and sensor features the product does not use.
@@ -27,14 +27,15 @@ const PERMISSIONS_POLICY = [
   "xr-spatial-tracking=()"
 ].join(", ");
 
-// Chosen by content type, which helmet's single CSP cannot do. A route that sets its own CSP keeps it.
 export const responsePolicyHeaders = fp(async (fastify) => {
   fastify.addHook("onSend", async (_req, res, payload) => {
     if (!res.hasHeader("Content-Security-Policy")) {
-      const isDocument = String(res.getHeader("content-type") ?? "").includes("text/html");
+      const isHtml = String(res.getHeader("content-type") ?? "")
+        .toLowerCase()
+        .includes("text/html");
       void res.header(
         "Content-Security-Policy",
-        isDocument ? DOCUMENT_CONTENT_SECURITY_POLICY : API_CONTENT_SECURITY_POLICY
+        isHtml ? DOCUMENT_CONTENT_SECURITY_POLICY : API_CONTENT_SECURITY_POLICY
       );
     }
     void res.header("Permissions-Policy", PERMISSIONS_POLICY);
