@@ -25,6 +25,7 @@ import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/valida
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -101,6 +102,7 @@ type TMembershipUserServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -128,7 +130,8 @@ export const membershipUserServiceFactory = ({
   oidcConfigDAL,
   samlConfigDAL,
   alertChannelRecipientDAL,
-  eventEmitter
+  eventEmitter,
+  orgInviteQuota
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -142,7 +145,8 @@ export const membershipUserServiceFactory = ({
       membershipUserDAL,
       emailDomainDAL,
       oidcConfigDAL,
-      samlConfigDAL
+      samlConfigDAL,
+      orgInviteQuota
     }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       orgDAL,

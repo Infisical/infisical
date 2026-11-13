@@ -23,6 +23,7 @@ import {
   resolveMembershipRoleSlugs
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { MAX_NEW_MEMBERS_PER_INVITE, TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -44,6 +45,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
 };
 
 export const newOrgMembershipUserFactory = ({
@@ -56,7 +58,8 @@ export const newOrgMembershipUserFactory = ({
   membershipUserDAL,
   emailDomainDAL,
   oidcConfigDAL,
-  samlConfigDAL
+  samlConfigDAL,
+  orgInviteQuota
 }: TOrgMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -200,6 +203,14 @@ export const newOrgMembershipUserFactory = ({
           message: `Users with email ${emails}  doesn't have membership in root organization`
         });
       }
+    } else {
+      if (newMembers.length > MAX_NEW_MEMBERS_PER_INVITE) {
+        throw new BadRequestError({
+          name: "InviteUser",
+          message: `You can invite up to ${MAX_NEW_MEMBERS_PER_INVITE} new members at a time.`
+        });
+      }
+      await orgInviteQuota.admit(org.id, newMembers.length);
     }
   };
 

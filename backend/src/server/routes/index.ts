@@ -490,6 +490,7 @@ import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-
 import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
+import { orgInviteQuotaFactory } from "@app/services/org/org-invite-quota";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
@@ -1320,7 +1321,9 @@ export const registerRoutes = async (
 
   const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore, auditLogService });
 
+  const orgInviteQuota = orgInviteQuotaFactory({ keyStore, licenseService });
   const membershipUserService = membershipUserServiceFactory({
+    orgInviteQuota,
     licenseService,
     usageMeteringService,
     membershipRoleDAL,
@@ -1713,6 +1716,7 @@ export const registerRoutes = async (
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
 
   const orgService = orgServiceFactory({
+    orgInviteQuota,
     auditLogSettingsService,
     userAliasDAL,
     identityMetadataDAL,

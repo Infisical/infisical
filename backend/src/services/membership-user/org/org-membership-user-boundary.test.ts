@@ -103,7 +103,8 @@ const createGuard = ({
     licenseService: new FakeLicenseService(),
     emailDomainDAL: {} as never,
     oidcConfigDAL: {} as never,
-    samlConfigDAL: {} as never
+    samlConfigDAL: {} as never,
+    orgInviteQuota: { admit: vi.fn() }
   });
 
   return () =>
@@ -327,7 +328,8 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
       userGroupMembershipDAL: {} as never,
       emailDomainDAL: { find: vi.fn().mockResolvedValue([]) } as never,
       oidcConfigDAL: {} as never,
-      samlConfigDAL: {} as never
+      samlConfigDAL: {} as never,
+      orgInviteQuota: { admit: vi.fn() }
     });
 
     return () =>

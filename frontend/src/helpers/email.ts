@@ -81,9 +81,9 @@ export const isValidEmail = (email: string) =>
   EmailSchema.safeParse(email).success &&
   isValidEmailDomain(email.slice(email.indexOf("@") + 1));
 
-// Mirror the backend cap (inviteeEmails.array().max(100)) so oversized invites are rejected inline
-// before hitting the API.
-export const MAX_INVITE_EMAILS = 100;
+// Mirror the backend cap on new members per org invite (MAX_NEW_MEMBERS_PER_INVITE) so oversized
+// invites are rejected inline before hitting the API.
+export const MAX_INVITE_EMAILS = 10;
 
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
