@@ -141,6 +141,13 @@ export type TAgentVaultSubstitutionInput = {
   value?: string;
 };
 
+export type TAgentVaultServiceHook = { url: string };
+
+export type TAgentVaultServiceHookInput = { url: string; signingSecret: string };
+
+// signingSecret left out keeps the saved one.
+export type TAgentVaultServiceHookUpdate = { url: string; signingSecret?: string };
+
 export type TAgentVaultVariableReference = {
   variableId: string;
   key: string;
@@ -228,6 +235,8 @@ export type TAgentVaultService = (
   variableReferences?: TAgentVaultVariableReference[];
   // The caller's own values, on reads only. null when the admin sets the whole credential.
   personalValues?: TAgentVaultPersonalValues | null;
+  // Left out for a member. null when the service has no hook.
+  hook?: TAgentVaultServiceHook | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -407,6 +416,7 @@ export type TAgentVaultSessionInlineService = (
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
+  hook?: TAgentVaultServiceHook | null;
 };
 
 export type TAgentVaultSessionActor =
@@ -545,6 +555,7 @@ export type TUpdateAgentVaultAccessBundleDTO = {
 export type TCreateAgentVaultServiceDTO = {
   // Access bundles to add the new service to in the same request.
   accessBundleIds?: string[];
+  hook?: TAgentVaultServiceHookInput;
 } & (
   | {
       type: AgentVaultServiceType.Http;
@@ -608,6 +619,8 @@ export type TUpdateAgentVaultServiceDTO = {
   credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+  // null removes the hook and its signing secret.
+  hook?: TAgentVaultServiceHookUpdate | null;
 };
 
 /** Credential and header values left out fall back to what the saved service stores, as on update. */
@@ -802,6 +815,16 @@ export type TAgentVaultSessionLogNativeDetail = {
   truncated?: boolean;
 };
 
+// The hook's part in a request the proxy refused or couldn't check. Written by the proxy; field names match the CLI's
+// hookOutcome JSON tags.
+export type TAgentVaultSessionLogHookOutcome = {
+  decision: string;
+  reason?: string;
+  cause?: string;
+  durationMs?: number;
+  deliveryId?: string;
+};
+
 export type TAgentVaultSessionLogRecord = {
   ts: string;
   seq: number;
@@ -818,6 +841,7 @@ export type TAgentVaultSessionLogRecord = {
   serviceType?: AgentVaultServiceType | null;
   mcp?: TAgentVaultSessionLogMcpDetail;
   native?: TAgentVaultSessionLogNativeDetail;
+  hook?: TAgentVaultSessionLogHookOutcome;
 };
 
 export type TAgentVaultSessionLogGapReason =

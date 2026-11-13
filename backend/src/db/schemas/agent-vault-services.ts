@@ -29,7 +29,9 @@ export const AgentVaultServicesSchema = z.object({
   projectId: z.string(),
   sessionId: z.string().uuid().nullable().optional(),
   position: z.number().nullable().optional(),
-  secretsDeletedAt: z.date().nullable().optional()
+  secretsDeletedAt: z.date().nullable().optional(),
+  hookUrl: z.string().nullable().optional(),
+  encryptedHookSecret: zodBuffer.nullable().optional()
 });
 
 export type TAgentVaultServices = z.infer<typeof AgentVaultServicesSchema>;

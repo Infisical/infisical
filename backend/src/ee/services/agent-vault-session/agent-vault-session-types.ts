@@ -10,6 +10,7 @@ import {
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultHookInput } from "../agent-vault/agent-vault-hook-fns";
 import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 
 /** Exactly one of the two names the user. */
@@ -51,6 +52,7 @@ export type TAgentVaultInlineServiceInput = {
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
+  hook?: TAgentVaultHookInput;
 };
 
 export type TAgentVaultInlineBearerCredentialSummary = {
@@ -75,6 +77,7 @@ export type TAgentVaultInlineServiceSummary = {
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
+  hook: { url: string } | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;
