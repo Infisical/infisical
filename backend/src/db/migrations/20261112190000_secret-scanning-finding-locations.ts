@@ -30,6 +30,10 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(FINDING, (t) => {
     t.timestamp("lastDetectedAt").nullable();
   });
+
+  // Set after the column exists so existing rows stay NULL until the merge fills them, while rows saved by the
+  // release before this one, which doesn't know the column, still get a time.
+  await knex.raw(`ALTER TABLE ?? ALTER COLUMN "lastDetectedAt" SET DEFAULT CURRENT_TIMESTAMP`, [FINDING]);
 }
 
 export async function down(knex: Knex): Promise<void> {

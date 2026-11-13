@@ -7,51 +7,106 @@ import { TableName } from "../schemas";
 const FINDING = TableName.SecretScanningFinding;
 const LOCATION = TableName.SecretScanningFindingLocation;
 
-// Every finding row becomes a location, and the rows of one secret value in one resource merge into one finding.
-export async function up(knex: Knex): Promise<void> {
-  // already merged
-  if (await knex(LOCATION).first("id")) return;
+const RESOURCE_BATCH_SIZE = 500;
+const FINDING_BATCH_SIZE = 5_000;
+
+// Merges one batch of resources. A merge never crosses resources, so each batch is complete on its own.
+const mergeResources = async (tx: Knex, resourceIds: string[]) => {
+  // The release before this one keeps saving findings while this runs. Blocking its writes for the batch keeps a row
+  // saved mid-batch from being left without a location; reads still go through.
+  await tx.raw(`LOCK TABLE ?? IN SHARE ROW EXCLUSIVE MODE`, [FINDING]);
 
   // Rows of one value in one resource merge into the row that best keeps an open leak visible: an unresolved one,
-  // else the most recently triaged. A row with no blind index stays a finding of its own.
-  await knex.raw(
-    `CREATE TEMPORARY TABLE finding_merge ON COMMIT DROP AS
+  // else the most recently triaged. A finding a batch already merged comes first, so rerunning the migration only
+  // adds rows saved since to it. A row with no blind index stays a finding of its own.
+  await tx.raw(
+    `CREATE TEMPORARY TABLE finding_merge AS
      SELECT
-       id,
-       first_value(id) OVER (
-         PARTITION BY "resourceId", COALESCE("secretFindingBlindIndex", id::text)
-         ORDER BY (status = ?) DESC, "triagedAt" DESC NULLS LAST, "createdAt", id
+       f.id,
+       first_value(f.id) OVER (
+         PARTITION BY f."resourceId", COALESCE(f."secretFindingBlindIndex", f.id::text)
+         ORDER BY
+           EXISTS (SELECT 1 FROM ?? AS l WHERE l."findingId" = f.id) DESC,
+           (f.status = ?) DESC, f."triagedAt" DESC NULLS LAST, f."createdAt", f.id
        ) AS "findingId"
-     FROM ??`,
-    [SecretScanningFindingStatus.Unresolved, FINDING]
+     FROM ?? AS f
+     WHERE f."resourceId" = ANY(?::uuid[])`,
+    [LOCATION, SecretScanningFindingStatus.Unresolved, FINDING, resourceIds]
   );
 
-  await knex.raw(
+  // A row the release before this one saved again for a location that's already merged is only a copy of it.
+  await tx.raw(
     `INSERT INTO ?? (id, "findingId", "resourceId", "scanId", fingerprint, rule, details, "createdAt")
      SELECT f.id, m."findingId", f."resourceId", f."scanId", f.fingerprint, f.rule, f.details, f."createdAt"
      FROM ?? AS f
-     JOIN finding_merge AS m ON m.id = f.id`,
-    [LOCATION, FINDING]
+     JOIN finding_merge AS m ON m.id = f.id
+     WHERE NOT EXISTS (SELECT 1 FROM ?? AS l WHERE l."findingId" = f.id)
+     ON CONFLICT ("resourceId", fingerprint) DO NOTHING`,
+    [LOCATION, FINDING, LOCATION]
   );
 
-  await knex.raw(
+  await tx.raw(
     `UPDATE ?? AS f
      SET "createdAt" = l."firstDetectedAt", "lastDetectedAt" = l."lastDetectedAt"
      FROM (
        SELECT "findingId", min("createdAt") AS "firstDetectedAt", max("createdAt") AS "lastDetectedAt"
        FROM ??
+       WHERE "findingId" IN (SELECT "findingId" FROM finding_merge)
        GROUP BY "findingId"
      ) AS l
-     WHERE l."findingId" = f.id`,
+     WHERE l."findingId" = f.id
+       AND (f."createdAt", f."lastDetectedAt") IS DISTINCT FROM (l."firstDetectedAt", l."lastDetectedAt")`,
     [FINDING, LOCATION]
   );
 
-  await knex.raw(`DELETE FROM ?? AS f USING finding_merge AS m WHERE m.id = f.id AND m."findingId" <> f.id`, [FINDING]);
+  await tx.raw(`DELETE FROM ?? AS f USING finding_merge AS m WHERE m.id = f.id AND m."findingId" <> f.id`, [FINDING]);
 
-  // The finding's own scanId, fingerprint and details stay, holding one of its locations, so the release before this
-  // one still works. A value has no unique constraint for the same reason: that release saves a finding per location.
-  await knex.schema.alterTable(FINDING, (t) => {
-    t.timestamp("lastDetectedAt").notNullable().defaultTo(knex.fn.now()).alter();
+  await tx.raw(`DROP TABLE finding_merge`);
+};
+
+// Every finding row becomes a location, and the rows of one secret value in one resource merge into one finding.
+// Runs a batch of resources per transaction, so no finding stays locked for the whole migration. Merging a batch again
+// changes nothing, so an interrupted run can simply start over.
+export async function up(knex: Knex): Promise<void> {
+  let lastResourceId: string | null = null;
+
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop
+    const resources: { id: string; findingCount: number }[] = await knex(TableName.SecretScanningResource)
+      .modify((qb) => {
+        if (lastResourceId) void qb.where("id", ">", lastResourceId);
+      })
+      .orderBy("id")
+      .limit(RESOURCE_BATCH_SIZE)
+      .select(
+        "id",
+        knex.raw(`(SELECT count(*)::int FROM ?? AS f WHERE f."resourceId" = ??.id) AS "findingCount"`, [
+          FINDING,
+          TableName.SecretScanningResource
+        ])
+      );
+
+    if (!resources.length) break;
+
+    // Writes to findings wait for a batch, so it stops at a few thousand findings. A resource is never split, since
+    // its rows merge with each other.
+    const resourceIds: string[] = [];
+    let findingCount = 0;
+    for (const resource of resources) {
+      if (resourceIds.length && findingCount + resource.findingCount > FINDING_BATCH_SIZE) break;
+      resourceIds.push(resource.id);
+      findingCount += resource.findingCount;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    await knex.transaction((tx) => mergeResources(tx, resourceIds));
+    lastResourceId = resourceIds[resourceIds.length - 1];
+  }
+
+  // Rows saved while this ran got the column's default, so this only covers a row no batch could give a location.
+  await knex.transaction(async (tx) => {
+    await tx(FINDING).whereNull("lastDetectedAt").update({ lastDetectedAt: tx.ref("createdAt") });
+    await tx.raw(`ALTER TABLE ?? ALTER COLUMN "lastDetectedAt" SET NOT NULL`, [FINDING]);
   });
 }
 
@@ -61,24 +116,25 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(LOCATION))) return;
 
-  await knex.schema.alterTable(FINDING, (t) => {
-    t.timestamp("lastDetectedAt").nullable().alter();
+  await knex.transaction(async (tx) => {
+    await tx.raw(
+      `INSERT INTO ?? (
+         id, "resourceId", "scanId", fingerprint, details, rule, severity, confidence, status, "triageComment",
+         "triagedByUserId", "triagedAt", "resolvedAt", "secretFindingBlindIndex", "createdAt"
+       )
+       SELECT
+         l.id, l."resourceId", l."scanId", l.fingerprint, l.details, l.rule, f.severity, f.confidence,
+         f.status, f."triageComment", f."triagedByUserId", f."triagedAt", f."resolvedAt", f."secretFindingBlindIndex",
+         l."createdAt"
+       FROM ?? AS l
+       JOIN ?? AS f ON f.id = l."findingId"
+       WHERE f.fingerprint IS DISTINCT FROM l.fingerprint`,
+      [FINDING, LOCATION, FINDING]
+    );
+
+    await tx(LOCATION).delete();
   });
-
-  await knex.raw(
-    `INSERT INTO ?? (
-       id, "resourceId", "scanId", fingerprint, details, rule, severity, confidence, status, "triageComment",
-       "triagedByUserId", "triagedAt", "resolvedAt", "secretFindingBlindIndex", "createdAt"
-     )
-     SELECT
-       l.id, l."resourceId", l."scanId", l.fingerprint, l.details, l.rule, f.severity, f.confidence,
-       f.status, f."triageComment", f."triagedByUserId", f."triagedAt", f."resolvedAt", f."secretFindingBlindIndex",
-       l."createdAt"
-     FROM ?? AS l
-     JOIN ?? AS f ON f.id = l."findingId"
-     WHERE f.fingerprint IS DISTINCT FROM l.fingerprint`,
-    [FINDING, LOCATION, FINDING]
-  );
-
-  await knex(LOCATION).delete();
 }
+
+const config = { transaction: false };
+export { config };
