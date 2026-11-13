@@ -11,6 +11,7 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 | `ce/data-access/` | One class per model, `KmsCoreLocks` (the frozen lock ids), `buildKmsCoreDataAccess(db, locks)` |
 | `ce/service/` | `RootKeyService`, `RootKeyRotationService`, `KmsKeyService`, `KmsCryptoService`, `ScopeKeyService`; `key-material.ts` (helpers they share); `TKmsCoreHooks` |
 | `ee/` | `HsmRootKeyWrapper` over the PKCS#11 client (`hsm-client/`), `ExternalKmsService` over the provider clients (`external-kms-client/`), `KmsCoreEeModule` providing both as hooks |
+| `ce/lib/` | `DataAccessDb`, `TransactionRunner`, `TDataAccessLocks` and the in-memory runner: KMS Core's own copies until it moves onto `src/domains/lib/`. Nothing outside KMS Core imports them except `domains.ts`, through `ce/module` |
 
 ## Rules
 
@@ -42,7 +43,7 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
   `[u32BE version]v02` once the key has been rotated; data-key and input-key blobs always end in `v01`; wrapped keys are
   `sha256(label)||key`; backups are `v1.<projectId>.secretManager.<kmsKeyId>.<base64>.<sha256hex>`; HSM blobs are
   `[iv16][CBC-PAD ct][HMAC32]`. `ce/testing/fixtures/kms-wire-format.json` holds what the previous service wrote, and
-  `wire-format.test.ts` and `root-key-service.integration.spec.ts` must keep decrypting it.
+  `wire-format.test.ts` and `root-key-service.integration-test.ts` must keep decrypting it.
 - **The root key never leaves the domain.** Callers encrypt and decrypt with it (`encryptWithRootKey`), and get a key
   derived from it (`getCookieSigningKey`). The checks on the env key that wraps it (missing `ENCRYPTION_KEY`, its FIPS
   format) run in `RootKeyService.start`, not in `crypto.initialize`.
@@ -54,7 +55,7 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 - **Root key state reads `ReadFrom.Primary`** (`RootKeyService`, `RootKeyRotationService`): a lagging replica could
   miss the key this pod holds, or show a superseded view to promote against.
 - **Licensing stays outside.** KMS Core never calls License. HSM: boot (`routes/index.ts`) passes
-  `isHsmEntitled: () => Boolean(licenseService.getInstanceEntitlements().features.hsm)` to `kmsCoreEe.start`, a getter so a license refreshed
+  `isHsmEntitled: () => licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)` to `kmsCoreEe.start`, a getter so a license refreshed
   after boot takes effect without a restart, and `RootKeyService` refuses an HSM root config or a switch to HSM through
   `rootKeyWrapper.assertEntitled()`; migrations answer `true` (`startStandaloneKmsCore`). External KMS: the caller (`src/ee/services/external-kms/external-kms-service.ts`)
   checks `externalKms` on create, update and GCP key listing; using an existing external key is never gated.

@@ -4,7 +4,7 @@ import RE2 from "re2";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -333,7 +333,7 @@ export const kmipServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
       });
@@ -367,7 +367,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to update KMIP client. Upgrade your plan to enterprise."
       });
@@ -487,7 +487,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
       });
@@ -700,7 +700,7 @@ export const kmipServiceFactory = ({
     keyAlgorithm
   }: TGenerateOrgKmipServerCertificateDTO) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.kmip)
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to generate KMIP server certificate. Upgrade your plan to enterprise."
       });
@@ -854,7 +854,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to register KMIP server. Upgrade your plan to enterprise."
       });

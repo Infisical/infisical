@@ -84,7 +84,6 @@ export type TAgentVaultOauthSecret = {
 export type TAgentVaultOauthAuthorization = {
   id: string;
   projectId: string;
-  accessBundleId: string;
   // The service being reauthorized, null for a new service.
   serviceId: string | null;
   // A member's own sign-in for a service that leaves it to members, claimed only by a personal values save.
@@ -126,7 +125,6 @@ export type TAgentVaultOauthAuthorizationView = {
 export type TCreateAuthorizationDTO = {
   projectId: string;
   ctx: TGenericPermission;
-  accessBundleId: string;
   serverUrl: string;
   serviceId?: string;
   clientId?: string;
@@ -155,7 +153,6 @@ export type TGetAuthorizationDTO = {
 export type TClaimAuthorizationDTO = {
   authorizationId: string;
   projectId: string;
-  accessBundleId: string;
   // The service the PATCH is for, or undefined on create.
   serviceId?: string;
   ctx: TGenericPermission;
@@ -194,5 +191,5 @@ export type TRefreshServiceTokenDTO = {
   expiresWithinSeconds?: number;
   // Where the caller will send the token. A service that moved since is a 409, never a token for the new server.
   // `serverUrl` undefined skips that half of the check.
-  destination: { hostPattern: string; serverUrl?: string | null };
+  destination: { hostPattern: string | null; serverUrl?: string | null };
 };

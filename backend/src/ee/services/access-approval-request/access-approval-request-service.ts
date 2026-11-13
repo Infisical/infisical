@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
 import {
@@ -48,7 +49,7 @@ import {
   toLegacyAccessApprovalRequest,
   toSecretAccessRequestListItem
 } from "./access-approval-request-details-fns";
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { isRequestableSecretPath, verifyRequestedPermissions } from "./access-approval-request-fns";
 import {
   ApprovalStatus,
   TSecretAccessApprovalRequestServiceFactoryDep,
@@ -87,7 +88,8 @@ export const secretAccessApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   queueService,
-  secretAccessApprovalGlobalResource
+  secretAccessApprovalGlobalResource,
+  licenseService
 }: TSecretAccessApprovalRequestServiceFactoryDep) => {
   const $findPolicyById = async (policyId: string, message: string) => {
     const [policy] = await secretAccessApprovalPolicyDAL.findSecretAccessPolicies({ policyId });
@@ -114,7 +116,9 @@ export const secretAccessApprovalRequestServiceFactory = ({
     return new Set(groups.map((group) => group.groupId));
   };
 
-  const $loadRequestRows = async (filter: { projectId: string; policyId?: string; requesterId?: string }) => {
+  type TRequestListFilter = { projectId: string; policyId?: string; requesterId?: string; envSlug?: string };
+
+  const $loadRequestRows = async (filter: TRequestListFilter) => {
     const requests = await secretAccessApprovalRequestDAL.findSecretAccessRequests(filter);
     if (!requests.length) return [];
 
@@ -150,7 +154,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
     });
   };
 
-  const $listRequestItems = async (filter: { projectId: string; policyId?: string; requesterId?: string }) => {
+  const $listRequestItems = async (filter: TRequestListFilter) => {
     const rows = await $loadRequestRows(filter);
     const environments = rows.some((row) => !row.policy)
       ? await projectEnvDAL.find({ projectId: filter.projectId })
@@ -207,28 +211,12 @@ export const secretAccessApprovalRequestServiceFactory = ({
       ProjectPermissionSub.ApprovalRequests
     );
 
-    let requests = await $listRequestItems({ projectId: project.id });
+    if (!canReadAllApprovalRequests && authorUserId && authorUserId !== actorId) return { requests: [] };
 
-    if (!canReadAllApprovalRequests) {
-      requests = requests.filter((request) => request.requestedByUserId === actorId);
-    }
-
-    if (authorUserId) {
-      requests = requests.filter((request) => request.requestedByUserId === authorUserId);
-    }
-
-    if (envSlug) {
-      requests = requests.filter((request) => request.environment === envSlug);
-    }
-
-    requests = requests.map((request) => {
-      try {
-        const { envSlug: requestEnvSlug } = verifyRequestedPermissions({ permissions: request.permissions });
-        request.environmentName = requestEnvSlug;
-      } catch {
-        // Leave environmentName as-is if permissions are malformed
-      }
-      return request;
+    const requests = await $listRequestItems({
+      projectId: project.id,
+      requesterId: canReadAllApprovalRequests ? authorUserId : actorId,
+      envSlug
     });
 
     return { requests };
@@ -386,6 +374,15 @@ export const secretAccessApprovalRequestServiceFactory = ({
   }: TCreateAccessApprovalRequestDTO) => {
     // Anyone can create an access approval request.
     const { project } = await $getProjectBySlug({ projectSlug, actor, actorId, actorOrgId, actorAuthMethod });
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.has(PlanFeature.SecretApproval)) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval request due to plan restriction. Upgrade plan to create access approval request."
+      });
+    }
+
     const projectId = project.id;
     const requestedByUserId = actorId;
 
@@ -395,6 +392,11 @@ export const secretAccessApprovalRequestServiceFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const { envSlug, secretPath } = verifyRequestedPermissions({ permissions });
+    if (!isRequestableSecretPath(secretPath)) {
+      throw new BadRequestError({
+        message: `Secret path '${secretPath}' is not valid. Use a path like '/folder/subfolder', with no trailing '/', empty, '.' or '..' folder names, or spaces around folder names.`
+      });
+    }
     const environment = await projectEnvDAL.findOne({ projectId, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
     const envId = environment.id;
@@ -407,7 +409,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
     });
     if (!policy) {
       throw new NotFoundError({
-        message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
+        message: `Access requests aren't enabled for secret path '${secretPath}' in environment '${environment.name}'. Ask a project admin to add an access policy that covers this path.`
       });
     }
 
@@ -739,6 +741,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
             policy,
             actingUser,
             environmentName: policy.environment.name,
+            secretPath: verifyRequestedPermissions({ permissions: data.permissions }).secretPath,
             bypassReason: trimmedBypassReason
           },
           { userDAL, userGroupMembershipDAL, notificationService, smtpService }
@@ -858,7 +861,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
             requestedByUser,
             data,
             environment: policy.environment,
-            secretPath: policy.secretPath
+            secretPath: verifyRequestedPermissions({ permissions: data.permissions }).secretPath
           },
           {
             userDAL,

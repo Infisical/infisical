@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
@@ -83,7 +83,7 @@ type TPamMembershipServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
 };
 
 export type TPamMembershipServiceFactory = ReturnType<typeof pamMembershipServiceFactory>;
@@ -128,7 +128,7 @@ export const pamMembershipServiceFactory = ({
   identityDAL,
   permissionService,
   gatewayV2Service,
-  licenseService
+  usageMeteringService
 }: TPamMembershipServiceFactoryDep) => {
   // Shared helpers
 
@@ -456,7 +456,7 @@ export const pamMembershipServiceFactory = ({
     });
 
     // A new PAM project member (user/identity/group) changes the pam_identities meter.
-    licenseService.emit(dto.actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities);
     return result;
   };
 
@@ -589,7 +589,7 @@ export const pamMembershipServiceFactory = ({
 
     // Only re-meter when project members were actually added.
     if (memberships.length > 0) {
-      licenseService.emit(ctx.actorOrgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(ctx.actorOrgId, Meter.PamIdentities);
     }
 
     return { memberships, skipped };
@@ -740,7 +740,7 @@ export const pamMembershipServiceFactory = ({
 
     sendSessionCancellations();
 
-    licenseService.emit(dto.actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities);
     return result;
   };
 

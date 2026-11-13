@@ -1,109 +1,124 @@
+import type { TDomainCron, TDomainQueue } from "@app/domains/lib/jobs";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
-import type { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import type { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
-import type { TQueueServiceFactory } from "@app/queue";
 
+import { InstanceEntitlementsCache } from "./data-access/instance-entitlements-cache";
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
-import { CounterRegistry } from "./service/counter-registry";
-import { TLicenseOrganizations, TLicenseProvider, TLicenseServer, TUsageCounter } from "./service/dependencies";
-import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
-import { TLicenseServerBilling } from "./service/license-server-types/license-server-types";
-import { LicenseService, TLicenseService } from "./service/license-service";
-import { UsageQueue, UsageQueues } from "./service/usage-queue";
+import { InstanceEntitlements } from "./models/instance-entitlements";
+import { TLicensePolicyService, TLicenseServer, TUsageCounter } from "./services/dependencies";
+import { CounterRegistry, seatUsageCounters } from "./services/helpers/usage-counters";
+import { UsageQueue, UsageQueues } from "./services/helpers/usage-queue";
+import { LicenseService, TLicenseService } from "./services/license/service";
+import { TUsageMeteringService, UsageMeteringService } from "./services/usage-metering/service";
+import { TUsageReportService, UsageReportService } from "./services/usage-report/service";
 
-export * from "./model/instance-entitlements";
-export * from "./model/meter";
-export * from "./model/plan";
-export * from "./model/seat-usage";
-export type { TLicenseService, TRefreshPlanOptions } from "./service/license-service";
-export * from "./service/license-server-types/license-server-types";
-export * from "./service/license-server-types/usage-reports";
+export * from "./models/instance-entitlements";
+export * from "./models/meter";
+export * from "./models/plan";
+export * from "./models/seat-usage";
+export type { TLicenseService, TRefreshPlanOptions } from "./services/license/service";
 export type {
-  TLicenseOrganizations,
-  TLicenseProvider,
+  TCatalogProduct,
+  TEntitlementOrg,
+  TLicenseServerBilling,
+  TProductLineItem,
+  TSubscriptionPreviewPayload,
+  TSubscriptionResponse
+} from "./services/helpers/license-server-types";
+export type {
+  TLicensePolicyService,
   TLicenseServer,
   TPlanCache,
   TUsageCounter,
   TUsageReportCache
-} from "./service/dependencies";
-export type { TMeteringEventInput } from "./service/usage-queue";
+} from "./services/dependencies";
+export type { TUsageMeteringService } from "./services/usage-metering/service";
+export type { TMeteringEventInput } from "./services/usage-metering/service";
 
 export type TLicenseDeps = {
   keyStore: TDomainKeyStore;
-  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  cronJob: Pick<TCronJobFactory, "register">;
+  queueService: TDomainQueue;
+  cronJob: TDomainCron;
   isProductionMode: boolean;
-  // Runs a task on a timer in this process. Supplied by the wiring: the timer module must not load with this one.
+  // Injected because the timer module must not load with this one.
   startLocalRefresh: typeof startLocalRefresh;
-  // Licensing policy and the License Server, from the EE edition. Required: CE has no defaults of its own.
-  provider: TLicenseProvider;
+  // From EE. Required: CE has no defaults of its own.
+  licensePolicyService: TLicensePolicyService;
   licenseServer: TLicenseServer;
-  billing: TLicenseServerBilling;
-  // Root orgs, workspace and seat counts, from the organizations-projects domain.
-  organizations: TLicenseOrganizations;
-  // One per Meter, each from the domain that owns the data it counts.
+  organizationsProjectsService: TOrganizationsProjectsService;
+  // One per product meter, from the domain that owns the data. Seat meters are built here.
   usageCounters: TUsageCounter[];
 };
 
 export class LicenseModule {
-  readonly service: TLicenseService;
+  readonly licenseService: TLicenseService;
 
-  readonly billing: TLicenseServerBilling;
+  readonly usageMeteringService: TUsageMeteringService;
 
-  // Exposed for the e2e suite's license overrides, which replace the instance entitlements in place.
-  readonly instanceEntitlements = new InstanceEntitlementsHolder();
+  private readonly counterRegistry: CounterRegistry;
 
-  private readonly counters: CounterRegistry;
+  private readonly usageReportService: TUsageReportService;
 
-  // The same object as service, as the class, for the workers start() registers.
-  private readonly license: LicenseService;
+  static async create(deps: TLicenseDeps): Promise<LicenseModule> {
+    const instanceEntitlements = await deps.licensePolicyService.resolveInstanceEntitlements();
+    logger.info(`Instance type: ${instanceEntitlements.instanceType}`);
+    return new LicenseModule(deps, instanceEntitlements);
+  }
 
-  constructor(private readonly deps: TLicenseDeps) {
-    const { keyStore, organizations, provider, licenseServer } = deps;
+  private constructor(
+    private readonly deps: TLicenseDeps,
+    instanceEntitlements: InstanceEntitlements
+  ) {
+    const { keyStore, organizationsProjectsService, licensePolicyService, licenseServer } = deps;
     const usageReportCache = new UsageReportCache(keyStore);
-    this.counters = new CounterRegistry(deps.usageCounters);
-    this.billing = deps.billing;
+    this.counterRegistry = new CounterRegistry([
+      ...seatUsageCounters(organizationsProjectsService),
+      ...deps.usageCounters
+    ]);
 
-    this.license = new LicenseService({
-      instance: this.instanceEntitlements,
-      counters: this.counters,
-      planCache: new PlanCache(keyStore),
-      usageReportCache,
-      usageQueue: new UsageQueue({
-        queueService: deps.queueService,
-        licenseServer,
-        usageReportCache,
-        counters: this.counters
-      }),
-      organizations,
-      provider,
+    const usageQueue = new UsageQueue(deps.queueService, licenseServer, usageReportCache, this.counterRegistry);
+
+    this.licenseService = new LicenseService(
+      new InstanceEntitlementsCache(instanceEntitlements),
+      new PlanCache(keyStore),
+      usageQueue,
+      organizationsProjectsService,
+      licensePolicyService,
       licenseServer
-    });
-    this.service = this.license;
+    );
+    this.usageMeteringService = new UsageMeteringService(
+      this.counterRegistry,
+      usageQueue,
+      this.licenseService,
+      organizationsProjectsService
+    );
+    this.usageReportService = new UsageReportService(
+      this.counterRegistry,
+      usageReportCache,
+      usageQueue,
+      this.licenseService,
+      licenseServer,
+      organizationsProjectsService
+    );
   }
 
-  // The meters a counter was given for.
   usageDimensions(): string[] {
-    return this.counters.all().map((counter) => counter.meter.key);
+    return this.counterRegistry.all().map((counter) => counter.meter.key);
   }
 
-  // Reads the instance's license, then starts the usage workers and the timers. Called once at boot.
-  async start(): Promise<void> {
-    const entitlements = await this.deps.provider.resolveInstanceEntitlements();
-    this.instanceEntitlements.set(entitlements);
-    logger.info(`Instance type: ${this.instanceEntitlements.get().instanceType}`);
-
+  // Call once at boot. Counts are DB-heavy, so the usage worker is rate limited to spare the read replica.
+  start(): void {
     this.deps.queueService.start(
       UsageQueues.usageEvent,
-      (job) => this.license.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
-      // Counts are DB-heavy, so a backlog is rate-shaped instead of bursting the read replica.
+      (job) => this.usageReportService.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
     this.deps.queueService.start(
       UsageQueues.meteringEvent,
-      (job) => this.license.handleMeteringEvents(job.data.orgId, job.data.events),
+      (job) => this.usageReportService.handleMeteringEvents(job.data.orgId, job.data.events),
       { concurrency: 5 }
     );
 
@@ -111,24 +126,19 @@ export class LicenseModule {
       name: "license-usage-flush",
       pattern: "0 0 * * *",
       runHashTtlS: 60 * 60,
-      enabled: !this.instanceEntitlements.isCloud() && !this.deps.provider.isOffline(),
-      handler: async () => this.license.flushInstanceUsage()
+      enabled: !this.licenseService.getInstanceEntitlements().isCloud() && !this.deps.licensePolicyService.isOffline(),
+      handler: async () => this.usageReportService.flushInstanceUsage()
     });
   }
 
-  // Re-reads an online self-hosted license every ten minutes.
+  // The task throws on failure so startLocalRefresh logs a failed run; the last entitlements stay until one succeeds.
   startBackgroundSync() {
-    if (!this.deps.isProductionMode || !this.deps.provider.hasOnlineLicense()) return undefined;
+    if (!this.deps.isProductionMode || !this.deps.licensePolicyService.hasOnlineLicense()) return undefined;
     logger.info("Setting up background sync process to refresh the instance license from License Server v2");
     return this.deps.startLocalRefresh({
       name: "self-hosted-license-sync",
       intervalMs: 10 * 60 * 1000,
-      // A failure is thrown so startLocalRefresh logs it and records it as a failed run; the last
-      // entitlements stay in place until a refresh succeeds.
-      task: async () => {
-        const refreshed = await this.deps.provider.refreshInstanceEntitlements();
-        if (refreshed) this.instanceEntitlements.set(refreshed);
-      }
+      task: () => this.licenseService.refreshInstanceEntitlements()
     });
   }
 }

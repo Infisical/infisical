@@ -15,28 +15,31 @@ import {
   TUsersInsert
 } from "@app/db/schemas";
 
-// Covers every billing rule: billable users u1, u3, u4, u7, u8; billable identities i1, i3, i4, i5.
+// Covers every billing rule. Counted: u1/i1 (Secret Manager, direct), u3/i3 (no project), u4/i4 (KMS via a
+// group), u7 (Secret Manager and PAM, once), u8 (only a pending group, so no project), i5 (sub-org, no project,
+// counted at the root). Not counted: u2/i2 (PAM only), u5 (ghost), u6 (not accepted), u9 (Certificate Manager
+// only), u10 (deleted Secret Manager project and PAM).
 // Ids are fresh so tests sharing a database never see each other's rows.
 export const seedBillableActors = async (testDb: Knex) => {
   const ROOT_ORG_ID = randomUUID();
   const SUB_ORG_ID = randomUUID();
   const suffix = randomUUID().slice(0, 8);
   const ids = {
-    u1: randomUUID(), // Secret Manager project, direct: counted
-    u2: randomUUID(), // PAM project only: not counted
-    u3: randomUUID(), // in no project: counted
-    u4: randomUUID(), // KMS project through a group: counted
-    u5: randomUUID(), // ghost: not counted
-    u6: randomUUID(), // not accepted: not counted
-    u7: randomUUID(), // Secret Manager and PAM: counted once
-    u8: randomUUID(), // only a pending group into Secret Manager: counted as in no project
-    u9: randomUUID(), // Certificate Manager project only: not counted
-    u10: randomUUID(), // deleted Secret Manager project and PAM: not counted
-    i1: randomUUID(), // Secret Manager project, direct: counted
-    i2: randomUUID(), // PAM project only: not counted
-    i3: randomUUID(), // root org, in no project: counted
-    i4: randomUUID(), // KMS project through a group: counted
-    i5: randomUUID(), // sub-org, in no project: counted at the root
+    u1: randomUUID(),
+    u2: randomUUID(),
+    u3: randomUUID(),
+    u4: randomUUID(),
+    u5: randomUUID(),
+    u6: randomUUID(),
+    u7: randomUUID(),
+    u8: randomUUID(),
+    u9: randomUUID(),
+    u10: randomUUID(),
+    i1: randomUUID(),
+    i2: randomUUID(),
+    i3: randomUUID(),
+    i4: randomUUID(),
+    i5: randomUUID(),
     pSm: randomUUID(),
     pKms: randomUUID(),
     pPam: randomUUID(),
@@ -124,7 +127,6 @@ export const seedBillableActors = async (testDb: Knex) => {
   ];
   await testDb(TableName.Groups).insert(groupRows);
 
-  // u5/u6 are members too but get filtered out (ghost / unaccepted).
   await testDb(TableName.Membership).insert([
     orgMembership(ids.u1),
     orgMembership(ids.u2),
@@ -152,7 +154,6 @@ export const seedBillableActors = async (testDb: Knex) => {
     projectMembership({ groupId: ids.gPending }, ids.pSm)
   ]);
 
-  // gLive (KMS) has a non-pending user + identity; gPending (SM) has a pending user.
   const userGroupRows: (TUserGroupMembershipInsert & { id: string })[] = [
     { id: randomUUID(), userId: ids.u4, groupId: ids.gLive, isPending: false },
     { id: randomUUID(), userId: ids.u8, groupId: ids.gPending, isPending: true }

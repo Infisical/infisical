@@ -1,43 +1,32 @@
-import { DataAccessDb } from "@app/domains/lib/data-access-db";
-import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
+import { TDbClient } from "@app/db";
+import { TransactionRunner } from "@app/domains/lib/transactions";
 
-import { OrganizationDataAccess } from "./data-access/organization-data-access";
-import { BillableActorDataAccess } from "./data-access/usage-counter-data-access";
-import { OrganizationsProjectsService, TOrganizationsProjectsService } from "./service/organizations-projects-service";
+import { BillableActorStore } from "./data-access/billable-actor-store";
+import { OrganizationStore } from "./data-access/organization-store";
+import { TOrganizationsProjectsStores } from "./services/dependencies";
+import { OrganizationsProjectsService, TOrganizationsProjectsService } from "./services/organizations-projects/service";
 
-export type { TOrganizationsProjectsService } from "./service/organizations-projects-service";
-export type { TIdentityOwnership, TOrganization } from "./service/dependencies";
+export type { TOrganizationsProjectsService } from "./services/organizations-projects/service";
+export type { TOrganizationsProjectsTransaction } from "./services/organizations-projects/organizations-projects-transaction";
+export type { TIdentityOwnership, TOrganization } from "./services/dependencies";
 
 export type TOrganizationsProjectsDeps = {
-  db: DataAccessDb;
+  db: TDbClient;
 };
 
 export class OrganizationsProjectsModule {
-  readonly service: TOrganizationsProjectsService;
-
-  readonly usageCounters: TUsageCounter[];
+  readonly organizationsProjectsService: TOrganizationsProjectsService;
 
   constructor({ db }: TOrganizationsProjectsDeps) {
-    const service = new OrganizationsProjectsService({
-      organizations: new OrganizationDataAccess(db),
-      billableActors: new BillableActorDataAccess(db)
-    });
-    this.service = service;
-    this.usageCounters = [
-      {
-        meter: Meter.Identities,
-        count: async (orgId) => {
-          const seats = await service.countSeats(orgId);
-          return seats.identitiesUsed;
-        }
-      },
-      {
-        meter: Meter.UserIdentities,
-        count: async (orgId) => {
-          const seats = await service.countSeats(orgId);
-          return seats.membersUsed;
-        }
-      }
-    ];
+    const replica = () => db.replicaNode();
+    this.organizationsProjectsService = new OrganizationsProjectsService(
+      new OrganizationStore(replica),
+      new BillableActorStore(replica),
+      new TransactionRunner<TOrganizationsProjectsStores>(db, (trx, locks) => ({
+        organizationStore: new OrganizationStore(() => trx),
+        billableActorStore: new BillableActorStore(() => trx),
+        locks
+      }))
+    );
   }
 }

@@ -11,7 +11,6 @@ export type TPostgresServer = {
   port: number;
   user: string;
   password: string;
-  // Used for CREATE and DROP DATABASE.
   maintenanceDatabase: string;
 };
 
@@ -74,10 +73,8 @@ export const listHarnessDatabases = async (admin: Knex, prefix: string) => {
   return result.rows.map((row) => row.datname);
 };
 
-// Prod's initDbConnection adds primaryNode()/replicaNode() to knex's global QueryBuilder, and knex won't
-// register a method twice, but a test file can hold several DBs. So we register once and look the client
-// up by config (transactions share it). Registry lives on globalThis since knex loads once per process
-// but this module can load once per test file.
+// knex can't register primaryNode()/replicaNode() twice and a file can open several DBs, so register once and
+// look the client up by config. On globalThis since knex loads once per process, this module once per file.
 const registryKey = Symbol.for("infisical.integration-test.knex-by-client");
 
 type TRegistry = WeakMap<object, TDbClient>;

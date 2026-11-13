@@ -365,7 +365,10 @@ export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDat
   queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan;
 }) => Promise<void>;
 
-export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
+// `secretValue` is only used to compute the finding's blind index before it is saved; it is never stored.
+export type TFindingsPayload = (Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule"> & {
+  secretValue: string;
+})[];
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TUpdateSecretScanningFindingDTO = {

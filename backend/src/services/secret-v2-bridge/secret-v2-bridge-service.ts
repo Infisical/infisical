@@ -23,8 +23,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -68,6 +68,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -168,11 +169,8 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretApprovalRequestCreationFns: Pick<
-    TSecretApprovalRequestCreationFnsFactory,
-    "createSecretApprovalRequestV2Bridge"
-  >;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalRequestV2Bridge">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -213,8 +211,8 @@ export const secretV2BridgeServiceFactory = ({
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
-  secretApprovalPolicyService,
-  secretApprovalRequestCreationFns,
+  secretChangePolicyService,
+  secretChangeRequestService,
   kmsCoreDomain,
   resourceMetadataDAL,
   keyStore,
@@ -1891,7 +1889,14 @@ export const secretV2BridgeServiceFactory = ({
     return { ...payload, etag: computedEtag };
   };
 
-  const getSecretById = async ({ actorId, actor, actorOrgId, actorAuthMethod, secretId }: TGetASecretByIdDTO) => {
+  const getSecretById = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretId,
+    viewSecretValue
+  }: TGetASecretByIdDTO) => {
     const secret = await secretDAL.findOneWithTags({
       [`${TableName.SecretV2}.id` as "id"]: secretId
     });
@@ -1921,12 +1926,16 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment: folderWithPath.environmentSlug,
-      secretPath: folderWithPath.path,
-      secretName: secret.key,
-      secretTags: secret.tags.map((i) => i.slug)
-    });
+    throwIfMissingSecretReadValueOrDescribePermission(
+      permission,
+      viewSecretValue ? ProjectPermissionSecretActions.ReadValue : ProjectPermissionSecretActions.DescribeSecret,
+      {
+        environment: folderWithPath.environmentSlug,
+        secretPath: folderWithPath.path,
+        secretName: secret.key,
+        secretTags: secret.tags.map((i) => i.slug)
+      }
+    );
 
     if (secret.type === SecretType.Personal && secret.userId !== actorId) {
       throw new ForbiddenRequestError({
@@ -1940,9 +1949,12 @@ export const secretV2BridgeServiceFactory = ({
       projectId: secret.projectId
     });
 
-    const secretValue = secret.encryptedValue
-      ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-      : "";
+    let secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+    if (viewSecretValue) {
+      secretValue = secret.encryptedValue
+        ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+        : "";
+    }
 
     const secretComment = secret.encryptedComment
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
@@ -1964,7 +1976,7 @@ export const secretV2BridgeServiceFactory = ({
         value: secretValue,
         comment: secretComment
       },
-      false
+      !viewSecretValue
     );
   };
 
@@ -3409,8 +3421,8 @@ export const secretV2BridgeServiceFactory = ({
         resourceMetadataDAL,
         folderCommitService,
         eventEmitter,
-        secretApprovalPolicyService,
-        secretApprovalRequestCreationFns,
+        secretChangePolicyService,
+        secretChangeRequestService,
         secretQueueService,
         reminderService,
         secretValidationRuleService

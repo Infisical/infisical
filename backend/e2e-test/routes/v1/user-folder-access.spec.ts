@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import {
   AccessScope,
   OrgMembershipRole,
@@ -256,7 +257,7 @@ describe("User folder access CRUD", () => {
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
     let removalDeps: Omit<
       Parameters<typeof removeUsersFromGroupByUserIds>[0],
-      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers" | "licenseService"
+      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers"
     >;
 
     const createProjectGroup = async () => {
@@ -285,6 +286,7 @@ describe("User folder access CRUD", () => {
 
     beforeAll(async () => {
       removalDeps = {
+        usageMeteringService: new FakeUsageMeteringService(),
         userDAL: userDALFactory(testDb),
         userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
         identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),

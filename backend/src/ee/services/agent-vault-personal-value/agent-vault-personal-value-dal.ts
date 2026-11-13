@@ -28,11 +28,12 @@ export type TAgentVaultPersonalValueReferenceDALFactory = ReturnType<typeof agen
 export type TAgentVaultPersonalValueServiceRow = {
   serviceId: string;
   serviceName: string;
-  hostPattern: string;
+  hostPattern: string | null;
   credentialType: string;
   memberProvidedFields: string[];
-  accessBundleId: string;
-  accessBundleName: string;
+  // Null when the service was read on its own rather than through a bundle.
+  accessBundleId: string | null;
+  accessBundleName: string | null;
 };
 
 export type TAgentVaultPersonalValueSummaryRow = Pick<
@@ -58,23 +59,47 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultPersonalValue);
 
   /**
-   * Every service in these bundles that leaves a field to each member. `null` bundle ids means every bundle in the
-   * project. Reads the primary even without a tx, so a service changed a moment ago is listed as it is now.
+   * Every service in these bundles that leaves a field to each member, once per bundle it is in. `null` bundle ids means
+   * every bundle in the project, or with `serviceId`, that one service once, with no bundle. Reads the primary even
+   * without a tx, so a service changed a moment ago is listed as it is now.
    */
   const findServicesNeedingValues = async (
     {
       projectId,
       accessBundleIds,
-      serviceId
-    }: { projectId: string; accessBundleIds: string[] | null; serviceId?: string },
+      serviceId,
+      includeUnlinked
+    }: { projectId: string; accessBundleIds: string[] | null; serviceId?: string; includeUnlinked?: boolean },
     tx?: Knex
   ): Promise<TAgentVaultPersonalValueServiceRow[]> => {
     if (accessBundleIds?.length === 0) return [];
     try {
+      // One service on its own, whatever bundles it is in: what its personal values routes return.
+      if (serviceId && !accessBundleIds) {
+        return (await (tx || db)(TableName.AgentVaultService)
+          .where({ id: serviceId, projectId })
+          .whereNull("sessionId")
+          .whereNotNull("memberProvidedFields")
+          .select(
+            db.ref("id").as("serviceId"),
+            db.ref("name").as("serviceName"),
+            "hostPattern",
+            "credentialType",
+            "memberProvidedFields",
+            db.raw("NULL::uuid AS ??", ["accessBundleId"]),
+            db.raw("NULL::text AS ??", ["accessBundleName"])
+          )) as TAgentVaultPersonalValueServiceRow[];
+      }
+      // One row per bundle the service is in, since setup is reported per bundle.
       const query = (tx || db)(TableName.AgentVaultService)
         .join(
+          TableName.AgentVaultAccessBundleService,
+          `${TableName.AgentVaultAccessBundleService}.serviceId`,
+          `${TableName.AgentVaultService}.id`
+        )
+        .join(
           TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
           `${TableName.AgentVaultAccessBundle}.id`
         )
         .where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId)
@@ -83,7 +108,7 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
       if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
       if (serviceId) void query.where(`${TableName.AgentVaultService}.id`, serviceId);
 
-      return (await query
+      const linked = (await query
         .select(
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
           db.ref("name").withSchema(TableName.AgentVaultService).as("serviceName"),
@@ -97,6 +122,35 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
           { column: "accessBundleName", order: "asc" },
           { column: "serviceName", order: "asc" }
         ])) as TAgentVaultPersonalValueServiceRow[];
+      // Only a caller who reaches every service (an admin) sees one that no bundle holds yet, so they can set it up early.
+      if (!includeUnlinked || accessBundleIds) return linked;
+      const unlinked = (await (tx || db)(TableName.AgentVaultService)
+        .where({ projectId })
+        .whereNull("sessionId")
+        .whereNotNull("memberProvidedFields")
+        .whereNotExists((sub) => {
+          void sub
+            .select(db.raw("1"))
+            .from(TableName.AgentVaultAccessBundleService)
+            .whereRaw("?? = ??", [
+              `${TableName.AgentVaultAccessBundleService}.serviceId`,
+              `${TableName.AgentVaultService}.id`
+            ]);
+        })
+        .modify((q) => {
+          if (serviceId) void q.where({ id: serviceId });
+        })
+        .select(
+          db.ref("id").as("serviceId"),
+          db.ref("name").as("serviceName"),
+          "hostPattern",
+          "credentialType",
+          "memberProvidedFields",
+          db.raw("NULL::uuid AS ??", ["accessBundleId"]),
+          db.raw("NULL::text AS ??", ["accessBundleName"])
+        )
+        .orderBy("name", "asc")) as TAgentVaultPersonalValueServiceRow[];
+      return [...linked, ...unlinked];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault services needing personal values" });
     }
@@ -157,43 +211,59 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Clears what these actors saved for the services of `accessBundleId` (or of every bundle in the project) where
-   * they no longer hold a grant, directly or through any group they are in, so being granted the bundle again
-   * starts from nothing. An admin reaches every bundle without a grant, so only the actors a revoke named are
-   * considered, and one who is still a project admin, directly or through a group, keeps everything. Call it after
-   * the revoke, removal or demotion has been written in `tx`, so the admin check sees the new roles.
+   * Clears what actors saved for services they no longer reach: through no grant, direct or through any group they are
+   * in, on any bundle the service is in now. So being given the service again starts from nothing. The services are
+   * those of `accessBundleId`, or `serviceIds`, or every service in the project. The actors are the ones named, or with
+   * `everyActor` anyone who saved a value for those services. An admin reaches every service without a grant, so one
+   * who is still a project admin, directly or through a group, keeps everything. Call it after the revoke, removal,
+   * demotion or unlink has been written in `tx`, so the checks see what it left.
    */
   const deleteForActorsWithoutGrant = async (
     {
       projectId,
       accessBundleId,
-      userIds,
-      identityIds
-    }: { projectId: string; accessBundleId?: string; userIds: string[]; identityIds: string[] },
+      serviceIds,
+      userIds = [],
+      identityIds = [],
+      everyActor = false
+    }: {
+      projectId: string;
+      accessBundleId?: string;
+      serviceIds?: string[];
+      userIds?: string[];
+      identityIds?: string[];
+      everyActor?: boolean;
+    },
     tx: Knex
   ) => {
-    if (!userIds.length && !identityIds.length) return 0;
+    if (!everyActor && !userIds.length && !identityIds.length) return 0;
+    if (serviceIds?.length === 0) return 0;
     try {
       const services = tx(TableName.AgentVaultService)
-        .join(
-          TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultService}.accessBundleId`,
-          `${TableName.AgentVaultAccessBundle}.id`
-        )
-        .where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId)
+        .where(`${TableName.AgentVaultService}.projectId`, projectId)
         .whereRaw(`??.?? = ??.??`, [TableName.AgentVaultService, "id", table, "serviceId"])
         .whereNotExists((grant) => {
           void grant
             .from(TableName.Membership)
+            .join(TableName.AgentVaultAccessBundleService, function joinBundleService() {
+              this.on(
+                tx.raw(`??.??::text = ??.??`, [
+                  TableName.AgentVaultAccessBundleService,
+                  "accessBundleId",
+                  TableName.Membership,
+                  "scopeResourceId"
+                ])
+              );
+            })
+            .whereRaw(`??.?? = ??.??`, [
+              TableName.AgentVaultAccessBundleService,
+              "serviceId",
+              TableName.AgentVaultService,
+              "id"
+            ])
             .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
             .where(`${TableName.Membership}.scopeProjectId`, projectId)
             .where(`${TableName.Membership}.scopeResourceType`, ResourceType.AgentVaultAccessBundle)
-            .whereRaw(`??.?? = ??.??::text`, [
-              TableName.Membership,
-              "scopeResourceId",
-              TableName.AgentVaultAccessBundle,
-              "id"
-            ])
             .where((holder) => {
               void holder
                 .whereRaw(`??.?? = ??.??`, [TableName.Membership, "actorUserId", table, "userId"])
@@ -214,13 +284,22 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
             .select(tx.raw("1"));
         })
         .select(tx.raw("1"));
-      if (accessBundleId) void services.where(`${TableName.AgentVaultAccessBundle}.id`, accessBundleId);
+      if (accessBundleId) {
+        void services.whereIn(
+          `${TableName.AgentVaultService}.id`,
+          tx(TableName.AgentVaultAccessBundleService).where({ accessBundleId }).select("serviceId")
+        );
+      }
+      if (serviceIds) void services.whereIn(`${TableName.AgentVaultService}.id`, serviceIds);
 
-      return await tx(table)
-        .where((actor) => {
+      const values = tx(table);
+      if (!everyActor) {
+        void values.where((actor) => {
           if (userIds.length) void actor.whereIn(`${table}.userId`, userIds);
           if (identityIds.length) void actor.orWhereIn(`${table}.identityId`, identityIds);
-        })
+        });
+      }
+      return await values
         .whereExists(services)
         .whereNotExists((admin) => {
           void admin
@@ -261,11 +340,11 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * The owner's grants on the bundle, direct or through a group they are in, taken FOR SHARE. A revoke deletes these
+   * The owner's grants on these bundles, direct or through a group they are in, taken FOR SHARE. A revoke deletes these
    * rows in its own transaction, so this waits for one in flight and then sees the rows gone.
    */
   const lockGrantsForOwner = async (
-    { projectId, accessBundleId, owner }: { projectId: string; accessBundleId: string; owner: TAgentVaultOwner },
+    { projectId, accessBundleIds, owner }: { projectId: string; accessBundleIds: string[]; owner: TAgentVaultOwner },
     tx: Knex
   ): Promise<{ id: string }[]> => {
     try {
@@ -273,7 +352,7 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.scopeResourceType`, ResourceType.AgentVaultAccessBundle)
-        .where(`${TableName.Membership}.scopeResourceId`, accessBundleId)
+        .whereIn(`${TableName.Membership}.scopeResourceId`, accessBundleIds)
         .where((holder) => {
           void holder
             .where(
@@ -347,13 +426,8 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     try {
       const rows = (await tx(table)
         .join(TableName.AgentVaultService, `${table}.serviceId`, `${TableName.AgentVaultService}.id`)
-        .join(
-          TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultService}.accessBundleId`,
-          `${TableName.AgentVaultAccessBundle}.id`
-        )
-        .whereIn(`${TableName.AgentVaultAccessBundle}.projectId`, projectIds)
-        .distinct(`${TableName.AgentVaultAccessBundle}.projectId`)) as { projectId: string }[];
+        .whereIn(`${TableName.AgentVaultService}.projectId`, projectIds)
+        .distinct(`${TableName.AgentVaultService}.projectId`)) as { projectId: string }[];
       return rows.map((row) => row.projectId).sort();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault projects with any personal values" });
@@ -370,17 +444,12 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     try {
       const rows = (await tx(table)
         .join(TableName.AgentVaultService, `${table}.serviceId`, `${TableName.AgentVaultService}.id`)
-        .join(
-          TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultService}.accessBundleId`,
-          `${TableName.AgentVaultAccessBundle}.id`
-        )
-        .whereIn(`${TableName.AgentVaultAccessBundle}.projectId`, projectIds)
+        .whereIn(`${TableName.AgentVaultService}.projectId`, projectIds)
         .where((actor) => {
           if (userIds.length) void actor.whereIn(`${table}.userId`, userIds);
           if (identityIds.length) void actor.orWhereIn(`${table}.identityId`, identityIds);
         })
-        .distinct(`${TableName.AgentVaultAccessBundle}.projectId`)) as { projectId: string }[];
+        .distinct(`${TableName.AgentVaultService}.projectId`)) as { projectId: string }[];
       return rows.map((row) => row.projectId).sort();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault projects with personal values" });

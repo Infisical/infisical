@@ -39,6 +39,11 @@ export class InMemoryKmsKeyDataAccess implements TKmsKeyDataAccess {
       .map((row) => KmsKey.restore(row));
   }
 
+  async findPublishedById(id: string) {
+    const key = await this.findById(id);
+    return key?.isPublicKeyPublished ? key : undefined;
+  }
+
   findByIdForUpdate(id: string) {
     return this.findById(id);
   }

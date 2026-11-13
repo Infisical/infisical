@@ -13,7 +13,9 @@ declare module "vitest" {
   }
 }
 
-const LOCK_TIMEOUT_MS = 10 * 60 * 1000;
+// Shorter than the config's hookTimeout, so a lock left by a crashed worker fails with the message below
+// rather than a bare hook timeout.
+const LOCK_TIMEOUT_MS = 4 * 60 * 1000;
 const LOCK_POLL_MS = 200;
 
 export const getRunId = () => inject("integrationRunId");
@@ -48,9 +50,8 @@ const withLock = async <T>(name: string, work: () => Promise<T>): Promise<T> => 
   }
 };
 
-// Starts something once per test run, across all workers. The first caller runs start and records the
-// address; everyone else waits and reuses it. If start throws, nothing's recorded and the next caller
-// retries. The address crosses processes, so plain JSON only, never a live client.
+// Once per run across all workers. If start throws, the next caller retries. The address crosses
+// processes, so plain JSON only, never a live client.
 export const startOnce = async <T>(name: string, start: () => Promise<T>): Promise<T> => {
   if (!/^[a-z0-9-]+$/.test(name)) {
     throw new Error(`startOnce name "${name}" must be lowercase letters, digits and dashes`);
@@ -67,11 +68,10 @@ export const startOnce = async <T>(name: string, start: () => Promise<T>): Promi
   });
 };
 
-// Not tied to the worker's process since other workers may still use it after that worker exits;
-// global teardown removes every container with this run's label.
+// Not stopped when this worker exits since others may still use it; global teardown removes it by label. The
+// run is marked before the container exists, so teardown still runs if a start fails halfway.
 export const container = (image: string) => {
   const runId = getRunId();
-  // Recorded before the container exists, so teardown still runs if a start fails halfway.
   markContainersUsed(runId);
   return new GenericContainer(image).withLabels({ [RUN_LABEL]: runId });
 };

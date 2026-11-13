@@ -1,9 +1,9 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { applyJitter } from "@app/lib/dates";
 
-import { TUsageReportCache } from "../service/dependencies";
+import { TUsageReportCache } from "../services/dependencies";
 
-// Key names and TTLs match the old pods' so a rolling deploy reads what they wrote.
+// Key names and TTLs are frozen: old pods share them during a rolling deploy.
 const UsageKeys = {
   reconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}`,
   lastReported: (reportOrgId: string, meterKey: string) => `license-usage-last-reported-${reportOrgId}-${meterKey}`
@@ -14,7 +14,7 @@ const UsageKeyTtls = {
   lastReportedInSeconds: 604800
 };
 
-// Remembers what we last reported so an unchanged value doesn't get sent again.
+// Remembers what we last reported so we don't resend unchanged values.
 export class UsageReportCache implements TUsageReportCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
 

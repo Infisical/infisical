@@ -1,9 +1,9 @@
 import { ProjectType, TableName, TKmsKeys } from "@app/db/schemas";
-import { DataAccessDb, ReadFrom, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 
+import { DataAccessDb, ReadFrom, TReadOptions } from "../lib/data-access-db";
 import { KmsKey, TKmsKeyProps } from "../model/kms-key";
 
 export type TKmsKeyFilter = {
@@ -35,6 +35,8 @@ export type TKmsKeyDataAccess = {
   findByIdForRotation(id: string): Promise<KmsKey | undefined>;
   // Takes the kms_keys row lock, so a read-modify-write of the key's attributes cannot overwrite a concurrent one.
   findByIdForUpdate(id: string): Promise<KmsKey | undefined>;
+  // A published key whose project is not pending deletion.
+  findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | undefined>;
   // Customer keys of a project (not reserved, with internal material), one page and the total.
   listProjectKeys(query: TKmsKeyPageQuery, options?: TReadOptions): Promise<{ keys: KmsKey[]; totalCount: number }>;
   saveMaterial(key: KmsKey): Promise<void>;
@@ -74,6 +76,7 @@ const toModel = (row: TKmsKeyRow): KmsKey => {
     isReserved: row.isReserved,
     isExportable: row.isExportable,
     hasDeleteProtection: row.hasDeleteProtection,
+    isPublicKeyPublished: row.isPublicKeyPublished,
     kmipMetadata: row.kmipMetadata,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -117,6 +120,7 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
         isReserved: props.isReserved ?? true,
         isExportable: props.isExportable,
         hasDeleteProtection: props.hasDeleteProtection,
+        isPublicKeyPublished: props.isPublicKeyPublished ?? false,
         kmipMetadata: props.kmipMetadata as never
       } as never);
       if (props.internal) {
@@ -162,6 +166,21 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
       return rows.map(toModel);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find KMS keys" });
+    }
+  }
+
+  // Reads projects, which no domain owns yet: a project pending deletion stops publishing, like a deleted one.
+  async findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | undefined> {
+    try {
+      const row = (await this.withMaterial(options)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.KmsKey}.projectId`)
+        .where(`${TableName.KmsKey}.id`, id)
+        .where(`${TableName.KmsKey}.isPublicKeyPublished`, true)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .first()) as TKmsKeyRow | undefined;
+      return row ? toModel(row) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find published KMS key" });
     }
   }
 
@@ -254,6 +273,7 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
           isDisabled: props.isDisabled ?? false,
           hasDeleteProtection: props.hasDeleteProtection,
           isExportable: props.isExportable,
+          isPublicKeyPublished: props.isPublicKeyPublished ?? false,
           kmipMetadata: props.kmipMetadata as never
         });
     } catch (error) {

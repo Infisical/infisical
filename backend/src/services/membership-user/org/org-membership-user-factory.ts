@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -128,10 +128,10 @@ export const newOrgMembershipUserFactory = ({
       });
     }
 
-    const identityLimit = (await licenseService.getPlan(dto.permission.orgId)).enforcedIdentityLimit;
-    if (identityLimit) {
+    const plan = await licenseService.getPlan(dto.permission.orgId);
+    if (plan.isLimited(PlanLimit.Identities)) {
       const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
-      if (identitiesUsed >= identityLimit) {
+      if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           name: "InviteUser",
           message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."

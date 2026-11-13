@@ -1,5 +1,3 @@
-import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access-db";
-import { TTransactionRunner } from "@app/domains/lib/transaction-runner";
 import { isBase64 } from "@app/lib/base64";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
@@ -9,6 +7,8 @@ import { BadRequestError, CryptographyError, InternalServerError, NotFoundError 
 import { logger } from "@app/lib/logger";
 
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
+import { ReadFrom, TReadOptions } from "../lib/data-access-db";
+import { TTransactionRunner } from "../lib/transaction-runner";
 import { InstanceEncryptionKey } from "../model/instance-encryption-key";
 import { KekHistoryEntry } from "../model/kek-history-entry";
 import { LegacyEncryptionKey } from "../model/legacy-encryption-key";

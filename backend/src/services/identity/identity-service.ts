@@ -1,7 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  SeatUsage,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -50,6 +59,8 @@ type TIdentityServiceFactoryDep = {
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
+  organizationsProjectsService: TOrganizationsProjectsService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
@@ -68,6 +79,8 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
+  organizationsProjectsService,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -105,7 +118,7 @@ export const identityServiceFactory = ({
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
       const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -131,17 +144,25 @@ export const identityServiceFactory = ({
         });
     }
 
-    const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
-    if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getSeatUsage(orgId);
-      if (identitiesUsed >= identityLimit) {
-        throw new BadRequestError({
-          message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
-        });
-      }
-    }
+    // Before the transaction: a plan cache miss calls the License Server.
+    const plan = await licenseService.getPlan(orgId);
+
+    const seatCountScope = licenseService.getSeatCountScope(orgId);
 
     const identity = await identityDAL.transaction(async (tx) => {
+      // Counted under the seat lock on this transaction, so concurrent creates can't pass the limit together.
+      if (plan.isLimited(PlanLimit.Identities)) {
+        const counts = await organizationsProjectsService
+          .within(sealKnexTransaction(tx))
+          .lockAndCountBillableOrgActors(seatCountScope);
+        if (!counts) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+        if (plan.exceeds(PlanLimit.Identities, SeatUsage.fromBillableActors(counts).identitiesUsed)) {
+          throw new BadRequestError({
+            message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+          });
+        }
+      }
+
       const newIdentity = await identityDAL.create({ name, hasDeleteProtection, orgId }, tx);
       const membership = await membershipIdentityDAL.create(
         {
@@ -184,8 +205,8 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.syncSeats(orgId);
-    licenseService.emit(orgId, Meter.Identities.key);
+    await usageMeteringService.syncSeats(orgId);
+    usageMeteringService.emit(orgId, Meter.Identities);
 
     return identity;
   };
@@ -229,7 +250,7 @@ export const identityServiceFactory = ({
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
         const plan = await licenseService.getPlan(actorOrgId);
-        if (!plan?.rbac)
+        if (!plan?.has(PlanFeature.Rbac))
           throw new BadRequestError({
             message:
               "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -426,23 +447,23 @@ export const identityServiceFactory = ({
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
-      await licenseService.syncSeats(identityOrgMembership.scopeOrgId);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      await usageMeteringService.syncSeats(identityOrgMembership.scopeOrgId);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
     await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
     // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
     // identity meters change too.
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 
@@ -535,7 +556,12 @@ export const identityServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    limit,
+    offset,
+    search,
+    orderDirection,
+    excludeProjectType
   }: TListProjectIdentitiesByIdentityIdDTO) => {
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
@@ -554,8 +580,13 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const identityMemberships = await identityProjectDAL.findByIdentityId(identityId, actorOrgId);
-    return identityMemberships;
+    return identityProjectDAL.findByIdentityId(identityId, actorOrgId, {
+      limit,
+      offset,
+      search,
+      orderDirection,
+      excludeProjectType
+    });
   };
 
   return {

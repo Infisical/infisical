@@ -1,9 +1,11 @@
+import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/helpers/agentVaultControlChars";
+import { agentVaultServiceDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
@@ -15,10 +17,13 @@ import {
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  isNativeServiceType,
+  TAgentVaultMemberProvidedField,
+  TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultService,
+  TAgentVaultSessionInlineService,
   TAgentVaultSharedOauthCredentialSummary
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -55,13 +60,29 @@ export const FORM_FIELD_OF_CREDENTIAL_FIELD: Record<
 export const storedMemberFields = (
   service?: TAgentVaultService | null
 ): TAgentVaultMemberProvidedField[] =>
-  service && service.credential.type !== AgentVaultCredentialType.Passthrough
+  service &&
+  service.credential.type !== AgentVaultCredentialType.Passthrough &&
+  service.credential.type !== AgentVaultCredentialType.SshKey
     ? (service.credential.memberProvidedFields ?? [])
     : [];
 
 export const isMemberProvidedOAuthService = (service?: TAgentVaultService | null) =>
   service?.credential.type === AgentVaultCredentialType.OAuth &&
   storedMemberFields(service).length > 0;
+
+export const isNativeService = (
+  service?: TAgentVaultService | null
+): service is Extract<TAgentVaultService, { type: TAgentVaultNativeServiceType }> =>
+  isNativeServiceType(service?.type);
+
+/** A database or SSH service is reached by name, so only an HTTP or MCP service has a host pattern. */
+export const hostPatternOf = (service: TAgentVaultService | TAgentVaultSessionInlineService) =>
+  service.type === AgentVaultServiceType.Http || service.type === AgentVaultServiceType.Mcp
+    ? service.hostPattern
+    : null;
+
+export const serverUrlOf = (service?: TAgentVaultService | null) =>
+  service?.type === AgentVaultServiceType.Mcp ? service.serverUrl : null;
 
 export const hostOf = (serverUrl: string) => {
   try {
@@ -75,7 +96,38 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
   [AgentVaultCredentialType.Basic]: "Basic Auth",
   [AgentVaultCredentialType.Passthrough]: "Pass-through",
-  [AgentVaultCredentialType.OAuth]: "OAuth"
+  [AgentVaultCredentialType.OAuth]: "OAuth",
+  [AgentVaultCredentialType.SshKey]: "SSH Key"
+};
+
+// A database or SSH login has no HTTP header, so "Basic Auth" would misdescribe it.
+const DATABASE_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.Basic]: "Username and Password"
+};
+
+// Beside SSH Key, "Password" is the choice being made; the username is entered either way.
+const SSH_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.Basic]: "Password",
+  [AgentVaultCredentialType.SshKey]: "SSH Key"
+};
+
+export const nativeCredentialLabels = (serviceType: TAgentVaultNativeServiceType) =>
+  serviceType === AgentVaultServiceType.Ssh ? SSH_CREDENTIAL_LABELS : DATABASE_CREDENTIAL_LABELS;
+
+export const credentialLabel = (
+  serviceType: AgentVaultServiceType,
+  credentialType: AgentVaultCredentialType
+) =>
+  (isNativeServiceType(serviceType) && nativeCredentialLabels(serviceType)[credentialType]) ||
+  CREDENTIAL_LABELS[credentialType];
+
+export const NATIVE_CREDENTIAL_TYPES: Record<
+  TAgentVaultNativeServiceType,
+  AgentVaultCredentialType[]
+> = {
+  [AgentVaultServiceType.Postgres]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Mysql]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Ssh]: [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey]
 };
 
 export const HTTP_CREDENTIAL_TYPES = [
@@ -92,7 +144,141 @@ export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
 
 export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
   [AgentVaultServiceType.Http]: "HTTP API",
-  [AgentVaultServiceType.Mcp]: "MCP Server"
+  [AgentVaultServiceType.Mcp]: "MCP Server",
+  [AgentVaultServiceType.Postgres]: "PostgreSQL",
+  [AgentVaultServiceType.Mysql]: "MySQL",
+  [AgentVaultServiceType.Ssh]: "SSH"
+};
+
+export type TServiceKind = "http" | "mcp" | "native";
+
+export const serviceKindOf = (serviceType: AgentVaultServiceType): TServiceKind => {
+  if (serviceType === AgentVaultServiceType.Mcp) return "mcp";
+  if (isNativeServiceType(serviceType)) return "native";
+  return "http";
+};
+
+export const hasDatabase = (serviceType: AgentVaultServiceType) =>
+  serviceType === AgentVaultServiceType.Postgres || serviceType === AgentVaultServiceType.Mysql;
+
+// The agent reaches a database or SSH service at `<name>.svc.agent-vault`, and a DNS label stops at 63 bytes.
+export const MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
+
+// Mirrors agent-vault-native-config-schemas.ts on the backend, so a value the API would refuse is marked on its
+// field instead of coming back as a toast on Review.
+const MAX_NATIVE_HOST_LENGTH = 253;
+const MAX_NATIVE_DATABASE_LENGTH = 64;
+const MAX_NATIVE_CA_LENGTH = 16384;
+const MAX_SSH_KEY_LENGTH = 8192;
+const MAX_SSH_USERNAME_LENGTH = 256;
+
+const NATIVE_HOSTNAME_RE =
+  /^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?)*$/i;
+const IPV6_SCHEMA = z.string().ip({ version: "v6" });
+// A PEM spans lines, so only those control characters are allowed.
+// eslint-disable-next-line no-control-regex
+const PEM_CONTROL_CHARS_RE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+const PEM_BLOCK_RE = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
+
+const SSH_KEY_VARIABLE_MESSAGE =
+  "An SSH key credential can't use variables yet, so this can't contain double braces. Enter the value itself.";
+// A key spans lines, so only tabs and line breaks are allowed among the control characters.
+// eslint-disable-next-line no-control-regex
+const SSH_KEY_TEXT_RE = /^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]*$/;
+
+export const nativeHostError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the server's host name or IP address.";
+  if (trimmed.length > MAX_NATIVE_HOST_LENGTH) {
+    return `The host can be at most ${MAX_NATIVE_HOST_LENGTH} characters.`;
+  }
+  const unbracketed =
+    trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
+  const host = unbracketed.replace(/\.$/, "").toLowerCase();
+  if (/\s/.test(host) || !AGENT_VAULT_NO_CONTROL_CHARS_RE.test(host)) {
+    return "The host can't contain spaces or control characters.";
+  }
+  if (host.includes("{{")) {
+    return "Variables aren't supported in the host yet. Enter the host itself.";
+  }
+  if (IPV6_SCHEMA.safeParse(host).success) return null;
+  if (host.includes("://")) return "Enter only the host, without a scheme such as postgres://.";
+  if (host.includes("/")) return "Enter only the host, without a path.";
+  if (host.includes("*")) return "Enter one specific host. Wildcards aren't supported here.";
+  if (host.includes(":")) return "Enter the port in the Port field, not as part of the host.";
+  if (!NATIVE_HOSTNAME_RE.test(host)) return `"${host}" isn't a valid host name or IP address.`;
+  return null;
+};
+
+export const nativePortError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the port.";
+  const port = Number(trimmed);
+  if (!/^\d+$/.test(trimmed) || port < 1 || port > 65535) {
+    return "The port must be a whole number between 1 and 65535.";
+  }
+  return null;
+};
+
+export const nativeDatabaseError = (value: string): string | null => {
+  const database = value.trim();
+  if (!database) return "Enter the database to connect to.";
+  if (database.length > MAX_NATIVE_DATABASE_LENGTH) {
+    return `The database name can be at most ${MAX_NATIVE_DATABASE_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(database)) {
+    return "The database name can't contain control characters.";
+  }
+  if (database.includes("{{")) {
+    return "Variables aren't supported in the database name yet. Enter the name itself.";
+  }
+  return null;
+};
+
+export const certificateAuthorityError = (value: string): string | null => {
+  const pem = value.replace(/\r\n?/g, "\n").trim();
+  if (!pem) return null;
+  if (pem.length > MAX_NATIVE_CA_LENGTH) {
+    return `The certificate authority can be at most ${MAX_NATIVE_CA_LENGTH} characters.`;
+  }
+  const invalid =
+    "The certificate authority isn't a valid PEM certificate. Paste the CA certificate, starting with -----BEGIN CERTIFICATE-----.";
+  if (PEM_CONTROL_CHARS_RE.test(pem)) return invalid;
+  const blocks = pem.match(PEM_BLOCK_RE);
+  if (!blocks?.length) return invalid;
+  if ((pem.match(/-----BEGIN /g) ?? []).length !== blocks.length) {
+    return "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate.";
+  }
+  try {
+    blocks.forEach((block) => new x509.X509Certificate(block));
+  } catch {
+    return invalid;
+  }
+  return null;
+};
+
+const hasSshKeyVariable = (value: string) => value.includes("{{") || value.includes("}}");
+
+const sshKeyTextError = (value: string): string | null => {
+  if (hasSshKeyVariable(value)) return SSH_KEY_VARIABLE_MESSAGE;
+  if (value.trim().length > MAX_SSH_KEY_LENGTH) {
+    return `This can be at most ${MAX_SSH_KEY_LENGTH} characters.`;
+  }
+  if (!SSH_KEY_TEXT_RE.test(value)) {
+    return "This can't contain control characters other than line breaks. Paste the key file's contents as they are.";
+  }
+  return null;
+};
+
+// A username is one line, unlike the key and certificate.
+const sshUsernameError = (value: string): string | null => {
+  if (hasSshKeyVariable(value)) return SSH_KEY_VARIABLE_MESSAGE;
+  const username = value.trim();
+  if (username.length > MAX_SSH_USERNAME_LENGTH) {
+    return `This can be at most ${MAX_SSH_USERNAME_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(username)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
+  return null;
 };
 
 export const TRANSPORT_LABELS: Record<AgentVaultMcpTransport, string> = {
@@ -170,6 +356,68 @@ export const serverUrlError = (value: string): string | null => {
   return null;
 };
 
+// Mirrors agent-vault-hook-fns.ts on the backend, so a value the API would refuse is marked on its field.
+const MAX_HOOK_URL_LENGTH = 2048;
+const MIN_HOOK_SECRET_LENGTH = 32;
+const MAX_HOOK_SECRET_LENGTH = 512;
+
+export const HOOK_SIGNING_SECRET_REQUIRED_MESSAGE = "Enter a signing secret for the hook.";
+
+export const isPlainHttpUrl = (value: string) => /^http:\/\//i.test(value.trim());
+
+export const hookUrlError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the hook URL.";
+  if (trimmed.length > MAX_HOOK_URL_LENGTH) {
+    return `The hook URL can be at most ${MAX_HOOK_URL_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(trimmed)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
+  if (/\s/.test(trimmed)) return "The hook URL can't contain spaces.";
+  if (trimmed.includes("{{")) {
+    return "Variables aren't supported in the hook URL. Enter the URL itself.";
+  }
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return "The hook URL must start with https:// or http://, as in https://hooks.example.com/agent-vault.";
+  }
+  const strayCharactersMessage =
+    "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault.";
+  const invalidUrlMessage =
+    "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault.";
+  if (trimmed.includes("\\") || trimmed.replace(/%[0-9a-f]{2}/gi, "").includes("%")) {
+    return strayCharactersMessage;
+  }
+  const afterScheme = trimmed.slice(trimmed.indexOf("//") + 2);
+  const authorityEnd = afterScheme.search(/[/?#]/);
+  const authority = authorityEnd === -1 ? afterScheme : afterScheme.slice(0, authorityEnd);
+  if (!authority) return invalidUrlMessage;
+  if (authority.slice(authority.lastIndexOf("@") + 1).includes("%")) return strayCharactersMessage;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return invalidUrlMessage;
+  }
+  if (url.username || url.password) return "The hook URL can't contain a username or password.";
+  if (trimmed.includes("#")) return "The hook URL can't contain a fragment (the part after #).";
+  if (trimmed.includes("?")) return "Hook URLs can't include a query string.";
+  return null;
+};
+
+export const hookSigningSecretError = (value: string, hasStoredSecret: boolean): string | null => {
+  if (value === UNCHANGED_SECRET) return null;
+  if (!value) return hasStoredSecret ? null : HOOK_SIGNING_SECRET_REQUIRED_MESSAGE;
+  if (!/^[\x21-\x7e]+$/.test(value)) {
+    return "The signing secret can only use letters, numbers and symbols, with no spaces.";
+  }
+  if (value.length < MIN_HOOK_SECRET_LENGTH) {
+    return `The signing secret must be at least ${MIN_HOOK_SECRET_LENGTH} characters.`;
+  }
+  if (value.length > MAX_HOOK_SECRET_LENGTH) {
+    return `The signing secret can be at most ${MAX_HOOK_SECRET_LENGTH} characters.`;
+  }
+  return null;
+};
+
 export const SURFACE_LABELS: Record<AgentVaultSubstitutionSurface, string> = {
   [AgentVaultSubstitutionSurface.Path]: "URL Path",
   [AgentVaultSubstitutionSurface.Query]: "Query String",
@@ -224,12 +472,21 @@ export enum ServiceStep {
   Details = "details",
   Credential = "credential",
   Tools = "tools",
+  Hook = "hook",
   Review = "review"
 }
 
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "hosts", "hostDraft", "methods", "pathPrefixes", "pathDraft"],
+  [ServiceStep.Details]: [
+    "name",
+    "description",
+    "hosts",
+    "hostDraft",
+    "methods",
+    "pathPrefixes",
+    "pathDraft"
+  ],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
@@ -241,12 +498,38 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "substitutions"
   ],
   [ServiceStep.Tools]: [],
+  [ServiceStep.Hook]: ["hookEnabled", "hookUrl", "hookSigningSecret"],
+  [ServiceStep.Review]: []
+};
+
+export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
+  [ServiceStep.Template]: [],
+  [ServiceStep.Details]: [
+    "name",
+    "description",
+    "host",
+    "port",
+    "database",
+    "tlsEnabled",
+    "tlsVerify",
+    "tlsCa"
+  ],
+  [ServiceStep.Credential]: [
+    "credentialType",
+    "username",
+    "secret",
+    "memberProvidedFields",
+    "sshPrivateKey",
+    "sshCertificate"
+  ],
+  [ServiceStep.Tools]: [],
+  [ServiceStep.Hook]: ["hookEnabled", "hookUrl", "hookSigningSecret"],
   [ServiceStep.Review]: []
 };
 
 export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "serverUrl", "transport"],
+  [ServiceStep.Details]: ["name", "description", "serverUrl", "transport"],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
@@ -259,6 +542,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "customHeaders"
   ],
   [ServiceStep.Tools]: ["toolScope", "allowedTools"],
+  [ServiceStep.Hook]: ["hookEnabled", "hookUrl", "hookSigningSecret"],
   [ServiceStep.Review]: []
 };
 
@@ -332,9 +616,21 @@ export const buildServiceSchema = (
     .object({
       serviceType: z.nativeEnum(AgentVaultServiceType),
       name: slugSchema({ max: 64, field: "Name" }),
+      description: agentVaultServiceDescriptionSchema,
       serverUrl: z.string(),
       transport: z.nativeEnum(AgentVaultMcpTransport),
       hosts: z.array(z.string()),
+      // A database or SSH service's server. The port stays text so a half-typed value can be shown and refused.
+      host: z.string(),
+      port: z.string(),
+      database: z.string(),
+      tlsEnabled: z.boolean(),
+      tlsVerify: z.boolean(),
+      tlsCa: z.string(),
+      sshPrivateKey: z.string(),
+      sshCertificate: z.string(),
+      // Set only by Remove Certificate: an emptied box keeps the stored certificate, as every other stored value does.
+      sshCertificateRemoved: z.boolean(),
       // In the form rather than component state so the resolver sees it: trigger() wipes anything set with
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
@@ -390,10 +686,46 @@ export const buildServiceSchema = (
             surfaces: z.array(z.nativeEnum(AgentVaultSubstitutionSurface))
           })
         )
-        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`)
+        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`),
+      // Kept while the toggle is off, so turning it back on restores what was typed. Only On sends them.
+      hookEnabled: z.boolean(),
+      hookUrl: z.string(),
+      hookSigningSecret: z.string()
     })
     .superRefine((data, ctx) => {
       const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
+      const isHttp = data.serviceType === AgentVaultServiceType.Http;
+      const issue = (path: string, message: string) =>
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+      if (isNativeServiceType(data.serviceType)) {
+        if (data.name.length > MAX_NATIVE_SERVICE_NAME_LENGTH) {
+          issue(
+            "name",
+            `A database or SSH service's name can be at most ${MAX_NATIVE_SERVICE_NAME_LENGTH} characters.`
+          );
+        }
+        const hostIssue = nativeHostError(data.host);
+        if (hostIssue) issue("host", hostIssue);
+        const portIssue = nativePortError(data.port);
+        if (portIssue) issue("port", portIssue);
+        if (hasDatabase(data.serviceType)) {
+          const databaseIssue = nativeDatabaseError(data.database);
+          if (databaseIssue) issue("database", databaseIssue);
+          // The CA field is hidden unless the proxy verifies the certificate, and nothing sends it then.
+          const caIssue =
+            data.tlsEnabled && data.tlsVerify ? certificateAuthorityError(data.tlsCa) : null;
+          if (caIssue) issue("tlsCa", caIssue);
+        }
+        if (!NATIVE_CREDENTIAL_TYPES[data.serviceType].includes(data.credentialType)) {
+          issue(
+            "credentialType",
+            data.serviceType === AgentVaultServiceType.Ssh
+              ? "An SSH service takes a password or an SSH key."
+              : "A database service takes a username and password."
+          );
+        }
+      }
       if (isMcp) {
         const urlError = serverUrlError(data.serverUrl);
         if (urlError) {
@@ -476,15 +808,15 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp) addHostIssues(data.hosts, ctx, ["hosts"]);
-      const hostDraft = isMcp ? "" : data.hostDraft.trim();
+      if (isHttp) addHostIssues(data.hosts, ctx, ["hosts"]);
+      const hostDraft = isHttp ? data.hostDraft.trim() : "";
       if (hostDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
           message: hostError(hostDraft, data.hosts) ?? `Add "${hostDraft}" or clear it.`
         });
-      } else if (!isMcp && data.hosts.length === 0) {
+      } else if (isHttp && data.hosts.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
@@ -492,7 +824,7 @@ export const buildServiceSchema = (
         });
       }
 
-      const pathDraft = isMcp ? "" : data.pathDraft.trim();
+      const pathDraft = isHttp ? data.pathDraft.trim() : "";
       if (pathDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -509,7 +841,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp && data.methods.length === 0) {
+      if (isHttp && data.methods.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["methods"],
@@ -517,7 +849,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp) addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
+      if (isHttp) addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
 
       const hasHeaderShape = data.credentialType === AgentVaultCredentialType.Bearer;
 
@@ -667,6 +999,7 @@ export const buildServiceSchema = (
       if (
         data.credentialType !== AgentVaultCredentialType.Passthrough &&
         data.credentialType !== AgentVaultCredentialType.OAuth &&
+        data.credentialType !== AgentVaultCredentialType.SshKey &&
         !isSecretMemberProvided
       ) {
         addReferenceIssue(data.secret, ["secret"]);
@@ -681,6 +1014,16 @@ export const buildServiceSchema = (
         addReferenceIssue(substitution.value, ["substitutions", index, "value"])
       );
 
+      if (data.hookEnabled) {
+        const hookUrlIssue = hookUrlError(data.hookUrl);
+        if (hookUrlIssue) issue("hookUrl", hookUrlIssue);
+        const hookSecretIssue = hookSigningSecretError(
+          data.hookSigningSecret,
+          Boolean(service?.hook)
+        );
+        if (hookSecretIssue) issue("hookSigningSecret", hookSecretIssue);
+      }
+
       if (
         data.credentialType === AgentVaultCredentialType.Passthrough ||
         data.credentialType === AgentVaultCredentialType.OAuth
@@ -691,6 +1034,33 @@ export const buildServiceSchema = (
       const isUnchanged = data.secret === UNCHANGED_SECRET;
 
       const typeChanged = Boolean(service) && service?.credential.type !== data.credentialType;
+      // Nothing is stored to keep on create or after a type change, so every part has to be entered.
+      const needsNewValue = !service || typeChanged;
+
+      if (data.credentialType === AgentVaultCredentialType.SshKey) {
+        const username = data.username ?? "";
+        if (username !== UNCHANGED_SECRET) {
+          if (!username.trim()) {
+            if (needsNewValue) issue("username", "Enter the user to log in as.");
+          } else {
+            const usernameIssue = sshUsernameError(username);
+            if (usernameIssue) issue("username", usernameIssue);
+          }
+        }
+        if (data.sshPrivateKey !== UNCHANGED_SECRET) {
+          if (!data.sshPrivateKey.trim()) {
+            if (needsNewValue) issue("sshPrivateKey", "Paste the private key.");
+          } else {
+            const keyIssue = sshKeyTextError(data.sshPrivateKey);
+            if (keyIssue) issue("sshPrivateKey", keyIssue);
+          }
+        }
+        if (data.sshCertificate !== UNCHANGED_SECRET && !data.sshCertificateRemoved) {
+          const certificateIssue = sshKeyTextError(data.sshCertificate);
+          if (certificateIssue) issue("sshCertificate", certificateIssue);
+        }
+        return;
+      }
       // A field each member used to set has nothing stored for the admin to keep.
       const wasMemberProvided = (field: TAgentVaultMemberProvidedField) =>
         !typeChanged && storedMemberFields(service).includes(field);
@@ -704,6 +1074,17 @@ export const buildServiceSchema = (
           !data.secret
         ) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
+        }
+        return;
+      }
+
+      // Every database and SSH login names its user, so a password alone isn't enough.
+      if (isNativeServiceType(data.serviceType)) {
+        if (isUsernameMemberProvided) return;
+        const hasUsername =
+          data.username === UNCHANGED_SECRET ? !typeChanged : Boolean(data.username);
+        if (!hasUsername) {
+          issue("username", "Enter the username to log in as, or leave it to each member.");
         }
         return;
       }

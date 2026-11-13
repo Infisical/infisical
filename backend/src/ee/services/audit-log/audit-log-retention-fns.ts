@@ -1,4 +1,4 @@
-import { TPlanProps } from "@app/domains/platform/license/ce/module";
+import { TPlanFeatures } from "@app/domains/platform/license/ce/module";
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
@@ -11,7 +11,7 @@ export const MAX_AUDIT_LOG_EXPIRES_AT = new Date("2100-01-01T00:00:00.000Z");
 // inside the integer column, so an oversized value is a 400 rather than a failed write.
 export const MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS = 36_500;
 
-type TAuditLogRetentionPlan = Pick<TPlanProps, "auditLogsRetentionDays">;
+type TAuditLogRetentionPlan = Pick<TPlanFeatures, "auditLogsRetentionDays">;
 
 // A null retention is the License Server's "No limit"; 0 means the plan keeps no audit logs.
 export const hasAuditLogRetention = (plan: TAuditLogRetentionPlan) =>

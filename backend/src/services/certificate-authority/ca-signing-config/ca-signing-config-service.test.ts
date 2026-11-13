@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { TPlanProps } from "@app/domains/platform/license/ce/module";
+import { TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -74,7 +74,7 @@ const buildService = ({
     })
   };
 
-  const licenseService = new FakeLicenseService().setPlan(ACTOR_ORG_ID, plan as Partial<TPlanProps>);
+  const licenseService = new FakeLicenseService().setPlan(ACTOR_ORG_ID, plan as Partial<TPlanFeatures>);
   vi.spyOn(licenseService, "getPlan");
 
   const deps = {

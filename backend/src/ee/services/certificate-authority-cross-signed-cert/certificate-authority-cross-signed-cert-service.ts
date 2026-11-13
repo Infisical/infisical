@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -126,7 +126,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     $assertCanManageCrossSignedCert(permission, ca.name);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiCrossSignedCa) {
+    if (!plan.has(PlanFeature.PkiCrossSignedCa)) {
       throw new BadRequestError({
         message:
           "Failed to import a cross-signed certificate due to plan restriction. Upgrade plan to use cross-signed CA certificates."

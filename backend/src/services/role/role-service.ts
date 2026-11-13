@@ -2,7 +2,7 @@ import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -89,7 +89,7 @@ export const roleServiceFactory = ({
     await factory.onCreateRoleGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.rbac) {
+    if (!plan?.has(PlanFeature.Rbac)) {
       throw new BadRequestError({
         message:
           "Failed to create custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to create custom roles."
@@ -128,7 +128,7 @@ export const roleServiceFactory = ({
     await factory.onUpdateRoleGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.rbac) {
+    if (!plan?.has(PlanFeature.Rbac)) {
       throw new BadRequestError({
         message:
           "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."

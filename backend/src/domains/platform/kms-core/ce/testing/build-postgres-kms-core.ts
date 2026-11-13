@@ -1,6 +1,6 @@
 import type { TDbClient } from "@app/db";
-import { DataAccessDb } from "@app/domains/lib/data-access-db";
 
+import { DataAccessDb } from "../lib/data-access-db";
 import { KmsCoreModule } from "../module";
 import { TKmsCoreHooks } from "../service/kms-core-hooks";
 import { TKmsCoreEnv } from "../service/root-key-service";

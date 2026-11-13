@@ -33,6 +33,7 @@ export type TGenerateKMSDTO = {
   isReserved?: boolean;
   isExportable?: boolean;
   hasDeleteProtection?: boolean;
+  isPublicKeyPublished?: boolean;
   name?: string;
   description?: string;
 };
@@ -102,6 +103,7 @@ export type TUpdateKmsKeyAttributesDTO = {
   isDisabled?: boolean;
   hasDeleteProtection?: boolean;
   isExportable?: boolean;
+  isPublicKeyPublished?: boolean;
   kmipMetadata?: Record<string, unknown> | null;
 };
 

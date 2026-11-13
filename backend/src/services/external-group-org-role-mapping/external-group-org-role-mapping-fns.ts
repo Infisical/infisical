@@ -1,5 +1,5 @@
 import { OrgMembershipRole, TRoles } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
@@ -20,7 +20,7 @@ export const constructGroupOrgMembershipRoleMappings = async ({
   const plan = await licenseService.getPlan(orgId);
 
   // prevent setting custom values if not in plan
-  if (mappingsDTO.some((map) => isCustomOrgRole(map.roleSlug)) && !plan?.rbac)
+  if (mappingsDTO.some((map) => isCustomOrgRole(map.roleSlug)) && !plan?.has(PlanFeature.Rbac))
     throw new BadRequestError({
       message:
         "Failed to set group organization role mapping due to plan RBAC restriction. Upgrade plan to set custom role mapping."

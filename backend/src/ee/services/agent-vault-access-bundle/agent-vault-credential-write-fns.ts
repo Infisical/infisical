@@ -46,6 +46,57 @@ const keptBasicHalves = (
       credential[key] === undefined && !nextMemberFields?.includes(field) && !previousMemberFields.includes(field)
   ).map(([, key]) => key);
 
+export const SSH_KEY_MEMBER_FIELDS_MESSAGE = "SSH keys can't be left to members yet. Set the key on the service.";
+
+const SSH_KEY_PARTS = ["username", "privateKey", "certificate"] as const;
+
+type TSshKeyUpdate = Extract<TAgentVaultCredentialUpdate, { type: AgentVaultCredentialType.SshKey }>;
+
+export const storedHasCertificate = (stored: TAgentVaultServices) =>
+  stored.credentialType === AgentVaultCredentialType.SshKey &&
+  Boolean((stored.credentialConfig as { hasCertificate?: boolean } | null)?.hasCertificate);
+
+// Only null removes the certificate, so an emptied field can't remove one by accident.
+const sentSshKeyPart = (credential: TSshKeyUpdate, part: (typeof SSH_KEY_PARTS)[number]) =>
+  part === "certificate" && typeof credential.certificate === "string" && !credential.certificate.trim()
+    ? undefined
+    : credential[part];
+
+// Removing a certificate that isn't stored changes nothing, so it rewrites no secret and audits no replaced credential.
+// The edit form sends `certificate: null` only when the user removes the certificate.
+const sendsSshKeyPart = (credential: TSshKeyUpdate, stored: TAgentVaultServices) =>
+  SSH_KEY_PARTS.some((part) =>
+    part === "certificate" && credential.certificate === null
+      ? storedHasCertificate(stored)
+      : sentSshKeyPart(credential, part) !== undefined
+  );
+
+const assertNoSshKeyMemberFields = (credential: TSshKeyUpdate) => {
+  if (credential.memberProvidedFields?.length) {
+    throw new BadRequestError({ message: SSH_KEY_MEMBER_FIELDS_MESSAGE });
+  }
+};
+
+// The certificate stays out of the secret when there is none, so a NULL never reaches the proxy as text.
+const sshKeyWrite = (secret: { username?: string | null; privateKey?: string | null; certificate?: string | null }) => {
+  if (!secret.username) {
+    throw new BadRequestError({ message: "An SSH key credential needs the username to log in as." });
+  }
+  if (!secret.privateKey) {
+    throw new BadRequestError({ message: "An SSH key credential needs a private key." });
+  }
+  const certificate = secret.certificate || undefined;
+  return {
+    config: { type: AgentVaultCredentialType.SshKey as const, hasCertificate: Boolean(certificate) },
+    secret: {
+      username: secret.username,
+      privateKey: secret.privateKey,
+      ...(certificate ? { certificate } : {})
+    },
+    memberProvidedFields: null
+  };
+};
+
 // Sending a value replaces the stored secret, and so does a write that drops a field the admin held: handing it to
 // members, or changing the type over a secret that was stored.
 export const isStoredSecretReplaced = (
@@ -58,6 +109,7 @@ export const isStoredSecretReplaced = (
   if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.OAuth) {
     return false;
   }
+  if (credential.type === AgentVaultCredentialType.SshKey) return sendsSshKeyPart(credential, stored);
 
   const previousMemberFields = (stored.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
   const keyOfField: readonly (readonly [TAgentVaultMemberProvidedField, string])[] =
@@ -73,13 +125,27 @@ export const isStoredSecretReplaced = (
 
 const OAUTH_NEEDS_AUTHORIZATION_MESSAGE = "An OAuth credential needs a completed authorization";
 
+export const NATIVE_BASIC_NEEDS_USERNAME_MESSAGE =
+  "A database or SSH service needs a username to log in as. Set one, or leave the username to each member.";
+
+// A password alone logs in nowhere: every database and SSH login names its user.
+export const assertNativeBasicHasUsername = (write: TCredentialWrite) => {
+  if (write.config.type !== AgentVaultCredentialType.Basic || write.secret === undefined) return;
+  const usernameFromMembers = write.memberProvidedFields?.includes(AgentVaultVariableReferenceField.CredentialUsername);
+  if (!usernameFromMembers && !write.secret?.username) {
+    throw new BadRequestError({ message: NATIVE_BASIC_NEEDS_USERNAME_MESSAGE });
+  }
+};
+
 export const BASIC_NEEDS_A_HALF_MESSAGE =
   "A basic credential needs a username, a password, or both. Set one, or leave one to each member.";
 
 // NULL, never an empty list, is what the column stores for a credential the admin sets in full. An OAuth sign-in left
 // to members is `credential-value`, the field that holds the token.
 export const memberFieldsOf = (credential: TAgentVaultCredentialInput): TAgentVaultMemberProvidedField[] | null => {
-  if (credential.type === AgentVaultCredentialType.Passthrough) return null;
+  if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.SshKey) {
+    return null;
+  }
   const fields = [...new Set<TAgentVaultMemberProvidedField>(credential.memberProvidedFields ?? [])];
   return fields.length ? fields : null;
 };
@@ -126,11 +192,18 @@ export const splitCredential = (credential: TAgentVaultCredentialInput): TCreden
         memberProvidedFields
       };
     }
+    case AgentVaultCredentialType.SshKey:
+      assertNoSshKeyMemberFields(credential);
+      return sshKeyWrite(credential);
     // Its tokens come from a completed authorization, never from the request.
     case AgentVaultCredentialType.OAuth:
       throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_MESSAGE });
-    default:
+    case AgentVaultCredentialType.Passthrough:
       return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null, memberProvidedFields: null };
+    default: {
+      const unknown: never = credential;
+      throw new BadRequestError({ message: `Unknown credential type '${(unknown as { type: string }).type}'` });
+    }
   }
 };
 
@@ -140,7 +213,8 @@ export const nextMemberFieldsOf = (credential: TAgentVaultCredentialUpdate, stor
   if (
     credential.type !== stored.credentialType ||
     credential.type === AgentVaultCredentialType.Passthrough ||
-    (credential.type === AgentVaultCredentialType.OAuth && credential.authorizationId)
+    (credential.type === AgentVaultCredentialType.OAuth && credential.authorizationId) ||
+    credential.type === AgentVaultCredentialType.SshKey
   ) {
     return memberFieldsOf(credential);
   }
@@ -169,7 +243,33 @@ export const mergeCredential = (
           "Provide a new token when changing the credential type to bearer, or leave the token to each member. The stored secret belongs to the previous type"
       });
     }
+    if (credential.type === AgentVaultCredentialType.SshKey && !credential.privateKey) {
+      throw new BadRequestError({
+        message:
+          "Provide a private key when changing the credential type to SSH key. The stored secret belongs to the previous type"
+      });
+    }
     return splitCredential(credential);
+  }
+
+  if (credential.type === AgentVaultCredentialType.SshKey) {
+    assertNoSshKeyMemberFields(credential);
+    if (!sendsSshKeyPart(credential, stored)) {
+      return {
+        config: stored.credentialConfig as TAgentVaultCredentialConfig,
+        secret: undefined,
+        memberProvidedFields: null
+      };
+    }
+    const keep = (part: (typeof SSH_KEY_PARTS)[number]) => {
+      const sent = sentSshKeyPart(credential, part);
+      return sent === undefined ? storedSecret?.[part] : sent;
+    };
+    return sshKeyWrite({
+      username: keep("username"),
+      privateKey: keep("privateKey"),
+      certificate: keep("certificate")
+    });
   }
 
   const prev = (stored.credentialConfig ?? {}) as { headerName?: string; headerPrefix?: string };
@@ -239,13 +339,25 @@ export const mergeCredential = (
         memberProvidedFields
       };
     }
-    default:
+    case AgentVaultCredentialType.Passthrough:
       return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null, memberProvidedFields: null };
+    default: {
+      const unknown: never = credential;
+      throw new BadRequestError({ message: `Unknown credential type '${(unknown as { type: string }).type}'` });
+    }
   }
 };
 
 // Whether an update's write keeps an admin half it left out, which it can only read from the sealed secret.
 export const needsStoredSecretFor = (credential: TAgentVaultCredentialUpdate, service: TAgentVaultServices) => {
+  if (credential.type === AgentVaultCredentialType.SshKey) {
+    return (
+      service.credentialType === AgentVaultCredentialType.SshKey &&
+      Boolean(service.encryptedCredential) &&
+      sendsSshKeyPart(credential, service) &&
+      SSH_KEY_PARTS.some((part) => credential[part] === undefined)
+    );
+  }
   if (credential.type !== AgentVaultCredentialType.Basic) return false;
   if (service.credentialType !== AgentVaultCredentialType.Basic || !service.encryptedCredential) return false;
   const previousMemberFields = (service.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];

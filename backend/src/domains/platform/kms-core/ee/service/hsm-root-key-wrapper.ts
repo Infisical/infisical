@@ -1,4 +1,4 @@
-import { BadRequestError } from "@app/lib/errors";
+import { RuleViolationError } from "@app/domains/lib/errors";
 
 import { TRootKeyWrapper } from "../../ce/service/kms-core-hooks";
 import { THsmClient } from "../hsm-client/hsm-client";
@@ -22,7 +22,7 @@ export class HsmRootKeyWrapper implements TRootKeyWrapper {
 
   assertEntitled() {
     if (!this.isEntitled?.()) {
-      throw new BadRequestError({
+      throw new RuleViolationError({
         message: "Your license does not include HSM integration. Please upgrade to the Enterprise plan to use HSM."
       });
     }
@@ -41,7 +41,7 @@ export class HsmRootKeyWrapper implements TRootKeyWrapper {
   }
 
   private requireClient() {
-    if (!this.client) throw new BadRequestError({ message: "HSM service is inactive. Did you configure the HSM?" });
+    if (!this.client) throw new RuleViolationError({ message: "HSM service is inactive. Did you configure the HSM?" });
     return this.client;
   }
 }

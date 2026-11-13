@@ -1,66 +1,56 @@
 /* eslint-disable class-methods-use-this */
-import { InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
-import { Plan, TPlanProps } from "../model/plan";
-import { SeatUsage } from "../model/seat-usage";
-import { TLicenseService } from "../service/license-service";
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsRecord } from "../models/instance-entitlements";
+import { Plan, TPlanFeatures } from "../models/plan";
+import { SeatUsage } from "../models/seat-usage";
+import { TLicenseService } from "../services/license/service";
 import { testFeatures } from "./test-features";
 
 const noSeatsUsed = () => SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 });
 
-// For tests of code that uses License: set a plan per org, usage reports get dropped.
+// For tests of code that uses License: set a plan per org.
 export class FakeLicenseService implements TLicenseService {
-  instance: TInstanceEntitlementsProps = {
+  instance: TInstanceEntitlementsRecord = {
     instanceType: InstanceType.Cloud,
     features: testFeatures(),
-    licenseId: null,
-    customerId: null
+    licenseId: null
   };
 
-  plans = new Map<string, TPlanProps>();
+  plans = new Map<string, TPlanFeatures>();
 
-  defaultPlan: TPlanProps = testFeatures();
+  defaultPlan: TPlanFeatures = testFeatures();
 
   fallbackOrgs = new Set<string>();
 
-  lastKnown = new Map<string, { plan: TPlanProps; fetchedAt: number }>();
+  lastKnown = new Map<string, { plan: TPlanFeatures; fetchedAt: number }>();
 
-  setPlan(orgId: string, plan: Partial<TPlanProps>) {
-    this.plans.set(orgId, { ...testFeatures(), ...plan } as TPlanProps);
+  setPlan(orgId: string, plan: Partial<TPlanFeatures>) {
+    this.plans.set(orgId, { ...testFeatures(), ...plan });
     return this;
   }
 
-  getInstanceEntitlements = () => this.instance;
+  getInstanceEntitlements = () => InstanceEntitlements.restore(this.instance);
 
-  getInstanceType = () => this.instance.instanceType;
+  refreshInstanceEntitlements = async () => undefined;
 
-  getLicenseId = () => this.instance.licenseId ?? "unknown";
-
-  getPlan = async (orgId: string) => Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
+  getPlan = async (orgId: string) => {
+    const plan = Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
+    return this.fallbackOrgs.has(orgId) ? plan.asFallback() : plan;
+  };
 
   refreshPlan = async () => undefined;
 
   invalidatePlan = async () => undefined;
-
-  isServingFallbackPlan = async (orgId: string) => this.fallbackOrgs.has(orgId);
 
   getLastKnownPlan = async (orgId: string) => {
     const lastKnown = this.lastKnown.get(orgId);
     return lastKnown ? { plan: Plan.restore(lastKnown.plan), fetchedAt: lastKnown.fetchedAt } : null;
   };
 
-  getSeatUsage = async () => noSeatsUsed();
+  getSeatUsage: TLicenseService["getSeatUsage"] = async () => noSeatsUsed();
 
-  getInstanceSeatUsage = async () => noSeatsUsed();
-
-  syncSeats = async () => undefined;
+  getSeatCountScope = (orgId: string) => (this.instance.instanceType === InstanceType.Cloud ? orgId : null);
 
   closeDeletedOrg = async () => ({ licensesClosed: 0, canceledSubscriptionIds: [], commitmentForfeited: false });
-
-  emit = () => undefined;
-
-  countUsage = async () => null;
-
-  recordMeteringEvents = () => undefined;
 
   hasOfflineLicenseKey = () => false;
 }

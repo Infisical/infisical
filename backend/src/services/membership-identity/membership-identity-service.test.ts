@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
 import { membershipIdentityServiceFactory } from "./membership-identity-service";
 import {
@@ -110,6 +111,7 @@ const createService = ({
     identityMetadataDAL: { delete: deleteMetadata },
     identityGroupMembershipDAL: { deleteByIdentityIdsInGroupsOwnedByOrgs },
     licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: {
       findById: vi.fn().mockResolvedValue(projectType ? { id: "project-1", type: projectType } : undefined)

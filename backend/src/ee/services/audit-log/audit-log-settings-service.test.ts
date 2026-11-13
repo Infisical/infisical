@@ -143,8 +143,8 @@ const createHarness = ({
   const projectDAL = {
     findById: vi.fn(async (id: string) => ({ id, orgId: "org-1" }))
   };
-  const licenseService = new FakeLicenseService().setPlan("org-1", { auditLogs: planHasAuditLogs as false });
-  licenseService.defaultPlan = { ...licenseService.defaultPlan, auditLogs: true as false };
+  const licenseService = new FakeLicenseService().setPlan("org-1", { auditLogs: planHasAuditLogs });
+  licenseService.defaultPlan = { ...licenseService.defaultPlan, auditLogs: true };
 
   const service = auditLogSettingsServiceFactory({
     auditLogSettingsDAL: auditLogSettingsDAL as never,

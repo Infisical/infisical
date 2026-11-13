@@ -1,4 +1,4 @@
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -17,7 +17,7 @@ type TGetAppConnectionFunc = (
 // Enterprise check
 export const checkPlan = async (licenseService: TLicenseService, orgId: string) => {
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.enterpriseAppConnections)
+  if (!plan.has(PlanFeature.EnterpriseAppConnections))
     throw new BadRequestError({
       message:
         "Failed to use app connection due to plan restriction. Upgrade plan to access enterprise app connections."

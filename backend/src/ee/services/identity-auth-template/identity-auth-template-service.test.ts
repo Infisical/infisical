@@ -132,9 +132,9 @@ const createService = ({
       })
     },
     licenseService: new FakeLicenseService().setPlan(ORG_ID, {
-      machineIdentityAuthTemplates: true as false,
-      gateway: true as false,
-      gatewayPool: true as false
+      machineIdentityAuthTemplates: true,
+      gateway: true,
+      gatewayPool: true
     }),
     auditLogService: { createAuditLog: auditLogCreate }
   } as unknown as Parameters<typeof identityAuthTemplateServiceFactory>[0]);

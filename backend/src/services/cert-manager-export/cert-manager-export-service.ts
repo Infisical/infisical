@@ -281,7 +281,8 @@ export const certManagerExportServiceFactory = ({
             notBefore: internalCa.notBefore ? new Date(internalCa.notBefore) : null,
             notAfter: internalCa.notAfter ? new Date(internalCa.notAfter) : null,
             activeCaCertId: newActiveCaCertId,
-            crlDistributionPointUrls: internalCa.crlDistributionPointUrls ?? []
+            crlDistributionPointUrls: internalCa.crlDistributionPointUrls ?? [],
+            crlValidityDays: internalCa.crlValidityDays
           },
           tx
         );
@@ -298,7 +299,10 @@ export const certManagerExportServiceFactory = ({
             {
               caId: newCa.id,
               caSecretId: newCrlSecretId,
-              encryptedCrl: await reencrypt(sourceCrl.encryptedCrl)
+              encryptedCrl: await reencrypt(sourceCrl.encryptedCrl),
+              thisUpdate: sourceCrl.thisUpdate,
+              nextUpdate: sourceCrl.nextUpdate,
+              crlNumber: sourceCrl.crlNumber
             },
             tx
           );

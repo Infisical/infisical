@@ -38,7 +38,7 @@ export const offlineUsageReportServiceFactory = ({
       });
     }
 
-    const licenseId = licenseService.getLicenseId();
+    const { licenseId } = licenseService.getInstanceEntitlements();
 
     const [
       userMetrics,

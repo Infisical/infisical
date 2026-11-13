@@ -1,7 +1,7 @@
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
 import { AgentVaultCredentialType, TAgentVaultMemberProvidedField } from "../agent-vault/agent-vault-enums";
 
-export type TPersonalValuesByServiceDTO = TAgentVaultProjectScoped & { accessBundleId: string; serviceId: string };
+export type TPersonalValuesByServiceDTO = TAgentVaultProjectScoped & { serviceId: string };
 
 export type TSetPersonalValuesDTO = TPersonalValuesByServiceDTO & {
   values: { field: TAgentVaultMemberProvidedField; value: string }[];

@@ -86,6 +86,7 @@ const setup = ({
     agentVaultVariableDAL: {} as never,
     agentVaultServiceDAL: {
       findByIdInProject: vi.fn(async () => readService),
+      findBundlesForServices: vi.fn(async () => new Map([[SERVICE_ID, [{ id: BUNDLE_ID, name: "bundle" }]]])),
       lockForPersonalValues: vi.fn(async () => lockedService)
     } as never,
     agentVaultOauthService: {
@@ -103,7 +104,6 @@ const setup = ({
   const connect = () =>
     service.connectOauth({
       projectId: PROJECT_ID,
-      accessBundleId: BUNDLE_ID,
       serviceId: SERVICE_ID,
       authorizationId: "authorization",
       ctx: {

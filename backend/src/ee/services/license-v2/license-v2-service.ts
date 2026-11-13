@@ -3,13 +3,15 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import {
+  Meter,
   TCatalogProduct,
   TEntitlementOrg,
-  TLicenseService,
   TLicenseServerBilling,
+  TLicenseService,
   TProductLineItem,
   TSubscriptionPreviewPayload,
-  TSubscriptionResponse
+  TSubscriptionResponse,
+  TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
@@ -62,9 +64,9 @@ type TLicenseV2ServiceFactoryDep = {
   organizationsProjectsService: TOrganizationsProjectsService;
   certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
-  // countUsage seeds a purchase's initial per_resource quantities with the org's present provisioned count,
-  // so the previewed and charged figures are truthful.
   licenseService: TLicenseService;
+  // Seeds per_resource quantities with what's provisioned now, so preview and charge match reality.
+  usageMeteringService: TUsageMeteringService;
   licenseBilling: TLicenseServerBilling;
 };
 
@@ -406,7 +408,8 @@ export const licenseV2ServiceFactory = ({
   orgDAL,
   permissionService,
   licenseService,
-  licenseBilling: licenseClient,
+  usageMeteringService,
+  licenseBilling,
   organizationsProjectsService,
   certManagerService,
   breakdownDAL
@@ -444,7 +447,8 @@ export const licenseV2ServiceFactory = ({
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
-        const present = await licenseService.countUsage(orgId, price.dimensionKey);
+        const meter = Meter.fromKey(price.dimensionKey);
+        const present = meter ? await usageMeteringService.countUsage(orgId, meter) : null;
         return { dimensionKey: price.dimensionKey, present, included: price.includedQuantity ?? 0 };
       })
     );
@@ -528,7 +532,7 @@ export const licenseV2ServiceFactory = ({
     const needsCatalog = Boolean(subscription?.items.length);
     if (needsCatalog) {
       try {
-        const catalog = await licenseClient.getCatalog(org.id);
+        const catalog = await licenseBilling.getCatalog(org.id);
         catalog?.products.forEach((product) => {
           catalogProductById.set(product.id, product);
           product.dimensions.forEach((dimension) => {
@@ -557,7 +561,7 @@ export const licenseV2ServiceFactory = ({
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
 
-          // The license server reports usage for every dimension now: metered dims carry the period
+          // The license server reports usage for every dimension: metered dims carry the period
           // reading, per_resource dims the latest reported snapshot. Use it directly so the figure
           // matches what the customer is billed on (no separate live count that could diverge).
           const used = dimension.used ?? 0;
@@ -739,9 +743,9 @@ export const licenseV2ServiceFactory = ({
     }
 
     let features = null;
-    let products: NonNullable<Awaited<ReturnType<typeof licenseClient.getEntitlements>>>["products"] = [];
+    let products: NonNullable<Awaited<ReturnType<typeof licenseBilling.getEntitlements>>>["products"] = [];
     try {
-      const result = await licenseClient.getEntitlements(org);
+      const result = await licenseBilling.getEntitlements(org);
       features = result?.features ?? null;
       products = result?.products ?? [];
     } catch (error) {
@@ -798,7 +802,7 @@ export const licenseV2ServiceFactory = ({
     // is unreachable, so surface it (the UI shows an error state) rather than masquerading as "Free".
     let subscription: TSubscriptionResponse | null = null;
     try {
-      subscription = await licenseClient.getSubscription(orgId);
+      subscription = await licenseBilling.getSubscription(orgId);
     } catch (error) {
       logger.error(error, `billing-v2: failed to read subscription [orgId=${orgId}]`);
       throw error;
@@ -824,7 +828,7 @@ export const licenseV2ServiceFactory = ({
     let invoices: BillingV2Overview["invoices"] = [];
     // Self-hosted has no Stripe customer (no billing profile endpoint); leave payment/invoices empty.
     try {
-      const profile = isSelfHostedLicense ? null : await licenseClient.getBillingProfile(orgId);
+      const profile = isSelfHostedLicense ? null : await licenseBilling.getBillingProfile(orgId);
       if (profile) {
         payment = profile.payment;
         // name/email/address/taxIds pass straight through (address keeps its nullable sub-fields;
@@ -859,7 +863,7 @@ export const licenseV2ServiceFactory = ({
     let trialHistory: BillingV2Trial[] = [];
     if (!isSelfHostedLicense) {
       try {
-        const trials = await licenseClient.getTrials(orgId);
+        const trials = await licenseBilling.getTrials(orgId);
         trialHistory = trials.trials.map((trial) => ({
           productKey: trial.product_key,
           planTier: trial.plan_key ?? null,
@@ -1187,8 +1191,7 @@ export const licenseV2ServiceFactory = ({
     return { organizations: orgs, totalCount };
   };
 
-  // The manual refresh button: fetches the plan again and replaces the cached one only when the fetch
-  // succeeds, so an outage keeps the org's current plan instead of the fallback.
+  // Only replaces the cached plan on success, so an outage keeps the current plan instead of the fallback.
   const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
     await ensureBillingRead(orgId, actor);
     await licenseService.refreshPlan(orgId);
@@ -1198,7 +1201,7 @@ export const licenseV2ServiceFactory = ({
   const getCatalog = async ({ orgId, actor, isInstanceAdmin }: TGetBillingV2CatalogDTO) => {
     await ensureBillingRead(orgId, actor, isInstanceAdmin);
 
-    const catalog = await licenseClient.getCatalog(orgId);
+    const catalog = await licenseBilling.getCatalog(orgId);
     if (!catalog) {
       return { products: [] };
     }
@@ -1242,7 +1245,7 @@ export const licenseV2ServiceFactory = ({
   };
 
   const openPortal = async (orgId: string, returnPath?: string) => {
-    const session = await licenseClient.createPortal(orgId, {
+    const session = await licenseBilling.createPortal(orgId, {
       returnPath,
       returnUrl: buildReturnUrl(orgId, returnPath)
     });
@@ -1266,7 +1269,7 @@ export const licenseV2ServiceFactory = ({
   }: TBuyBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
 
-    const catalog = await licenseClient.getCatalog(orgId);
+    const catalog = await licenseBilling.getCatalog(orgId);
     const product = catalog?.products.find((candidate) => candidate.id === productId);
     if (!product) {
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
@@ -1279,7 +1282,7 @@ export const licenseV2ServiceFactory = ({
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
 
-    const result = await licenseClient.buyProduct(orgId, {
+    const result = await licenseBilling.buyProduct(orgId, {
       productId,
       plan: resolved.planTier,
       cadence: normalizedCadence,
@@ -1364,7 +1367,7 @@ export const licenseV2ServiceFactory = ({
       payload.upgrade = { productId: upgradeProductId, plan: upgradePlan };
     }
     if (addProductId) {
-      const catalog = await licenseClient.getCatalog(orgId);
+      const catalog = await licenseBilling.getCatalog(orgId);
       const product = catalog?.products.find((candidate) => candidate.id === addProductId);
       if (!product) {
         throw new NotFoundError({ message: `Product with ID '${addProductId}' not found` });
@@ -1389,7 +1392,7 @@ export const licenseV2ServiceFactory = ({
       payload.commitmentChanges = commitmentChanges;
     }
 
-    const preview = await licenseClient.previewSubscriptionChange(orgId, payload);
+    const preview = await licenseBilling.previewSubscriptionChange(orgId, payload);
     const totalDueNowCents = preview.totalDueNow ?? preview.prorationAmount + preview.additionalCharges;
     return {
       preview: {
@@ -1431,7 +1434,7 @@ export const licenseV2ServiceFactory = ({
         });
       }
     }
-    const result = await licenseClient.upgradeProduct(orgId, {
+    const result = await licenseBilling.upgradeProduct(orgId, {
       productId,
       plan,
       expectedPlanVersionId,
@@ -1454,7 +1457,7 @@ export const licenseV2ServiceFactory = ({
     if (!changes.length) {
       throw new BadRequestError({ message: "Provide at least one commitment change" });
     }
-    const result = await licenseClient.changeCommitments(orgId, {
+    const result = await licenseBilling.changeCommitments(orgId, {
       productId,
       dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
@@ -1484,11 +1487,11 @@ export const licenseV2ServiceFactory = ({
     // Seed the trial with the org's present usage so it opens showing current quantities, exactly as
     // checkout does. A trial converts to a monthly usage-based line, so derive declaredUsage at the
     // monthly cadence; skip it silently if the product/plan can't be resolved (server floors it).
-    const catalog = await licenseClient.getCatalog(orgId);
+    const catalog = await licenseBilling.getCatalog(orgId);
     const product = catalog?.products.find((candidate) => candidate.id === productId);
     const resolved = product ? await buildProductLineItem(product, "monthly", orgId, plan) : null;
 
-    const result = await licenseClient.startTrial(orgId, {
+    const result = await licenseBilling.startTrial(orgId, {
       productKey: productId,
       planKey: plan,
       email,
@@ -1507,7 +1510,7 @@ export const licenseV2ServiceFactory = ({
   // the server (no active trial) propagates so the UI can surface it.
   const cancelTrial = async ({ orgId, actor, productId }: TCancelBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
+    const result = await licenseBilling.cancelTrial(orgId, { productKey: productId });
     await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { outcome: result.outcome };
   };
@@ -1516,7 +1519,7 @@ export const licenseV2ServiceFactory = ({
   // like checkout.
   const confirmTrialPayment = async ({ orgId, actor, returnPath }: TConfirmBillingV2TrialPaymentDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.confirmTrialPayment(orgId, { returnUrl: buildReturnUrl(orgId, returnPath) });
+    const result = await licenseBilling.confirmTrialPayment(orgId, { returnUrl: buildReturnUrl(orgId, returnPath) });
     if (result.outcome === "payment_action_required") {
       const { paymentUrl } = await paymentActionRequired(orgId, result.paymentUrl);
       return { outcome: result.outcome, redirectUrl: paymentUrl };
@@ -1539,7 +1542,7 @@ export const licenseV2ServiceFactory = ({
   // Portal cannot do. The license server prorates at commit time (Stripe default = now).
   const removeProduct = async ({ orgId, actor, productId }: TRemoveBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.removeProduct(orgId, productId);
+    const result = await licenseBilling.removeProduct(orgId, productId);
     await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { subscriptionId: result.subscriptionId };
   };

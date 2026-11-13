@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -176,7 +176,7 @@ export const caSigningConfigServiceFactory = ({
     // one is refused. updateSigningConfig takes no type, so it cannot reach this.
     if (isExternalCa && !EXTERNAL_SIGNING_TYPES.includes(existing?.type ?? "")) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.pkiEnterpriseCaIntegrations) {
+      if (!plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
         throw new BadRequestError({
           message:
             "Failed to sign this certificate authority through a third-party provider due to plan restriction. Upgrade plan to connect an external certificate authority."

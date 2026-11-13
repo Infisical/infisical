@@ -1,4 +1,5 @@
-// Package offlineterminated_test boots with a validly signed offline license that's past its termination date.
+// Package offlineterminated_test boots with a validly signed offline license past its
+// termination date.
 package offlineterminated_test
 
 import (

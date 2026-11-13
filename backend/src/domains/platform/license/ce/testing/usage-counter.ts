@@ -1,7 +1,8 @@
-import { TUsageCounter } from "../service/dependencies";
+import { Meter } from "../models/meter";
+import { TUsageCounter } from "../services/dependencies";
 
-export const usageCounter = (counters: TUsageCounter[], key: string): TUsageCounter => {
-  const counter = counters.find((c) => c.meter.key === key);
-  if (!counter) throw new Error(`No usage counter was built for '${key}'`);
+export const usageCounter = (counters: TUsageCounter[], meter: Meter): TUsageCounter => {
+  const counter = counters.find((c) => c.meter === meter);
+  if (!counter) throw new Error(`No usage counter was built for '${meter.key}'`);
   return counter;
 };

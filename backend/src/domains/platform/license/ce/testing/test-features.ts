@@ -1,4 +1,4 @@
-import { TInstanceFeatures } from "../model/instance-entitlements";
+import { TInstanceFeatures } from "../models/instance-entitlements";
 
 // Test data only. The real defaults live in EE (getDefaultOnPremFeatures) and nothing outside tests reads this.
 export const testFeatures = (): TInstanceFeatures => ({
@@ -62,9 +62,9 @@ export const testFeatures = (): TInstanceFeatures => ({
   // Cloud turns it on in withCloudPlanDefaults; self-hosted needs a license that includes it.
   agentVaultManagedStorage: false,
   agentVaultSessionLogRetentionDays: 30,
+  agentVaultHooks: true,
   secretSyncLimit: null,
   maxPamAccounts: null,
-  // PKI / Cert Manager
   pkiAcme: true,
   pkiEst: false,
   pkiScep: false,
@@ -86,7 +86,6 @@ export const testFeatures = (): TInstanceFeatures => ({
   maxCertificates: null,
   maxWildcardCertificates: null,
   maxSansPerCertificate: null,
-  // product gating
   pam: null,
   certManager: null,
   secretsTemporaryAccess: null,
@@ -97,4 +96,4 @@ export const testFeatures = (): TInstanceFeatures => ({
   instanceUserManagement: false
 });
 
-export const enterprisePlan = (): TInstanceFeatures => ({ ...testFeatures(), slug: "enterprise", rbac: true as false });
+export const enterprisePlan = (): TInstanceFeatures => ({ ...testFeatures(), slug: "enterprise", rbac: true });

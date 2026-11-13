@@ -1,6 +1,7 @@
 import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, KMSClient } from "@aws-sdk/client-kms";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import {
   ExternalKmsAwsSchema,
   KmsAwsCredentialType,
@@ -9,7 +10,6 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
 
 const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
   if (providerInputs.credential.type === KmsAwsCredentialType.AssumeRole) {
@@ -27,7 +27,7 @@ const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
     });
     const response = await stsClient.send(command);
     if (!response.Credentials?.AccessKeyId || !response.Credentials?.SecretAccessKey)
-      throw new BadRequestError({ message: "Failed to assume role" });
+      throw new RuleViolationError({ message: "Failed to assume role" });
 
     const kmsClient = new KMSClient({
       region: providerInputs.awsRegion,
@@ -72,7 +72,7 @@ export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Pro
     const command = new CreateKeyCommand({ Tags: [{ TagKey: "author", TagValue: "infisical" }] });
     const kmsKey = await awsClient.send(command);
 
-    if (!kmsKey.KeyMetadata?.KeyId) throw new BadRequestError({ message: "Failed to generate kms key" });
+    if (!kmsKey.KeyMetadata?.KeyId) throw new RuleViolationError({ message: "Failed to generate kms key" });
 
     const updatedProviderInputs = await ExternalKmsAwsSchema.parseAsync({
       ...providerInputs,

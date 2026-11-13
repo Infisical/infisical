@@ -7,8 +7,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // Plan reads only. The cloud billing surface (checkout, portal, payment methods, tax ids, invoices)
-// lives on the License Server v2 routes in license-v2-router; the License Server v1 endpoints these
-// used to call are decommissioned.
+// lives on the License Server v2 routes in license-v2-router.
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   // Any member of the org can read its plan, which is always its root org's.
   const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
@@ -48,7 +47,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const plan = await readOrgPlan(req, req.params.organizationId, req.query.refreshCache);
-      return { plan };
+      return { plan: plan.toJSON() };
     }
   });
 
@@ -67,7 +66,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return readOrgPlan(req, req.params.organizationId, false);
+      return (await readOrgPlan(req, req.params.organizationId, false)).toJSON();
     }
   });
 };

@@ -360,6 +360,7 @@
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/external-infisical",
+                      "integrations/secret-syncs/jenkins",
                       "integrations/secret-syncs/keeper-password-manager",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
@@ -732,11 +733,14 @@
                     "root": "documentation/platform/agent-vault/services",
                     "pages": [
                       "documentation/platform/agent-vault/http-apis",
-                      "documentation/platform/agent-vault/mcp-servers"
+                      "documentation/platform/agent-vault/mcp-servers",
+                      "documentation/platform/agent-vault/databases-and-ssh",
+                      "documentation/platform/agent-vault/hooks"
                     ]
                   },
                   "documentation/platform/agent-vault/variables",
                   "documentation/platform/agent-vault/skills",
+                  "documentation/platform/agent-vault/service-discovery",
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
@@ -1091,6 +1095,7 @@
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
                   "integrations/app-connections/imperva",
+                  "integrations/app-connections/jenkins",
                   "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
@@ -2142,6 +2147,18 @@
                           "api-reference/endpoints/app-connections/external-infisical/create",
                           "api-reference/endpoints/app-connections/external-infisical/update",
                           "api-reference/endpoints/app-connections/external-infisical/delete"
+                        ]
+                      },
+                      {
+                        "group": "Jenkins",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/jenkins/list",
+                          "api-reference/endpoints/app-connections/jenkins/available",
+                          "api-reference/endpoints/app-connections/jenkins/get-by-id",
+                          "api-reference/endpoints/app-connections/jenkins/get-by-name",
+                          "api-reference/endpoints/app-connections/jenkins/create",
+                          "api-reference/endpoints/app-connections/jenkins/update",
+                          "api-reference/endpoints/app-connections/jenkins/delete"
                         ]
                       },
                       {
@@ -3745,6 +3762,19 @@
                         ]
                       },
                       {
+                        "group": "Jenkins",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/jenkins/list",
+                          "api-reference/endpoints/secret-syncs/jenkins/get-by-id",
+                          "api-reference/endpoints/secret-syncs/jenkins/get-by-name",
+                          "api-reference/endpoints/secret-syncs/jenkins/create",
+                          "api-reference/endpoints/secret-syncs/jenkins/update",
+                          "api-reference/endpoints/secret-syncs/jenkins/delete",
+                          "api-reference/endpoints/secret-syncs/jenkins/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/jenkins/remove-secrets"
+                        ]
+                      },
+                      {
                         "group": "Keeper Password Manager",
                         "pages": [
                           "api-reference/endpoints/secret-syncs/keeper-password-manager/list",
@@ -4392,6 +4422,7 @@
                           "api-reference/endpoints/certificate-authorities/internal/csr",
                           "api-reference/endpoints/certificate-authorities/internal/cert",
                           "api-reference/endpoints/certificate-authorities/internal/crl",
+                          "api-reference/endpoints/certificate-authorities/internal/regenerate-crl",
                           {
                             "group": "Installation",
                             "pages": [
@@ -4574,12 +4605,19 @@
                       "api-reference/endpoints/agent-vault-access-bundles/get",
                       "api-reference/endpoints/agent-vault-access-bundles/create",
                       "api-reference/endpoints/agent-vault-access-bundles/update",
-                      "api-reference/endpoints/agent-vault-access-bundles/delete"
+                      "api-reference/endpoints/agent-vault-access-bundles/delete",
+                      "api-reference/endpoints/agent-vault-access-bundles/add-services",
+                      "api-reference/endpoints/agent-vault-access-bundles/remove-service",
+                      "api-reference/endpoints/agent-vault-access-bundles/list-skills",
+                      "api-reference/endpoints/agent-vault-access-bundles/add-skills",
+                      "api-reference/endpoints/agent-vault-access-bundles/remove-skill"
                     ]
                   },
                   {
                     "group": "Services",
                     "pages": [
+                      "api-reference/endpoints/agent-vault-services/list",
+                      "api-reference/endpoints/agent-vault-services/get",
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
                       "api-reference/endpoints/agent-vault-services/delete",
@@ -4602,15 +4640,14 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-skills/list",
                       "api-reference/endpoints/agent-vault-skills/get",
+                      "api-reference/endpoints/agent-vault-skills/get-builtin",
                       "api-reference/endpoints/agent-vault-skills/create",
                       "api-reference/endpoints/agent-vault-skills/delete",
                       "api-reference/endpoints/agent-vault-skills/list-versions",
                       "api-reference/endpoints/agent-vault-skills/get-version",
                       "api-reference/endpoints/agent-vault-skills/update",
                       "api-reference/endpoints/agent-vault-skills/restore-version",
-                      "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
-                      "api-reference/endpoints/agent-vault-skills/add",
-                      "api-reference/endpoints/agent-vault-skills/remove"
+                      "api-reference/endpoints/agent-vault-skills/list-session-skills"
                     ]
                   },
                   {
@@ -4665,6 +4702,7 @@
                       "api-reference/endpoints/agent-vault-sessions/update",
                       "api-reference/endpoints/agent-vault-sessions/revoke",
                       "api-reference/endpoints/agent-vault-sessions/revoke-by-token",
+                      "api-reference/endpoints/agent-vault-sessions/list-session-services",
                       "api-reference/endpoints/agent-vault-session-logs/list",
                       "api-reference/endpoints/agent-vault-session-logs/tail"
                     ]
@@ -4693,6 +4731,7 @@
                       "api-reference/endpoints/kms/keys/rotate",
                       "api-reference/endpoints/kms/keys/delete",
                       "api-reference/endpoints/kms/keys/public-key",
+                      "api-reference/endpoints/kms/keys/public-jwks",
                       "api-reference/endpoints/kms/keys/private-key",
                       "api-reference/endpoints/kms/keys/bulk-export-private-keys"
                     ]
@@ -5043,6 +5082,18 @@
     }
   },
   "redirects": [
+    {
+      "source": "/api-reference/endpoints/agent-vault-skills/add",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundles/add-skills"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-skills/remove",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundles/remove-skill"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-skills/list-bundle-skills",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundles/list-skills"
+    },
     {
       "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",
       "destination": "/api-reference/endpoints/agent-vault-proxies/rotate-token"

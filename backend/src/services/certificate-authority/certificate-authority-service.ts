@@ -2,7 +2,14 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  PlanProduct,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -87,7 +94,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { assertNoCertificateProfilesUsingCa, deleteCaAndReleaseExternalKey } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
-import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
+import { assertCertificateAuthorityQuota } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -165,6 +172,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
@@ -198,6 +206,7 @@ export const certificateAuthorityServiceFactory = ({
   gatewayPoolService,
   keyStore,
   licenseService,
+  usageMeteringService,
   caKeySourceService,
   certificateAuthoritySecretDAL,
   pkiAlertV2Queue,
@@ -337,13 +346,13 @@ export const certificateAuthorityServiceFactory = ({
 
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (typeof plan.certManager === "boolean" && !plan.certManager) {
+    if (!plan.allows(PlanProduct.CertManager)) {
       throw new BadRequestError({
         message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
       });
     }
 
-    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
       throw new BadRequestError({
         message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
       });
@@ -384,7 +393,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      licenseService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -679,8 +688,11 @@ export const certificateAuthorityServiceFactory = ({
     ]);
 
     return {
-      certificateAuthorities: { used: totalUsed, limit: resolveEffectiveMaxCas(plan) },
-      internalCertificateAuthorities: { used: internalUsed, limit: plan.maxInternalCas ?? null }
+      certificateAuthorities: { used: totalUsed, limit: plan.limit(PlanLimit.CertificateAuthorities) },
+      internalCertificateAuthorities: {
+        used: internalUsed,
+        limit: plan.limit(PlanLimit.InternalCertificateAuthorities)
+      }
     };
   };
 
@@ -803,6 +815,7 @@ export const certificateAuthorityServiceFactory = ({
             crlDistributionPointUrls?: string[];
             disableManagedCrlDistributionPointUrl?: boolean;
             isOcspEnabled?: boolean;
+            crlValidityDays?: number;
           }
         | undefined;
 
@@ -813,7 +826,8 @@ export const certificateAuthorityServiceFactory = ({
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
         disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
-        isOcspEnabled: internalConfig?.isOcspEnabled
+        isOcspEnabled: internalConfig?.isOcspEnabled,
+        crlValidityDays: internalConfig?.crlValidityDays
       });
 
       if (!updatedCa.internalCa) {
@@ -823,14 +837,17 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       return {
-        id: updatedCa.id,
-        type,
-        enableDirectIssuance: updatedCa.enableDirectIssuance,
-        name: updatedCa.name,
-        projectId: updatedCa.projectId,
-        configuration: updatedCa.internalCa,
-        status: updatedCa.status
-      } as TCertificateAuthority;
+        ...({
+          id: updatedCa.id,
+          type,
+          enableDirectIssuance: updatedCa.enableDirectIssuance,
+          name: updatedCa.name,
+          projectId: updatedCa.projectId,
+          configuration: updatedCa.internalCa,
+          status: updatedCa.status
+        } as TCertificateAuthority),
+        crlWarning: updatedCa.crlWarning
+      };
     }
 
     if (type === CaType.ACME) {
@@ -960,7 +977,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      licenseService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
@@ -1199,7 +1216,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      licenseService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,

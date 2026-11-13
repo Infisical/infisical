@@ -1,5 +1,5 @@
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -95,9 +95,8 @@ export const assertCertificateQuota = async ({
   const plan = await deps.licenseService.getPlan(orgId);
   const unlimited = { quotaKey, isNewQuotaKey: false, quotaOrgId: orgId, isWildcard };
 
-  const { maxCertificates, maxWildcardCertificates } = plan;
-  const hasWildcardCap = isWildcard && typeof maxWildcardCertificates === "number";
-  if (typeof maxCertificates !== "number" && !hasWildcardCap) return unlimited;
+  const hasWildcardCap = isWildcard && plan.isLimited(PlanLimit.WildcardCertificates);
+  if (!plan.isLimited(PlanLimit.Certificates) && !hasWildcardCap) return unlimited;
 
   // Correctness, not an optimization: reissuing names already held in the counted scope cannot raise
   // either count, and this is what lets an org sitting at its cap keep renewing. Remove it and its
@@ -113,7 +112,7 @@ export const assertCertificateQuota = async ({
   const holder = isInstanceWide ? "this instance" : "your organization";
 
   // 0 is how a plan says it has no wildcard support at all.
-  if (isWildcard && maxWildcardCertificates === 0) {
+  if (isWildcard && plan.limit(PlanLimit.WildcardCertificates) === 0) {
     throw new BadRequestError({
       message: `Failed to issue certificate with a wildcard name due to plan restriction. Upgrade plan to issue wildcard certificates.`
     });
@@ -121,7 +120,7 @@ export const assertCertificateQuota = async ({
 
   const counts = await $getQuotaCounts(quotaOrgId, deps);
 
-  const refuse = (used: number, cap: number, subject: string) => {
+  const refuse = (used: number, cap: number | null, subject: string) => {
     if (isApprovedRequest) {
       throw new BadRequestError({
         message: `This certificate request was approved, but ${holder} has since reached its plan limit of ${cap} ${subject} (${used} of ${cap} in use). Upgrade plan or revoke an unused certificate, then submit the request again.`
@@ -133,12 +132,12 @@ export const assertCertificateQuota = async ({
   };
 
   // Before the total, so the refusal names the limit the caller actually hit.
-  if (hasWildcardCap && counts.wildcard >= maxWildcardCertificates) {
-    refuse(counts.wildcard, maxWildcardCertificates, "active wildcard certificates");
+  if (isWildcard && plan.exceeds(PlanLimit.WildcardCertificates, counts.wildcard)) {
+    refuse(counts.wildcard, plan.limit(PlanLimit.WildcardCertificates), "active wildcard certificates");
   }
 
-  if (typeof maxCertificates === "number" && counts.total >= maxCertificates) {
-    refuse(counts.total, maxCertificates, "active certificates");
+  if (plan.exceeds(PlanLimit.Certificates, counts.total)) {
+    refuse(counts.total, plan.limit(PlanLimit.Certificates), "active certificates");
   }
 
   return { quotaKey, isNewQuotaKey: true, quotaOrgId, isWildcard };

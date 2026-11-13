@@ -1,8 +1,6 @@
 import slugify from "@sindresorhus/slugify";
 
 import { ProjectType } from "@app/db/schemas";
-import { TReadOptions } from "@app/domains/lib/data-access-db";
-import { TTransactionRunner } from "@app/domains/lib/transaction-runner";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -11,6 +9,8 @@ import { OrderByDirection } from "@app/lib/types";
 
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
 import { TKmsKeyFilter } from "../data-access/kms-key-data-access";
+import { ReadFrom, TReadOptions } from "../lib/data-access-db";
+import { TTransactionRunner } from "../lib/transaction-runner";
 import { KmsKey, KmsKeyUsage, TKmsKeyAttributes, TKmsKeyRecord } from "../model/kms-key";
 import {
   generateKeyMaterial,
@@ -56,6 +56,7 @@ export class KmsKeyService {
     isReserved = true,
     isExportable = true,
     hasDeleteProtection = false,
+    isPublicKeyPublished = false,
     encryptionAlgorithm = SymmetricKeyAlgorithm.AES_GCM_256,
     keyUsage = KmsKeyUsage.ENCRYPT_DECRYPT
   }: TGenerateKMSDTO): Promise<TKmsKeyRecord> {
@@ -70,7 +71,8 @@ export class KmsKeyService {
       encryptedKey: wrapWithRootKey(this.deps.state, material),
       isReserved,
       isExportable,
-      hasDeleteProtection
+      hasDeleteProtection,
+      isPublicKeyPublished
     });
     const created = await this.deps.transactionRunner.run(({ dataAccess }) => dataAccess.kmsKeys.create(key));
     return created.toRecord();
@@ -128,6 +130,12 @@ export class KmsKeyService {
 
   async findKeyById(kmsId: string): Promise<TKmsKeyDetails | undefined> {
     const key = await this.deps.dataAccess.kmsKeys.findById(kmsId);
+    return key ? toKeyDetails(key) : undefined;
+  }
+
+  // Reads the primary: a lagging replica could still show a key that was just unpublished or disabled.
+  async findPublishedKeyById(kmsId: string): Promise<TKmsKeyDetails | undefined> {
+    const key = await this.deps.dataAccess.kmsKeys.findPublishedById(kmsId, { readFrom: ReadFrom.Primary });
     return key ? toKeyDetails(key) : undefined;
   }
 

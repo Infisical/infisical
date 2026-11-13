@@ -10,7 +10,12 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -78,7 +83,7 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { buildLdapTlsOptions, searchGroups, testLDAPConfig } from "./ldap-fns";
+import { buildLdapTlsOptions, pinLdapTarget, searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
@@ -123,6 +128,7 @@ type TLdapConfigServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsCoreDomain: TKmsCoreDomain;
@@ -158,6 +164,7 @@ export const ldapConfigServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   tokenService,
   smtpService,
   kmsCoreDomain,
@@ -200,7 +207,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message:
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
@@ -358,7 +365,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message:
           "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
@@ -497,10 +504,10 @@ export const ldapConfigServiceFactory = ({
       isActive: true
     });
 
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
+    const { url, tlsOptions } = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
     const opts = {
       server: {
-        url: ldapConfig.url,
+        url,
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
         uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
@@ -607,8 +614,8 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
-      const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
-      const seatUsage = identityLimit ? await licenseService.getSeatUsage(orgId) : null;
+      const plan = await licenseService.getPlan(orgId);
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -656,7 +663,7 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          seatUsage?.assertAvailable({ identityLimit, via: UserAliasType.LDAP });
+          seatUsage?.assertAvailable(plan, UserAliasType.LDAP);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(
@@ -697,7 +704,7 @@ export const ldapConfigServiceFactory = ({
         });
       }
     }
-    await licenseService.syncSeats(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     const pamCancellations: (() => void)[] = [];
     let user = await userDAL.transaction(async (tx) => {
@@ -749,7 +756,7 @@ export const ldapConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
-              licenseService,
+              usageMeteringService,
               tx
             });
           }
@@ -780,7 +787,7 @@ export const ldapConfigServiceFactory = ({
               groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              licenseService,
+              usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
               membershipDAL,
@@ -968,7 +975,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
       });
@@ -1041,7 +1048,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
       });
@@ -1089,7 +1096,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
       });

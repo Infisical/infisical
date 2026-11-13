@@ -43,6 +43,7 @@ export type TKmsKeyProps = {
   isReserved?: boolean | null;
   isExportable: boolean;
   hasDeleteProtection: boolean;
+  isPublicKeyPublished?: boolean;
   kmipMetadata?: unknown;
   createdAt: Date;
   updatedAt: Date;
@@ -52,7 +53,16 @@ export type TKmsKeyProps = {
 
 // The attributes of a key a caller may change; everything else is fixed at creation or changed by rotation.
 export type TKmsKeyAttributes = Partial<
-  Pick<TKmsKeyProps, "name" | "description" | "isDisabled" | "hasDeleteProtection" | "isExportable" | "kmipMetadata">
+  Pick<
+    TKmsKeyProps,
+    | "name"
+    | "description"
+    | "isDisabled"
+    | "hasDeleteProtection"
+    | "isExportable"
+    | "isPublicKeyPublished"
+    | "kmipMetadata"
+  >
 >;
 
 // The key's public shape: kms_keys columns, without key material.
@@ -77,6 +87,7 @@ export class KmsKey {
     isReserved: boolean;
     isExportable: boolean;
     hasDeleteProtection: boolean;
+    isPublicKeyPublished?: boolean;
     kmipMetadata?: Record<string, unknown> | null;
   }): KmsKey {
     KmsKey.assertAlgorithmFits(input.keyUsage, input.encryptionAlgorithm);
@@ -92,6 +103,7 @@ export class KmsKey {
       isReserved: input.isReserved,
       isExportable: input.isExportable,
       hasDeleteProtection: input.hasDeleteProtection,
+      isPublicKeyPublished: input.isPublicKeyPublished ?? false,
       kmipMetadata: input.kmipMetadata ?? null,
       createdAt: now,
       updatedAt: now,
@@ -212,6 +224,10 @@ export class KmsKey {
 
   get hasDeleteProtection(): boolean {
     return Boolean(this.props.hasDeleteProtection);
+  }
+
+  get isPublicKeyPublished(): boolean {
+    return Boolean(this.props.isPublicKeyPublished);
   }
 
   get internal(): TInternalKeyMaterialProps | undefined {

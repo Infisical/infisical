@@ -13,8 +13,7 @@ export class AgentVaultModule {
     this.usageCounters = [
       {
         meter: Meter.AgentVaultIdentities,
-        count: (orgId) =>
-          organizationsProjectsService.countProjectIdentities(ProjectType.AgentVault, orgId ?? undefined)
+        count: (orgId) => organizationsProjectsService.countProjectIdentities(ProjectType.AgentVault, orgId)
       }
     ];
   }

@@ -619,6 +619,74 @@ describe("Agent Vault session logs", async () => {
     });
   });
 
+  describe("request counts", () => {
+    // The count write isn't awaited by the upload link, so reads poll until it lands.
+    const sessionStats = async (sessionId: string) =>
+      (await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}`)).json().session.stats as {
+        requests: number;
+        brokered: number | null;
+      } | null;
+
+    const counted = (recordCount: number, brokered?: number) =>
+      chunkBody({
+        recordCount,
+        ...(brokered !== undefined && {
+          decisionCounts: { brokered, passthrough: recordCount - brokered, blocked: 0, error: 0 }
+        })
+      });
+
+    const setUp = async (name: string) => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-${name}-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-${name}-${Date.now()}`);
+      return { session, proxy };
+    };
+
+    test("a session no chunk has reached has no counts", async () => {
+      const { session } = await setUp("no-counts");
+      expect(await sessionStats(session.id)).toBeNull();
+    });
+
+    test("each chunk's counts add up on the session, in the list too", async () => {
+      const { session, proxy } = await setUp("add-up");
+      await requestUploadUrl(proxy, session.id, counted(10, 7));
+      await requestUploadUrl(proxy, session.id, counted(5, 2));
+
+      await expect.poll(() => sessionStats(session.id)).toEqual({ requests: 15, brokered: 9 });
+      const listed = (await inject("GET", "/api/v1/agent-vault/sessions?scope=all")).json().sessions as {
+        id: string;
+        stats: unknown;
+      }[];
+      expect(listed.find((row) => row.id === session.id)?.stats).toEqual({ requests: 15, brokered: 9 });
+    });
+
+    test("a chunk without the split leaves brokered unknown for good, whichever comes first", async () => {
+      const splitFirst = await setUp("split-first");
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(10, 7));
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(3));
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(2, 2));
+      await expect.poll(() => sessionStats(splitFirst.session.id)).toEqual({ requests: 15, brokered: null });
+
+      const unknownFirst = await setUp("unknown-first");
+      await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(3));
+      await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(10, 7));
+      await expect.poll(() => sessionStats(unknownFirst.session.id)).toEqual({ requests: 13, brokered: null });
+    });
+
+    test("chunks that arrive at once are all counted", async () => {
+      const { session, proxy } = await setUp("concurrent");
+      await Promise.all(Array.from({ length: 8 }, () => requestUploadUrl(proxy, session.id, counted(4, 3))));
+      await expect.poll(() => sessionStats(session.id)).toEqual({ requests: 32, brokered: 24 });
+    });
+
+    test("a chunk without a total counts nothing", async () => {
+      const { session, proxy } = await setUp("no-total");
+      await requestUploadUrl(proxy, session.id, chunkBody());
+      expect(await sessionStats(session.id)).toBeNull();
+    });
+  });
+
   describe("what resolve tells the proxy", () => {
     const setup = async (label: string) => {
       const bundle = await createAccessBundle(`session-logs-resolve-${label}-${Date.now()}`);
@@ -678,7 +746,8 @@ describe("Agent Vault session logs", async () => {
     test("a session log key that can't be opened turns logs off for the session, and its services still resolve", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-resolve-badkey-${Date.now()}`);
-      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+      const created = await inject("POST", "/api/v1/agent-vault/services", {
+        accessBundleIds: [bundle.id],
         type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",

@@ -97,7 +97,7 @@ func TestCertificateUsage_Report(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 
 		// Action
 		requireImported(t, importCert(t, sub.Admin.API, "reported.quota.test"))
@@ -109,6 +109,7 @@ func TestCertificateUsage_Report(t *testing.T) {
 	})
 }
 
+// An internal cap above the total cap raises the total, so every plan here sets both.
 func TestCertificateAuthorityQuota_Read(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -130,7 +131,6 @@ func TestCertificateAuthorityQuota_Read(t *testing.T) {
 		require.Equal(t, 3, *res.JSON200.CertificateAuthorities.Limit)
 	})
 
-	// An internal cap above the total cap raises the total, so both are set.
 	t.Run("should refuse a CA past the plan's cap", func(t *testing.T) {
 		t.Parallel()
 

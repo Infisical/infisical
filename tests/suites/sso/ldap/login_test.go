@@ -102,9 +102,7 @@ func TestLDAPLogin_SeatLimit(t *testing.T) {
 		d := configured(t, tn)
 		uid, password, email := d.person(t, tn.Email("ldap-"+id.Short()))
 		tn.NewMachineIdentity(t)
-		limited := license.Enterprise().With(license.MaxIdentityLimit, 1)
-		limited.Slug = "pro"
-		tn.SetPlan(t, limited)
+		tn.SetPlan(t, license.SeatLimited(1))
 
 		// Action
 		res := login(t, tn, uid, password)

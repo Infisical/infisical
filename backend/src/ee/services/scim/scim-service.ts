@@ -13,7 +13,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -164,6 +164,7 @@ type TScimServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
@@ -183,6 +184,7 @@ type TScimServiceFactoryDep = {
 
 export const scimServiceFactory = ({
   licenseService,
+  usageMeteringService,
   scimDAL,
   userDAL,
   userAliasDAL,
@@ -235,7 +237,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.has(PlanFeature.Scim))
       throw new BadRequestError({
         message: "Failed to create a SCIM token due to plan restriction. Upgrade plan to create a SCIM token."
       });
@@ -329,7 +331,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.has(PlanFeature.Scim))
       throw new BadRequestError({
         message: "Failed to get SCIM events due to plan restriction. Upgrade plan to get SCIM events."
       });
@@ -629,7 +631,7 @@ export const scimServiceFactory = ({
     });
 
     // After the commit: seat sync calls the License Server.
-    await licenseService.syncSeats(org.id);
+    await usageMeteringService.syncSeats(org.id);
 
     if (isNewUser) {
       void telemetryService.sendPostHogEvents({
@@ -1114,7 +1116,7 @@ export const scimServiceFactory = ({
       orgId: membership.scopeOrgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
@@ -1123,9 +1125,9 @@ export const scimServiceFactory = ({
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
-    licenseService.emit(membership.scopeOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(membership.scopeOrgId, Meter.PamIdentities.key);
-    licenseService.emit(membership.scopeOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(membership.scopeOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(membership.scopeOrgId, Meter.AgentVaultIdentities);
 
     await scimEventsDAL.create({
       orgId,
@@ -1280,7 +1282,7 @@ export const scimServiceFactory = ({
 
   const createScimGroup: TScimServiceFactory["createScimGroup"] = async ({ displayName, orgId, members }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to create a SCIM group due to plan restriction. Upgrade plan to create a SCIM group."
       });
@@ -1355,7 +1357,7 @@ export const scimServiceFactory = ({
         );
 
         const newMembers = await addUsersToGroupByUserIds({
-          licenseService,
+          usageMeteringService,
           group,
           userIds: orgMemberships.map((membership) => membership.actorUserId as string),
           userDAL,
@@ -1559,7 +1561,7 @@ export const scimServiceFactory = ({
 
       if (toAddUserIds.length) {
         await addUsersToGroupByUserIds({
-          licenseService,
+          usageMeteringService,
           group,
           userIds: toAddUserIds.map((member) => member.actorUserId as string),
           userDAL,
@@ -1576,7 +1578,7 @@ export const scimServiceFactory = ({
 
       if (toRemoveUserIds.length) {
         ({ sendPamCancellations } = await removeUsersFromGroupByUserIds({
-          licenseService,
+          usageMeteringService,
           group,
           userIds: toRemoveUserIds,
           userGroupMembershipDAL,
@@ -1661,7 +1663,7 @@ export const scimServiceFactory = ({
     members
   }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });
@@ -1721,7 +1723,7 @@ export const scimServiceFactory = ({
 
   const updateScimGroup: TScimServiceFactory["updateScimGroup"] = async ({ groupId, orgId, operations }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });

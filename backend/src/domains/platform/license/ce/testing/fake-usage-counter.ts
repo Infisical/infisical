@@ -1,11 +1,9 @@
-import { Meter } from "../model/meter";
-import { TUsageCounter } from "../service/dependencies";
+import { Meter } from "../models/meter";
+import { TUsageCounter } from "../services/dependencies";
 
 // A null org means the whole instance.
 export class FakeUsageCounter implements TUsageCounter {
   values = new Map<string | null, number>();
-
-  countedFor: (string | null)[] = [];
 
   constructor(readonly meter: Meter) {}
 
@@ -14,8 +12,5 @@ export class FakeUsageCounter implements TUsageCounter {
     return this;
   }
 
-  count = async (orgId: string | null) => {
-    this.countedFor.push(orgId);
-    return this.values.get(orgId) ?? 0;
-  };
+  count = async (orgId: string | null) => this.values.get(orgId) ?? 0;
 }

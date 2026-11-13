@@ -1,13 +1,13 @@
 import slugify from "@sindresorhus/slugify";
 
-import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access-db";
-import { TTransactionRunner } from "@app/domains/lib/transaction-runner";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
+import { ReadFrom, TReadOptions } from "../lib/data-access-db";
+import { TTransactionRunner } from "../lib/transaction-runner";
 import { KmsKey, KmsKeyUsage } from "../model/kms-key";
 import { ProjectKeyBackup } from "../model/project-key-backup";
 import { WrappedKeyPayload } from "../model/wrapped-key";

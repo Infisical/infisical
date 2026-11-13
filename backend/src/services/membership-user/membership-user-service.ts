@@ -8,7 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -82,6 +82,7 @@ type TMembershipUserServiceFactoryDep = {
     | "getResourcePermission"
   >;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   userAliasDAL: TUserAliasDALFactory;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
@@ -113,6 +114,7 @@ export const membershipUserServiceFactory = ({
   orgDAL,
   userAliasDAL,
   licenseService,
+  usageMeteringService,
   smtpService,
   tokenService,
   userGroupMembershipDAL,
@@ -366,7 +368,7 @@ export const membershipUserServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
@@ -434,9 +436,9 @@ export const membershipUserServiceFactory = ({
 
     // Adding a user to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
-      licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -451,7 +453,7 @@ export const membershipUserServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
@@ -616,7 +618,7 @@ export const membershipUserServiceFactory = ({
           orgId: dto.permission.orgId,
           orgDAL,
           userAliasDAL,
-          licenseService,
+          usageMeteringService,
           userId: dto.permission.id,
           membershipUserDAL,
           userGroupMembershipDAL,
@@ -671,9 +673,9 @@ export const membershipUserServiceFactory = ({
 
     // Removing a user from a project drops a direct member; removing them from the org cascades their
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-    licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
-    licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
     return { membership: membershipDoc };
   };
 

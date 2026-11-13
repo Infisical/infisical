@@ -1,7 +1,7 @@
 import { TableName, TKmsRootConfig } from "@app/db/schemas";
-import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
+import { DataAccessDb, TReadOptions } from "../lib/data-access-db";
 import { KMS_ROOT_CONFIG_UUID, RootKeyConfig } from "../model/root-key-config";
 
 export type TRootKeyConfigPatch = {

@@ -261,9 +261,7 @@ func TestSAMLLogin_SeatLimit(t *testing.T) {
 		// Setup
 		s := setup(t, sso.Okta)
 		s.Tenant.NewMachineIdentity(t)
-		limited := license.Enterprise().With(license.MaxIdentityLimit, 1)
-		limited.Slug = "pro"
-		s.Tenant.SetPlan(t, limited)
+		s.Tenant.SetPlan(t, license.SeatLimited(1))
 		alice := s.Person()
 
 		// Action

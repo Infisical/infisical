@@ -138,6 +138,7 @@ export type TGetASecretDTO = {
 
 export type TGetASecretByIdDTO = {
   secretId: string;
+  viewSecretValue: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateBulkSecretDTO = {
@@ -274,6 +275,7 @@ export type TGetASecretRawDTO = {
 
 export type TGetASecretByIdRawDTO = {
   secretId: string;
+  viewSecretValue: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretRawDTO = TProjectPermission & {

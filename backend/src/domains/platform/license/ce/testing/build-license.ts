@@ -1,11 +1,11 @@
-import { InMemoryKeyStore } from "@app/domains/lib/testing/in-memory-key-store";
-import { TQueueServiceFactory } from "@app/queue";
+import { TDomainQueue } from "@app/domains/lib/jobs";
+import { FakeQueue } from "@app/domains/lib/jobs/testing/fake-queue";
+import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
+import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
 
-import { SeatUsage } from "../model/seat-usage";
 import { LicenseModule } from "../module";
-import { TLicenseOrganizations, TUsageCounter } from "../service/dependencies";
+import { TUsageCounter } from "../services/dependencies";
 import { FakeLicenseServer } from "./fake-license-server";
-import { FakeQueue } from "./fake-queue";
 
 export const ROOT = { id: "11111111-1111-4111-8111-111111111111" };
 export const SUB_ORG_ID = "22222222-2222-4222-8222-222222222222";
@@ -17,22 +17,17 @@ export type TBuildLicenseOptions = {
   counters?: TUsageCounter[];
   // The key store's clock, for tests that let entries expire.
   now?: () => number;
-  // Replaces parts of the organizations below.
-  organizations?: Partial<TLicenseOrganizations>;
+  organizations?: Partial<FakeOrganizationsProjectsService>;
 };
 
-// resolveRootOrgId reads findRootOrgId, so overriding one overrides both.
-const buildOrganizations = (overrides: Partial<TLicenseOrganizations> = {}): TLicenseOrganizations => {
-  const organizations: TLicenseOrganizations = {
-    findRootOrgId: async (orgId) =>
-      ({ [ROOT.id]: ROOT.id, [SUB_ORG_ID]: ROOT.id, [OTHER_ROOT.id]: OTHER_ROOT.id })[orgId] ?? null,
-    resolveRootOrgId: async (orgId) => (await organizations.findRootOrgId(orgId)) ?? orgId,
-    findOrganization: async (orgId) => ({ id: orgId, name: `org ${orgId}`, slug: `org-${orgId}` }),
-    countWorkspaces: async () => WORKSPACES_USED,
-    countSeats: async () => SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 }),
-    ...overrides
-  };
-  return organizations;
+// resolveRootOrgId reads findRootOrgId, so overriding findRootOrgId changes both.
+const buildOrganizations = (overrides: Partial<FakeOrganizationsProjectsService> = {}) => {
+  const organizations = new FakeOrganizationsProjectsService()
+    .setRoot(ROOT.id, ROOT.id)
+    .setRoot(SUB_ORG_ID, ROOT.id)
+    .setRoot(OTHER_ROOT.id, OTHER_ROOT.id);
+  organizations.workspaces = WORKSPACES_USED;
+  return Object.assign(organizations, overrides);
 };
 
 export const buildLicense = async ({
@@ -44,18 +39,34 @@ export const buildLicense = async ({
   const keyStore = new InMemoryKeyStore(now);
   const queue = new FakeQueue();
   const registeredCrons: string[] = [];
-  const module = new LicenseModule({
+  const cronHandlers = new Map<string, () => Promise<void>>();
+  const module = await LicenseModule.create({
     keyStore,
-    queueService: queue as unknown as Pick<TQueueServiceFactory, "queue" | "start">,
-    cronJob: { register: (job) => registeredCrons.push(`${job.name}:${String(job.enabled)}`) },
+    queueService: queue as unknown as TDomainQueue,
+    cronJob: {
+      register: (job) => {
+        registeredCrons.push(`${job.name}:${String(job.enabled)}`);
+        cronHandlers.set(job.name, async () => {
+          await job.handler();
+        });
+      }
+    },
     isProductionMode: false,
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
-    provider: licenseServer,
+    licensePolicyService: licenseServer,
     licenseServer,
-    billing: licenseServer.billing,
-    organizations: buildOrganizations(organizations),
+    organizationsProjectsService: buildOrganizations(organizations),
     usageCounters: counters
   });
-  await module.start();
-  return { module, licenseService: module.service, licenseServer, keyStore, queue, registeredCrons };
+  module.start();
+  return {
+    module,
+    licenseService: module.licenseService,
+    usageMeteringService: module.usageMeteringService,
+    licenseServer,
+    keyStore,
+    queue,
+    registeredCrons,
+    cronHandlers
+  };
 };

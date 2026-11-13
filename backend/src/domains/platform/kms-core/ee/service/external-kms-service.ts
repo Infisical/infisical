@@ -2,7 +2,7 @@ import { KMSServiceException } from "@aws-sdk/client-kms";
 import { STSServiceException } from "@aws-sdk/client-sts";
 import slugify from "@sindresorhus/slugify";
 
-import { TTransactionRunner } from "@app/domains/lib/transaction-runner";
+import { RuleViolationError, ExternalSystemError, EntityNotFoundError } from "@app/domains/lib/errors";
 import {
   ExternalKmsAwsSchema,
   ExternalKmsGcpSchema,
@@ -12,10 +12,10 @@ import {
   TExternalKmsInputSchema,
   TExternalKmsInputUpdateSchema
 } from "@app/ee/services/external-kms/providers/model";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TKmsCoreDataAccess } from "../../ce/data-access/kms-core-data-access";
+import { TTransactionRunner } from "../../ce/lib/transaction-runner";
 import { KmsKey } from "../../ce/model/kms-key";
 import {
   TCreateExternalKmsInput,
@@ -35,11 +35,11 @@ export type TExternalKmsServiceDeps = {
   providers: TExternalKmsProviders;
 };
 
-const notFound = (kmsId: string) => new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
+const notFound = (kmsId: string) => new EntityNotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
 const providerError = (provider: string, error: unknown, fallback: string) => {
-  if (error instanceof BadRequestError) return error;
-  return new BadRequestError({ message: error instanceof Error ? `${provider} error: ${error.message}` : fallback });
+  if (error instanceof RuleViolationError) return error;
+  return new RuleViolationError({ message: error instanceof Error ? `${provider} error: ${error.message}` : fallback });
 };
 
 // External KMS keys: provider inputs are validated against the provider before anything is stored, and encrypted
@@ -172,7 +172,7 @@ export class ExternalKmsService {
       case KmsProviders.Gcp:
         return ExternalKmsGcpSchema.parse(raw);
       default:
-        throw new BadRequestError({ message: "Invalid KMS provider." });
+        throw new RuleViolationError({ message: "Invalid KMS provider." });
     }
   }
 
@@ -190,7 +190,7 @@ export class ExternalKmsService {
         return this.deps.providers.gcp({ inputs });
       }
       default:
-        throw new BadRequestError({ message: "Invalid KMS provider." });
+        throw new RuleViolationError({ message: "Invalid KMS provider." });
     }
   }
 
@@ -200,7 +200,7 @@ export class ExternalKmsService {
       case KmsProviders.Aws: {
         const client = await this.deps.providers.aws({ inputs: provider.inputs }).catch((error) => {
           if (error instanceof STSServiceException || error instanceof KMSServiceException) {
-            throw new InternalServerError({ message: error.message ? `AWS error: ${error.message}` : "" });
+            throw new ExternalSystemError({ message: error.message ? `AWS error: ${error.message}` : "" });
           }
           throw error;
         });
@@ -226,7 +226,7 @@ export class ExternalKmsService {
         }
       }
       default:
-        throw new BadRequestError({ message: "external kms provided is invalid" });
+        throw new RuleViolationError({ message: "external kms provided is invalid" });
     }
   }
 
@@ -260,7 +260,7 @@ export class ExternalKmsService {
         }
       }
       default:
-        throw new BadRequestError({ message: "external kms provided is invalid" });
+        throw new RuleViolationError({ message: "external kms provided is invalid" });
     }
   }
 

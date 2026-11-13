@@ -5,7 +5,7 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -340,7 +340,7 @@ export const identityOciAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -447,7 +447,7 @@ export const identityOciAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

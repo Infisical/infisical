@@ -6,7 +6,12 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -87,6 +92,7 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
+import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
@@ -116,6 +122,7 @@ type TOidcConfigServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -155,6 +162,7 @@ export const oidcConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   licenseService,
+  usageMeteringService,
   additionalPrivilegeDAL,
   permissionService,
   tokenService,
@@ -336,8 +344,8 @@ export const oidcConfigServiceFactory = ({
     } else {
       let isNewUser = false;
       let adoptedFromUsername: string | null = null;
-      const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
-      const seatUsage = identityLimit ? await licenseService.getSeatUsage(orgId) : null;
+      const plan = await licenseService.getPlan(orgId);
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -410,7 +418,7 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          seatUsage?.assertAvailable({ identityLimit, via: UserAliasType.OIDC });
+          seatUsage?.assertAvailable(plan, UserAliasType.OIDC);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -497,7 +505,7 @@ export const oidcConfigServiceFactory = ({
           projectKeyDAL,
           projectDAL,
           projectBotDAL,
-          licenseService
+          usageMeteringService
         });
       }
 
@@ -532,7 +540,7 @@ export const oidcConfigServiceFactory = ({
           groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
-          licenseService,
+          usageMeteringService,
           alertChannelRecipientDAL,
           eventEmitter,
           membershipDAL,
@@ -564,7 +572,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await licenseService.syncSeats(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
@@ -664,7 +672,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.has(PlanFeature.OidcSso))
       throw new BadRequestError({
         message:
           "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -794,7 +802,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.has(PlanFeature.OidcSso))
       throw new BadRequestError({
         message:
           "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -901,8 +909,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
-      issuer = await Issuer.discover(oidcCfg.discoveryURL);
+      issuer = await discoverOidcIssuer(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -915,9 +922,6 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,
@@ -927,7 +931,9 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const client = new issuer.Client({
+    await secureOidcIssuer(issuer);
+
+    const client = createSsrfSafeOidcClient(issuer, {
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
       redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],

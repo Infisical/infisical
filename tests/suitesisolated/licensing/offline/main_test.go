@@ -1,5 +1,5 @@
-// Package offline_test boots with a valid offline license signed by a test key we
-// trust in place of Infisical's.
+// Package offline_test boots with an offline license signed by a test key the
+// instance trusts in place of Infisical's.
 package offline_test
 
 import (

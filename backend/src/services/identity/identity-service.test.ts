@@ -3,6 +3,8 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
+import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
 
 import { identityServiceFactory } from "./identity-service";
 import { TDeleteIdentityDTO } from "./identity-types";
@@ -82,6 +84,8 @@ const createService = ({
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
     licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
+    organizationsProjectsService: new FakeOrganizationsProjectsService(),
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),

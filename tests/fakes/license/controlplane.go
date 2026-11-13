@@ -22,9 +22,9 @@ func Env() map[string]string {
 	}
 }
 
-// SelfHostedEnv boots on a self-hosted license instead of Cloud. Pass "" for no license.
-// An online key scopes the fake's state, so it has to start with id.Nonce or its
-// events never reach the test. Offline keys never hit the fake.
+// SelfHostedEnv boots on a self-hosted license, "" for none. An online key scopes the
+// fake's state, so it must come from id.Nonce or its events never reach the test.
+// Offline keys never hit the fake.
 func SelfHostedEnv(licenseKey string) map[string]string {
 	return map[string]string{
 		"LICENSE_SERVER_V2_SERVICE_KEY": "",
@@ -33,18 +33,17 @@ func SelfHostedEnv(licenseKey string) map[string]string {
 	}
 }
 
-// Stub on the ROOT organization id: fetchAndCacheCloudPlan resolves
-// findRootOrgDetails and sends the root organization to the license server, so a
-// sub-org resolves its parent's plan. Self-hosted scopes by license key instead.
+// Open returns a handle on one scope: the ROOT org id on cloud (the instance caches the
+// plan per root org, so a sub-org resolves its parent's), the license key on self-hosted.
 func Open(tt *testing.T, adminURL, scope string) *fakenet.Scope[State] {
 	tt.Helper()
 	fakenet.Track(tt, adminURL, Host, scope)
 	return fakenet.Open[State](tt, adminURL, Host, scope)
 }
 
-// SelfHostedScopes covers every scope a self-hosted instance can hit: the license key,
-// the "self-hosted" org usage reports use, and the instance-wide endpoints. None of
-// them is the tenant's org id.
+// SelfHostedScopes covers every scope self-hosted can hit: the license key, the
+// "self-hosted" org usage reports use, and the instance-wide endpoints. Never the
+// tenant's org id.
 func SelfHostedScopes(tt *testing.T, adminURL, licenseKey string) []*fakenet.Scope[State] {
 	tt.Helper()
 	keys := []string{"self-hosted", "instance"}
@@ -58,8 +57,7 @@ func SelfHostedScopes(tt *testing.T, adminURL, licenseKey string) []*fakenet.Sco
 	return scopes
 }
 
-// ExpectNothingSent waits out the 5s usage report debounce first, so a queued report
-// would have been sent by the time it checks.
+// ExpectNothingSent waits out the 5s report debounce so a queued report would show up.
 func ExpectNothingSent(tt *testing.T, scopes []*fakenet.Scope[State]) {
 	tt.Helper()
 	scopes[0].ExpectNoEvent[SnapshotReceived](tt, nil, fakenet.Within(10*time.Second))

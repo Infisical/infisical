@@ -48,7 +48,7 @@ describe("licenseOrgDeletedConsumerFactory", () => {
     expect(build().consumer.name).toBe(LICENSE_ORG_DELETED_CONSUMER);
   });
 
-  test("closes the root organization at the license server and drops its cached entitlements", async () => {
+  test("closes the root organization at the license server", async () => {
     const { consumer, licenseService } = build();
 
     const results = await consumer.handle([orgDeleted()]);

@@ -1,8 +1,7 @@
-import { TDataAccessLocks } from "@app/domains/lib/data-access-locks";
-import { InMemoryTransactionRunner } from "@app/domains/lib/testing/in-memory-transaction-runner";
-
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
 import { noKmsCoreLocks } from "../data-access/kms-core-locks";
+import { TDataAccessLocks } from "../lib/data-access-locks";
+import { InMemoryTransactionRunner } from "../lib/testing/in-memory-transaction-runner";
 import { TKmsCoreDataAccessDeps } from "../module";
 import { InMemoryKekHistoryDataAccess } from "./in-memory-kek-history-data-access";
 import { InMemoryKmsCoreLocks } from "./in-memory-kms-core-locks";

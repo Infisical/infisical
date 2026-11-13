@@ -1,4 +1,4 @@
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -41,7 +41,7 @@ type TOrgAccessReconcileConsumerDep = {
   >;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
 };
 
 type TReconcileScope = {
@@ -63,7 +63,7 @@ export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
   projectAccessRevokeService,
   auditLogService,
-  licenseService
+  usageMeteringService
 }: TOrgAccessReconcileConsumerDep): IEventConsumer<TOrgMembershipEventPayload> => {
   const eventTypes = new Set<string>(ORG_MEMBERSHIP_EVENTS);
   const subscribesTo = (eventType: string) => eventTypes.has(eventType);
@@ -131,9 +131,9 @@ export const orgAccessReconcileConsumerFactory = ({
           groupId: scope.groupId
         });
 
-        licenseService.emit(orgId, Meter.SecretIdentities.key);
-        licenseService.emit(orgId, Meter.PamIdentities.key);
-        licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
+        usageMeteringService.emit(orgId, Meter.SecretIdentities);
+        usageMeteringService.emit(orgId, Meter.PamIdentities);
+        usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
       }
     }
   };

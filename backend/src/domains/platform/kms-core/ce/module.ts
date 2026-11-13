@@ -1,6 +1,4 @@
 import { ProjectType } from "@app/db/schemas";
-import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
-import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transaction-runner";
 import { CronJobName, type TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import type { HmacAlgorithm } from "@app/lib/crypto/hmac";
@@ -10,6 +8,8 @@ import { NotFoundError } from "@app/lib/errors";
 import { buildKmsCoreDataAccess, TKmsCoreDataAccess } from "./data-access/kms-core-data-access";
 import { noKmsCoreLocks, PostgresKmsCoreLocks } from "./data-access/kms-core-locks";
 import { TKmsKeyFilter } from "./data-access/kms-key-data-access";
+import { DataAccessDb, TReadOptions } from "./lib/data-access-db";
+import { TransactionRunner, TTransactionRunner } from "./lib/transaction-runner";
 import { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
 import { RootKeyEncryptionStrategy } from "./model/root-key-config";
 import { TKmsCoreState } from "./service/key-material";
@@ -51,8 +51,8 @@ import {
 } from "./service/root-key-service";
 import { ScopeKeyService } from "./service/scope-key-service";
 
-export { ReadFrom } from "@app/domains/lib/data-access-db";
-export type { TReadOptions } from "@app/domains/lib/data-access-db";
+export { DataAccessDb, ReadFrom } from "./lib/data-access-db";
+export type { TReadOptions } from "./lib/data-access-db";
 export { KmsKeyUsage } from "./model/kms-key";
 export type { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
 export { RootKeyEncryptionStrategy } from "./model/root-key-config";
@@ -99,6 +99,9 @@ export type TKmsCoreDomain = {
   rotateKmsKey: (kmsId: string) => Promise<{ id: string; version: number }>;
   getKmsById: (kmsId: string) => Promise<{ id: string; name: string; orgId: string; isExternal: boolean }>;
   findKeyById: (kmsId: string) => Promise<TKmsKeyDetails | undefined>;
+  // A key published as a JWKS, read from the primary. Undefined when unpublished, missing, or its project is
+  // pending deletion.
+  findPublishedKeyById: (kmsId: string) => Promise<TKmsKeyDetails | undefined>;
   findKeys: (filter: TKmsKeyFilter, options?: TReadOptions) => Promise<TKmsKeyDetails[]>;
   listProjectKeys: (input: TListKmsKeysDTO) => Promise<{ keys: TKmsKeyDetails[]; totalCount: number }>;
   updateKeyAttributes: (kmsId: string, attributes: TKmsKeyAttributes) => Promise<TKmsKeyDetails>;
@@ -288,6 +291,7 @@ export class KmsCoreModule {
       rotateKmsKey: (kmsId) => kmsKeys.rotateKmsKey(kmsId),
       getKmsById: (kmsId) => kmsKeys.getKmsById(kmsId),
       findKeyById: (kmsId) => kmsKeys.findKeyById(kmsId),
+      findPublishedKeyById: (kmsId) => kmsKeys.findPublishedKeyById(kmsId),
       findKeys: (filter, options) => kmsKeys.findKeys(filter, options),
       listProjectKeys: (input) => kmsKeys.listProjectKeys(input),
       updateKeyAttributes: (kmsId, attributes) => kmsKeys.updateKeyAttributes(kmsId, attributes),

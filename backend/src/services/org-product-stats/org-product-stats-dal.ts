@@ -205,13 +205,10 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
 
   const countAgentVaultServicesForOrg = async (orgId: string, tx?: Knex) => {
     try {
+      // A project's own services; inline services sent with a session aren't counted.
       const result = (await (tx || db.replicaNode())(TableName.AgentVaultService)
-        .join(
-          TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultService}.accessBundleId`,
-          `${TableName.AgentVaultAccessBundle}.id`
-        )
-        .join(TableName.Project, `${TableName.AgentVaultAccessBundle}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.AgentVaultService}.sessionId`)
+        .join(TableName.Project, `${TableName.AgentVaultService}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.AgentVault)

@@ -14,7 +14,7 @@ import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { ProjectType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
@@ -129,7 +129,7 @@ export const awsKmsCaKeySourceFactory = ({
       const project = await projectDAL.findById(projectId);
       if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
       const plan = await licenseService.getPlan(project.orgId);
-      if (!plan.pkiAwsKmsSigning) {
+      if (!plan.has(PlanFeature.PkiAwsKmsSigning)) {
         throw new BadRequestError({
           message:
             "Failed to create certificate authority with an AWS KMS key due to plan restriction. Upgrade plan to use AWS KMS-backed certificate authorities."

@@ -19,8 +19,8 @@ import { AuthMethod } from "@app/services/auth/auth-type";
 
 import { randomId } from "./run";
 
-// Platform tables no domain owns yet, so rows go in directly. A domain's own tables go through its
-// module so its tests hit its rules. Projects get no legacy E2EE keys or ghost user; nothing here reads them.
+// Only for tables no domain owns yet; a domain's own tables go through its module so tests hit its rules.
+// Projects skip legacy E2EE keys and the ghost user since nothing here reads them.
 
 export const DEFAULT_ENVIRONMENTS = [
   { name: "Development", slug: "dev" },

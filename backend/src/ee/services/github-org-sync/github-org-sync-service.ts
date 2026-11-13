@@ -8,7 +8,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -387,6 +387,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
@@ -409,6 +410,7 @@ export const githubOrgSyncServiceFactory = ({
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
+  usageMeteringService,
   orgMembershipDAL,
   userAliasDAL,
   membershipRoleDAL,
@@ -465,7 +467,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to create github organization team sync due to plan restriction. Upgrade plan to create github organization sync."
@@ -524,7 +526,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to update github organization team sync due to plan restriction. Upgrade plan to update github organization sync."
@@ -590,7 +592,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to delete github organization team sync due to plan restriction. Upgrade plan to delete github organization sync."
@@ -851,9 +853,9 @@ export const githubOrgSyncServiceFactory = ({
       }
 
       // Group membership changes cascade into the group-expanded project identity meters.
-      licenseService.emit(orgId, Meter.SecretIdentities.key);
-      licenseService.emit(orgId, Meter.PamIdentities.key);
-      licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
+      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     }
   };
 
@@ -870,7 +872,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to validate GitHub token due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -960,7 +962,7 @@ export const githubOrgSyncServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.has(PlanFeature.GithubOrgSync)) {
       throw new BadRequestError({
         message:
           "Failed to sync all GitHub teams due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -1310,9 +1312,9 @@ export const githubOrgSyncServiceFactory = ({
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
-      licenseService.emit(orgPermission.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(orgPermission.orgId, Meter.PamIdentities.key);
-      licenseService.emit(orgPermission.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgPermission.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(orgPermission.orgId, Meter.AgentVaultIdentities);
     }
 
     if (unmatchedGithubUsers.size) {

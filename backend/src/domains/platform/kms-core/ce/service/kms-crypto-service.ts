@@ -1,8 +1,8 @@
-import { TReadOptions } from "@app/domains/lib/data-access-db";
 import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
 
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
+import { TReadOptions } from "../lib/data-access-db";
 import { KmsKey, KmsKeyUsage } from "../model/kms-key";
 import { keyDecryptor, keyEncryptor, requireKey, TKmsCoreState, unwrapWithRootKey } from "./key-material";
 import { TAsyncDecryptor, TAsyncEncryptor, TSignWithKmsDTO, TVerifyWithKmsDTO } from "./kms-core-types";

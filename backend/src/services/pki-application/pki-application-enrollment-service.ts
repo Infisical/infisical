@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ResourceType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
@@ -402,7 +402,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     // Runtime enrollment is already gated in the EST service, so this only moves the refusal to where
     // an admin can act on it instead of surfacing as a device that silently fails to enroll.
     const estPlan = await licenseService.getPlan(actorOrgId);
-    if (!estPlan.pkiEst) {
+    if (!estPlan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to enable EST enrollment due to plan restriction. Upgrade plan to use EST."
       });
@@ -683,7 +683,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     );
 
     const scepPlan = await licenseService.getPlan(actorOrgId);
-    if (!scepPlan.pkiScep) {
+    if (!scepPlan.has(PlanFeature.PkiScep)) {
       throw new BadRequestError({
         message: "Failed to enable SCEP enrollment due to plan restriction. Upgrade plan to use SCEP."
       });

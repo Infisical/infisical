@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiTemplateActions,
@@ -252,7 +252,7 @@ export const certificateTemplateServiceFactory = ({
     disableBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to create EST configuration due to plan restriction. Upgrade to the Enterprise plan."
       });
@@ -331,7 +331,7 @@ export const certificateTemplateServiceFactory = ({
     disableBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to update EST configuration due to plan restriction. Upgrade to the Enterprise plan."
       });

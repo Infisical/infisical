@@ -1,18 +1,16 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { applyJitter } from "@app/lib/dates";
 
-import { Plan, TPlanProps } from "../model/plan";
-import { TPlanCache } from "../service/dependencies";
+import { Plan, TPlanFeatures } from "../models/plan";
+import { TPlanCache } from "../services/dependencies";
 
-// Key names and TTLs match the old pods' so a rolling deploy shares the cache. Keys are always the root org's
-// since the License Server answers for the root.
+// Key names and TTLs are frozen: old pods share the cache during a rolling deploy. Keyed by root org, since the
+// License Server answers for the root.
 const PlanKeys = {
   plan: (rootOrgId: string) => `infisical-cloud-plan-${rootOrgId}`,
-  // Set alongside the community plan cached when the License Server fails, so callers can tell it from a
-  // real answer.
+  // Marks a cached plan as the fallback (License Server was down), not a real answer.
   fallback: (rootOrgId: string) => `infisical-cloud-plan-fallback-${rootOrgId}`,
   lastKnown: (rootOrgId: string) => `infisical-cloud-plan-last-known-${rootOrgId}`,
-  // Set after a billing change to serve the cached plan while a background refresh converges.
   passThrough: (rootOrgId: string) => `license-cache-passthrough-${rootOrgId}`,
   revalidateLock: (rootOrgId: string) => `license-cache-revalidate-lock-${rootOrgId}`
 };
@@ -22,7 +20,7 @@ const PlanKeyTtls = {
   lastKnownInSeconds: 86400,
   // Covers Stripe reconciling a billing change.
   passThroughInSeconds: 180,
-  // A hosted checkout applies only once the customer finishes it, which can take minutes.
+  // Hosted checkout only applies once the customer finishes it, which can take minutes.
   passThroughCheckoutInSeconds: 900,
   revalidateLockInSeconds: 10
 };
@@ -33,14 +31,14 @@ export class PlanCache implements TPlanCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
 
   async read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean }> {
-    const [plan, passThrough] = await this.keyStore.getItems([
+    const [raw, passThrough, fallback] = await this.keyStore.getItems([
       PlanKeys.plan(rootOrgId),
-      PlanKeys.passThrough(rootOrgId)
+      PlanKeys.passThrough(rootOrgId),
+      PlanKeys.fallback(rootOrgId)
     ]);
-    return {
-      plan: plan ? Plan.restore(JSON.parse(plan) as TPlanProps) : null,
-      passThrough: Boolean(passThrough)
-    };
+    if (!raw) return { plan: null, passThrough: Boolean(passThrough) };
+    const plan = Plan.restore(JSON.parse(raw) as TPlanFeatures);
+    return { plan: fallback ? plan.asFallback() : plan, passThrough: Boolean(passThrough) };
   }
 
   async write(rootOrgId: string, plan: Plan) {
@@ -60,20 +58,15 @@ export class PlanCache implements TPlanCache {
     await this.keyStore.setItemWithExpiry(PlanKeys.fallback(rootOrgId), ttl, "1");
   }
 
-  async isFallback(rootOrgId: string) {
-    const [marker] = await this.keyStore.getItems([PlanKeys.fallback(rootOrgId)]);
-    return Boolean(marker);
-  }
-
   async lastKnown(rootOrgId: string): Promise<{ plan: Plan; fetchedAt: number } | null> {
     const [raw] = await this.keyStore.getItems([PlanKeys.lastKnown(rootOrgId)]);
     if (!raw) return null;
-    const { plan, fetchedAt } = JSON.parse(raw) as { plan: TPlanProps; fetchedAt: number };
+    const { plan, fetchedAt } = JSON.parse(raw) as { plan: TPlanFeatures; fetchedAt: number };
     return { plan: Plan.restore(plan), fetchedAt };
   }
 
-  // After a billing change the License Server settles asynchronously (a Stripe webhook), so reads keep the
-  // cached plan while a background refresh converges.
+  // The License Server settles billing changes async (Stripe webhook), so reads keep serving the cached plan
+  // while a background refresh catches up.
   async markForRevalidation(rootOrgId: string, checkout: boolean) {
     await this.keyStore.setItemWithExpiry(
       PlanKeys.passThrough(rootOrgId),

@@ -45,8 +45,8 @@ var (
 //
 // prefix filters to this binary's credentials. wholeHosts are scoped by product ids
 // instead, so they come through unfiltered and only tracked scopes are kept. Returns
-// once the first connection is up, so
-// an unreachable fakenet fails in TestMain rather than as a timeout in some test.
+// once the first connection is up, so an unreachable fakenet fails in TestMain rather
+// than as a timeout in some test.
 func Listen(ctx context.Context, adminURL, prefix string, wholeHosts ...string) error {
 	adminURL = strings.TrimSuffix(adminURL, "/")
 	st := &stream{adminURL: adminURL, prefix: prefix, wholeHosts: wholeHosts, buffers: map[scopeID]*buffer{}}
@@ -70,7 +70,8 @@ func Listen(ctx context.Context, adminURL, prefix string, wholeHosts ...string) 
 //
 // Called by whatever mints the credential, before handing it to Infisical. Nothing
 // can publish under a credential Infisical has not received, so no event for it can
-// arrive before its buffer exists.
+// arrive before its buffer exists. Tracking a scope twice keeps the first buffer, so
+// events between the two calls aren't dropped.
 func Track(tt *testing.T, adminURL, host, key string) {
 	tt.Helper()
 	st := streamFor(tt, adminURL)
@@ -78,8 +79,6 @@ func Track(tt *testing.T, adminURL, host, key string) {
 
 	st.mu.Lock()
 	if _, ok := st.buffers[id]; ok {
-		// Already tracked by this test, such as a plan set at tenant creation and a
-		// handle opened later; replacing the buffer would drop what arrived between.
 		st.mu.Unlock()
 		return
 	}

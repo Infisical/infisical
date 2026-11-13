@@ -1,7 +1,7 @@
 import { TableName } from "@app/db/schemas";
-import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
+import { DataAccessDb, TReadOptions } from "../lib/data-access-db";
 import { ScopeKey, ScopeKind } from "../model/scope-key";
 
 export type TScopeKeyDataAccess = {

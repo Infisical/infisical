@@ -88,6 +88,8 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
 
   findKeyById = this.delegate("findKeyById");
 
+  findPublishedKeyById = this.delegate("findPublishedKeyById");
+
   findKeys = this.delegate("findKeys");
 
   listProjectKeys = this.delegate("listProjectKeys");

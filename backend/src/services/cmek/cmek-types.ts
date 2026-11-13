@@ -15,6 +15,7 @@ export type TCreateCmekDTO = {
   keyUsage: KmsKeyUsage;
   isExportable?: boolean;
   hasDeleteProtection?: boolean;
+  isPublicKeyPublished?: boolean;
 };
 
 export type TUpdabteCmekByIdDTO = {
@@ -23,6 +24,7 @@ export type TUpdabteCmekByIdDTO = {
   isDisabled?: boolean;
   description?: string;
   hasDeleteProtection?: boolean;
+  isPublicKeyPublished?: boolean;
 };
 
 export type TListCmeksByProjectIdDTO = {

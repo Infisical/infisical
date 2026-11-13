@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
@@ -137,7 +137,7 @@ export const auditLogServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.auditLogs) {
+    if (!plan.has(PlanFeature.AuditLogs)) {
       throw new BadRequestError({
         message: "Failed to list audit logs due to plan restriction. Upgrade your plan to view audit logs."
       });

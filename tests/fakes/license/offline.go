@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Sits next to signing.mjs in the built image (see backend/src/lib/crypto/signing.ts).
+// PublicKeyPath sits next to signing.mjs in the built image (see backend/src/lib/crypto/signing.ts).
 const PublicKeyPath = "/app/dist/lib/crypto/license_public_key.pem"
 
 // Signer fakes Infisical's license signing key. The instance only trusts it once you
@@ -24,12 +24,11 @@ const PublicKeyPath = "/app/dist/lib/crypto/license_public_key.pem"
 type Signer struct {
 	key *rsa.PrivateKey
 
-	// PublicKeyFile is the PKCS#1 public key, written to a temporary file for the
-	// harness to copy into the container.
+	// Temp file with the PKCS#1 public key, for the harness to copy into the container.
 	PublicKeyFile string
 }
 
-// Generated, not committed: secret scanning would flag a private key in the repo.
+// NewSigner generates its key instead of committing one: secret scanning would flag it.
 func NewSigner() (*Signer, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -56,7 +55,7 @@ type OfflineLicense struct {
 	TerminatesAt *time.Time `json:"terminatesAt"`
 
 	// Version 2 carries License Server entitlements; otherwise Features holds the
-	// legacy TFeatureSet fields directly.
+	// legacy Plan fields directly.
 	Version      int            `json:"version,omitempty"`
 	Features     map[string]any `json:"features"`
 	Entitlements any            `json:"entitlements,omitempty"`
@@ -73,8 +72,8 @@ func V2(licenseID string, p Plan) OfflineLicense {
 	}
 }
 
-// The instance verifies against JSON.stringify of the parsed license, so we sign
-// compact JSON with HTML escaping off to match it byte for byte.
+// Key signs l as compact JSON with HTML escaping off, to match the JSON.stringify the
+// instance verifies against byte for byte.
 func (s *Signer) Key(l OfflineLicense) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

@@ -1,4 +1,5 @@
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TProjectPermission } from "@app/lib/types";
@@ -80,6 +81,7 @@ export type TNotifyDelegatedDecisionDTO = {
 };
 
 export type TSecretAccessApprovalRequestServiceFactoryDep = {
+  licenseService: TLicenseService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug" | "checkProjectUpgradeStatus">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

@@ -1,11 +1,11 @@
 import { KeyManagementServiceClient } from "@google-cloud/kms";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import {
   ExternalKmsGcpSchema,
   TExternalKmsGcpClientSchema,
   TExternalKmsProviderFns
 } from "@app/ee/services/external-kms/providers/model";
-import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 const getGcpKmsClient = async ({ credential, gcpRegion }: TExternalKmsGcpClientSchema) => {
@@ -42,7 +42,7 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
       });
       return true;
     } catch (error) {
-      throw new BadRequestError({
+      throw new RuleViolationError({
         message: "Cannot connect to GCP KMS"
       });
     }
@@ -90,9 +90,9 @@ export const GcpKmsProviderFactory = async ({ inputs }: GcpKmsProviderArgs): Pro
       return { keys: keyList };
     } catch (error) {
       logger.error(error, "Could not validate GCP KMS connection and credentials");
-      throw new BadRequestError({
+      throw new RuleViolationError({
         message: "Could not validate GCP KMS connection and credentials",
-        error
+        cause: error
       });
     }
   };

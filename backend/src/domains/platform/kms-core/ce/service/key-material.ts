@@ -1,4 +1,3 @@
-import { TReadOptions } from "@app/domains/lib/data-access-db";
 import { createSecretValueBlindIndexer } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -8,6 +7,7 @@ import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signing
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
+import { TReadOptions } from "../lib/data-access-db";
 import { KmsCiphertext } from "../model/kms-ciphertext";
 import { KmsKey, KmsKeyUsage, TKmsKeyAlgorithmName } from "../model/kms-key";
 import { TExternalKeyRef, TKmsCoreHooks } from "./kms-core-hooks";

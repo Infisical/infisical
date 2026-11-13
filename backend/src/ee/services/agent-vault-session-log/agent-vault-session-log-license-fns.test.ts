@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -10,8 +10,8 @@ import { getSessionLogEntitlement, getSessionLogRetentionDays } from "./agent-va
 vi.mock("@app/lib/logger", () => ({ logger: { warn: () => {} } }));
 
 describe("getSessionLogEntitlement", () => {
-  type TPlanProps = { hasExternal: boolean; hasDefault: boolean; retentionDays?: number | null };
-  const toPlan = ({ hasExternal, hasDefault, retentionDays = null }: TPlanProps) =>
+  type TPlanFeatures = { hasExternal: boolean; hasDefault: boolean; retentionDays?: number | null };
+  const toPlan = ({ hasExternal, hasDefault, retentionDays = null }: TPlanFeatures) =>
     ({
       ...testFeatures(),
       agentVaultByoS3: hasExternal,
@@ -23,9 +23,9 @@ describe("getSessionLogEntitlement", () => {
     fallback = false,
     lastKnown = null
   }: {
-    plan: TPlanProps;
+    plan: TPlanFeatures;
     fallback?: boolean;
-    lastKnown?: { plan: TPlanProps; ageMs: number } | null;
+    lastKnown?: { plan: TPlanFeatures; ageMs: number } | null;
   }) => {
     const fake = new FakeLicenseService().setPlan("org-1", toPlan(plan));
     if (fallback) fake.fallbackOrgs.add("org-1");

@@ -138,6 +138,7 @@ import { Route as projectGroupDetailsByIDPageRouteCertManagerImport } from './pa
 import { Route as redirectsPamOrgAccessRedirectImport } from './pages/redirects/pam-org-access-redirect'
 import { Route as pamPamAccountAccessPageRouteImport } from './pages/pam/PamAccountAccessPage/route'
 import { Route as organizationKmipServersPageKmipServerDetailsByIDPageRouteImport } from './pages/organization/KmipServersPage/KmipServerDetailsByIDPage/route'
+import { Route as pamPamAccountsPagePamMyAccountsPageRouteImport } from './pages/pam/PamAccountsPage/PamMyAccountsPage/route'
 import { Route as pamPamAccountsPagePamFolderPageRouteImport } from './pages/pam/PamAccountsPage/PamFolderPage/route'
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
 import { Route as certManagerPkiSyncDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSyncDetailsByIDPage/route'
@@ -188,6 +189,7 @@ import { Route as agentVaultAgentVaultVariablesPageRouteImport } from './pages/a
 import { Route as agentVaultAgentVaultSkillsPageRouteImport } from './pages/agent-vault/AgentVaultSkillsPage/route'
 import { Route as agentVaultAgentVaultSettingsPageRouteImport } from './pages/agent-vault/AgentVaultSettingsPage/route'
 import { Route as agentVaultAgentVaultSessionsPageRouteImport } from './pages/agent-vault/AgentVaultSessionsPage/route'
+import { Route as agentVaultAgentVaultServicesPageRouteImport } from './pages/agent-vault/AgentVaultServicesPage/route'
 import { Route as agentVaultAgentVaultProxiesPageRouteImport } from './pages/agent-vault/AgentVaultProxiesPage/route'
 import { Route as certManagerInstallationDetailsByIDPageRouteImport } from './pages/cert-manager/InstallationDetailsByIDPage/route'
 import { Route as certManagerSignerDetailPageRouteImport } from './pages/cert-manager/SignerDetailPage/route'
@@ -1587,6 +1589,14 @@ const organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRoute,
   } as any)
 
+const pamPamAccountsPagePamMyAccountsPageRouteRoute =
+  pamPamAccountsPagePamMyAccountsPageRouteImport.update({
+    id: '/my-accounts',
+    path: '/my-accounts',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccountsRoute,
+  } as any)
+
 const pamPamAccountsPagePamFolderPageRouteRoute =
   pamPamAccountsPagePamFolderPageRouteImport.update({
     id: '/$folderId',
@@ -1980,6 +1990,13 @@ const agentVaultAgentVaultSessionsPageRouteRoute =
   agentVaultAgentVaultSessionsPageRouteImport.update({
     id: '/sessions',
     path: '/sessions',
+    getParentRoute: () => agentVaultLayoutRoute,
+  } as any)
+
+const agentVaultAgentVaultServicesPageRouteRoute =
+  agentVaultAgentVaultServicesPageRouteImport.update({
+    id: '/services',
+    path: '/services',
     getParentRoute: () => agentVaultLayoutRoute,
   } as any)
 
@@ -3905,6 +3922,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pamPamAccountsPagePamFolderPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccountsImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/my-accounts': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/my-accounts'
+      path: '/my-accounts'
+      fullPath: '/organizations/$orgId/pam/accounts/my-accounts'
+      preLoaderRoute: typeof pamPamAccountsPagePamMyAccountsPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccountsImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
       path: '/$kmipServerId'
@@ -4078,6 +4102,13 @@ declare module '@tanstack/react-router' {
       path: '/proxies'
       fullPath: '/organizations/$orgId/projects/agent-vault/$projectId/proxies'
       preLoaderRoute: typeof agentVaultAgentVaultProxiesPageRouteImport
+      parentRoute: typeof agentVaultLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services'
+      path: '/services'
+      fullPath: '/organizations/$orgId/projects/agent-vault/$projectId/services'
+      preLoaderRoute: typeof agentVaultAgentVaultServicesPageRouteImport
       parentRoute: typeof agentVaultLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions': {
@@ -4970,6 +5001,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultP
 
 interface agentVaultLayoutRouteChildren {
   agentVaultAgentVaultProxiesPageRouteRoute: typeof agentVaultAgentVaultProxiesPageRouteRoute
+  agentVaultAgentVaultServicesPageRouteRoute: typeof agentVaultAgentVaultServicesPageRouteRoute
   agentVaultAgentVaultSessionsPageRouteRoute: typeof agentVaultAgentVaultSessionsPageRouteRoute
   agentVaultAgentVaultSettingsPageRouteRoute: typeof agentVaultAgentVaultSettingsPageRouteRoute
   agentVaultAgentVaultSkillsPageRouteRoute: typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -4987,6 +5019,8 @@ interface agentVaultLayoutRouteChildren {
 const agentVaultLayoutRouteChildren: agentVaultLayoutRouteChildren = {
   agentVaultAgentVaultProxiesPageRouteRoute:
     agentVaultAgentVaultProxiesPageRouteRoute,
+  agentVaultAgentVaultServicesPageRouteRoute:
+    agentVaultAgentVaultServicesPageRouteRoute,
   agentVaultAgentVaultSessionsPageRouteRoute:
     agentVaultAgentVaultSessionsPageRouteRoute,
   agentVaultAgentVaultSettingsPageRouteRoute:
@@ -5830,6 +5864,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessR
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccountsRouteChildren {
   pamPamAccountsPageRouteRoute: typeof pamPamAccountsPageRouteRoute
   pamPamAccountsPagePamFolderPageRouteRoute: typeof pamPamAccountsPagePamFolderPageRouteRoute
+  pamPamAccountsPagePamMyAccountsPageRouteRoute: typeof pamPamAccountsPagePamMyAccountsPageRouteRoute
 }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccountsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccountsRouteChildren =
@@ -5837,6 +5872,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccount
     pamPamAccountsPageRouteRoute: pamPamAccountsPageRouteRoute,
     pamPamAccountsPagePamFolderPageRouteRoute:
       pamPamAccountsPagePamFolderPageRouteRoute,
+    pamPamAccountsPagePamMyAccountsPageRouteRoute:
+      pamPamAccountsPagePamMyAccountsPageRouteRoute,
   }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccountsRouteWithChildren =
@@ -6444,6 +6481,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/cert-manager/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/cert-manager/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$folderId': typeof pamPamAccountsPagePamFolderPageRouteRoute
+  '/organizations/$orgId/pam/accounts/my-accounts': typeof pamPamAccountsPagePamMyAccountsPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/pam/access/': typeof redirectsPamOrgAccessRedirectRoute
@@ -6466,6 +6504,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/cert-manager/code-signing/$signerId/': typeof certManagerSignerDetailPageRouteRoute
   '/organizations/$orgId/cert-manager/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
+  '/organizations/$orgId/projects/agent-vault/$projectId/services': typeof agentVaultAgentVaultServicesPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -6718,6 +6757,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/cert-manager/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/cert-manager/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$folderId': typeof pamPamAccountsPagePamFolderPageRouteRoute
+  '/organizations/$orgId/pam/accounts/my-accounts': typeof pamPamAccountsPagePamMyAccountsPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/pam/access': typeof redirectsPamOrgAccessRedirectRoute
@@ -6739,6 +6779,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/cert-manager/code-signing/$signerId': typeof certManagerSignerDetailPageRouteRoute
   '/organizations/$orgId/cert-manager/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
+  '/organizations/$orgId/projects/agent-vault/$projectId/services': typeof agentVaultAgentVaultServicesPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
   '/organizations/$orgId/projects/agent-vault/$projectId/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -7022,6 +7063,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/$folderId': typeof pamPamAccountsPagePamFolderPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/my-accounts': typeof pamPamAccountsPagePamMyAccountsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': typeof redirectsPamOrgAccessRedirectRoute
@@ -7047,6 +7089,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/code-signing/$signerId/': typeof certManagerSignerDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId': typeof certManagerInstallationDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services': typeof agentVaultAgentVaultServicesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/skills': typeof agentVaultAgentVaultSkillsPageRouteRoute
@@ -7326,6 +7369,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/cert-manager/integrations/$syncId'
     | '/organizations/$orgId/cert-manager/subscribers/$subscriberName'
     | '/organizations/$orgId/pam/accounts/$folderId'
+    | '/organizations/$orgId/pam/accounts/my-accounts'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/pam/access/'
@@ -7348,6 +7392,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/cert-manager/code-signing/$signerId/'
     | '/organizations/$orgId/cert-manager/discovery/installations/$installationId'
     | '/organizations/$orgId/projects/agent-vault/$projectId/proxies'
+    | '/organizations/$orgId/projects/agent-vault/$projectId/services'
     | '/organizations/$orgId/projects/agent-vault/$projectId/sessions'
     | '/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/organizations/$orgId/projects/agent-vault/$projectId/skills'
@@ -7599,6 +7644,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/cert-manager/integrations/$syncId'
     | '/organizations/$orgId/cert-manager/subscribers/$subscriberName'
     | '/organizations/$orgId/pam/accounts/$folderId'
+    | '/organizations/$orgId/pam/accounts/my-accounts'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/pam/access'
@@ -7620,6 +7666,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/cert-manager/code-signing/$signerId'
     | '/organizations/$orgId/cert-manager/discovery/installations/$installationId'
     | '/organizations/$orgId/projects/agent-vault/$projectId/proxies'
+    | '/organizations/$orgId/projects/agent-vault/$projectId/services'
     | '/organizations/$orgId/projects/agent-vault/$projectId/sessions'
     | '/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/organizations/$orgId/projects/agent-vault/$projectId/skills'
@@ -7901,6 +7948,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/integrations/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/subscribers/$subscriberName'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/$folderId'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/my-accounts'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/'
@@ -7926,6 +7974,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/code-signing/$signerId/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/skills'
@@ -8811,7 +8860,8 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/$folderId"
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/$folderId",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/my-accounts"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/audit-logs": {
@@ -9006,6 +9056,10 @@ export const routeTree = rootRoute
       "filePath": "pam/PamAccountsPage/PamFolderPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/my-accounts": {
+      "filePath": "pam/PamAccountsPage/PamMyAccountsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
+    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId": {
       "filePath": "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers"
@@ -9067,6 +9121,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/skills",
@@ -9149,6 +9204,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies": {
       "filePath": "agent-vault/AgentVaultProxiesPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services": {
+      "filePath": "agent-vault/AgentVaultServicesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions": {

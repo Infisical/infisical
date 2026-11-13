@@ -37,7 +37,10 @@ export const markAgentVaultProjectOriginal = async (dto: { orgId: string; projec
 const PROJECT_LEVEL_PATHS = new Set([
   "/api/v1/agent-vault/access-bundles",
   "/api/v1/agent-vault/variables",
+  "/api/v1/agent-vault/services",
+  "/api/v1/agent-vault/services/mcp-tools/list",
   "/api/v1/agent-vault/skills",
+  "/api/v1/agent-vault/skills/builtin",
   "/api/v1/agent-vault/proxies",
   "/api/v1/agent-vault/sessions",
   "/api/v1/agent-vault/members",

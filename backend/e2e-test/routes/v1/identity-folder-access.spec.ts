@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import {
   AccessScope,
   OrgMembershipRole,
@@ -191,10 +192,7 @@ describe("Identity folder access CRUD", () => {
     let directIdentityId: string;
     let firstGroup: { id: string; name: string; slug: string; orgId: string };
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
-    let removalDeps: Omit<
-      Parameters<typeof removeIdentitiesFromGroup>[0],
-      "group" | "identityIds" | "licenseService"
-    >;
+    let removalDeps: Omit<Parameters<typeof removeIdentitiesFromGroup>[0], "group" | "identityIds">;
 
     const createProjectGroup = async () => {
       const slug = `identity-folder-reap-grp-${alphaNumericNanoId(8)}`.toLowerCase();
@@ -222,6 +220,7 @@ describe("Identity folder access CRUD", () => {
 
     beforeAll(async () => {
       removalDeps = {
+        usageMeteringService: new FakeUsageMeteringService(),
         identityDAL: identityDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),

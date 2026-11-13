@@ -11,7 +11,7 @@ import {
   TApprovalRequests
 } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -673,7 +673,7 @@ export const approvalPolicyServiceFactory = ({
     // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
     if (policyType === ApprovalPolicyType.CertRequest) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.pkiApprovals) {
+      if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({
           message:
             "Failed to create certificate approval policy due to plan restriction. Upgrade plan to use certificate approvals."
@@ -1077,6 +1077,7 @@ export const approvalPolicyServiceFactory = ({
     requesterName,
     requesterEmail,
     skipApproverNotification,
+    deferApproverNotification,
     autoApprovalEvidence,
     tx
   }: TCreateRequestFromPolicyDTO) => {
@@ -1109,7 +1110,7 @@ export const approvalPolicyServiceFactory = ({
         : (request, trx) => $emitEvent({ event: ApprovalNotificationEvent.Requested, request }, trx)
     );
 
-    const notify = async () => {
+    const notifyApprovers = async () => {
       if (skipApproverNotification) return;
       await $notify({
         event: ApprovalNotificationEvent.Requested,
@@ -1118,12 +1119,12 @@ export const approvalPolicyServiceFactory = ({
       });
     };
 
-    // A caller holding a transaction runs notify after it commits: the notification reaches KMS Core and chat, email
-    // and in-app delivery, and must never announce a request that is then rolled back.
-    if (tx) return { request: requestWithSteps, notify };
+    if (!deferApproverNotification) await notifyApprovers();
 
-    await notify();
-    return { request: requestWithSteps, notify: async () => {} };
+    return {
+      request: requestWithSteps,
+      notifyApprovers
+    };
   };
 
   // Inputs a rule requires to be unused whose record an earlier approved request on this policy already linked

@@ -17,8 +17,7 @@ import (
 // Reports sit behind a 5s debounce, so waits need extra room on top of the default.
 const reportWithin = 30 * time.Second
 
-// A retried report also waits out the job's first backoff (10s, see UsageQueue.emit), so it lands at
-// debounce + backoff plus queue latency, which already measured 26s locally under suite load.
+// A retry also waits out the first 10s backoff (UsageQueue.emit); measured 26s under suite load.
 const retryWithin = reportWithin + 30*time.Second
 
 func TestUsageReport_Send(t *testing.T) {
@@ -30,7 +29,7 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		awaitFirstReport(t, root)
 		alice := tn.NewUser(t)
 		tn.NewMachineIdentity(t)
@@ -54,7 +53,7 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		alice := tn.NewUser(t)
 		membership := fixture.MembershipOf(t, tn, alice.Email)
 		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)
@@ -74,7 +73,7 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 
 		// Action
 		tn.NewMachineIdentity(t)
@@ -88,7 +87,7 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 
 		// Action
@@ -104,7 +103,7 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("agent-vault"))
 
 		// Action
@@ -119,7 +118,7 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t, harness.WithPlan(license.Free))
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		alice := tn.NewUser(t)
 		membership := fixture.MembershipOf(t, tn, alice.Email)
 
@@ -137,14 +136,14 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		awaitFirstReport(t, root)
 		tn.NewUser(t)
 		tn.NewMachineIdentity(t)
 		expectSnapshot(t, root, "user_identities", 1)
 		mark := root.Mark(t)
 
-		// Action: a second identity syncs the seats again, unchanged
+		// Action
 		tn.NewMachineIdentity(t)
 
 		// Assert
@@ -158,12 +157,12 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		awaitFirstReport(t, root)
 		root.Fail(t, http.MethodPost, "/v1/organizations/"+tn.OrgID.String()+"/usage-snapshots", http.StatusInternalServerError, fakenet.Times(1))
 		tn.NewUser(t)
 
-		// Action: creating an identity syncs the seats
+		// Action
 		tn.NewMachineIdentity(t)
 
 		// Assert
@@ -175,7 +174,7 @@ func TestUsageReport_Send(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root := fixture.LicenseServer(t, tn, tn.OrgID)
 		snapshots := "/v1/organizations/" + tn.OrgID.String() + "/usage-snapshots"
 		awaitFirstReport(t, root)
 		root.Fail(t, http.MethodPost, snapshots, http.StatusUnprocessableEntity,
@@ -184,7 +183,7 @@ func TestUsageReport_Send(t *testing.T) {
 		tn.NewMachineIdentity(t)
 		wait.Until(t, "the License Server refused a snapshot", func() bool { return refused(t, root, snapshots) }, wait.Timeout(reportWithin))
 
-		// Action: a second identity syncs the seats again
+		// Action
 		tn.NewMachineIdentity(t)
 
 		// Assert
@@ -196,7 +195,7 @@ func TestUsageReport_Send(t *testing.T) {
 // A new paid org reports this many dimensions once, on its first plan read.
 const meteredDimensions = 8
 
-// Wait for the initial reports so an injected failure hits the one the test triggers.
+// Lets an injected failure hit the report the test triggers, not an initial one.
 func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {
 	t.Helper()
 	wait.Until(t, "the first report of every dimension", func() bool {

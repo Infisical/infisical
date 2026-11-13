@@ -18,7 +18,7 @@ export type TIntegration = {
   newDatabase(): Promise<TEmptyDatabase>;
 };
 
-// Call inside a describe (or top of a file). Opens the DB in beforeAll, closes it in afterAll.
+// Call inside a describe or at the top of a file.
 export const setupIntegration = (options: TSetupIntegrationOptions = {}): TIntegration => {
   let opened: (TOpenDatabase & { factories: TPlatformFactories }) | undefined;
 

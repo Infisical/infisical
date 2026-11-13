@@ -77,8 +77,7 @@ test-api-unit: build-test-suite-image
 test-api-e2e: build-test-suite-image
 	$(TEST_SUITE_COMPOSE) run --rm api-tests npm run test:e2e -- $(SPEC)
 
-# Runs on the host rather than in the FIPS image: Testcontainers starts Postgres and any other server
-# a test asks for, which needs Docker. Narrow with SPEC=<pattern>.
+# Runs on the host, not the FIPS image, since Testcontainers needs Docker. Narrow with SPEC=<pattern>.
 test-api-integration:
 	cd backend && npm run test:integration -- $(SPEC)
 

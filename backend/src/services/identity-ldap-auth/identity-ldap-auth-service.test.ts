@@ -85,9 +85,9 @@ const createService = ({ identityAuthMethods = [] as string[] }: { identityAuthM
       })
     },
     licenseService: new FakeLicenseService().setPlan(ORG_ID, {
-      ldap: true as false,
-      machineIdentityAuthTemplates: true as false,
-      ipAllowlisting: true as false
+      ldap: true,
+      machineIdentityAuthTemplates: true,
+      ipAllowlisting: true
     }),
     permissionService: {
       getOrgPermission: vi

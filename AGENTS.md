@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
 - `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/AGENTS.md` for why running `npm run test:e2e` directly can destroy your dev data.
-- `make test-api-integration`: run the `src/domains/` integration tests against real Postgres (and any server a test asks for) through Testcontainers; needs Docker on the host. Narrow with `SPEC=<pattern>`.
+- `make test-api-integration`: run the `src/domains/` integration tests on real Postgres via Testcontainers (needs Docker). Narrow with `SPEC=<pattern>`.
 - `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
@@ -147,9 +147,11 @@ A policy type plugs in through **one** extension point, a `TApprovalResource` (s
 constructed with its own dependencies and registered in the `approvalResources` map in
 `server/routes/index.ts`; that also gives it the generic `/v1/approval-policies/<type>/...` endpoints,
 which every type now uses for policy CRUD, requests, approve, reject and grant revocation. **Do not stand up a per-product approval service, request table, or review
-endpoint**: `secret-approval-*` predates this module and is what we are converging away from
-(`access-approval-*` has finished moving: it runs on this module and no longer reads the legacy
-`access_approval_*` tables). A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+endpoint**: secret access (`ee/services/access-approval-*`) and secret change
+(`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
+longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
+`secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
@@ -344,5 +346,5 @@ Pickers for entities a user may need to create first (app connections, gateways,
 ## Workflow Guardrails
 
 - Do not reformat existing code as incidental cleanup. Preserve the repository's current formatting unless a review agent, CI check, or user explicitly asks for a formatting change.
-- Never push changes to `license-fns` or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
+- Never push changes to `default-features.ts` (the License free tier) or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
 - When resolving merge conflicts, optimize for a correct, minimal, strategically unblocking resolution. Do not let a slow or stalled local check block the push when the corresponding frontend or backend CI checks on GitHub can validate the branch; push the resolved code and use CI to complete the expensive verification.

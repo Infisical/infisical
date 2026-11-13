@@ -1,21 +1,24 @@
 /* eslint-disable class-methods-use-this */
-import { BadRequestError } from "@app/lib/errors";
+import { ExternalSystemError } from "@app/domains/lib/errors";
 
-import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
-import { Plan, TPlanProps } from "../model/plan";
-import { TLicenseProvider, TLicenseServer } from "../service/dependencies";
-import { TEntitlementOrg } from "../service/license-server-types/license-server-types";
-import { TUsageEvent, TUsageSnapshot, UsageReportError } from "../service/license-server-types/usage-reports";
-import { FakeLicenseServerBilling } from "./fake-license-server-billing";
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsRecord } from "../models/instance-entitlements";
+import { Plan, TPlanFeatures } from "../models/plan";
+import {
+  TLicensePolicyService,
+  TLicenseServer,
+  TMeteringEvent,
+  TUsageSnapshot,
+  TUsageSnapshotOutcome
+} from "../services/dependencies";
+import { TEntitlementOrg } from "../services/helpers/license-server-types";
 import { enterprisePlan, testFeatures } from "./test-features";
 
 // Plays both EE's provider and the License Server in memory. Cloud by default.
-export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
-  instance: TInstanceEntitlementsProps = {
+export class FakeLicenseServer implements TLicensePolicyService, TLicenseServer {
+  instance: TInstanceEntitlementsRecord = {
     instanceType: InstanceType.Cloud,
     features: testFeatures(),
-    licenseId: null,
-    customerId: null
+    licenseId: null
   };
 
   online = false;
@@ -24,11 +27,10 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
 
   refreshFailure: Error | null = null;
 
-  plans = new Map<string, TPlanProps>();
+  plans = new Map<string, TPlanFeatures>();
 
   fetches: string[] = [];
 
-  // The org each fetch named, as the License Server received it.
   fetchedOrgs: TEntitlementOrg[] = [];
 
   failNextFetches = 0;
@@ -39,18 +41,17 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
 
   snapshots: { orgId: string; snapshot: TUsageSnapshot }[] = [];
 
-  events: { orgId: string; event: TUsageEvent }[] = [];
+  events: { orgId: string; event: TMeteringEvent }[] = [];
 
-  failNextReports: UsageReportError[] = [];
+  // Each entry answers the next report: a final outcome, or an Error to retry.
+  failNextReports: (Exclude<TUsageSnapshotOutcome, "reported"> | "rejected" | Error)[] = [];
 
-  // Reports the License Server receives but whose reply never reaches the instance.
+  // Reports the server receives but whose reply never comes back.
   loseNextReplies = 0;
 
   deletedOrgs: string[] = [];
 
   deleteFailure: Error | null = null;
-
-  billing = new FakeLicenseServerBilling();
 
   resolveInstanceEntitlements = async () => InstanceEntitlements.restore(this.instance);
 
@@ -70,7 +71,7 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
     this.fetchedOrgs.push(rootOrg);
     if (this.failNextFetches > 0) {
       this.failNextFetches -= 1;
-      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
+      throw new ExternalSystemError({ message: "License Server entitlements are unavailable" });
     }
     return Plan.restore(this.plans.get(rootOrgId) ?? enterprisePlan());
   };
@@ -81,21 +82,24 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
 
   canReportUsage = () => this.reporting;
 
-  reportSnapshots = async (orgId: string, snapshots: TUsageSnapshot[]) => {
+  reportSnapshot = async (orgId: string, snapshot: TUsageSnapshot): Promise<TUsageSnapshotOutcome> => {
     const failure = this.failNextReports.shift();
-    if (failure) throw failure;
-    snapshots.forEach((snapshot) => this.snapshots.push({ orgId, snapshot }));
+    if (failure instanceof Error) throw failure;
+    if (failure === "no-license" || failure === "not-priced") return failure;
+    this.snapshots.push({ orgId, snapshot });
     if (this.loseNextReplies > 0) {
       this.loseNextReplies -= 1;
       throw new Error("License Server reply lost");
     }
+    return "reported";
   };
 
-  reportEvents = async (orgId: string, events: TUsageEvent[]) => {
+  reportEvents = async (orgId: string, events: TMeteringEvent[]) => {
     const failure = this.failNextReports.shift();
-    if (failure) throw failure;
+    if (failure instanceof Error) throw failure;
+    if (failure) return { status: "rejected" as const, reason: failure };
     events.forEach((event) => this.events.push({ orgId, event }));
-    return events.map((e) => ({ event_id: e.event_id, status: "accepted" as const }));
+    return { status: "reported" as const, accepted: events.length, deduped: 0 };
   };
 
   deleteOrganization = async (orgId: string) => {

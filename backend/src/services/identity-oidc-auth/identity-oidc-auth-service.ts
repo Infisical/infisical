@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
@@ -13,7 +12,7 @@ import {
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
@@ -27,7 +26,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
@@ -42,7 +40,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeJwksFetcher, safeRequest } from "@app/lib/validator";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -141,17 +139,11 @@ export const identityOidcAuthServiceFactory = ({
         caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
       }
 
-      const requestAgent = caCert ? new https.Agent({ ca: caCert, rejectUnauthorized: true }) : undefined;
-
-      await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
-
       let discoveryDoc: { jwks_uri: string };
       try {
-        const response = await request.get<{ jwks_uri: string }>(
+        const response = await safeRequest.get<{ jwks_uri: string }>(
           `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
-          {
-            httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
-          }
+          { ca: caCert || undefined }
         );
         discoveryDoc = response.data;
       } catch (error) {
@@ -191,8 +183,6 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      await blockLocalAndPrivateIpAddresses(jwksUri);
-
       const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
       if (!decodedToken) {
         throw new UnauthorizedError({
@@ -208,7 +198,7 @@ export const identityOidcAuthServiceFactory = ({
 
       const client = new JwksClient({
         jwksUri,
-        requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
+        fetcher: await buildSsrfSafeJwksFetcher(jwksUri, { ca: caCert || undefined })
       });
 
       const { kid } = decodedToken.header as { kid?: string };
@@ -664,7 +654,7 @@ export const identityOidcAuthServiceFactory = ({
 
     let template: TIdentityAuthTemplates | undefined;
     if (templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -722,7 +712,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -856,7 +846,7 @@ export const identityOidcAuthServiceFactory = ({
     // link CHANGE requires the attach-template permission; a re-assert must stay editable
     // for actors that hold identity EditAuth alone
     if (templateId && templateId !== identityOidcAuth.templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -921,7 +911,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

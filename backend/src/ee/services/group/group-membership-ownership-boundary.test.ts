@@ -39,7 +39,7 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
   };
   const userDAL = { findOne: vi.fn().mockResolvedValue({ id: "user-id", username: USERNAME }) };
   const membershipDAL = { findOne: vi.fn().mockResolvedValue({ id: "identity-membership-id" }) };
-  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { groups: true as false });
+  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { groups: true });
 
   const service = groupServiceFactory({
     permissionService: {

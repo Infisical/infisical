@@ -1,7 +1,7 @@
 import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionProxiedServiceActions,
@@ -87,7 +87,7 @@ export const proxiedServiceServiceFactory = ({
 }: TProxiedServiceServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.secretsBrokering) {
+    if (!plan.has(PlanFeature.SecretsBrokering)) {
       throw new BadRequestError({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use proxied services."
       });
@@ -183,7 +183,7 @@ export const proxiedServiceServiceFactory = ({
     if (!dynamicCreds.length) return;
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.dynamicSecret) {
+    if (!plan.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message:
           "Failed to reference a dynamic secret due to plan restriction. Upgrade your plan to use dynamic secrets."
@@ -562,7 +562,7 @@ export const proxiedServiceServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.secretsBrokering) return 0;
+    if (!plan.has(PlanFeature.SecretsBrokering)) return 0;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -599,7 +599,7 @@ export const proxiedServiceServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.secretsBrokering) return [];
+    if (!plan.has(PlanFeature.SecretsBrokering)) return [];
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,

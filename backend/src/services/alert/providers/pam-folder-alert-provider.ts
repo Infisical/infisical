@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   PAM_FOLDER_RESOURCE_TYPE,
   PamAccessRequestEvent
@@ -303,7 +303,7 @@ export const pamFolderAlertProviderFactory = ({
     if (!gatedType) return;
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.pamEnterpriseAlerting) {
+    if (!plan.has(PlanFeature.PamEnterpriseAlerting)) {
       throw new BadRequestError({
         message:
           "Your plan only allows email channels for PAM alerts. Upgrade to the Enterprise plan to use Slack, webhook, or PagerDuty channels."

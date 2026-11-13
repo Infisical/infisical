@@ -1,7 +1,8 @@
 import { TEnvConfig } from "@app/lib/config/env";
 
-import { LicenseServerClient } from "./license-server-client/license-server-client";
-import { getLicenseKeyConfig, isOfflineLicenseKey, LicenseResolver } from "./service/license-resolver";
+import { LicenseServerClient } from "./clients/license-server/client";
+import { getLicenseKeyConfig, isOfflineLicenseKey } from "./services/license-policy/license-key";
+import { LicensePolicyService } from "./services/license-policy/service";
 
 export type TLicenseEeDeps = {
   envConfig: Pick<
@@ -16,7 +17,7 @@ export type TLicenseEeDeps = {
 };
 
 export class LicenseEeModule {
-  readonly resolver: LicenseResolver;
+  readonly licensePolicyService: LicensePolicyService;
 
   readonly licenseServerClient: LicenseServerClient;
 
@@ -26,10 +27,6 @@ export class LicenseEeModule {
       envConfig,
       isOffline: isOfflineLicenseKey(licenseKeyConfig)
     });
-    this.resolver = new LicenseResolver({
-      isCloud: envConfig.isCloud,
-      licenseKeyConfig,
-      licenseServerClient: this.licenseServerClient
-    });
+    this.licensePolicyService = new LicensePolicyService(envConfig.isCloud, licenseKeyConfig, this.licenseServerClient);
   }
 }

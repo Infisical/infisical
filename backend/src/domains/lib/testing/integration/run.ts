@@ -12,6 +12,8 @@ export const RUN_LABEL = "com.infisical.integration-test.run";
 // The harness only creates or drops databases with this prefix.
 export const DATABASE_PREFIX = "infisical_it_";
 
+export const runDatabasePrefix = (runId: string) => `${DATABASE_PREFIX}${runId}_`;
+
 // Lowercase letters and digits, starting with a letter, so it works unquoted as a DB name, Unix user or LDAP RDN.
 const firstChar = customAlphabet("abcdefghijklmnopqrstuvwxyz", 1);
 const restChars = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 32);
@@ -26,8 +28,7 @@ const addressFile = (runId: string, name: string) => path.join(runDirectory(runI
 
 export const readAddress = async <T>(runId: string, name: string): Promise<T | undefined> => {
   try {
-    const contents = await readFile(addressFile(runId, name), "utf8");
-    return JSON.parse(contents) as T;
+    return JSON.parse(await readFile(addressFile(runId, name), "utf8")) as T;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw err;

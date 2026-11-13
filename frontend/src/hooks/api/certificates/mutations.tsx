@@ -19,6 +19,7 @@ import {
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
+  TRevokeCertResponse,
   TTriggerCertificateRequestValidationResponse,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
@@ -60,17 +61,15 @@ export const useDeleteCert = () => {
 
 export const useRevokeCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, object, TRevokeCertDTO>({
+  return useMutation<TRevokeCertResponse, object, TRevokeCertDTO>({
     mutationFn: async ({ id, revocationReason }) => {
-      const {
-        data: { certificate }
-      } = await apiRequest.post<{ certificate: TCertificate }>(
+      const { data } = await apiRequest.post<TRevokeCertResponse>(
         `/api/v1/cert-manager/certificates/${id}/revoke`,
         {
           revocationReason
         }
       );
-      return certificate;
+      return data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({

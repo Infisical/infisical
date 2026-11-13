@@ -1,6 +1,6 @@
-import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { logger } from "@app/lib/logger";
 
+import { DataAccessDb } from "../ce/lib/data-access-db";
 import { buildKmsCoreDataAccessDeps, TKmsCoreHooks } from "../ce/module";
 import { defaultExternalKmsProviders, TExternalKmsProviders } from "./external-kms-client/external-kms-providers";
 import { createHsmClient } from "./hsm-client/hsm-client";

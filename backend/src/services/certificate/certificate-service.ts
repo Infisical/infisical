@@ -5,7 +5,7 @@ import * as x509 from "@peculiar/x509";
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -28,7 +28,11 @@ import { ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  CaCapability,
+  CaCrlRegenerationTrigger,
+  CaType
+} from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr, caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
@@ -78,7 +82,8 @@ import {
   expandInternalCa,
   getCaCertChain,
   getCaCertChains,
-  rebuildCaCrl
+  getInternalCaExpiredAt,
+  rebuildCaCrlAfterChange
 } from "../certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { assertCsrMatchesCertificate } from "../certificate-common/certificate-csr-utils";
@@ -160,7 +165,7 @@ type TCertificateServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create" | "delete">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById" | "find">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "update" | "primaryNode">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "delete">;
@@ -180,8 +185,9 @@ type TCertificateServiceFactoryDep = {
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   certManagerService: TCertManagerService;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "acquireLock">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
@@ -217,6 +223,7 @@ export const certificateServiceFactory = ({
   digicertFns,
   certificatePolicyService,
   licenseService,
+  usageMeteringService,
   certManagerService,
   keyStore,
   caKeySourceService,
@@ -608,8 +615,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     return {
       deletedCert,
@@ -791,8 +798,8 @@ export const certificateServiceFactory = ({
       });
     }
 
-    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -805,11 +812,12 @@ export const certificateServiceFactory = ({
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
-    // rebuild CRL (TODO: move to interval-based cron job)
-    // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
-    if (!ca.externalCa?.id) {
-      await rebuildCaCrl({
+    let crlWarning: string | undefined;
+    if (!ca.externalCa?.id && !getInternalCaExpiredAt(ca.internalCa?.notAfter)) {
+      const crlRegeneration = await rebuildCaCrlAfterChange({
         caId: ca.id,
+        trigger: CaCrlRegenerationTrigger.Revocation,
+        auditLogService,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
         certificateAuthorityCrlDAL,
@@ -817,8 +825,10 @@ export const certificateServiceFactory = ({
         projectDAL,
         certificateDAL,
         kmsCoreDomain,
-        caKeySourceService
+        caKeySourceService,
+        keyStore
       });
+      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
     }
 
     if (!cert.deletedAt) {
@@ -847,7 +857,13 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    return { revokedAt, cert, applicationName: await $resolveApplicationName(cert.applicationId), ca: caResult };
+    return {
+      revokedAt,
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
+      ca: caResult,
+      crlWarning
+    };
   };
 
   /**
@@ -1534,8 +1550,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
