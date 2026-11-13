@@ -107,7 +107,7 @@ export const IdentitySingleRoleModify = ({ identityProjectMembership, role, onSu
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...CustomRolesUpgradeIntent,
-          isEnterpriseFeature: true
+          isEnterpriseFeature: false
         }}
       />
     </form>
