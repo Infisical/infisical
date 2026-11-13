@@ -94,7 +94,9 @@ const revokeBatchOfSessionsWithRestrictedInlineServices = (knex: Knex, after: st
         services.map((service) => service.id)
       )
       .update({ allowedTools: null });
-    await trx(SERVICE).whereIn("id", withSecrets).update({ encryptedCredential: null, secretsDeletedAt: now });
+    await trx(SERVICE)
+      .whereIn("id", withSecrets)
+      .update({ encryptedCredential: null, encryptedHookSecret: null, secretsDeletedAt: now });
     await trx(TableName.AgentVaultServiceCustomHeader)
       .whereIn("serviceId", withSecrets)
       .update({ encryptedValue: null });

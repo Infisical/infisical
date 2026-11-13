@@ -13,6 +13,7 @@ import {
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultHookInput, TAgentVaultHookUpdate } from "../agent-vault/agent-vault-hook-fns";
 import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
@@ -118,6 +119,8 @@ export type TAgentVaultServiceSummary = {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // Left out for members.
+  hook?: { url: string } | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Extract<
@@ -219,6 +222,7 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   credential: TAgentVaultCredentialInput;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+  hook?: TAgentVaultHookInput;
 };
 
 export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
@@ -243,6 +247,8 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderUpdate[];
   substitutions?: TAgentVaultSubstitutionUpdate[];
+  // null removes the hook and its signing secret.
+  hook?: TAgentVaultHookUpdate | null;
 };
 
 // What the service sheet would save, so the tools are listed with the credential agents will use. On edit, a value

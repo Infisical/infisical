@@ -59,7 +59,8 @@ const InlineServiceSecretsSchema = z.object({
     ])
     .nullable(),
   customHeaders: z.string().array(),
-  substitutions: z.string().array()
+  substitutions: z.string().array(),
+  hookSecret: z.string().nullable()
 });
 
 export type TInlineServiceSecrets = z.infer<typeof InlineServiceSecretsSchema>;
@@ -77,7 +78,8 @@ export type TPreparedInlineService = {
   credentialConfig: TInlineCredentialConfig;
   customHeaders: TInlineCustomHeader[];
   substitutions: TInlineSubstitution[];
-  // Null when there is nothing to seal: a pass-through service with no custom headers or substitutions.
+  hookUrl: string | null;
+  // Null when there is nothing to seal: a pass-through service with no custom headers, substitutions or hook.
   secrets: TInlineServiceSecrets | null;
 };
 
@@ -222,12 +224,14 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces
     })),
+    hookUrl: input.hook?.url ?? null,
     secrets:
-      secret || customHeaders.length || substitutions.length
+      secret || customHeaders.length || substitutions.length || input.hook
         ? {
             credential: secret,
             customHeaders: customHeaders.map((header) => header.value),
-            substitutions: substitutions.map((substitution) => substitution.value)
+            substitutions: substitutions.map((substitution) => substitution.value),
+            hookSecret: input.hook?.signingSecret ?? null
           }
         : null
   };
@@ -332,7 +336,12 @@ const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCred
 export const toInlineServiceSummary = (
   row: TAgentVaultSessionInlineServiceSummaryRow
 ): TAgentVaultInlineServiceSummary => {
-  const base = { id: row.id, name: inlineServiceDisplayName(row), description: row.description ?? null };
+  const base = {
+    id: row.id,
+    name: inlineServiceDisplayName(row),
+    description: row.description ?? null,
+    hook: row.hookUrl ? { url: row.hookUrl } : null
+  };
   const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig);
   // Every mint checks the credential against the type, so this means a row written some other way.
   const unsupportedCredential = () =>
@@ -372,11 +381,13 @@ export const toInlineServiceSummary = (
   }
 };
 
-// Whether the service needs a sealed value to go out. One that does and has none had its session end.
+// Whether the service needs a sealed value to go out, its hook's signing secret included. One that does and has none
+// had its session end.
 const needsSecrets = (row: TAgentVaultInlineServiceRow) =>
   (row.credentialConfig as TInlineCredentialConfig).type !== AgentVaultCredentialType.Passthrough ||
   row.customHeaders.length > 0 ||
-  row.substitutions.length > 0;
+  row.substitutions.length > 0 ||
+  Boolean(row.hookUrl);
 
 /**
  * The service's sealed values, opened, in the order of the names and placeholders beside them. Null once its session
@@ -389,13 +400,15 @@ export const openInlineServiceSecrets = (
   if (row.secretsDeletedAt || !needsSecrets(row)) return null;
   const isPassthrough = (row.credentialConfig as TInlineCredentialConfig).type === AgentVaultCredentialType.Passthrough;
   if (!isPassthrough && !row.encryptedCredential) return null;
+  if (row.hookUrl && !row.encryptedHookSecret) return null;
   const values = [...row.customHeaders, ...row.substitutions].map((entry) => entry.encryptedValue);
   if (values.some((value) => !value)) return null;
   const valueOf = (encrypted: Buffer | null) => (decryptJson(encrypted!) as { value: string }).value;
   return InlineServiceSecretsSchema.parse({
     credential: row.encryptedCredential ? decryptJson(row.encryptedCredential) : null,
     customHeaders: row.customHeaders.map((header) => valueOf(header.encryptedValue)),
-    substitutions: row.substitutions.map((substitution) => valueOf(substitution.encryptedValue))
+    substitutions: row.substitutions.map((substitution) => valueOf(substitution.encryptedValue)),
+    hookSecret: row.encryptedHookSecret ? valueOf(row.encryptedHookSecret) : null
   });
 };
 
@@ -491,11 +504,13 @@ export const toResolvedInlineService = (
   ) {
     return null;
   }
+  if (row.hookUrl && !secrets?.hookSecret) return null;
 
   return {
     id: row.id,
     name: inlineServiceDisplayName(row),
     accessBundleName: null,
+    accessBundleId: null,
     type: row.type as AgentVaultServiceType,
     hostPattern: row.hostPattern ?? null,
     native: toResolvedNativeTarget(row.type, row.config),
@@ -509,6 +524,7 @@ export const toResolvedInlineService = (
       value: secrets!.substitutions[index]
     })),
     personalValuesMissing: false,
-    memberProvided: false
+    memberProvided: false,
+    hook: row.hookUrl ? { url: row.hookUrl, secret: secrets!.hookSecret! } : null
   };
 };

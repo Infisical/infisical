@@ -14,12 +14,19 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { getInstancePinningLink, getProjectBaseURL } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLucideIcon,
+  getProjectTitle
+} from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserProjects } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
+
+import { useIsNamedByProduct } from "./products";
 
 type Props = {
   membership: TWorkspaceUser;
@@ -36,15 +43,15 @@ export const UserProjectRow = ({
   const { data: workspaces = [] } = useGetUserProjects();
   const { currentOrg } = useOrganization();
 
-  const isAccessible = useMemo(() => {
-    const workspaceIds = new Map();
+  const isAccessible = useMemo(
+    () => workspaces.some((workspace) => workspace.id === project.id),
+    [workspaces, project]
+  );
 
-    workspaces?.forEach((workspace) => {
-      workspaceIds.set(workspace.id, true);
-    });
-
-    return workspaceIds.has(project.id);
-  }, [workspaces, project]);
+  const productName = getProjectTitle(project.type);
+  const ProductIcon = getProjectLucideIcon(project.type);
+  const isNamedByProduct = useIsNamedByProduct()(project.type);
+  const removeLabel = isNamedByProduct ? productName : project.name;
 
   const projectLink =
     getInstancePinningLink(
@@ -65,13 +72,19 @@ export const UserProjectRow = ({
       onClick={
         isAccessible
           ? undefined
-          : () => createNotification({ text: "Unable to access project", type: "error" })
+          : () => createNotification({ text: `Unable to access ${removeLabel}`, type: "error" })
       }
     >
       <TableCell className="max-w-0 truncate">
         <RowLink {...projectLink} search={projectSearch} disabled={!isAccessible}>
-          {project.name}
+          <span className="flex min-w-0 items-center gap-2">
+            <ProductIcon className="size-4 shrink-0 text-muted" />
+            <span className="truncate">{productName}</span>
+          </span>
         </RowLink>
+      </TableCell>
+      <TableCell className="max-w-0 truncate">
+        {isNamedByProduct ? <span className="text-muted">-</span> : project.name}
       </TableCell>
       <TableCell>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
@@ -86,7 +99,7 @@ export const UserProjectRow = ({
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild isDisabled={!isAccessible}>
               <Link {...projectLink} search={projectSearch}>
-                Access Project
+                {isNamedByProduct ? `Open ${productName}` : "Open Project"}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -97,11 +110,12 @@ export const UserProjectRow = ({
                 handlePopUpOpen("removeUserFromProject", {
                   username: user.username,
                   projectId: project.id,
-                  projectName: project.name
+                  projectType: project.type,
+                  projectName: removeLabel
                 });
               }}
             >
-              Remove From Project
+              {isNamedByProduct ? `Remove From ${productName}` : "Remove From Project"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
