@@ -27,10 +27,11 @@ A typical Infisical Cloud deployment consists of the following components:
 - **Amazon RDS (PostgreSQL)**:
   - **Main RDS Instance**: Primary database for secrets, users, and metadata (Multi-AZ, encryption enabled)
   - **License API RDS Instance**: Dedicated database for license management services
+  - Automated backups kept for 30 days
 - **Amazon ElastiCache (Redis)**:
   - **Main Redis Cluster**: Multi-AZ replication group for core application caching and queuing
   - **License API Redis**: Dedicated cache for license services
-  - Redis 7 engine with CloudWatch logging and snapshot backups
+  - Redis 7 engine with CloudWatch logging and snapshot backups (snapshots kept for 15 days)
 
 ### Infrastructure
 
@@ -95,7 +96,7 @@ Application configuration and secrets are managed through AWS SSM Parameter Stor
 
 ### Logging
 
-- **CloudWatch**: 365-day retention for application logs
+- **CloudWatch**: 90-day retention for application logs
 - **Health Checks**: HTTP endpoint monitoring for service health
 
 ### Metrics
@@ -126,4 +127,17 @@ Application configuration and secrets are managed through AWS SSM Parameter Stor
 - **Load Balancing**: Application Load Balancer with SSL termination and health checks
 - **Security Groups**: Restrictive firewall rules and controlled network access
 - **High Availability**: Multi-AZ deployment with automatic failover
-- **Network Monitoring**: VPC Flow Logs with 365-day retention for traffic analysis
+- **Network Monitoring**: VPC Flow Logs with 90-day retention for traffic analysis
+
+### Data retention
+
+Infisical Cloud deletes logs, cached data, and temporary data on a fixed schedule:
+
+- **Audit logs**: Deleted when they reach the [audit log retention period](/documentation/platform/audit-logs) of your plan or project
+- **Application and network logs**: Deleted after 90 days
+- **Cache snapshots**: Deleted after 15 days
+- **Database backups**: Deleted after 30 days
+- **Expired access tokens and shared secrets**: Deleted within a day of expiring
+- **In-app notifications**: Deleted after 3 months
+
+When a contract ends, Infisical deletes the organization's data within 60 days, as described in the [Data Processing Agreement](https://infisical.com/terms/dpa). Copies in database backups are deleted when those backups expire, 30 days after they're taken.
