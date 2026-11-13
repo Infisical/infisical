@@ -12,8 +12,11 @@ const FINDING_BATCH_SIZE = 5_000;
 const BATCH_STATEMENT_TIMEOUT_MS = 60_000;
 const ALTER_LOCK_TIMEOUT_MS = 10_000;
 
-// Merges one batch of resources. A merge never crosses resources, so each batch is complete on its own.
-const mergeResources = async (tx: Knex, resourceIds: string[]) => {
+type TMergeScope = { sql: string; bindings: Knex.RawBinding[] };
+
+// Merges the findings a scope selects. A scope always holds every row of each value it covers, so its merge is
+// complete on its own.
+const mergeFindings = async (tx: Knex, scope: TMergeScope) => {
   await tx.raw(`SET LOCAL statement_timeout = ${BATCH_STATEMENT_TIMEOUT_MS}`);
 
   // Rows of one value in one resource merge into the row that best keeps an open leak visible: an unresolved one,
@@ -30,8 +33,8 @@ const mergeResources = async (tx: Knex, resourceIds: string[]) => {
            (f.status = ?) DESC, f."triagedAt" DESC NULLS LAST, f."createdAt", f.id
        ) AS "findingId"
      FROM ?? AS f
-     WHERE f."resourceId" = ANY(?::uuid[])`,
-    [LOCATION, SecretScanningFindingStatus.Unresolved, FINDING, resourceIds]
+     WHERE ${scope.sql}`,
+    [LOCATION, SecretScanningFindingStatus.Unresolved, FINDING, ...scope.bindings]
   );
 
   // A rerun after a partial failure merges the batches that committed again, and the finding they kept wins. If the
@@ -89,6 +92,50 @@ const mergeResources = async (tx: Knex, resourceIds: string[]) => {
   await tx.raw(`DROP TABLE finding_merge`);
 };
 
+// A resource with more findings than a batch holds is split by value instead, since rows only merge with rows of the
+// same value. Values are packed into batches of up to FINDING_BATCH_SIZE rows, and only a single value with more rows
+// than that gets a batch larger than it.
+const mergeLargeResource = async (knex: Knex, resourceId: string) => {
+  const values: { secretFindingBlindIndex: string; findingCount: number }[] = await knex(FINDING)
+    .where({ resourceId })
+    .whereNotNull("secretFindingBlindIndex")
+    .groupBy("secretFindingBlindIndex")
+    .select("secretFindingBlindIndex", knex.raw(`count(*)::int AS "findingCount"`));
+
+  const batches: string[][] = [];
+  let findingCount = 0;
+  for (const value of values) {
+    if (!batches.length || findingCount + value.findingCount > FINDING_BATCH_SIZE) {
+      batches.push([]);
+      findingCount = 0;
+    }
+    batches[batches.length - 1].push(value.secretFindingBlindIndex);
+    findingCount += value.findingCount;
+  }
+
+  for (const blindIndexes of batches) {
+    // eslint-disable-next-line no-await-in-loop
+    await knex.transaction((tx) =>
+      mergeFindings(tx, {
+        sql: `f."resourceId" = ? AND f."secretFindingBlindIndex" = ANY(?)`,
+        bindings: [resourceId, blindIndexes]
+      })
+    );
+  }
+
+  // A row without a value merges with nothing, so these only become locations.
+  const unmatchedIds: string[] = await knex(FINDING)
+    .where({ resourceId })
+    .whereNull("secretFindingBlindIndex")
+    .pluck("id");
+
+  for (let i = 0; i < unmatchedIds.length; i += FINDING_BATCH_SIZE) {
+    const ids = unmatchedIds.slice(i, i + FINDING_BATCH_SIZE);
+    // eslint-disable-next-line no-await-in-loop
+    await knex.transaction((tx) => mergeFindings(tx, { sql: `f.id = ANY(?::uuid[])`, bindings: [ids] }));
+  }
+};
+
 // Every finding row becomes a location, and the rows of one secret value in one resource merge into one finding.
 // Runs a batch of resources per transaction, so no finding stays locked for the whole migration. Merging a batch again
 // changes nothing, so an interrupted run can simply start over.
@@ -114,8 +161,8 @@ export async function up(knex: Knex): Promise<void> {
 
     if (!resources.length) break;
 
-    // A batch holds the rows it merges until it commits, so it stops at a few thousand findings. A resource is never
-    // split, since its rows merge with each other.
+    // A batch holds the rows it merges until it commits, so it stops at a few thousand findings. Resources that fit
+    // share a batch; one that doesn't fit alone is split by value.
     const resourceIds: string[] = [];
     let findingCount = 0;
     for (const resource of resources) {
@@ -124,8 +171,15 @@ export async function up(knex: Knex): Promise<void> {
       findingCount += resource.findingCount;
     }
 
-    // eslint-disable-next-line no-await-in-loop
-    await knex.transaction((tx) => mergeResources(tx, resourceIds));
+    if (findingCount > FINDING_BATCH_SIZE) {
+      // eslint-disable-next-line no-await-in-loop
+      await mergeLargeResource(knex, resourceIds[0]);
+    } else {
+      // eslint-disable-next-line no-await-in-loop
+      await knex.transaction((tx) =>
+        mergeFindings(tx, { sql: `f."resourceId" = ANY(?::uuid[])`, bindings: [resourceIds] })
+      );
+    }
     lastResourceId = resourceIds[resourceIds.length - 1];
   }
 
