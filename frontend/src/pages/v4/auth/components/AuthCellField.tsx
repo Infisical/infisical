@@ -3,7 +3,7 @@ import { CSSProperties, RefObject, useEffect, useLayoutEffect, useRef, useState 
 import styles from "../auth.module.css";
 
 // Ported from infisical-web components/externalWebsite/redesign/sections/careers/PixelShimmer.js
-// as the homepage hero mounts it (HomepageHero.js). Times are multiples of --v4-duration-slow.
+// as the homepage hero mounts it (HomepageHero.js). Times are multiples of --cipher-duration-slow.
 const CELL = 44;
 const SCATTER_DENSITY = 0.54;
 const IMAGE_RATIO = 0.05;

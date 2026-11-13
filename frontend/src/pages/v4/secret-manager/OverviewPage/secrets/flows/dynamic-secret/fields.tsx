@@ -187,7 +187,7 @@ export function ProviderGroup(props: GroupProps) {
       <Stack gap={16}>{children}</Stack>
     );
   return surface ? (
-    <div className="border border-[color:var(--v4-line-soft)] p-3">{content}</div>
+    <div className="border border-[color:var(--cipher-line-soft)] p-3">{content}</div>
   ) : (
     content
   );
@@ -211,7 +211,7 @@ export function MetadataFields({ id }: { id: string }) {
   return (
     <ProviderGroup id={id} surface title="Metadata">
       {metadataFields.fields.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 border border-dashed border-[color:var(--v4-line-soft)] p-5 text-center">
+        <div className="flex flex-col items-center gap-3 border border-dashed border-[color:var(--cipher-line-soft)] p-5 text-center">
           <FieldDescription>No metadata entries</FieldDescription>
           {addEntry}
         </div>

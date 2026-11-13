@@ -19,7 +19,7 @@ import { formatTickLabel, ranges } from "./dashboard.utils";
 
 export type TrendSeries = { key: string; label: string; color: string; dashed?: boolean };
 
-const axisTick = { fill: "var(--v4-text2)", style: { fill: "var(--v4-text2)" } };
+const axisTick = { fill: "var(--cipher-text2)", style: { fill: "var(--cipher-text2)" } };
 
 export const TrendCard = <TPoint extends { period: string }>({
   title,
@@ -68,7 +68,7 @@ export const TrendCard = <TPoint extends { period: string }>({
             data={data}
             margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
           >
-            <CartesianGrid vertical={false} stroke="var(--v4-line)" />
+            <CartesianGrid vertical={false} stroke="var(--cipher-line)" />
             <XAxis
               dataKey="period"
               tickFormatter={formatTickLabel}

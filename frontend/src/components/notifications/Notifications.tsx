@@ -11,8 +11,8 @@ import { useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { isV4Href } from "@app/helpers/v4Bridge";
 import { useTimedReset } from "@app/hooks";
 
-// The v4 Toaster's id (V4_TOASTER_ID in @infisical/cipher/ui/sonner), which main code may not import.
-const V4_TOASTER_ID = "infisical-v4";
+// The Cipher Toaster's id (TOASTER_ID in @infisical/cipher/ui/sonner), which main code may not import.
+const CIPHER_TOASTER_ID = "cipher";
 
 export type NotificationType = "success" | "error" | "info" | "warning" | "loading" | "default";
 
@@ -153,17 +153,17 @@ export const createNotification = (
           event.preventDefault();
           navigator.clipboard
             .writeText(copy.value)
-            .then(() => toast.success(`Copied ${copy.name}`, { toasterId: V4_TOASTER_ID }))
+            .then(() => toast.success(`Copied ${copy.name}`, { toasterId: CIPHER_TOASTER_ID }))
             .catch(() =>
               toast.error(`Couldn't copy ${copy.name}`, {
-                toasterId: V4_TOASTER_ID,
+                toasterId: CIPHER_TOASTER_ID,
                 duration: Infinity
               })
             );
         }
       },
       duration,
-      toasterId: V4_TOASTER_ID
+      toasterId: CIPHER_TOASTER_ID
     });
   }
 

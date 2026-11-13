@@ -22,7 +22,7 @@ export const palette = [
   "var(--chart-5)"
 ];
 
-export const otherColor = "var(--v4-faint)";
+export const otherColor = "var(--cipher-faint)";
 
 export const MAX_DONUT_SEGMENTS = 6;
 

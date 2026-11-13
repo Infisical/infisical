@@ -79,7 +79,7 @@ export function SecretSyncRowStatusBadge({ sync }: { sync: LocalSecretSync }) {
               className={styles.statusLabel}
               data-tone={sync.status === "failed" ? "warn" : "ok"}
             >
-              <Icon name="calendar" size="var(--v4-size-icon-xs)" />
+              <Icon name="calendar" size="var(--cipher-size-icon-xs)" />
               Last synced
             </span>
             <span className={styles.statusValue}>
@@ -90,7 +90,7 @@ export function SecretSyncRowStatusBadge({ sync }: { sync: LocalSecretSync }) {
         {failureMessage && (
           <div className={styles.statusBlock}>
             <span className={styles.statusLabel} data-tone="bad">
-              <Icon name="x" size="var(--v4-size-icon-xs)" />
+              <Icon name="x" size="var(--cipher-size-icon-xs)" />
               Failure reason
             </span>
             <span className={styles.statusValue} data-message>

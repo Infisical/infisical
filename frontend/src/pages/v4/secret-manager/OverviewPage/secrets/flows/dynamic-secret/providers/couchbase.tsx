@@ -250,7 +250,10 @@ function CouchbaseBucketFields() {
       ) : (
         <Stack gap={12} align="start">
           {advancedBuckets.map((bucket, bucketIndex) => (
-            <div key={bucketIndex} className="w-full border border-[color:var(--v4-line-soft)] p-3">
+            <div
+              key={bucketIndex}
+              className="w-full border border-[color:var(--cipher-line-soft)] p-3"
+            >
               <Stack gap={12}>
                 <Controller
                   control={control}

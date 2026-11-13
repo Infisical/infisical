@@ -1,27 +1,27 @@
 .icon {
-  --v4-provider-icon: var(--v4-size-icon);
+  --cipher-provider-icon: var(--cipher-size-icon);
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: var(--v4-provider-icon);
-  height: var(--v4-provider-icon);
+  width: var(--cipher-provider-icon);
+  height: var(--cipher-provider-icon);
   object-fit: contain;
 }
 .icon[data-size="sm"] {
-  --v4-provider-icon: var(--v4-size-icon-sm);
+  --cipher-provider-icon: var(--cipher-size-icon-sm);
 }
 .icon[data-size="lg"] {
-  --v4-provider-icon: var(--v4-size-icon-lg);
+  --cipher-provider-icon: var(--cipher-size-icon-lg);
 }
 .icon[data-size="xl"] {
-  --v4-provider-icon: var(--v4-size-icon-xl);
+  --cipher-provider-icon: var(--cipher-size-icon-xl);
 }
 .fallback {
-  color: var(--v4-faint);
+  color: var(--cipher-faint);
 }
 .fallback > svg {
   width: 100%;
   height: 100%;
-  stroke-width: var(--v4-stroke-icon);
+  stroke-width: var(--cipher-stroke-icon);
 }

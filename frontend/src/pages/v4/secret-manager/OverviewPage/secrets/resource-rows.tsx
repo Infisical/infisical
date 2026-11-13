@@ -638,7 +638,7 @@ function KindRowView({
           />
           <TableCell
             pin="start"
-            pinOffset="var(--v4-size-row)"
+            pinOffset="var(--cipher-size-row)"
             colSpan={2}
             className={styles.nameCell}
           >
@@ -668,7 +668,7 @@ function KindRowView({
           onToggle={() => setExpanded(!expanded)}
           kind={kind}
         />
-        <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
+        <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
           <div className={styles.nameLine}>
             <span className={styles.truncate}>{first.name}</span>
             {!expanded && <span className={styles.push}>{spec.flag?.(entries)}</span>}
@@ -786,7 +786,7 @@ function FolderRowView({
         />
         <TableCell
           pin="start"
-          pinOffset="var(--v4-size-row)"
+          pinOffset="var(--cipher-size-row)"
           colSpan={ctx.single ? 2 : undefined}
           className={styles.nameCell}
         >
@@ -808,8 +808,8 @@ function FolderRowView({
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "var(--v4-space-8)",
-                  marginInlineStart: "var(--v4-space-8)",
+                  gap: "var(--cipher-space-8)",
+                  marginInlineStart: "var(--cipher-space-8)",
                   verticalAlign: "middle"
                 }}
               >
@@ -1045,7 +1045,7 @@ export function ImportRow({
           />
           <TableCell
             pin="start"
-            pinOffset="var(--v4-size-row)"
+            pinOffset="var(--cipher-size-row)"
             colSpan={ctx.single ? 2 : undefined}
             className={styles.nameCell}
           >
@@ -1087,7 +1087,7 @@ export function ImportRow({
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>
           <TableCell pin="start" selection divider={false} />
-          <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
+          <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
             <span>Name</span>
           </TableCell>
           <TableCell colSpan={2} className={styles.valueCell}>
@@ -1099,7 +1099,7 @@ export function ImportRow({
         keys.map((secret) => (
           <TableRow key={secret.id} className={styles.importedRow}>
             <TableCell pin="start" selection divider={false} />
-            <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
+            <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>

@@ -459,7 +459,7 @@ export function QuickAddRow({
           </Button>
         </span>
       </TableCell>
-      <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
+      <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
         <div className={styles.nameLine}>
           <Input
             ref={keyRef}

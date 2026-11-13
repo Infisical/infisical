@@ -8,7 +8,7 @@ import {
   useFormContext
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,7 +88,7 @@ const ON_LIGHT_LOGOS: Record<string, string> = {
 };
 
 function ProviderLogo({ provider }: { provider: DynamicSecretProviders }) {
-  const theme = useV4Scheme();
+  const theme = useScheme();
   const { providerFamily, logoFileName } =
     getDynamicSecretProviderRuntimeMetadata(provider).presentation;
   return (

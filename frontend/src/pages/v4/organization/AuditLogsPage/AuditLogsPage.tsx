@@ -167,7 +167,7 @@ const makeColumns = (
           {detail && (
             <Meta
               mono={false}
-              style={{ ...truncate, flex: "1 1 0", minWidth: "var(--v4-space-48)" }}
+              style={{ ...truncate, flex: "1 1 0", minWidth: "var(--cipher-space-48)" }}
             >
               {detail}
             </Meta>

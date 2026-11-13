@@ -246,7 +246,7 @@ export const CommitmentView = ({
                     {onDemandQty > 0 && (
                       <>
                         , with{" "}
-                        <span className="text-[color:var(--v4-warn)]">
+                        <span className="text-[color:var(--cipher-warn)]">
                           {onDemandQty.toLocaleString()} on-demand
                         </span>
                         .{" "}
