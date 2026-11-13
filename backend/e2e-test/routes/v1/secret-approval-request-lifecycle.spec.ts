@@ -433,6 +433,10 @@ describe("Searching secret change requests by folder path", () => {
     expect(await searchRequestIds(secretPath)).toEqual([requestId]);
   });
 
+  test("the full folder path with a trailing slash finds the request", async () => {
+    expect(await searchRequestIds(`${secretPath}/`)).toEqual([requestId]);
+  });
+
   test("part of the folder path in any case finds the request", async () => {
     expect(await searchRequestIds(`/${PARENT.toUpperCase()}/SAR-SEARCH`)).toEqual([requestId]);
   });

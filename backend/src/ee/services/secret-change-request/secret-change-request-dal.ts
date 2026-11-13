@@ -379,6 +379,7 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
 
       if (search) {
         const pattern = `%${sanitizeSqlLikeString(search)}%`;
+        const folderPathPattern = `%${sanitizeSqlLikeString(search.replace(/\/+$/, "") || "/")}%`;
         void baseQuery
           .withRecursive("request_search_folder_paths", ["id", "path"], (folders) => {
             void folders
@@ -412,7 +413,7 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
               .orWhereILike("environment", pattern)
               .orWhereILike("policySecretPath", pattern)
               .orWhereIn("folderId", (folderPaths) => {
-                void folderPaths.select("id").from("request_search_folder_paths").whereILike("path", pattern);
+                void folderPaths.select("id").from("request_search_folder_paths").whereILike("path", folderPathPattern);
               })
               .orWhereExists(
                 dbInstance(TableName.SecretApprovalRequestSecretV2)
