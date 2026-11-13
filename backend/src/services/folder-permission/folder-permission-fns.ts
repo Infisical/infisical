@@ -249,7 +249,7 @@ export const toFolderGrant = (
     | "temporaryRange"
     | "temporaryAccessStartTime"
     | "temporaryAccessEndTime"
-    | "isRecursiveFolder"
+    | "appliesToSubfolders"
     | "createdAt"
     | "updatedAt"
   >,
@@ -267,7 +267,7 @@ export const toFolderGrant = (
   temporaryRange: row.temporaryRange ?? null,
   temporaryAccessStartTime: row.temporaryAccessStartTime ?? null,
   temporaryAccessEndTime: row.temporaryAccessEndTime ?? null,
-  isPermissionRecursive: row.isRecursiveFolder ?? false,
+  isPermissionRecursive: row.appliesToSubfolders ?? false,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt
 });

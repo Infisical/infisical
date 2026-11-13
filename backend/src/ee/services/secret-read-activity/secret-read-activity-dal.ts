@@ -157,7 +157,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     updatedAt: Date;
     isTemporary: boolean;
     temporaryAccessEndTime: Date | null;
-    isRecursiveFolder: boolean | null;
+    appliesToSubfolders: boolean | null;
     environmentSlug: string | null;
   };
 
@@ -200,7 +200,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
             db.ref("updatedAt").withSchema(TableName.AdditionalPrivilege),
             db.ref("isTemporary").withSchema(TableName.AdditionalPrivilege),
             db.ref("temporaryAccessEndTime").withSchema(TableName.AdditionalPrivilege),
-            db.ref("isRecursiveFolder").withSchema(TableName.AdditionalPrivilege),
+            db.ref("appliesToSubfolders").withSchema(TableName.AdditionalPrivilege),
             db.ref("slug").withSchema(TableName.Environment).as("environmentSlug")
           )
       ])) as [TRoleSourceRow[], TPrivilegeSourceRow[]];
@@ -249,7 +249,7 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
         if (!row.folderId) recordExpiry(actorId, row.temporaryAccessEndTime);
         else if (actorId && row.temporaryAccessEndTime) {
           const endedAt = new Date(row.temporaryAccessEndTime);
-          if (row.isRecursiveFolder && row.environmentSlug) {
+          if (row.appliesToSubfolders && row.environmentSlug) {
             raise(environmentReopenedAt, `${actorId}:${row.environmentSlug}`, endedAt);
           } else {
             raise(folderReopenedAt, `${actorId}:${row.folderId}`, endedAt);

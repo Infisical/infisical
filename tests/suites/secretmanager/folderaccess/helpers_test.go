@@ -36,6 +36,7 @@ type grant struct {
 	TemporaryRange           *string    `json:"temporaryRange"`
 	TemporaryAccessStartTime *time.Time `json:"temporaryAccessStartTime"`
 	TemporaryAccessEndTime   *time.Time `json:"temporaryAccessEndTime"`
+	IsPermissionRecursive    bool       `json:"isPermissionRecursive"`
 }
 
 // reply is one folder access write: its status, its message on failure and the grant on
@@ -44,6 +45,7 @@ type reply struct {
 	status  int
 	body    []byte
 	message string
+	errName string
 	grant   grant
 }
 
@@ -51,13 +53,15 @@ func decodeReply(t *testing.T, status int, body []byte) reply {
 	t.Helper()
 	out := reply{status: status, body: body}
 	var parsed struct {
-		Message      any   `json:"message"`
-		FolderAccess grant `json:"folderAccess"`
+		Message      any    `json:"message"`
+		Error        string `json:"error"`
+		FolderAccess grant  `json:"folderAccess"`
 	}
 	require.NoErrorf(t, json.Unmarshal(body, &parsed), "decoding %d: %s", status, apierr.Body(body))
 	if msg, ok := parsed.Message.(string); ok {
 		out.message = msg
 	}
+	out.errName = parsed.Error
 	out.grant = parsed.FolderAccess
 	return out
 }
@@ -205,6 +209,8 @@ type holder struct {
 	IsProjectAdmin bool
 	Roles          []string
 	Grant          *grant
+	// Inherited is the recursive root grant reaching a nested folder.
+	Inherited *grant
 }
 
 // accessList is a folder's access list for one actor type: who has access, who has
@@ -262,7 +268,8 @@ func listAccess(t *testing.T, actor *harness.Principal, proj *fixture.Project, k
 				Slug string `json:"slug"`
 			} `json:"roles"`
 		} `json:"membership"`
-		FolderRBACAccess *grant `json:"folderRBACAccess"`
+		FolderRBACAccess          *grant `json:"folderRBACAccess"`
+		InheritedFolderRBACAccess *grant `json:"inheritedFolderRBACAccess"`
 	}
 	var parsed struct {
 		Users                   []row `json:"users"`
@@ -274,7 +281,8 @@ func listAccess(t *testing.T, actor *harness.Principal, proj *fixture.Project, k
 	require.NoError(t, json.Unmarshal(body, &parsed))
 	toHolders := func(rows []row, into map[string]holder) {
 		for _, r := range rows {
-			h := holder{ID: r.UserID + r.IdentityID, IsProjectAdmin: r.Membership.IsProjectAdmin, Grant: r.FolderRBACAccess, Roles: []string{}}
+			h := holder{ID: r.UserID + r.IdentityID, IsProjectAdmin: r.Membership.IsProjectAdmin, Grant: r.FolderRBACAccess,
+				Inherited: r.InheritedFolderRBACAccess, Roles: []string{}}
 			for _, role := range r.Membership.Roles {
 				h.Roles = append(h.Roles, role.Slug)
 			}

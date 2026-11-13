@@ -138,14 +138,14 @@ describe("assertManageFolderSubtree", () => {
   const folderGrant = (
     role: SecretFolderRole,
     secretPath: string,
-    isRecursiveFolder = false
+    appliesToSubfolders = false
   ): TProjectFolderScopedPrivilege => ({
     id: "privilege-id",
     folderId: "granted-folder-id",
     role,
     environmentSlug: "dev",
     secretPath,
-    isRecursiveFolder
+    appliesToSubfolders
   });
 
   const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges?: TProjectFolderScopedPrivilege[]) =>

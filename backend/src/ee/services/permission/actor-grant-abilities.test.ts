@@ -294,7 +294,7 @@ describe("getActorGrantAbilities folder grants", () => {
       );
     };
 
-    expect(await abilityAt({ isRecursiveFolder: true })).toBe(true);
+    expect(await abilityAt({ appliesToSubfolders: true })).toBe(true);
     expect(await abilityAt({})).toBe(false);
   });
 

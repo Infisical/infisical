@@ -40,7 +40,7 @@ describe("secret read activity dal (postgres)", () => {
           actorUserId: seedData1.id,
           folderId: root?.id,
           role: SecretFolderRole.Read,
-          isRecursiveFolder: true,
+          appliesToSubfolders: true,
           isTemporary: true,
           temporaryAccessEndTime: recursiveEndedAt
         },

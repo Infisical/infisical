@@ -612,7 +612,7 @@ const $resolveFolderScopedPrivileges = async (
           role: row.role,
           environmentSlug: folder.environmentSlug,
           secretPath: folder.path,
-          isRecursiveFolder: Boolean(row.isRecursiveFolder),
+          appliesToSubfolders: Boolean(row.appliesToSubfolders),
           isTemporary: row.isTemporary,
           temporaryAccessEndTime: row.temporaryAccessEndTime
         }
@@ -702,10 +702,10 @@ export const buildFolderScopedPrivilegeRules = (
     }
     return {
       role: privilege.role as SecretFolderRole,
-      isRecursive: privilege.isRecursiveFolder,
+      isRecursive: privilege.appliesToSubfolders,
       conditions: {
         environment: privilege.environmentSlug,
-        secretPath: privilege.isRecursiveFolder
+        secretPath: privilege.appliesToSubfolders
           ? { $glob: recursiveFolderPathGlob(privilege.secretPath) }
           : privilege.secretPath
       }

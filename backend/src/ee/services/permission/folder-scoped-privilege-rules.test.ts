@@ -32,12 +32,12 @@ const privilege = (overrides: Partial<TProjectFolderScopedPrivilege> = {}): TPro
   role: SecretFolderRole.Read,
   environmentSlug: "dev",
   secretPath: "/a/b",
-  isRecursiveFolder: false,
+  appliesToSubfolders: false,
   ...overrides
 });
 
 const recursiveRoot = (role: SecretFolderRole) =>
-  privilege({ id: "root-grant", folderId: "root-folder", role, secretPath: "/", isRecursiveFolder: true });
+  privilege({ id: "root-grant", folderId: "root-folder", role, secretPath: "/", appliesToSubfolders: true });
 
 const adminRoles = [{ role: ProjectMembershipRole.Admin, permissions: [] }];
 const memberRoles = [{ role: ProjectMembershipRole.Member, permissions: [] }];
@@ -501,10 +501,10 @@ describe("filterOverriddenFolderScopedDenyRules", () => {
   });
 
   test("drops the folder create and edit denies only for a recursive grant of the edit tier and above", () => {
-    const folderDenies = (role: SecretFolderRole, isRecursiveFolder: boolean) =>
+    const folderDenies = (role: SecretFolderRole, appliesToSubfolders: boolean) =>
       denyActionsFor(
         filterOverriddenFolderScopedDenyRules(
-          buildFolderScopedPrivilegeRules([privilege({ role, isRecursiveFolder })])
+          buildFolderScopedPrivilegeRules([privilege({ role, appliesToSubfolders })])
         ),
         ProjectPermissionSub.SecretFolders
       ).sort();

@@ -132,7 +132,7 @@ export const folderPermissionServiceFactory = ({
             folderId: folder.id,
             role: dto.role,
             [actorField]: target.actorId,
-            isRecursiveFolder: Boolean(dto.isPermissionRecursive),
+            appliesToSubfolders: Boolean(dto.isPermissionRecursive),
             ...computeTemporaryFields(dto.type)
           },
           tx
@@ -174,14 +174,15 @@ export const folderPermissionServiceFactory = ({
         (dto.role ?? existing.role) as SecretFolderRole,
         dto.type === undefined ? existing.isTemporary : dto.type.isTemporary
       );
-      if (existing.isRecursiveFolder || dto.isPermissionRecursive) assertManageFolderSubtree(callerPermission, folder);
+      if (existing.appliesToSubfolders || dto.isPermissionRecursive)
+        assertManageFolderSubtree(callerPermission, folder);
 
       const doc = await additionalPrivilegeDAL.updateById(
         existing.id,
         {
           ...(dto.role ? { role: dto.role } : {}),
           ...(dto.type === undefined ? {} : computeTemporaryFields(dto.type)),
-          ...(dto.isPermissionRecursive === undefined ? {} : { isRecursiveFolder: dto.isPermissionRecursive })
+          ...(dto.isPermissionRecursive === undefined ? {} : { appliesToSubfolders: dto.isPermissionRecursive })
         },
         tx
       );
@@ -212,7 +213,7 @@ export const folderPermissionServiceFactory = ({
           message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on the folder at path '${folder.path}' in environment with slug '${folder.environmentSlug}'`
         });
       }
-      if (existing.isRecursiveFolder) assertManageFolderSubtree(callerPermission, folder, "remove");
+      if (existing.appliesToSubfolders) assertManageFolderSubtree(callerPermission, folder, "remove");
 
       const doc = await additionalPrivilegeDAL.deleteById(existing.id, tx);
       await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
@@ -318,7 +319,7 @@ export const folderPermissionServiceFactory = ({
       new Map(rows.filter((grant) => grant.role).map((grant) => [grant[actorField] as string, grant]));
     const grantByActorId = byActorId(grants.filter((grant) => grant.folderId === folder.id));
     const inheritedGrantByActorId = byActorId(
-      grants.filter((grant) => grant.folderId !== folder.id && grant.isRecursiveFolder)
+      grants.filter((grant) => grant.folderId !== folder.id && grant.appliesToSubfolders)
     );
 
     // the page is one slice of the project roster; the split only says which of the two lists each of
