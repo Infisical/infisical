@@ -318,13 +318,13 @@ const BUILT_IN_ROLE_NAMES = new Map<string, string>(
 export const toUnusedAccessFolderAccess = (
   grants: TProjectFolderScopedPrivilege[]
 ): TUnusedAccessPaths["folderAccess"] =>
-  grants.map(({ id, folderId, role, environmentSlug, secretPath, isRecursiveFolder }) => ({
+  grants.map(({ id, folderId, role, environmentSlug, secretPath, appliesToSubfolders }) => ({
     id,
     folderId,
     environment: environmentSlug,
     secretPath,
     role: role as SecretFolderRole,
-    isPermissionRecursive: isRecursiveFolder
+    isPermissionRecursive: appliesToSubfolders
   }));
 
 // A built-in role has no id and is named after its predefined role; a custom role keeps its own id and name.

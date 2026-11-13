@@ -5,6 +5,7 @@ import { splitVariableReferences } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField,
+  isNativeServiceType,
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
 
@@ -59,7 +60,8 @@ export const SendsPreview = () => {
     username,
     secret,
     memberProvidedFields,
-    customHeaders
+    customHeaders,
+    serviceType
   ] = useWatch({
     control,
     name: [
@@ -69,9 +71,13 @@ export const SendsPreview = () => {
       "username",
       "secret",
       "memberProvidedFields",
-      "customHeaders"
+      "customHeaders",
+      "serviceType"
     ]
   });
+  // A database or SSH login sends no HTTP header.
+  if (isNativeServiceType(serviceType)) return null;
+
   const isMemberProvided = (field: TAgentVaultMemberProvidedField) =>
     memberProvidedFields.includes(field);
 

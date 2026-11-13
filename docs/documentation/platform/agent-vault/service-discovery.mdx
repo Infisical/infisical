@@ -16,12 +16,12 @@ Agent Vault provides two things so that an agent can find its services on its ow
 For each service in the session, the list includes:
 
 - The service's name and [description](/documentation/platform/agent-vault/services#service-descriptions)
-- The service's hosts, or for an MCP service, its server URL and transport
+- The service's hosts, or for an MCP service, its server URL and transport (a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) has neither)
 - The header the proxy sets, and any [substitution placeholder](/documentation/platform/agent-vault/http-apis#substitutions) the agent writes where a secret goes
 - The [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) the service allows, or for an MCP service, the [tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools) it allows
 - The service's status: ready, or waiting for [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values)
 - The person who has to fix the credential if the service rejects it: an admin, or, if the credential uses personal values, the person who set them (the session's owner, or for a session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), that user)
-- A sentence that tells the agent how to call the service
+- A sentence that tells the agent how to call the service, or for a database or SSH service, to reach it with `infisical agent-vault connect`
 
 The list also shows the session's expiry, and the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) of the proxy that the request came through, so the agent can tell if the proxy refuses hosts that no service covers. If it does, the list names the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions), such as a package registry the agent can still reach. The list never includes a credential, a custom header's value, or a substitution's value.
 

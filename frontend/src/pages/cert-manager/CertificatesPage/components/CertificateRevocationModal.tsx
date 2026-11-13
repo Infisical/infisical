@@ -72,13 +72,22 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
 
     const { certificateId } = popUp.revokeCertificate.data as { certificateId: string };
 
-    await revokeCertificate({
+    const { crlWarning } = await revokeCertificate({
       id: certificateId,
       revocationReason
     });
 
     reset();
     handlePopUpToggle("revokeCertificate", false);
+
+    if (crlWarning) {
+      createNotification({
+        title: "Certificate revoked, CRL not regenerated",
+        text: crlWarning,
+        type: "warning"
+      });
+      return;
+    }
 
     createNotification({
       text: "Successfully revoked certificate",

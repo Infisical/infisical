@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -65,7 +66,8 @@ export const secretAccessApprovalPolicyServiceFactory = ({
   approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
   additionalPrivilegeDAL,
-  delegatedApprovalService
+  delegatedApprovalService,
+  licenseService
 }: TSecretAccessApprovalPolicyServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -470,6 +472,14 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.has(PlanFeature.SecretApproval)) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval policy due to plan restriction. Upgrade plan to create access approval policy."
+      });
+    }
+
     const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApproval;
 
     const mergedEnvs = (environment ? [environment] : environments) || [];
@@ -593,6 +603,14 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       projectId: policy.projectId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.has(PlanFeature.SecretApproval)) {
+      throw new BadRequestError({
+        message:
+          "Failed to update access approval policy due to plan restriction. Upgrade plan to update access approval policy."
+      });
+    }
 
     let envs: { id: string; slug: string }[] = policy.environments;
     if (environments) {

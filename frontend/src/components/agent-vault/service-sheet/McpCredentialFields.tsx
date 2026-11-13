@@ -41,7 +41,7 @@ const DEFAULT_HEADER_NAME = "Authorization";
 const DEFAULT_HEADER_PREFIX = "Bearer";
 
 type Props = {
-  accessBundleId: string;
+  projectId: string;
   service?: TAgentVaultService | null;
   openItem: string;
   onOpenChange: (item: string) => void;
@@ -49,7 +49,7 @@ type Props = {
 };
 
 export const McpCredentialFields = ({
-  accessBundleId,
+  projectId,
   service,
   openItem,
   onOpenChange,
@@ -129,7 +129,7 @@ export const McpCredentialFields = ({
 
       {isOAuth ? (
         <OAuthAuthorizeCard
-          accessBundleId={accessBundleId}
+          projectId={projectId}
           service={service}
           onSignInChange={onSignInChange}
           isMemberProvided={isMemberProvided}

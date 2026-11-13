@@ -13,6 +13,7 @@ import {
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
   AgentVaultCredentialType,
+  AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultTrafficPolicy
@@ -135,7 +136,15 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ config: ProxyConfigSchema }) }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
-    handler: async (req) => server.services.agentVaultProxy.heartbeat({ proxyId: req.permission.id })
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
+        throw new UnauthorizedError({ message: "A proxy token is required" });
+      }
+      return server.services.agentVaultProxy.heartbeat({
+        proxyId: req.permission.id,
+        tokenVersion: req.auth.token.tokenVersion
+      });
+    }
   });
 
   server.route({
@@ -165,7 +174,17 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               name: z.string(),
               accessBundleName: z.string().nullable(),
               type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
-              hostPattern: z.string(),
+              // Null for a database or SSH service, so neither a new nor an old proxy matches HTTP traffic to it.
+              hostPattern: z.string().nullable(),
+              // Where a database or SSH service's server is. Null for HTTP and MCP services.
+              native: z
+                .object({
+                  host: z.string(),
+                  port: z.number(),
+                  database: z.string().nullable(),
+                  tls: z.object({ enabled: z.boolean(), verify: z.boolean(), ca: z.string().nullable() }).nullable()
+                })
+                .nullable(),
               allowedMethods: z.string().array().nullable(),
               allowedPathPrefixes: z.string().array().nullable(),
               allowedTools: z.string().array().nullable(),
@@ -180,7 +199,15 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                   .describe(JSON.stringify({ title: "Basic Auth" })),
                 z
                   .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-                  .describe(JSON.stringify({ title: "Pass-through" }))
+                  .describe(JSON.stringify({ title: "Pass-through" })),
+                z
+                  .object({
+                    type: z.literal(AgentVaultCredentialType.SshKey),
+                    username: z.string(),
+                    privateKey: z.string(),
+                    certificate: z.string().optional()
+                  })
+                  .describe(JSON.stringify({ title: "SSH Key" }))
               ]),
               customHeaders: z.object({ name: z.string(), prefix: z.string(), value: z.string() }).array(),
               substitutions: z
@@ -188,12 +215,26 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 .array(),
               personalValuesMissing: z.boolean(),
               // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
-              memberProvided: z.boolean()
+              memberProvided: z.boolean(),
+              // The bundle the service came from. Null for a service sent with the session.
+              accessBundleId: z.string().uuid().nullable(),
+              // Proxies from before hooks ignore it and send the request without asking.
+              hook: z.object({ url: z.string(), secret: z.string() }).nullable()
             })
             .array(),
           sessionLogs: z.object({
             enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
             sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.proxySessionKey)
+          }),
+          session: z.object({
+            label: z.string().nullable(),
+            actor: z.object({
+              type: z.enum([AgentVaultMemberType.User, AgentVaultMemberType.MachineIdentity]),
+              id: z.string().uuid(),
+              name: z.string(),
+              email: z.string().nullable()
+            }),
+            onBehalfOf: z.object({ id: z.string().uuid(), name: z.string(), email: z.string().nullable() }).nullable()
           })
         })
       }

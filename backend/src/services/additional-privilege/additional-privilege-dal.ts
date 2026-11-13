@@ -139,7 +139,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
         "temporaryAccessEndTime",
         "actorUserId",
         "actorIdentityId",
-        "isRecursiveFolder"
+        "appliesToSubfolders"
       );
 
     return docs as {
@@ -151,7 +151,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
       temporaryAccessEndTime: Date | null;
       actorUserId: string | null;
       actorIdentityId: string | null;
-      isRecursiveFolder: boolean | null;
+      appliesToSubfolders: boolean | null;
     }[];
   };
 

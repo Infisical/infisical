@@ -133,8 +133,13 @@ const PermissionsTab = ({
   const { data: accountMembers, isLoading: isLoadingAccount } = useListAccountMembers(accountId);
   const { data: folderMembers, isLoading: isLoadingFolder } = useListFolderMembers(folderId);
 
+  // Only the Accounts root page opens the folder sheet from the URL.
   const goToFolderPermissions = () => {
-    navigate({ search: { folderId, tab: PamSheetTab.Permissions } as any });
+    navigate({
+      to: "/organizations/$orgId/pam/accounts",
+      params: { orgId: currentOrg.id },
+      search: { folderId, tab: PamSheetTab.Permissions }
+    });
   };
   const { data: resourceRoles } = useListPamResourceRoles();
   const { userMap } = usePamProductUsers();

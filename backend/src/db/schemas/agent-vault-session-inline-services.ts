@@ -16,7 +16,7 @@ export const AgentVaultSessionInlineServicesSchema = z.object({
   name: z.string().nullable().optional(),
   type: z.string(),
   config: z.unknown().nullable().optional(),
-  hostPattern: z.string(),
+  hostPattern: z.string().nullable().optional(),
   allowedMethods: z.string().array().nullable().optional(),
   allowedPathPrefixes: z.string().array().nullable().optional(),
   credentialType: z.string(),

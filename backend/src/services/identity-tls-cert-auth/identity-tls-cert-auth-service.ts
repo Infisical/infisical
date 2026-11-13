@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -175,7 +175,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -546,7 +546,7 @@ export const identityTlsCertAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -666,7 +666,7 @@ export const identityTlsCertAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

@@ -415,14 +415,14 @@ describe("toUnusedAccessFolderAccess", () => {
   test("keeps each grant's location and says whether it is recursive", () => {
     expect(
       toUnusedAccessFolderAccess([
-        { id: "g1", folderId: "f1", role: "read", environmentSlug: "dev", secretPath: "/", isRecursiveFolder: true },
+        { id: "g1", folderId: "f1", role: "read", environmentSlug: "dev", secretPath: "/", appliesToSubfolders: true },
         {
           id: "g2",
           folderId: "f2",
           role: "edit",
           environmentSlug: "prod",
           secretPath: "/app",
-          isRecursiveFolder: false
+          appliesToSubfolders: false
         }
       ])
     ).toEqual([

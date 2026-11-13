@@ -15,7 +15,7 @@ To add an HTTP service to an access bundle:
 
 <Steps>
   <Step>
-    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**. In the **Services** list, select **Create New Service**.
   </Step>
   <Step>
     On the **Choose a template** panel, pick the template for the API you want to reach, or select **Custom HTTP API** to configure the host and header yourself.
@@ -34,7 +34,7 @@ To add an HTTP service to an access bundle:
     </Frame>
   </Step>
   <Step>
-    Select **Add Service**. The service appears in the bundle's list.
+    Select **Add Service**. The service appears in the bundle's list. To add the same service to another access bundle, see [add a service to an access bundle](/documentation/platform/agent-vault/services#add-a-service-to-an-access-bundle).
   </Step>
 </Steps>
 
@@ -159,7 +159,7 @@ Wildcards match exactly one label. The pattern below matches `api.atlassian.net`
 
 ## Host conflicts
 
-Two services within an access bundle can't cover the same host with the same pattern. For example, if you have a service that defines its host as `api.github.com` and you try to create a second service with that same host, Infisical will stop you from saving the second service.
+An access bundle can't hold two services that cover the same host with the same pattern. For example, if an access bundle holds a service that defines its host as `api.github.com`, Infisical refuses to add a second service with that host to the access bundle, or to save a change that gives another service in the access bundle that host.
 
 However, two services can match the same host if they define the host pattern differently. When the agent makes a request to that host, the request will match the service that defines the host more explicitly. For example:
 
@@ -173,7 +173,7 @@ The proxy applies only the more specific service's [methods and paths](#methods-
 </Warning>
 
 <Note>
-Different access bundles can cover the same host with different credentials, since an agent only gets the credential from the access bundle its session is scoped to.
+Different access bundles can hold different services for the same host, since an agent only gets the credential from the access bundle its session is scoped to.
 </Note>
 
 ## Methods and paths
@@ -211,6 +211,8 @@ HTTP/1.1 403 Forbidden
 
 service "github" does not allow path "/admin": blocked by service policy
 ```
+
+If the service has a [hook](/documentation/platform/agent-vault/hooks), the proxy also refuses each request that your hook server denies, with a `403` response that holds your hook server's message.
 
 ## Custom headers
 

@@ -3,10 +3,10 @@ import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -135,7 +135,7 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -318,6 +318,7 @@ export const secretSyncQueueFactory = ({
         sourcePath: folder.path,
         sourceFolderId: folderId,
         syncOptions: secretSync.syncOptions as TSecretSync["syncOptions"],
+        includeAllSubFolders: secretSync.includeAllSubFolders,
         includeImports
       },
       {
@@ -1132,9 +1133,7 @@ export const secretSyncQueueFactory = ({
     // not is never triggered by a change it was never configured to cover.
     // The move and copy warnings in frontend/src/helpers/secretSyncCoverage.ts mirror this rule.
     const secretSyncs = candidateSyncs.filter(
-      (sync) =>
-        (folder && sync.folderId === folder.id) ||
-        Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
+      (sync) => (folder && sync.folderId === folder.id) || sync.includeAllSubFolders
     );
 
     await secretSyncDAL.update(

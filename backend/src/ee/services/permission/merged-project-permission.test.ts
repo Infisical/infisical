@@ -71,7 +71,7 @@ describe("buildMergedProjectPermissionRules", () => {
         role: "list",
         environmentSlug: "prod",
         secretPath: "/api",
-        isRecursiveFolder: false
+        appliesToSubfolders: false
       }
     ];
     const asMember = buildMergedProjectPermissionRules({

@@ -33,9 +33,7 @@ import {
   CLOUDFLARE_POLICY_SCOPE_RESOURCE_MAP,
   CloudflareApiTokenPolicyEffect,
   CloudflareApiTokenPolicyScope,
-  CloudflareApiTokenRotationSchema,
-  explodePolicies,
-  isStoredPolicy
+  CloudflareApiTokenRotationSchema
 } from "../schemas/cloudflare-api-token-rotation-schema";
 import { CLOUDFLARE_TOKEN_NAME_MAX_LENGTH } from "../schemas/shared";
 import { CloudflareIpListField } from "./shared";
@@ -79,21 +77,10 @@ export const CloudflareApiTokenRotationParametersFields = () => {
     name: "parameters.policies"
   });
 
-  // Seed a first row on create, and on edit expand the stored merged policies into one row per
-  // permission group so the field array has something row-shaped to render.
+  // Seed a first row on create
   useEffect(() => {
-    const currentPolicies = getValues("parameters.policies");
-
-    if (!currentPolicies?.length) {
+    if (!getValues("parameters.policies")?.length) {
       setValue("parameters.policies", [DEFAULT_POLICY]);
-      return;
-    }
-
-    // the form type says rows, but `defaultValues` really does hand us the stored shape on edit
-    const storedPolicies = (currentPolicies as unknown[]).filter(isStoredPolicy);
-
-    if (storedPolicies.length) {
-      setValue("parameters.policies", explodePolicies(storedPolicies));
     }
   }, []);
 

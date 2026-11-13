@@ -8,13 +8,19 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlertRecipient } from "./alert-channel-types";
-import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
+import {
+  findProjectAdminUserIds,
+  findUsersWithOrgAccess,
+  findVerifiedEmailDomains,
+  isOnVerifiedDomain,
+  resolvePrincipalsInScope
+} from "./alert-principal-scope-fns";
 import { AlertPrincipalType } from "./alert-types";
 
 type TAlertRecipientResolverDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findActorsWithActiveOrgAccess">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findAllProjectGroupMembers">;
@@ -65,35 +71,39 @@ export const alertRecipientResolverFactory = ({
       });
     }
 
-    const wantsProjectMembers =
-      Boolean(scope.projectId) &&
+    const { projectId } = scope;
+    const wantsPrincipal = (principalType: AlertPrincipalType) =>
       [...rowsByChannel.values()].some((rows) =>
-        rows.some(
-          (recipient) =>
-            recipient.principalType === AlertPrincipalType.PROJECT_MEMBERS && recipient.principalId === scope.projectId
-        )
+        rows.some((recipient) => recipient.principalType === principalType && recipient.principalId === projectId)
       );
-    const projectMemberIds = new Set<string>();
-    if (wantsProjectMembers && scope.projectId) {
-      // Direct members and members through a project group, so "everyone in the project" matches who
-      // the scope check below lets through.
+    const findProjectMemberIds = async (id: string) => {
       const [directMembers, projectGroupMembers] = await Promise.all([
-        projectMembershipDAL.findAllProjectMembers(scope.projectId),
-        groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
+        projectMembershipDAL.findAllProjectMembers(id),
+        groupProjectDAL.findAllProjectGroupMembers(id)
       ]);
-      [...directMembers, ...projectGroupMembers].forEach((member) => {
-        projectMemberIds.add(member.user.id);
-        allUserIds.add(member.user.id);
-      });
-    }
+      const memberIds = [...new Set([...directMembers, ...projectGroupMembers].map((member) => member.user.id))];
+      return findUsersWithOrgAccess({ orgDAL, userDAL }, { orgId: scope.orgId, userIds: memberIds });
+    };
 
-    const { userIds: inScopeUserIds, groupIds: inScopeGroupIds } = await resolvePrincipalsInScope(
-      { orgDAL, projectDAL },
-      { orgId: scope.orgId, projectId: scope.projectId, userIds: [...allUserIds], groupIds: [...allGroupIds] }
-    );
+    // Project-wide recipients don't go through resolvePrincipalsInScope: its direct org check would drop
+    // everyone in a sub-org, where people get in through a linked root group.
+    const [projectMemberIds, projectAdminIds, { userIds: inScopeUserIds, groupIds: inScopeGroupIds }] =
+      await Promise.all([
+        projectId && wantsPrincipal(AlertPrincipalType.PROJECT_MEMBERS)
+          ? findProjectMemberIds(projectId)
+          : new Set<string>(),
+        projectId && wantsPrincipal(AlertPrincipalType.PROJECT_ADMINS)
+          ? findProjectAdminUserIds({ projectMembershipDAL, orgDAL, userDAL }, { orgId: scope.orgId, projectId })
+          : new Set<string>(),
+        resolvePrincipalsInScope(
+          { orgDAL, projectDAL },
+          { orgId: scope.orgId, projectId, userIds: [...allUserIds], groupIds: [...allGroupIds] }
+        )
+      ]);
+    const usersToLoad = new Set([...inScopeUserIds, ...projectMemberIds, ...projectAdminIds]);
     const usersById = new Map<string, Awaited<ReturnType<typeof userDAL.find>>[number]>();
-    if (inScopeUserIds.size > 0) {
-      const users = await userDAL.find({ $in: { id: [...inScopeUserIds] } });
+    if (usersToLoad.size > 0) {
+      const users = await userDAL.find({ $in: { id: [...usersToLoad] } });
       users.forEach((user) => usersById.set(user.id, user));
     }
 
@@ -105,16 +115,23 @@ export const alertRecipientResolverFactory = ({
       for (const recipient of rows) {
         switch (recipient.principalType) {
           case AlertPrincipalType.USER:
-            userIds.add(recipient.principalId);
+            if (inScopeUserIds.has(recipient.principalId)) userIds.add(recipient.principalId);
             break;
           case AlertPrincipalType.GROUP:
             if (inScopeGroupIds.has(recipient.principalId)) {
-              (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
+              (groupMembers.get(recipient.principalId) ?? [])
+                .filter((userId) => inScopeUserIds.has(userId))
+                .forEach((userId) => userIds.add(userId));
             }
             break;
           case AlertPrincipalType.PROJECT_MEMBERS:
             if (scope.projectId && recipient.principalId === scope.projectId) {
               projectMemberIds.forEach((userId) => userIds.add(userId));
+            }
+            break;
+          case AlertPrincipalType.PROJECT_ADMINS:
+            if (scope.projectId && recipient.principalId === scope.projectId) {
+              projectAdminIds.forEach((userId) => userIds.add(userId));
             }
             break;
           case AlertPrincipalType.EMAIL:
@@ -127,7 +144,6 @@ export const alertRecipientResolverFactory = ({
 
       const resolved: TAlertRecipient[] = [];
       userIds.forEach((userId) => {
-        // usersById only holds in-scope users, so out-of-scope recipients are skipped here.
         const user = usersById.get(userId);
         if (user?.email) {
           resolved.push({ userId: user.id, email: user.email, firstName: user.firstName });

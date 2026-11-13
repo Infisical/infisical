@@ -171,7 +171,13 @@ export const telemetryDALFactory = (db: TDbClient) => {
           return parseInt(result || "0", 10);
         })(),
         countTable(db, TableName.AgentVaultAccessBundle),
-        countTable(db, TableName.AgentVaultService)
+        // A project's own services, not the ones sent with a session, so the count means what it did before they shared
+        // a table.
+        (async () => {
+          const result = (await db(TableName.AgentVaultService).whereNull("sessionId").count().first())
+            ?.count as string;
+          return parseInt(result || "0", 10);
+        })()
       ]);
 
       // Per-type identity auth method breakdown

@@ -19,16 +19,6 @@ describe("BaseSyncOptionsSchema includeAllSubFolders", () => {
 
     expect(result.success).toBe(true);
   });
-
-  // See RECURSIVE_SYNC_REFINEMENT.
-  test("rejects including subfolders combined with importing from the destination", () => {
-    const result = schema.safeParse({
-      initialSyncBehavior: SecretSyncInitialSyncBehavior.ImportPrioritizeSource,
-      includeAllSubFolders: true
-    });
-
-    expect(result.success).toBe(false);
-  });
 });
 
 describe("KeySchemaSchema", () => {

@@ -3,6 +3,8 @@ import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
 import { membershipIdentityServiceFactory } from "./membership-identity-service";
 import {
@@ -55,6 +57,7 @@ const createService = ({
   const revoked = [{ orgId: SUB_ORG_ID, identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
   const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
   const createAuditLog = vi.fn().mockResolvedValue(undefined);
+  const licenseService = new FakeLicenseService();
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -107,7 +110,8 @@ const createService = ({
     } as never,
     identityMetadataDAL: { delete: deleteMetadata },
     identityGroupMembershipDAL: { deleteByIdentityIdsInGroupsOwnedByOrgs },
-    licenseService: { getPlan: vi.fn() } as never,
+    licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: {
       findById: vi.fn().mockResolvedValue(projectType ? { id: "project-1", type: projectType } : undefined)
@@ -116,7 +120,6 @@ const createService = ({
       sortedSetRangeByScore: vi.fn().mockResolvedValue([]),
       incrementSeededWithExpiry: vi.fn().mockResolvedValue(1)
     } as never,
-    usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {
       insertOrgMembershipRevocationMarker,

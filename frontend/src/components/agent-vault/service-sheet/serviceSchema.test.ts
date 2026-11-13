@@ -6,21 +6,30 @@ import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
   AgentVaultOauthStatus,
-  AgentVaultServiceType
+  AgentVaultServiceType,
+  AgentVaultVariableReferenceField
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import {
   buildServiceSchema,
+  certificateAuthorityError,
+  credentialLabel,
+  HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
+  hookSigningSecretError,
+  hookUrlError,
   isOAuthAuthorizationMissing,
   MAX_ALLOWED_TOOLS,
   McpToolScope,
+  nativeDatabaseError,
+  nativeHostError,
   newOAuthAuthorizationId,
   OAUTH_CLIENT_VARIABLES_MESSAGE,
   oauthStatusLabel,
   serverUrlError,
   storedOAuthCredential,
-  TServiceForm
+  TServiceForm,
+  UNCHANGED_SECRET
 } from "./serviceSchema";
 
 const SERVER_URL = "https://mcp.linear.app/mcp";
@@ -32,6 +41,15 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   serverUrl: SERVER_URL,
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: [],
+  host: "",
+  port: "",
+  database: "",
+  tlsEnabled: true,
+  tlsVerify: true,
+  tlsCa: "",
+  sshPrivateKey: "",
+  sshCertificate: "",
+  sshCertificateRemoved: false,
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -49,21 +67,21 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
+  hookEnabled: false,
+  hookUrl: "",
+  hookSigningSecret: "",
   ...overrides
 });
 
 const storedOAuthService = (serverUrl = SERVER_URL) =>
   ({
     id: "service-1",
-    accessBundleId: "bundle-1",
     name: "linear-mcp",
     description: null,
     hostPattern: "mcp.linear.app",
     type: AgentVaultServiceType.Mcp,
     serverUrl,
     transport: AgentVaultMcpTransport.StreamableHttp,
-    allowedMethods: null,
-    allowedPathPrefixes: null,
     allowedTools: null,
     credential: {
       type: AgentVaultCredentialType.OAuth,
@@ -77,7 +95,6 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
       lastError: null
     },
     customHeaders: [],
-    substitutions: [],
     createdAt: "2026-10-15T00:00:00.000Z",
     updatedAt: "2026-10-15T00:00:00.000Z"
   }) satisfies TAgentVaultService;
@@ -388,6 +405,248 @@ describe("buildServiceSchema with allowed tools", () => {
   });
 });
 
+const nativeForm = (overrides: Partial<TServiceForm> = {}): TServiceForm =>
+  mcpForm({
+    serviceType: AgentVaultServiceType.Mysql,
+    name: "orders-db",
+    serverUrl: "",
+    host: "db.internal",
+    port: "3306",
+    database: "orders",
+    credentialType: AgentVaultCredentialType.Basic,
+    username: "agent",
+    ...overrides
+  });
+
+const issuesOf = (form: TServiceForm) => {
+  const result = buildServiceSchema().safeParse(form);
+  return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+};
+
+describe("buildServiceSchema with a database or SSH service", () => {
+  it("accepts a database service without a password", () => {
+    expect(issuesOf(nativeForm())).toEqual([]);
+  });
+
+  it("asks for a username unless members set it", () => {
+    expect(issuesOf(nativeForm({ username: "", secret: "pw" }))).toEqual(["username"]);
+    expect(
+      issuesOf(
+        nativeForm({
+          username: "",
+          memberProvidedFields: [AgentVaultVariableReferenceField.CredentialUsername]
+        })
+      )
+    ).toEqual([]);
+  });
+
+  it("refuses a port in the host and a port out of range", () => {
+    expect(issuesOf(nativeForm({ host: "db.internal:3306", port: "70000" }))).toEqual([
+      "host",
+      "port"
+    ]);
+  });
+
+  it("accepts an IPv6 host", () => {
+    expect(issuesOf(nativeForm({ host: "fd00::1" }))).toEqual([]);
+  });
+
+  it("asks for an SSH key's username and private key, and refuses variables in them", () => {
+    const ssh = { serviceType: AgentVaultServiceType.Ssh, database: "", port: "22" };
+    expect(
+      issuesOf(
+        nativeForm({
+          ...ssh,
+          credentialType: AgentVaultCredentialType.SshKey,
+          username: "",
+          sshPrivateKey: ""
+        })
+      )
+    ).toEqual(["username", "sshPrivateKey"]);
+    expect(
+      issuesOf(
+        nativeForm({
+          ...ssh,
+          credentialType: AgentVaultCredentialType.SshKey,
+          username: "{{SSH_USER}}",
+          sshPrivateKey: "key"
+        })
+      )
+    ).toEqual(["username"]);
+  });
+
+  it("refuses an SSH key for a database service", () => {
+    expect(
+      issuesOf(
+        nativeForm({ credentialType: AgentVaultCredentialType.SshKey, sshPrivateKey: "key" })
+      )
+    ).toContain("credentialType");
+  });
+});
+
+const TEST_CA = `-----BEGIN CERTIFICATE-----
+MIIBVzCB/qADAgECAhQ9pI7tr24PnR5MqOJ8osqFHdDDXDAKBggqhkjOPQQDAjAS
+MRAwDgYDVQQDDAd0ZXN0LWNhMB4XDTI2MTEwNjIzMzQ1M1oXDTM2MTEwMzIzMzQ1
+M1owEjEQMA4GA1UEAwwHdGVzdC1jYTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
+BI8uAZDH1u6uZ328I+7btg5fQ5ZnjOZjLD2snYwdo2VLo9np+Q7krzk0yZpHGvBc
+y97GixpvWHFxxao6pax7jcWjMjAwMB0GA1UdDgQWBBQVFYoGRGRlZ4/CN/z5MSpw
+m6vnMTAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCICdfpO1XCFqQ
+WA+1sWlXd7ldriRKlXd1JDYUpvWV/NU4AiEAlzyBy0Tu2alxzI+D9KCEXd6Mm3gI
+WiB0v7UEiIl2WqA=
+-----END CERTIFICATE-----`;
+
+const messageOf = (form: TServiceForm, path: string) => {
+  const result = buildServiceSchema().safeParse(form);
+  return result.success
+    ? undefined
+    : result.error.issues.find((issue) => issue.path.join(".") === path)?.message;
+};
+
+describe("nativeHostError, which mirrors the API's host rule", () => {
+  it("accepts host names, underscores in a label, IPv4, IPv6 and a bracketed IPv6", () => {
+    [
+      "db.internal",
+      "my_db",
+      "orders_db.svc.cluster.local",
+      "DB.Internal.",
+      "10.0.0.5",
+      "fd00::1",
+      "[fd00::1]"
+    ].forEach((host) => expect(nativeHostError(host)).toBeNull());
+  });
+
+  it("refuses what the API refuses, with its message", () => {
+    expect(nativeHostError("")).toBe("Enter the server's host name or IP address.");
+    expect(nativeHostError("a".repeat(254))).toBe("The host can be at most 253 characters.");
+    expect(nativeHostError("db host")).toBe("The host can't contain spaces or control characters.");
+    expect(nativeHostError("db\u0007x")).toBe(
+      "The host can't contain spaces or control characters."
+    );
+    expect(nativeHostError("postgres://db")).toBe(
+      "Enter only the host, without a scheme such as postgres://."
+    );
+    expect(nativeHostError("db/orders")).toBe("Enter only the host, without a path.");
+    expect(nativeHostError("*.internal")).toBe(
+      "Enter one specific host. Wildcards aren't supported here."
+    );
+    expect(nativeHostError("db:5432")).toBe(
+      "Enter the port in the Port field, not as part of the host."
+    );
+    expect(nativeHostError("db!x")).toBe('"db!x" isn\'t a valid host name or IP address.');
+    expect(nativeHostError("-db")).toBe('"-db" isn\'t a valid host name or IP address.');
+    expect(nativeHostError("{{DB_HOST}}")).toBe(
+      "Variables aren't supported in the host yet. Enter the host itself."
+    );
+  });
+});
+
+describe("nativeDatabaseError", () => {
+  it("refuses an empty, long, templated or control-character name", () => {
+    expect(nativeDatabaseError(" orders ")).toBeNull();
+    expect(nativeDatabaseError(" ")).toBe("Enter the database to connect to.");
+    expect(nativeDatabaseError("a".repeat(65))).toBe(
+      "The database name can be at most 64 characters."
+    );
+    expect(nativeDatabaseError("{{DB}}")).toBe(
+      "Variables aren't supported in the database name yet. Enter the name itself."
+    );
+    expect(nativeDatabaseError("orders\tx")).toBe(
+      "The database name can't contain control characters."
+    );
+  });
+});
+
+describe("certificateAuthorityError", () => {
+  const invalid =
+    "The certificate authority isn't a valid PEM certificate. Paste the CA certificate, starting with -----BEGIN CERTIFICATE-----.";
+
+  it("accepts nothing, one certificate, or a bundle", () => {
+    expect(certificateAuthorityError("")).toBeNull();
+    expect(certificateAuthorityError(TEST_CA)).toBeNull();
+    expect(certificateAuthorityError(`${TEST_CA}\n${TEST_CA}\n`)).toBeNull();
+  });
+
+  it("refuses text without a certificate and a certificate whose body is corrupt", () => {
+    expect(certificateAuthorityError("not a certificate")).toBe(invalid);
+    expect(certificateAuthorityError(TEST_CA.replace("MIIBVzCB", "MIIBVzXX"))).toBe(invalid);
+    expect(certificateAuthorityError(`${TEST_CA}\u0000`)).toBe(invalid);
+  });
+
+  it("accepts a certificate pasted with Windows line endings", () => {
+    expect(certificateAuthorityError(TEST_CA.replace(/\n/g, "\r\n"))).toBeNull();
+  });
+
+  it("refuses a certificate pasted together with its private key", () => {
+    expect(
+      certificateAuthorityError(
+        `${TEST_CA}\n-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg\n-----END PRIVATE KEY-----\n`
+      )
+    ).toBe(
+      "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate."
+    );
+  });
+});
+
+describe("buildServiceSchema with native validation", () => {
+  it("marks a corrupt CA on its field only while the certificate is verified", () => {
+    const corrupt = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----";
+    expect(issuesOf(nativeForm({ tlsCa: corrupt }))).toEqual(["tlsCa"]);
+    expect(issuesOf(nativeForm({ tlsCa: corrupt, tlsEnabled: false }))).toEqual([]);
+    expect(issuesOf(nativeForm({ tlsCa: corrupt, tlsVerify: false }))).toEqual([]);
+  });
+
+  it("marks a templated host and database on their fields", () => {
+    expect(issuesOf(nativeForm({ host: "{{HOST}}", database: "{{DB}}" }))).toEqual([
+      "host",
+      "database"
+    ]);
+  });
+
+  const sshKey = (overrides: Partial<TServiceForm>) =>
+    nativeForm({
+      serviceType: AgentVaultServiceType.Ssh,
+      database: "",
+      port: "22",
+      credentialType: AgentVaultCredentialType.SshKey,
+      username: "deploy",
+      sshPrivateKey: "key",
+      ...overrides
+    });
+
+  it("caps an SSH key at the API's 8192 characters", () => {
+    expect(issuesOf(sshKey({ sshPrivateKey: "k".repeat(8192) }))).toEqual([]);
+    expect(messageOf(sshKey({ sshPrivateKey: "k".repeat(8193) }), "sshPrivateKey")).toBe(
+      "This can be at most 8192 characters."
+    );
+  });
+
+  it("refuses a tab or line break in an SSH key's username, which a key may contain", () => {
+    expect(issuesOf(sshKey({ username: "de\tploy" }))).toEqual(["username"]);
+    expect(issuesOf(sshKey({ sshPrivateKey: "line one\n\tline two" }))).toEqual([]);
+  });
+
+  it("skips a stored certificate that is being removed", () => {
+    expect(issuesOf(sshKey({ sshCertificate: "{{CERT}}", sshCertificateRemoved: true }))).toEqual(
+      []
+    );
+    expect(issuesOf(sshKey({ sshCertificate: UNCHANGED_SECRET }))).toEqual([]);
+  });
+});
+
+describe("credentialLabel", () => {
+  it("calls an SSH password login Password, as the picker does", () => {
+    expect(credentialLabel(AgentVaultServiceType.Ssh, AgentVaultCredentialType.Basic)).toBe(
+      "Password"
+    );
+    expect(credentialLabel(AgentVaultServiceType.Postgres, AgentVaultCredentialType.Basic)).toBe(
+      "Username and Password"
+    );
+    expect(credentialLabel(AgentVaultServiceType.Http, AgentVaultCredentialType.Basic)).toBe(
+      "Basic Auth"
+    );
+  });
+});
+
 describe("buildServiceSchema with a description", () => {
   const descriptionIssues = (description: string) =>
     (
@@ -416,5 +675,112 @@ describe("buildServiceSchema with a description", () => {
     ]);
     // Joiners are real text, in emoji sequences and several scripts.
     expect(descriptionIssues("Family \u{1F468}\u200D\u{1F469}\u200D\u{1F467} tickets")).toEqual([]);
+  });
+});
+
+describe("hookUrlError, which mirrors the API's hook URL rule", () => {
+  it("accepts https and http URLs with a path", () => {
+    expect(hookUrlError("https://hooks.example.com/agent-vault")).toBeNull();
+    expect(hookUrlError(" http://10.0.0.5:8080/check ")).toBeNull();
+  });
+
+  it("refuses what the API refuses, with its message", () => {
+    expect(hookUrlError("")).toBe("Enter the hook URL.");
+    expect(hookUrlError(`https://hooks.example.com/${"a".repeat(2048)}`)).toBe(
+      "The hook URL can be at most 2048 characters."
+    );
+    expect(hookUrlError("https://hooks.example.com/a b")).toBe(
+      "The hook URL can't contain spaces."
+    );
+    expect(hookUrlError("https://hooks.example.com/{{TOKEN}}")).toBe(
+      "Variables aren't supported in the hook URL. Enter the URL itself."
+    );
+    expect(hookUrlError("ftp://hooks.example.com")).toBe(
+      "The hook URL must start with https:// or http://, as in https://hooks.example.com/agent-vault."
+    );
+    expect(hookUrlError("https:hooks.example.com")).toBe(
+      "The hook URL must start with https:// or http://, as in https://hooks.example.com/agent-vault."
+    );
+    expect(hookUrlError("https://")).toBe(
+      "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault."
+    );
+    expect(hookUrlError("https://user:pass@hooks.example.com/check")).toBe(
+      "The hook URL can't contain a username or password."
+    );
+    expect(hookUrlError("https://hooks.example.com/check#top")).toBe(
+      "The hook URL can't contain a fragment (the part after #)."
+    );
+    expect(hookUrlError("https://hooks.example.com/check?token=1")).toBe(
+      "Hook URLs can't include a query string."
+    );
+  });
+
+  it("refuses backslashes, stray % signs, a % in the host and an empty host", () => {
+    const strayMessage =
+      "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault.";
+    expect(hookUrlError("https://hooks.example.com\\agent-vault")).toBe(strayMessage);
+    expect(hookUrlError("https://ex%61mple.com/hook")).toBe(strayMessage);
+    expect(hookUrlError("https://hooks.example.com/a%zz")).toBe(strayMessage);
+    expect(hookUrlError("https:///hook")).toBe(
+      "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault."
+    );
+    expect(hookUrlError("https://hooks.example.com/a%20b")).toBeNull();
+  });
+});
+
+describe("hookSigningSecretError", () => {
+  it("keeps a stored secret at the sentinel or when the box is emptied", () => {
+    expect(hookSigningSecretError(UNCHANGED_SECRET, true)).toBeNull();
+    expect(hookSigningSecretError("", true)).toBeNull();
+  });
+
+  it("asks for a secret when none is stored", () => {
+    expect(hookSigningSecretError("", false)).toBe(HOOK_SIGNING_SECRET_REQUIRED_MESSAGE);
+  });
+
+  it("refuses short secrets and anything but printable ASCII, without trimming", () => {
+    expect(hookSigningSecretError("a".repeat(31), false)).toBe(
+      "The signing secret must be at least 32 characters."
+    );
+    expect(hookSigningSecretError(`${"a".repeat(32)} `, false)).toBe(
+      "The signing secret can only use letters, numbers and symbols, with no spaces."
+    );
+    expect(hookSigningSecretError(`${"a".repeat(32)}\u00e9`, false)).toBe(
+      "The signing secret can only use letters, numbers and symbols, with no spaces."
+    );
+    expect(hookSigningSecretError("a".repeat(513), false)).toBe(
+      "The signing secret can be at most 512 characters."
+    );
+  });
+
+  it("accepts 32 printable characters", () => {
+    expect(hookSigningSecretError("!~{}abcdefghijklmnopqrstuvwxyz01", false)).toBeNull();
+  });
+});
+
+describe("buildServiceSchema with a hook", () => {
+  it("asks for a signing secret when a new service turns the hook on", () => {
+    expect(
+      messageOf(
+        nativeForm({ hookEnabled: true, hookUrl: "https://hooks.example.com/agent-vault" }),
+        "hookSigningSecret"
+      )
+    ).toBe(HOOK_SIGNING_SECRET_REQUIRED_MESSAGE);
+  });
+
+  it("checks nothing about the hook while it is off", () => {
+    expect(issuesOf(nativeForm({ hookUrl: "ftp://nope", hookSigningSecret: "short" }))).toEqual([]);
+  });
+
+  it("accepts a hook with a URL and a signing secret", () => {
+    expect(
+      issuesOf(
+        nativeForm({
+          hookEnabled: true,
+          hookUrl: "https://hooks.example.com/agent-vault",
+          hookSigningSecret: "s".repeat(32)
+        })
+      )
+    ).toEqual([]);
   });
 });

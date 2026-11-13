@@ -6,9 +6,10 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -17,6 +18,7 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -29,7 +31,6 @@ import {
 } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -37,8 +38,6 @@ import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -77,11 +76,13 @@ import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-conf
 import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
-import { CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
+  assertCaValidityDates,
   assertNoCertificateProfilesUsingCa,
   assertPathLengthMatchesCa,
   buildAuthorityInfoAccessExtension,
+  buildCaCrlParams,
   buildCrlDistributionPointUrls,
   buildOcspResponderUrl,
   createDistinguishedName,
@@ -92,9 +93,12 @@ import {
   getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaSigner,
+  getInternalCaExpiredAt,
   getIssuedCaCertChain,
+  isCaCrlAllowed,
   keyAlgorithmToAlgCfg,
-  rebuildCaCrl,
+  nextCrlNumber,
+  rebuildCaCrlAfterChange,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -150,7 +154,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     "findValidInCaHierarchy" | "lockCaHierarchyAndFindUnexpired"
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
-  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
+  certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update" | "primaryNode">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
@@ -162,13 +166,15 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   caKeySourceService: Pick<
     TCaKeySourceServiceFactory,
     "createKey" | "buildSigner" | "describeKey" | "prepareKeyReleases"
   >;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TInternalCertificateAuthorityServiceFactory = ReturnType<typeof internalCertificateAuthorityServiceFactory>;
@@ -191,28 +197,49 @@ export const internalCertificateAuthorityServiceFactory = ({
   kmsService,
   permissionService,
   licenseService,
-  caSigningConfigDAL,
   usageMeteringService,
-  caKeySourceService
+  caSigningConfigDAL,
+  caKeySourceService,
+  keyStore,
+  auditLogService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
 
-  // Gates only Infisical's own distribution point. Custom URLs are gated where the CA is configured.
-  const $isManagedCrlDistributionAllowed = async (projectId: string) => {
+  const $getProjectOrgId = async (projectId: string, tx?: Knex) => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    return project.orgId;
+  };
+
+  const $isCaCrlAllowed = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-    const plan = await licenseService.getPlan(project.orgId);
-    return plan.caCrl;
+    return isCaCrlAllowed({ orgId: project.orgId, licenseService });
   };
+
+  const $rebuildCaCrlAfterChange = (caId: string, trigger: CaCrlRegenerationTrigger) =>
+    rebuildCaCrlAfterChange({
+      caId,
+      trigger,
+      auditLogService,
+      certificateAuthorityDAL,
+      certificateAuthorityCrlDAL,
+      certificateAuthorityCertDAL,
+      certificateAuthoritySecretDAL,
+      projectDAL,
+      certificateDAL,
+      kmsService,
+      caKeySourceService,
+      keyStore
+    });
 
   const $isOcspAllowed = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
     const plan = await licenseService.getPlan(project.orgId);
-    return plan.pkiOcsp;
+    return plan.has(PlanFeature.PkiOcsp);
   };
 
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
@@ -348,6 +375,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     crlDistributionPointUrls,
     disableManagedCrlDistributionPointUrl,
     isOcspEnabled,
+    crlValidityDays,
     ...dto
   }: TCreateCaDTO) => {
     let projectId: string;
@@ -396,7 +424,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     // Refused rather than silently dropped, since the caller asked for it explicitly.
-    if (crlDistributionPointUrls?.length && !(await $isManagedCrlDistributionAllowed(projectId))) {
+    if (crlDistributionPointUrls?.length && !(await $isCaCrlAllowed(projectId))) {
       throw new BadRequestError({
         message:
           "Failed to create certificate authority with CRL distribution points due to plan restriction. Upgrade plan to use certificate revocation lists."
@@ -412,6 +440,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const resolvedIsOcspEnabled = isOcspEnabled ?? isOcspAllowed;
+
+    const resolvedCrlValidityDays = crlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS;
+    if (resolvedCrlValidityDays !== DEFAULT_CRL_VALIDITY_DAYS && !(await $isCaCrlAllowed(projectId))) {
+      throw new BadRequestError({
+        message:
+          "Failed to create certificate authority with a custom CRL validity period due to plan restriction. Upgrade plan to configure CRL validity."
+      });
+    }
+
+    if (type === InternalCaType.ROOT && notAfter) {
+      assertCaValidityDates(notAfter, notBefore);
+    }
 
     const dn = createDistinguishedName({
       commonName,
@@ -539,15 +579,16 @@ export const internalCertificateAuthorityServiceFactory = ({
         };
       }
 
-      const thisUpdate = new Date();
-      const nextUpdate = new Date(thisUpdate);
-      nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
-      const crl = await caSigner.createCrl({
+      const crlNumber = nextCrlNumber(0);
+      const crlParams = await buildCaCrlParams({
         issuer: dn,
-        thisUpdate,
-        nextUpdate,
+        caPublicKey: caSigner.caPublicKey,
+        crlNumber,
+        crlValidityDays: resolvedCrlValidityDays,
+        caNotAfter: type === InternalCaType.ROOT ? notAfterDate : undefined,
         entries: []
       });
+      const crl = await caSigner.createCrl(crlParams);
       const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
         plainText: Buffer.from(new Uint8Array(crl.rawData))
       });
@@ -592,6 +633,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             crlDistributionPointUrls: crlDistributionPointUrls ?? [],
             disableManagedCrlDistributionPointUrl: disableManagedCrlDistributionPointUrl ?? false,
             isOcspEnabled: resolvedIsOcspEnabled,
+            crlValidityDays: resolvedCrlValidityDays,
             ...(type === InternalCaType.ROOT && {
               maxPathLength,
               ...(notAfter && {
@@ -628,7 +670,10 @@ export const internalCertificateAuthorityServiceFactory = ({
           {
             caId: ca.id,
             encryptedCrl,
-            caSecretId: caSecret.id
+            caSecretId: caSecret.id,
+            thisUpdate: crlParams.thisUpdate,
+            nextUpdate: crlParams.nextUpdate,
+            crlNumber
           },
           tx
         );
@@ -680,6 +725,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     crlDistributionPointUrls,
     disableManagedCrlDistributionPointUrl,
     isOcspEnabled,
+    crlValidityDays,
     ...dto
   }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -706,7 +752,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     // toggling the managed distribution point.
     const storedCrlUrls = new Set(ca.internalCa.crlDistributionPointUrls ?? []);
     const addedCrlUrl = (crlDistributionPointUrls ?? []).find((url) => !storedCrlUrls.has(url));
-    if (addedCrlUrl && !(await $isManagedCrlDistributionAllowed(ca.projectId))) {
+    if (addedCrlUrl && !(await $isCaCrlAllowed(ca.projectId))) {
       throw new BadRequestError({
         message: `Failed to add the CRL distribution point '${addedCrlUrl}' due to plan restriction. Upgrade plan to use certificate revocation lists.`
       });
@@ -720,6 +766,25 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
+    const isCrlValidityChanged = crlValidityDays !== undefined && crlValidityDays !== ca.internalCa.crlValidityDays;
+    if (
+      isCrlValidityChanged &&
+      crlValidityDays !== DEFAULT_CRL_VALIDITY_DAYS &&
+      !(await $isCaCrlAllowed(ca.projectId))
+    ) {
+      throw new BadRequestError({
+        message:
+          "Failed to change the CRL validity period due to plan restriction. Upgrade plan to configure CRL validity."
+      });
+    }
+
+    const caExpiredAt = getInternalCaExpiredAt(ca.internalCa.notAfter);
+    if (isCrlValidityChanged && caExpiredAt) {
+      throw new BadRequestError({
+        message: `Failed to change the CRL validity period because CA '${ca.name}' expired on ${caExpiredAt.toISOString()}. Renew the CA first.`
+      });
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (status !== undefined || name !== undefined) {
         await certificateAuthorityDAL.updateById(ca.id, { status, name }, tx);
@@ -728,14 +793,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       if (
         crlDistributionPointUrls !== undefined ||
         disableManagedCrlDistributionPointUrl !== undefined ||
-        isOcspEnabled !== undefined
+        isOcspEnabled !== undefined ||
+        crlValidityDays !== undefined
       ) {
         await internalCertificateAuthorityDAL.update(
           { caId: ca.id },
           {
             ...(crlDistributionPointUrls !== undefined && { crlDistributionPointUrls }),
             ...(disableManagedCrlDistributionPointUrl !== undefined && { disableManagedCrlDistributionPointUrl }),
-            ...(isOcspEnabled !== undefined && { isOcspEnabled })
+            ...(isOcspEnabled !== undefined && { isOcspEnabled }),
+            ...(crlValidityDays !== undefined && { crlValidityDays })
           },
           tx
         );
@@ -744,7 +811,13 @@ export const internalCertificateAuthorityServiceFactory = ({
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
     });
 
-    return expandInternalCa(updatedCa);
+    let crlWarning: string | undefined;
+    if (isCrlValidityChanged) {
+      const crlRegeneration = await $rebuildCaCrlAfterChange(ca.id, CaCrlRegenerationTrigger.ValidityChange);
+      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
+    }
+
+    return { ...expandInternalCa(updatedCa), crlWarning };
   };
 
   /**
@@ -1113,6 +1186,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         });
       }
     }
+
+    await $rebuildCaCrlAfterChange(ca.id, CaCrlRegenerationTrigger.CaRenewal);
 
     return {
       certificate,
@@ -1490,7 +1565,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notBefore date is before CA certificate's notBefore date" });
     }
 
-    if (notBeforeDate > notAfterDate) throw new BadRequestError({ message: "notBefore date is after notAfter date" });
+    assertCaValidityDates(notAfter, notBefore);
 
     // check not after constraint
     if (notAfterDate > caCertNotAfterDate) {
@@ -1560,6 +1635,10 @@ export const internalCertificateAuthorityServiceFactory = ({
     const { caId, certificate, certificateChain } = params;
     const parentCaId = "parentCaId" in params ? params.parentCaId : undefined;
     const isInternal = "isInternal" in params && params.isInternal === true;
+    const crlRegenerationTrigger =
+      "crlRegenerationTrigger" in params && params.crlRegenerationTrigger
+        ? params.crlRegenerationTrigger
+        : CaCrlRegenerationTrigger.CaCertificateImport;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -1605,7 +1684,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       if (!caProject) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
 
       const plan = await licenseService.getPlan(caProject.orgId);
-      if (!plan.pkiExternalIntermediateCa) {
+      if (!plan.has(PlanFeature.PkiExternalIntermediateCa)) {
         throw new BadRequestError({
           message:
             "Failed to import an externally signed certificate for this intermediate CA due to plan restriction. Upgrade plan to use externally signed intermediate CAs."
@@ -1748,21 +1827,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     });
 
-    try {
-      await rebuildCaCrl({
-        caId: ca.id,
-        certificateAuthorityDAL,
-        certificateAuthorityCertDAL,
-        certificateAuthorityCrlDAL,
-        certificateAuthoritySecretDAL,
-        projectDAL,
-        certificateDAL,
-        kmsService,
-        caKeySourceService
-      });
-    } catch (err) {
-      logger.error(err, `Failed to rebuild CRL after importing CA certificate [caId=${ca.id}]`);
-    }
+    await $rebuildCaCrlAfterChange(ca.id, crlRegenerationTrigger);
 
     if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE) {
       const existingConfig = await caSigningConfigDAL.findByCaId(ca.internalCa.id);
@@ -1866,7 +1931,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificate: signedResult.certificate,
       certificateChain: signedResult.certificateChain,
-      parentCaId
+      parentCaId,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaCertificateGeneration
     });
 
     const internalCaId = intermediateCa.internalCa.id;
@@ -1998,6 +2064,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
+    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId, tx);
+
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -2119,7 +2187,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const cdpUrls = buildCrlDistributionPointUrls(
       managedCdpUrl,
       ca.internalCa.crlDistributionPointUrls,
-      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
+      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isCaCrlAllowed(ca.projectId))
     );
 
     const ocspResponderUrl =
@@ -2357,8 +2425,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2449,6 +2517,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         );
       }
     }
+
+    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId, tx) : dto.actorOrgId;
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2546,7 +2616,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const cdpUrls = buildCrlDistributionPointUrls(
       managedCdpUrl,
       ca.internalCa.crlDistributionPointUrls,
-      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
+      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isCaCrlAllowed(ca.projectId))
     );
 
     const ocspResponderUrl =
@@ -2853,8 +2923,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
-    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts);
 
     return {
       certificate: leafCert,
@@ -2932,6 +3002,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     );
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    assertCaValidityDates(notAfter, notBefore);
 
     const notBeforeDate = new Date(notBefore);
     const notAfterDate = new Date(notAfter);
@@ -2988,7 +3059,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.alloc(0)
     });
 
-    return certificateAuthorityDAL.transaction(async (tx) => {
+    const rootCaCertificate = await certificateAuthorityDAL.transaction(async (tx) => {
       await internalCertificateAuthorityDAL.updateById(
         ca.internalCa!.id,
         {
@@ -3041,6 +3112,10 @@ export const internalCertificateAuthorityServiceFactory = ({
         ca: expandInternalCa(updatedCa)
       };
     });
+
+    await $rebuildCaCrlAfterChange(ca.id, CaCrlRegenerationTrigger.CaCertificateGeneration);
+
+    return rootCaCertificate;
   };
 
   return {

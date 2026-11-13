@@ -2,10 +2,10 @@ import { createMongoAbility } from "@casl/ability";
 import { setImmediate } from "node:timers/promises";
 
 import { SecretType, TableName } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   buildFolderScopedPrivilegeRules,
   hasSecretReadValueOrDescribePermission,
@@ -84,7 +84,7 @@ const once = <T>(build: () => T) => {
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
     "findLastReads" | "findTrackingStartedAt" | "findAccessSourceDates" | "findAdminActorIds"
@@ -438,7 +438,7 @@ export const secretReadActivityServiceFactory = ({
       ...[...folderAccessByActorId].flatMap(([actorId, grants]) =>
         grants.map((grant) => {
           const environmentReach = { environment: grant.environmentSlug };
-          const reach = grant.isRecursiveFolder ? environmentReach : { folderId: grant.folderId };
+          const reach = grant.appliesToSubfolders ? environmentReach : { folderId: grant.folderId };
           // An edit can turn recursion off, and nothing records the reach the grant had before it, so an edited root
           // grant restarts its whole environment.
           const restartReach = grant.secretPath === "/" ? environmentReach : reach;

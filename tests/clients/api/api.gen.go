@@ -22170,6 +22170,774 @@ func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECPrime256v1    CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "EC_prime256v1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp384r1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "EC_secp384r1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp521r1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "EC_secp521r1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA44         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "ML-DSA-44"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA65         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "ML-DSA-65"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA87         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "ML-DSA-87"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "RSA_2048"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA3072         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "RSA_3072"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA4096         CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "RSA_4096"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128f  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128s  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192f  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192s  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256f  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256s  CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128f CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128s CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192f CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192s CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256f CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256s CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECPrime256v1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp384r1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmECSecp521r1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA44:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA65:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmMLDSA87:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA3072:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA4096:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceAwsKms    CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource = "aws-kms"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceHsm       CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource = "hsm"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceInfisical CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource = "infisical"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceAwsKms:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceHsm:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySourceInfisical:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionAfSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "af-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApEast1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast1 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-northeast-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast2 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-northeast-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast3 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-northeast-3"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth2     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-south-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast1 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast2 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast3 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-3"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast4 CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ap-southeast-4"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionCaCentral1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "ca-central-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-central-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral2   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-central-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuNorth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-north-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth2     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-south-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-west-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest2      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-west-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest3      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "eu-west-3"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeCentral1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "me-central-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeSouth1     CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "me-south-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionSaEast1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "sa-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast2      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-east-2"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovEast1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-gov-east-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovWest1   CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-gov-west-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest1      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-west-1"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest2      CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion = "us-west-2"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionAfSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApNortheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionApSoutheast4:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionCaCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuCentral2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuNorth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionEuWest3:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionMeSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionSaEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsEast2:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsGovWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegionUsWest2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyConfigurationType.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeIntermediate CreateInternalCertificateAuthorityV1JSONBodyConfigurationType = "intermediate"
+	CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot         CreateInternalCertificateAuthorityV1JSONBodyConfigurationType = "root"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyConfigurationType enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyConfigurationType) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeIntermediate:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1JSONBodyStatus.
+const (
+	CreateInternalCertificateAuthorityV1JSONBodyStatusActive             CreateInternalCertificateAuthorityV1JSONBodyStatus = "active"
+	CreateInternalCertificateAuthorityV1JSONBodyStatusDisabled           CreateInternalCertificateAuthorityV1JSONBodyStatus = "disabled"
+	CreateInternalCertificateAuthorityV1JSONBodyStatusPendingCertificate CreateInternalCertificateAuthorityV1JSONBodyStatus = "pending-certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1JSONBodyStatus enum.
+func (e CreateInternalCertificateAuthorityV1JSONBodyStatus) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1JSONBodyStatusActive:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyStatusDisabled:
+		return true
+	case CreateInternalCertificateAuthorityV1JSONBodyStatusPendingCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECPrime256v1    CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "EC_prime256v1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp384r1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "EC_secp384r1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp521r1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "EC_secp521r1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA44         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "ML-DSA-44"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA65         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "ML-DSA-65"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA87         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "ML-DSA-87"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA2048         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "RSA_2048"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA3072         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "RSA_3072"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA4096         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "RSA_4096"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128f  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128s  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-128s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192f  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192s  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-192s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256f  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256s  CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHA2-256s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128f CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128s CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-128s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192f CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192s CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-192s"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256f CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256f"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256s CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECPrime256v1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp384r1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmECSecp521r1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA44:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA65:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmMLDSA87:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA2048:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA3072:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmRSA4096:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2128s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2192s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHA2256s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE128s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE192s:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256f:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceAwsKms    CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource = "aws-kms"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceHsm       CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource = "hsm"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceInfisical CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource = "infisical"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceAwsKms:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceHsm:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySourceInfisical:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionAfSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "af-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApEast1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast1 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-northeast-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast2 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-northeast-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast3 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-northeast-3"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth2     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-south-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast1 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast2 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast3 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-3"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast4 CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ap-southeast-4"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionCaCentral1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "ca-central-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-central-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral2   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-central-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuNorth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-north-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth2     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-south-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-west-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest2      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-west-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest3      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "eu-west-3"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeCentral1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "me-central-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeSouth1     CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "me-south-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionSaEast1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "sa-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast2      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-east-2"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovEast1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-gov-east-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovWest1   CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-gov-west-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest1      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-west-1"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest2      CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion = "us-west-2"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionAfSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApNortheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast3:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionApSoutheast4:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionCaCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuCentral2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuNorth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuSouth2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionEuWest3:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeCentral1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionMeSouth1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionSaEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsEast2:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovEast1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsGovWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest1:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegionUsWest2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeIntermediate CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType = "intermediate"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeRoot         CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType = "root"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeIntermediate:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationTypeRoot:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus.
+const (
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusActive             CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus = "active"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusDisabled           CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus = "disabled"
+	CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusPendingCertificate CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus = "pending-certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusActive:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusDisabled:
+		return true
+	case CreateInternalCertificateAuthorityV1200JSONResponseBodyStatusPendingCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1200JSONResponseBodyType.
+const (
+	Internal CreateInternalCertificateAuthorityV1200JSONResponseBodyType = "internal"
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1200JSONResponseBodyType enum.
+func (e CreateInternalCertificateAuthorityV1200JSONResponseBodyType) Valid() bool {
+	switch e {
+	case Internal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCodeN400 CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCodeN401 CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCodeN403 CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCodeN404 CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCodeN422 CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode.
+const (
+	CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCodeN500 CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode enum.
+func (e CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCodeN400 GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCodeN401 GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCodeN403 GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCodeN404 GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCodeN422 GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode.
+const (
+	GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCodeN500 GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode enum.
+func (e GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificateJSONBodyExternalMetadata0Type.
+const (
+	Digicert ImportCertificateJSONBodyExternalMetadata0Type = "digicert"
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificateJSONBodyExternalMetadata0Type enum.
+func (e ImportCertificateJSONBodyExternalMetadata0Type) Valid() bool {
+	switch e {
+	case Digicert:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate400JSONResponseBodyStatusCode.
+const (
+	ImportCertificate400JSONResponseBodyStatusCodeN400 ImportCertificate400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate400JSONResponseBodyStatusCode enum.
+func (e ImportCertificate400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate401JSONResponseBodyStatusCode.
+const (
+	ImportCertificate401JSONResponseBodyStatusCodeN401 ImportCertificate401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate401JSONResponseBodyStatusCode enum.
+func (e ImportCertificate401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate403JSONResponseBodyStatusCode.
+const (
+	ImportCertificate403JSONResponseBodyStatusCodeN403 ImportCertificate403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate403JSONResponseBodyStatusCode enum.
+func (e ImportCertificate403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate404JSONResponseBodyStatusCode.
+const (
+	ImportCertificate404JSONResponseBodyStatusCodeN404 ImportCertificate404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate404JSONResponseBodyStatusCode enum.
+func (e ImportCertificate404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate422JSONResponseBodyStatusCode.
+const (
+	ImportCertificate422JSONResponseBodyStatusCodeN422 ImportCertificate422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate422JSONResponseBodyStatusCode enum.
+func (e ImportCertificate422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportCertificate500JSONResponseBodyStatusCode.
+const (
+	ImportCertificate500JSONResponseBodyStatusCodeN500 ImportCertificate500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ImportCertificate500JSONResponseBodyStatusCode enum.
+func (e ImportCertificate500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ImportCertificate500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAccessibleSecretMetadata200JSONResponseBodySecretsType.
 const (
 	GetAccessibleSecretMetadata200JSONResponseBodySecretsTypePersonal GetAccessibleSecretMetadata200JSONResponseBodySecretsType = "personal"
@@ -24792,6 +25560,36 @@ func (e DeepSearchSecrets200JSONResponseBodySecretRotations29Type) Valid() bool 
 	}
 }
 
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30Type.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials DeepSearchSecrets200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30Type enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeepSearchSecrets400JSONResponseBodyStatusCode.
 const (
 	DeepSearchSecrets400JSONResponseBodyStatusCodeN400 DeepSearchSecrets400JSONResponseBodyStatusCode = 400
@@ -24909,6 +25707,24 @@ func (e ListProjectSecretsDetailsJSONBodyOrderDirection) Valid() bool {
 	case ListProjectSecretsDetailsJSONBodyOrderDirectionAsc:
 		return true
 	case ListProjectSecretsDetailsJSONBodyOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -26721,6 +27537,36 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type) Valid
 	}
 }
 
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsDetails400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400 ListProjectSecretsDetails400JSONResponseBodyStatusCode = 400
@@ -26844,6 +27690,24 @@ func (e ListProjectSecretsOverviewJSONBodyOrderDirection) Valid() bool {
 	case ListProjectSecretsOverviewJSONBodyOrderDirectionAsc:
 		return true
 	case ListProjectSecretsOverviewJSONBodyOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -28656,6 +29520,36 @@ func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type) Vali
 	}
 }
 
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsOverview400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsOverview400JSONResponseBodyStatusCodeN400 ListProjectSecretsOverview400JSONResponseBodyStatusCode = 400
@@ -29003,13 +29897,13 @@ func (e CreateDynamicSecretJSONBodyProvider0Type) Valid() bool {
 
 // Defines values for CreateDynamicSecretJSONBodyProvider1Type.
 const (
-	Clickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
+	CreateDynamicSecretJSONBodyProvider1TypeClickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
 )
 
 // Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider1Type enum.
 func (e CreateDynamicSecretJSONBodyProvider1Type) Valid() bool {
 	switch e {
-	case Clickhouse:
+	case CreateDynamicSecretJSONBodyProvider1TypeClickhouse:
 		return true
 	default:
 		return false
@@ -34938,6 +35832,24 @@ func (e AddUserToGroup500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateHoneyTokenJSONBodyConfigManagedBy.
+const (
+	CreateHoneyTokenJSONBodyConfigManagedByInstance     CreateHoneyTokenJSONBodyConfigManagedBy = "instance"
+	CreateHoneyTokenJSONBodyConfigManagedByOrganization CreateHoneyTokenJSONBodyConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyTokenJSONBodyConfigManagedBy enum.
+func (e CreateHoneyTokenJSONBodyConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyTokenJSONBodyConfigManagedByInstance:
+		return true
+	case CreateHoneyTokenJSONBodyConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateHoneyTokenJSONBodyType.
 const (
 	CreateHoneyTokenJSONBodyTypeAws CreateHoneyTokenJSONBodyType = "aws"
@@ -34947,6 +35859,24 @@ const (
 func (e CreateHoneyTokenJSONBodyType) Valid() bool {
 	switch e {
 	case CreateHoneyTokenJSONBodyTypeAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -35493,6 +36423,24 @@ func (e GetHoneyTokenLimits500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetHoneyToken400JSONResponseBodyStatusCode.
 const (
 	GetHoneyToken400JSONResponseBodyStatusCodeN400 GetHoneyToken400JSONResponseBodyStatusCode = 400
@@ -35577,6 +36525,24 @@ const (
 func (e GetHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -49722,6 +50688,237 @@ const (
 func (e CreateOrganizationGroupMembership500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateOrganizationGroupMembership500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdownParamsScope.
+const (
+	GetBillingUsageBreakdownParamsScopeInstance     GetBillingUsageBreakdownParamsScope = "instance"
+	GetBillingUsageBreakdownParamsScopeOrganization GetBillingUsageBreakdownParamsScope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdownParamsScope enum.
+func (e GetBillingUsageBreakdownParamsScope) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdownParamsScopeInstance:
+		return true
+	case GetBillingUsageBreakdownParamsScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdownParamsDimensionKey.
+const (
+	ActiveCerts      GetBillingUsageBreakdownParamsDimensionKey = "active_certs"
+	Identities       GetBillingUsageBreakdownParamsDimensionKey = "identities"
+	InternalCas      GetBillingUsageBreakdownParamsDimensionKey = "internal_cas"
+	PamIdentities    GetBillingUsageBreakdownParamsDimensionKey = "pam_identities"
+	SecretIdentities GetBillingUsageBreakdownParamsDimensionKey = "secret_identities"
+	UserIdentities   GetBillingUsageBreakdownParamsDimensionKey = "user_identities"
+	WildcardCerts    GetBillingUsageBreakdownParamsDimensionKey = "wildcard_certs"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdownParamsDimensionKey enum.
+func (e GetBillingUsageBreakdownParamsDimensionKey) Valid() bool {
+	switch e {
+	case ActiveCerts:
+		return true
+	case Identities:
+		return true
+	case InternalCas:
+		return true
+	case PamIdentities:
+		return true
+	case SecretIdentities:
+		return true
+	case UserIdentities:
+		return true
+	case WildcardCerts:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown400JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown400JSONResponseBodyStatusCodeN400 GetBillingUsageBreakdown400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown400JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown401JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown401JSONResponseBodyStatusCodeN401 GetBillingUsageBreakdown401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown401JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown403JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown403JSONResponseBodyStatusCodeN403 GetBillingUsageBreakdown403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown403JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown404JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown404JSONResponseBodyStatusCodeN404 GetBillingUsageBreakdown404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown404JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown422JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown422JSONResponseBodyStatusCodeN422 GetBillingUsageBreakdown422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown422JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingUsageBreakdown500JSONResponseBodyStatusCode.
+const (
+	GetBillingUsageBreakdown500JSONResponseBodyStatusCodeN500 GetBillingUsageBreakdown500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetBillingUsageBreakdown500JSONResponseBodyStatusCode enum.
+func (e GetBillingUsageBreakdown500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingUsageBreakdown500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations400JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations400JSONResponseBodyStatusCodeN400 ListBillableOrganizations400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations400JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations401JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations401JSONResponseBodyStatusCodeN401 ListBillableOrganizations401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations401JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations403JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations403JSONResponseBodyStatusCodeN403 ListBillableOrganizations403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations403JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations404JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations404JSONResponseBodyStatusCodeN404 ListBillableOrganizations404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations404JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations422JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations422JSONResponseBodyStatusCodeN422 ListBillableOrganizations422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations422JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBillableOrganizations500JSONResponseBodyStatusCode.
+const (
+	ListBillableOrganizations500JSONResponseBodyStatusCodeN500 ListBillableOrganizations500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListBillableOrganizations500JSONResponseBodyStatusCode enum.
+func (e ListBillableOrganizations500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListBillableOrganizations500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -93492,6 +94689,24 @@ func (e DuplicateSecretV4500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetSecretByIdV4ParamsViewSecretValue.
+const (
+	GetSecretByIdV4ParamsViewSecretValueFalse GetSecretByIdV4ParamsViewSecretValue = "false"
+	GetSecretByIdV4ParamsViewSecretValueTrue  GetSecretByIdV4ParamsViewSecretValue = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByIdV4ParamsViewSecretValue enum.
+func (e GetSecretByIdV4ParamsViewSecretValue) Valid() bool {
+	switch e {
+	case GetSecretByIdV4ParamsViewSecretValueFalse:
+		return true
+	case GetSecretByIdV4ParamsViewSecretValueTrue:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetSecretByIdV4400JSONResponseBodyStatusCode.
 const (
 	GetSecretByIdV4400JSONResponseBodyStatusCodeN400 GetSecretByIdV4400JSONResponseBodyStatusCode = 400
@@ -102892,7 +104107,7 @@ type UpdateKubernetesAuthJSONBody struct {
 	// TokenReviewMode The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.
 	TokenReviewMode *UpdateKubernetesAuthJSONBodyTokenReviewMode `json:"tokenReviewMode,omitempty"`
 
-	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.
+	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token replaces the stored one and is used to validate service account tokens during authentication. Omit it, or send an empty string, to keep the stored JWT. Set it to null to remove the stored JWT; the client's own JWT is then used instead, which requires the client to have the system:auth-delegator ClusterRole binding. A stored JWT cannot be read back, so it must be supplied again when changing the host, gateway, gateway pool, CA certificate, or TLS verification.
 	TokenReviewerJwt *string `json:"tokenReviewerJwt,omitempty"`
 
 	// VerifyTlsCertificate Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.
@@ -104796,6 +106011,220 @@ type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
 
 // LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
 type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1JSONBody defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBody struct {
+	Configuration struct {
+		ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+		// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+		AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+		// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+		AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+		// CommonName The common name (CN) for the CA.
+		CommonName *string `json:"commonName,omitempty"`
+
+		// Country The country name (C) for the CA.
+		Country *string `json:"country,omitempty"`
+
+		// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+		CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+		// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+		DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+		Dn                                    *string `json:"dn,omitempty"`
+
+		// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+		ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+		// FriendlyName A friendly name for the CA.
+		FriendlyName *string `json:"friendlyName,omitempty"`
+
+		// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+		HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+		// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+		HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+		// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+		// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+		HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+		// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+		IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+		// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+		KeyAlgorithm CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+		// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+		KeySource *CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+		// Locality The locality name for the CA.
+		Locality *string `json:"locality,omitempty"`
+
+		// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+		MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+		// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotAfter *string `json:"notAfter,omitempty"`
+
+		// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotBefore *string `json:"notBefore,omitempty"`
+
+		// Organization The organization (O) for the CA.
+		Organization *string `json:"organization,omitempty"`
+
+		// Ou The organization unit (OU) for the CA.
+		Ou         *string             `json:"ou,omitempty"`
+		ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+		// Province The state of province name for the CA.
+		Province *string `json:"province,omitempty"`
+
+		// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+		Region       *CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion `json:"region,omitempty"`
+		SerialNumber *string                                                          `json:"serialNumber,omitempty"`
+
+		// Type The type of CA to create.
+		Type CreateInternalCertificateAuthorityV1JSONBodyConfigurationType `json:"type"`
+	} `json:"configuration"`
+
+	// Name The name of the Internal Certificate Authority to create. Must be slug-friendly.
+	Name      string              `json:"name"`
+	ProjectId *openapi_types.UUID `json:"projectId,omitempty"`
+
+	// Status The status of the Internal Certificate Authority.
+	Status CreateInternalCertificateAuthorityV1JSONBodyStatus `json:"status"`
+}
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm string
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeySource string
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationRegion string
+
+// CreateInternalCertificateAuthorityV1JSONBodyConfigurationType defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyConfigurationType string
+
+// CreateInternalCertificateAuthorityV1JSONBodyStatus defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1JSONBodyStatus string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus string
+
+// CreateInternalCertificateAuthorityV1200JSONResponseBodyType defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1200JSONResponseBodyType string
+
+// CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode float32
+
+// CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode defines parameters for CreateInternalCertificateAuthorityV1.
+type CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode float32
+
+// GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode defines parameters for GetCertificateAuthorityQuotaV1.
+type GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode float32
+
+// ImportCertificateJSONBody defines parameters for ImportCertificate.
+type ImportCertificateJSONBody struct {
+	ApplicationId *openapi_types.UUID `json:"applicationId,omitempty"`
+
+	// CertificatePem The PEM-encoded leaf certificate.
+	CertificatePem string `json:"certificatePem"`
+
+	// ChainPem Optional PEM-encoded chain of intermediate certificates.
+	ChainPem *string `json:"chainPem,omitempty"`
+
+	// ExternalMetadata Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }.
+	ExternalMetadata *ImportCertificateJSONBody_ExternalMetadata `json:"externalMetadata,omitempty"`
+
+	// FriendlyName A friendly name for the certificate.
+	FriendlyName *string `json:"friendlyName,omitempty"`
+
+	// PkiCollectionId The ID of the PKI collection to add the certificate to.
+	PkiCollectionId *string `json:"pkiCollectionId,omitempty"`
+
+	// PrivateKeyPem Optional PEM-encoded private key associated with the certificate.
+	PrivateKeyPem *string `json:"privateKeyPem,omitempty"`
+
+	// ProfileId The certificate profile that will manage this certificate's lifecycle. The certificate must satisfy the profile's certificate policy, or the request is rejected with a 400 naming the attributes that failed. Omit to track the certificate without renewal, reissue or revocation.
+	ProfileId *openapi_types.UUID `json:"profileId,omitempty"`
+}
+
+// ImportCertificateJSONBodyExternalMetadata0 defines parameters for ImportCertificate.
+type ImportCertificateJSONBodyExternalMetadata0 struct {
+	OrderId int                                            `json:"orderId"`
+	Type    ImportCertificateJSONBodyExternalMetadata0Type `json:"type"`
+}
+
+// ImportCertificateJSONBodyExternalMetadata0Type defines parameters for ImportCertificate.
+type ImportCertificateJSONBodyExternalMetadata0Type string
+
+// ImportCertificateJSONBody_ExternalMetadata defines parameters for ImportCertificate.
+type ImportCertificateJSONBody_ExternalMetadata struct {
+	union json.RawMessage
+}
+
+// ImportCertificate400JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate400JSONResponseBodyStatusCode float32
+
+// ImportCertificate401JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate401JSONResponseBodyStatusCode float32
+
+// ImportCertificate403JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate403JSONResponseBodyStatusCode float32
+
+// ImportCertificate404JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate404JSONResponseBodyStatusCode float32
+
+// ImportCertificate422JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate422JSONResponseBodyStatusCode float32
+
+// ImportCertificate500JSONResponseBodyStatusCode defines parameters for ImportCertificate.
+type ImportCertificate500JSONResponseBodyStatusCode float32
 
 // GetAccessibleSecretMetadataParams defines parameters for GetAccessibleSecretMetadata.
 type GetAccessibleSecretMetadataParams struct {
@@ -107140,6 +108569,67 @@ type DeepSearchSecrets200JSONResponseBodySecretRotations29ConnectionApp string
 // DeepSearchSecrets200JSONResponseBodySecretRotations29Type defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBodySecretRotations29Type string
 
+// DeepSearchSecrets200JSONResponseBodySecretRotations30 defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                 `json:"id"`
+		Name string                                                             `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      DeepSearchSecrets200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                 `json:"updatedAt"`
+}
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp string
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30Type defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30Type string
+
 // DeepSearchSecrets200JSONResponseBody_SecretRotations_Item defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBody_SecretRotations_Item struct {
 	union json.RawMessage
@@ -107219,6 +108709,9 @@ type ListProjectSecretsDetailsJSONBodyOrderBy string
 
 // ListProjectSecretsDetailsJSONBodyOrderDirection defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetailsJSONBodyOrderDirection string
+
+// ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations0 struct {
@@ -109312,6 +110805,67 @@ type ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type string
 
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type string
+
 // ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item struct {
 	Secrets []*struct {
@@ -109443,6 +110997,9 @@ type ListProjectSecretsOverviewJSONBodyOrderBy string
 
 // ListProjectSecretsOverviewJSONBodyOrderDirection defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverviewJSONBodyOrderDirection string
+
+// ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations0 struct {
@@ -111535,6 +113092,67 @@ type ListProjectSecretsOverview200JSONResponseBodySecretRotations29ConnectionApp
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                          `json:"id"`
+		Name string                                                                      `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                          `json:"updatedAt"`
+}
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type string
 
 // ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item struct {
@@ -114609,6 +116227,11 @@ type AddUserToGroup500JSONResponseBodyStatusCode float32
 
 // CreateHoneyTokenJSONBody defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBody struct {
+	// Config Settings that depend on the honey token's type.
+	Config *struct {
+		// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+		ManagedBy *CreateHoneyTokenJSONBodyConfigManagedBy `json:"managedBy,omitempty"`
+	} `json:"config,omitempty"`
 	Description    *string                      `json:"description,omitempty"`
 	Environment    string                       `json:"environment"`
 	Name           string                       `json:"name"`
@@ -114618,8 +116241,14 @@ type CreateHoneyTokenJSONBody struct {
 	Type           CreateHoneyTokenJSONBodyType `json:"type"`
 }
 
+// CreateHoneyTokenJSONBodyConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyTokenJSONBodyConfigManagedBy string
+
 // CreateHoneyTokenJSONBodyType defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBodyType string
+
+// CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // CreateHoneyToken400JSONResponseBodyStatusCode defines parameters for CreateHoneyToken.
 type CreateHoneyToken400JSONResponseBodyStatusCode float32
@@ -114744,6 +116373,9 @@ type GetHoneyTokenLimits422JSONResponseBodyStatusCode float32
 // GetHoneyTokenLimits500JSONResponseBodyStatusCode defines parameters for GetHoneyTokenLimits.
 type GetHoneyTokenLimits500JSONResponseBodyStatusCode float32
 
+// GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for GetHoneyToken.
+type GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
+
 // GetHoneyToken400JSONResponseBodyStatusCode defines parameters for GetHoneyToken.
 type GetHoneyToken400JSONResponseBodyStatusCode float32
 
@@ -114768,6 +116400,9 @@ type UpdateHoneyTokenJSONBody struct {
 	Name           *string            `json:"name,omitempty"`
 	SecretsMapping *map[string]string `json:"secretsMapping,omitempty"`
 }
+
+// UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for UpdateHoneyToken.
+type UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // UpdateHoneyToken400JSONResponseBodyStatusCode defines parameters for UpdateHoneyToken.
 type UpdateHoneyToken400JSONResponseBodyStatusCode float32
@@ -116090,12 +117725,11 @@ type GetInsightsSummary500JSONResponseBodyStatusCode float32
 
 // InviteUsersToOrganizationJSONBody defines parameters for InviteUsersToOrganization.
 type InviteUsersToOrganizationJSONBody struct {
-	GrantAgentVaultAccess *bool                 `json:"grantAgentVaultAccess,omitempty"`
-	GrantPamAccess        *bool                 `json:"grantPamAccess,omitempty"`
-	InviteeEmails         []openapi_types.Email `json:"inviteeEmails"`
-	OrganizationId        string                `json:"organizationId"`
-	OrganizationRoleSlug  *string               `json:"organizationRoleSlug,omitempty"`
-	ProjectIds            *[]string             `json:"projectIds,omitempty"`
+	GrantPamAccess       *bool                 `json:"grantPamAccess,omitempty"`
+	InviteeEmails        []openapi_types.Email `json:"inviteeEmails"`
+	OrganizationId       string                `json:"organizationId"`
+	OrganizationRoleSlug *string               `json:"organizationRoleSlug,omitempty"`
+	ProjectIds           *[]string             `json:"projectIds,omitempty"`
 }
 
 // InviteUsersToOrganization400JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
@@ -119254,6 +120888,66 @@ type CreateOrganizationGroupMembership422JSONResponseBodyStatusCode float32
 
 // CreateOrganizationGroupMembership500JSONResponseBodyStatusCode defines parameters for CreateOrganizationGroupMembership.
 type CreateOrganizationGroupMembership500JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdownParams defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdownParams struct {
+	// Scope 'instance' explains usage across the entire self-hosted licence; 'organization' explains one root organization's share of it.
+	Scope *GetBillingUsageBreakdownParamsScope `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// GetBillingUsageBreakdownParamsScope defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdownParamsScope string
+
+// GetBillingUsageBreakdownParamsDimensionKey defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdownParamsDimensionKey string
+
+// GetBillingUsageBreakdown400JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown400JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown401JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown401JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown403JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown403JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown404JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown404JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown422JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown422JSONResponseBodyStatusCode float32
+
+// GetBillingUsageBreakdown500JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
+type GetBillingUsageBreakdown500JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizationsParams defines parameters for ListBillableOrganizations.
+type ListBillableOrganizationsParams struct {
+	// Search Match root organizations whose name or slug contains this.
+	Search *string `form:"search,omitempty" json:"search,omitempty"`
+
+	// Limit Maximum organizations to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of organizations to skip.
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListBillableOrganizations400JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations400JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations401JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations401JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations403JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations403JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations404JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations404JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations422JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations422JSONResponseBodyStatusCode float32
+
+// ListBillableOrganizations500JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
+type ListBillableOrganizations500JSONResponseBodyStatusCode float32
 
 // GetOrganizationPlanParams defines parameters for GetOrganizationPlan.
 type GetOrganizationPlanParams struct {
@@ -123977,6 +125671,9 @@ type CreateAwsParameterStoreSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -123994,7 +125691,7 @@ type CreateAwsParameterStoreSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -124231,6 +125928,9 @@ type UpdateAwsParameterStoreSecretSyncJSONBody struct {
 	// Environment The updated slug of the project environment to sync secrets from.
 	Environment *string `json:"environment,omitempty"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -124245,7 +125945,7 @@ type UpdateAwsParameterStoreSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -124479,6 +126179,9 @@ type CreateAwsSecretsManagerSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -124496,7 +126199,7 @@ type CreateAwsSecretsManagerSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -124867,6 +126570,9 @@ type UpdateAwsSecretsManagerSecretSyncJSONBody struct {
 	// Environment The updated slug of the project environment to sync secrets from.
 	Environment *string `json:"environment,omitempty"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -124881,7 +126587,7 @@ type UpdateAwsSecretsManagerSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -125200,6 +126906,9 @@ type CreateChefSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -125217,7 +126926,7 @@ type CreateChefSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -125376,6 +127085,9 @@ type CreateGitHubSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -125393,7 +127105,7 @@ type CreateGitHubSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -125962,6 +127674,9 @@ type UpdateGitHubSecretSyncJSONBody struct {
 	// Environment The updated slug of the project environment to sync secrets from.
 	Environment *string `json:"environment,omitempty"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -125976,7 +127691,7 @@ type UpdateGitHubSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -126493,6 +128208,9 @@ type CreateOciVaultSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -126510,7 +128228,7 @@ type CreateOciVaultSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -126563,6 +128281,9 @@ type CreateVercelSecretSyncJSONBody struct {
 	// Environment The slug of the project environment to sync secrets from.
 	Environment string `json:"environment"`
 
+	// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well. Defaults to false.
+	IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
 	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
 	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
 
@@ -126580,7 +128301,7 @@ type CreateVercelSecretSyncJSONBody struct {
 		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -134110,6 +135831,15 @@ type DuplicateSecretV4422JSONResponseBodyStatusCode float32
 // DuplicateSecretV4500JSONResponseBodyStatusCode defines parameters for DuplicateSecretV4.
 type DuplicateSecretV4500JSONResponseBodyStatusCode float32
 
+// GetSecretByIdV4Params defines parameters for GetSecretByIdV4.
+type GetSecretByIdV4Params struct {
+	// ViewSecretValue Whether or not to retrieve the secret value.
+	ViewSecretValue *GetSecretByIdV4ParamsViewSecretValue `form:"viewSecretValue,omitempty" json:"viewSecretValue,omitempty"`
+}
+
+// GetSecretByIdV4ParamsViewSecretValue defines parameters for GetSecretByIdV4.
+type GetSecretByIdV4ParamsViewSecretValue string
+
 // GetSecretByIdV4400JSONResponseBodyStatusCode defines parameters for GetSecretByIdV4.
 type GetSecretByIdV4400JSONResponseBodyStatusCode float32
 
@@ -134841,6 +136571,12 @@ type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSec
 
 // LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
 type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
+
+// CreateInternalCertificateAuthorityV1JSONRequestBody defines body for CreateInternalCertificateAuthorityV1 for application/json ContentType.
+type CreateInternalCertificateAuthorityV1JSONRequestBody CreateInternalCertificateAuthorityV1JSONBody
+
+// ImportCertificateJSONRequestBody defines body for ImportCertificate for application/json ContentType.
+type ImportCertificateJSONRequestBody ImportCertificateJSONBody
 
 // SearchSecretsByMetadataJSONRequestBody defines body for SearchSecretsByMetadata for application/json ContentType.
 type SearchSecretsByMetadataJSONRequestBody SearchSecretsByMetadataJSONBody
@@ -143162,6 +144898,42 @@ func (t *RefreshSpiffeBundle200JSONResponseBody_IdentitySpiffeAuth_TrustBundleDi
 	return err
 }
 
+// AsImportCertificateJSONBodyExternalMetadata0 returns the union data inside the ImportCertificateJSONBody_ExternalMetadata as a ImportCertificateJSONBodyExternalMetadata0
+func (t ImportCertificateJSONBody_ExternalMetadata) AsImportCertificateJSONBodyExternalMetadata0() (ImportCertificateJSONBodyExternalMetadata0, error) {
+	var body ImportCertificateJSONBodyExternalMetadata0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromImportCertificateJSONBodyExternalMetadata0 overwrites any union data inside the ImportCertificateJSONBody_ExternalMetadata as the provided ImportCertificateJSONBodyExternalMetadata0
+func (t *ImportCertificateJSONBody_ExternalMetadata) FromImportCertificateJSONBodyExternalMetadata0(v ImportCertificateJSONBodyExternalMetadata0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeImportCertificateJSONBodyExternalMetadata0 performs a merge with any union data inside the ImportCertificateJSONBody_ExternalMetadata, using the provided ImportCertificateJSONBodyExternalMetadata0
+func (t *ImportCertificateJSONBody_ExternalMetadata) MergeImportCertificateJSONBodyExternalMetadata0(v ImportCertificateJSONBodyExternalMetadata0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ImportCertificateJSONBody_ExternalMetadata) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ImportCertificateJSONBody_ExternalMetadata) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsDeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0 returns the union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength as a DeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0
 func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) AsDeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0() (DeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0, error) {
 	var body DeepSearchSecrets200JSONResponseBodySecretRotations25ParametersModulusLength0
@@ -143994,6 +145766,32 @@ func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) FromDeepSear
 
 // MergeDeepSearchSecrets200JSONResponseBodySecretRotations29 performs a merge with any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item, using the provided DeepSearchSecrets200JSONResponseBodySecretRotations29
 func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSearchSecrets200JSONResponseBodySecretRotations29(v DeepSearchSecrets200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeepSearchSecrets200JSONResponseBodySecretRotations30 returns the union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as a DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) AsDeepSearchSecrets200JSONResponseBodySecretRotations30() (DeepSearchSecrets200JSONResponseBodySecretRotations30, error) {
+	var body DeepSearchSecrets200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeepSearchSecrets200JSONResponseBodySecretRotations30 overwrites any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) FromDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeepSearchSecrets200JSONResponseBodySecretRotations30 performs a merge with any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item, using the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -144846,6 +146644,32 @@ func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) From
 
 // MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29(v ListProjectSecretsDetails200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations30() (ListProjectSecretsDetails200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -145732,6 +147556,32 @@ func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) Fro
 
 // MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29(v ListProjectSecretsOverview200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsOverview200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsOverview200JSONResponseBodySecretRotations30() (ListProjectSecretsOverview200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsOverview200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -163970,6 +165820,31 @@ type ClientInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateInternalCertificateAuthorityV1WithBody performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+	// with any type of body and a specified content type.
+	CreateInternalCertificateAuthorityV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateInternalCertificateAuthorityV1 performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateInternalCertificateAuthorityV1(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCertificateAuthorityQuotaV1 performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+	//
+	// Get certificate authority usage against the plan's limits.
+	GetCertificateAuthorityQuotaV1(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ImportCertificateWithBody performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Import certificate.
+	ImportCertificateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ImportCertificate performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Import certificate.
+	ImportCertificate(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAccessibleSecretMetadata performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 	//
 	// List shared secret metadata recursively without reading secret values.
@@ -165235,6 +167110,16 @@ type ClientInterface interface {
 	//
 	// Create organization group membership (link group to current org). Sub-org only: links a parent-org group.
 	CreateOrganizationGroupMembership(ctx context.Context, groupId openapi_types.UUID, body CreateOrganizationGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetBillingUsageBreakdown performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+	//
+	// Break one metered usage dimension down by the organizations and projects its units were created in.
+	GetBillingUsageBreakdown(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListBillableOrganizations performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+	//
+	// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+	ListBillableOrganizations(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOrganizationPlan performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	GetOrganizationPlan(ctx context.Context, organizationId string, params *GetOrganizationPlanParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -167699,7 +169584,7 @@ type ClientInterface interface {
 	DuplicateSecretV4(ctx context.Context, body DuplicateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSecretByIdV4 performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
-	GetSecretByIdV4(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSecretByIdV4(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MoveSecretsV4WithBody performs a POST /api/v4/secrets/move (the `MoveSecretsV4` operationId) request,
 	// with any type of body and a specified content type.
@@ -171498,6 +173383,81 @@ func (c *Client) LoginWithUniversalAuthWithBody(ctx context.Context, contentType
 // Login with Universal Auth for machine identity.
 func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLoginWithUniversalAuthRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateInternalCertificateAuthorityV1WithBody performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateInternalCertificateAuthorityV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInternalCertificateAuthorityV1RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateInternalCertificateAuthorityV1 performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateInternalCertificateAuthorityV1(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInternalCertificateAuthorityV1Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCertificateAuthorityQuotaV1 performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+//
+// Get certificate authority usage against the plan's limits.
+func (c *Client) GetCertificateAuthorityQuotaV1(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCertificateAuthorityQuotaV1Request(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ImportCertificateWithBody performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// Import certificate.
+func (c *Client) ImportCertificateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewImportCertificateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ImportCertificate performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Import certificate.
+func (c *Client) ImportCertificate(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewImportCertificateRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -175563,6 +177523,36 @@ func (c *Client) CreateOrganizationGroupMembershipWithBody(ctx context.Context, 
 // Create organization group membership (link group to current org). Sub-org only: links a parent-org group.
 func (c *Client) CreateOrganizationGroupMembership(ctx context.Context, groupId openapi_types.UUID, body CreateOrganizationGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateOrganizationGroupMembershipRequest(c.Server, groupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetBillingUsageBreakdown performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+//
+// Break one metered usage dimension down by the organizations and projects its units were created in.
+func (c *Client) GetBillingUsageBreakdown(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBillingUsageBreakdownRequest(c.Server, organizationId, dimensionKey, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListBillableOrganizations performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+//
+// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+func (c *Client) ListBillableOrganizations(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListBillableOrganizationsRequest(c.Server, organizationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -183368,8 +185358,8 @@ func (c *Client) DuplicateSecretV4(ctx context.Context, body DuplicateSecretV4JS
 }
 
 // GetSecretByIdV4 performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
-func (c *Client) GetSecretByIdV4(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSecretByIdV4Request(c.Server, secretId)
+func (c *Client) GetSecretByIdV4(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSecretByIdV4Request(c.Server, secretId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -190620,6 +192610,113 @@ func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string,
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/auth/universal-auth/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateInternalCertificateAuthorityV1Request calls the generic CreateInternalCertificateAuthorityV1 builder with application/json body
+func NewCreateInternalCertificateAuthorityV1Request(server string, body CreateInternalCertificateAuthorityV1JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateInternalCertificateAuthorityV1RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateInternalCertificateAuthorityV1RequestWithBody constructs an http.Request for the CreateInternalCertificateAuthorityV1 method, with any body, and a specified content type
+func NewCreateInternalCertificateAuthorityV1RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/internal")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetCertificateAuthorityQuotaV1Request constructs an http.Request for the GetCertificateAuthorityQuotaV1 method
+func NewGetCertificateAuthorityQuotaV1Request(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/quota")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewImportCertificateRequest calls the generic ImportCertificate builder with application/json body
+func NewImportCertificateRequest(server string, body ImportCertificateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewImportCertificateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewImportCertificateRequestWithBody constructs an http.Request for the ImportCertificate method, with any body, and a specified content type
+func NewImportCertificateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/certificates/import-certificate")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -199573,6 +201670,159 @@ func NewCreateOrganizationGroupMembershipRequestWithBody(server string, groupId 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetBillingUsageBreakdownRequest constructs an http.Request for the GetBillingUsageBreakdown method
+func NewGetBillingUsageBreakdownRequest(server string, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "dimensionKey", dimensionKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/breakdowns/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Scope != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "scope", *params.Scope, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListBillableOrganizationsRequest constructs an http.Request for the ListBillableOrganizations method
+func NewListBillableOrganizationsRequest(server string, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/organizations", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Search != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -217109,7 +219359,7 @@ func NewDuplicateSecretV4RequestWithBody(server string, contentType string, body
 }
 
 // NewGetSecretByIdV4Request constructs an http.Request for the GetSecretByIdV4 method
-func NewGetSecretByIdV4Request(server string, secretId string) (*http.Request, error) {
+func NewGetSecretByIdV4Request(server string, secretId string, params *GetSecretByIdV4Params) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -217132,6 +219382,33 @@ func NewGetSecretByIdV4Request(server string, secretId string) (*http.Request, e
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ViewSecretValue != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "viewSecretValue", *params.ViewSecretValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -219257,6 +221534,37 @@ type ClientWithResponsesInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
 
+	// CreateInternalCertificateAuthorityV1WithBodyWithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateInternalCertificateAuthorityV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error)
+
+	// CreateInternalCertificateAuthorityV1WithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateInternalCertificateAuthorityV1WithResponse(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error)
+
+	// GetCertificateAuthorityQuotaV1WithResponse performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+	//
+	// Get certificate authority usage against the plan's limits.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetCertificateAuthorityQuotaV1WithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCertificateAuthorityQuotaV1Response, error)
+
+	// ImportCertificateWithBodyWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Import certificate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ImportCertificateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error)
+
+	// ImportCertificateWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Import certificate.
+	ImportCertificateWithResponse(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error)
+
 	// GetAccessibleSecretMetadataWithResponse performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 	//
 	// List shared secret metadata recursively without reading secret values.
@@ -220926,6 +223234,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create organization group membership (link group to current org). Sub-org only: links a parent-org group.
 	CreateOrganizationGroupMembershipWithResponse(ctx context.Context, groupId openapi_types.UUID, body CreateOrganizationGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationGroupMembershipResponse, error)
+
+	// GetBillingUsageBreakdownWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+	//
+	// Break one metered usage dimension down by the organizations and projects its units were created in.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetBillingUsageBreakdownWithResponse(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*GetBillingUsageBreakdownResponse, error)
+
+	// ListBillableOrganizationsWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+	//
+	// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListBillableOrganizationsWithResponse(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*ListBillableOrganizationsResponse, error)
 
 	// GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	//
@@ -224150,7 +226472,7 @@ type ClientWithResponsesInterface interface {
 	// GetSecretByIdV4WithResponse performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetSecretByIdV4WithResponse(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error)
+	GetSecretByIdV4WithResponse(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error)
 
 	// MoveSecretsV4WithBodyWithResponse performs a POST /api/v4/secrets/move (the `MoveSecretsV4` operationId) request,
 	// with any type of body and a specified content type.
@@ -244344,16 +246666,19 @@ type DeleteKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -244413,16 +246738,19 @@ type DeleteKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -244533,26 +246861,31 @@ type GetKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -244604,26 +246937,31 @@ type GetKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -244726,26 +247064,31 @@ type UpdateKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -244797,26 +247140,31 @@ type UpdateKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -244919,26 +247267,31 @@ type AttachKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -244990,26 +247343,31 @@ type AttachKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r AttachKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -254126,6 +256484,673 @@ func (r LoginWithUniversalAuthResponse) ContentType() string {
 	return ""
 }
 
+type CreateInternalCertificateAuthorityV1Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Configuration struct {
+			ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+			// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+			AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+			// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+			AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+			// CommonName The common name (CN) for the CA.
+			CommonName *string `json:"commonName,omitempty"`
+
+			// Country The country name (C) for the CA.
+			Country *string `json:"country,omitempty"`
+
+			// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+			CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+			// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+			DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+			Dn                                    *string `json:"dn,omitempty"`
+
+			// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+			ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+			// FriendlyName A friendly name for the CA.
+			FriendlyName *string `json:"friendlyName,omitempty"`
+
+			// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+			HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+			// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+			HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+			// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+			// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+			HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+			// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+			IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+			// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+			KeyAlgorithm CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+			// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+			KeySource *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+			// Locality The locality name for the CA.
+			Locality *string `json:"locality,omitempty"`
+
+			// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+			MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+			// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+			NotAfter *string `json:"notAfter,omitempty"`
+
+			// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+			NotBefore *string `json:"notBefore,omitempty"`
+
+			// Organization The organization (O) for the CA.
+			Organization *string `json:"organization,omitempty"`
+
+			// Ou The organization unit (OU) for the CA.
+			Ou         *string             `json:"ou,omitempty"`
+			ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+			// Province The state of province name for the CA.
+			Province *string `json:"province,omitempty"`
+
+			// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+			Region       *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion `json:"region,omitempty"`
+			SerialNumber *string                                                                     `json:"serialNumber,omitempty"`
+
+			// Type The type of CA to create.
+			Type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType `json:"type"`
+		} `json:"configuration"`
+		EnableDirectIssuance *bool                                                         `json:"enableDirectIssuance,omitempty"`
+		Id                   openapi_types.UUID                                            `json:"id"`
+		Name                 string                                                        `json:"name"`
+		ProjectId            string                                                        `json:"projectId"`
+		Status               CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+		Type                 CreateInternalCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                       `json:"details,omitempty"`
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                       `json:"details,omitempty"`
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                            `json:"error"`
+		Message    interface{}                                                       `json:"message,omitempty"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON200() *struct {
+	Configuration struct {
+		ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+		// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+		AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+		// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+		AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+		// CommonName The common name (CN) for the CA.
+		CommonName *string `json:"commonName,omitempty"`
+
+		// Country The country name (C) for the CA.
+		Country *string `json:"country,omitempty"`
+
+		// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+		CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+		// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+		DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+		Dn                                    *string `json:"dn,omitempty"`
+
+		// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+		ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+		// FriendlyName A friendly name for the CA.
+		FriendlyName *string `json:"friendlyName,omitempty"`
+
+		// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+		HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+		// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+		HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+		// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+		// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+		HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+		// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+		IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+		// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+		KeyAlgorithm CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+		// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+		KeySource *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+		// Locality The locality name for the CA.
+		Locality *string `json:"locality,omitempty"`
+
+		// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+		MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+		// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotAfter *string `json:"notAfter,omitempty"`
+
+		// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+		NotBefore *string `json:"notBefore,omitempty"`
+
+		// Organization The organization (O) for the CA.
+		Organization *string `json:"organization,omitempty"`
+
+		// Ou The organization unit (OU) for the CA.
+		Ou         *string             `json:"ou,omitempty"`
+		ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+		// Province The state of province name for the CA.
+		Province *string `json:"province,omitempty"`
+
+		// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+		Region       *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion `json:"region,omitempty"`
+		SerialNumber *string                                                                     `json:"serialNumber,omitempty"`
+
+		// Type The type of CA to create.
+		Type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType `json:"type"`
+	} `json:"configuration"`
+	EnableDirectIssuance *bool                                                         `json:"enableDirectIssuance,omitempty"`
+	Id                   openapi_types.UUID                                            `json:"id"`
+	Name                 string                                                        `json:"name"`
+	ProjectId            string                                                        `json:"projectId"`
+	Status               CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+	Type                 CreateInternalCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON400() *struct {
+	Details    interface{}                                                       `json:"details,omitempty"`
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON401() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON403() *struct {
+	Details    interface{}                                                       `json:"details,omitempty"`
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON404() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON422() *struct {
+	Error      string                                                            `json:"error"`
+	Message    interface{}                                                       `json:"message,omitempty"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateInternalCertificateAuthorityV1Response) GetJSON500() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateInternalCertificateAuthorityV1Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateInternalCertificateAuthorityV1Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateInternalCertificateAuthorityV1Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateInternalCertificateAuthorityV1Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCertificateAuthorityQuotaV1Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CertificateAuthorities struct {
+			// Limit The plan's cap, or null when uncapped.
+			Limit *int `json:"limit"`
+
+			// Used Certificate authorities of every type currently in use.
+			Used int `json:"used"`
+		} `json:"certificateAuthorities"`
+		InternalCertificateAuthorities struct {
+			// Limit The plan's cap, or null when uncapped.
+			Limit *int `json:"limit"`
+
+			// Used Internal certificate authorities currently in use.
+			Used int `json:"used"`
+		} `json:"internalCertificateAuthorities"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                      `json:"error"`
+		Message    interface{}                                                 `json:"message,omitempty"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON200() *struct {
+	CertificateAuthorities struct {
+		// Limit The plan's cap, or null when uncapped.
+		Limit *int `json:"limit"`
+
+		// Used Certificate authorities of every type currently in use.
+		Used int `json:"used"`
+	} `json:"certificateAuthorities"`
+	InternalCertificateAuthorities struct {
+		// Limit The plan's cap, or null when uncapped.
+		Limit *int `json:"limit"`
+
+		// Used Internal certificate authorities currently in use.
+		Used int `json:"used"`
+	} `json:"internalCertificateAuthorities"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON400() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON401() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON403() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON404() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON422() *struct {
+	Error      string                                                      `json:"error"`
+	Message    interface{}                                                 `json:"message,omitempty"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetCertificateAuthorityQuotaV1Response) GetJSON500() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCertificateAuthorityQuotaV1Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCertificateAuthorityQuotaV1Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCertificateAuthorityQuotaV1Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCertificateAuthorityQuotaV1Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ImportCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		// Certificate The imported certificate.
+		Certificate string `json:"certificate"`
+
+		// CertificateChain The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.
+		CertificateChain *string `json:"certificateChain,omitempty"`
+
+		// CertificateId The ID of the imported certificate.
+		CertificateId openapi_types.UUID `json:"certificateId"`
+
+		// PrivateKey The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.
+		PrivateKey *string `json:"privateKey,omitempty"`
+
+		// SerialNumber The serial number of the imported certificate.
+		SerialNumber string `json:"serialNumber"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ImportCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ImportCertificateResponse) GetJSON200() *struct {
+	// Certificate The imported certificate.
+	Certificate string `json:"certificate"`
+
+	// CertificateChain The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.
+	CertificateChain *string `json:"certificateChain,omitempty"`
+
+	// CertificateId The ID of the imported certificate.
+	CertificateId openapi_types.UUID `json:"certificateId"`
+
+	// PrivateKey The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.
+	PrivateKey *string `json:"privateKey,omitempty"`
+
+	// SerialNumber The serial number of the imported certificate.
+	SerialNumber string `json:"serialNumber"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ImportCertificateResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ImportCertificateResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ImportCertificateResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ImportCertificateResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ImportCertificateResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ImportCertificateResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ImportCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ImportCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ImportCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ImportCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ImportCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetAccessibleSecretMetadataResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -256006,6 +259031,10 @@ type ListProjectSecretsDetailsResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -256250,6 +259279,10 @@ func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -256547,6 +259580,10 @@ type ListProjectSecretsOverviewResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -256798,6 +259835,10 @@ func (r ListProjectSecretsOverviewResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -265879,6 +268920,11 @@ type CreateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -265943,6 +268989,11 @@ type CreateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -266861,6 +269912,11 @@ type GetHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment *struct {
@@ -266931,6 +269987,11 @@ type GetHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment *struct {
@@ -267052,6 +270113,11 @@ type UpdateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -267112,6 +270178,11 @@ type UpdateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -272043,9 +275114,8 @@ type InviteUsersToOrganizationResponse struct {
 			Link  string `json:"link"`
 		} `json:"completeInviteLinks,omitempty"`
 		GrantFailures *struct {
-			AgentVaultAccess bool     `json:"agentVaultAccess"`
-			PamAccess        bool     `json:"pamAccess"`
-			ProjectIds       []string `json:"projectIds"`
+			PamAccess  bool     `json:"pamAccess"`
+			ProjectIds []string `json:"projectIds"`
 		} `json:"grantFailures,omitempty"`
 		Message string `json:"message"`
 	}
@@ -272102,9 +275172,8 @@ func (r InviteUsersToOrganizationResponse) GetJSON200() *struct {
 		Link  string `json:"link"`
 	} `json:"completeInviteLinks,omitempty"`
 	GrantFailures *struct {
-		AgentVaultAccess bool     `json:"agentVaultAccess"`
-		PamAccess        bool     `json:"pamAccess"`
-		ProjectIds       []string `json:"projectIds"`
+		PamAccess  bool     `json:"pamAccess"`
+		ProjectIds []string `json:"projectIds"`
 	} `json:"grantFailures,omitempty"`
 	Message string `json:"message"`
 } {
@@ -287022,7 +290091,6 @@ type GetOrganizationByIdResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Organization struct {
-			AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -287108,7 +290176,6 @@ type GetOrganizationByIdResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 	Organization struct {
-		AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -289519,6 +292586,434 @@ func (r CreateOrganizationGroupMembershipResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateOrganizationGroupMembershipResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetBillingUsageBreakdownResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Breakdown struct {
+			// DimensionKey The metered dimension this breakdown explains.
+			DimensionKey string `json:"dimensionKey"`
+
+			// HasProjectDetail Whether units can be attributed to individual projects.
+			HasProjectDetail bool `json:"hasProjectDetail"`
+
+			// ScopedCount The part of the total the scope tree accounts for; equals total for dimensions with no users.
+			ScopedCount float32 `json:"scopedCount"`
+
+			// Scopes Organizations the total is drawn from, largest first.
+			Scopes []struct {
+				// Count Metered units attributed to this organization.
+				Count float32 `json:"count"`
+
+				// IsRoot Whether this is the root organization of the billing tree.
+				IsRoot bool `json:"isRoot"`
+
+				// Name Display name of the organization.
+				Name string `json:"name"`
+
+				// OrgId ID of the organization the units were created in.
+				OrgId string `json:"orgId"`
+
+				// OrgLevelCount Units created on the organization itself rather than in a project.
+				OrgLevelCount float32 `json:"orgLevelCount"`
+
+				// ParentOrgName Display name of the root organization this sub-organization belongs to; null on a root org.
+				ParentOrgName *string `json:"parentOrgName"`
+
+				// Projects Per-project split of this organization's units; empty when the dimension has no project detail.
+				Projects []struct {
+					// Count Metered units created in this project.
+					Count float32 `json:"count"`
+
+					// Id ID of the project the units were created in.
+					Id string `json:"id"`
+
+					// Name Display name of the project.
+					Name string `json:"name"`
+				} `json:"projects"`
+			} `json:"scopes"`
+
+			// Total Live total for the dimension, counted the same way the meter counts it.
+			Total float32 `json:"total"`
+
+			// Unit Singular noun for what is counted, e.g. 'machine identity'.
+			Unit string `json:"unit"`
+
+			// UserCount Human seats in the metered set; 0 for dimensions that count no users.
+			UserCount float32 `json:"userCount"`
+		} `json:"breakdown"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                `json:"error"`
+		Message    interface{}                                           `json:"message,omitempty"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode GetBillingUsageBreakdown500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON200() *struct {
+	Breakdown struct {
+		// DimensionKey The metered dimension this breakdown explains.
+		DimensionKey string `json:"dimensionKey"`
+
+		// HasProjectDetail Whether units can be attributed to individual projects.
+		HasProjectDetail bool `json:"hasProjectDetail"`
+
+		// ScopedCount The part of the total the scope tree accounts for; equals total for dimensions with no users.
+		ScopedCount float32 `json:"scopedCount"`
+
+		// Scopes Organizations the total is drawn from, largest first.
+		Scopes []struct {
+			// Count Metered units attributed to this organization.
+			Count float32 `json:"count"`
+
+			// IsRoot Whether this is the root organization of the billing tree.
+			IsRoot bool `json:"isRoot"`
+
+			// Name Display name of the organization.
+			Name string `json:"name"`
+
+			// OrgId ID of the organization the units were created in.
+			OrgId string `json:"orgId"`
+
+			// OrgLevelCount Units created on the organization itself rather than in a project.
+			OrgLevelCount float32 `json:"orgLevelCount"`
+
+			// ParentOrgName Display name of the root organization this sub-organization belongs to; null on a root org.
+			ParentOrgName *string `json:"parentOrgName"`
+
+			// Projects Per-project split of this organization's units; empty when the dimension has no project detail.
+			Projects []struct {
+				// Count Metered units created in this project.
+				Count float32 `json:"count"`
+
+				// Id ID of the project the units were created in.
+				Id string `json:"id"`
+
+				// Name Display name of the project.
+				Name string `json:"name"`
+			} `json:"projects"`
+		} `json:"scopes"`
+
+		// Total Live total for the dimension, counted the same way the meter counts it.
+		Total float32 `json:"total"`
+
+		// Unit Singular noun for what is counted, e.g. 'machine identity'.
+		Unit string `json:"unit"`
+
+		// UserCount Human seats in the metered set; 0 for dimensions that count no users.
+		UserCount float32 `json:"userCount"`
+	} `json:"breakdown"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON400() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON401() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON403() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON404() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON422() *struct {
+	Error      string                                                `json:"error"`
+	Message    interface{}                                           `json:"message,omitempty"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetBillingUsageBreakdownResponse) GetJSON500() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode GetBillingUsageBreakdown500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetBillingUsageBreakdownResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBillingUsageBreakdownResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBillingUsageBreakdownResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBillingUsageBreakdownResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListBillableOrganizationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Organizations []struct {
+			// Id ID of the root organization.
+			Id string `json:"id"`
+
+			// Name Display name of the root organization.
+			Name string `json:"name"`
+
+			// Slug Slug of the root organization.
+			Slug string `json:"slug"`
+		} `json:"organizations"`
+
+		// TotalCount Root organizations matching the search, across every page.
+		TotalCount float32 `json:"totalCount"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListBillableOrganizations500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON200() *struct {
+	Organizations []struct {
+		// Id ID of the root organization.
+		Id string `json:"id"`
+
+		// Name Display name of the root organization.
+		Name string `json:"name"`
+
+		// Slug Slug of the root organization.
+		Slug string `json:"slug"`
+	} `json:"organizations"`
+
+	// TotalCount Root organizations matching the search, across every page.
+	TotalCount float32 `json:"totalCount"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListBillableOrganizationsResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListBillableOrganizations500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListBillableOrganizationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListBillableOrganizationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListBillableOrganizationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListBillableOrganizationsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -314365,30 +317860,31 @@ type ListAwsParameterStoreSecretSyncsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -314488,30 +317984,31 @@ func (r ListAwsParameterStoreSecretSyncsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -314662,30 +318159,31 @@ type CreateAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -314785,30 +318283,31 @@ func (r CreateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -315269,30 +318768,31 @@ type GetAwsParameterStoreSecretSyncByNameResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -315392,30 +318892,31 @@ func (r GetAwsParameterStoreSecretSyncByNameResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -315566,30 +319067,31 @@ type DeleteAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -315689,30 +319191,31 @@ func (r DeleteAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -315863,30 +319366,31 @@ type GetAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -315986,30 +319490,31 @@ func (r GetAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -316160,30 +319665,31 @@ type UpdateAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -316283,30 +319789,31 @@ func (r UpdateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -316457,30 +319964,31 @@ type ImportAwsParameterStoreSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -316580,30 +320088,31 @@ func (r ImportAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -316754,30 +320263,31 @@ type RemoveAwsParameterStoreSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -316877,30 +320387,31 @@ func (r RemoveAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -317051,30 +320562,31 @@ type SyncAwsParameterStoreSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -317174,30 +320686,31 @@ func (r SyncAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -317342,30 +320855,31 @@ type ListAwsSecretsManagerSecretSyncsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -317459,30 +320973,31 @@ func (r ListAwsSecretsManagerSecretSyncsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -317627,30 +321142,31 @@ type CreateAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -317744,30 +321260,31 @@ func (r CreateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -318222,30 +321739,31 @@ type GetAwsSecretsManagerSecretSyncByNameResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -318339,30 +321857,31 @@ func (r GetAwsSecretsManagerSecretSyncByNameResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -318507,30 +322026,31 @@ type DeleteAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -318624,30 +322144,31 @@ func (r DeleteAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -318792,30 +322313,31 @@ type GetAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -318909,30 +322431,31 @@ func (r GetAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -319077,30 +322600,31 @@ type UpdateAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -319194,30 +322718,31 @@ func (r UpdateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -319362,30 +322887,31 @@ type ImportAwsSecretsManagerSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -319479,30 +323005,31 @@ func (r ImportAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -319647,30 +323174,31 @@ type RemoveAwsSecretsManagerSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -319764,30 +323292,31 @@ func (r RemoveAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -319932,30 +323461,31 @@ type SyncAwsSecretsManagerSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -320049,30 +323579,31 @@ func (r SyncAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -320226,30 +323757,31 @@ type CreateChefSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -320340,30 +323872,31 @@ func (r CreateChefSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -320496,30 +324029,31 @@ type ListGitHubSecretSyncsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -320601,30 +324135,31 @@ func (r ListGitHubSecretSyncsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -320757,30 +324292,31 @@ type CreateGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -320862,30 +324398,31 @@ func (r CreateGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -321328,30 +324865,31 @@ type GetGitHubSecretSyncByNameResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -321433,30 +324971,31 @@ func (r GetGitHubSecretSyncByNameResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -321589,30 +325128,31 @@ type DeleteGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -321694,30 +325234,31 @@ func (r DeleteGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -321850,30 +325391,31 @@ type GetGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -321955,30 +325497,31 @@ func (r GetGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322111,30 +325654,31 @@ type UpdateGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322216,30 +325760,31 @@ func (r UpdateGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322372,30 +325917,31 @@ type ImportGitHubSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322477,30 +326023,31 @@ func (r ImportGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322633,30 +326180,31 @@ type RemoveGitHubSecretSyncSecretsResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322738,30 +326286,31 @@ func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322894,30 +326443,31 @@ type SyncGitHubSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -322999,30 +326549,31 @@ func (r SyncGitHubSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -323164,30 +326715,31 @@ type CreateOciVaultSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -323278,30 +326830,31 @@ func (r CreateOciVaultSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -323434,30 +326987,31 @@ type CreateVercelSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -323539,30 +327093,31 @@ func (r CreateVercelSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -323695,30 +327250,31 @@ type GetVercelSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -323800,30 +327356,31 @@ func (r GetVercelSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -323956,30 +327513,31 @@ type SyncVercelSecretSyncResponse struct {
 				Id   string `json:"id"`
 				Path string `json:"path"`
 			} `json:"folder"`
-			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-			Id                openapi_types.UUID  `json:"id"`
-			ImportStatus      *string             `json:"importStatus,omitempty"`
-			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-			Name              string              `json:"name"`
-			ProjectId         string              `json:"projectId"`
-			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+			FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                   openapi_types.UUID  `json:"id"`
+			ImportStatus         *string             `json:"importStatus,omitempty"`
+			IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+			IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name                 string              `json:"name"`
+			ProjectId            string              `json:"projectId"`
+			RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 			// SyncOptions Optional parameters to modify how secrets are synced.
 			SyncOptions struct {
 				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -324061,30 +327619,31 @@ func (r SyncVercelSecretSyncResponse) GetJSON200() *struct {
 			Id   string `json:"id"`
 			Path string `json:"path"`
 		} `json:"folder"`
-		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-		Id                openapi_types.UUID  `json:"id"`
-		ImportStatus      *string             `json:"importStatus,omitempty"`
-		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-		Name              string              `json:"name"`
-		ProjectId         string              `json:"projectId"`
-		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+		FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                   openapi_types.UUID  `json:"id"`
+		ImportStatus         *string             `json:"importStatus,omitempty"`
+		IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+		IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name                 string              `json:"name"`
+		ProjectId            string              `json:"projectId"`
+		RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 		// SyncOptions Optional parameters to modify how secrets are synced.
 		SyncOptions struct {
 			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -358634,6 +362193,7 @@ type GetSecretByIdV4Response struct {
 			SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
 			SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
 			SecretValue              string   `json:"secretValue"`
+			SecretValueHidden        bool     `json:"secretValueHidden"`
 			SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
 			Tags                     *[]struct {
 				Color *string            `json:"color,omitempty"`
@@ -358720,6 +362280,7 @@ func (r GetSecretByIdV4Response) GetJSON200() *struct {
 		SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
 		SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
 		SecretValue              string   `json:"secretValue"`
+		SecretValueHidden        bool     `json:"secretValueHidden"`
 		SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
 		Tags                     *[]struct {
 			Color *string            `json:"color,omitempty"`
@@ -363083,6 +366644,67 @@ func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Con
 	return ParseLoginWithUniversalAuthResponse(rsp)
 }
 
+// CreateInternalCertificateAuthorityV1WithBodyWithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateInternalCertificateAuthorityV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error) {
+	rsp, err := c.CreateInternalCertificateAuthorityV1WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateInternalCertificateAuthorityV1Response(rsp)
+}
+
+// CreateInternalCertificateAuthorityV1WithResponse performs a POST /api/v1/cert-manager/ca/internal (the `CreateInternalCertificateAuthorityV1` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateInternalCertificateAuthorityV1WithResponse(ctx context.Context, body CreateInternalCertificateAuthorityV1JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInternalCertificateAuthorityV1Response, error) {
+	rsp, err := c.CreateInternalCertificateAuthorityV1(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateInternalCertificateAuthorityV1Response(rsp)
+}
+
+// GetCertificateAuthorityQuotaV1WithResponse performs a GET /api/v1/cert-manager/ca/quota (the `GetCertificateAuthorityQuotaV1` operationId) request.
+//
+// Get certificate authority usage against the plan's limits.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetCertificateAuthorityQuotaV1WithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCertificateAuthorityQuotaV1Response, error) {
+	rsp, err := c.GetCertificateAuthorityQuotaV1(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCertificateAuthorityQuotaV1Response(rsp)
+}
+
+// ImportCertificateWithBodyWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// Import certificate.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ImportCertificateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error) {
+	rsp, err := c.ImportCertificateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseImportCertificateResponse(rsp)
+}
+
+// ImportCertificateWithResponse performs a POST /api/v1/cert-manager/certificates/import-certificate (the `ImportCertificate` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Import certificate.
+func (c *ClientWithResponses) ImportCertificateWithResponse(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error) {
+	rsp, err := c.ImportCertificate(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseImportCertificateResponse(rsp)
+}
+
 // GetAccessibleSecretMetadataWithResponse performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 //
 // List shared secret metadata recursively without reading secret values.
@@ -366431,6 +370053,32 @@ func (c *ClientWithResponses) CreateOrganizationGroupMembershipWithResponse(ctx 
 		return nil, err
 	}
 	return ParseCreateOrganizationGroupMembershipResponse(rsp)
+}
+
+// GetBillingUsageBreakdownWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/breakdowns/{dimensionKey} (the `GetBillingUsageBreakdown` operationId) request.
+//
+// Break one metered usage dimension down by the organizations and projects its units were created in.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetBillingUsageBreakdownWithResponse(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*GetBillingUsageBreakdownResponse, error) {
+	rsp, err := c.GetBillingUsageBreakdown(ctx, organizationId, dimensionKey, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBillingUsageBreakdownResponse(rsp)
+}
+
+// ListBillableOrganizationsWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
+//
+// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListBillableOrganizationsWithResponse(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*ListBillableOrganizationsResponse, error) {
+	rsp, err := c.ListBillableOrganizations(ctx, organizationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListBillableOrganizationsResponse(rsp)
 }
 
 // GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
@@ -372858,8 +376506,8 @@ func (c *ClientWithResponses) DuplicateSecretV4WithResponse(ctx context.Context,
 // GetSecretByIdV4WithResponse performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetSecretByIdV4WithResponse(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error) {
-	rsp, err := c.GetSecretByIdV4(ctx, secretId, reqEditors...)
+func (c *ClientWithResponses) GetSecretByIdV4WithResponse(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error) {
+	rsp, err := c.GetSecretByIdV4(ctx, secretId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -386045,16 +389693,19 @@ func ParseDeleteKubernetesAuthResponse(rsp *http.Response) (*DeleteKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -386166,26 +389817,31 @@ func ParseGetKubernetesAuthResponse(rsp *http.Response) (*GetKubernetesAuthRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -386289,26 +389945,31 @@ func ParseUpdateKubernetesAuthResponse(rsp *http.Response) (*UpdateKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -386412,26 +390073,31 @@ func ParseAttachKubernetesAuthResponse(rsp *http.Response) (*AttachKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -392406,6 +396072,419 @@ func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversa
 	return response, nil
 }
 
+// ParseCreateInternalCertificateAuthorityV1Response parses an HTTP response from a CreateInternalCertificateAuthorityV1WithResponse call
+func ParseCreateInternalCertificateAuthorityV1Response(rsp *http.Response) (*CreateInternalCertificateAuthorityV1Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateInternalCertificateAuthorityV1Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Configuration struct {
+				ActiveCaCertId *openapi_types.UUID `json:"activeCaCertId,omitempty"`
+
+				// AppConnectionId The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.
+				AppConnectionId *openapi_types.UUID `json:"appConnectionId,omitempty"`
+
+				// AppConnectionName The name of the AWS connection the CA's signing key is reached through. Not user-supplied.
+				AppConnectionName *string `json:"appConnectionName,omitempty"`
+
+				// CommonName The common name (CN) for the CA.
+				CommonName *string `json:"commonName,omitempty"`
+
+				// Country The country name (C) for the CA.
+				Country *string `json:"country,omitempty"`
+
+				// CrlDistributionPointUrls Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.
+				CrlDistributionPointUrls *[]string `json:"crlDistributionPointUrls,omitempty"`
+
+				// DisableManagedCrlDistributionPointUrl When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.
+				DisableManagedCrlDistributionPointUrl *bool   `json:"disableManagedCrlDistributionPointUrl,omitempty"`
+				Dn                                    *string `json:"dn,omitempty"`
+
+				// ExternalKeyId The identifier of the CA's signing key in its key source: the key ARN for AWS KMS, or the key label for HSM. Not user-supplied: the key is created when the CA is created.
+				ExternalKeyId *string `json:"externalKeyId,omitempty"`
+
+				// FriendlyName A friendly name for the CA.
+				FriendlyName *string `json:"friendlyName,omitempty"`
+
+				// HsmConnectorId The ID of the HSM Connector to generate and store the CA's signing key in. Required when keySource is 'hsm'.
+				HsmConnectorId *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+
+				// HsmConnectorName The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.
+				HsmConnectorName *string `json:"hsmConnectorName,omitempty"`
+
+				// HsmKeyLabel Deprecated: use externalKeyId, which holds the same key label for HSM-backed CAs. The label of the CA's signing key on the HSM.
+				// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+				HsmKeyLabel *string `json:"hsmKeyLabel,omitempty"`
+
+				// IsOcspEnabled When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.
+				IsOcspEnabled *bool `json:"isOcspEnabled,omitempty"`
+
+				// KeyAlgorithm The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.
+				KeyAlgorithm CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeyAlgorithm `json:"keyAlgorithm"`
+
+				// KeySource Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.
+				KeySource *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationKeySource `json:"keySource,omitempty"`
+
+				// Locality The locality name for the CA.
+				Locality *string `json:"locality,omitempty"`
+
+				// MaxPathLength The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.
+				MaxPathLength *float32 `json:"maxPathLength,omitempty"`
+
+				// NotAfter The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.
+				NotAfter *string `json:"notAfter,omitempty"`
+
+				// NotBefore The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.
+				NotBefore *string `json:"notBefore,omitempty"`
+
+				// Organization The organization (O) for the CA.
+				Organization *string `json:"organization,omitempty"`
+
+				// Ou The organization unit (OU) for the CA.
+				Ou         *string             `json:"ou,omitempty"`
+				ParentCaId *openapi_types.UUID `json:"parentCaId,omitempty"`
+
+				// Province The state of province name for the CA.
+				Province *string `json:"province,omitempty"`
+
+				// Region The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.
+				Region       *CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationRegion `json:"region,omitempty"`
+				SerialNumber *string                                                                     `json:"serialNumber,omitempty"`
+
+				// Type The type of CA to create.
+				Type CreateInternalCertificateAuthorityV1200JSONResponseBodyConfigurationType `json:"type"`
+			} `json:"configuration"`
+			EnableDirectIssuance *bool                                                         `json:"enableDirectIssuance,omitempty"`
+			Id                   openapi_types.UUID                                            `json:"id"`
+			Name                 string                                                        `json:"name"`
+			ProjectId            string                                                        `json:"projectId"`
+			Status               CreateInternalCertificateAuthorityV1200JSONResponseBodyStatus `json:"status"`
+			Type                 CreateInternalCertificateAuthorityV1200JSONResponseBodyType   `json:"type"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                       `json:"details,omitempty"`
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                       `json:"details,omitempty"`
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    interface{}                                                       `json:"message,omitempty"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode CreateInternalCertificateAuthorityV1500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCertificateAuthorityQuotaV1Response parses an HTTP response from a GetCertificateAuthorityQuotaV1WithResponse call
+func ParseGetCertificateAuthorityQuotaV1Response(rsp *http.Response) (*GetCertificateAuthorityQuotaV1Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCertificateAuthorityQuotaV1Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CertificateAuthorities struct {
+				// Limit The plan's cap, or null when uncapped.
+				Limit *int `json:"limit"`
+
+				// Used Certificate authorities of every type currently in use.
+				Used int `json:"used"`
+			} `json:"certificateAuthorities"`
+			InternalCertificateAuthorities struct {
+				// Limit The plan's cap, or null when uncapped.
+				Limit *int `json:"limit"`
+
+				// Used Internal certificate authorities currently in use.
+				Used int `json:"used"`
+			} `json:"internalCertificateAuthorities"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    interface{}                                                 `json:"message,omitempty"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode GetCertificateAuthorityQuotaV1500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseImportCertificateResponse parses an HTTP response from a ImportCertificateWithResponse call
+func ParseImportCertificateResponse(rsp *http.Response) (*ImportCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ImportCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			// Certificate The imported certificate.
+			Certificate string `json:"certificate"`
+
+			// CertificateChain The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.
+			CertificateChain *string `json:"certificateChain,omitempty"`
+
+			// CertificateId The ID of the imported certificate.
+			CertificateId openapi_types.UUID `json:"certificateId"`
+
+			// PrivateKey The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.
+			PrivateKey *string `json:"privateKey,omitempty"`
+
+			// SerialNumber The serial number of the imported certificate.
+			SerialNumber string `json:"serialNumber"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ImportCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetAccessibleSecretMetadataResponse parses an HTTP response from a GetAccessibleSecretMetadataWithResponse call
 func ParseGetAccessibleSecretMetadataResponse(rsp *http.Response) (*GetAccessibleSecretMetadataResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -393616,6 +397695,10 @@ func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSec
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -393914,6 +397997,10 @@ func ParseListProjectSecretsOverviewResponse(rsp *http.Response) (*ListProjectSe
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -399912,6 +403999,11 @@ func ParseCreateHoneyTokenResponse(rsp *http.Response) (*CreateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -400562,6 +404654,11 @@ func ParseGetHoneyTokenResponse(rsp *http.Response) (*GetHoneyTokenResponse, err
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment *struct {
@@ -400684,6 +404781,11 @@ func ParseUpdateHoneyTokenResponse(rsp *http.Response) (*UpdateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -403950,9 +408052,8 @@ func ParseInviteUsersToOrganizationResponse(rsp *http.Response) (*InviteUsersToO
 				Link  string `json:"link"`
 			} `json:"completeInviteLinks,omitempty"`
 			GrantFailures *struct {
-				AgentVaultAccess bool     `json:"agentVaultAccess"`
-				PamAccess        bool     `json:"pamAccess"`
-				ProjectIds       []string `json:"projectIds"`
+				PamAccess  bool     `json:"pamAccess"`
+				ProjectIds []string `json:"projectIds"`
 			} `json:"grantFailures,omitempty"`
 			Message string `json:"message"`
 		}
@@ -413794,7 +417895,6 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Organization struct {
-				AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -415365,6 +419465,273 @@ func ParseCreateOrganizationGroupMembershipResponse(rsp *http.Response) (*Create
 			Message    string                                                         `json:"message"`
 			ReqId      string                                                         `json:"reqId"`
 			StatusCode CreateOrganizationGroupMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBillingUsageBreakdownResponse parses an HTTP response from a GetBillingUsageBreakdownWithResponse call
+func ParseGetBillingUsageBreakdownResponse(rsp *http.Response) (*GetBillingUsageBreakdownResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBillingUsageBreakdownResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Breakdown struct {
+				// DimensionKey The metered dimension this breakdown explains.
+				DimensionKey string `json:"dimensionKey"`
+
+				// HasProjectDetail Whether units can be attributed to individual projects.
+				HasProjectDetail bool `json:"hasProjectDetail"`
+
+				// ScopedCount The part of the total the scope tree accounts for; equals total for dimensions with no users.
+				ScopedCount float32 `json:"scopedCount"`
+
+				// Scopes Organizations the total is drawn from, largest first.
+				Scopes []struct {
+					// Count Metered units attributed to this organization.
+					Count float32 `json:"count"`
+
+					// IsRoot Whether this is the root organization of the billing tree.
+					IsRoot bool `json:"isRoot"`
+
+					// Name Display name of the organization.
+					Name string `json:"name"`
+
+					// OrgId ID of the organization the units were created in.
+					OrgId string `json:"orgId"`
+
+					// OrgLevelCount Units created on the organization itself rather than in a project.
+					OrgLevelCount float32 `json:"orgLevelCount"`
+
+					// ParentOrgName Display name of the root organization this sub-organization belongs to; null on a root org.
+					ParentOrgName *string `json:"parentOrgName"`
+
+					// Projects Per-project split of this organization's units; empty when the dimension has no project detail.
+					Projects []struct {
+						// Count Metered units created in this project.
+						Count float32 `json:"count"`
+
+						// Id ID of the project the units were created in.
+						Id string `json:"id"`
+
+						// Name Display name of the project.
+						Name string `json:"name"`
+					} `json:"projects"`
+				} `json:"scopes"`
+
+				// Total Live total for the dimension, counted the same way the meter counts it.
+				Total float32 `json:"total"`
+
+				// Unit Singular noun for what is counted, e.g. 'machine identity'.
+				Unit string `json:"unit"`
+
+				// UserCount Human seats in the metered set; 0 for dimensions that count no users.
+				UserCount float32 `json:"userCount"`
+			} `json:"breakdown"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    interface{}                                           `json:"message,omitempty"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode GetBillingUsageBreakdown500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListBillableOrganizationsResponse parses an HTTP response from a ListBillableOrganizationsWithResponse call
+func ParseListBillableOrganizationsResponse(rsp *http.Response) (*ListBillableOrganizationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListBillableOrganizationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Organizations []struct {
+				// Id ID of the root organization.
+				Id string `json:"id"`
+
+				// Name Display name of the root organization.
+				Name string `json:"name"`
+
+				// Slug Slug of the root organization.
+				Slug string `json:"slug"`
+			} `json:"organizations"`
+
+			// TotalCount Root organizations matching the search, across every page.
+			TotalCount float32 `json:"totalCount"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListBillableOrganizations500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -431360,30 +435727,31 @@ func ParseListAwsParameterStoreSecretSyncsResponse(rsp *http.Response) (*ListAws
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -431535,30 +435903,31 @@ func ParseCreateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Create
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -431918,30 +436287,31 @@ func ParseGetAwsParameterStoreSecretSyncByNameResponse(rsp *http.Response) (*Get
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -432093,30 +436463,31 @@ func ParseDeleteAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Delete
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -432268,30 +436639,31 @@ func ParseGetAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*GetAwsPar
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -432443,30 +436815,31 @@ func ParseUpdateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Update
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -432618,30 +436991,31 @@ func ParseImportAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -432793,30 +437167,31 @@ func ParseRemoveAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -432968,30 +437343,31 @@ func ParseSyncAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*SyncAwsP
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Parameter Store destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Parameter Store destination.
@@ -433137,30 +437513,31 @@ func ParseListAwsSecretsManagerSecretSyncsResponse(rsp *http.Response) (*ListAws
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -433306,30 +437683,31 @@ func ParseCreateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Create
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -433683,30 +438061,31 @@ func ParseGetAwsSecretsManagerSecretSyncByNameResponse(rsp *http.Response) (*Get
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -433852,30 +438231,31 @@ func ParseDeleteAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Delete
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -434021,30 +438401,31 @@ func ParseGetAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*GetAwsSec
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -434190,30 +438571,31 @@ func ParseUpdateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Update
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -434359,30 +438741,31 @@ func ParseImportAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -434528,30 +438911,31 @@ func ParseRemoveAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -434697,30 +439081,31 @@ func ParseSyncAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*SyncAwsS
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the AWS Secrets Manager destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the AWS Secrets Manager destination.
@@ -434875,30 +439260,31 @@ func ParseCreateChefSecretSyncResponse(rsp *http.Response) (*CreateChefSecretSyn
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Chef destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Chef destination.
@@ -435032,30 +439418,31 @@ func ParseListGitHubSecretSyncsResponse(rsp *http.Response) (*ListGitHubSecretSy
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -435189,30 +439576,31 @@ func ParseCreateGitHubSecretSyncResponse(rsp *http.Response) (*CreateGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -435554,30 +439942,31 @@ func ParseGetGitHubSecretSyncByNameResponse(rsp *http.Response) (*GetGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -435711,30 +440100,31 @@ func ParseDeleteGitHubSecretSyncResponse(rsp *http.Response) (*DeleteGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -435868,30 +440258,31 @@ func ParseGetGitHubSecretSyncResponse(rsp *http.Response) (*GetGitHubSecretSyncR
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -436025,30 +440416,31 @@ func ParseUpdateGitHubSecretSyncResponse(rsp *http.Response) (*UpdateGitHubSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -436182,30 +440574,31 @@ func ParseImportGitHubSecretSyncSecretsResponse(rsp *http.Response) (*ImportGitH
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -436339,30 +440732,31 @@ func ParseRemoveGitHubSecretSyncSecretsResponse(rsp *http.Response) (*RemoveGitH
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -436496,30 +440890,31 @@ func ParseSyncGitHubSecretSyncResponse(rsp *http.Response) (*SyncGitHubSecretSyn
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
@@ -436662,30 +441057,31 @@ func ParseCreateOciVaultSecretSyncResponse(rsp *http.Response) (*CreateOciVaultS
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the OCI Vault destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the OCI Vault destination.
@@ -436819,30 +441215,31 @@ func ParseCreateVercelSecretSyncResponse(rsp *http.Response) (*CreateVercelSecre
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -436976,30 +441373,31 @@ func ParseGetVercelSecretSyncResponse(rsp *http.Response) (*GetVercelSecretSyncR
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -437133,30 +441531,31 @@ func ParseSyncVercelSecretSyncResponse(rsp *http.Response) (*SyncVercelSecretSyn
 					Id   string `json:"id"`
 					Path string `json:"path"`
 				} `json:"folder"`
-				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
-				Id                openapi_types.UUID  `json:"id"`
-				ImportStatus      *string             `json:"importStatus,omitempty"`
-				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
-				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
-				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
-				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
-				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
-				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
-				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
-				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
-				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
-				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
-				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
-				Name              string              `json:"name"`
-				ProjectId         string              `json:"projectId"`
-				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+				FolderId             *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                   openapi_types.UUID  `json:"id"`
+				ImportStatus         *string             `json:"importStatus,omitempty"`
+				IncludeAllSubFolders *bool               `json:"includeAllSubFolders,omitempty"`
+				IsAutoSyncEnabled    *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId      *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage    *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt       *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId      *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage    *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt        *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId        *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage      *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult       *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt         *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name                 string              `json:"name"`
+				ProjectId            string              `json:"projectId"`
+				RemoveStatus         *string             `json:"removeStatus,omitempty"`
 
 				// SyncOptions Optional parameters to modify how secrets are synced.
 				SyncOptions struct {
 					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
 					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
 
-					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					// IncludeAllSubFolders Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.
 					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
 
 					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
@@ -459284,6 +463683,7 @@ func ParseGetSecretByIdV4Response(rsp *http.Response) (*GetSecretByIdV4Response,
 				SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
 				SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
 				SecretValue              string   `json:"secretValue"`
+				SecretValueHidden        bool     `json:"secretValueHidden"`
 				SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
 				Tags                     *[]struct {
 					Color *string            `json:"color,omitempty"`

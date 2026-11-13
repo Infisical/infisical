@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import {
   AccessScope,
   OrgMembershipRole,
@@ -20,9 +21,9 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
@@ -145,8 +146,7 @@ describe("Identity folder access CRUD", () => {
         secretPath: "/identity-folder-access",
         isTemporary: true,
         temporaryMode: TemporaryPermissionMode.Relative,
-        temporaryRange: "1d",
-        isPermissionRecursive: false
+        temporaryRange: "1d"
       })
     );
     expect(new Date(created.temporaryAccessStartTime).toISOString()).toBe(temporaryAccessStartTime);
@@ -187,118 +187,12 @@ describe("Identity folder access CRUD", () => {
     expect(await testDb(TableName.AdditionalPrivilege).where({ id: created.id })).toEqual([]);
   });
 
-  test("recursive folder access on the root folder: create, keep on a role change, turn off", async () => {
-    const rootTarget = { environmentSlug: seedData1.environment.slug, secretPath: "/" };
-
-    const createRes = await testServer.inject({
-      method: "POST",
-      url: folderAccessUrl(),
-      headers: authHeaders(),
-      body: { ...rootTarget, permission: SecretFolderRole.Read, isPermissionRecursive: true }
-    });
-    expect(createRes.statusCode).toBe(200);
-    const created = createRes.json().folderAccess;
-
-    try {
-      expect(created.isPermissionRecursive).toBe(true);
-      expect((await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).first())?.isRecursiveFolder).toBe(
-        true
-      );
-
-      const roleOnlyRes = await testServer.inject({
-        method: "PATCH",
-        url: folderAccessUrl(),
-        headers: authHeaders(),
-        body: { ...rootTarget, permission: SecretFolderRole.Edit }
-      });
-      expect(roleOnlyRes.statusCode).toBe(200);
-      expect(roleOnlyRes.json().folderAccess).toEqual(
-        expect.objectContaining({ permission: SecretFolderRole.Edit, isPermissionRecursive: true })
-      );
-
-      const offRes = await testServer.inject({
-        method: "PATCH",
-        url: folderAccessUrl(),
-        headers: authHeaders(),
-        body: { ...rootTarget, isPermissionRecursive: false }
-      });
-      expect(offRes.statusCode).toBe(200);
-      expect(offRes.json().folderAccess).toEqual(
-        expect.objectContaining({ permission: SecretFolderRole.Edit, isPermissionRecursive: false })
-      );
-      expect((await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).first())?.isRecursiveFolder).toBe(
-        false
-      );
-
-      const deleteRes = await testServer.inject({
-        method: "DELETE",
-        url: folderAccessUrl(),
-        headers: authHeaders(),
-        body: { ...rootTarget }
-      });
-      expect(deleteRes.statusCode).toBe(200);
-    } finally {
-      await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).del();
-    }
-  });
-
-  test("recursive folder access is refused on a folder other than root", async () => {
-    const createRes = await testServer.inject({
-      method: "POST",
-      url: folderAccessUrl(),
-      headers: authHeaders(),
-      body: { ...folderTarget, permission: SecretFolderRole.Read, isPermissionRecursive: true }
-    });
-    expect(createRes.statusCode).toBe(400);
-    expect(createRes.json().message).toContain("Only folder access on the root folder '/' can apply to subfolders");
-    expect(
-      await testDb(TableName.AdditionalPrivilege).where({ folderId: folder.id, actorIdentityId: memberIdentityId })
-    ).toEqual([]);
-
-    const plainRes = await testServer.inject({
-      method: "POST",
-      url: folderAccessUrl(),
-      headers: authHeaders(),
-      body: { ...folderTarget, permission: SecretFolderRole.Read }
-    });
-    expect(plainRes.statusCode).toBe(200);
-    const created = plainRes.json().folderAccess;
-
-    try {
-      const patchOnRes = await testServer.inject({
-        method: "PATCH",
-        url: folderAccessUrl(),
-        headers: authHeaders(),
-        body: { ...folderTarget, isPermissionRecursive: true }
-      });
-      expect(patchOnRes.statusCode).toBe(400);
-      expect(patchOnRes.json().message).toContain("Only folder access on the root folder '/' can apply to subfolders");
-      expect((await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).first())?.isRecursiveFolder).toBe(
-        false
-      );
-
-      const patchOffRes = await testServer.inject({
-        method: "PATCH",
-        url: folderAccessUrl(),
-        headers: authHeaders(),
-        body: { ...folderTarget, isPermissionRecursive: false }
-      });
-      expect(patchOffRes.statusCode).toBe(200);
-      expect(patchOffRes.json().folderAccess.isPermissionRecursive).toBe(false);
-    } finally {
-      await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).del();
-    }
-  });
-
   describe("group removal reaps folder grants", () => {
     let reapIdentityId: string;
     let directIdentityId: string;
     let firstGroup: { id: string; name: string; slug: string; orgId: string };
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
-    let removalDeps: Omit<
-      Parameters<typeof removeIdentitiesFromGroup>[0],
-      "group" | "identityIds" | "usageMeteringService"
-    >;
+    let removalDeps: Omit<Parameters<typeof removeIdentitiesFromGroup>[0], "group" | "identityIds">;
 
     const createProjectGroup = async () => {
       const slug = `identity-folder-reap-grp-${alphaNumericNanoId(8)}`.toLowerCase();
@@ -326,6 +220,7 @@ describe("Identity folder access CRUD", () => {
 
     beforeAll(async () => {
       removalDeps = {
+        usageMeteringService: new FakeUsageMeteringService(),
         identityDAL: identityDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),

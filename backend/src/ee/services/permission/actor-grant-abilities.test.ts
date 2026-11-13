@@ -40,9 +40,12 @@ const createService = (
     additionalPrivilegeDAL,
     groupDAL: {} as never,
     secretFolderDAL: {
-      findSecretPathByFolderIds: vi
-        .fn()
-        .mockResolvedValue(folderPrivileges.map(() => ({ environmentSlug: "dev", path: "/app" })))
+      findSecretPathByFolderIds: vi.fn().mockResolvedValue(
+        folderPrivileges.map((folderPrivilege) => ({
+          environmentSlug: "dev",
+          path: (folderPrivilege as { appliesToSubfolders?: boolean }).appliesToSubfolders ? "/" : "/app"
+        }))
+      )
     }
   } as never);
 
@@ -294,7 +297,7 @@ describe("getActorGrantAbilities folder grants", () => {
       );
     };
 
-    expect(await abilityAt({ isRecursiveFolder: true })).toBe(true);
+    expect(await abilityAt({ appliesToSubfolders: true })).toBe(true);
     expect(await abilityAt({})).toBe(false);
   });
 

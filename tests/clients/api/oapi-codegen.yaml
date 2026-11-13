@@ -18,6 +18,11 @@ output-options:
   # routes are hidden by default, and a route with no operationId gets a name derived
   # from its path that changes when the path does.
   include-operation-ids:
+    - createInternalCertificateAuthorityV1
+    - getCertificateAuthorityQuotaV1
+    - importCertificate
+    - listBillableOrganizations
+    - getBillingUsageBreakdown
     - adminBootstrap
     - updateAdminConfig
     - getInstanceStatus
