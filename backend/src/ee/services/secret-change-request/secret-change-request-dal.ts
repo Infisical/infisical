@@ -37,7 +37,6 @@ export type TSecretChangeRequestListRow = TApprovalRequests &
     secretChangeId: string;
     environment: string;
     environmentName: string;
-    requestFolderPath: string;
     policyName: string | null;
     policyEnforcementLevel: string | null;
     policyConstraints: unknown;
@@ -316,9 +315,10 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
       limit = 20,
       offset = 0,
       search,
+      searchFolderIds = [],
       orderBy,
       orderDirection
-    }: TSecretApprovalRequestListFilter,
+    }: TSecretApprovalRequestListFilter & { searchFolderIds?: string[] },
     tx?: Knex
   ): Promise<TSecretChangeRequestListResultRows> => {
     try {
@@ -364,7 +364,6 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
           db.ref("statusChangedByUserId").withSchema(TableName.SecretChangeRequests),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
           db.ref("name").withSchema(TableName.Environment).as("environmentName"),
-          db.ref("name").withSchema(TableName.SecretFolder).as("requestFolderPath"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("policyName"),
           db.ref("enforcementLevel").withSchema(TableName.ApprovalPolicies).as("policyEnforcementLevel"),
           db.ref("constraints").withSchema(TableName.ApprovalPolicies).as("policyConstraints"),
@@ -394,7 +393,7 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
             .orWhereILike("environmentName", pattern)
             .orWhereILike("environment", pattern)
             .orWhereILike("policySecretPath", pattern)
-            .orWhereILike("requestFolderPath", pattern)
+            .orWhereIn("folderId", searchFolderIds)
             .orWhereExists(
               dbInstance(TableName.SecretApprovalRequestSecretV2)
                 .select(dbInstance.raw("1"))
