@@ -1321,7 +1321,7 @@ export const registerRoutes = async (
 
   const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore, auditLogService });
 
-  const orgInviteQuota = orgInviteQuotaFactory({ keyStore, licenseService });
+  const orgInviteQuota = orgInviteQuotaFactory({ keyStore, licenseService, orgMembershipDAL });
   const membershipUserService = membershipUserServiceFactory({
     orgInviteQuota,
     licenseService,

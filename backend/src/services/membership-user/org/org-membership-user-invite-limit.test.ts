@@ -15,8 +15,14 @@ const ROOT_ORG_ID = "root-org-id";
 const invitees = (count: number) =>
   Array.from({ length: count }, (_, i) => ({ id: `user-${i}`, email: `user-${i}@example.com` }));
 
+const newEmails = (count: number) => Array.from({ length: count }, (_, i) => `new-${i}@example.com`);
+
 const createGuard = ({ rootOrgId = null }: { rootOrgId?: string | null } = {}) => {
-  const admit = vi.fn();
+  const release = vi.fn();
+  const seatPlan = { identityLimit: 5 };
+  const admit = vi.fn().mockResolvedValue({ release });
+  const getSeatPlan = vi.fn().mockResolvedValue(seatPlan);
+  const assertSeatsForInvites = vi.fn();
   const factory = newOrgMembershipUserFactory({
     permissionService: {
       getOrgPermission: vi
@@ -43,54 +49,86 @@ const createGuard = ({ rootOrgId = null }: { rootOrgId?: string | null } = {}) =
     emailDomainDAL: {} as never,
     oidcConfigDAL: {} as never,
     samlConfigDAL: {} as never,
-    orgInviteQuota: { admit }
+    orgInviteQuota: { admit, getSeatPlan, assertSeatsForInvites }
   });
 
-  const guard = (count: number) =>
-    factory.onCreateMembershipUserGuard(
-      {
-        permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
-        scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
-        data: { roles: [{ role: "no-access", isTemporary: false }] }
-      } as never,
-      invitees(count) as never
-    );
+  const dto = {
+    permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+    scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
+    data: { roles: [{ role: "no-access", isTemporary: false }] }
+  } as never;
+  const guard = (existing: number, created = 0) =>
+    factory.onCreateMembershipUserGuard(dto, invitees(existing) as never, newEmails(created));
+  const reserve = (count: number) => factory.onCreateMembershipReserve?.(dto, count);
 
-  return { guard, admit };
+  return { guard, reserve, admit, release, seatPlan, assertSeatsForInvites };
 };
 
 describe("org invite limits", () => {
-  test("counts every new root-org invitee against the daily quota", async () => {
+  test("allows up to the per-invite limit, counting invitees with and without an account", async () => {
     // Setup
-    const { guard, admit } = createGuard();
+    const { guard, admit, assertSeatsForInvites } = createGuard();
 
     // Action
-    await guard(MAX_NEW_MEMBERS_PER_INVITE);
+    const result = guard(4, MAX_NEW_MEMBERS_PER_INVITE - 4);
 
     // Assert
-    expect(admit).toHaveBeenCalledWith(ORG_ID, MAX_NEW_MEMBERS_PER_INVITE);
+    await expect(result).resolves.toBeUndefined();
+    expect(admit).not.toHaveBeenCalled();
+    expect(assertSeatsForInvites).not.toHaveBeenCalled();
   });
 
-  test("refuses more new root-org invitees than one invite allows, before counting them", async () => {
+  test("refuses more new root-org invitees than one invite allows", async () => {
     // Setup
-    const { guard, admit } = createGuard();
+    const { guard } = createGuard();
 
     // Action
-    const result = guard(MAX_NEW_MEMBERS_PER_INVITE + 1);
+    const result = guard(4, MAX_NEW_MEMBERS_PER_INVITE - 3);
 
     // Assert
     await expect(result).rejects.toThrow(BadRequestError);
-    expect(admit).not.toHaveBeenCalled();
   });
 
-  test("lets a sub-org add any number of root-org members", async () => {
+  test("reserving spends the daily quota and holds the seats inside the membership transaction", async () => {
     // Setup
-    const { guard, admit } = createGuard({ rootOrgId: ROOT_ORG_ID });
+    const { reserve, admit, release, seatPlan, assertSeatsForInvites } = createGuard();
+    const tx = {} as never;
+
+    // Action
+    const reservation = await reserve(MAX_NEW_MEMBERS_PER_INVITE);
+    await reservation?.checkInTransaction(tx);
+    await reservation?.release();
+
+    // Assert
+    expect(admit).toHaveBeenCalledWith(ORG_ID, MAX_NEW_MEMBERS_PER_INVITE);
+    expect(assertSeatsForInvites).toHaveBeenCalledWith(
+      { orgId: ORG_ID, plan: seatPlan, count: MAX_NEW_MEMBERS_PER_INVITE },
+      tx
+    );
+    expect(release).toHaveBeenCalled();
+  });
+
+  test("lets a sub-org add any number of root-org members, without quota or seats", async () => {
+    // Setup
+    const { guard, reserve, admit } = createGuard({ rootOrgId: ROOT_ORG_ID });
 
     // Action
     await guard(MAX_NEW_MEMBERS_PER_INVITE * 3);
+    const reservation = await reserve(MAX_NEW_MEMBERS_PER_INVITE * 3);
 
     // Assert
+    expect(reservation).toBeUndefined();
     expect(admit).not.toHaveBeenCalled();
+  });
+
+  test("refuses a sub-org invitee who has no account, since they cannot be a root-org member", async () => {
+    // Setup
+    const { guard } = createGuard({ rootOrgId: ROOT_ORG_ID });
+
+    // Action
+    const result = guard(2, 1);
+
+    // Assert
+    await expect(result).rejects.toThrow("new-0@example.com");
   });
 });

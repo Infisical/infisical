@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { AccessScope, TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -148,6 +150,27 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Everyone holding one of the org's identity seats: every user with an org membership (accepted or
+  // still invited) plus every machine identity created in the org or its sub-orgs. Sub-org members are
+  // always root members, so counting the root's memberships counts each person once.
+  const countSeatHolders = async (orgId: string, tx?: Knex) => {
+    try {
+      const conn = tx || db;
+      const [users] = await conn(TableName.Membership)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Users}.isGhost`, false)
+        .countDistinct<{ count: string }[]>(`${TableName.Membership}.actorUserId as count`);
+      const [identities] = await conn(TableName.Identity)
+        .whereIn("orgId", conn(TableName.Organization).select("id").where("id", orgId).orWhere("rootOrgId", orgId))
+        .count<{ count: string }[]>("id as count");
+      return Number(users?.count ?? 0) + Number(identities?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count org seat holders" });
+    }
+  };
+
   const updateLastInvitedAtByIds = async (membershipIds: string[]) => {
     try {
       if (membershipIds.length === 0) return;
@@ -223,6 +246,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
   return {
     findOrgMembershipById,
     findRecentInvitedMemberships,
+    countSeatHolders,
     updateLastInvitedAtByIds,
     findOrgMembershipsWithUsersByOrgId
   };

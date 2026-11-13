@@ -85,6 +85,10 @@ export const isValidEmail = (email: string) =>
 // invites are rejected inline before hitting the API.
 export const MAX_INVITE_EMAILS = 10;
 
+// Project invites mostly add existing org members, and the backend counts only people new to the org
+// against MAX_INVITE_EMAILS, so these forms keep a higher cap and let the backend refuse the rest.
+export const MAX_PROJECT_INVITE_EMAILS = 100;
+
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 // Splits pasted or typed text on commas, semicolons and whitespace, normalizes each address, and

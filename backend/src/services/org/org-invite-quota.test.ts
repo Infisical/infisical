@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { Plan, PlanLimit } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { DailyQuotaExceededError } from "@app/lib/errors";
+import { BadRequestError, DailyQuotaExceededError } from "@app/lib/errors";
 
 import { FREE_ORG_DAILY_INVITE_LIMIT, orgInviteQuotaFactory } from "./org-invite-quota";
 
@@ -27,16 +28,24 @@ const fakeKeyStore = () => {
       counters.set(key, current + value);
       return current + value;
     }),
-    getItem: vi.fn(async (key: string) => {
+    incrementBy: vi.fn(async (key: string, value: number) => {
+      const next = (counters.get(key) ?? 0) + value;
+      counters.set(key, next);
+      return next;
+    }),
+    getItemPrimary: vi.fn(async (key: string) => {
       const value = counters.get(key);
       return value === undefined ? null : String(value);
     })
   };
 };
 
+const FREE_IDENTITY_LIMIT = 5;
+
 describe("orgInviteQuota.admit", () => {
   let keyStore: ReturnType<typeof fakeKeyStore>;
   let licenseService: FakeLicenseService;
+  const orgMembershipDAL = { countSeatHolders: vi.fn(async () => 0) };
 
   beforeEach(() => {
     appConfig.isCloud = true;
@@ -48,7 +57,7 @@ describe("orgInviteQuota.admit", () => {
     vi.useRealTimers();
   });
 
-  const quota = () => orgInviteQuotaFactory({ keyStore, licenseService });
+  const quota = () => orgInviteQuotaFactory({ keyStore, licenseService, orgMembershipDAL });
 
   test("admits a free cloud org up to the daily limit", async () => {
     // Setup
@@ -126,5 +135,111 @@ describe("orgInviteQuota.admit", () => {
 
     // Assert
     expect(keyStore.incrementByIfUnderLimitWithFixedExpiry).not.toHaveBeenCalled();
+  });
+
+  test("gives a released reservation back to today's budget", async () => {
+    // Setup
+    const { admit } = quota();
+    await admit(ORG_ID, FREE_ORG_DAILY_INVITE_LIMIT - 10);
+    const reservation = await admit(ORG_ID, 10);
+
+    // Action
+    await reservation.release();
+
+    // Assert
+    expect([...keyStore.counters.values()]).toEqual([FREE_ORG_DAILY_INVITE_LIMIT - 10]);
+    await admit(ORG_ID, 10);
+  });
+});
+
+describe("orgInviteQuota seats", () => {
+  let licenseService: FakeLicenseService;
+  const countSeatHolders = vi.fn(async () => 0);
+  const tx = { raw: vi.fn() };
+
+  beforeEach(() => {
+    appConfig.isCloud = true;
+    countSeatHolders.mockReset().mockResolvedValue(0);
+    tx.raw.mockReset();
+    licenseService = new FakeLicenseService().setPlan(ORG_ID, { slug: null, identityLimit: FREE_IDENTITY_LIMIT });
+  });
+
+  const quota = () =>
+    orgInviteQuotaFactory({ keyStore: fakeKeyStore(), licenseService, orgMembershipDAL: { countSeatHolders } });
+
+  const freePlan = () => Plan.restore({ ...testFeatures(), slug: null, identityLimit: FREE_IDENTITY_LIMIT });
+
+  const assertSeats = (count: number, held: number) => {
+    countSeatHolders.mockResolvedValue(held);
+    return quota().assertSeatsForInvites({ orgId: ORG_ID, plan: freePlan(), count }, tx as never);
+  };
+
+  test("holds seats on a free cloud org with an identity limit", async () => {
+    // Setup
+    const { getSeatPlan } = quota();
+
+    // Action
+    const plan = await getSeatPlan(ORG_ID);
+
+    // Assert
+    expect(plan?.limit(PlanLimit.Identities)).toBe(FREE_IDENTITY_LIMIT);
+  });
+
+  test("holds no seats on a paid org, even with an identity limit", async () => {
+    // Setup
+    licenseService.setPlan(ORG_ID, { slug: "pro", identityLimit: FREE_IDENTITY_LIMIT });
+
+    // Action
+    const plan = await quota().getSeatPlan(ORG_ID);
+
+    // Assert
+    expect(plan).toBeNull();
+  });
+
+  test("holds no seats on a self-hosted instance", async () => {
+    // Setup
+    appConfig.isCloud = false;
+
+    // Action
+    const plan = await quota().getSeatPlan(ORG_ID);
+
+    // Assert
+    expect(plan).toBeNull();
+  });
+
+  test("lets invitees fill the seats left, counted under the org's lock", async () => {
+    // Action
+    const result = assertSeats(2, FREE_IDENTITY_LIMIT - 2);
+
+    // Assert
+    await expect(result).resolves.toBeUndefined();
+    expect(tx.raw).toHaveBeenCalledWith(expect.stringContaining("pg_advisory_xact_lock"), [expect.any(Number)]);
+    expect(countSeatHolders).toHaveBeenCalledWith(ORG_ID, tx);
+  });
+
+  test("refuses invitees the seats left cannot hold, and says how many fit", async () => {
+    // Action
+    const result = assertSeats(2, FREE_IDENTITY_LIMIT - 1);
+
+    // Assert
+    await expect(result).rejects.toThrow(BadRequestError);
+    await expect(assertSeats(2, FREE_IDENTITY_LIMIT - 1)).rejects.toThrow("has 1 left");
+  });
+
+  test("tells a full free org to revoke a pending invitation", async () => {
+    // Action
+    const result = assertSeats(1, FREE_IDENTITY_LIMIT);
+
+    // Assert
+    await expect(result).rejects.toThrow("has none left. Revoke a pending invitation");
+  });
+
+  test("does nothing without a seat plan", async () => {
+    // Action
+    await quota().assertSeatsForInvites({ orgId: ORG_ID, plan: null, count: 3 }, tx as never);
+
+    // Assert
+    expect(tx.raw).not.toHaveBeenCalled();
+    expect(countSeatHolders).not.toHaveBeenCalled();
   });
 });

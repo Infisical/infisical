@@ -45,7 +45,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
-  orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit" | "getSeatPlan" | "assertSeatsForInvites">;
 };
 
 export const newOrgMembershipUserFactory = ({
@@ -98,7 +98,8 @@ export const newOrgMembershipUserFactory = ({
 
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
-    newMembers
+    newMembers,
+    newUserEmails
   ) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: dto.permission.type,
@@ -146,7 +147,10 @@ export const newOrgMembershipUserFactory = ({
       orgDAL.findById(dto.permission.orgId)
     );
     if (org?.authEnforced) {
-      const invitedEmails = newMembers.map((el) => el.email).filter((email): email is string => Boolean(email));
+      const invitedEmails = [
+        ...newMembers.map((el) => el.email).filter((email): email is string => Boolean(email)),
+        ...newUserEmails
+      ];
 
       // The invited address must belong to a verified org domain — anything else could never
       // complete the enforced SSO login, leaving a dead invitation.
@@ -194,24 +198,41 @@ export const newOrgMembershipUserFactory = ({
         },
         scopeOrgId: org.rootOrgId
       });
-      if (rootOrgMembership.length !== newMembers.length) {
-        const emails = newMembers
-          .filter((user) => !rootOrgMembership.find((i) => i.actorUserId === user.id))
-          .map((el) => el.email)
-          .join(",");
+      if (rootOrgMembership.length !== newMembers.length || newUserEmails.length) {
+        const emails = [
+          ...newMembers
+            .filter((user) => !rootOrgMembership.find((i) => i.actorUserId === user.id))
+            .map((el) => el.email),
+          ...newUserEmails
+        ].join(",");
         throw new BadRequestError({
           message: `Users with email ${emails}  doesn't have membership in root organization`
         });
       }
-    } else {
-      if (newMembers.length > MAX_NEW_MEMBERS_PER_INVITE) {
-        throw new BadRequestError({
-          name: "InviteUser",
-          message: `You can invite up to ${MAX_NEW_MEMBERS_PER_INVITE} new members at a time.`
-        });
-      }
-      await orgInviteQuota.admit(org.id, newMembers.length);
+    } else if (newMembers.length + newUserEmails.length > MAX_NEW_MEMBERS_PER_INVITE) {
+      throw new BadRequestError({
+        name: "InviteUser",
+        message: `You can invite up to ${MAX_NEW_MEMBERS_PER_INVITE} new members at a time.`
+      });
     }
+  };
+
+  const onCreateMembershipReserve: TMembershipUserScopeFactory["onCreateMembershipReserve"] = async (
+    dto,
+    newMemberCount
+  ) => {
+    const org = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
+      orgDAL.findById(dto.permission.orgId)
+    );
+    if (org.rootOrgId) return undefined;
+
+    const seatPlan = await orgInviteQuota.getSeatPlan(org.id);
+    const { release } = await orgInviteQuota.admit(org.id, newMemberCount);
+    return {
+      release,
+      checkInTransaction: (tx) =>
+        orgInviteQuota.assertSeatsForInvites({ orgId: org.id, plan: seatPlan, count: newMemberCount }, tx)
+    };
   };
 
   const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async (
@@ -463,6 +484,7 @@ export const newOrgMembershipUserFactory = ({
 
   return {
     onCreateMembershipUserGuard,
+    onCreateMembershipReserve,
     onCreateMembershipComplete,
     onUpdateMembershipUserGuard,
     onDeleteMembershipUserGuard,
