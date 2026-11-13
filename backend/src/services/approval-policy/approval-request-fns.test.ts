@@ -1,8 +1,12 @@
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
-import { ApprovalRequestApprovalDecision, ApproverType } from "./approval-policy-enums";
-import { isEligibleStepApprover, upsertApprovalRequestStepDecision } from "./approval-request-fns";
+import { ApprovalPolicyType, ApprovalRequestApprovalDecision, ApproverType } from "./approval-policy-enums";
+import {
+  getApprovalRequestSubjectMetadata,
+  isEligibleStepApprover,
+  upsertApprovalRequestStepDecision
+} from "./approval-request-fns";
 
 const TX = { isTx: true } as unknown as Knex;
 
@@ -74,5 +78,37 @@ describe("upsertApprovalRequestStepDecision", () => {
       TX
     );
     expect(result).toMatchObject({ id: "approval-7", decision: ApprovalRequestApprovalDecision.Rejected });
+  });
+});
+
+describe("getApprovalRequestSubjectMetadata for a certificate request", () => {
+  const certRequest = (requestData: object) => ({
+    type: ApprovalPolicyType.CertRequest,
+    requestData: {
+      version: 1,
+      requestData: {
+        certificateRequestId: "cert-req-1",
+        profileName: "web-servers",
+        certificateRequest: { commonName: "a.example.com" },
+        ...requestData
+      }
+    }
+  });
+
+  test("names the certificate whose renewal is being decided", () => {
+    expect(getApprovalRequestSubjectMetadata(certRequest({ renewal: { certificateId: "cert-1" } }))).toEqual({
+      certificateRequestId: "cert-req-1",
+      certificateId: "cert-1",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+
+  test("names no certificate for a new issuance", () => {
+    expect(getApprovalRequestSubjectMetadata(certRequest({}))).toEqual({
+      certificateRequestId: "cert-req-1",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
   });
 });

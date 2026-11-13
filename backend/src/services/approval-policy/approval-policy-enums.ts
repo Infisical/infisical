@@ -67,3 +67,8 @@ export enum EnforcementLevel {
   Hard = "hard",
   Soft = "soft"
 }
+
+export enum CertRequestRenewalApproval {
+  OnChange = "on-change",
+  Always = "always"
+}

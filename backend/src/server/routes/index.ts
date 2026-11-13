@@ -4419,6 +4419,7 @@ export const registerRoutes = async (
 
   approvalResources[ApprovalPolicyType.CertRequest] = certRequestApprovalResourceFactory({
     approvalPolicyDAL,
+    auditLogService,
     certificateApprovalService,
     certificateRequestDAL,
     certificateRequestService,

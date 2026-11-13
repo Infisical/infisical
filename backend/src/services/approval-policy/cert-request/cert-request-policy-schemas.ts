@@ -7,6 +7,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRenewalKeySource } from "@app/services/certificate-v3/certificate-v3-types";
 
+import { CertRequestRenewalApproval } from "../approval-policy-enums";
 import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
@@ -27,7 +28,15 @@ export const CertRequestPolicyConditionsSchema = z
   })
   .array();
 
-export const CertRequestPolicyConstraintsSchema = z.object({});
+export const CertRequestPolicyConstraintsSchema = z.object({
+  renewalApproval: z.nativeEnum(CertRequestRenewalApproval).default(CertRequestRenewalApproval.OnChange)
+});
+
+// Policy rows reach callers unparsed, and policies created before this setting store no value for it.
+export const parseCertRequestRenewalApproval = (policy: { constraints?: unknown }) =>
+  CertRequestPolicyConstraintsSchema.parse(
+    (policy.constraints as { constraints?: unknown } | null | undefined)?.constraints ?? {}
+  ).renewalApproval;
 
 export const CertRequestPolicyRequestDataSchema = z.object({
   profileId: z.string().uuid(),

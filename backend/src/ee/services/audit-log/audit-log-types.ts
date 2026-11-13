@@ -4417,7 +4417,7 @@ interface RenewCertificate {
   type: EventType.RENEW_CERTIFICATE;
   metadata: {
     originalCertificateId: string;
-    newCertificateId: string;
+    newCertificateId?: string;
     certificateRequestId: string;
     profileName: string;
     commonName: string;
@@ -4428,6 +4428,9 @@ interface RenewCertificate {
     externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
     status?: CertificateRequestStatus;
+    approvalRequestId?: string;
+    requesterName?: string;
+    requesterEmail?: string;
   };
 }
 
