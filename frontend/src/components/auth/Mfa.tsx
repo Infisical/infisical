@@ -80,8 +80,12 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   const sendMfaToken = useSendMfaToken();
 
   useEffect(() => {
+    let isMounted = true;
+    const currentMfaToken = getMfaTempToken();
+
     fetchUserDetails()
       .then((user) => {
+        if (!isMounted) return;
         wasMfaEnabledRef.current = Boolean(user.isMfaEnabled);
       })
       .catch(() => {
@@ -90,18 +94,29 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
 
     if (method === MfaMethod.TOTP) {
       checkUserTotpMfa().then((isVerified) => {
+        if (!isMounted) return;
         if (!isVerified) {
-          SecurityClient.setMfaToken("");
+          if (getMfaTempToken() === currentMfaToken) {
+            SecurityClient.setMfaToken("");
+          }
           setShouldShowTotpRegistration(true);
         }
       });
     } else if (method === MfaMethod.WEBAUTHN) {
       checkUserWebAuthnMfa().then((hasPasskeys) => {
+        if (!isMounted) return;
         if (!hasPasskeys) {
+          if (getMfaTempToken() === currentMfaToken) {
+            SecurityClient.setMfaToken("");
+          }
           setShouldShowWebAuthnRegistration(true);
         }
       });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [method]);
 
   const getExpectedCodeLength = () => {
