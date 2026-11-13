@@ -107,7 +107,13 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
 
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
-  constraints: CertRequestPolicyConstraintsSchema.optional()
+  // Clients that predate the setting send `{}`: keep the stored value instead of resetting it to the default.
+  constraints: z
+    .object({ renewalApproval: z.nativeEnum(CertRequestRenewalApproval).optional() })
+    .optional()
+    .transform((constraints) =>
+      constraints?.renewalApproval ? { renewalApproval: constraints.renewalApproval } : undefined
+    )
 });
 
 export const CertRequestRequestSchema = BaseApprovalRequestSchema.extend({
