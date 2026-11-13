@@ -157,8 +157,11 @@ const DETAILS_LIST_CONCURRENCY = 6;
 let activeDetailsListFetches = 0;
 const queuedDetailsListFetches: (() => void)[] = [];
 
+const detailsFetchCancelledError = () =>
+  new DOMException("The change request detail fetch was cancelled", "AbortError");
+
 const fetchSecretApprovalRequestDetailsQueued = async (id: string, signal: AbortSignal) => {
-  signal.throwIfAborted();
+  if (signal.aborted) throw detailsFetchCancelledError();
   if (activeDetailsListFetches < DETAILS_LIST_CONCURRENCY) {
     activeDetailsListFetches += 1;
   } else {
@@ -170,7 +173,7 @@ const fetchSecretApprovalRequestDetailsQueued = async (id: string, signal: Abort
           const index = queuedDetailsListFetches.indexOf(resolve);
           if (index === -1) return;
           queuedDetailsListFetches.splice(index, 1);
-          reject(signal.reason);
+          reject(detailsFetchCancelledError());
         },
         { once: true }
       );

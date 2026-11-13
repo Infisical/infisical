@@ -280,12 +280,13 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   };
 
   const listFiltersKey = JSON.stringify(listFilters);
+  const getMatchingSelectionKey = (count: number) => `${listFiltersKey}|${count}`;
   const canSelectAllMatching =
     isOpenTab &&
     isPageSelected &&
     totalApprovalCount > secretApprovalRequests.length &&
     selectedCount < MAX_BULK_SELECTION &&
-    allMatchingSelectedFor !== listFiltersKey;
+    allMatchingSelectedFor !== getMatchingSelectionKey(totalApprovalCount);
 
   const selectAllMatching = async () => {
     const version = selectionVersion.current;
@@ -297,7 +298,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         offset: 0
       });
       if (version !== selectionVersion.current) return;
-      setAllMatchingSelectedFor(listFiltersKey);
+      setAllMatchingSelectedFor(getMatchingSelectionKey(totalCount));
       setSelectedRequests((prev) => {
         const unselected = approvals.filter(({ id }) => !prev[id]);
         const available = Math.max(0, MAX_BULK_SELECTION - Object.keys(prev).length);
