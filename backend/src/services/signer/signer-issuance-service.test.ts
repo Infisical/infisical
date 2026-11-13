@@ -465,7 +465,7 @@ describe("signerIssuanceService failing a job", () => {
     expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).not.toHaveBeenCalled();
   });
 
-  it("does not reopen a job a newer request closed during placement when the order can't be canceled", async () => {
+  it("records an order it couldn't cancel on the job a newer request closed, without reopening it", async () => {
     const job = buildJob({
       caType: CaType.DIGICERT,
       externalOrderRef: { digicert: { lifecycle: { mode: DigiCertLifecycleMode.Reissue, previousOrderId: 9999 } } }
@@ -478,9 +478,18 @@ describe("signerIssuanceService failing a job", () => {
     await service.processJob(JOB_ID);
 
     expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).toHaveBeenCalled();
-    expect(deps.signerIssuanceJobDAL.updateById).not.toHaveBeenCalledWith(
-      JOB_ID,
+    expect(deps.signerIssuanceJobDAL.update).not.toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({ status: SignerIssuanceJobStatus.Pending })
+    );
+    expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
+      { id: JOB_ID, status: SignerIssuanceJobStatus.Failed },
+      expect.objectContaining({
+        externalOrderRef: expect.objectContaining({
+          digicert: expect.objectContaining({ orderId: 9999 }) as unknown
+        }) as unknown,
+        failureReason: expect.stringContaining("Cancel it in CertCentral") as unknown
+      })
     );
   });
 

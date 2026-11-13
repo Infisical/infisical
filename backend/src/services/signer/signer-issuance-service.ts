@@ -924,7 +924,20 @@ export const signerIssuanceServiceFactory = ({
         );
         if (!(await $cancelDigiCertOrderForRevokedSigner(job, orderId))) {
           const keepOn = await $keepOnJobClosedByRevoke(job);
-          if (keepOn) await $trackDigiCertOrder(keepOn, orderId, certificateId, placedLifecycle);
+          if (keepOn) {
+            await $trackDigiCertOrder(keepOn, orderId, certificateId, placedLifecycle);
+          } else {
+            await signerIssuanceJobDAL.update(
+              { id: job.id, status: SignerIssuanceJobStatus.Failed },
+              {
+                externalOrderRef: buildDigiCertOrderRef(orderId, certificateId, placedLifecycle),
+                failureReason: `This request was replaced while DigiCert order #${orderId} was being placed, and the order couldn't be canceled. Cancel it in CertCentral.`
+              }
+            );
+            logger.warn(
+              `signer issuance: DigiCert order placed for a superseded job could not be canceled, recorded on the closed job [jobId=${job.id}] [signerId=${job.signerId}] [orderId=${orderId}]`
+            );
+          }
         }
         return;
       }
