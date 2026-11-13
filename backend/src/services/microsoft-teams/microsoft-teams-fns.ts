@@ -4,12 +4,12 @@ import { TeamsActivityHandler, TurnContext } from "botbuilder";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
@@ -114,7 +114,7 @@ export const getMicrosoftTeamsAccessToken = async (
   },
   tx?: Knex
 ) => {
-  const cipherSource = tx ? dataKeyService.within(sealKnexTransaction(tx)) : dataKeyService;
+  const cipherSource = dataKeysOn(dataKeyService, tx);
 
   try {
     const details = getBotFrameworkToken

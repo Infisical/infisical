@@ -3,17 +3,15 @@ import path from "node:path";
 import slugify from "@sindresorhus/slugify";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
-import { buildSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretEventScope } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 
 import { TImportDataIntoInfisicalDTO } from "./envkey";
 
@@ -300,17 +298,13 @@ export const importDataIntoInfisicalFn = async ({
           });
         }
 
-        const kmsInTx = dataKeyService.within(sealKnexTransaction(tx));
-        const secretManagerCipher = await kmsInTx.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: selectedScope.projectId
+        const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
+          dataKeyService,
+          projectId: selectedScope.projectId,
+          orgId: actorOrgId,
+          tx
         });
-        const orgCipher = await kmsInTx.createCipherPairWithDataKey({
-          type: KmsDataKey.Organization,
-          orgId: actorOrgId
-        });
-        const { encryptor: secretManagerEncrypt } = secretManagerCipher;
-        const blindIndexer = buildSecretBlindIndexer(secretManagerCipher, orgCipher);
+        const { encryptor: secretManagerEncrypt } = secretManager;
 
         const secretBatches = chunkArray(secrets, 2500);
         for await (const secretBatch of secretBatches) {

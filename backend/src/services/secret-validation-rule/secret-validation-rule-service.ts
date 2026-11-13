@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -10,6 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
@@ -108,7 +108,7 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const $getCipher = (projectId: string, tx?: Knex) =>
-    (tx ? dataKeyService.within(sealKnexTransaction(tx)) : dataKeyService).createCipherPairWithDataKey({
+    dataKeysOn(dataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });

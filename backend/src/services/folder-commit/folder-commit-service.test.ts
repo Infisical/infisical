@@ -291,7 +291,7 @@ describe("folderCommitServiceFactory", () => {
 
     it("should fetch its own decryptor on the caller's transaction instead of calling KMS Core directly", async () => {
       // Setup
-      const tx = {} as Knex;
+      const tx = { isTransaction: true } as unknown as Knex;
       const version = { key: "A", encryptedValue: Buffer.from("v"), skipMultilineEncoding: false, tags: [] };
       const decryptor = vi.fn(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob);
       mockKmsService.createCipherPairWithDataKey.mockResolvedValueOnce({ decryptor });

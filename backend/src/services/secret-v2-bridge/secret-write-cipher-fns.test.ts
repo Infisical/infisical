@@ -5,7 +5,7 @@ import { KmsDataKey, ReadFrom } from "@app/domains/platform/kms-core/ce/module";
 
 import { prepareSecretWriteCiphers } from "./secret-write-cipher-fns";
 
-const TX = { isTx: true, executionPromise: Promise.resolve() } as unknown as Knex;
+const TX = { isTransaction: true, executionPromise: Promise.resolve() } as unknown as Knex;
 const PROJECT_ID = "6c1b0e3a-0e3a-4c1b-8e3a-0e3a4c1b8e3a";
 const ORG_ID = "9d2c1f4b-1f4b-4d2c-9f4b-1f4b4d2c9f4b";
 

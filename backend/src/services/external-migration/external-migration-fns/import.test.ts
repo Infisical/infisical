@@ -18,7 +18,7 @@ const build = ({ existingSecretKeys = [] as string[] }) => {
 
   const committedProjects: string[] = [];
   const transaction = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => {
-    const tx = { createdProjects: [] as string[], executionPromise: Promise.resolve() };
+    const tx = { createdProjects: [] as string[], isTransaction: true, executionPromise: Promise.resolve() };
     const result = await cb(tx);
     committedProjects.push(...tx.createdProjects);
     return result;

@@ -9,7 +9,6 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
@@ -31,6 +30,7 @@ import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
@@ -288,9 +288,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await (
-      tx ? dataKeyService.within(sealKnexTransaction(tx)) : dataKeyService
-    ).createCipherPairWithDataKey({
+    const { decryptor } = await dataKeysOn(dataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: ldapConfig.orgId
     });

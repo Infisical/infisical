@@ -10,7 +10,6 @@ import {
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -36,6 +35,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -3149,8 +3149,9 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
 
-      const { decryptor: secretManagerDecryptor } = await (
-        providedTx ? dataKeyService.within(sealKnexTransaction(providedTx)) : dataKeyService
+      const { decryptor: secretManagerDecryptor } = await dataKeysOn(
+        dataKeyService,
+        providedTx
       ).createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
       return secretsDeleted.map((el) => {
         const secretToDeleteMatch = secretsToDelete.find(

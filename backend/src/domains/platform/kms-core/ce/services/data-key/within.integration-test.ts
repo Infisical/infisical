@@ -34,6 +34,37 @@ describe("DataKeyService.within on Postgres", () => {
     throw new Error("No connection waited on an advisory lock");
   };
 
+  test("should delete a project's keys in the transaction that deletes the project, and keep them on rollback", async () => {
+    // Setup
+    const tn = await h.newTenant();
+    const service = newService();
+    const kmsKeyId = await service.getProjectSecretManagerKmsKeyId(tn.project.id);
+    const deleteProjectAndKeys = (trx: Parameters<Parameters<typeof h.db.transaction>[0]>[0]) =>
+      h
+        .db(TableName.Project)
+        .transacting(trx)
+        .where({ id: tn.project.id })
+        .delete()
+        .then(() =>
+          service.within(sealKnexTransaction(trx)).deleteProjectKeys({ orgId: tn.org.id, kmsKeyIds: [kmsKeyId] })
+        );
+
+    // Action
+    const rolledBack = h.db.transaction(async (trx) => {
+      await deleteProjectAndKeys(trx);
+      throw new Error("rollback");
+    });
+    await expect(rolledBack).rejects.toThrow("rollback");
+    const afterRollback = await h.db(TableName.KmsKey).where({ id: kmsKeyId }).first();
+    await h.db.transaction(async (trx) => {
+      await deleteProjectAndKeys(trx);
+    });
+
+    // Assert
+    expect(afterRollback?.id).toBe(kmsKeyId);
+    expect(await h.db(TableName.KmsKey).where({ id: kmsKeyId }).first()).toBeUndefined();
+  });
+
   test("should leave no key behind when the caller's transaction rolls back", async () => {
     // Setup
     const tn = await h.newTenant();

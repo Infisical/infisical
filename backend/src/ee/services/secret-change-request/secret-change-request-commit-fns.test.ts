@@ -20,7 +20,7 @@ vi.mock("../secret-scanning-v2/secret-scanning-v2-fns", () => ({
   scanSecretPolicyViolations: vi.fn().mockResolvedValue(undefined)
 }));
 
-const TX = { isTx: true, executionPromise: Promise.resolve() } as unknown as Knex;
+const TX = { isTransaction: true, executionPromise: Promise.resolve() } as unknown as Knex;
 const FOLDER = { id: "folder-1", envId: "env-1" };
 const PROJECT = { id: "project-1", name: "Project", orgId: "org-1", secretDetectionIgnoreValues: [] };
 

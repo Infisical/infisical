@@ -2,11 +2,11 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -168,8 +168,9 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
 
-    const { encryptor: secretManagerEncryptor } = await (
-      providedTx ? dataKeyService.within(sealKnexTransaction(providedTx)) : dataKeyService
+    const { encryptor: secretManagerEncryptor } = await dataKeysOn(
+      dataKeyService,
+      providedTx
     ).createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const project = await projectDAL.findById(projectId, providedTx);

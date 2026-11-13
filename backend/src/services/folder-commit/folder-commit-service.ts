@@ -11,13 +11,13 @@ import {
   TSecretV2TagJunctionInsert,
   TSecretVersionsV2
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -468,9 +468,10 @@ export const folderCommitServiceFactory = ({
   };
 
   const $getSecretManagerDecryptor = async (projectId: string, tx?: Knex) => {
-    const { decryptor } = await (
-      tx ? dataKeyService.within(sealKnexTransaction(tx)) : dataKeyService
-    ).createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await dataKeysOn(dataKeyService, tx).createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
     return decryptor;
   };
 
