@@ -61,6 +61,7 @@ import {
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
+  TQueueSecretSyncEmitFailedAlertEventDTO,
   TQueueSecretSyncImportSecretsByIdDTO,
   TQueueSecretSyncRemoveSecretsByIdDTO,
   TQueueSecretSyncSyncSecretsByIdDTO,
@@ -171,6 +172,7 @@ export enum QueueJobs {
   SecretSyncImportSecrets = "secret-sync-import-secrets",
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
   SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
+  SecretSyncEmitFailedAlertEvent = "secret-sync-emit-failed-alert-event",
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
   PkiSyncLinkMatchingCertificates = "pki-sync-link-matching-certificates",
   PkiSyncReconcileFilters = "pki-sync-reconcile-filters",
@@ -447,6 +449,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretSyncSendActionFailedNotifications;
         payload: TQueueSendSecretSyncActionFailedNotificationsDTO;
+      }
+    | {
+        name: QueueJobs.SecretSyncEmitFailedAlertEvent;
+        payload: TQueueSecretSyncEmitFailedAlertEventDTO;
       }
     | {
         name: QueueJobs.DailySecretSyncRetry;

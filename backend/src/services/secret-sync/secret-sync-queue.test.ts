@@ -102,10 +102,6 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       async () => undefined
     )
   };
-  const projectDAL = {
-    findById: vi.fn(async () => ({ id: "project-1", orgId: "org-1", name: "project" }))
-  };
-  const notificationService = { createUserNotifications: vi.fn(async () => undefined) };
   const alertService = {
     deleteAlertsForDeletedResources: vi.fn<
       (input: { resourceType: string; resourceIds: string[] }, tx?: unknown) => Promise<number>
@@ -131,14 +127,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     telemetryService: { sendPostHogEvents: vi.fn(async () => undefined) },
     licenseService: { getPlan: vi.fn() },
     eventEmitter,
-    alertService,
-    projectDAL,
-    projectMembershipDAL: { findAllProjectMembers: vi.fn(async () => []) },
-    orgDAL: { findMembership: vi.fn(async () => []), findActorsWithActiveOrgAccess: vi.fn() },
-    userDAL: { find: vi.fn(async () => []) },
-    notificationService,
-    projectSlackConfigDAL: { getIntegrationDetailsByProject: vi.fn(async () => undefined) },
-    projectMicrosoftTeamsConfigDAL: { getIntegrationDetailsByProject: vi.fn(async () => undefined) }
+    alertService
   } as never);
 
   const runSync = (attempt: number, data: Record<string, unknown> = {}) =>
@@ -159,25 +148,14 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       opts: { attempts: 1 }
     });
 
-  const runNotificationJob = (payload: unknown) =>
-    handlers.get(QueueName.AppConnectionSecretSync)!({
-      name: QueueJobs.SecretSyncSendActionFailedNotifications,
-      id: "notification-job-1",
-      data: payload,
-      timestamp: Date.now()
-    });
-
   return {
     state,
     runSync,
     runJob,
-    runNotificationJob,
     secretSyncDAL,
     eventEmitter,
     alertService,
-    queueService,
-    projectDAL,
-    notificationService
+    queueService
   };
 };
 
@@ -353,19 +331,18 @@ describe("failure alert event", () => {
     vi.clearAllMocks();
   });
 
-  // The final attempt queues the notification job, and the job is what writes the event.
-  const queuedNotificationJobs = (queueService: { queue: { mock: { calls: unknown[][] } } }) =>
-    queueService.queue.mock.calls.filter(([, name]) => name === QueueJobs.SecretSyncSendActionFailedNotifications);
+  const queuedEventJobs = (queueService: { queue: { mock: { calls: unknown[][] } } }) =>
+    queueService.queue.mock.calls.filter(([, name]) => name === QueueJobs.SecretSyncEmitFailedAlertEvent);
 
-  test("is emitted by the notification job of a sync that failed its final attempt", async () => {
+  test("a sync that fails its final attempt queues its own event job, which writes the event", async () => {
     syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, runNotificationJob, eventEmitter, queueService, state } = createHarness(healthy);
+    const { runSync, runJob, eventEmitter, queueService, state } = createHarness(healthy);
 
     await expect(runSync(ATTEMPTS)).rejects.toThrow();
     expect(eventEmitter.emit).not.toHaveBeenCalled();
 
-    const [[, , payload]] = queuedNotificationJobs(queueService);
-    await runNotificationJob(payload);
+    const [[, , payload]] = queuedEventJobs(queueService);
+    await runJob(QueueJobs.SecretSyncEmitFailedAlertEvent, payload as Record<string, unknown>);
 
     expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
     const [[events]] = eventEmitter.emit.mock.calls;
@@ -381,28 +358,28 @@ describe("failure alert event", () => {
     });
   });
 
-  test("a failed event write fails the notification job so it is retried, before any notice is sent", async () => {
+  test("each failed run gets its own event job, apart from the grouped notification job", async () => {
     syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, runNotificationJob, eventEmitter, queueService, notificationService } = createHarness(healthy);
+    const { runSync, queueService } = createHarness(healthy);
+
+    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+
+    const jobIds = queuedEventJobs(queueService).map(([, , , options]) => (options as { jobId: string }).jobId);
+    expect(jobIds).toHaveLength(2);
+    expect(new Set(jobIds).size).toBe(2);
+  });
+
+  test("a failed event write fails the event job so it is retried", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const { runSync, runJob, eventEmitter, queueService } = createHarness(healthy);
     await expect(runSync(ATTEMPTS)).rejects.toThrow();
     eventEmitter.emit.mockRejectedValueOnce(new Error("connection reset"));
 
-    const [[, , payload]] = queuedNotificationJobs(queueService);
-    await expect(runNotificationJob(payload)).rejects.toThrow("connection reset");
-
-    expect(notificationService.createUserNotifications).not.toHaveBeenCalled();
-  });
-
-  test("a failed notice after the event is written does not fail the job, so the event is not written twice", async () => {
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, runNotificationJob, eventEmitter, queueService, projectDAL } = createHarness(healthy);
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    projectDAL.findById.mockRejectedValueOnce(new Error("connection reset"));
-
-    const [[, , payload]] = queuedNotificationJobs(queueService);
-    await runNotificationJob(payload);
-
-    expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+    const [[, , payload]] = queuedEventJobs(queueService);
+    await expect(runJob(QueueJobs.SecretSyncEmitFailedAlertEvent, payload as Record<string, unknown>)).rejects.toThrow(
+      "connection reset"
+    );
   });
 
   test("is not queued for an attempt that will be retried", async () => {
@@ -411,7 +388,7 @@ describe("failure alert event", () => {
 
     await expect(runSync(1)).rejects.toThrow();
 
-    expect(queuedNotificationJobs(queueService)).toEqual([]);
+    expect(queuedEventJobs(queueService)).toEqual([]);
   });
 
   test("is not queued when a sync succeeds", async () => {
@@ -420,7 +397,7 @@ describe("failure alert event", () => {
 
     await runSync(1);
 
-    expect(queuedNotificationJobs(queueService)).toEqual([]);
+    expect(queuedEventJobs(queueService)).toEqual([]);
   });
 
   test("is queued when lock contention ends a sync", async () => {
@@ -428,9 +405,9 @@ describe("failure alert event", () => {
 
     await runSync(1, { failedToAcquireLockCount: REQUEUE_LIMIT });
 
-    expect(queuedNotificationJobs(queueService).map(([, , payload]) => (payload as { action: string }).action)).toEqual(
-      ["sync-secrets"]
-    );
+    expect(queuedEventJobs(queueService).map(([, , payload]) => (payload as { action: string }).action)).toEqual([
+      "sync-secrets"
+    ]);
   });
 });
 

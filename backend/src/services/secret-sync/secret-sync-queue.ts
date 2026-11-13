@@ -60,6 +60,7 @@ import {
   TQueueSendSecretSyncActionFailedNotificationsDTO,
   TSecretMap,
   TSecretSync,
+  TSecretSyncEmitFailedAlertEventJobDTO,
   TSecretSyncImportSecretsDTO,
   TSecretSyncRaw,
   TSecretSyncRemoveSecretsDTO,
@@ -383,6 +384,37 @@ export const secretSyncQueueFactory = ({
     });
 
   const $queueSendSecretSyncFailedNotifications = async (payload: TQueueSendSecretSyncActionFailedNotificationsDTO) => {
+    const { secretSync, action } = payload;
+
+    // Each failed run gets its own job, apart from the notices below, whose job id groups a sync's failures. The
+    // job's retries cover a failed outbox write, which this attempt, the last one, could not.
+    await queueService.queue(
+      QueueName.AppConnectionSecretSync,
+      QueueJobs.SecretSyncEmitFailedAlertEvent,
+      {
+        orgId: secretSync.connection.orgId,
+        projectId: secretSync.projectId,
+        syncId: secretSync.id,
+        action,
+        failureMessage: {
+          [SecretSyncAction.SyncSecrets]: secretSync.lastSyncMessage,
+          [SecretSyncAction.ImportSecrets]: secretSync.lastImportMessage,
+          [SecretSyncAction.RemoveSecrets]: secretSync.lastRemoveMessage
+        }[action],
+        attemptedAt: new Date().toISOString()
+      },
+      {
+        jobId: randomUUID(),
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 3000
+        },
+        removeOnFail: true,
+        removeOnComplete: true
+      }
+    );
+
     await queueService.queue(
       QueueName.AppConnectionSecretSync,
       QueueJobs.SecretSyncSendActionFailedNotifications,
@@ -1019,112 +1051,87 @@ export const secretSyncQueueFactory = ({
     const { projectId, destination, name, folder, lastSyncMessage, lastRemoveMessage, lastImportMessage, environment } =
       secretSync;
 
-    // This job retries on its own, so a failed outbox write is retried here. Nothing after it throws, so a retry
-    // can only come from the write and never sends the event or the notices below twice.
-    await emitSecretSyncFailed(eventEmitter, {
-      orgId: secretSync.connection.orgId,
-      projectId,
-      syncId: secretSync.id,
-      action,
-      failureMessage: {
-        [SecretSyncAction.SyncSecrets]: lastSyncMessage,
-        [SecretSyncAction.ImportSecrets]: lastImportMessage,
-        [SecretSyncAction.RemoveSecrets]: lastRemoveMessage
-      }[action],
-      attemptedAt: new Date(job.timestamp)
-    });
+    const project = await projectDAL.findById(projectId);
 
-    try {
-      const project = await projectDAL.findById(projectId);
+    let adminUserIds = [
+      ...(await findProjectAdminUserIds({ projectMembershipDAL, orgDAL, userDAL }, { orgId: project.orgId, projectId }))
+    ];
 
-      let adminUserIds = [
-        ...(await findProjectAdminUserIds(
-          { projectMembershipDAL, orgDAL, userDAL },
-          { orgId: project.orgId, projectId }
-        ))
-      ];
+    const triggeredByUserId =
+      auditLogInfo && auditLogInfo.actor.type === ActorType.USER && auditLogInfo.actor.metadata.userId;
 
-      const triggeredByUserId =
-        auditLogInfo && auditLogInfo.actor.type === ActorType.USER && auditLogInfo.actor.metadata.userId;
-
-      // only notify triggering user if triggered by admin
-      if (triggeredByUserId && adminUserIds.includes(triggeredByUserId)) {
-        adminUserIds = [triggeredByUserId];
-      }
-
-      const syncDestination = SECRET_SYNC_NAME_MAP[destination as SecretSync];
-
-      let actionLabel: string;
-      let failureMessage: string | null | undefined;
-
-      switch (action) {
-        case SecretSyncAction.ImportSecrets:
-          actionLabel = "Import";
-          failureMessage = lastImportMessage;
-
-          break;
-        case SecretSyncAction.RemoveSecrets:
-          actionLabel = "Remove";
-          failureMessage = lastRemoveMessage;
-
-          break;
-        case SecretSyncAction.SyncSecrets:
-        default:
-          actionLabel = `Sync`;
-          failureMessage = lastSyncMessage;
-          break;
-      }
-
-      const baseProjectPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}`;
-      const overviewPath = `${baseProjectPath}/overview`;
-      const syncPath = `${baseProjectPath}/integrations/secret-syncs/${destination}/${secretSync.id}`;
-
-      const notifications = [
-        triggerWorkflowIntegrationNotification({
-          input: {
-            notification: {
-              type: TriggerFeature.SECRET_SYNC_ERROR,
-              payload: {
-                syncName: name,
-                syncDestination,
-                failureMessage: failureMessage || "An unknown error occurred",
-                syncUrl: `${appCfg.SITE_URL}${syncPath}`,
-                syncActionLabel: actionLabel,
-                environment: environment?.name || "-",
-                secretPath: folder?.path || "-",
-                projectName: project.name,
-                projectPath: overviewPath
-              }
-            },
-            projectId
-          },
-          dependencies: {
-            projectDAL,
-            projectSlackConfigDAL,
-            kmsService,
-            microsoftTeamsService,
-            projectMicrosoftTeamsConfigDAL
-          }
-        }),
-        notificationService.createUserNotifications(
-          adminUserIds.map((userId) => ({
-            userId,
-            orgId: project.orgId,
-            type: NotificationType.SECRET_SYNC_FAILED,
-            title: `Secret Sync Failed to ${actionLabel} Secrets`,
-            body: `Your **${syncDestination}** sync **${name}** failed to complete${failureMessage ? `: \`${failureMessage}\`` : ""}`,
-            link: syncPath
-          }))
-        )
-      ];
-
-      await Promise.allSettled(notifications);
-    } catch (error) {
-      logger.error(
-        error,
-        `SecretSync: failed to send failure notifications [syncId=${secretSync.id}] [action=${action}]`
-      );
+    // only notify triggering user if triggered by admin
+    if (triggeredByUserId && adminUserIds.includes(triggeredByUserId)) {
+      adminUserIds = [triggeredByUserId];
     }
+
+    const syncDestination = SECRET_SYNC_NAME_MAP[destination as SecretSync];
+
+    let actionLabel: string;
+    let failureMessage: string | null | undefined;
+
+    switch (action) {
+      case SecretSyncAction.ImportSecrets:
+        actionLabel = "Import";
+        failureMessage = lastImportMessage;
+
+        break;
+      case SecretSyncAction.RemoveSecrets:
+        actionLabel = "Remove";
+        failureMessage = lastRemoveMessage;
+
+        break;
+      case SecretSyncAction.SyncSecrets:
+      default:
+        actionLabel = `Sync`;
+        failureMessage = lastSyncMessage;
+        break;
+    }
+
+    const baseProjectPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}`;
+    const overviewPath = `${baseProjectPath}/overview`;
+    const syncPath = `${baseProjectPath}/integrations/secret-syncs/${destination}/${secretSync.id}`;
+
+    const notifications = [
+      triggerWorkflowIntegrationNotification({
+        input: {
+          notification: {
+            type: TriggerFeature.SECRET_SYNC_ERROR,
+            payload: {
+              syncName: name,
+              syncDestination,
+              failureMessage: failureMessage || "An unknown error occurred",
+              syncUrl: `${appCfg.SITE_URL}${syncPath}`,
+              syncActionLabel: actionLabel,
+              environment: environment?.name || "-",
+              secretPath: folder?.path || "-",
+              projectName: project.name,
+              projectPath: overviewPath
+            }
+          },
+          projectId
+        },
+        dependencies: {
+          projectDAL,
+          projectSlackConfigDAL,
+          kmsService,
+          microsoftTeamsService,
+          projectMicrosoftTeamsConfigDAL
+        }
+      }),
+      notificationService.createUserNotifications(
+        adminUserIds.map((userId) => ({
+          userId,
+          orgId: project.orgId,
+          type: NotificationType.SECRET_SYNC_FAILED,
+          title: `Secret Sync Failed to ${actionLabel} Secrets`,
+          body: `Your **${syncDestination}** sync **${name}** failed to complete${failureMessage ? `: \`${failureMessage}\`` : ""}`,
+          link: syncPath
+        }))
+      )
+    ];
+
+    await Promise.allSettled(notifications);
   };
 
   // Takes a path rather than a folder, so it serves a write inside a folder and the deletion of the
@@ -1317,6 +1324,12 @@ export const secretSyncQueueFactory = ({
   queueService.start(QueueName.AppConnectionSecretSync, async (job) => {
     if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
       await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
+      return;
+    }
+
+    if (job.name === QueueJobs.SecretSyncEmitFailedAlertEvent) {
+      const { attemptedAt, ...event } = (job as TSecretSyncEmitFailedAlertEventJobDTO).data;
+      await emitSecretSyncFailed(eventEmitter, { ...event, attemptedAt: new Date(attemptedAt) });
       return;
     }
 

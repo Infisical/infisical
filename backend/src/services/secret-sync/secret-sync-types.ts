@@ -614,6 +614,21 @@ export type TQueueSendSecretSyncActionFailedNotificationsDTO = {
   action: SecretSyncAction;
 };
 
+export type TQueueSecretSyncEmitFailedAlertEventDTO = {
+  orgId: string;
+  projectId: string;
+  syncId: string;
+  action: SecretSyncAction;
+  failureMessage?: string | null;
+  attemptedAt: string;
+};
+
+export type TSecretSyncEmitFailedAlertEventJobDTO = Job<
+  TQueueSecretSyncEmitFailedAlertEventDTO,
+  void,
+  QueueJobs.SecretSyncEmitFailedAlertEvent
+>;
+
 export type TSecretSyncSyncSecretsDTO = Job<TQueueSecretSyncSyncSecretsByIdDTO, void, QueueJobs.SecretSyncSyncSecrets>;
 export type TSecretSyncImportSecretsDTO = Job<
   TQueueSecretSyncImportSecretsByIdDTO,
