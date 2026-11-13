@@ -1681,6 +1681,9 @@ export const projectServiceFactory = ({
     applicationIds,
     sortBy,
     sortOrder,
+    sortByCurrentStatus,
+    statusAt,
+    excludeFriendlyNameFromSearch,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1731,6 +1734,7 @@ export const projectServiceFactory = ({
       ...(friendlyName && { friendlyName }),
       ...(commonName && { commonName }),
       ...(search && { search }),
+      ...(search && excludeFriendlyNameFromSearch && { excludeFriendlyNameFromSearch }),
       ...(status && {
         status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
       }),
@@ -1783,14 +1787,16 @@ export const projectServiceFactory = ({
           {
             offset,
             limit,
-            sort: [[validatedSortBy, validatedSortOrder]]
+            sort: [[validatedSortBy, validatedSortOrder]],
+            sortByCurrentStatus,
+            statusAt
           },
           permissionFilters
         );
 
     const count = forPkiSync
       ? await certificateDAL.countActiveCertificatesForSync(syncEligibilityFilters, permissionFilters)
-      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters);
+      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters, statusAt);
 
     return {
       certificates,

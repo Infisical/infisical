@@ -533,16 +533,29 @@ export const extractExternallyIssuedCertificateFields = (
   };
 };
 
-export const resolveCertificateStatus = (certificate: {
-  status: string;
-  notAfter: Date;
-  renewedByCertificateId?: string | null;
-}): CertStatus => {
+export const resolveCertificateStatus = (
+  certificate: {
+    status: string;
+    notAfter: Date;
+    renewedByCertificateId?: string | null;
+  },
+  at: Date = new Date()
+): CertStatus => {
   if (certificate.status === CertStatus.REVOKED) return CertStatus.REVOKED;
-  if (new Date(certificate.notAfter).getTime() <= Date.now()) return CertStatus.EXPIRED;
+  if (new Date(certificate.notAfter).getTime() <= at.getTime()) return CertStatus.EXPIRED;
   if (certificate.renewedByCertificateId) return CertStatus.RENEWED;
   return CertStatus.ACTIVE;
 };
+
+export const resolveCurrentCertificateStatus = (
+  certificate: {
+    status: string;
+    notAfter: Date;
+    renewedByCertificateId?: string | null;
+    deletedAt?: Date | null;
+  },
+  at?: Date
+): CertStatus => (certificate.deletedAt ? CertStatus.DELETED : resolveCertificateStatus(certificate, at));
 
 type TDeletableCertificate = {
   friendlyName?: string | null;

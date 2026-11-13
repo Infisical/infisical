@@ -10,6 +10,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { OrderByDirection } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -199,6 +200,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     friendlyName?: string;
     commonName?: string;
     search?: string;
+    excludeFriendlyNameFromSearch?: boolean;
     status?: string | string[];
     includeDeleted?: boolean;
     profileIds?: string[];
@@ -238,10 +240,20 @@ export const certificateDALFactory = (db: TDbClient) => {
     profileName?: string | null;
   };
 
+  // Must give each row the same status the filter branches in applyInventoryFilters match it under.
+  const CURRENT_STATUS_SQL = `CASE
+    WHEN "${TableName.Certificate}"."deletedAt" IS NOT NULL THEN '${CertStatus.DELETED}'
+    WHEN "${TableName.Certificate}"."status" = '${CertStatus.REVOKED}' THEN '${CertStatus.REVOKED}'
+    WHEN "${TableName.Certificate}"."notAfter" <= ? THEN '${CertStatus.EXPIRED}'
+    WHEN "${TableName.Certificate}"."renewedByCertificateId" IS NOT NULL THEN '${CertStatus.RENEWED}'
+    ELSE '${CertStatus.ACTIVE}'
+  END`;
+
   const applyInventoryFilters = (
     query: Knex.QueryBuilder,
     filters: TInventoryFilterParams,
-    hasProfileJoin: boolean
+    hasProfileJoin: boolean,
+    statusAt: Date = new Date()
   ): Knex.QueryBuilder => {
     let q = query;
 
@@ -261,8 +273,11 @@ export const certificateDALFactory = (db: TDbClient) => {
         void qb
           .where(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`)
           .orWhere(`${TableName.Certificate}.altNames`, "like", `%${sanitizedValue}%`)
-          .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`)
-          .orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+          .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`);
+
+        if (!filters.excludeFriendlyNameFromSearch) {
+          void qb.orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+        }
 
         if (isUuidV4(sanitizedValue)) {
           void qb.orWhere(`${TableName.Certificate}.id`, sanitizedValue);
@@ -275,7 +290,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
 
     if (filters.status) {
-      const now = new Date();
+      const now = statusAt;
       const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
 
       q = q.andWhere((qb: Knex.QueryBuilder) => {
@@ -438,7 +453,8 @@ export const certificateDALFactory = (db: TDbClient) => {
     }: {
       projectId: string;
     } & TInventoryFilterParams,
-    permissionFilters?: ProcessedPermissionRules
+    permissionFilters?: ProcessedPermissionRules,
+    statusAt?: Date
   ) => {
     try {
       interface CountResult {
@@ -456,7 +472,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         );
       }
 
-      query = applyInventoryFilters(query, filters, hasEnrollmentTypeFilter) as typeof query;
+      query = applyInventoryFilters(query, filters, hasEnrollmentTypeFilter, statusAt) as typeof query;
 
       if (permissionFilters) {
         query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
@@ -963,10 +979,17 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const findWithPrivateKeyInfo = async (
     filter: Partial<Omit<TCertificates, "status" | "keyAlgorithm" | "source"> & TInventoryFilterParams>,
-    options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
+    options?: {
+      offset?: number;
+      limit?: number;
+      sort?: [string, "asc" | "desc"][];
+      sortByCurrentStatus?: boolean;
+      statusAt?: Date;
+    },
     permissionFilters?: ProcessedPermissionRules
   ): Promise<TCertificateWithInventoryFields[]> => {
     try {
+      const statusAt = options?.statusAt ?? new Date();
       let query = db
         .replicaNode()(TableName.Certificate)
         .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
@@ -1010,6 +1033,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         friendlyName,
         commonName,
         search,
+        excludeFriendlyNameFromSearch,
         status,
         includeDeleted,
         profileIds,
@@ -1043,6 +1067,7 @@ export const certificateDALFactory = (db: TDbClient) => {
           friendlyName,
           commonName,
           search,
+          excludeFriendlyNameFromSearch,
           status,
           includeDeleted,
           profileIds,
@@ -1062,7 +1087,8 @@ export const certificateDALFactory = (db: TDbClient) => {
           notBeforeTo,
           applicationIds
         },
-        true
+        true,
+        statusAt
       ) as typeof query;
 
       if (permissionFilters) {
@@ -1077,6 +1103,12 @@ export const certificateDALFactory = (db: TDbClient) => {
       }
       if (options?.sort) {
         options.sort.forEach(([column, direction]) => {
+          if (column === "status" && options.sortByCurrentStatus) {
+            query = query
+              .orderByRaw(`${CURRENT_STATUS_SQL} ${direction === OrderByDirection.ASC ? "ASC" : "DESC"}`, [statusAt])
+              .orderBy(`${TableName.Certificate}.id`, direction);
+            return;
+          }
           query = query.orderBy(`${TableName.Certificate}.${column}`, direction);
         });
       }

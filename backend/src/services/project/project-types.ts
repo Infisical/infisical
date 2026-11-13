@@ -173,6 +173,9 @@ export type TListProjectCertsDTO = {
   applicationIds?: string[];
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  sortByCurrentStatus?: boolean;
+  statusAt?: Date;
+  excludeFriendlyNameFromSearch?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetDashboardStatsDTO = {

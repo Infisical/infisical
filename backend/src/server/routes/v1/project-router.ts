@@ -32,7 +32,10 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
+import {
+  CertificateSearchResultSchema,
+  SanitizedCertificateSchema
+} from "@app/services/certificate/certificate-schemas";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
@@ -1558,7 +1561,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       deprecated: true,
-      description: "Deprecated: Use POST /:projectId/certificates/search instead.",
+      description: "Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.",
       hide: true,
       operationId: "listProjectCertificates",
       tags: [ApiDocsTags.PkiCertificates],
@@ -1619,9 +1622,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "searchProjectCertificates",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Search and filter certificates within a project.",
+      description: "Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -1680,16 +1684,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificates: z.array(
-            SanitizedCertificateSchema.extend({
-              hasPrivateKey: z.boolean(),
-              canRenewFromCsr: z.boolean(),
-              caName: z.string().nullable().optional(),
-              profileName: z.string().nullable().optional(),
-              enrollmentType: z.string().nullable().optional(),
-              applicationName: z.string().nullable().optional()
-            })
-          ),
+          certificates: z.array(CertificateSearchResultSchema),
           totalCount: z.number()
         })
       }
