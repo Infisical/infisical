@@ -47,7 +47,7 @@ Every command accepts these flags.
 - `--org <string>`: The organization to use for this command, by name, slug, or ID. It overrides the profile's organization without changing it. Can also be set with `INFISICAL_ORG`.
 - `--profile <string>`: The login profile to use for this command. Run `infisical profile list` to see your profiles. Can also be set with `INFISICAL_PROFILE`.
 - `--silent`: Hide update notices, the notice naming the profile in use, and the warning that a token is overriding your login. Useful in scripts and CI.
-- `--telemetry` (default `true`): Send usage telemetry to Infisical.
+- `--telemetry` (default `true`): Send usage telemetry to Infisical. Pass `--telemetry=false` to opt out for one command. To opt out without the flag, set `INFISICAL_DISABLE_TELEMETRY` or `DO_NOT_TRACK` to any value other than empty, `0`, or `false`. An explicitly passed `--telemetry` takes precedence over both variables.
 
 ## `agent`
 
