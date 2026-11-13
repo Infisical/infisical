@@ -23,7 +23,8 @@ import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import {
   TFolderAccess,
@@ -55,6 +56,7 @@ type FormProps = {
 const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) => {
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
 
   const environments = currentProject?.environments ?? [];
 
@@ -91,6 +93,8 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
 
   const targetError = (() => {
     if (!environmentSlug) return "Select an environment.";
+    if (!subscription?.secretsFolderRbac && !isRoot)
+      return "Without a license, folder access can only be granted on the root folder /. Upgrade your Infisical plan to grant access on other folders.";
     if (isCheckingFolder) return null;
     if (!folderExists) return `No folder at ${normalizedPath} in this environment.`;
     // the backend authorizes a grant against the target folder's own path, not its parent

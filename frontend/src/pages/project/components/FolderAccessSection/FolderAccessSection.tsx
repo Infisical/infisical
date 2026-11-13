@@ -56,6 +56,7 @@ import {
   useProjectPermission,
   useSubscription
 } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   TFolderAccess,
   useDeleteIdentityFolderAccess,
@@ -90,7 +91,8 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
-  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
+  // self-hosted instances manage root folder access without the plan, so the card loads there too
+  const canUseFolderAccess = Boolean(subscription?.secretsFolderRbac) || !isInfisicalCloud();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const [isGrantOpen, setIsGrantOpen] = useState(false);
@@ -100,12 +102,12 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const userAccess = useListUserFolderAccess({
     projectId,
     userId: actor.type === "user" ? actor.id : "",
-    enabled: hasFolderRbacPlan
+    enabled: canUseFolderAccess
   });
   const identityAccess = useListIdentityFolderAccess({
     projectId,
     identityId: actor.type === "identity" ? actor.id : "",
-    enabled: hasFolderRbacPlan
+    enabled: canUseFolderAccess
   });
   const {
     data,
@@ -115,9 +117,9 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   } = actor.type === "user" ? userAccess : identityAccess;
   // a disabled query stays pending and keeps grants cached from before a plan change, so without
   // the plan its state is ignored and the card shows the plan-gated empty state
-  const folderAccess = hasFolderRbacPlan ? data : undefined;
-  const isPending = hasFolderRbacPlan && isQueryPending;
-  const isError = hasFolderRbacPlan && isQueryError;
+  const folderAccess = canUseFolderAccess ? data : undefined;
+  const isPending = canUseFolderAccess && isQueryPending;
+  const isError = canUseFolderAccess && isQueryError;
 
   const deleteUserAccess = useDeleteUserFolderAccess();
   const deleteIdentityAccess = useDeleteIdentityFolderAccess();
@@ -137,7 +139,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const actorNoun = actor.type === "user" ? "user" : "machine identity";
 
   const openGrantSheet = (source: FolderAccessGrantSheetSource) => {
-    if (!hasFolderRbacPlan) {
+    if (!canUseFolderAccess) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent,
         paywallKey: "project.folder-access-section"
@@ -363,7 +365,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
               </Table>
             ) : (
               <Empty className="border">
-                {hasFolderRbacPlan ? (
+                {canUseFolderAccess ? (
                   <EmptyHeader>
                     <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
                     <EmptyDescription>

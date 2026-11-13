@@ -89,14 +89,15 @@ export const folderPermissionServiceFactory = ({
   licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
+  const isFolderRbacLicensed = async (orgId: string) =>
+    (await licenseService.getPlan(orgId)).has(PlanFeature.SecretsFolderRbac);
+
   // self-hosted instances get folder access on the root folder (environment roles) without a license;
   // Infisical Cloud and every other folder need the plan feature
   const assertFolderRbacLicensed = async (orgId: string, folder?: TResolvedFolder) => {
     const { isCloud } = getConfig();
     if (!isCloud && folder?.path === "/") return;
-
-    const plan = await licenseService.getPlan(orgId);
-    if (plan.has(PlanFeature.SecretsFolderRbac)) return;
+    if (await isFolderRbacLicensed(orgId)) return;
 
     throw new BadRequestError({
       message:
@@ -419,7 +420,8 @@ export const folderPermissionServiceFactory = ({
 
   const listActorFolderGrants = async (dto: TListActorFolderGrantsDTO) => {
     const { projectId, target } = dto;
-    await assertFolderRbacLicensed(dto.permission.orgId);
+    const isLicensed = await isFolderRbacLicensed(dto.permission.orgId);
+    if (!isLicensed && getConfig().isCloud) await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     assertReadActorGrantsAccess(callerPermission, target);
 
@@ -439,7 +441,7 @@ export const folderPermissionServiceFactory = ({
     const folderAccess = grantRows
       .flatMap((row, idx) => {
         const folder = folders[idx];
-        if (!folder) return [];
+        if (!folder || (!isLicensed && folder.path !== "/")) return [];
         return [
           toFolderGrant(row, projectId, { id: folder.id, path: folder.path, environmentSlug: folder.environmentSlug })
         ];
