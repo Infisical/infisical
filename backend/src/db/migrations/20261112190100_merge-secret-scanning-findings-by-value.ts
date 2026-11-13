@@ -9,12 +9,12 @@ const LOCATION = TableName.SecretScanningFindingLocation;
 
 const RESOURCE_BATCH_SIZE = 500;
 const FINDING_BATCH_SIZE = 5_000;
+const BATCH_STATEMENT_TIMEOUT_MS = 60_000;
+const ALTER_LOCK_TIMEOUT_MS = 10_000;
 
 // Merges one batch of resources. A merge never crosses resources, so each batch is complete on its own.
 const mergeResources = async (tx: Knex, resourceIds: string[]) => {
-  // The release before this one keeps saving findings while this runs. Blocking its writes for the batch keeps a row
-  // saved mid-batch from being left without a location; reads still go through.
-  await tx.raw(`LOCK TABLE ?? IN SHARE ROW EXCLUSIVE MODE`, [FINDING]);
+  await tx.raw(`SET LOCAL statement_timeout = ${BATCH_STATEMENT_TIMEOUT_MS}`);
 
   // Rows of one value in one resource merge into the row that best keeps an open leak visible: an unresolved one,
   // else the most recently triaged. A finding a batch already merged comes first, so rerunning the migration only
@@ -88,8 +88,8 @@ export async function up(knex: Knex): Promise<void> {
 
     if (!resources.length) break;
 
-    // Writes to findings wait for a batch, so it stops at a few thousand findings. A resource is never split, since
-    // its rows merge with each other.
+    // A batch holds the rows it merges until it commits, so it stops at a few thousand findings. A resource is never
+    // split, since its rows merge with each other.
     const resourceIds: string[] = [];
     let findingCount = 0;
     for (const resource of resources) {
@@ -105,6 +105,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Rows saved while this ran got the column's default, so this only covers a row no batch could give a location.
   await knex.transaction(async (tx) => {
+    await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT_MS}`);
     await tx(FINDING).whereNull("lastDetectedAt").update({ lastDetectedAt: tx.ref("createdAt") });
     await tx.raw(`ALTER TABLE ?? ALTER COLUMN "lastDetectedAt" SET NOT NULL`, [FINDING]);
   });
