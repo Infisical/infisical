@@ -47,15 +47,15 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service", "/parameters/sanda/settlement-service-v2",
-			"/parameters/alpha/settlement-service")
+		p, requests := requestsByFolder(t, "/**", "/services/orders/checkout-api", "/services/orders/checkout-api-v2",
+			"/services/inventory/checkout-api")
 
 		// Action
-		found := search(t, p, "/parameters/sanda/settlement-service")
+		found := search(t, p, "/services/orders/checkout-api")
 
 		// Assert
 		require.ElementsMatch(t, []uuid.UUID{
-			requests["/parameters/sanda/settlement-service"], requests["/parameters/sanda/settlement-service-v2"],
+			requests["/services/orders/checkout-api"], requests["/services/orders/checkout-api-v2"],
 		}, found)
 	})
 
@@ -63,28 +63,28 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service", "/parameters/sanda/other")
+		p, requests := requestsByFolder(t, "/**", "/services/orders/checkout-api", "/services/orders/other")
 
 		// Action
-		found := search(t, p, "/PARAMETERS/Sanda/Settlement-Service/")
+		found := search(t, p, "/SERVICES/Orders/Checkout-Api/")
 
 		// Assert
-		require.Equal(t, []uuid.UUID{requests["/parameters/sanda/settlement-service"]}, found)
+		require.Equal(t, []uuid.UUID{requests["/services/orders/checkout-api"]}, found)
 	})
 
 	t.Run("should find the requests in every folder with the name searched", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service", "/parameters/alpha/settlement-service",
-			"/parameters/sanda/other")
+		p, requests := requestsByFolder(t, "/**", "/services/orders/checkout-api", "/services/inventory/checkout-api",
+			"/services/orders/other")
 
 		// Action
-		found := search(t, p, "settlement-service")
+		found := search(t, p, "checkout-api")
 
 		// Assert
 		require.ElementsMatch(t, []uuid.UUID{
-			requests["/parameters/sanda/settlement-service"], requests["/parameters/alpha/settlement-service"],
+			requests["/services/orders/checkout-api"], requests["/services/inventory/checkout-api"],
 		}, found)
 	})
 
@@ -105,23 +105,23 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/parameters/**", "/parameters/sanda/settlement-service", "/parameters/sanda/other")
+		p, requests := requestsByFolder(t, "/services/**", "/services/orders/checkout-api", "/services/orders/other")
 
 		// Action
-		found := search(t, p, "/parameters/sanda/settlement-service")
+		found := search(t, p, "/services/orders/checkout-api")
 
 		// Assert
-		require.Equal(t, []uuid.UUID{requests["/parameters/sanda/settlement-service"]}, found)
+		require.Equal(t, []uuid.UUID{requests["/services/orders/checkout-api"]}, found)
 	})
 
 	t.Run("should find nothing when no request is under the path searched", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, _ := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service")
+		p, _ := requestsByFolder(t, "/**", "/services/orders/checkout-api")
 
 		// Action
-		found := search(t, p, "/parameters/sanda/other")
+		found := search(t, p, "/services/orders/other")
 
 		// Assert
 		require.Empty(t, found)

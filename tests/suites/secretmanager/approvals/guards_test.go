@@ -173,18 +173,18 @@ func TestSecretApprovalRequest_FolderGuard(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p := newProtectedProject(t, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) { b.SecretPath = "/parameters/**" })
-		secretmanager.CreateFolder(t, p.proj, "dev", "/parameters/sanda/settlement-service")
+		p := newProtectedProject(t, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) { b.SecretPath = "/services/**" })
+		secretmanager.CreateFolder(t, p.proj, "dev", "/services/orders/checkout-api")
 		res, err := p.committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
-			ProjectId: p.proj.ID, Environment: "dev", SecretPath: new("/parameters/sanda/settlement-service"), SecretValue: "value",
+			ProjectId: p.proj.ID, Environment: "dev", SecretPath: new("/services/orders/checkout-api"), SecretValue: "value",
 		})
 		require.NoError(t, err)
 		heldRequest(t, p.proj, res.Body)
-		want := `You cannot delete the selected folder because it has open change requests at folder path "/parameters/sanda/settlement-service". Merge or close the change requests and try again.`
+		want := `You cannot delete the selected folder because it has open change requests at folder path "/services/orders/checkout-api". Merge or close the change requests and try again.`
 
 		// Action
-		leaf := deleteFolder(t, p.proj, "/parameters/sanda", "settlement-service")
-		top := deleteFolder(t, p.proj, "/", "parameters")
+		leaf := deleteFolder(t, p.proj, "/services/orders", "checkout-api")
+		top := deleteFolder(t, p.proj, "/", "services")
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, leaf.StatusCode())
