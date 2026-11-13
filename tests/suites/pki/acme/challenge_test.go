@@ -58,10 +58,12 @@ func TestAcmeChallenge_Validate(t *testing.T) {
 		require.Equal(t, name, cert.Subject.CommonName)
 	})
 
-	t.Run("should validate on a retry and issue when the first fetch of the key authorization cannot connect", func(t *testing.T) {
+	t.Run("should validate on a queue retry and issue when a whole validation attempt cannot connect", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `Validation runs on a queue with retries, so a web server that is briefly unreachable
-			must not fail the order. The retry backs off 30 seconds, which is why the wait is longer than usual.`)
+			must not fail the order. The HTTP client retries a dropped connection three times on its own,
+			so the site drops four fetches to fail one whole queue attempt. The queue retry backs off 30
+			seconds, which is why the wait is longer than usual.`)
 
 		// Setup
 		tn := h.NewTenant(t)
@@ -69,7 +71,7 @@ func TestAcmeChallenge_Validate(t *testing.T) {
 		site := newSite(t, tn)
 		name := site.Name("www")
 		o := c.NewOrder(t, name)
-		site.Fail(t, http.MethodGet, "/.well-known/acme-challenge/*", 0, fakenet.Times(1), fakenet.Hangup())
+		site.Fail(t, http.MethodGet, "/.well-known/acme-challenge/*", 0, fakenet.Times(4), fakenet.Hangup())
 		passHTTP01(t, c, site, o.Authorizations)
 		waitOrder(t, c, o.URL, "ready", wait.Timeout(90*time.Second))
 
@@ -78,7 +80,12 @@ func TestAcmeChallenge_Validate(t *testing.T) {
 
 		// Assert
 		require.Equal(t, name, cert.Subject.CommonName)
-		require.Len(t, site.Calls(t), 2, "Infisical did not fetch the key authorization a second time")
+		calls := site.Calls(t)
+		require.Len(t, calls, 5)
+		served := calls[len(calls)-1]
+		require.Equal(t, http.StatusOK, served.Status)
+		require.GreaterOrEqual(t, served.At.Sub(calls[0].At), 20*time.Second,
+			"the key authorization was served by the HTTP client's own retry, not a later queue attempt")
 	})
 
 	t.Run("should issue for every name once each one's HTTP-01 challenge passes", func(t *testing.T) {
