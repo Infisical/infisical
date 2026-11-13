@@ -112,7 +112,7 @@ export const signerAutoRenewalQueueFactory = ({
     });
     cronJob.register({
       name: CronJobName.SignerPendingRevocationSync,
-      pattern: "* * * * *",
+      pattern: "*/15 * * * *",
       runHashTtlS: 15 * 60,
       handler: () => signerService.syncPendingRevocations()
     });
