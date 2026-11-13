@@ -102,7 +102,10 @@ export const useListSigners = (dto: TListSignersDTO) => {
       getPollInterval(
         Boolean(
           query.state.data?.signers?.some(
-            (s) => s.status === SignerStatus.Pending || s.hasOpenCertificateRequest
+            (s) =>
+              s.status === SignerStatus.Pending ||
+              s.hasOpenCertificateRequest ||
+              Boolean(s.pendingRevocation)
           )
         )
       )
@@ -121,7 +124,8 @@ export const useGetSigner = (signerId: string) => {
     refetchInterval: (query) =>
       getPollInterval(
         query.state.data?.status === SignerStatus.Pending ||
-          Boolean(query.state.data?.pendingCertificateRequest)
+          Boolean(query.state.data?.pendingCertificateRequest) ||
+          Boolean(query.state.data?.pendingRevocation)
       )
   });
 };

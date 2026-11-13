@@ -160,7 +160,7 @@ describe("signerIssuanceService attaching an issued certificate", () => {
     expect(deps.signerDAL.updateUnlessRevoked).not.toHaveBeenCalled();
     expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
       { id: JOB_ID, status: SignerIssuanceJobStatus.Pending },
-      { certificateId: NEW_CERT_ID }
+      { certificateId: NEW_CERT_ID, attempts: 0 }
     );
   });
 
@@ -255,10 +255,10 @@ describe("signerIssuanceService attaching an issued certificate", () => {
     );
   });
 
-  it("keeps a held certificate past its last attempt while the signer's revocation waits for approval", async () => {
+  it("holds a certificate without spending an attempt while the signer's revocation waits for approval", async () => {
     const { service, deps } = buildService({
       signerStatus: SignerStatus.Revoked,
-      job: buildJob({ certificateId: NEW_CERT_ID, attempts: 100 })
+      job: buildJob({ certificateId: NEW_CERT_ID, attempts: 99 })
     });
     deps.certificateDAL.findById.mockImplementation(async (id: string) => ({
       id,
@@ -268,6 +268,10 @@ describe("signerIssuanceService attaching an issued certificate", () => {
 
     await service.processJob(JOB_ID);
 
+    expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
+      { id: JOB_ID, status: SignerIssuanceJobStatus.Pending },
+      { certificateId: NEW_CERT_ID, attempts: 99 }
+    );
     expect(deps.signerIssuanceJobDAL.update).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ status: SignerIssuanceJobStatus.Failed }),

@@ -34,14 +34,7 @@ import {
   wrapRsaPkcs1DigestInfo
 } from "@app/lib/csr/pkcs11-algorithm-map";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import {
-  BadRequestError,
-  ConflictError,
-  DatabaseError,
-  ForbiddenRequestError,
-  InternalServerError,
-  NotFoundError
-} from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
@@ -1877,7 +1870,9 @@ export const signerServiceFactory = ({
       });
     }
 
-    const reissueCurrentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
+    const reissueCurrentCert = signer.certificateId
+      ? await signerDAL.transaction((tx) => certificateDAL.findById(signer.certificateId as string, tx))
+      : null;
     const isCurrentCertificateRevoked = reissueCurrentCert?.status === CertStatus.REVOKED;
 
     // A never-issued signer has no cert to read the key config from; recover it from the last job so
@@ -2205,7 +2200,7 @@ export const signerServiceFactory = ({
       } catch (err) {
         const cert = await signerDAL.transaction((tx) => certificateDAL.findById(certificateId, tx));
         if (cert?.status === CertStatus.REVOKED) throw err;
-        if (!(err instanceof InternalServerError)) {
+        if (err instanceof BadRequestError || err instanceof NotFoundError) {
           await $restoreSignerAfterUnfinishedRevoke(signer.id, {
             previousStatus,
             hasCancelledRequest: cancelledReissueCount > 0,
@@ -2217,7 +2212,7 @@ export const signerServiceFactory = ({
         } else {
           await signerDAL.updateById(signer.id, {
             certificateFailureReason:
-              "The certificate authority didn't answer the revoke, so the certificate may still be valid. Revoke the certificate again."
+              "The revoke didn't finish, so the certificate may still be valid. Revoke the certificate again."
           });
         }
         throw err;

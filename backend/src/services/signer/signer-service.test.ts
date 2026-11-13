@@ -964,17 +964,16 @@ describe("signerService revoke outcomes and DigiCert key checks", () => {
     });
   });
 
-  it("restores the signer when another CA refuses the revoke with its own error type", async () => {
+  it("keeps the signer Revoked when the CA revoke fails with an error that doesn't say it was refused", async () => {
     const { service, deps } = buildService();
-    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("RequestFailedException"));
+    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("socket hang up"));
 
-    await expect(service.revokeCertificate(revokeDto)).rejects.toThrow("RequestFailedException");
+    await expect(service.revokeCertificate(revokeDto)).rejects.toThrow("socket hang up");
 
-    expect(deps.signerDAL.updateById).toHaveBeenLastCalledWith(
-      SIGNER_ID,
-      { status: SignerStatus.Active, certificateFailureReason: null },
-      expect.anything()
-    );
+    expect(statusesWritten(deps.signerDAL.updateById)).toEqual([SignerStatus.Revoked]);
+    expect(deps.signerDAL.updateById).toHaveBeenLastCalledWith(SIGNER_ID, {
+      certificateFailureReason: expect.stringContaining("Revoke the certificate again") as string
+    });
   });
 
   it("refuses a DigiCert reissue with a software key before canceling the open renewal", async () => {

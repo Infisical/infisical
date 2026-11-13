@@ -436,7 +436,7 @@ export const signerIssuanceServiceFactory = ({
     }
 
     if (job.certificateId) {
-      if (job.attempts > job.maxAttempts && (await $getJobRevokeState(job)) !== SignerRevokeState.RevokeInProgress) {
+      if (job.attempts > job.maxAttempts) {
         await markJobFailed(
           job,
           `A certificate was issued for this signer but couldn't be attached or revoked after ${job.maxAttempts} attempts. Revoke it from the certificate authority.`
@@ -725,7 +725,7 @@ export const signerIssuanceServiceFactory = ({
       if (isRevokeInProgress) {
         const [heldJob] = await signerIssuanceJobDAL.update(
           { id: job.id, status: SignerIssuanceJobStatus.Pending },
-          { certificateId }
+          { certificateId, attempts: job.attempts - 1 }
         );
         if (!heldJob) {
           await $revokeOrKeepUnattachedCertificate(job, certificateId, projectId, { isJobOpen: false });
