@@ -26,19 +26,18 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrgMembershipProjectMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType, TListActorProjectMembershipsParams } from "@app/hooks/api/projects/types";
+import { TListActorProjectMembershipsParams } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { UserProjectRow } from "./UserProjectRow";
 
 type Props = {
   membershipId: string;
-  username: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeUserFromProject", "addUserToProject"]>,
+    popUpName: keyof UsePopUpState<["removeUserFromProject", "addUserToProduct"]>,
     data?: object
   ) => void;
-  canAddToProject: boolean;
+  canAddToProduct: boolean;
 };
 
 enum UserProjectsOrderBy {
@@ -50,16 +49,10 @@ const DEFAULT_PER_PAGE = 10;
 export const getUserProjectsFirstPageParams = (): TListActorProjectMembershipsParams => ({
   limit: getUserTablePreference("userProjectsTable", PreferenceKey.PerPage, DEFAULT_PER_PAGE),
   offset: 0,
-  orderDirection: OrderByDirection.ASC,
-  excludeProjectType: ProjectType.CertificateManager
+  orderDirection: OrderByDirection.ASC
 });
 
-export const UserProjectsTable = ({
-  membershipId,
-  username,
-  handlePopUpOpen,
-  canAddToProject
-}: Props) => {
+export const UserProjectsTable = ({ membershipId, handlePopUpOpen, canAddToProduct }: Props) => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const {
@@ -91,8 +84,6 @@ export const UserProjectsTable = ({
     limit: perPage,
     offset,
     orderDirection,
-    // Certificate Manager membership is managed inside Certificate Manager, not as a project.
-    excludeProjectType: ProjectType.CertificateManager,
     ...(projectSearch ? { search: projectSearch } : {})
   });
   const projectMemberships = data?.memberships ?? [];
@@ -116,7 +107,7 @@ export const UserProjectsTable = ({
     return (
       <Empty className="border">
         <EmptyHeader>
-          <EmptyTitle>Could not load projects</EmptyTitle>
+          <EmptyTitle>Could not load products</EmptyTitle>
           <EmptyDescription>Refresh the page to try again.</EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -133,14 +124,15 @@ export const UserProjectsTable = ({
           setSearch(e.target.value);
           setPage(1);
         }}
-        placeholder="Search projects..."
+        placeholder="Search by project name..."
       />
       {projectMemberships.length ? (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead onClick={toggleOrderDirection} className="w-2/3">
-                Name
+              <TableHead className="w-1/3">Product</TableHead>
+              <TableHead onClick={toggleOrderDirection} className="w-1/3">
+                Project
                 <ChevronDownIcon
                   className={twMerge(
                     orderDirection === OrderByDirection.DESC && "rotate-180",
@@ -169,27 +161,23 @@ export const UserProjectsTable = ({
           <EmptyHeader>
             <EmptyTitle>
               {projectSearch
-                ? "No projects match this search"
-                : "This user is not a member of any projects"}
+                ? "No memberships match this search"
+                : "This user does not have access to any products"}
             </EmptyTitle>
             <EmptyDescription>
               {projectSearch
-                ? "Adjust search filters to view project memberships."
-                : "Assign this user to a project."}
+                ? "Adjust search filters to view memberships."
+                : "Add this user to a product to give them access."}
             </EmptyDescription>
-            {!projectSearch && canAddToProject && (
+            {!projectSearch && canAddToProduct && (
               <EmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
                   size="xs"
-                  onClick={() =>
-                    handlePopUpOpen("addUserToProject", {
-                      username
-                    })
-                  }
+                  onClick={() => handlePopUpOpen("addUserToProduct")}
                 >
                   <PlusIcon />
-                  Add to Project
+                  Add to Product
                 </Button>
               </EmptyContent>
             )}
