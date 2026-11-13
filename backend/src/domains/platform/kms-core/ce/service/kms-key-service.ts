@@ -1,16 +1,16 @@
 import slugify from "@sindresorhus/slugify";
 
 import { ProjectType } from "@app/db/schemas";
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { OrderByDirection } from "@app/lib/types";
 
+import { ReadFrom, TReadOptions } from "../data-access/data-access-db";
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
 import { TKmsKeyFilter } from "../data-access/kms-key-data-access";
-import { ReadFrom, TReadOptions } from "../lib/data-access-db";
-import { TTransactionRunner } from "../lib/transaction-runner";
 import { KmsKey, KmsKeyUsage, TKmsKeyAttributes, TKmsKeyRecord } from "../model/kms-key";
 import {
   generateKeyMaterial,
@@ -74,7 +74,7 @@ export class KmsKeyService {
       hasDeleteProtection,
       isPublicKeyPublished
     });
-    const created = await this.deps.transactionRunner.run(({ dataAccess }) => dataAccess.kmsKeys.create(key));
+    const created = await this.deps.transactionRunner.run(({ stores }) => stores.kmsKeys.create(key));
     return created.toRecord();
   }
 
@@ -103,22 +103,22 @@ export class KmsKeyService {
       hasDeleteProtection,
       kmipMetadata
     });
-    const created = await this.deps.transactionRunner.run(({ dataAccess }) => dataAccess.kmsKeys.create(key));
+    const created = await this.deps.transactionRunner.run(({ stores }) => stores.kmsKeys.create(key));
     return created.toRecord();
   }
 
   // Archives the current material and installs new material. Old ciphertext stays readable.
   rotateKmsKey(kmsId: string): Promise<{ id: string; version: number }> {
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      const key = await dataAccess.kmsKeys.findByIdForRotation(kmsId);
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      const key = await stores.kmsKeys.findByIdForRotation(kmsId);
       if (!key) throw notFoundKey(kmsId);
       key.assertRotatable();
 
       const algorithm = key.encryptionAlgorithm as SymmetricKeyAlgorithm;
       const material = crypto.randomBytes(KmsKey.symmetricKeyLength(algorithm));
       const archived = key.rotate(wrapWithRootKey(this.deps.state, material));
-      await dataAccess.kmsKeyVersions.create(archived);
-      await dataAccess.kmsKeys.saveMaterial(key);
+      await stores.kmsKeyVersions.create(archived);
+      await stores.kmsKeys.saveMaterial(key);
       return { id: key.id, version: key.version as number };
     });
   }
@@ -163,20 +163,20 @@ export class KmsKeyService {
   }
 
   updateKeyAttributes(kmsId: string, attributes: TKmsKeyAttributes): Promise<TKmsKeyDetails> {
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      const key = await dataAccess.kmsKeys.findByIdForUpdate(kmsId);
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      const key = await stores.kmsKeys.findByIdForUpdate(kmsId);
       if (!key) throw notFoundKey(kmsId);
       key.updateAttributes(attributes);
-      await dataAccess.kmsKeys.saveAttributes(key);
-      const saved = (await dataAccess.kmsKeys.findById(kmsId)) as KmsKey;
+      await stores.kmsKeys.saveAttributes(key);
+      const saved = (await stores.kmsKeys.findById(kmsId)) as KmsKey;
       return toKeyDetails(saved);
     });
   }
 
   // Null when the key has delete protection.
   deleteKey(kmsId: string): Promise<TKmsKeyDetails | null> {
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      const deleted = await dataAccess.kmsKeys.deleteIfUnprotected(kmsId);
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      const deleted = await stores.kmsKeys.deleteIfUnprotected(kmsId);
       if (deleted === undefined) throw notFoundKey(kmsId);
       return deleted ? toKeyDetails(deleted) : null;
     });
@@ -184,7 +184,7 @@ export class KmsKeyService {
 
   async deleteKeys(kmsIds: string[]): Promise<number> {
     if (!kmsIds.length) return 0;
-    return this.deps.transactionRunner.run(({ dataAccess }) => dataAccess.kmsKeys.deleteByIds(kmsIds));
+    return this.deps.transactionRunner.run(({ stores }) => stores.kmsKeys.deleteByIds(kmsIds));
   }
 
   countProjectKeysInOrg(orgId: string, projectType: ProjectType) {

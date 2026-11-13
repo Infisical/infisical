@@ -1311,7 +1311,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],

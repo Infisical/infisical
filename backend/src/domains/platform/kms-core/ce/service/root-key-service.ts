@@ -1,3 +1,4 @@
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { isBase64 } from "@app/lib/base64";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
@@ -6,9 +7,8 @@ import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@a
 import { BadRequestError, CryptographyError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { ReadFrom, TReadOptions } from "../data-access/data-access-db";
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
-import { ReadFrom, TReadOptions } from "../lib/data-access-db";
-import { TTransactionRunner } from "../lib/transaction-runner";
 import { InstanceEncryptionKey } from "../model/instance-encryption-key";
 import { KekHistoryEntry } from "../model/kek-history-entry";
 import { LegacyEncryptionKey } from "../model/legacy-encryption-key";
@@ -152,12 +152,12 @@ export class RootKeyService {
     const rootKey = await this.unwrapRootKey(active);
     const encryptedRootKey = await this.wrapRootKey(rootKey, strategy);
 
-    await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.rootKey();
+    await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.rootKey();
       const [stagedNow, retainedNow, activeNow] = await Promise.all([
-        dataAccess.rootKeyConfigs.findStaged(),
-        dataAccess.rootKeyConfigs.findRetained(),
-        dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID)
+        stores.rootKeyConfigs.findStaged(),
+        stores.rootKeyConfigs.findRetained(),
+        stores.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID)
       ]);
       if (stagedNow.length || retainedNow.length) throw new BadRequestError({ message: ROTATION_IN_PROGRESS });
       if (!activeNow || !activeNow.encryptedRootKey.equals(active.encryptedRootKey)) {
@@ -166,7 +166,7 @@ export class RootKeyService {
             "The active root key changed while this request was in flight, so the encryption strategy was left unchanged. Retry the change."
         });
       }
-      await dataAccess.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
+      await stores.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
         encryptedRootKey,
         encryptionStrategy: strategy,
         kekLabel: strategy === RootKeyEncryptionStrategy.Software ? this.currentKekLabel() : null
@@ -342,11 +342,11 @@ export class RootKeyService {
       throw err;
     });
 
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.rootKey();
-      const existing = await dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.rootKey();
+      const existing = await stores.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
       if (existing) return existing;
-      return dataAccess.rootKeyConfigs.create(
+      return stores.rootKeyConfigs.create(
         RootKeyConfig.bootstrap({ encryptedRootKey, strategy, withRotationState: !skipRotationState })
       );
     });
@@ -354,43 +354,43 @@ export class RootKeyService {
 
   // The moment a rotation takes effect, driven by a booting pod: generating a key changes nothing until it is deployed.
   private promoteRotation(stagedId: string, label: string | null): Promise<boolean> {
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.rootKey();
-      const staged = await dataAccess.rootKeyConfigs.findById(stagedId);
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.rootKey();
+      const staged = await stores.rootKeyConfigs.findById(stagedId);
       // Another pod promoted first.
       if (!staged || staged.activatedAt) return false;
 
-      const active = await dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
+      const active = await stores.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
       if (!active) throw new InternalServerError({ message: "KMS root config is missing its active row" });
 
       const now = new Date();
-      const olderRetained = await dataAccess.rootKeyConfigs.findRetained();
+      const olderRetained = await stores.rootKeyConfigs.findRetained();
 
       // The grace window, so pods that have not rolled over can still boot. Not a rollback path.
-      await dataAccess.rootKeyConfigs.create(active.retainedCopy(now));
-      await dataAccess.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
+      await stores.rootKeyConfigs.create(active.retainedCopy(now));
+      await stores.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
         encryptedRootKey: staged.encryptedRootKey,
         encryptionStrategy: staged.strategy ?? RootKeyEncryptionStrategy.Software,
         kekLabel: staged.kekLabel ?? label,
         activatedAt: now,
         supersededAt: null
       });
-      await dataAccess.rootKeyConfigs.deleteAllStaged();
+      await stores.rootKeyConfigs.deleteAllStaged();
 
       const promotedLabel = staged.kekLabel ?? label;
-      const previous = await dataAccess.kekHistory.findCurrent();
-      if (previous) await dataAccess.kekHistory.markSuperseded(previous.id, now);
+      const previous = await stores.kekHistory.findCurrent();
+      if (previous) await stores.kekHistory.markSuperseded(previous.id, now);
       if (promotedLabel)
-        await dataAccess.kekHistory.create(KekHistoryEntry.create({ kekLabel: promotedLabel, activatedAt: now }));
+        await stores.kekHistory.create(KekHistoryEntry.create({ kekLabel: promotedLabel, activatedAt: now }));
 
       // Exactly one retained key survives a promotion.
       for (const stale of olderRetained) {
         // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
-        await dataAccess.rootKeyConfigs.deleteById(stale.id);
+        await stores.rootKeyConfigs.deleteById(stale.id);
         // eslint-disable-next-line no-await-in-loop
-        const entry = stale.kekLabel ? await dataAccess.kekHistory.findActiveByLabel(stale.kekLabel) : undefined;
+        const entry = stale.kekLabel ? await stores.kekHistory.findActiveByLabel(stale.kekLabel) : undefined;
         // eslint-disable-next-line no-await-in-loop
-        if (entry) await dataAccess.kekHistory.markRetired(entry.id, now);
+        if (entry) await stores.kekHistory.markRetired(entry.id, now);
         logger.info(
           `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [label=${stale.kekLabel ?? "unknown"}]`
         );
@@ -429,10 +429,10 @@ export class RootKeyService {
     const material: TLegacyKeyMaterial = { current, original };
     const encryptedKeySnapshot = wrapWithRootKey(this.deps.state, Buffer.from(JSON.stringify(material), "utf8"));
 
-    await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.rootKey();
-      if (await dataAccess.legacyEncryptionKeys.find()) return;
-      await dataAccess.legacyEncryptionKeys.create(LegacyEncryptionKey.create(encryptedKeySnapshot));
+    await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.rootKey();
+      if (await stores.legacyEncryptionKeys.find()) return;
+      await stores.legacyEncryptionKeys.create(LegacyEncryptionKey.create(encryptedKeySnapshot));
     });
 
     // Re-read so every pod lands on the row that won the race, not its own candidate.
@@ -448,10 +448,10 @@ export class RootKeyService {
 
     const active = await this.deps.dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID, PRIMARY);
     await this.deps.transactionRunner
-      .run(async ({ dataAccess }) => {
-        await dataAccess.locks.rootKey();
-        if (await dataAccess.kekHistory.findCurrent()) return;
-        await dataAccess.kekHistory.create(
+      .run(async ({ stores }) => {
+        await stores.locks.rootKey();
+        if (await stores.kekHistory.findCurrent()) return;
+        await stores.kekHistory.create(
           KekHistoryEntry.create({
             kekLabel: label,
             activatedAt: active?.activatedAt ?? active?.createdAt ?? new Date()

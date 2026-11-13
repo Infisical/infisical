@@ -11,7 +11,6 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 | `ce/data-access/` | One class per model, `KmsCoreLocks` (the frozen lock ids), `buildKmsCoreDataAccess(db, locks)` |
 | `ce/service/` | `RootKeyService`, `RootKeyRotationService`, `KmsKeyService`, `KmsCryptoService`, `ScopeKeyService`; `key-material.ts` (helpers they share); `TKmsCoreHooks` |
 | `ee/` | `HsmRootKeyWrapper` over the PKCS#11 client (`hsm-client/`), `ExternalKmsService` over the provider clients (`external-kms-client/`), `KmsCoreEeModule` providing both as hooks |
-| `ce/lib/` | `DataAccessDb`, `TransactionRunner`, `TDataAccessLocks` and the in-memory runner: KMS Core's own copies until it moves onto `src/domains/lib/`. Nothing outside KMS Core imports them except `domains.ts`, through `ce/module` |
 
 ## Rules
 

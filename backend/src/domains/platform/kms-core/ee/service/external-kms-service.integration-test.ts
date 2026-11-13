@@ -1,8 +1,8 @@
 import { TableName } from "@app/db/schemas";
-import { DataAccessDb } from "../../ce/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { KmsAwsCredentialType, KmsProviders } from "@app/ee/services/external-kms/providers/model";
 
+import { DataAccessDb } from "../../ce/data-access/data-access-db";
 import { KmsCoreModule, KmsDataKey, KmsType } from "../../ce/module";
 import { testKmsCoreEnv } from "../../ce/testing/build-kms-core";
 import { KmsCoreEeModule } from "../module";

@@ -1,8 +1,8 @@
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { DataAccessDb, TReadOptions } from "../lib/data-access-db";
 import { ScopeKey, ScopeKind } from "../model/scope-key";
+import { DataAccessDb, TReadOptions } from "./data-access-db";
 
 export type TScopeKeyDataAccess = {
   findOrg(orgId: string, options?: TReadOptions): Promise<ScopeKey | undefined>;

@@ -1,15 +1,15 @@
 import { ProjectType } from "@app/db/schemas";
+import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transactions";
 import { CronJobName, type TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import type { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import type { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { NotFoundError } from "@app/lib/errors";
 
+import { DataAccessDb, TReadOptions } from "./data-access/data-access-db";
 import { buildKmsCoreDataAccess, TKmsCoreDataAccess } from "./data-access/kms-core-data-access";
 import { noKmsCoreLocks, PostgresKmsCoreLocks } from "./data-access/kms-core-locks";
 import { TKmsKeyFilter } from "./data-access/kms-key-data-access";
-import { DataAccessDb, TReadOptions } from "./lib/data-access-db";
-import { TransactionRunner, TTransactionRunner } from "./lib/transaction-runner";
 import { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
 import { RootKeyEncryptionStrategy } from "./model/root-key-config";
 import { TKmsCoreState } from "./service/key-material";
@@ -51,8 +51,8 @@ import {
 } from "./service/root-key-service";
 import { ScopeKeyService } from "./service/scope-key-service";
 
-export { DataAccessDb, ReadFrom } from "./lib/data-access-db";
-export type { TReadOptions } from "./lib/data-access-db";
+export { DataAccessDb, ReadFrom } from "./data-access/data-access-db";
+export type { TReadOptions } from "./data-access/data-access-db";
 export { KmsKeyUsage } from "./model/kms-key";
 export type { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
 export { RootKeyEncryptionStrategy } from "./model/root-key-config";
@@ -193,9 +193,11 @@ export type TKmsCoreDeps = (
   isFipsEnabled?: () => boolean;
 };
 
+// The runner's generic store locks are not used: KMS Core takes its frozen lock ids (PostgresKmsCoreLocks), which
+// pods of the previous release share during a deploy.
 export const buildKmsCoreDataAccessDeps = (db: DataAccessDb): TKmsCoreDataAccessDeps => ({
-  transactionRunner: new TransactionRunner(db, (trxDb) =>
-    buildKmsCoreDataAccess(trxDb, new PostgresKmsCoreLocks(trxDb.writer()))
+  transactionRunner: new TransactionRunner<TKmsCoreDataAccess>(db.writer(), (trx) =>
+    buildKmsCoreDataAccess(DataAccessDb.single(trx), new PostgresKmsCoreLocks(trx))
   ),
   dataAccess: buildKmsCoreDataAccess(db, noKmsCoreLocks)
 });

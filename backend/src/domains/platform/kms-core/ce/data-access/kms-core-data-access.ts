@@ -1,4 +1,4 @@
-import { DataAccessDb } from "../lib/data-access-db";
+import { DataAccessDb } from "./data-access-db";
 import { KekHistoryDataAccess, TKekHistoryDataAccess } from "./kek-history-data-access";
 import { TKmsCoreLocks } from "./kms-core-locks";
 import { KmsKeyDataAccess, TKmsKeyDataAccess } from "./kms-key-data-access";

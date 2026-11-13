@@ -1,8 +1,8 @@
 import { TableName, TKmsKekHistory } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { DataAccessDb, TReadOptions } from "../lib/data-access-db";
 import { KekHistoryEntry } from "../model/kek-history-entry";
+import { DataAccessDb, TReadOptions } from "./data-access-db";
 
 export type TKekHistoryDataAccess = {
   // Newest first. Never read unbounded: the history is never pruned.

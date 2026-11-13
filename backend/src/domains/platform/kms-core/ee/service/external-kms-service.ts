@@ -3,6 +3,7 @@ import { STSServiceException } from "@aws-sdk/client-sts";
 import slugify from "@sindresorhus/slugify";
 
 import { RuleViolationError, ExternalSystemError, EntityNotFoundError } from "@app/domains/lib/errors";
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 import {
   ExternalKmsAwsSchema,
   ExternalKmsGcpSchema,
@@ -15,7 +16,6 @@ import {
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TKmsCoreDataAccess } from "../../ce/data-access/kms-core-data-access";
-import { TTransactionRunner } from "../../ce/lib/transaction-runner";
 import { KmsKey } from "../../ce/model/kms-key";
 import {
   TCreateExternalKmsInput,
@@ -75,7 +75,7 @@ export class ExternalKmsService {
       provider: provider.type,
       encryptedProviderInputs: cipherTextBlob
     });
-    const created = await this.deps.transactionRunner.run(({ dataAccess }) => dataAccess.kmsKeys.create(key));
+    const created = await this.deps.transactionRunner.run(({ stores }) => stores.kmsKeys.create(key));
     return ExternalKmsService.details(created, providerInput);
   }
 
@@ -90,18 +90,18 @@ export class ExternalKmsService {
       }).cipherTextBlob;
     }
 
-    const updated = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      const current = await dataAccess.kmsKeys.findByIdForUpdate(kmsId);
+    const updated = await this.deps.transactionRunner.run(async ({ stores }) => {
+      const current = await stores.kmsKeys.findByIdForUpdate(kmsId);
       if (!current?.isExternal) throw notFound(kmsId);
       if (name || description) {
         current.updateAttributes({ name: name ? slugify(name) : undefined, description });
-        await dataAccess.kmsKeys.saveAttributes(current);
+        await stores.kmsKeys.saveAttributes(current);
       }
       if (encryptedProviderInputs) {
         current.updateExternalConfig(encryptedProviderInputs);
-        await dataAccess.kmsKeys.saveExternalConfig(current);
+        await stores.kmsKeys.saveExternalConfig(current);
       }
-      return (await dataAccess.kmsKeys.findById(kmsId)) as KmsKey;
+      return (await stores.kmsKeys.findById(kmsId)) as KmsKey;
     });
     return ExternalKmsService.details(updated, providerInput);
   }
@@ -109,7 +109,7 @@ export class ExternalKmsService {
   async delete(kmsId: string, orgCipher: TCipherPair) {
     const key = await this.requireExternal(kmsId);
     const providerInput = ExternalKmsService.openInputs(key, orgCipher);
-    await this.deps.transactionRunner.run(({ dataAccess }) => dataAccess.kmsKeys.deleteById(kmsId));
+    await this.deps.transactionRunner.run(({ stores }) => stores.kmsKeys.deleteById(kmsId));
     return ExternalKmsService.details(key, providerInput);
   }
 

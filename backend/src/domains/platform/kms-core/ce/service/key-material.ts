@@ -6,8 +6,8 @@ import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TReadOptions } from "../data-access/data-access-db";
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
-import { TReadOptions } from "../lib/data-access-db";
 import { KmsCiphertext } from "../model/kms-ciphertext";
 import { KmsKey, KmsKeyUsage, TKmsKeyAlgorithmName } from "../model/kms-key";
 import { TExternalKeyRef, TKmsCoreHooks } from "./kms-core-hooks";

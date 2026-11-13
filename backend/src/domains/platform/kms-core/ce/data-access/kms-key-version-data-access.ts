@@ -1,8 +1,8 @@
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { DataAccessDb, TReadOptions } from "../lib/data-access-db";
 import { KmsKeyVersion } from "../model/kms-key-version";
+import { DataAccessDb, TReadOptions } from "./data-access-db";
 
 export type TKmsKeyVersionDataAccess = {
   create(version: KmsKeyVersion): Promise<void>;

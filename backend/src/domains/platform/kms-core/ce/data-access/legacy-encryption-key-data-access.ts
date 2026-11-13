@@ -1,8 +1,8 @@
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { DataAccessDb, TReadOptions } from "../lib/data-access-db";
 import { KMS_LEGACY_ENCRYPTION_KEY_UUID, LegacyEncryptionKey } from "../model/legacy-encryption-key";
+import { DataAccessDb, TReadOptions } from "./data-access-db";
 
 export type TLegacyEncryptionKeyDataAccess = {
   find(options?: TReadOptions): Promise<LegacyEncryptionKey | undefined>;

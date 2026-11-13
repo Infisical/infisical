@@ -3,8 +3,8 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 
-import { DataAccessDb, ReadFrom, TReadOptions } from "../lib/data-access-db";
 import { KmsKey, TKmsKeyProps } from "../model/kms-key";
+import { DataAccessDb, ReadFrom, TReadOptions } from "./data-access-db";
 
 export type TKmsKeyFilter = {
   id?: string;

@@ -1,11 +1,11 @@
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { ReadFrom, TReadOptions } from "../data-access/data-access-db";
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
-import { ReadFrom, TReadOptions } from "../lib/data-access-db";
-import { TTransactionRunner } from "../lib/transaction-runner";
 import { InstanceEncryptionKey } from "../model/instance-encryption-key";
 import { KMS_ROOT_CONFIG_UUID, RootKeyConfig, RootKeyEncryptionStrategy } from "../model/root-key-config";
 import { TKmsCoreState } from "./key-material";
@@ -112,21 +112,21 @@ export class RootKeyRotationService {
     const existingStaged = await this.deps.dataAccess.rootKeyConfigs.findStaged(PRIMARY);
     if (existingStaged.length && !replaceStaged) throw new BadRequestError({ message: ALREADY_STAGED });
 
-    const result = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.rootKey();
+    const result = await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.rootKey();
 
       // Re-read under the lock: a strategy change to HSM holds the same lock.
-      const activeNow = await dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
+      const activeNow = await stores.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
       if (!activeNow) throw new NotFoundError({ message: "KMS root config not found" });
       if (activeNow.strategy === RootKeyEncryptionStrategy.HSM)
         throw new BadRequestError({ message: HSM_ROTATION_REFUSED });
 
       // Read under the lock so the warning describes the key that will actually be removed on promotion.
-      const [retained] = await dataAccess.rootKeyConfigs.findRetained();
-      const stillStaged = await dataAccess.rootKeyConfigs.findStaged();
+      const [retained] = await stores.rootKeyConfigs.findRetained();
+      const stillStaged = await stores.rootKeyConfigs.findStaged();
       if (stillStaged.length) {
         if (!replaceStaged) throw new BadRequestError({ message: ALREADY_STAGED });
-        await dataAccess.rootKeyConfigs.deleteAllStaged();
+        await stores.rootKeyConfigs.deleteAllStaged();
       } else if (existingStaged.length) {
         // The key we set out to replace was applied while this request was in flight.
         throw new ConflictError({
@@ -142,9 +142,7 @@ export class RootKeyRotationService {
         this.deps.state.rootKey.get(),
         kek.buffer
       );
-      const row = await dataAccess.rootKeyConfigs.create(
-        RootKeyConfig.stage({ encryptedRootKey, kekLabel: kek.label })
-      );
+      const row = await stores.rootKeyConfigs.create(RootKeyConfig.stage({ encryptedRootKey, kekLabel: kek.label }));
       return { row, retained, key, label: kek.label };
     });
 
@@ -159,9 +157,9 @@ export class RootKeyRotationService {
   }
 
   async deleteStagedKey({ label }: { label: string }) {
-    await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.rootKey();
-      const [staged] = await dataAccess.rootKeyConfigs.findStaged();
+    await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.rootKey();
+      const [staged] = await stores.rootKeyConfigs.findStaged();
       if (!staged) throw new NotFoundError({ message: "There is no staged encryption key to discard." });
 
       if (staged.kekLabel !== label) {
@@ -172,7 +170,7 @@ export class RootKeyRotationService {
         });
       }
 
-      if (!(await dataAccess.rootKeyConfigs.deleteById(staged.id))) {
+      if (!(await stores.rootKeyConfigs.deleteById(staged.id))) {
         throw new ConflictError({
           message:
             "The key was applied by a running instance while this request was in flight, so it could not be discarded. There is no rollback once a rotation takes effect."
@@ -185,9 +183,9 @@ export class RootKeyRotationService {
   }
 
   async deleteExpiringKey({ label, force }: { label: string; force?: boolean }) {
-    await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.rootKey();
-      const [retained] = await dataAccess.rootKeyConfigs.findRetained();
+    await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.rootKey();
+      const [retained] = await stores.rootKeyConfigs.findRetained();
       if (!retained) throw new NotFoundError({ message: "There is no previous encryption key to remove." });
 
       if (retained.kekLabel !== label) {
@@ -214,7 +212,7 @@ export class RootKeyRotationService {
         );
       }
 
-      if (!(await RootKeyRotationService.retire(dataAccess, retained))) {
+      if (!(await RootKeyRotationService.retire(stores, retained))) {
         throw new ConflictError({
           message: "The previous encryption key was already removed while this request was in flight."
         });
@@ -237,12 +235,12 @@ export class RootKeyRotationService {
     const abandoned = staged.filter((row) => now - new Date(row.createdAt).getTime() >= ABANDONED_ROTATION_MAX_AGE_MS);
     for (const row of abandoned) {
       // eslint-disable-next-line no-await-in-loop -- at most one row in practice
-      const removed = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-        await dataAccess.locks.rootKey();
+      const removed = await this.deps.transactionRunner.run(async ({ stores }) => {
+        await stores.locks.rootKey();
         // A pod may have promoted it, in which case it is the active key.
-        const current = await dataAccess.rootKeyConfigs.findById(row.id);
+        const current = await stores.rootKeyConfigs.findById(row.id);
         if (!current || current.activatedAt) return false;
-        return dataAccess.rootKeyConfigs.deleteById(row.id);
+        return stores.rootKeyConfigs.deleteById(row.id);
       });
       if (removed) {
         logger.info(
@@ -258,12 +256,12 @@ export class RootKeyRotationService {
     const eligible = retained.filter((row) => (row.removalEligibleAt(retentionDays)?.getTime() ?? Infinity) <= now);
     for (const row of eligible) {
       // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
-      const removed = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-        await dataAccess.locks.rootKey();
-        const current = await dataAccess.rootKeyConfigs.findById(row.id);
+      const removed = await this.deps.transactionRunner.run(async ({ stores }) => {
+        await stores.locks.rootKey();
+        const current = await stores.rootKeyConfigs.findById(row.id);
         if (!current?.supersededAt) return false;
         if ((current.removalEligibleAt(retentionDays)?.getTime() ?? Infinity) > Date.now()) return false;
-        return RootKeyRotationService.retire(dataAccess, current);
+        return RootKeyRotationService.retire(stores, current);
       });
       if (removed)
         logger.info(

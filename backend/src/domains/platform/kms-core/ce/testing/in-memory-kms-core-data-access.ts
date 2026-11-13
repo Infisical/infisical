@@ -1,7 +1,8 @@
+import { TStoreLocks } from "@app/domains/lib/transactions";
+import { InMemoryTransactionRunner } from "@app/domains/lib/transactions/testing/in-memory-transaction-runner";
+
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
 import { noKmsCoreLocks } from "../data-access/kms-core-locks";
-import { TDataAccessLocks } from "../lib/data-access-locks";
-import { InMemoryTransactionRunner } from "../lib/testing/in-memory-transaction-runner";
 import { TKmsCoreDataAccessDeps } from "../module";
 import { InMemoryKekHistoryDataAccess } from "./in-memory-kek-history-data-access";
 import { InMemoryKmsCoreLocks } from "./in-memory-kms-core-locks";
@@ -13,7 +14,7 @@ import { InMemoryRootKeyConfigDataAccess } from "./in-memory-root-key-config-dat
 import { InMemoryScopeKeyDataAccess } from "./in-memory-scope-key-data-access";
 
 // The in-memory data access classes ignore TReadOptions: there is one copy of every row.
-const buildDataAccess = (state: InMemoryKmsCoreState, locks?: TDataAccessLocks): TKmsCoreDataAccess => ({
+const buildDataAccess = (state: InMemoryKmsCoreState, locks?: TStoreLocks): TKmsCoreDataAccess => ({
   kmsKeys: new InMemoryKmsKeyDataAccess(state),
   kmsKeyVersions: new InMemoryKmsKeyVersionDataAccess(state),
   rootKeyConfigs: new InMemoryRootKeyConfigDataAccess(state),

@@ -1,13 +1,13 @@
 import slugify from "@sindresorhus/slugify";
 
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { ReadFrom, TReadOptions } from "../data-access/data-access-db";
 import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
-import { ReadFrom, TReadOptions } from "../lib/data-access-db";
-import { TTransactionRunner } from "../lib/transaction-runner";
 import { KmsKey, KmsKeyUsage } from "../model/kms-key";
 import { ProjectKeyBackup } from "../model/project-key-backup";
 import { WrappedKeyPayload } from "../model/wrapped-key";
@@ -85,10 +85,9 @@ export class ScopeKeyService {
 
     const key = this.newReservedKey(project.orgId);
     try {
-      return await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-        await dataAccess.kmsKeys.create(key);
-        if (!(await dataAccess.scopeKeys.setProjectCertificateKmsKeyId(projectId, key.id)))
-          throw new CertificateKeyTaken();
+      return await this.deps.transactionRunner.run(async ({ stores }) => {
+        await stores.kmsKeys.create(key);
+        if (!(await stores.scopeKeys.setProjectCertificateKmsKeyId(projectId, key.id))) throw new CertificateKeyTaken();
         return key.id;
       });
     } catch (error) {
@@ -156,9 +155,9 @@ export class ScopeKeyService {
     const encryptor = await keyEncryptor(state, this.deps.dataAccess, target, PRIMARY);
     const { cipherTextBlob } = await encryptor({ plainText: dataKey });
 
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      if (newKey) await dataAccess.kmsKeys.create(newKey);
-      const switched = await dataAccess.scopeKeys.switchProjectKey(projectId, {
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      if (newKey) await stores.kmsKeys.create(newKey);
+      const switched = await stores.scopeKeys.switchProjectKey(projectId, {
         expectedKmsKeyId: currentKmsKeyId,
         kmsKeyId: target.id,
         encryptedDataKey: cipherTextBlob
@@ -169,8 +168,8 @@ export class ScopeKeyService {
             "The project's KMS key changed while this request was in flight, so it was left unchanged. Retry the change."
         });
       }
-      if (currentKey.isReserved) await dataAccess.kmsKeys.deleteById(currentKey.id);
-      const switchedTo = (await dataAccess.kmsKeys.findById(target.id)) as KmsKey;
+      if (currentKey.isReserved) await stores.kmsKeys.deleteById(currentKey.id);
+      const switchedTo = (await stores.kmsKeys.findById(target.id)) as KmsKey;
       return { ...switchedTo.toRecord(), isExternal: !currentKey.isReserved };
     });
   }
@@ -207,10 +206,10 @@ export class ScopeKeyService {
     const encryptor = await keyEncryptor(state, this.deps.dataAccess, newKey, PRIMARY);
     const { cipherTextBlob } = await encryptor({ plainText: dataKey });
 
-    const restored = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.kmsKeys.create(newKey);
-      await dataAccess.scopeKeys.setProjectKey(projectId, { kmsKeyId: newKey.id, encryptedDataKey: cipherTextBlob });
-      return (await dataAccess.kmsKeys.findById(newKey.id)) as KmsKey;
+    const restored = await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.kmsKeys.create(newKey);
+      await stores.scopeKeys.setProjectKey(projectId, { kmsKeyId: newKey.id, encryptedDataKey: cipherTextBlob });
+      return (await stores.kmsKeys.findById(newKey.id)) as KmsKey;
     });
     return { secretManagerKmsKey: toKeyDetails(restored) };
   }
@@ -219,12 +218,12 @@ export class ScopeKeyService {
   async deleteProjectKeys({ orgId, kmsKeyIds }: { orgId: string; kmsKeyIds: string[] }): Promise<void> {
     for (const kmsKeyId of kmsKeyIds) {
       // eslint-disable-next-line no-await-in-loop -- at most two keys per project
-      await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-        const key = await dataAccess.kmsKeys.findById(kmsKeyId);
+      await this.deps.transactionRunner.run(async ({ stores }) => {
+        const key = await stores.kmsKeys.findById(kmsKeyId);
         if (!key || key.isExternal || !key.isReserved) return;
         if (key.orgId !== orgId) throw new ForbiddenRequestError({ message: "KMS doesn't belong to organization" });
-        if (await dataAccess.scopeKeys.isKeyReferenced(kmsKeyId)) return;
-        await dataAccess.kmsKeys.deleteById(kmsKeyId);
+        if (await stores.scopeKeys.isKeyReferenced(kmsKeyId)) return;
+        await stores.kmsKeys.deleteById(kmsKeyId);
       });
     }
   }
@@ -251,15 +250,15 @@ export class ScopeKeyService {
     }
 
     const key = this.newReservedKey(orgId);
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.orgKey(orgId);
-      const fresh = await dataAccess.scopeKeys.findOrg(orgId);
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.orgKey(orgId);
+      const fresh = await stores.scopeKeys.findOrg(orgId);
       if (!fresh) throw orgNotFound(orgId);
       if (fresh.kmsKeyId) {
         return { kmsKeyId: fresh.kmsKeyId, orgId, encryptedDataKey: fresh.encryptedDataKey, keyReadOptions: PRIMARY };
       }
-      await dataAccess.kmsKeys.create(key);
-      await dataAccess.scopeKeys.setOrgKmsKeyId(orgId, key.id);
+      await stores.kmsKeys.create(key);
+      await stores.scopeKeys.setOrgKmsKeyId(orgId, key.id);
       return { kmsKeyId: key.id, orgId, encryptedDataKey: fresh.encryptedDataKey, keyReadOptions: PRIMARY };
     });
   }
@@ -277,9 +276,9 @@ export class ScopeKeyService {
     }
 
     const key = this.newReservedKey(project.orgId);
-    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.projectKey(projectId);
-      const fresh = await dataAccess.scopeKeys.findProject(projectId);
+    return this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.projectKey(projectId);
+      const fresh = await stores.scopeKeys.findProject(projectId);
       if (!fresh) throw projectNotFound(projectId);
       if (fresh.kmsKeyId) {
         return {
@@ -289,8 +288,8 @@ export class ScopeKeyService {
           keyReadOptions: PRIMARY
         };
       }
-      await dataAccess.kmsKeys.create(key);
-      await dataAccess.scopeKeys.setProjectKmsKeyId(projectId, key.id);
+      await stores.kmsKeys.create(key);
+      await stores.scopeKeys.setProjectKmsKeyId(projectId, key.id);
       return {
         kmsKeyId: key.id,
         orgId: fresh.orgId,
@@ -309,11 +308,11 @@ export class ScopeKeyService {
     const kmsKey = await requireKey(this.deps.dataAccess, org.kmsKeyId, PRIMARY);
     const encryptor = await keyEncryptor(this.deps.state, this.deps.dataAccess, kmsKey, PRIMARY);
     const { cipherTextBlob } = await encryptor({ plainText: dataKey });
-    const existing = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.orgDataKey(orgId);
-      const fresh = await dataAccess.scopeKeys.findOrg(orgId);
+    const existing = await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.orgDataKey(orgId);
+      const fresh = await stores.scopeKeys.findOrg(orgId);
       if (fresh?.encryptedDataKey) return fresh.encryptedDataKey;
-      await dataAccess.scopeKeys.setOrgDataKey(orgId, cipherTextBlob);
+      await stores.scopeKeys.setOrgDataKey(orgId, cipherTextBlob);
       return null;
     });
     if (!existing) return dataKey;
@@ -344,12 +343,12 @@ export class ScopeKeyService {
     const kmsKey = await requireKey(this.deps.dataAccess, project.kmsKeyId, PRIMARY);
     const encryptor = await keyEncryptor(this.deps.state, this.deps.dataAccess, kmsKey, PRIMARY);
     const { cipherTextBlob } = await encryptor({ plainText: dataKey });
-    const existing = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.projectDataKey(projectId);
-      const fresh = await dataAccess.scopeKeys.findProject(projectId);
+    const existing = await this.deps.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.projectDataKey(projectId);
+      const fresh = await stores.scopeKeys.findProject(projectId);
       if (!fresh) throw projectNotFound(projectId);
       if (fresh.encryptedDataKey) return fresh.encryptedDataKey;
-      await dataAccess.scopeKeys.setProjectDataKey(projectId, cipherTextBlob);
+      await stores.scopeKeys.setProjectDataKey(projectId, cipherTextBlob);
       return null;
     });
     if (!existing) return dataKey;

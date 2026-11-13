@@ -1,9 +1,10 @@
+import { TStoreLocks } from "@app/domains/lib/transactions";
+
 import { TKmsCoreLocks } from "../data-access/kms-core-locks";
-import { TDataAccessLocks } from "../lib/data-access-locks";
 
 // The same lock names as Postgres, held by the in-memory transaction runner's per-key mutexes.
 export class InMemoryKmsCoreLocks implements TKmsCoreLocks {
-  constructor(private readonly locks: TDataAccessLocks) {}
+  constructor(private readonly locks: TStoreLocks) {}
 
   rootKey() {
     return this.locks.acquire("kms-root-key");

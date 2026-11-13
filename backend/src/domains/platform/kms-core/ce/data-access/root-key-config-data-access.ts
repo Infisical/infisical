@@ -1,8 +1,8 @@
 import { TableName, TKmsRootConfig } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { DataAccessDb, TReadOptions } from "../lib/data-access-db";
 import { KMS_ROOT_CONFIG_UUID, RootKeyConfig } from "../model/root-key-config";
+import { DataAccessDb, TReadOptions } from "./data-access-db";
 
 export type TRootKeyConfigPatch = {
   encryptedRootKey?: Buffer;
