@@ -1,7 +1,7 @@
-import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { OktaConnectionMethod } from "./okta-connection-enums";
@@ -26,7 +26,7 @@ export const validateOktaConnectionCredentials = async (config: TOktaConnectionC
   const instanceUrl = await getOktaInstanceUrl(config);
 
   try {
-    await request.get(`${instanceUrl}/api/v1/users/me`, {
+    await safeRequest.get(`${instanceUrl}/api/v1/users/me`, {
       headers: {
         Accept: "application/json",
         Authorization: `SSWS ${apiToken}`
@@ -42,16 +42,56 @@ export const validateOktaConnectionCredentials = async (config: TOktaConnectionC
   return config.credentials;
 };
 
+// Okta caps `limit` at 200 on /api/v1/apps and defaults it far lower, so the full list only arrives by
+// following the `next` link it returns.
+const OKTA_APPS_PER_PAGE = 200;
+const OKTA_APPS_MAX_PAGES = 100;
+
+// Okta documents the `next` link as opaque, so it is followed rather than rebuilt. It is still
+// constrained to the instance origin: the link arrives in a response header and the host is
+// user-supplied, so a `next` pointing elsewhere must not be handed the API token. Origins are
+// compared parsed rather than as strings, since a configured `https://EXAMPLE.okta.com:443` and the
+// canonical host Okta echoes back are the same origin spelled differently.
+const $getNextLink = (linkHeader: string | undefined, instanceUrl: string) => {
+  const nextLink = linkHeader?.split(",").find((part) => part.includes('rel="next"'));
+  if (!nextLink) return null;
+
+  const url = nextLink.trim().split(";")[0].slice(1, -1);
+
+  try {
+    if (new URL(url).origin !== new URL(instanceUrl).origin) return null;
+  } catch {
+    return null;
+  }
+
+  return url;
+};
+
 export const listOktaApps = async (appConnection: TOktaConnection) => {
   const { apiToken } = appConnection.credentials;
   const instanceUrl = await getOktaInstanceUrl(appConnection);
 
-  const { data } = await request.get<TOktaApp[]>(`${instanceUrl}/api/v1/apps`, {
-    headers: {
-      Accept: "application/json",
-      Authorization: `SSWS ${apiToken}`
-    }
-  });
+  const apps: TOktaApp[] = [];
+  let url: string | null = `${instanceUrl}/api/v1/apps?limit=${OKTA_APPS_PER_PAGE}`;
 
-  return data.filter((app) => app.status === "ACTIVE" && app.name === "oidc_client");
+  for (let page = 0; page < OKTA_APPS_MAX_PAGES && url; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await safeRequest.get<TOktaApp[]>(url, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `SSWS ${apiToken}`
+      }
+    });
+
+    apps.push(...response.data);
+    url = $getNextLink(response.headers.link as string | undefined, instanceUrl);
+  }
+
+  if (url) {
+    logger.warn(
+      `listOktaApps: page cap reached, returning a partial list [instanceUrl=${sanitizeUrlForLog(instanceUrl)}] [pagesRead=${OKTA_APPS_MAX_PAGES}]`
+    );
+  }
+
+  return apps.filter((app) => app.status === "ACTIVE" && app.name === "oidc_client");
 };
