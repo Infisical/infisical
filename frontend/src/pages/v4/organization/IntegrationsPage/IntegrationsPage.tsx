@@ -232,8 +232,12 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
               value={scope}
               onChange={setScope}
               tabs={[
-                { value: "org", label: "Organization", count: orgRows.length },
-                { value: "all", label: "All", count: rows.length }
+                {
+                  value: "org",
+                  label: "Organization",
+                  count: rows.length ? orgRows.length : undefined
+                },
+                { value: "all", label: "All", count: rows.length || undefined }
               ]}
             />
             <NewConnection />
@@ -366,7 +370,6 @@ export const IntegrationsPage = () => {
               {
                 value: IntegrationsListPageTabs.AppConnections,
                 label: "App connections",
-                count: rows.filter((row) => !row.projectId).length,
                 content: null
               },
               { value: workflowTab, label: "Workflow integrations", content: null },
