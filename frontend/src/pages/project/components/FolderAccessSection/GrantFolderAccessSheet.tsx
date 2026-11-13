@@ -31,6 +31,7 @@ import {
   useCreateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
+import { ApplyToSubfoldersToggle } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/ApplyToSubfoldersToggle";
 import { DEFAULT_TEMPORARY_RANGE } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   isValidTemporaryRange,
@@ -71,6 +72,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
   const [tier, setTier] = useState(SecretFolderRole.Read);
   const [isTemporary, setIsTemporary] = useState(false);
   const [range, setRange] = useState(DEFAULT_TEMPORARY_RANGE);
+  const [isRecursive, setIsRecursive] = useState(false);
 
   const createUserAccess = useCreateUserFolderAccess();
   const createIdentityAccess = useCreateIdentityFolderAccess();
@@ -134,7 +136,8 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
       environmentSlug,
       secretPath: normalizedPath,
       permission: tier,
-      type
+      type,
+      isPermissionRecursive: isRoot && isRecursive ? true : undefined
     };
 
     if (actor.type === "user") {
@@ -218,6 +221,10 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
             onRemove={() => setIsTemporary(false)}
           />
         </div>
+
+        {isRoot && (
+          <ApplyToSubfoldersToggle checked={isRecursive} onCheckedChange={setIsRecursive} />
+        )}
       </div>
 
       <SheetFooter className="border-t">

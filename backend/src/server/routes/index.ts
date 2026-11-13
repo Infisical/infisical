@@ -1343,6 +1343,7 @@ export const registerRoutes = async (
     emailDomainDAL,
     oidcConfigDAL,
     samlConfigDAL,
+    keyStore,
     eventEmitter: eventOutboxService
   });
 
@@ -1871,6 +1872,7 @@ export const registerRoutes = async (
     approvalRequestDAL,
     membershipRoleDAL,
     applicationMembershipCleanupService,
+    keyStore,
     alertChannelRecipientDAL
   });
 
