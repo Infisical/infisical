@@ -1300,7 +1300,8 @@ export const PROJECTS = {
     notBeforeFrom: "Filter certificates issued on or after this date.",
     notBeforeTo: "Filter certificates issued on or before this date.",
     sortBy: "Column to sort by (e.g. 'notAfter', 'notBefore', 'commonName').",
-    sortOrder: "Sort direction: 'asc' or 'desc'."
+    sortOrder: "Sort direction: 'asc' or 'desc'.",
+    applicationIds: "Filter to certificates issued through any of the supplied Applications."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
@@ -2507,6 +2508,20 @@ export const CERTIFICATES = {
     deletedByActorType: "The type of actor that deleted this certificate: 'user' or 'identity'.",
     deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
     deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
+  },
+  SEARCH: {
+    search: "Search by common name, SAN, serial number, or certificate ID.",
+    createdAtFrom: "Filter certificates created on or after this date.",
+    createdAtTo: "Filter certificates created on or before this date.",
+    status:
+      "List of statuses to filter by, for example ['active', 'expired']. Allowed values: active, renewed, expired, revoked, deleted. Returns exactly the certificates whose status in the response is one of these values. If you leave it out, every certificate except deleted ones is returned.",
+    keyAlgorithm: "List of key algorithms to filter by, for example ['RSA_2048', 'EC_prime256v1'].",
+    source:
+      "List of certificate sources to filter by, for example ['issued']. Allowed values: issued, discovered, imported.",
+    sortBy:
+      "Field to sort by: 'notAfter', 'notBefore', 'createdAt', 'commonName', 'keyAlgorithm' or 'status'. Sorting by status orders the statuses returned in the response alphabetically: active, deleted, expired, renewed, revoked in ascending order.",
+    statusRes:
+      "The certificate's current state, worked out once when the search starts, so every certificate in the response is evaluated at the same moment. 'deleted' if the certificate was deleted, otherwise 'revoked' if it was revoked, 'expired' if its validity period has ended, 'renewed' if a newer certificate has replaced it, and 'active' otherwise. Getting a certificate by ID returns its stored status instead, which stays 'active' after the certificate expires or is renewed."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",

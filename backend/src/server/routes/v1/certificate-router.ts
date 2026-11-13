@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
-import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATES, PROJECTS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
@@ -39,8 +39,18 @@ import {
   CertificateRenewalKeySource,
   TCertificateIssuanceResponse
 } from "@app/services/certificate-v3/certificate-v3-types";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
+import { resolveCurrentCertificateStatus } from "@app/services/certificate/certificate-fns";
+import {
+  CertificateSearchResultSchema,
+  SanitizedCertificateSchema
+} from "@app/services/certificate/certificate-schemas";
+import {
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm,
+  CertStatus,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
+import { ProjectFilterType } from "@app/services/project/project-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -795,6 +805,130 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           errorMessage: certReq.errorMessage ?? null,
           pendingMessage: certReq.pendingMessage ?? null,
           profileName: certReq.profileName ?? null
+        })),
+        totalCount
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "searchCertificates",
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Search and filter certificates.",
+      body: z.object({
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(Number.MAX_SAFE_INTEGER)
+          .default(0)
+          .describe(PROJECTS.SEARCH_CERTIFICATES.offset),
+        limit: z.number().int().min(1).max(100).default(25).describe(PROJECTS.SEARCH_CERTIFICATES.limit),
+        search: z.string().trim().max(4096).optional().describe(CERTIFICATES.SEARCH.search),
+        commonName: z.string().max(255).optional().describe(PROJECTS.SEARCH_CERTIFICATES.commonName),
+        status: z
+          .array(z.nativeEnum(CertStatus))
+          .min(1)
+          .max(Object.values(CertStatus).length)
+          .optional()
+          .describe(CERTIFICATES.SEARCH.status),
+        profileIds: z.array(z.string().uuid()).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
+        caIds: z.array(z.string().uuid()).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.caIds),
+        applicationIds: z
+          .array(z.string().uuid())
+          .max(100)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.applicationIds),
+        enrollmentTypes: z
+          .array(z.nativeEnum(EnrollmentType))
+          .max(Object.values(EnrollmentType).length)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.enrollmentTypes),
+        source: z
+          .array(z.nativeEnum(CertificateSource))
+          .max(Object.values(CertificateSource).length)
+          .optional()
+          .describe(CERTIFICATES.SEARCH.source),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1).max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .max(100)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.metadata),
+        keyAlgorithm: z
+          .array(z.string().trim().max(255))
+          .max(100)
+          .optional()
+          .describe(CERTIFICATES.SEARCH.keyAlgorithm),
+        keySizes: z.array(z.number().int()).max(100).optional().describe(PROJECTS.SEARCH_CERTIFICATES.keySizes),
+        signatureAlgorithm: z
+          .string()
+          .trim()
+          .max(255)
+          .optional()
+          .describe(PROJECTS.SEARCH_CERTIFICATES.signatureAlgorithm),
+        extendedKeyUsage: z.string().trim().max(255).optional().describe(PROJECTS.SEARCH_CERTIFICATES.extendedKeyUsage),
+        createdAtFrom: z.coerce.date().optional().describe(CERTIFICATES.SEARCH.createdAtFrom),
+        createdAtTo: z.coerce.date().optional().describe(CERTIFICATES.SEARCH.createdAtTo),
+        notBeforeFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeFrom),
+        notBeforeTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notBeforeTo),
+        notAfterFrom: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterFrom),
+        notAfterTo: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.notAfterTo),
+        sortBy: z
+          .enum(["notAfter", "notBefore", "createdAt", "commonName", "keyAlgorithm", "status"])
+          .optional()
+          .describe(CERTIFICATES.SEARCH.sortBy),
+        sortOrder: z.enum(["asc", "desc"]).optional().describe(PROJECTS.SEARCH_CERTIFICATES.sortOrder)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(
+            CertificateSearchResultSchema.omit({ friendlyName: true }).extend({
+              status: z.nativeEnum(CertStatus).describe(CERTIFICATES.SEARCH.statusRes)
+            })
+          ),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { metadata, sortBy, sortOrder, createdAtFrom, createdAtTo, ...filters } = req.body;
+      const statusAt = new Date();
+      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
+        filter: {
+          projectId: req.internalCertManagerProjectId,
+          type: ProjectFilterType.ID
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...filters,
+        fromDate: createdAtFrom,
+        toDate: createdAtTo,
+        metadataFilter: metadata,
+        sortBy,
+        sortOrder,
+        sortByCurrentStatus: true,
+        statusAt,
+        excludeFriendlyNameFromSearch: true
+      });
+      return {
+        certificates: certificates.map((certificate) => ({
+          ...certificate,
+          status: resolveCurrentCertificateStatus(certificate, statusAt)
         })),
         totalCount
       };
