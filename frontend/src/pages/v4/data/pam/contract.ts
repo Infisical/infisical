@@ -1,4 +1,5 @@
 import type {
+  PamResourcePermissionActions,
   TPamAccessRequest,
   TPamAccountListItem,
   TPamAccountTypeMetadata,
@@ -10,6 +11,7 @@ import type {
   useGetPamAccessCapabilities,
   useListPamAccounts,
   useListPamFolders,
+  useListPamSessions,
   useRemovePamProductGroupMember,
   useRemovePamProductIdentityMember,
   useRemovePamProductUserMember,
@@ -19,15 +21,19 @@ import type {
   useUpdatePamProductIdentityMember,
   useUpdatePamProductUserMember
 } from "@app/hooks/api/pam";
+import type { TPamSession } from "@app/hooks/api/pam/types";
 
 import type { MutationOf } from "../access/contract";
-import type { V4QueryResult } from "../contract";
+import type { V4Mutation, V4QueryResult } from "../contract";
 
 export type TPamFoldersParams = NonNullable<Parameters<typeof useListPamFolders>[0]>;
 export type TPamAccountsParams = NonNullable<Parameters<typeof useListPamAccounts>[0]>;
 export type TPamAccessCapabilities = NonNullable<
   ReturnType<typeof useGetPamAccessCapabilities>["data"]
 >;
+
+export type TPamSessionsParams = NonNullable<Parameters<typeof useListPamSessions>[1]>;
+export type TPamSessionsPage = NonNullable<ReturnType<typeof useListPamSessions>["data"]>;
 
 export type PamAdapter = {
   useAccessCapabilities: () => V4QueryResult<TPamAccessCapabilities>;
@@ -53,4 +59,13 @@ export type PamAdapter = {
   usePendingMyApproval: () => V4QueryResult<TPamAccessRequest[]>;
   useReviewAccessRequest: MutationOf<typeof useReviewPamAccessRequest>;
   useRevokeAccessRequest: MutationOf<typeof useRevokePamAccessRequest>;
+  useSessions: (
+    orgId: string,
+    params: TPamSessionsParams
+  ) => V4QueryResult<TPamSessionsPage> & { refetch: () => unknown };
+  useAccountActions: (
+    accountId: string,
+    enabled?: boolean
+  ) => { can: (action: PamResourcePermissionActions) => boolean; isLoading: boolean };
+  useTerminateSession: V4Mutation<{ sessionId: string }, TPamSession>;
 };

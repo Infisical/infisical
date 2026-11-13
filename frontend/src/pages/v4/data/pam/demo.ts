@@ -1,5 +1,6 @@
 import type { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
+import { useRouterState } from "@tanstack/react-router";
 import ms from "ms";
 
 import {
@@ -15,6 +16,8 @@ import {
   PamHeartbeatStatus,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
+  PamSessionStatus,
+  buildPamAccountCan,
   type PamFolderPermissionSet,
   type TPamAccessRequest,
   type TPamIdentityMember,
@@ -22,6 +25,7 @@ import {
   type TPamAccountTypeMetadata,
   type TPamFolderWithCount
 } from "@app/hooks/api/pam";
+import type { TPamSession } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
@@ -573,6 +577,276 @@ const accessRequests: TPamAccessRequest[] = requestSeeds.map(
 
 const accessRequestStore = createFixtureStore(accessRequests);
 
+const SESSION_SCENARIOS = ["default", "empty", "loading", "error", "worst-case"] as const;
+
+const useSessionScenario = () =>
+  useRouterState({
+    select: (state) => {
+      const value = (state.location.search as { scenario?: unknown }).scenario;
+      return SESSION_SCENARIOS.find((scenario) => scenario === value) ?? "default";
+    }
+  });
+
+type SessionSeed = {
+  actor: string;
+  email?: string;
+  machine?: boolean;
+  account: string;
+  status: PamSessionStatus;
+  startedMinutesAgo?: number;
+  lengthMinutes?: number;
+  accountName?: string;
+  accountDeleted?: boolean;
+  folderName?: string | null;
+};
+
+const toSession = (seed: SessionSeed, index: number): TPamSession => {
+  const account = accounts.find(({ name }) => name === seed.account) ?? accounts[0];
+  const started = seed.startedMinutesAgo;
+  const finished =
+    started !== undefined &&
+    (seed.status === PamSessionStatus.Ended || seed.status === PamSessionStatus.Terminated);
+  return {
+    id: uuid("d0", index + 1),
+    accountId: seed.accountDeleted ? null : account.id,
+    accountType: account.accountType as PamAccountType,
+    accountName: seed.accountName ?? account.name,
+    folderId: seed.accountDeleted || seed.folderName === null ? null : account.folderId,
+    folderName: seed.folderName === undefined ? account.folderName : seed.folderName,
+    userId: seed.machine ? null : uuid("b0", index + 1),
+    identityId: seed.machine && seed.email !== "" ? uuid("c0", index + 1) : null,
+    actorName: seed.actor,
+    actorEmail: seed.machine ? "" : (seed.email ?? ""),
+    actorIp: "10.0.4.17",
+    actorUserAgent: "infisical-cli/0.42.1",
+    status: seed.status,
+    startedAt: started === undefined ? null : ago(started),
+    endedAt: finished ? ago(started - (seed.lengthMinutes ?? 30)) : null,
+    createdAt: ago((started ?? 0) + 1),
+    updatedAt: ago(started ?? 0)
+  };
+};
+
+const person = (actor: string) => ({
+  actor,
+  email: `${actor.split(" ")[0].toLowerCase()}@acme.dev`
+});
+
+const sessionSeeds: SessionSeed[] = [
+  {
+    ...person("Miguel Ortega"),
+    account: "orders-primary",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 12
+  },
+  {
+    ...person("Priya Raman"),
+    account: "prod-us-east-1",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 47
+  },
+  {
+    actor: "deploy-bot",
+    machine: true,
+    account: "bastion-deploy",
+    status: PamSessionStatus.Starting
+  },
+  {
+    ...person("Jonas Weber"),
+    account: "contractor-ssh",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 128
+  },
+  {
+    ...person("Sarah Lin"),
+    account: "dc01-administrator",
+    status: PamSessionStatus.Terminated,
+    startedMinutesAgo: 190,
+    lengthMinutes: 4
+  },
+  {
+    ...person("Amara Okafor"),
+    account: "warehouse-loader",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 260,
+    lengthMinutes: 52
+  },
+  {
+    actor: "nightly-etl",
+    machine: true,
+    account: "events-readonly",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 9,
+    lengthMinutes: 18
+  },
+  {
+    ...person("Miguel Ortega"),
+    account: "billing-admin",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 26,
+    lengthMinutes: 7
+  },
+  {
+    ...person("Priya Raman"),
+    account: "aws-org-admin",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 30,
+    lengthMinutes: 95
+  },
+  {
+    ...person("Jonas Weber"),
+    account: "rdp-jumpbox",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 49,
+    lengthMinutes: 61
+  },
+  {
+    actor: "retired-runner",
+    machine: true,
+    email: "",
+    account: "build-runner",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 52,
+    lengthMinutes: 3
+  },
+  {
+    ...person("Sarah Lin"),
+    account: "orders-replica",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 75,
+    lengthMinutes: 22
+  },
+  {
+    ...person("Amara Okafor"),
+    account: "catalog-mongo",
+    accountDeleted: true,
+    accountName: "catalog-mongo-legacy",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 98,
+    lengthMinutes: 14
+  },
+  {
+    ...person("Miguel Ortega"),
+    account: "gcp-billing",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 120,
+    lengthMinutes: 9
+  },
+  {
+    ...person("Priya Raman"),
+    account: "staging-cluster",
+    status: PamSessionStatus.Terminated,
+    startedMinutesAgo: 60 * 140,
+    lengthMinutes: 2
+  },
+  {
+    ...person("Jonas Weber"),
+    account: "bastion-ops",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 170,
+    lengthMinutes: 31
+  },
+  {
+    ...person("Sarah Lin"),
+    account: "ledger-sa",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 200,
+    lengthMinutes: 44
+  },
+  {
+    ...person("Amara Okafor"),
+    account: "reporting-oracle",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 230,
+    lengthMinutes: 12
+  },
+  {
+    actor: "deploy-bot",
+    machine: true,
+    account: "bastion-deploy",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 260,
+    lengthMinutes: 1
+  },
+  {
+    ...person("Miguel Ortega"),
+    account: "sessions-cache",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 300,
+    lengthMinutes: 6
+  },
+  {
+    ...person("Priya Raman"),
+    account: "prod-eu-west-1",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 340,
+    lengthMinutes: 73
+  },
+  {
+    ...person("Jonas Weber"),
+    account: "contractor-staging-db",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 400,
+    lengthMinutes: 27
+  },
+  {
+    ...person("Sarah Lin"),
+    account: "azure-ops",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 470,
+    lengthMinutes: 15
+  },
+  {
+    ...person("Amara Okafor"),
+    account: "orders-primary",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 24 * 26,
+    lengthMinutes: 60 * 26 + 5
+  }
+];
+
+const worstCaseSeeds: SessionSeed[] = [
+  {
+    actor: "Aleksandra Wiśniewska-Kowalczyk",
+    email: "aleksandra.wisniewska-kowalczyk@northwind-industries-holdings.example.com",
+    account: "contractor-staging-db",
+    accountName: "customer-analytics-warehouse-readonly-replica-eu-central-1",
+    folderName: "Regional data platform replicas (EU, data residency restricted)",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 60 * 24 * 3 + 7
+  },
+  { actor: "Jo", email: "jo@a.test", account: "bastion-ops", status: PamSessionStatus.Starting },
+  {
+    actor: "terraform-cloud-provisioner-production-us-east-1",
+    machine: true,
+    account: "aws-org-admin",
+    status: PamSessionStatus.Terminated,
+    startedMinutesAgo: 0,
+    lengthMinutes: 0
+  },
+  {
+    actor: "王秀英",
+    email: "wang.xiuying@example.com",
+    account: "catalog-mongo",
+    accountDeleted: true,
+    folderName: null,
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 24 * 400,
+    lengthMinutes: 60 * 24 * 12 + 17
+  },
+  {
+    actor: "Đặng Thị Ngọc Hân",
+    email: "first.last+pam-break-glass-notifications@sub.department.region.example.test",
+    account: "dc01-administrator",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 5,
+    lengthMinutes: 0.4
+  }
+];
+
+const sessionStore = createFixtureStore(sessionSeeds.map(toSession));
+const worstCaseSessions = worstCaseSeeds.map((seed, index) => toSession(seed, index + 100));
+
 const PAM_PROJECT_TYPE = ProjectType.PAM;
 
 const memberFolderIds = new Set(
@@ -790,6 +1064,61 @@ export const pamDemo: PamAdapter = {
         )
       );
       return {};
+    }
+  }),
+  useSessions: (_orgId, params) => {
+    const scenario = useSessionScenario();
+    const stored = sessionStore.use();
+    const refetch = () => undefined;
+    if (scenario === "loading") return { data: undefined, isPending: true, error: null, refetch };
+    if (scenario === "error")
+      return {
+        data: undefined,
+        isPending: false,
+        error: new Error("Request failed with status code 503"),
+        refetch
+      };
+    const all = { default: stored, empty: [], "worst-case": worstCaseSessions }[scenario];
+    const search = params.search?.toLowerCase();
+    const matching = all.filter(
+      (session) =>
+        (!params.status || session.status === params.status) &&
+        (!search ||
+          [session.accountName, session.actorName, session.actorEmail, session.folderName ?? ""]
+            .join(" ")
+            .toLowerCase()
+            .includes(search))
+    );
+    const offset = params.offset ?? 0;
+    return {
+      data: {
+        sessions: matching.slice(offset, offset + (params.limit ?? 20)),
+        totalCount: matching.length
+      },
+      isPending: false,
+      error: null,
+      refetch
+    };
+  },
+  useAccountActions: (accountId) => {
+    const account = accountStore.use().find(({ id }) => id === accountId);
+    return { can: buildPamAccountCan(account?.permissions), isLoading: false };
+  },
+  useTerminateSession: () => ({
+    isPending: false,
+    mutateAsync: async ({ sessionId }) => {
+      const session = sessionStore.get().find(({ id }) => id === sessionId);
+      if (!session || session.status !== PamSessionStatus.Active)
+        throw new Error("This session has already ended");
+      const terminated = {
+        ...session,
+        status: PamSessionStatus.Terminated,
+        endedAt: new Date().toISOString()
+      };
+      sessionStore.update((current) =>
+        current.map((entry) => (entry.id === sessionId ? terminated : entry))
+      );
+      return terminated;
     }
   }),
   useRevokeAccessRequest: () => ({

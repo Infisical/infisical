@@ -8,11 +8,14 @@ import {
   useListPamFolders,
   useListPamPendingMyApproval,
   useListPamProductIdentities,
+  useListPamSessions,
+  usePamAccountActions,
   useRemovePamProductGroupMember,
   useRemovePamProductIdentityMember,
   useRemovePamProductUserMember,
   useReviewPamAccessRequest,
   useRevokePamAccessRequest,
+  useTerminatePamSession,
   useUpdatePamProductGroupMember,
   useUpdatePamProductIdentityMember,
   useUpdatePamProductUserMember
@@ -37,5 +40,15 @@ export const pamLive: PamAdapter = {
   useRemoveProductIdentityMember: useRemovePamProductIdentityMember,
   usePendingMyApproval: () => useListPamPendingMyApproval(),
   useReviewAccessRequest: useReviewPamAccessRequest,
-  useRevokeAccessRequest: useRevokePamAccessRequest
+  useRevokeAccessRequest: useRevokePamAccessRequest,
+  // The endpoint resolves the org's one PAM project itself; the id only keys the cache.
+  useSessions: (orgId, params) => useListPamSessions(orgId, params),
+  useAccountActions: usePamAccountActions,
+  useTerminateSession: () => {
+    const terminate = useTerminatePamSession();
+    return {
+      isPending: terminate.isPending,
+      mutateAsync: ({ sessionId }) => terminate.mutateAsync({ sessionId, projectId: "" })
+    };
+  }
 };
