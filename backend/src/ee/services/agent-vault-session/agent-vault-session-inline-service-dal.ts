@@ -13,7 +13,7 @@ type TInlineCustomHeaderRow = { name: string; prefix: string };
 type TInlineSubstitutionRow = { placeholder: string; surfaces: string[] };
 
 // An inline service as a session read shows it: never with a sealed value.
-export type TAgentVaultInlineServiceRow = Omit<TAgentVaultServices, "encryptedCredential"> & {
+export type TAgentVaultInlineServiceRow = Omit<TAgentVaultServices, "encryptedCredential" | "encryptedHookSecret"> & {
   sessionId: string;
   position: number;
   customHeaders: TInlineCustomHeaderRow[];
@@ -51,6 +51,7 @@ const SUMMARY_COLUMNS = [
   "credentialType",
   "credentialConfig",
   "secretsDeletedAt",
+  "hookUrl",
   "createdAt",
   "updatedAt"
 ] as const;
@@ -154,13 +155,14 @@ export const agentVaultSessionInlineServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The credential, custom header values and substitution values together, in one transaction, keeping the names and
-  // placeholders for history. Never writes the session row, whose updatedAt dates an ownerless session's last logs.
+  // The credential, the hook's signing secret, custom header values and substitution values together, in one
+  // transaction, keeping the names and placeholders for history. Never writes the session row, whose updatedAt dates
+  // an ownerless session's last logs.
   const deleteSecretsOf = async (serviceIds: string[], tx: Knex) => {
     if (!serviceIds.length) return;
     await tx(TableName.AgentVaultService)
       .whereIn("id", serviceIds)
-      .update({ encryptedCredential: null, secretsDeletedAt: new Date() });
+      .update({ encryptedCredential: null, encryptedHookSecret: null, secretsDeletedAt: new Date() });
     await tx(TableName.AgentVaultServiceCustomHeader).whereIn("serviceId", serviceIds).update({ encryptedValue: null });
     await tx(TableName.AgentVaultServiceSubstitution).whereIn("serviceId", serviceIds).update({ encryptedValue: null });
   };

@@ -4,8 +4,8 @@ import { CRLNumber, id_ce_cRLNumber } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
@@ -638,15 +638,9 @@ export const getCrlNumber = (crl: x509.X509Crl) => {
   return crlNumberExtension ? Number(AsnConvert.parse(crlNumberExtension.value, CRLNumber).value) : null;
 };
 
-export const isCaCrlAllowed = async ({
-  orgId,
-  licenseService
-}: {
-  orgId: string;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-}) => {
+export const isCaCrlAllowed = async ({ orgId, licenseService }: { orgId: string; licenseService: TLicenseService }) => {
   const plan = await licenseService.getPlan(orgId);
-  return plan.caCrl;
+  return plan.has(PlanFeature.CaCrl);
 };
 
 export const buildCaCrlParams = async ({

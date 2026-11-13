@@ -7,6 +7,7 @@ import {
   TAgentVaultProxies,
   TAgentVaultSessions
 } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
@@ -46,10 +47,7 @@ import {
 import { TAgentVaultOauthConfig, TAgentVaultOauthSecret } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
-import {
-  getSessionLogEntitlement,
-  TSessionLogLicenseService
-} from "../agent-vault-session-log/agent-vault-session-log-license-fns";
+import { getSessionLogEntitlement } from "../agent-vault-session-log/agent-vault-session-log-license-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
@@ -66,6 +64,7 @@ import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vau
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
+  AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultTrafficPolicy,
@@ -154,7 +153,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: TSessionLogLicenseService;
+  licenseService: TLicenseService;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
 };
@@ -1124,10 +1123,11 @@ export const agentVaultProxyServiceFactory = ({
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
+      rows.some((row) => row.encryptedCredential || row.encryptedHookSecret || row.memberProvidedFields?.length) ||
       inlineServiceRows.some(
         (row) =>
-          !row.secretsDeletedAt && (row.encryptedCredential || row.customHeaders.length || row.substitutions.length)
+          !row.secretsDeletedAt &&
+          (row.encryptedCredential || row.encryptedHookSecret || row.customHeaders.length || row.substitutions.length)
       ) ||
       customHeaderRows.length > 0 ||
       substitutionRows.length > 0 ||
@@ -1155,6 +1155,7 @@ export const agentVaultProxyServiceFactory = ({
       id: row.id,
       name: row.name,
       accessBundleName: row.accessBundleName,
+      accessBundleId: row.accessBundleId,
       type: row.type as AgentVaultServiceType,
       hostPattern: row.hostPattern ?? null,
       native: toResolvedNativeTarget(row.type, row.config),
@@ -1175,7 +1176,8 @@ export const agentVaultProxyServiceFactory = ({
           value: $decryptValue(substitution.encryptedValue)
         })),
       personalValuesMissing: false,
-      memberProvided: Boolean(row.memberProvidedFields?.length)
+      memberProvided: Boolean(row.memberProvidedFields?.length),
+      hook: row.hookUrl ? { url: row.hookUrl, secret: $decryptValue(row.encryptedHookSecret) } : null
     }));
 
     const bundleServices = await $applyPersonalValues({
@@ -1238,7 +1240,27 @@ export const agentVaultProxyServiceFactory = ({
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
       services,
-      sessionLogs
+      sessionLogs,
+      session: {
+        label: session.label ?? null,
+        actor: {
+          // Null only on rows a pod on the previous release wrote. Resolve refused a session with neither id above.
+          type:
+            (session.actorType as AgentVaultMemberType.User | AgentVaultMemberType.MachineIdentity | null) ??
+            (session.identityId ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User),
+          id: (session.userId ?? session.identityId)!,
+          name: session.actorName,
+          email: session.actorEmail ?? null
+        },
+        onBehalfOf:
+          session.onBehalfOfUserName != null
+            ? {
+                id: session.onBehalfOfUserId!,
+                name: session.onBehalfOfUserName,
+                email: session.onBehalfOfUserEmail ?? null
+              }
+            : null
+      }
     };
   };
 

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretScanningConfigActions,
@@ -85,7 +85,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
@@ -144,7 +144,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Data Sources due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -199,7 +199,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -240,7 +240,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -344,7 +344,7 @@ export const secretScanningV2ServiceFactory = ({
 
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to create Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -458,7 +458,7 @@ export const secretScanningV2ServiceFactory = ({
 
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to update Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -603,7 +603,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to delete Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -680,7 +680,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to trigger scan for Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -749,7 +749,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to add Secret Scanning Resources due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -991,7 +991,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Resources due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -1121,7 +1121,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Resources due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -1164,7 +1164,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Resources due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -1214,7 +1214,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Scans due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -1346,7 +1346,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to update Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -1389,7 +1389,7 @@ export const secretScanningV2ServiceFactory = ({
   const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
@@ -1424,7 +1424,7 @@ export const secretScanningV2ServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.secretScanning)
+    if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
         message:
           "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."

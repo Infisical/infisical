@@ -145,5 +145,11 @@ tn.SetPlan(t, license.Enterprise()) // verifies it took effect
 
 - Pin downgrade behaviour with `should ... when the plan does not include it`. A license
   check must never change a read path (`backend/CODE_QUALITY.md`).
+- Check what Infisical sent the License Server through the fake: `fixture.LicenseServer(t, tn, orgID)`
+  (`license.Open(t, adminURL, licenseKey)` for a self-hosted key) gives entitlement reads, usage snapshots (`ExpectEvent[license.SnapshotReceived]`) and org deletions
+  (`fixture.RequireLicenseOrgDeleted`). Open the root org, since sub-org plans are fetched under it.
+- Self-hosted tests are `Isolated` packages booted with `license.SelfHostedEnv(key)`: `""` for no license,
+  `id.Nonce()` for an online key the fake serves, or an offline key from `license.NewSigner()` plus
+  `harness.WithInfisicalFile(signer.PublicKeyFile, license.PublicKeyPath)` so the instance trusts it.
 - Only plan-derived rate limits can be raised. The rest are per source address, which
   is why each tenant and principal gets its own and why clients are never built by hand.

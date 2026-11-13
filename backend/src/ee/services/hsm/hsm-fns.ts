@@ -7,7 +7,6 @@ import { KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { THsmServiceFactory } from "./hsm-service";
 import { HsmModule } from "./hsm-types";
 
@@ -69,11 +68,12 @@ export const initializeHsmModule = (envConfig: Pick<TEnvConfig, "isHsmConfigured
 export const isHsmActiveAndEnabled = async ({
   hsmService,
   kmsRootConfigDAL,
-  licenseService
+  instanceHasHsm
 }: {
   hsmService: Pick<THsmServiceFactory, "isActive">;
   kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById">;
-  licenseService?: Pick<TLicenseServiceFactory, "onPremFeatures">;
+  // The instance license's hsm entitlement. Undefined skips the check, as migrations do.
+  instanceHasHsm?: boolean;
 }) => {
   const isHsmConfigured = await hsmService.isActive();
 
@@ -83,11 +83,7 @@ export const isHsmActiveAndEnabled = async ({
   const rootKmsConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID).catch(() => null);
 
   rootKmsConfigEncryptionStrategy = (rootKmsConfig?.encryptionStrategy || null) as RootKeyEncryptionStrategy | null;
-  if (
-    rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.HSM &&
-    licenseService &&
-    !licenseService.onPremFeatures.hsm
-  ) {
+  if (rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.HSM && instanceHasHsm === false) {
     throw new BadRequestError({
       message: "Your license does not include HSM integration. Please upgrade to the Enterprise plan to use HSM."
     });

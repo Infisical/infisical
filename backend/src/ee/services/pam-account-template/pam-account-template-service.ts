@@ -10,7 +10,7 @@ import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recordi
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { accountTypeSupportsSessionLogMasking, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
-import { validatePolicyValues } from "../pam/pam-policies";
+import { defaultTemplatePolicies, validatePolicyValues } from "../pam/pam-policies";
 import {
   mintCorsProbeUrl,
   TPamValidatorDeps,
@@ -162,7 +162,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await verifyProductAdmin(projectId, ctx);
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
-    const validatedPolicies = validateTemplatePolicies(type, policies);
+    const validatedPolicies = validateTemplatePolicies(type, policies ?? defaultTemplatePolicies(type));
     validateTemplateRotationConfig(type, settings);
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);

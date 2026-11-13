@@ -3,6 +3,9 @@ import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -124,7 +127,7 @@ const objectFor = (lastRecordAtMs: number, proxyId = PROXY_ID) => {
 };
 
 type TFeedEntry = [string, string[]];
-type TPlan = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
+type TPlanFeatures = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
 
 type TOverrides = {
   proxy?: unknown;
@@ -134,17 +137,19 @@ type TOverrides = {
   feedAddFails?: boolean;
   feedAddHangs?: boolean;
   isAdmin?: boolean;
-  plan?: TPlan;
+  plan?: TPlanFeatures;
   planFallback?: boolean;
-  lastKnownPlan?: { plan: TPlan; ageMs: number } | null;
+  lastKnownPlan?: { plan: TPlanFeatures; ageMs: number } | null;
   statsFail?: boolean;
 };
 
-const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlan = {}) => ({
-  agentVaultByoS3: hasExternal,
-  agentVaultManagedStorage: hasDefault,
-  agentVaultSessionLogRetentionDays: retentionDays
-});
+const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlanFeatures = {}) =>
+  ({
+    ...testFeatures(),
+    agentVaultByoS3: hasExternal,
+    agentVaultManagedStorage: hasDefault,
+    agentVaultSessionLogRetentionDays: retentionDays
+  }) as TLicensePlan;
 
 const build = (overrides: TOverrides = {}) => {
   const validateConnection = vi.fn(async () => ({ name: "prod-logs" }));
@@ -156,6 +161,14 @@ const build = (overrides: TOverrides = {}) => {
   });
   const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
   const streamRange = vi.fn(async () => overrides.feed ?? []);
+  const licenseService = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
+  if (overrides.planFallback) licenseService.fallbackOrgs.add("org-1");
+  if (overrides.lastKnownPlan) {
+    licenseService.lastKnown.set("org-1", {
+      plan: toPlan(overrides.lastKnownPlan.plan),
+      fetchedAt: Date.now() - overrides.lastKnownPlan.ageMs
+    });
+  }
   const addChunkCounts = vi.fn(async () => {
     if (overrides.statsFail) throw new Error("db is down");
   });
@@ -180,15 +193,7 @@ const build = (overrides: TOverrides = {}) => {
       }))
     } as never,
     kmsService: {} as never,
-    licenseService: {
-      getPlan: vi.fn(async () => toPlan(overrides.plan)),
-      isServingFallbackPlan: vi.fn(async () => overrides.planFallback ?? false),
-      getLastKnownPlan: vi.fn(async () =>
-        overrides.lastKnownPlan
-          ? { plan: toPlan(overrides.lastKnownPlan.plan), fetchedAt: Date.now() - overrides.lastKnownPlan.ageMs }
-          : null
-      )
-    } as never,
+    licenseService,
     keyStore: { streamAdd, streamRange } as never,
     objectStorage: { at } as never
   });

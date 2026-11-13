@@ -28,7 +28,6 @@ export const PgSqlLock = {
   GatewayPamSessionKey: (gatewayId: string) => pgAdvisoryLockHashText(`gateway-pam-session-key:${gatewayId}`),
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
-  CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
@@ -243,24 +242,12 @@ export const KeyStorePrefixes = {
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
-  LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
-  // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
-  LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
-  LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
   AuditLogOrgSettings: (orgId: string) => `audit-log-settings-org-${orgId}` as const,
   AuditLogProjectSettings: (orgId: string, projectId: string) =>
     `audit-log-settings-project-${orgId}-${projectId}` as const,
   AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,
   AuditLogCollapseCount: (key: string, windowStart: string) =>
     `audit-log-collapse-count-${key}-${windowStart}` as const,
-  // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
-  LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
-  // Single-flight guard so only one background revalidation runs per org per lock window.
-  LicenseCacheRevalidateLock: (orgId: string) => `license-cache-revalidate-lock-${orgId}` as const,
-  // Throttles the demand-driven usage reconciliation (fired from getPlan) to once per org per interval.
-  LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
-  LicenseUsageLastReported: (orgId: string, featureKey: string) =>
-    `license-usage-last-reported-${orgId}-${featureKey}` as const,
   PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
   PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
@@ -331,21 +318,9 @@ export const KeyStoreTtls = {
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
-  LicenseCloudPlanInSeconds: 900, // 15 minutes
-  LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
   AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
   OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
-  // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
-  LicenseCachePassThroughInSeconds: 180, // 3 minutes
-  // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
-  // after the customer finishes the hosted checkout/card-setup (which can take a few minutes).
-  LicenseCachePassThroughCheckoutInSeconds: 900, // 15 minutes
-  // Throttle window for the single-flight background revalidation.
-  LicenseCacheRevalidateLockInSeconds: 10,
-  // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
-  LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
-  LicenseUsageLastReportedInSeconds: 604800, // 7 days
   // Short: the count drifts high as certificates expire and low when an ungated path such as a
   // discovery scan inserts rows, and only this expiry corrects either.
   PkiCertificateQuotaCountInSeconds: 60,

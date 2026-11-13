@@ -237,6 +237,28 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect((await permanentlyDeleteProject(project.id)).statusCode).toBe(200);
   });
 
+  test("refuses to create a project when the plan's project limit is reached, and creates none", async () => {
+    const before = await testDb(TableName.Project).where({ orgId: seedData1.organization.id }).count("* as count");
+
+    // the seeded project alone fills a one-project limit
+    const restoreLicense = overrideLicenseFeatures({ workspaceLimit: 1 });
+    try {
+      const res = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/projects",
+        headers: { authorization: `Bearer ${jwtAuthToken}` },
+        body: { projectName: "e2e-create-limit" }
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toContain("plan limit reached");
+    } finally {
+      restoreLicense();
+    }
+
+    const after = await testDb(TableName.Project).where({ orgId: seedData1.organization.id }).count("* as count");
+    expect(after).toEqual(before);
+  });
+
   test("cannot delete an already-deleted project", async () => {
     const project = await createProject("e2e-double-delete");
     expect((await deleteProject(project.id)).statusCode).toBe(200);
