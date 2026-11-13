@@ -397,10 +397,27 @@ export const membershipUserServiceFactory = ({
     const reservation = await factory.onCreateMembershipReserve?.(dto, newExistingUsers.length + newUserEmails.length);
     const createMemberships = membershipUserDAL.transaction(async (tx) => {
       await reservation?.checkInTransaction(tx);
-      const members = unique(
+      const candidates = unique(
         [...newExistingUsers, ...(await $createInvitedUsers(newUserEmails, tx))],
         (user) => user.id
       );
+
+      const alreadyMemberIds = new Set(
+        (
+          await membershipUserDAL.find(
+            {
+              scope: scopeData.scope,
+              ...scopeDatabaseFields,
+              $in: { actorUserId: candidates.map((user) => user.id) }
+            },
+            { tx }
+          )
+        ).map((el) => el.actorUserId as string)
+      );
+      const members = candidates.filter((user) => !alreadyMemberIds.has(user.id));
+      const dropped = newExistingUsers.length + newUserEmails.length - members.length;
+      if (!members.length) return { docs: [], members, dropped };
+
       if (scopeData.scope === AccessScope.Project) {
         await lockAndAssertActiveOrgAccess(
           { orgDAL, orgId: scopeData.orgId, userIds: members.map((user) => user.id) },
@@ -441,14 +458,17 @@ export const membershipUserServiceFactory = ({
         });
       });
       await membershipRoleDAL.insertMany(roleDocs, tx);
-      return { docs, members };
+      return { docs, members, dropped };
     });
-    const { docs: membershipDoc, members: newMembershipUsers } = await createMemberships.catch(
-      async (error: unknown) => {
-        await reservation?.release();
-        throw error;
-      }
-    );
+    const {
+      docs: membershipDoc,
+      members: newMembershipUsers,
+      dropped
+    } = await createMemberships.catch(async (error: unknown) => {
+      await reservation?.release();
+      throw error;
+    });
+    if (dropped) await reservation?.release(dropped);
 
     const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
 

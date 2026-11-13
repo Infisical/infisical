@@ -19,7 +19,7 @@ type TOrgInviteQuotaFactoryDep = {
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "countSeatHolders">;
 };
 
-export type TOrgInviteReservation = { release: () => Promise<void> };
+export type TOrgInviteReservation = { release: (count?: number) => Promise<void> };
 
 export type TOrgInviteQuota = ReturnType<typeof orgInviteQuotaFactory>;
 
@@ -76,9 +76,10 @@ export const orgInviteQuotaFactory = ({ keyStore, licenseService, orgMembershipD
     );
     if (total !== -1) {
       return {
-        release: async () => {
+        release: async (released = count) => {
+          if (released <= 0) return;
           try {
-            await keyStore.incrementBy(key, -count);
+            await keyStore.incrementBy(key, -Math.min(released, count));
           } catch (error) {
             logger.error(error, `orgInviteQuota: failed to release invite reservation [orgId=${orgId}] [day=${day}]`);
           }

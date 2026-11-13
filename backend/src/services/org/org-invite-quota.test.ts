@@ -152,6 +152,27 @@ describe("orgInviteQuota.admit", () => {
   });
 });
 
+describe("orgInviteQuota partial release", () => {
+  test("gives back only the invitations that were not created", async () => {
+    // Setup
+    appConfig.isCloud = true;
+    const keyStore = fakeKeyStore();
+    const licenseService = new FakeLicenseService().setPlan(ORG_ID, { slug: null });
+    const { admit } = orgInviteQuotaFactory({
+      keyStore,
+      licenseService,
+      orgMembershipDAL: { countSeatHolders: vi.fn(async () => 0) }
+    });
+    const reservation = await admit(ORG_ID, 4);
+
+    // Action
+    await reservation.release(1);
+
+    // Assert
+    expect([...keyStore.counters.values()]).toEqual([3]);
+  });
+});
+
 describe("orgInviteQuota seats", () => {
   let licenseService: FakeLicenseService;
   const countSeatHolders = vi.fn(async () => 0);

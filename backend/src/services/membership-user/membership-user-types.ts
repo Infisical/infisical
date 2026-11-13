@@ -32,7 +32,7 @@ export interface TMembershipUserScopeFactory {
 }
 
 export type TMembershipReservation = {
-  release: () => Promise<void>;
+  release: (count?: number) => Promise<void>;
   checkInTransaction: (tx: Knex) => Promise<void>;
 };
 
