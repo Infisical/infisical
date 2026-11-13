@@ -1062,7 +1062,7 @@ export const certificateServiceFactory = ({
   type TApprovedRevocationOutcome =
     | { kind: "revoked"; cert: TRevocableCertificate; crlWarning?: string }
     | { kind: "already-revoked" }
-    | { kind: "failed"; cert?: TRevocableCertificate; reason: string };
+    | { kind: "failed"; reason: string };
 
   // A failure can land before or after the certificate was revoked locally, so the outcome comes from the
   // certificate's current status rather than from the error. `upstreamCa` is set only when the call to the
@@ -1109,19 +1109,18 @@ export const certificateServiceFactory = ({
     }
     return {
       kind: "failed",
-      cert: current,
       reason: current?.status === CertStatus.ACTIVE ? `${cause} The certificate is still active.` : cause
     };
   };
 
   const $revokeForApproval = async (
     approvalRequest: TApprovalRequest,
-    { certificateId, revocationReason }: TCertRevocationRequestData
+    { certificateId, commonName, revocationReason }: TCertRevocationRequestData
   ): Promise<TApprovedRevocationOutcome> => {
     try {
       const cert = await certificateDAL.findById(certificateId);
       if (!cert) {
-        return { kind: "failed", reason: `Certificate '${certificateId}' no longer exists.` };
+        return { kind: "failed", reason: `Certificate '${commonName}' no longer exists.` };
       }
       if (cert.status === CertStatus.REVOKED) {
         return { kind: "already-revoked" };
@@ -1148,7 +1147,7 @@ export const certificateServiceFactory = ({
 
   const $recordApprovedRevocation = async (
     approvalRequest: TApprovalRequest,
-    { certificateId, revocationReason }: TCertRevocationRequestData,
+    { certificateId, commonName, serialNumber, applicationId, revocationReason }: TCertRevocationRequestData,
     outcome: TApprovedRevocationOutcome
   ) => {
     const auditActor = { type: ActorType.PLATFORM as const, metadata: {} };
@@ -1161,7 +1160,9 @@ export const certificateServiceFactory = ({
     }
 
     if (outcome.kind === "failed") {
-      const { cert, reason } = outcome;
+      // Identifying fields come from the request, which always has them: the certificate itself may be gone
+      // (its CA was deleted and cascaded) or unreadable by the time the revocation fails.
+      const { reason } = outcome;
       await auditLogService.createAuditLog({
         projectId: approvalRequest.projectId,
         actor: auditActor,
@@ -1169,10 +1170,10 @@ export const certificateServiceFactory = ({
           type: EventType.CERT_REVOCATION_FAILED,
           metadata: {
             certId: certificateId,
-            cn: cert?.commonName,
-            serialNumber: cert?.serialNumber,
-            applicationId: cert?.applicationId,
-            applicationName: await $resolveApplicationName(cert?.applicationId),
+            cn: commonName,
+            serialNumber,
+            applicationId,
+            applicationName: await $resolveApplicationName(applicationId),
             revocationReason,
             approvalRequestId: approvalRequest.id,
             requesterName: approvalRequest.requesterName,
