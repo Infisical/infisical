@@ -1,5 +1,6 @@
 import type { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
+import { useRouterState } from "@tanstack/react-router";
 import ms from "ms";
 
 import {
@@ -15,9 +16,12 @@ import {
   PamHeartbeatStatus,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
+  PamSessionStatus,
+  buildPamAccountCan,
   type PamFolderPermissionSet,
   type TPamAccessRequest,
   type TPamIdentityMember,
+  type TPamSession,
   type TPamAccountListItem,
   type TPamAccountTypeMetadata,
   type TPamFolderWithCount
@@ -573,6 +577,225 @@ const accessRequests: TPamAccessRequest[] = requestSeeds.map(
 
 const accessRequestStore = createFixtureStore(accessRequests);
 
+type SessionSeed = {
+  account: string;
+  actor: "miguel" | "priya" | "dana" | "kenji" | "deploy-bot" | "deleted-identity";
+  status: PamSessionStatus;
+  startedMinutesAgo?: number;
+  lengthMinutes?: number;
+};
+
+const actors = {
+  miguel: { userId: "u-miguel", actorName: "Miguel Ortega", actorEmail: "miguel@acme.dev" },
+  priya: { userId: "u-priya", actorName: "Priya Raman", actorEmail: "priya@acme.dev" },
+  dana: { userId: "u-dana", actorName: "Dana Whitfield", actorEmail: "dana@acme.dev" },
+  kenji: { userId: "u-kenji", actorName: "Kenji Sato", actorEmail: "kenji@contractors.acme.dev" },
+  "deploy-bot": { identityId: "i-deploy-bot", actorName: "deploy-bot", actorEmail: "" },
+  "deleted-identity": { actorName: "ci-runner", actorEmail: "" }
+};
+
+const sessionSeeds: SessionSeed[] = [
+  {
+    account: "orders-primary",
+    actor: "miguel",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 12
+  },
+  {
+    account: "prod-us-east-1",
+    actor: "priya",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 47
+  },
+  {
+    account: "contractor-ssh",
+    actor: "kenji",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 95
+  },
+  {
+    account: "bastion-deploy",
+    actor: "deploy-bot",
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 3
+  },
+  { account: "rdp-jumpbox", actor: "dana", status: PamSessionStatus.Starting },
+  {
+    account: "billing-admin",
+    actor: "miguel",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 140,
+    lengthMinutes: 38
+  },
+  {
+    account: "warehouse-loader",
+    actor: "dana",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 260,
+    lengthMinutes: 72
+  },
+  {
+    account: "aws-org-admin",
+    actor: "priya",
+    status: PamSessionStatus.Terminated,
+    startedMinutesAgo: 320,
+    lengthMinutes: 4
+  },
+  {
+    account: "build-runner",
+    actor: "deleted-identity",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 410,
+    lengthMinutes: 1
+  },
+  {
+    account: "events-readonly",
+    actor: "dana",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 600,
+    lengthMinutes: 15
+  },
+  {
+    account: "dc01-administrator",
+    actor: "priya",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 1_380,
+    lengthMinutes: 190
+  },
+  {
+    account: "catalog-mongo",
+    actor: "miguel",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 1_460,
+    lengthMinutes: 9
+  },
+  {
+    account: "sessions-cache",
+    actor: "kenji",
+    status: PamSessionStatus.Terminated,
+    startedMinutesAgo: 1_700,
+    lengthMinutes: 26
+  },
+  {
+    account: "prod-eu-west-1",
+    actor: "priya",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 2_900,
+    lengthMinutes: 51
+  },
+  {
+    account: "gcp-billing",
+    actor: "dana",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 3_100,
+    lengthMinutes: 0.5
+  },
+  {
+    account: "contractor-staging-db",
+    actor: "kenji",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 4_300,
+    lengthMinutes: 133
+  },
+  {
+    account: "bastion-ops",
+    actor: "deploy-bot",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 5_800,
+    lengthMinutes: 2
+  },
+  {
+    account: "azure-ops",
+    actor: "miguel",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 7_200,
+    lengthMinutes: 44
+  },
+  {
+    account: "orders-replica",
+    actor: "dana",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 8_650,
+    lengthMinutes: 3_050
+  },
+  {
+    account: "reporting-oracle",
+    actor: "priya",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 10_100,
+    lengthMinutes: 18
+  },
+  {
+    account: "staging-cluster",
+    actor: "miguel",
+    status: PamSessionStatus.Terminated,
+    startedMinutesAgo: 11_500,
+    lengthMinutes: 61
+  },
+  {
+    account: "ledger-sa",
+    actor: "dana",
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 14_400,
+    lengthMinutes: 7
+  }
+];
+
+const seededSessions: TPamSession[] = sessionSeeds.map(
+  ({ account: accountName, actor, status, startedMinutesAgo, lengthMinutes }, index) => {
+    const account = accounts.find((entry) => entry.name === accountName) ?? accounts[0];
+    const createdMinutesAgo = startedMinutesAgo ?? 0;
+    return {
+      id: uuid("s0", index + 1),
+      accountId: account.id,
+      accountType: account.accountType as PamAccountType,
+      accountName: account.name,
+      folderId: account.folderId,
+      folderName: account.folderName,
+      actorIp: "203.0.113.24",
+      actorUserAgent: "Infisical CLI",
+      ...actors[actor],
+      status,
+      startedAt: startedMinutesAgo === undefined ? null : ago(startedMinutesAgo),
+      endedAt:
+        startedMinutesAgo === undefined || lengthMinutes === undefined
+          ? null
+          : ago(startedMinutesAgo - lengthMinutes),
+      createdAt: ago(createdMinutesAgo),
+      updatedAt: ago(createdMinutesAgo)
+    };
+  }
+);
+
+const deletedAccountSession: TPamSession = {
+  id: uuid("s0", seededSessions.length + 1),
+  accountId: null,
+  accountType: PamAccountType.Postgres,
+  accountName: "legacy-reporting",
+  folderId: null,
+  folderName: null,
+  actorIp: "203.0.113.24",
+  actorUserAgent: "Infisical CLI",
+  ...actors.miguel,
+  status: PamSessionStatus.Ended,
+  startedAt: ago(20_160),
+  endedAt: ago(20_100),
+  createdAt: ago(20_160),
+  updatedAt: ago(20_100)
+};
+
+const sessionStore = createFixtureStore([...seededSessions, deletedAccountSession]);
+
+const SESSION_SCENARIOS = ["default", "empty", "loading", "error"] as const;
+
+const useSessionScenario = () =>
+  useRouterState({
+    select: (state) => {
+      const value = (state.location.search as { scenario?: unknown }).scenario;
+      return SESSION_SCENARIOS.find((scenario) => scenario === value) ?? "default";
+    }
+  });
+
 const PAM_PROJECT_TYPE = ProjectType.PAM;
 
 const memberFolderIds = new Set(
@@ -803,6 +1026,53 @@ export const pamDemo: PamAdapter = {
         )
       );
       return {};
+    }
+  }),
+  useSessions: (_projectId, params, options) => {
+    const scenario = useSessionScenario();
+    const allSessions = sessionStore.use();
+    if (scenario === "loading" || options?.enabled === false)
+      return { data: undefined, isPending: true, error: null };
+    if (scenario === "error")
+      return { data: undefined, isPending: false, error: new Error("Failed to load sessions") };
+    const search = params?.search?.toLowerCase();
+    const matches = (scenario === "empty" ? [] : allSessions).filter(
+      (session) =>
+        (!params?.status || session.status === params.status) &&
+        (!search ||
+          `${session.actorName} ${session.actorEmail} ${session.accountName} ${session.folderName ?? ""}`
+            .toLowerCase()
+            .includes(search))
+    );
+    const offset = params?.offset ?? 0;
+    return {
+      data: {
+        sessions: matches.slice(offset, offset + (params?.limit ?? matches.length)),
+        totalCount: matches.length
+      },
+      isPending: false,
+      error: null
+    };
+  },
+  useAccountActions: (accountId) => {
+    const account = accountStore.use().find((entry) => entry.id === accountId);
+    return { can: buildPamAccountCan(account?.permissions), isLoading: false };
+  },
+  useTerminateSession: () => ({
+    isPending: false,
+    mutateAsync: async ({ sessionId }) => {
+      const session = sessionStore.get().find((entry) => entry.id === sessionId);
+      if (!session || session.status !== PamSessionStatus.Active)
+        throw new Error("This session has already ended");
+      const terminated = {
+        ...session,
+        status: PamSessionStatus.Terminated,
+        endedAt: new Date().toISOString()
+      };
+      sessionStore.update((current) =>
+        current.map((entry) => (entry.id === sessionId ? terminated : entry))
+      );
+      return terminated;
     }
   })
 };

@@ -10,17 +10,20 @@ import type {
   useGetPamAccessCapabilities,
   useListPamAccounts,
   useListPamFolders,
+  useListPamSessions,
+  usePamAccountActions,
   useRemovePamProductGroupMember,
   useRemovePamProductIdentityMember,
   useRemovePamProductUserMember,
   useReviewPamAccessRequest,
   useRevokePamAccessRequest,
+  useTerminatePamSession,
   useUpdatePamProductGroupMember,
   useUpdatePamProductIdentityMember,
   useUpdatePamProductUserMember
 } from "@app/hooks/api/pam";
 
-import type { MutationOf } from "../access/contract";
+import type { MutationOf, QueryOf } from "../access/contract";
 import type { V4QueryResult } from "../contract";
 
 export type TPamFoldersParams = NonNullable<Parameters<typeof useListPamFolders>[0]>;
@@ -53,4 +56,7 @@ export type PamAdapter = {
   usePendingMyApproval: () => V4QueryResult<TPamAccessRequest[]>;
   useReviewAccessRequest: MutationOf<typeof useReviewPamAccessRequest>;
   useRevokeAccessRequest: MutationOf<typeof useRevokePamAccessRequest>;
+  useSessions: QueryOf<typeof useListPamSessions>;
+  useAccountActions: typeof usePamAccountActions;
+  useTerminateSession: MutationOf<typeof useTerminatePamSession>;
 };

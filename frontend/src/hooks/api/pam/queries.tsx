@@ -408,9 +408,11 @@ type TListPamSessionsResponse = {
 
 export const useListPamSessions = (
   projectId: string,
-  params?: { offset?: number; limit?: number; search?: string; status?: string }
+  params?: { offset?: number; limit?: number; search?: string; status?: string },
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
+    ...options,
     queryKey: pamKeys.listSessions(projectId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListPamSessionsResponse>("/api/v1/pam/sessions", {
