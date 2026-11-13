@@ -110,6 +110,8 @@ export const AutoApprovalInputDetailsSchema = z.object({
 
 export const AutoApprovalCatalogSchema = z.object({
   apps: z.nativeEnum(AppConnection).array(),
+  fieldApps: z.nativeEnum(AppConnection).array(),
+  requesterApps: z.nativeEnum(AppConnection).array(),
   connections: z
     .object({
       id: z.string().uuid(),
@@ -136,29 +138,42 @@ export const AutoApprovalCatalogSchema = z.object({
 
 const MAX_SIBLINGS_LENGTH = 4096;
 
-export const AutoApprovalSiblingsSchema = z
-  .string()
-  .max(MAX_SIBLINGS_LENGTH)
-  .optional()
-  .transform((raw, ctx) => {
-    if (!raw) return {} as Record<string, string[]>;
+// A query param holding JSON, read into the given shape
+const jsonQueryParam = <T extends z.ZodTypeAny>(
+  schema: T,
+  getEmpty: () => z.infer<T>,
+  messages: { notJson: string; invalid: string }
+) =>
+  z
+    .string()
+    .max(MAX_SIBLINGS_LENGTH)
+    .optional()
+    .transform((raw, ctx): z.infer<T> => {
+      if (!raw) return getEmpty();
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "siblings must be a JSON object" });
-      return z.NEVER;
-    }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: messages.notJson });
+        return z.NEVER;
+      }
 
-    const result = z.record(IdentifierSchema, ConditionValueSchema.array().max(50)).safeParse(parsed);
-    if (!result.success) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "siblings must map each constraint to a list of values"
-      });
-      return z.NEVER;
-    }
-    return result.data;
-  })
-  .describe(DOCS.optionsSiblings);
+      const result = schema.safeParse(parsed);
+      if (!result.success) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: messages.invalid });
+        return z.NEVER;
+      }
+      return result.data as z.infer<T>;
+    });
+
+export const AutoApprovalSiblingsSchema = jsonQueryParam(
+  z.record(IdentifierSchema, ConditionValueSchema.array().max(50)),
+  () => ({}),
+  { notJson: "siblings must be a JSON object", invalid: "siblings must map each constraint to a list of values" }
+).describe(DOCS.optionsSiblings);
+
+export const AutoApprovalSelectedSchema = jsonQueryParam(ConditionValueSchema.array().max(50), () => [], {
+  notJson: "selected must be a JSON array",
+  invalid: "selected must be a list of at most 50 values"
+}).describe(DOCS.optionsSelected);

@@ -16,6 +16,9 @@ If `brew upgrade` leaves you without the latest version, check which formula you
 brew info infisical
 ```
 
+{/* "tap" is Homebrew's term for a formula repository, not a UI action */}
+{/* vale Infisical.UIActions = NO */}
+
 If the `From:` line points to `Homebrew/homebrew-core`, you have Homebrew's copy of the CLI, which Homebrew updates some time after each Infisical release. To get new versions as soon as they're released, switch to the Infisical tap:
 
 ```bash
@@ -23,6 +26,8 @@ brew uninstall infisical && brew install infisical/get-cli/infisical
 ```
 
 If Homebrew warns that the `infisical/get-cli` tap isn't trusted, upgrade with the full formula name. Homebrew then trusts the formula, so later upgrades work too:
+
+{/* vale Infisical.UIActions = YES */}
 
 ```bash
 brew upgrade infisical/get-cli/infisical

@@ -203,6 +203,11 @@ import {
   validateHumanitecConnectionCredentials
 } from "./humanitec";
 import { getImpervaConnectionListItem, ImpervaConnectionMethod, validateImpervaConnectionCredentials } from "./imperva";
+import {
+  getIncidentIoConnectionListItem,
+  IncidentIoConnectionMethod,
+  validateIncidentIoConnectionCredentials
+} from "./incident-io";
 import { getJenkinsConnectionListItem, JenkinsConnectionMethod, validateJenkinsConnectionCredentials } from "./jenkins";
 import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
@@ -401,7 +406,7 @@ const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-const PAM_APP_CONNECTIONS = [AppConnection.Jira];
+const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -529,7 +534,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
     getJiraConnectionListItem(),
-    getClickHouseConnectionListItem()
+    getClickHouseConnectionListItem(),
+    getIncidentIoConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -782,7 +788,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -904,6 +911,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DaytonaConnectionMethod.ApiKey:
     case ImpervaConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
+    case IncidentIoConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -1115,7 +1123,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
-  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported
+  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
+  [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

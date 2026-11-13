@@ -14,8 +14,25 @@ import {
 export const getAutoApprovalSubjectKey = (condition: { inputId: string | null; connectionId: string }) =>
   condition.inputId ?? `${AUTO_APPROVAL_REQUESTER_SUBJECT}:${condition.connectionId}`;
 
+export const AUTO_APPROVAL_MAX_OPTIONS = 100;
+
+export const anyOf = (values: string[]) => values.join(" or ");
+
 export const describeAutoApprovalCondition = (subjectLabel: string, constraintLabel: string, values: string[]) =>
   [subjectLabel, constraintLabel, values.join(" or ")].filter(Boolean).join(" ");
+
+const describeValues = (
+  constraint: { describeValues?: (facts: unknown, values: string[]) => string[] } | undefined,
+  facts: unknown,
+  values: string[]
+) => {
+  if (!constraint?.describeValues || !facts) return values;
+  try {
+    return constraint.describeValues(facts, values);
+  } catch {
+    return values;
+  }
+};
 
 export type TResolvedAutoApprovalSubject = {
   label: string;
@@ -49,7 +66,7 @@ export const evaluateAutoApprovalRules = (
         description: describeAutoApprovalCondition(
           subject?.label ?? condition.subject,
           isUnusedCheck ? AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL : (constraint?.label ?? condition.constraint),
-          condition.values
+          describeValues(constraint, subject?.facts, condition.values)
         )
       };
 

@@ -1,10 +1,10 @@
 ---
 title: "Auto-approval"
 sidebarTitle: "Auto-approval"
-description: "Approve PAM access requests as soon as they're submitted when the records that requesters link from other services pass the folder's rules."
+description: "Approve PAM access requests as soon as they're submitted when they pass the folder's rules."
 ---
 
-Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule checks a record that the requester links from another service, such as a Jira ticket. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
+Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule checks a record that the requester links from another service, such as a Jira ticket, or checks whether the requester is on call in incident.io. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
 
 Auto-approval has two settings, each managed by a different role:
 
@@ -13,16 +13,17 @@ Auto-approval has two settings, each managed by a different role:
 
 ## Supported services
 
-Infisical reads linked records through an [app connection](/integrations/app-connections/overview) to their service:
+Infisical reads each service through an [app connection](/integrations/app-connections/overview):
 
-| Service | Record that requesters link | App connection |
+| Service | What rules check | App connection |
 | --- | --- | --- |
-| Jira Cloud and Jira Data Center | Jira ticket | [Jira connection](/integrations/app-connections/jira) |
+| Jira Cloud and Jira Data Center | A Jira ticket that the requester links | [Jira connection](/integrations/app-connections/jira) |
+| incident.io | Whether the requester is on call | [incident.io connection](/integrations/app-connections/incident-io) |
 
 ## Prerequisites
 
 - Accounts that [require approval](/documentation/platform/pam/access-requests/overview#set-up-approval)
-- An app connection to a [supported service](#supported-services), whose user can read the records that requesters will link
+- An app connection to a [supported service](#supported-services) that can read the records your rules check, such as Jira tickets or incident.io schedules
 
 ## Turn on auto-approval in a template
 
@@ -58,13 +59,13 @@ To add rules:
     On the **Accounts** page, select the folder's three dot menu, select **Configure**, then open the **Approvals** tab.
   </Step>
   <Step>
-    In the **Auto-Approval** card, under **Request Form Fields**, select **Add Field** and choose the record to ask for, such as **Jira ticket** for your Jira connection.
+    In the **Auto-Approval** card, if the rules check a linked record, select **Add Field** under **Request Form Fields** and choose the record to ask for, such as **Jira ticket** for your Jira connection.
   </Step>
   <Step>
     Under **Rules**, select **Add Rule**, then replace the rule's default name with one that describes what the rule checks, such as `Approved change ticket`. Approvers see this name on every request the rule approves. A new rule starts with the **hasn't been used before** and **is assigned to the requester** checks on each record the folder asks for.
   </Step>
   <Step>
-    Select **Add Condition** and choose a [check](#checks), such as **Jira ticket has status**, then choose its values if it takes any.
+    Select **Add Condition** and choose a [check](#checks), such as **Jira ticket has status** or **Requester is on call in incident.io schedule**, then choose its values if it takes any.
   </Step>
   <Step>
     Repeat the previous step for each check the rule needs, then select **Save Changes**.
@@ -73,7 +74,7 @@ To add rules:
 
 ## Checks
 
-Each condition runs one check on a linked record, and the checks available depend on the record's service. If a check takes values, the record passes when it matches any of them.
+Each condition runs one check on a linked record or on the requester, and the checks available depend on the service. If a check takes values, the check passes when any of the values matches.
 
 <Warning>
   If a record has an **is assigned to the requester** check, add that check to every rule that checks the record. Without it, a requester can link a record that belongs to someone else and still pass the rule. Keep the **hasn't been used before** check too. Without it, one approved record can grant access any number of times.
@@ -93,6 +94,14 @@ Every linked record also has a **hasn't been used before** check. It passes only
 | **has label** | The ticket has at least one of the labels |
 
 To require sign-off in Jira, use **is approved in Jira** rather than **has status**. Only the approvers on a Jira Service Management request can decide its approval, while the requester might be able to change the ticket's status.
+
+### Requester in incident.io
+
+| Check | Passes when |
+| --- | --- |
+| **is on call in incident.io schedule** | The requester is on call in one of the schedules, including through an override, and has the same email address in incident.io as in Infisical |
+
+Infisical only checks the schedule when the request is submitted, so the access lasts for the full duration the requester asked for, even after their shift ends.
 
 ## Request access with a linked record
 
@@ -117,15 +126,16 @@ The outcome of the rules shows up in these places:
 
 ## How Infisical checks the rules
 
-Infisical checks the rules once, when the request is submitted, by reading each linked record from its service at that moment:
+Infisical checks the rules once, when the request is submitted, by reading each linked record and on-call schedule from its service at that moment:
 
-- Later changes in the service don't affect the result, so closing a ticket doesn't revoke access that a rule granted, and a pending request isn't approved when its record passes later
+- Later changes in the service don't affect the result, so closing a ticket or going off call doesn't revoke access that a rule granted, and a pending request isn't approved when its record passes later
 - If no record was linked, or Infisical can't read the record (the service doesn't respond or rejects the connection's credentials, the record doesn't exist, or the connection's user can't see it), every condition on that record fails
+- If Infisical can't read a schedule from incident.io, the requester doesn't count as on call in that schedule
 - A record can be linked to any number of requests, and each request passes as long as the record still passes the rule (unless the rule also requires that the record **hasn't been used before**)
 - Rules only apply to requests from users. A machine identity's request waits for the folder's approvers, or is rejected if the folder has none
 
 <Warning>
-  Infisical trusts what the linked service reports. It can't tell whether a requester approved their own ticket or assigned another person's ticket to themselves before linking it. Prevent both in the service itself. For example, in Jira Service Management, exclude the reporter and assignee from approving requests, and limit who can assign tickets.
+  Infisical trusts what each service reports. It can't tell whether a requester approved their own ticket, assigned another person's ticket to themselves before linking it, or added themselves to an incident.io schedule. Prevent these in the service itself. For example, in Jira Service Management, exclude the reporter and assignee from approving requests, and limit who can assign tickets. In incident.io, limit who can edit the schedules your rules name and add overrides to them.
 </Warning>
 
 ## Next steps

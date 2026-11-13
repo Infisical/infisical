@@ -155,6 +155,10 @@ import {
   SanitizedImpervaConnectionSchema
 } from "@app/services/app-connection/imperva";
 import {
+  IncidentIoConnectionListItemSchema,
+  SanitizedIncidentIoConnectionSchema
+} from "@app/services/app-connection/incident-io";
+import {
   JenkinsConnectionListItemSchema,
   SanitizedJenkinsConnectionSchema
 } from "@app/services/app-connection/jenkins";
@@ -403,7 +407,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedServiceNowConnectionSchema.options,
   ...SanitizedS3CompatibleConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options,
-  ...SanitizedClickHouseConnectionSchema.options
+  ...SanitizedClickHouseConnectionSchema.options,
+  ...SanitizedIncidentIoConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -503,7 +508,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ServiceNowConnectionListItemSchema,
   S3CompatibleConnectionListItemSchema,
   JiraConnectionListItemSchema,
-  ClickHouseConnectionListItemSchema
+  ClickHouseConnectionListItemSchema,
+  IncidentIoConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

@@ -23,7 +23,7 @@ import {
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
-import { TAppConnection } from "@app/hooks/api/appConnections";
+import { AppConnection, TAppConnection } from "@app/hooks/api/appConnections";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
@@ -35,8 +35,10 @@ import {
   AUTO_APPROVAL_LIMITS,
   findSubject,
   getDefaultRuleConditions,
+  isRequesterSubject,
   newKey,
-  TAutoApprovalDraft
+  TAutoApprovalDraft,
+  TDraftRule
 } from "./autoApprovalDraft";
 import { ConnectionIcon, DisabledReason, LogicConnector } from "./AutoApprovalLabels";
 import { AutoApprovalRuleCard } from "./AutoApprovalRuleCard";
@@ -74,7 +76,23 @@ export const AutoApprovalCard = ({
     OrgPermissionAppConnectionActions.Create,
     OrgPermissionSubjects.AppConnections
   );
-  const [isCreatingConnection, setIsCreatingConnection] = useState(false);
+  // Which menu the new connection is for: a request form field, or a check on the requester
+  const [creatingConnectionFor, setCreatingConnectionFor] = useState<
+    "field" | { conditionApps: AppConnection[] } | null
+  >(null);
+  // A rule checks the requester through one connection per app, so apps it already uses are left out
+  const getCreatableConditionApps = (rule: TDraftRule) =>
+    (catalogData?.requesterApps ?? []).filter(
+      (app) =>
+        !rule.conditions.some(
+          (condition) =>
+            isRequesterSubject(condition.subject) &&
+            catalog.find((connection) => connection.id === condition.connectionId)?.app === app
+        )
+    );
+  const hasRequesterChecks = catalog.some((connection) =>
+    connection.subjects.some((subject) => isRequesterSubject(subject.id))
+  );
 
   const availableInputs = catalog.flatMap((connection) =>
     connection.subjects
@@ -217,7 +235,7 @@ export const AutoApprovalCard = ({
                         {canCreateConnection && (
                           <>
                             {availableInputs.length > 0 && <DropdownMenuSeparator />}
-                            <DropdownMenuItem onClick={() => setIsCreatingConnection(true)}>
+                            <DropdownMenuItem onClick={() => setCreatingConnectionFor("field")}>
                               <Plus />
                               Create App Connection
                             </DropdownMenuItem>
@@ -230,7 +248,8 @@ export const AutoApprovalCard = ({
 
                 {draft.inputs.length === 0 ? (
                   <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
-                    No request form fields added. Rules have nothing to check until you add one.
+                    No request form fields added.
+                    {!hasRequesterChecks && " Rules have nothing to check until you add one."}
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-border rounded-md border border-border">
@@ -309,34 +328,42 @@ export const AutoApprovalCard = ({
                   </div>
                 ) : (
                   <div className="flex flex-col">
-                    {draft.rules.map((rule, index) => (
-                      <Fragment key={rule.key}>
-                        {index > 0 && <LogicConnector label="or" />}
-                        <AutoApprovalRuleCard
-                          rule={rule}
-                          inputs={draft.inputs}
-                          catalog={catalog}
-                          policyType={policyType}
-                          scope={scope}
-                          scopeId={scopeId}
-                          showErrors={showErrors}
-                          onChange={(next) =>
-                            onChange({
-                              ...draft,
-                              rules: draft.rules.map((candidate) =>
-                                candidate.key === next.key ? next : candidate
-                              )
-                            })
-                          }
-                          onRemove={() =>
-                            onChange({
-                              ...draft,
-                              rules: draft.rules.filter((candidate) => candidate.key !== rule.key)
-                            })
-                          }
-                        />
-                      </Fragment>
-                    ))}
+                    {draft.rules.map((rule, index) => {
+                      const conditionApps = getCreatableConditionApps(rule);
+                      return (
+                        <Fragment key={rule.key}>
+                          {index > 0 && <LogicConnector label="or" />}
+                          <AutoApprovalRuleCard
+                            rule={rule}
+                            inputs={draft.inputs}
+                            catalog={catalog}
+                            policyType={policyType}
+                            scope={scope}
+                            scopeId={scopeId}
+                            showErrors={showErrors}
+                            onCreateConnection={
+                              canCreateConnection && conditionApps.length
+                                ? () => setCreatingConnectionFor({ conditionApps })
+                                : undefined
+                            }
+                            onChange={(next) =>
+                              onChange({
+                                ...draft,
+                                rules: draft.rules.map((candidate) =>
+                                  candidate.key === next.key ? next : candidate
+                                )
+                              })
+                            }
+                            onRemove={() =>
+                              onChange({
+                                ...draft,
+                                rules: draft.rules.filter((candidate) => candidate.key !== rule.key)
+                              })
+                            }
+                          />
+                        </Fragment>
+                      );
+                    })}
                   </div>
                 )}
               </section>
@@ -345,10 +372,17 @@ export const AutoApprovalCard = ({
         </CardContent>
       </Card>
       <AddAppConnectionModal
-        isOpen={isCreatingConnection}
-        onOpenChange={setIsCreatingConnection}
-        apps={catalogData?.apps ?? []}
-        onComplete={addFieldForConnection}
+        isOpen={creatingConnectionFor !== null}
+        onOpenChange={(isOpen) => !isOpen && setCreatingConnectionFor(null)}
+        apps={
+          (creatingConnectionFor === "field"
+            ? catalogData?.fieldApps
+            : creatingConnectionFor?.conditionApps) ?? []
+        }
+        onComplete={async (connection) => {
+          if (creatingConnectionFor === "field") await addFieldForConnection(connection);
+          else await refetch();
+        }}
       />
     </>
   );

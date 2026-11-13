@@ -352,9 +352,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         onSuccess: () => {
           createNotification({ type: "success", text: "Approval configuration saved" });
           setIsDirty(false);
-        },
-        onError: () => {
-          createNotification({ type: "error", text: "Failed to save approval configuration" });
         }
       }
     );
