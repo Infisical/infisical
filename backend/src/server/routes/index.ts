@@ -177,9 +177,9 @@ import { pkiDiscoveryScanHistoryDALFactory } from "@app/ee/services/pki-discover
 import { pkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
 import { scepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
+import { scepIntuneRevocationSyncQueueFactory } from "@app/ee/services/pki-scep/pki-scep-intune-revocation-sync-queue";
 import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
-import { scepIntuneRevocationSyncQueueFactory } from "@app/ee/services/pki-scep/scep-intune-revocation-sync-queue";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
 import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
@@ -4451,11 +4451,13 @@ export const registerRoutes = async (
 
   const scepIntuneRevocationSyncQueue = scepIntuneRevocationSyncQueueFactory({
     cronJob,
+    scepEnrollmentConfigDAL,
     appConnectionDAL,
     kmsService,
     projectDAL,
     certificateDAL,
     certificateBodyDAL,
+    certificateAuthorityCertDAL,
     certificateService,
     auditLogService
   });

@@ -180,8 +180,11 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findScepIssuedCertsByOrgsAndSerials = async (orgIds: string[], serialNumbers: string[]) => {
-    if (serialNumbers.length === 0 || orgIds.length === 0) return [];
+  const findScepCertsByValidationConnectionsAndSerials = async (
+    validationConnectionIds: string[],
+    serialNumbers: string[]
+  ) => {
+    if (serialNumbers.length === 0 || validationConnectionIds.length === 0) return [];
     try {
       const certs = await db
         .replicaNode()(TableName.Certificate)
@@ -190,20 +193,35 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.CertificateRequests}.certificateId`,
           `${TableName.Certificate}.id`
         )
-        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Certificate}.projectId`)
+        .leftJoin(TableName.PkiApplicationProfile, (join) => {
+          join
+            .on(`${TableName.PkiApplicationProfile}.applicationId`, `${TableName.Certificate}.applicationId`)
+            .andOn(`${TableName.PkiApplicationProfile}.profileId`, `${TableName.Certificate}.profileId`);
+        })
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.PkiCertificateProfile}.id`,
+          `${TableName.Certificate}.profileId`
+        )
+        .join(TableName.PkiScepEnrollmentConfig, (join) => {
+          join
+            .on(`${TableName.PkiScepEnrollmentConfig}.id`, `${TableName.PkiApplicationProfile}.scepConfigId`)
+            .orOn(`${TableName.PkiScepEnrollmentConfig}.id`, `${TableName.PkiCertificateProfile}.scepConfigId`);
+        })
         .where(`${TableName.CertificateRequests}.enrollmentType`, EnrollmentType.SCEP)
-        .whereIn(`${TableName.Project}.orgId`, orgIds)
+        .whereIn(`${TableName.PkiScepEnrollmentConfig}.validationConnectionId`, validationConnectionIds)
         .whereIn(`${TableName.Certificate}.serialNumber`, serialNumbers)
         .distinct(
           `${TableName.Certificate}.id`,
           `${TableName.Certificate}.serialNumber`,
           `${TableName.Certificate}.status`,
-          `${TableName.Certificate}.projectId`
+          `${TableName.Certificate}.projectId`,
+          `${TableName.Certificate}.caCertId`
         );
 
-      return certs as Pick<TCertificates, "id" | "serialNumber" | "status" | "projectId">[];
+      return certs as Pick<TCertificates, "id" | "serialNumber" | "status" | "projectId" | "caCertId">[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find SCEP-issued certs by orgs and serial numbers" });
+      throw new DatabaseError({ error, name: "Find SCEP certs by validation connections and serial numbers" });
     }
   };
 
@@ -1669,7 +1687,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findAllActiveCertsForSubscriber,
     findActiveDigiCertCertsByOrderIds,
     findActiveDigiCertCertsByCaId,
-    findScepIssuedCertsByOrgsAndSerials,
+    findScepCertsByValidationConnectionsAndSerials,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
     findActiveCertificatesByIds,

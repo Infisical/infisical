@@ -25,6 +25,7 @@ const PKI_CONNECTOR_SERVICE_NAME = "PkiConnectorFEService";
 const INTUNE_API_VERSION = "2018-02-20";
 const INTUNE_PKI_CONNECTOR_API_VERSION = "5019-05-05";
 export const INTUNE_MAX_REVOCATION_REQUESTS = 500;
+const INTUNE_PKI_CONNECTOR_TIMEOUT_MS = 30_000;
 // Intune returns this (case-insensitively) in the `code` field when a SCEP request passes validation.
 const INTUNE_SUCCESS_CODE = "success";
 
@@ -261,13 +262,16 @@ export const intuneSendFailureNotification = async ({
   assertIntuneNotificationAccepted(data, "failure notification");
 };
 
-const intunePkiConnectorHeaders = (intuneAccessToken: string) => ({
-  Authorization: `Bearer ${intuneAccessToken}`,
-  "Content-Type": "application/json",
-  Accept: "application/json",
-  "api-version": INTUNE_PKI_CONNECTOR_API_VERSION,
-  "client-request-id": randomUUID(),
-  UserAgent: INTUNE_CALLER_INFO
+const intunePkiConnectorRequestConfig = (intuneAccessToken: string) => ({
+  timeout: INTUNE_PKI_CONNECTOR_TIMEOUT_MS,
+  headers: {
+    Authorization: `Bearer ${intuneAccessToken}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "api-version": INTUNE_PKI_CONNECTOR_API_VERSION,
+    "client-request-id": randomUUID(),
+    UserAgent: INTUNE_CALLER_INFO
+  }
 });
 
 export const intuneDownloadRevocationRequests = async ({
@@ -280,7 +284,7 @@ export const intuneDownloadRevocationRequests = async ({
   const { data } = await safeRequest.post<TIntuneRevocationRequestsResponse>(
     `${serviceUri}/CertificateAuthorityRequests/downloadRevocationRequests`,
     { downloadParameters: { maxRequests: INTUNE_MAX_REVOCATION_REQUESTS, issuerName: null } },
-    { headers: intunePkiConnectorHeaders(intuneAccessToken) }
+    { ...intunePkiConnectorRequestConfig(intuneAccessToken), "axios-retry": { retries: 0 } }
   );
 
   return data?.value ?? [];
@@ -298,7 +302,7 @@ export const intuneUploadRevocationResults = async ({
   const { data } = await safeRequest.post<{ value?: boolean }>(
     `${serviceUri}/CertificateAuthorityRequests/uploadRevocationResults`,
     { results },
-    { headers: intunePkiConnectorHeaders(intuneAccessToken) }
+    intunePkiConnectorRequestConfig(intuneAccessToken)
   );
 
   if (data?.value === false) {

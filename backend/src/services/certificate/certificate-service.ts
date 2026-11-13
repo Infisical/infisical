@@ -707,14 +707,12 @@ export const certificateServiceFactory = ({
     cert,
     ca,
     revocationReason,
-    orgId,
-    deferCrlRebuild
+    orgId
   }: {
     cert: TCertificates;
     ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>;
     revocationReason: CrlReason;
     orgId?: string;
-    deferCrlRebuild?: boolean;
   }) => {
     if (cert.status === CertStatus.REVOKED) {
       throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
@@ -809,8 +807,6 @@ export const certificateServiceFactory = ({
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
-    const crlWarning = deferCrlRebuild ? undefined : await $rebuildCrlAfterRevocation(ca);
-
     if (!cert.deletedAt) {
       try {
         await pkiAlertV2Queue?.queueCertificateEvent({
@@ -841,8 +837,7 @@ export const certificateServiceFactory = ({
       revokedAt,
       cert,
       applicationName: await $resolveApplicationName(cert.applicationId),
-      ca: caResult,
-      crlWarning
+      ca: caResult
     };
   };
 
@@ -904,17 +899,16 @@ export const certificateServiceFactory = ({
       resourceMetadataDAL
     });
 
-    return $revokeCertificate({ cert, ca, revocationReason, orgId: actorOrgId });
+    const revocation = await $revokeCertificate({ cert, ca, revocationReason, orgId: actorOrgId });
+    return { ...revocation, crlWarning: await $rebuildCrlAfterRevocation(ca) };
   };
 
   const revokeCertAsPlatform = async ({
     certificateId,
-    revocationReason,
-    deferCrlRebuild
+    revocationReason
   }: {
     certificateId: string;
     revocationReason: CrlReason;
-    deferCrlRebuild?: boolean;
   }) => {
     const cert = await certificateDAL.findById(certificateId);
     if (!cert) {
@@ -927,7 +921,7 @@ export const certificateServiceFactory = ({
       return { outcome: PlatformRevocationOutcome.NotRevocable, reason: revocableCa.notRevocableReason } as const;
     }
 
-    const revocation = await $revokeCertificate({ cert, ca: revocableCa.ca, revocationReason, deferCrlRebuild });
+    const revocation = await $revokeCertificate({ cert, ca: revocableCa.ca, revocationReason });
     return { outcome: PlatformRevocationOutcome.Revoked, ...revocation } as const;
   };
 

@@ -890,9 +890,12 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 [`src/ee/services/certificate-authority-ocsp/AGENTS.md`](src/ee/services/certificate-authority-ocsp/AGENTS.md).**
 One rule binds code elsewhere: **any new path that revokes a certificate must bump
 `internal_certificate_authorities.ocspGeneration` in the same transaction as the status write** (as
-`revokeCert` does), or cached OCSP responses keep answering `good`. A job that revokes with no user
-(a sync from an outside system) calls `certificateService.revokeCertAsPlatform`, which also runs the
-upstream CA call, the CRL rebuild, syncs and alerts, instead of writing `status` itself.
+`revokeCert` does), or cached OCSP responses keep answering `good`. A job that revokes on a signal from an
+outside system, where the CA hasn't revoked yet, calls `certificateService.revokeCertAsPlatform` (the
+upstream CA call, OCSP bump, syncs and alerts) instead of writing `status` itself, writes the `REVOKE_CERT`
+audit log with the `PLATFORM` actor, and calls `rebuildCrlsAfterPlatformRevocations` once per batch, since
+`revokeCertAsPlatform` never rebuilds the CRL itself. A sync that mirrors a revocation the CA already made (the
+DigiCert revocation sync) keeps writing `status` directly.
 
 ### Internal CA key sources
 
