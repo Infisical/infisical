@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { isPasswordBreached } from "@app/lib/validator/breached-password";
+
 import { authPaswordServiceFactory } from "./auth-password-service";
 import { ResetPasswordV2Type } from "./auth-password-type";
 import { AuthMethod } from "./auth-type";
@@ -60,4 +62,20 @@ describe("breached password", () => {
     ).rejects.toThrow("known data breach");
     expect(tokenService.validateTokenForUser).not.toHaveBeenCalled();
   });
+});
+
+test("refuses a recovery token that expires during the lookup", async () => {
+  vi.mocked(isPasswordBreached).mockResolvedValueOnce(false);
+  const { keyStore, service } = setup();
+
+  await expect(
+    service.resetPasswordV2({
+      type: ResetPasswordV2Type.Recovery,
+      userId: "user-id",
+      newPassword: "a safe password",
+      recoveryTokenJti: "jti",
+      recoveryTokenExpiresAt: Math.floor(Date.now() / 1000) - 1
+    })
+  ).rejects.toThrow("Invalid recovery token");
+  expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
 });

@@ -55,6 +55,10 @@ export const authPaswordServiceFactory = ({
       }
       // Before the claim, so the same link can be retried.
       await assertPasswordNotBreached(newPassword);
+      // The lookup can outlast the token.
+      if (recoveryTokenExpiresAt <= Math.floor(Date.now() / 1000)) {
+        throw new UnauthorizedError({ message: "Invalid recovery token" });
+      }
       // Marker TTL tracks the token's own remaining lifetime so non-default JWT_SIGNUP_LIFETIME
       // configs can't outlast the replay marker and reopen the reuse window.
       const ttlSeconds = Math.max(1, recoveryTokenExpiresAt - Math.floor(Date.now() / 1000));
