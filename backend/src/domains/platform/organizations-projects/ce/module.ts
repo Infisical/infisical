@@ -1,9 +1,9 @@
 import { TDbClient } from "@app/db";
 import { TransactionRunner } from "@app/domains/lib/transactions";
 
-import { BillableActorDataAccess } from "./data-access/billable-actor-data-access";
-import { OrganizationDataAccess } from "./data-access/organization-data-access";
-import { TOrganizationsProjectsStore } from "./services/dependencies";
+import { BillableActorStore } from "./data-access/billable-actor-store";
+import { OrganizationStore } from "./data-access/organization-store";
+import { TOrganizationsProjectsStores } from "./services/dependencies";
 import { OrganizationsProjectsService, TOrganizationsProjectsService } from "./services/organizations-projects/service";
 
 export type { TOrganizationsProjectsService } from "./services/organizations-projects/service";
@@ -20,11 +20,11 @@ export class OrganizationsProjectsModule {
   constructor({ db }: TOrganizationsProjectsDeps) {
     const replica = () => db.replicaNode();
     this.organizationsProjectsService = new OrganizationsProjectsService(
-      new OrganizationDataAccess(replica),
-      new BillableActorDataAccess(replica),
-      new TransactionRunner<TOrganizationsProjectsStore>(db, (trx, locks) => ({
-        organizations: new OrganizationDataAccess(() => trx),
-        billableActors: new BillableActorDataAccess(() => trx),
+      new OrganizationStore(replica),
+      new BillableActorStore(replica),
+      new TransactionRunner<TOrganizationsProjectsStores>(db, (trx, locks) => ({
+        organizationStore: new OrganizationStore(() => trx),
+        billableActorStore: new BillableActorStore(() => trx),
         locks
       }))
     );

@@ -20,14 +20,14 @@ const newRunner = () => {
 };
 
 describe("InMemoryTransactionRunner.run", () => {
-  test("should restore the store when the work throws", async () => {
+  test("should restore the stores when the work throws", async () => {
     // Setup
     const { state, runner } = newRunner();
     state.values.set("a", 1);
 
     // Action
-    const result = runner.run(async ({ store }) => {
-      store.state.values.set("a", 2);
+    const result = runner.run(async ({ stores }) => {
+      stores.state.values.set("a", 2);
       throw new Error("boom");
     });
 
@@ -66,8 +66,8 @@ describe("InMemoryTransactionRunner.run", () => {
 
     // Action
     const result = runner.run(async ({ tx }) => {
-      await runner.within(tx).run(async ({ store }) => {
-        store.state.values.set("joined", 1);
+      await runner.within(tx).run(async ({ stores }) => {
+        stores.state.values.set("joined", 1);
       });
       throw new Error("outer fails");
     });
@@ -106,19 +106,19 @@ describe("InMemoryTransactionRunner.run", () => {
     });
 
     // Action
-    const first = runner.run(async ({ store }) => {
-      await store.locks.acquire("k");
+    const first = runner.run(async ({ stores }) => {
+      await stores.locks.acquire("k");
       order.push("first acquired");
       await firstHolds;
       order.push("first releases");
     });
     await Promise.resolve();
-    const other = runner.run(async ({ store }) => {
-      await store.locks.acquire("other");
+    const other = runner.run(async ({ stores }) => {
+      await stores.locks.acquire("other");
       order.push("other key acquired");
     });
-    const second = runner.run(async ({ store }) => {
-      await store.locks.acquire("k");
+    const second = runner.run(async ({ stores }) => {
+      await stores.locks.acquire("k");
       order.push("second acquired");
     });
     await other;
@@ -133,15 +133,15 @@ describe("InMemoryTransactionRunner.run", () => {
     // Setup
     const { runner } = newRunner();
     await runner
-      .run(async ({ store }) => {
-        await store.locks.acquire("k");
+      .run(async ({ stores }) => {
+        await stores.locks.acquire("k");
         throw new Error("boom");
       })
       .catch(() => undefined);
 
     // Action
-    const acquired = await runner.run(async ({ store }) => {
-      await store.locks.acquire("k");
+    const acquired = await runner.run(async ({ stores }) => {
+      await stores.locks.acquire("k");
       return true;
     });
 

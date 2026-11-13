@@ -10,13 +10,13 @@ import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import {
   TCertificateOrgUnitCount,
-  TCertificateUsageDataAccess,
+  TCertificateUsageStore,
   TOrgUnitCount,
   TPkiRootOrgUsage
 } from "../services/dependencies";
 
 // Reads tables we'll own once cert issuance moves in (see ../../AGENTS.md).
-export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
+export class CertificateUsageStore implements TCertificateUsageStore {
   constructor(private readonly db: TDbClient) {}
 
   // No orgId = whole instance. Self-hosted reports under a non-uuid identity, so drop the org filter

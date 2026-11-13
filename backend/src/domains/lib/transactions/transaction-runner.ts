@@ -12,14 +12,14 @@ export type TTransaction = {
   afterCommit(fn: () => Promise<void>): void;
 };
 
-export type TRunContext<TStore> = { store: TStore; tx: TTransaction };
+export type TRunContext<TStores> = { stores: TStores; tx: TTransaction };
 
-export type TTransactionRunner<TStore> = {
-  run<T>(work: (ctx: TRunContext<TStore>) => Promise<T>): Promise<T>;
-  within(tx: TTransaction): TTransactionRunner<TStore>;
+export type TTransactionRunner<TStores> = {
+  run<T>(work: (ctx: TRunContext<TStores>) => Promise<T>): Promise<T>;
+  within(tx: TTransaction): TTransactionRunner<TStores>;
 };
 
-export type TBuildStore<TStore> = (trx: Knex, locks: TStoreLocks) => TStore;
+export type TBuildStores<TStores> = (trx: Knex, locks: TStoreLocks) => TStores;
 
 const knexHandles = new WeakMap<object, Knex.Transaction>();
 
@@ -51,27 +51,27 @@ export const runAfterCommitHooks = async (hooks: Array<() => Promise<void>>) => 
   }
 };
 
-export class TransactionRunner<TStore> implements TTransactionRunner<TStore> {
+export class TransactionRunner<TStores> implements TTransactionRunner<TStores> {
   constructor(
     private readonly db: TDbClient,
-    private readonly buildStore: TBuildStore<TStore>,
+    private readonly buildStores: TBuildStores<TStores>,
     private readonly parent?: TTransaction
   ) {}
 
-  within(tx: TTransaction): TransactionRunner<TStore> {
-    return new TransactionRunner(this.db, this.buildStore, tx);
+  within(tx: TTransaction): TransactionRunner<TStores> {
+    return new TransactionRunner(this.db, this.buildStores, tx);
   }
 
-  async run<T>(work: (ctx: TRunContext<TStore>) => Promise<T>): Promise<T> {
+  async run<T>(work: (ctx: TRunContext<TStores>) => Promise<T>): Promise<T> {
     if (this.parent) {
       const trx = unsealTransaction(this.parent);
-      return work({ store: this.buildStore(trx, new PostgresStoreLocks(trx)), tx: this.parent });
+      return work({ stores: this.buildStores(trx, new PostgresStoreLocks(trx)), tx: this.parent });
     }
 
     const hooks: Array<() => Promise<void>> = [];
     const result = await this.db.transaction(async (trx) => {
       const tx = sealTransaction(trx, (fn) => hooks.push(fn));
-      return work({ store: this.buildStore(trx, new PostgresStoreLocks(trx)), tx });
+      return work({ stores: this.buildStores(trx, new PostgresStoreLocks(trx)), tx });
     });
     await runAfterCommitHooks(hooks);
     return result;

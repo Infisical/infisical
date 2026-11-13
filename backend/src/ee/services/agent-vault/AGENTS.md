@@ -44,7 +44,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `My first project` when the user picks Agent Vault; a migration renamed every existing project from `Agent Vault`
   to `My first project` (slug kept).
 - There is no limit on how many Agent Vault projects an org holds. The projects stay out of the workspace count
-  (`UNCOUNTED_WORKSPACE_TYPES` in `domains/platform/organizations-projects/ce/data-access/organization-data-access.ts`);
+  (`UNCOUNTED_WORKSPACE_TYPES` in `domains/platform/organizations-projects/ce/data-access/organization-store.ts`);
   break the exclusion and every org loses a workspace slot.
 - Each handler resolves its project after zod validation: `resolveRequestedProjectId(req, projectId, "query" | "body")`
   (`ee/routes/v1/agent-vault-routers/agent-vault-router-fns.ts`) for lists, creates, project-level routes and lookups

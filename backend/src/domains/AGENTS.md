@@ -35,7 +35,7 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 | `lib/transactions/` | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
 | `lib/key-store/` | `TDomainKeyStore` | `InMemoryKeyStore` |
 | `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
-| `lib/data-access/` | `toCount` and other row helpers every data access class needs | |
+| `lib/data-access/` | `toCount` and other row helpers every store needs | |
 | `lib/testing/integration/` | The Postgres integration harness (`setupIntegration`) | |
 
 Import `@app/domains/lib/<folder>` or `@app/domains/lib/<folder>/testing/<file>`, never a file inside a folder;
@@ -51,21 +51,22 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | --- | --- |
 | `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts`, so a `ce/` domain never depends on an `ee/`-only one |
 | `models/` | One class per entity or value, with its rules. A file holds the class and its record type (`T<Model>Record`, what `restore()` takes and `toJSON()` returns), nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
-| `data-access/` | One class per entity implementing a type from `services/dependencies.ts` and returning models, plus `data-access/<domain>-store.ts` exporting `build<Domain>Store(trx, locks)` |
+| `data-access/` | Stores (`<entity>-store.ts`, Postgres) and caches (`<thing>-cache.ts`, key store or memory), each implementing a type from `services/dependencies.ts`. Stores return models |
 | `clients/<system>/` | Client for an external system, one folder per system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
-| `services/` | Business logic. One folder per use case group: `services/<name>/service.ts` holds the class (`T<Name>Service`) and its input types, with its unit and integration tests and the helpers only it uses beside it. Helpers two or more services use go in `services/helpers/`. `services/dependencies.ts` holds the data access and store types, `T<Domain>Store` included, and what the services need from EE or a domain they can't import |
+| `services/` | Business logic. One folder per use case group: `services/<name>/service.ts` holds the class (`T<Name>Service`) and its input types, with its unit and integration tests and the helpers only it uses beside it. Helpers two or more services use go in `services/helpers/`. `services/dependencies.ts` holds the store and cache types, the `T<Domain>Stores` bundle included, and what the services need from EE or a domain they can't import |
 | `router/` | Fastify routes: validate, call a service, shape the response |
-| `testing/` | In-memory data access and store, a `Fake<Name>Service` per service another domain or legacy code calls, contract suites |
+| `testing/` | In-memory stores, a `Fake<Name>Service` per service another domain or legacy code calls, contract suites |
 
 ## Building blocks
 
 | Piece | Rule |
 | --- | --- |
 | Model | One per entity, even if stored across several tables. Private constructor taking each field directly as a parameter property (`private readonly offlineLicenseId: string \| null`), never a `props` object; static `create()`/`restore()` take the record and spread it into the constructor, and `toJSON()` rebuilds it. The one exception is a record read by key, like `Plan`'s features (`plan.has(PlanFeature.X)` indexes it), which stays one frozen object. Fields stay private: expose behavior, plus getters for the fields callers need, so nobody reads a raw field the model has a rule for (`plan.has(PlanFeature.Rbac)`, not `plan.rbac`) or mutates it. Never a bare type or function |
-| Entity | Has an id and changes over time. `create()` validates, generates the id and throws `RuleViolationError` for bad input; `restore()` trusts the row. Changes go through intention-revealing methods that enforce the rules and mutate the private fields (`trustedIp.changeAddress(...)`, `membership.deactivate()`), never a generic `update(record)` or a setter; data access then persists the instance |
+| Entity | Has an id and changes over time. `create()` validates, generates the id and throws `RuleViolationError` for bad input; `restore()` trusts the row. Changes go through intention-revealing methods that enforce the rules and mutate the private fields (`trustedIp.changeAddress(...)`, `membership.deactivate()`), never a generic `update(record)` or a setter; its store then persists the instance |
 | Value object | No id, compared by value, immutable (`Plan` is deep-frozen, `Meter` and `SeatUsage` are readonly). A change returns a new instance. Use one for any value with rules attached: a quota, a key, a scope |
-| Data access | One per model. Owns every table storing that model, returns models not rows. A table belongs to exactly one data access class; other domains go through the owner's service. Shared query fragments are private methods |
-| Store | All of a domain's data access, bound to one connection or transaction |
+| Store | One per model (`OrganizationStore`). Owns every table storing that model, returns models not rows. A table belongs to exactly one store; other domains go through the owner's service. Shared query fragments are private methods |
+| Cache | Expiring state over the key store or memory (`PlanCache`). Stores keep data durably, caches can lose it |
+| Stores bundle | A domain's stores plus `locks`, bound to one transaction: what `run` hands a service as `stores`. Built inline in `module.ts` and passed to `TransactionRunner` |
 | Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
 | Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsProjectsModule.organizationsProjectsService`, `LicenseModule.licenseService`). Never wraps a service method |
 | Router | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.
@@ -90,13 +91,13 @@ Signs a model is anemic, and what to do instead:
 | A public getter or field for every column | Getters only for data with no rule attached (`plan.slug`, `meter.key`) |
 | A setter, or `update(partial)` | One method per change, named for the intent, that checks the rules (`membership.deactivate()`) |
 | The service validates input before `create()` | `create()` validates and throws `RuleViolationError` |
-| `x-fns.ts` functions taking the record as their first argument | Methods on the model; what's left (needs the store or another domain) goes to `services/helpers/` |
+| `x-fns.ts` functions taking the record as their first argument | Methods on the model; what's left (needs `stores` or another domain) goes to `services/helpers/` |
 | The same check repeated in several services | One model method; services call it and don't re-check |
 
 Where a rule goes:
 
 1. It needs only the entity's own fields: a model method.
-2. It needs other rows of this domain (a count, a sibling): the service loads them through the store, then asks
+2. It needs other rows of this domain (a count, a sibling): the service loads them through `stores`, then asks
    the model (`SeatUsage.fromBillableActors(counts).assertAvailable(plan, via)`).
 3. It needs another domain's value: the service reads it before `run` and passes it to the model.
 
@@ -118,11 +119,11 @@ rule about it shows up.
 - State never touches the DB. If it must follow a DB change, update it in `tx.afterCommit(...)` so a
   rollback can't leave them out of sync.
 
-### Data access
+### Stores and caches
 
 - Take a connection source, not a handle: `constructor(private readonly knex: () => Knex)`. The module passes
-  `() => db.replicaNode()` for the instance the service reads through outside a transaction, and the store
-  builder passes `() => trx` (`OrganizationsProjectsModule`). `replicaNode()` picks a replica per call, which is
+  `() => db.replicaNode()` for the instance the service reads through outside a transaction, and `() => trx`
+  for the ones in the stores bundle (`OrganizationsProjectsModule`). `replicaNode()` picks a replica per call, which is
   why it's a function.
 - Reads outside `run` go to a replica and can lag. A read that must see a write just made, or that guards a
   write, goes through `run` (or `within(tx)`) so it runs on the primary.
@@ -133,41 +134,42 @@ rule about it shows up.
   Don't port `ormify`: write the queries the type declares, nothing generic.
 - Return models (`Model.restore(row)`), `null` for a missing row, and plain shapes only for counts and read-only
   rows (see Rich models).
-- A key store cache is data access too: a `<Thing>Cache` class over `TDomainKeyStore` (`lib/key-store/`)
-  holding its key names and TTLs as file-local constants (`PlanCache`).
+- A cache is a `<Thing>Cache` class over `TDomainKeyStore` (`lib/key-store/`) or memory, holding its key names
+  and TTLs as file-local constants (`PlanCache`). The key store is Redis, not a domain store; the name predates
+  domains.
 
 ## Transactions
 
 ```ts
-export class TransactionRunner<TStore> {
-  constructor(db: TDbClient, buildStore: (trx: Knex, locks: TStoreLocks) => TStore, parent?: TTransaction);
-  within(tx: TTransaction): TransactionRunner<TStore>; // joins tx instead of opening one
-  run<T>(work: (ctx: { store: TStore; tx: TTransaction }) => Promise<T>): Promise<T>;
+export class TransactionRunner<TStores> {
+  constructor(db: TDbClient, buildStores: (trx: Knex, locks: TStoreLocks) => TStores, parent?: TTransaction);
+  within(tx: TTransaction): TransactionRunner<TStores>; // joins tx instead of opening one
+  run<T>(work: (ctx: { stores: TStores; tx: TTransaction }) => Promise<T>): Promise<T>;
 }
 ```
 
 The KMS code in this file is a sketch of the shape, not code in the repo; see "Reference code" for real examples.
 
-`run` opens a transaction (or joins the `within(tx)` one) and hands you `store` bound to it and `tx`, a
+`run` opens a transaction (or joins the `within(tx)` one) and hands you `stores` bound to it and `tx`, a
 sealed token for `afterCommit` and for joining another runner in the same domain. `tx` isn't a Knex handle;
 lint keeps `unsealTransaction` inside `data-access/`. `tx` never goes to another domain.
 
 ```ts
 export class KmsKeyService implements TKmsKeyService {
   constructor(
-    private readonly transactionRunner: TransactionRunner<TKmsCoreStore>,
+    private readonly transactionRunner: TransactionRunner<TKmsCoreStores>,
     private readonly state: TKmsCoreState
   ) {}
 
   generateKmsKey(input: TCreateKmsKeyInput) {
-    return this.transactionRunner.run(({ store }) => createKmsKey(store, this.state, input));
+    return this.transactionRunner.run(({ stores }) => createKmsKey(stores, this.state, input));
   }
 }
 
-// takes the store, never a runner, so it can't open a transaction
-export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, input: TCreateKmsKeyInput) => {
+// takes the stores, never a runner, so it can't open a transaction
+export const createKmsKey = async (stores: TKmsCoreStores, state: TKmsCoreState, input: TCreateKmsKeyInput) => {
   const key = KmsKey.create({ ...input, encryptedKeyMaterial: wrapNewKeyMaterial(input, state.rootKey.get()) });
-  await store.kmsKeys.create(key);
+  await stores.kmsKeyStore.create(key);
   return key;
 };
 ```
@@ -176,12 +178,12 @@ Inside a domain:
 
 - A public service method calls `transactionRunner.run(...)` once. That's the one place deciding the transaction.
 - Never call a public service method (any domain) inside `run`: it opens its own `run` and grabs a second
-  connection while you hold the first. Share work through helpers that take `store`. Outside `run`, services
+  connection while you hold the first. Share work through helpers that take `stores`. Outside `run`, services
   in the same domain can call each other.
-- Data access never opens a transaction; multi-table writes rely on the caller's.
-- Locks only exist on the store from `run` (`store.locks.*`), so a lock outside a transaction doesn't compile.
+- A store never opens a transaction; multi-table writes rely on the caller's.
+- Locks only exist on the stores from `run` (`stores.locks.*`), so a lock outside a transaction doesn't compile.
 - Take locks in one order (root key, org, project; key before data key) or you deadlock.
-- Models never see a store or transaction.
+- Models never see a store, cache or transaction.
 
 ### Across domains
 
@@ -200,8 +202,8 @@ sequence of short, repeatable calls; the one exception is in "Sharing a transact
 ```ts
 async createSecret(input: TCreateSecretInput) {
   const cipher = await this.kmsKeyService.createCipherPairWithDataKey({ projectId: input.projectId });
-  return this.transactionRunner.run(({ store }) =>
-    store.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
+  return this.transactionRunner.run(({ stores }) =>
+    stores.secretStore.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
   );
 }
 ```
@@ -233,7 +235,7 @@ transaction never sees its own rows.
   calls the network or opens a connection can run inside. A domain that only supplies a limit or a scope
   (License) hands it over as a value before the transaction and never takes `within(tx)` itself, so one
   transaction never spans two domains.
-- Each method takes its lock with `store.locks.acquire` and reads through the store, so the count runs on the
+- Each method takes its lock with `stores.locks.acquire` and reads through `stores`, so the count runs on the
   caller's connection (the primary) and sees the caller's uncommitted rows.
 - Legacy code passes `sealKnexTransaction(trx)`. It refuses `afterCommit`, since on a nested Knex
   transaction the only commit it can see is a savepoint release; the caller runs follow-ups after its commit.
@@ -260,7 +262,7 @@ Who throws:
 
 - The model throws `RuleViolationError` for its own rules (`create()`, change methods, `plan.assert`,
   `seatUsage.assertAvailable`). Services don't re-check what the model guarantees.
-- Data access never throws for a missing row: `find*` returns `null`, and the service turns it into
+- A store never throws for a missing row: `find*` returns `null`, and the service turns it into
   `EntityNotFoundError` with the id in the message.
 - A client maps a failed call into an outcome or an `ExternalSystemError`; services never match on status codes.
 - Permission denied has no kind yet. It arrives with the permissions domain; until then a module that checks
@@ -289,8 +291,8 @@ router → service → model
 ```
 
 Arrows mean "imports". Services import nothing that does I/O: they declare needs in `services/dependencies.ts`,
-`data-access/` and clients implement those, and `module.ts` wires them. This is what lets services run on the
-in-memory store and lets EE plug in without `ce/` importing it.
+`data-access/` and clients implement those, and `module.ts` wires them. This is what lets services run on
+in-memory stores and lets EE plug in without `ce/` importing it.
 
 - `data-access/` and clients import from `services/` only `dependencies.ts` and wire shapes
   (`helpers/license-server-types.ts`), never a service class or helper.
@@ -328,12 +330,12 @@ Inside `ce/` unless it's a paid feature or comes from `src/ee/**` (then the same
 | Adding | Goes in |
 | --- | --- |
 | A rule about one entity | `models/` |
-| A query or write | `data-access/`, plus its in-memory version in `testing/` and a contract suite case |
+| A query or write | A store in `data-access/`, plus its in-memory version in `testing/` and a contract suite case |
 | A use case | `services/` |
-| Logic two services share | A helper in `services/helpers/` that takes `store` |
+| Logic two services share | A helper in `services/helpers/` that takes `stores` |
 | An endpoint | `router/`, registered beside the legacy routers (see Router above) |
 | Something other domains call | A method on the service type, re-exported from `module.ts` |
-| Something from data access, EE, or a domain that depends on you | A type in `services/dependencies.ts`, passed through the constructor. Anything else from another domain: take its whole service type |
+| Something from a store or cache, EE, or a domain that depends on you | A type in `services/dependencies.ts`, passed through the constructor. Anything else from another domain: take its whole service type |
 | Cross-request memory | A state holder built in the module constructor |
 | A capability with its own tables | A new domain folder with `ce/`, or `ee/` if its code is EE |
 
@@ -345,8 +347,9 @@ sets the pattern from the rules above, and its PR names it here.
 | Piece | Copy |
 | --- | --- |
 | Value object with rules | `platform/license/ce/models/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
-| Entity, store, in-memory store, contract suite, router | none yet |
-| Query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-data-access.ts` |
+| Stores bundle passed to `TransactionRunner` | `platform/organizations-projects/ce/module.ts` |
+| Entity, in-memory store, contract suite, router | none yet |
+| Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-store.ts` |
 | Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
 | Module with async setup, workers and crons | `platform/license/ce/module.ts` |
 | EE implementing a `ce/` type, external client | `platform/license/ee/` |
@@ -361,9 +364,9 @@ Where each legacy piece lands:
 | Legacy | Becomes |
 | --- | --- |
 | `xServiceFactory({ deps })` returning an object of arrow functions | `class XService implements TXService` in `services/x/service.ts`, deps as constructor parameter properties. Split it by use case group if callers use halves (see Service) |
-| `x-dal.ts` (`ormify` plus custom queries, optional `tx?: Knex` on each method) | One `<Entity>DataAccess` per model in `data-access/`, typed in `services/dependencies.ts`. The `tx` parameter goes: the store from `run` supplies the connection |
+| `x-dal.ts` (`ormify` plus custom queries, optional `tx?: Knex` on each method) | One `<Entity>Store` per model in `data-access/`, typed in `services/dependencies.ts`. The `tx` parameter goes: the stores bundle from `run` supplies the connection |
 | `x-types.ts` | DTOs become the service's input types (in its `service.ts`), the entity shape becomes the model's `T<Model>Record`, enums go to the model that owns the concept |
-| `x-fns.ts` | Rules about one entity become model methods; the rest go to `services/helpers/` taking `store` |
+| `x-fns.ts` | Rules about one entity become model methods; the rest go to `services/helpers/` taking `stores` |
 | `x-queue.ts` | Workers and crons registered in the module's `start()`, each calling a service method. Queue and job names stay |
 | `keyStore` reads and writes in the service | A `<Thing>Cache` in `data-access/` |
 | `BadRequestError` / `NotFoundError` / `ConflictError` | `RuleViolationError` / `EntityNotFoundError` (see Errors) |
@@ -380,13 +383,13 @@ Where each legacy piece lands:
    the PR for the author to accept (`backend/CODE_QUALITY.md`), never made silently. Move first, fix later:
    keep the legacy behavior in the move, including how failures degrade (what threw, what served a fallback,
    which database a read hit), and put a deliberate behavior change in its own commit the PR names.
-4. Move rules out of the service into the model, queries into data access, and `BadRequestError` /
+4. Move rules out of the service into the model, queries into stores, and `BadRequestError` /
    `NotFoundError` into domain errors. A plan check reads the plan before `run` and refuses with
    `plan.assert(PlanFeature.X)`; never gate a read or a delete.
 5. Wire it: build the module in `domains.ts`, hand its services to legacy callers from `domains.<domain>` in
    `routes/index.ts`, and replace the legacy factory everywhere. Delete the old service, DAL and types. Point the
    `server.services` entry and its `@types/fastify.d.ts` type at the domain service (`<name>Service`).
-6. Test it: model and service unit tests on the in-memory store, the data access contract suite, integration
+6. Test it: model and service unit tests on in-memory stores, the store contract suite, integration
    specs for SQL and locks, a `Fake<Name>Service` if anything else calls it, and a blackbox plan in `tests/` for
    every API change.
 7. Add the domain's `AGENTS.md` (what it owns, declared exceptions) and link it from the list at the top of this file.
@@ -398,7 +401,7 @@ Where each legacy piece lands:
 
 ## Class conventions
 
-- Every model, service, data access class, client and cache is a `class`. Legacy factory functions returning
+- Every model, service, store, cache and client is a `class`. Legacy factory functions returning
   objects of closures don't come over.
 - `class X implements TX`, with `TX` a `type` (not an `interface`) in method syntax (`getPlan(orgId: string): Promise<Plan>;`),
   so a fake can implement the same type. Models have no type of their own: callers use the class.
@@ -421,7 +424,7 @@ Where each legacy piece lands:
 | --- | --- | --- |
 | Folder | kebab-case noun | `static-secrets` |
 | Model | `models/<entity>.ts`, class `<Entity>`, record `T<Entity>Record` | `instance-entitlements.ts`, `InstanceEntitlements`, `TInstanceEntitlementsRecord` |
-| Data access | `data-access/<entity>-data-access.ts`, `class <Entity>DataAccess implements T<Entity>DataAccess` | `OrganizationDataAccess` |
+| Store | `data-access/<entity>-store.ts`, `class <Entity>Store implements T<Entity>Store` | `OrganizationStore` |
 | Cache | `data-access/<thing>-cache.ts`, `class <Thing>Cache implements T<Thing>Cache` | `PlanCache` |
 | Client | `clients/<system>/client.ts`, `class <System>Client`; its error mapping in `errors.ts` beside it | `LicenseServerClient` |
 | Test doubles | `testing/fake-<name>.ts` → `Fake<Name>`, `testing/in-memory-<name>.ts` → `InMemory<Name>`, rows for integration tests in `testing/<thing>-fixture.ts`, a module on fakes in `testing/build-<domain>.ts` → `build<Domain>()` | `FakeLicenseService`, `build-license.ts` |
@@ -429,10 +432,10 @@ Where each legacy piece lands:
 | Service | `class <Name>Service implements T<Name>Service`: both the class and its type end in `Service`. That holds for every class in `services/<name>/service.ts`, including one that queue jobs or a cron call and an EE class implementing a CE type. Name it for what it does, not how it is triggered (`UsageReportService`, not `UsageReportWorkerService`) | `LicenseService`, `UsageReportService`, `LicensePolicyService` |
 | Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |
 | Service deps | Constructor parameter properties (`private readonly planCache: TPlanCache`), one per dependency, never a deps object. Only the module calls `new`, so the order is checked in one place | `LicenseService` |
-| Dependency name | The type's name without the `T`, in camelCase, so a field says what it holds: `counterRegistry: CounterRegistry`, `organizationDataAccess: TOrganizationDataAccess`, `transactionRunner: TTransactionRunner<...>`. Infrastructure handles keep the names the backend uses everywhere (`db`, `knex`, `trx`, `keyStore`, `queueService`) | `planCache: TPlanCache` |
+| Dependency name | The type's name without the `T`, in camelCase, so a field says what it holds: `counterRegistry: CounterRegistry`, `organizationStore: TOrganizationStore`, `transactionRunner: TTransactionRunner<...>`. Infrastructure handles keep the names the backend uses everywhere (`db`, `knex`, `trx`, `keyStore`, `queueService`) | `planCache: TPlanCache` |
 | Module deps | `T<Name>Deps`, named, beside the module, never inline: `domains.ts` passes it as an object | `TLicenseDeps` |
 | Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |
-| Store | `T<Domain>Store` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`); `build<Domain>Store` in `data-access/<domain>-store.ts` | `kms-core-store.ts` |
+| Stores bundle | `T<Domain>Stores` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`), one field per store named like its type without the `T` (`organizationStore: TOrganizationStore`, the Dependency name rule), plus `locks`; the run context field is `stores` | `TOrganizationsProjectsStores` |
 | Transaction arg | `tx: TTransaction` | |
 | Service file | `services/<name>/service.ts`; the folder carries the name | `license/service.ts` |
 | Tests | `<file>.test.ts` (unit), `<file>.integration-test.ts` (integration), beside the code | `service.test.ts` |
@@ -444,13 +447,13 @@ caller depends on, not line coverage.
 
 | Layer | Tests | Uses |
 | --- | --- | --- |
-| Unit (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory store and `InMemoryTransactionRunner`, no DB or network |
-| Integration (`*.integration-test.ts`) | Things only Postgres proves: SQL, data access contract, locks, rollback, `within(tx)`, `afterCommit`, concurrency | Real store on real Postgres via the harness |
+| Unit (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory stores and `InMemoryTransactionRunner`, no DB or network |
+| Integration (`*.integration-test.ts`) | Things only Postgres proves: SQL, store contract, locks, rollback, `within(tx)`, `afterCommit`, concurrency | Real stores on real Postgres via the harness |
 | Not here | HTTP responses, queue/cron effects, the full server | `tests/` and `e2e-test/` |
 
 Rules:
 
-- Assert observable outcomes (store contents, return values, errors), not that a fake got called, unless the
+- Assert observable outcomes (what the stores hold, return values, errors), not that a fake got called, unless the
   call is the outcome.
 - `describe("<Class>.<method>")` + `test("should <outcome> [when <condition>]")`, lowercase.
 - Body is `// Setup`, `// Action`, `// Assert`. Roughly eight setup lines, one action, one to three asserts.
@@ -460,15 +463,15 @@ Rules:
 - Each test makes its own data with fresh ids. Per-test state in the test or `beforeEach`, never `beforeAll`.
 - Never sleep.
 - Fakes must behave like the real thing, one class per file in `testing/`. The contract suite enforces it for
-  in-memory data access: `testing/<entity>-data-access-contract.ts` exports
-  `describe<Entity>DataAccessContract(name, setup)`, run by a unit test against the in-memory class and by an
+  in-memory stores: `testing/<entity>-store-contract.ts` exports
+  `describe<Entity>StoreContract(name, setup)`, run by a unit test against the in-memory class and by an
   integration test against Postgres, so both pass the same cases.
 - Break the code and watch the test fail before calling it done.
 
 ### Unit tests
 
-Build services directly with in-memory state, an `InMemory<Domain>Store` and `InMemoryTransactionRunner`.
-The runner acts like a real transaction: restores the store snapshot on throw, runs `afterCommit` only on
+Build services directly with in-memory state, `InMemory<Entity>Store` classes bundled like the module bundles the
+real ones, and `InMemoryTransactionRunner`. The runner acts like a real transaction: restores the stores snapshot on throw, runs `afterCommit` only on
 success, joins with `within(tx)`, and locks are per-key mutexes. Consumers of a domain use its
 `Fake<Name>Service`, never a hand-rolled mock.
 

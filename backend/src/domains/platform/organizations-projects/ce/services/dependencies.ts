@@ -6,14 +6,14 @@ export type TIdentityOwnership = { orgId: string; projectId: string | null; coun
 
 export type TOrganization = { id: string; name: string; slug: string };
 
-export type TOrganizationDataAccess = {
+export type TOrganizationStore = {
   findRootOrgId(orgId: string): Promise<string | null>;
   findById(orgId: string): Promise<TOrganization | null>;
   countWorkspaces(orgId: string): Promise<number>;
 };
 
 // Null orgId = whole instance.
-export type TBillableActorDataAccess = {
+export type TBillableActorStore = {
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
   countProjectIdentities(projectType: ProjectType, orgId: string | null): Promise<number>;
@@ -24,8 +24,8 @@ export type TBillableActorDataAccess = {
   getProjectIdentityOwnershipBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]>;
 };
 
-export type TOrganizationsProjectsStore = {
-  organizations: TOrganizationDataAccess;
-  billableActors: TBillableActorDataAccess;
+export type TOrganizationsProjectsStores = {
+  organizationStore: TOrganizationStore;
+  billableActorStore: TBillableActorStore;
   locks: TStoreLocks;
 };

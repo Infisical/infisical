@@ -1,11 +1,6 @@
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 
-import {
-  TCertificateOrgUnitCount,
-  TCertificateUsageDataAccess,
-  TOrgUnitCount,
-  TPkiRootOrgUsage
-} from "../dependencies";
+import { TCertificateOrgUnitCount, TCertificateUsageStore, TOrgUnitCount, TPkiRootOrgUsage } from "../dependencies";
 
 export type TCertManagerService = {
   // No orgId = whole instance.
@@ -20,28 +15,28 @@ export type TCertManagerService = {
 
 export class CertManagerService implements TCertManagerService {
   constructor(
-    private readonly certificateUsageDataAccess: TCertificateUsageDataAccess,
+    private readonly certificateUsageStore: TCertificateUsageStore,
     private readonly organizationsProjectsService: TOrganizationsProjectsService
   ) {}
 
   countActiveCertificateQuota(orgId?: string) {
-    return this.certificateUsageDataAccess.countActiveCertificateQuotaKeys(orgId);
+    return this.certificateUsageStore.countActiveCertificateQuotaKeys(orgId);
   }
 
   isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string) {
-    return this.certificateUsageDataAccess.isCertificateQuotaKeyActive(orgId, quotaKey);
+    return this.certificateUsageStore.isCertificateQuotaKeyActive(orgId, quotaKey);
   }
 
   getInternalCaOrgBreakdown(orgId?: string) {
-    return this.certificateUsageDataAccess.getInternalCaOrgBreakdown(orgId);
+    return this.certificateUsageStore.getInternalCaOrgBreakdown(orgId);
   }
 
   getActiveCertificateOrgBreakdown(orgId?: string) {
-    return this.certificateUsageDataAccess.getActiveCertificateOrgBreakdown(orgId);
+    return this.certificateUsageStore.getActiveCertificateOrgBreakdown(orgId);
   }
 
   getPkiUsageByRootOrg() {
-    return this.certificateUsageDataAccess.getPkiUsageByRootOrg();
+    return this.certificateUsageStore.getPkiUsageByRootOrg();
   }
 
   resolveRootOrgId(orgId: string) {

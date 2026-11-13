@@ -8,7 +8,7 @@ import { sealKnexTransaction } from "./legacy-transaction";
 import { TStoreLocks } from "./store-locks";
 import { TransactionRunner } from "./transaction-runner";
 
-type TScratchStore = { insert(value: string): Promise<void>; pid(): Promise<number>; locks: TStoreLocks };
+type TScratchStores = { insert(value: string): Promise<void>; pid(): Promise<number>; locks: TStoreLocks };
 
 describe("TransactionRunner", () => {
   const h = setupIntegration();
@@ -17,7 +17,7 @@ describe("TransactionRunner", () => {
     const table = `it_runner_${randomBytes(4).toString("hex")}`;
     await h.db.schema.createTable(table, (t) => t.string("value"));
     onTestFinished(() => h.db.schema.dropTableIfExists(table));
-    const buildStore = (trx: Knex, locks: TStoreLocks): TScratchStore => ({
+    const buildStores = (trx: Knex, locks: TStoreLocks): TScratchStores => ({
       insert: async (value) => {
         await trx(table).insert({ value });
       },
@@ -28,7 +28,7 @@ describe("TransactionRunner", () => {
       locks
     });
     const values = async () => (await h.db(table).select("value")).map((r: { value: string }) => r.value).sort();
-    return { table, runner: new TransactionRunner(h.db, buildStore), values };
+    return { table, runner: new TransactionRunner(h.db, buildStores), values };
   };
 
   test("should commit every write", async () => {
@@ -36,9 +36,9 @@ describe("TransactionRunner", () => {
     const { runner, values } = await scratchTable();
 
     // Action
-    await runner.run(async ({ store }) => {
-      await store.insert("a");
-      await store.insert("b");
+    await runner.run(async ({ stores }) => {
+      await stores.insert("a");
+      await stores.insert("b");
     });
 
     // Assert
@@ -50,8 +50,8 @@ describe("TransactionRunner", () => {
     const { runner, values } = await scratchTable();
 
     // Action
-    const result = runner.run(async ({ store }) => {
-      await store.insert("a");
+    const result = runner.run(async ({ stores }) => {
+      await stores.insert("a");
       throw new Error("boom");
     });
 
@@ -66,8 +66,8 @@ describe("TransactionRunner", () => {
     const seen: string[][] = [];
 
     // Action
-    await runner.run(async ({ store, tx }) => {
-      await store.insert("a");
+    await runner.run(async ({ stores, tx }) => {
+      await stores.insert("a");
       tx.afterCommit(async () => {
         seen.push(await values());
       });
@@ -90,8 +90,8 @@ describe("TransactionRunner", () => {
     const { runner, values } = await scratchTable();
 
     // Action
-    await runner.run(async ({ store, tx }) => {
-      await store.insert("a");
+    await runner.run(async ({ stores, tx }) => {
+      await stores.insert("a");
       tx.afterCommit(async () => {
         throw new Error("hook failed");
       });
@@ -106,9 +106,9 @@ describe("TransactionRunner", () => {
     const { runner } = await scratchTable();
 
     // Action
-    const [outer, inner] = await runner.run(async ({ store, tx }) => {
-      const joined = await runner.within(tx).run(({ store: s }) => s.pid());
-      return [await store.pid(), joined];
+    const [outer, inner] = await runner.run(async ({ stores, tx }) => {
+      const joined = await runner.within(tx).run(({ stores: s }) => s.pid());
+      return [await stores.pid(), joined];
     });
 
     // Assert
@@ -128,16 +128,16 @@ describe("TransactionRunner", () => {
     });
 
     // Action
-    const first = runner.run(async ({ store }) => {
-      await store.locks.acquire("k");
+    const first = runner.run(async ({ stores }) => {
+      await stores.locks.acquire("k");
       firstLocked();
       await firstHolds;
-      await store.insert("first");
+      await stores.insert("first");
     });
     await locked;
-    const second = runner.run(async ({ store }) => {
-      await store.locks.acquire("k");
-      await store.insert(`second saw ${(await values()).join(",") || "nothing"}`);
+    const second = runner.run(async ({ stores }) => {
+      await stores.locks.acquire("k");
+      await stores.insert(`second saw ${(await values()).join(",") || "nothing"}`);
     });
     releaseFirst();
     await Promise.all([first, second]);
@@ -170,7 +170,7 @@ describe("sealKnexTransaction", () => {
     // Action
     const result = h.db.transaction(async (trx) => {
       await trx(table).insert({ value: "legacy" });
-      await runner.within(sealKnexTransaction(trx)).run(({ store }) => store.insert("domain"));
+      await runner.within(sealKnexTransaction(trx)).run(({ stores }) => stores.insert("domain"));
       throw new Error("legacy fails");
     });
 
@@ -186,7 +186,7 @@ describe("sealKnexTransaction", () => {
     // Action
     await h.db.transaction(async (trx) => {
       await trx(table).insert({ value: "legacy" });
-      await runner.within(sealKnexTransaction(trx)).run(({ store }) => store.insert("domain"));
+      await runner.within(sealKnexTransaction(trx)).run(({ stores }) => stores.insert("domain"));
     });
 
     // Assert
@@ -201,7 +201,7 @@ describe("sealKnexTransaction", () => {
     const result = h.db.transaction(async (outer) => {
       await outer.transaction(async (inner) => {
         await inner(table).insert({ value: "legacy" });
-        await runner.within(sealKnexTransaction(inner)).run(({ store }) => store.insert("domain"));
+        await runner.within(sealKnexTransaction(inner)).run(({ stores }) => stores.insert("domain"));
       });
       throw new Error("outer fails");
     });

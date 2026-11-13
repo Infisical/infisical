@@ -9,38 +9,38 @@ export type TSnapshotState = {
 
 type TInMemoryTransaction = TTransaction & { readonly locks: TStoreLocks };
 
-type TRunnerShared<TStore> = {
+type TRunnerShared<TStores> = {
   state: TSnapshotState;
-  buildStore: (locks: TStoreLocks) => TStore;
+  buildStores: (locks: TStoreLocks) => TStores;
   mutex: KeyedMutex;
 };
 
 // No isolation: a failed run restores its starting snapshot and wipes whatever other runs committed
 // meanwhile, so don't overlap runs and count on rollback.
-export class InMemoryTransactionRunner<TStore> implements TTransactionRunner<TStore> {
-  private readonly shared: TRunnerShared<TStore>;
+export class InMemoryTransactionRunner<TStores> implements TTransactionRunner<TStores> {
+  private readonly shared: TRunnerShared<TStores>;
 
   constructor(
     state: TSnapshotState,
-    buildStore: (locks: TStoreLocks) => TStore,
+    buildStores: (locks: TStoreLocks) => TStores,
     private readonly parent?: TInMemoryTransaction,
-    shared?: TRunnerShared<TStore>
+    shared?: TRunnerShared<TStores>
   ) {
-    this.shared = shared ?? { state, buildStore, mutex: new KeyedMutex() };
+    this.shared = shared ?? { state, buildStores, mutex: new KeyedMutex() };
   }
 
-  within(tx: TTransaction): InMemoryTransactionRunner<TStore> {
+  within(tx: TTransaction): InMemoryTransactionRunner<TStores> {
     return new InMemoryTransactionRunner(
       this.shared.state,
-      this.shared.buildStore,
+      this.shared.buildStores,
       tx as TInMemoryTransaction,
       this.shared
     );
   }
 
-  async run<T>(work: (ctx: TRunContext<TStore>) => Promise<T>): Promise<T> {
+  async run<T>(work: (ctx: TRunContext<TStores>) => Promise<T>): Promise<T> {
     if (this.parent) {
-      return work({ store: this.shared.buildStore(this.parent.locks), tx: this.parent });
+      return work({ stores: this.shared.buildStores(this.parent.locks), tx: this.parent });
     }
 
     const hooks: Array<() => Promise<void>> = [];
@@ -55,7 +55,7 @@ export class InMemoryTransactionRunner<TStore> implements TTransactionRunner<TSt
 
     let result: T;
     try {
-      result = await work({ store: this.shared.buildStore(locks), tx });
+      result = await work({ stores: this.shared.buildStores(locks), tx });
     } catch (error) {
       this.shared.state.restore(before);
       throw error;

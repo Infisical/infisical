@@ -4,7 +4,7 @@ import { ProjectType, TableName } from "@app/db/schemas";
 import { toCount } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
-import { TOrganization, TOrganizationDataAccess } from "../services/dependencies";
+import { TOrganization, TOrganizationStore } from "../services/dependencies";
 
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
@@ -17,8 +17,8 @@ const UNCOUNTED_WORKSPACE_TYPES = [
 ];
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
-export class OrganizationDataAccess implements TOrganizationDataAccess {
-  // A source, not a handle: replicaNode() picks a replica per call, and a store passes its transaction.
+export class OrganizationStore implements TOrganizationStore {
+  // A source, not a handle: replicaNode() picks a replica per call, and the stores bundle passes its transaction.
   constructor(private readonly knex: () => Knex) {}
 
   async findRootOrgId(orgId: string): Promise<string | null> {

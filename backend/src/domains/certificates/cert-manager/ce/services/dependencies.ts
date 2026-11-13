@@ -13,7 +13,7 @@ export type TPkiRootOrgUsage = {
 };
 
 // No orgId = whole instance.
-export type TCertificateUsageDataAccess = {
+export type TCertificateUsageStore = {
   countInternalCas(orgId?: string): Promise<number>;
   countActiveCertificateQuotaKeys(orgId?: string): Promise<{ total: number; wildcard: number }>;
   isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string): Promise<boolean>;

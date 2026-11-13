@@ -4,15 +4,15 @@ import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { toCount } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
-import { TBillableActorDataAccess, TIdentityOwnership } from "../services/dependencies";
+import { TBillableActorStore, TIdentityOwnership } from "../services/dependencies";
 
 // Billable = org member in a Secret Manager/KMS project or in no project at all (direct or via a group).
 // Actors only in PAM, PKI etc. don't count.
 const COUNTED_PROJECT_TYPES = [ProjectType.SecretManager, ProjectType.KMS];
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
-export class BillableActorDataAccess implements TBillableActorDataAccess {
-  // A source, not a handle: replicaNode() picks a replica per call, and a store passes its transaction.
+export class BillableActorStore implements TBillableActorStore {
+  // A source, not a handle: replicaNode() picks a replica per call, and the stores bundle passes its transaction.
   constructor(private readonly knex: () => Knex) {}
 
   async countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }> {

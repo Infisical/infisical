@@ -1,6 +1,6 @@
 import { TTransactionRunner } from "@app/domains/lib/transactions";
 
-import { TOrganizationsProjectsStore } from "../dependencies";
+import { TOrganizationsProjectsStores } from "../dependencies";
 
 // Each method locks the count until the caller's transaction ends and reads it on that transaction (the
 // primary), so concurrent writers checking the same limit queue up and each sees the others' rows.
@@ -17,21 +17,21 @@ const CountLocks = {
 };
 
 export class OrganizationsProjectsTransaction implements TOrganizationsProjectsTransaction {
-  constructor(private readonly transactionRunner: TTransactionRunner<TOrganizationsProjectsStore>) {}
+  constructor(private readonly transactionRunner: TTransactionRunner<TOrganizationsProjectsStores>) {}
 
   lockAndCountWorkspaces(orgId: string): Promise<number> {
-    return this.transactionRunner.run(async ({ store }) => {
-      await store.locks.acquire(CountLocks.workspaces(orgId));
-      return store.organizations.countWorkspaces(orgId);
+    return this.transactionRunner.run(async ({ stores }) => {
+      await stores.locks.acquire(CountLocks.workspaces(orgId));
+      return stores.organizationStore.countWorkspaces(orgId);
     });
   }
 
   lockAndCountBillableOrgActors(orgId: string | null) {
-    return this.transactionRunner.run(async ({ store }) => {
-      const rootOrgId = orgId === null ? null : await store.organizations.findRootOrgId(orgId);
+    return this.transactionRunner.run(async ({ stores }) => {
+      const rootOrgId = orgId === null ? null : await stores.organizationStore.findRootOrgId(orgId);
       if (orgId !== null && rootOrgId === null) return null;
-      await store.locks.acquire(CountLocks.billableActors(rootOrgId));
-      return store.billableActors.countBillableOrgActors(rootOrgId);
+      await stores.locks.acquire(CountLocks.billableActors(rootOrgId));
+      return stores.billableActorStore.countBillableOrgActors(rootOrgId);
     });
   }
 }
