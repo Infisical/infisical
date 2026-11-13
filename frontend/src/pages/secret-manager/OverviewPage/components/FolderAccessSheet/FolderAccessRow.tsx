@@ -281,8 +281,8 @@ export const FolderAccessRow = ({
         {
           key: "source",
           icon: <CornerLeftUpIcon />,
-          text: `Inherited from ${inheritedAccess.secretPath}`,
-          tooltip: `Applied on ${inheritedAccess.secretPath} to all of its subfolders`
+          text: `Via environment permissions`,
+          tooltip: "Applies to all folders in the environment"
         },
         ...expiryNoteFor(inheritedRemainingTime)
       ];
@@ -318,7 +318,7 @@ export const FolderAccessRow = ({
             title={`Applies to ${access.secretPath} and all of its subfolders`}
           >
             <FolderTreeIcon />
-            <span className="hidden sm:inline">Recursive</span>
+            <span className="hidden sm:inline">Full environment</span>
           </Badge>
         )}
         <DropdownMenu

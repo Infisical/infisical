@@ -125,10 +125,8 @@ export const TierDropdown = ({
         <DropdownMenuLabel>Inherited</DropdownMenuLabel>
         <div className="flex items-center gap-1.5 px-2 py-1 text-sm">
           <span className="font-medium">{FOLDER_ROLE_TIER_LABELS[inherited.tier]}</span>
-          <span className="text-muted">from</span>
-          <span className="rounded border border-border bg-neutral/10 px-1.5 font-mono text-xs">
-            {inherited.sourcePath}
-          </span>
+          <span className="text-muted">from environment permissions</span>
+
           {inherited.expiryLabel && (
             <span className="ml-auto text-xs whitespace-nowrap text-muted">
               {inherited.expiryLabel}
@@ -136,13 +134,13 @@ export const TierDropdown = ({
           )}
         </div>
         <p className="px-2 pb-1.5 text-xs leading-4 text-muted">
-          This role was applied to {inherited.sourcePath} and all of its subfolders. To change or
-          remove it, edit it on {inherited.sourcePath}.
+          This role was applied to the full environment and all of its subfolders. To change or
+          remove it, edit it on the environment layer permissions.
         </p>
         {inherited.onManage && (
           <DropdownMenuItem onClick={inherited.onManage}>
             <CornerLeftUpIcon />
-            Manage on {inherited.sourcePath}
+            Manage environment permissions
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
