@@ -91,10 +91,14 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "./e2e-test/fakes/object-storage-default-fns")
       },
       // Pass-through wrappers that hand a spec the real job, to run on demand. Only
-      // server/routes/index.ts imports either specifier.
+      // server/routes/index.ts imports any of these specifiers.
       {
         find: /^@app\/services\/reminder\/reminder-queue$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/reminder-queue")
+      },
+      {
+        find: /^@app\/services\/certificate-v3\/certificate-v3-queue$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/certificate-v3-queue")
       },
       {
         find: /^@app\/services\/event-outbox\/event-outbox-queue$/,

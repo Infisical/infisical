@@ -45,6 +45,7 @@ import { caIssuesFromCsr, caSupportsCapability } from "@app/services/certificate
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
+import { describeCaOperationFailure } from "@app/services/certificate-common/certificate-failure-fns";
 import {
   assertCertificateQuotaForProject,
   recordNewCertificateQuotaKey
@@ -211,12 +212,6 @@ type TCertificateServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-};
-
-// Upstream CA messages rarely end in a period, so one is added before another sentence follows.
-const asSentence = (text: string) => {
-  const trimmed = text.trim();
-  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -1094,19 +1089,12 @@ export const certificateServiceFactory = ({
     }
 
     logger.error(error, `Failed to revoke certificate after approval ${logContext}`);
-    const message = error instanceof BadRequestError || error instanceof NotFoundError ? error.message : undefined;
-    let cause: string;
-    if (upstreamCa) {
-      const caType = upstreamCa.externalCa?.type as CaType | undefined;
-      const caLabel = caType
-        ? `CA '${upstreamCa.name}' (${CA_TYPE_LABEL[caType] ?? caType})`
-        : `CA '${upstreamCa.name}'`;
-      cause = message
-        ? `Revoking the certificate at ${caLabel} failed: ${asSentence(message)}`
-        : `Revoking the certificate at ${caLabel} failed with an unexpected error.`;
-    } else {
-      cause = message ? asSentence(message) : "An unexpected error stopped the revocation.";
-    }
+    const cause = describeCaOperationFailure({
+      action: "Revoking the certificate",
+      ca: upstreamCa,
+      error,
+      fallback: "An unexpected error stopped the revocation."
+    });
     return {
       kind: "failed",
       reason: current?.status === CertStatus.ACTIVE ? `${cause} The certificate is still active.` : cause

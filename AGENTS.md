@@ -161,9 +161,14 @@ requester. `approveRequest` runs it once, for the approval that completes the re
 action fails there, record the failure in the audit log and call
 `approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and every approver why
 (`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording. Certificate
-revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance
-(`cert-request-policy-factory.ts`) doesn't follow this pattern: its status updates, failure recording and telemetry
-run outside any guard, so it can still throw, and a failed issuance is audited but nobody is notified. Don't copy it.
+revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
+(`cert-request-policy-factory.ts`) notify through it when the approved action fails, but their status updates, failure
+recording and telemetry still run outside any guard, so they can still throw. Don't copy that part. An external CA can
+fail an approved certificate request later, in a background job. Jobs report that through
+`updateCertificateRequestStatus`, whose two implementations (`certificate-request-service.ts`, and the manual
+validation one in `certificate-authority-service.ts`) record it with `recordCertificateRequestFailure` and
+`notifyApprovers`. A new job that fails a certificate request must go through one of them, or nobody who approved the
+request hears about it.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a

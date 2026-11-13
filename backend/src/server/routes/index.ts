@@ -3903,88 +3903,6 @@ export const registerRoutes = async (
     caAutoRenewalQueue
   });
 
-  const certificateAuthorityService = certificateAuthorityServiceFactory({
-    pkiApplicationDAL,
-    certificateAuthorityDAL,
-    permissionService,
-    appConnectionDAL,
-    appConnectionService,
-    externalCertificateAuthorityDAL,
-    internalCertificateAuthorityService,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsService,
-    pkiSubscriberDAL,
-    projectDAL,
-    pkiSyncDAL,
-    pkiSyncQueue,
-    certificateProfileDAL,
-    certificateRequestDAL,
-    resourceMetadataDAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    licenseService,
-    usageMeteringService,
-    caKeySourceService,
-    certificateAuthoritySecretDAL,
-    telemetryService,
-    keyStore,
-    pkiAlertV2Queue,
-    certificateAlertEventEmitter,
-    auditLogService
-  });
-
-  const certificateEstService = certificateEstServiceFactory({
-    internalCertificateAuthorityService,
-    certificateTemplateService,
-    certificateTemplateDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthorityDAL,
-    projectDAL,
-    kmsService,
-    licenseService
-  });
-
-  const certManagerExportService = certManagerExportServiceFactory({
-    certificateAuthorityDAL,
-    internalCertificateAuthorityDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthoritySecretDAL,
-    certificateAuthorityCrlDAL,
-    certificatePolicyDAL,
-    certificateProfileDAL,
-    projectDAL,
-    orgDAL,
-    kmsService,
-    permissionService
-  });
-
-  const pkiSubscriberQueue = pkiSubscriberQueueServiceFactory({
-    queueService,
-    cronJob,
-    pkiSubscriberDAL,
-    projectDAL,
-    certificateAuthorityDAL,
-    certificateAuthorityQueue,
-    certificateDAL,
-    auditLogService,
-    internalCaFns,
-    telemetryService
-  });
-
-  const digicertCaFns = DigiCertCertificateAuthorityFns({
-    appConnectionDAL,
-    appConnectionService,
-    certificateAuthorityDAL,
-    externalCertificateAuthorityDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsService,
-    projectDAL
-  });
-
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
     pamFolderNotificationConfigDAL,
     approvalPolicyDAL,
@@ -4045,6 +3963,91 @@ export const registerRoutes = async (
     eventEmitter: eventOutboxService,
     autoApprovalService,
     resources: approvalResources
+  });
+
+  const certificateAuthorityService = certificateAuthorityServiceFactory({
+    pkiApplicationDAL,
+    certificateAuthorityDAL,
+    permissionService,
+    appConnectionDAL,
+    appConnectionService,
+    externalCertificateAuthorityDAL,
+    internalCertificateAuthorityService,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    pkiSubscriberDAL,
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue,
+    certificateProfileDAL,
+    certificateRequestDAL,
+    resourceMetadataDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    licenseService,
+    usageMeteringService,
+    caKeySourceService,
+    certificateAuthoritySecretDAL,
+    telemetryService,
+    keyStore,
+    pkiAlertV2Queue,
+    certificateAlertEventEmitter,
+    auditLogService,
+    approvalRequestDAL,
+    approvalPolicyDAL,
+    approvalPolicyService
+  });
+
+  const certificateEstService = certificateEstServiceFactory({
+    internalCertificateAuthorityService,
+    certificateTemplateService,
+    certificateTemplateDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityDAL,
+    projectDAL,
+    kmsService,
+    licenseService
+  });
+
+  const certManagerExportService = certManagerExportServiceFactory({
+    certificateAuthorityDAL,
+    internalCertificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificatePolicyDAL,
+    certificateProfileDAL,
+    projectDAL,
+    orgDAL,
+    kmsService,
+    permissionService
+  });
+
+  const pkiSubscriberQueue = pkiSubscriberQueueServiceFactory({
+    queueService,
+    cronJob,
+    pkiSubscriberDAL,
+    projectDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityQueue,
+    certificateDAL,
+    auditLogService,
+    internalCaFns,
+    telemetryService
+  });
+
+  const digicertCaFns = DigiCertCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
   });
 
   const certificateService = certificateServiceFactory({
@@ -4114,7 +4117,10 @@ export const registerRoutes = async (
     certificateProfileDAL,
     certificateAuthorityDAL,
     auditLogService,
-    digicertFns: digicertCaFns
+    digicertFns: digicertCaFns,
+    approvalRequestDAL,
+    approvalPolicyDAL,
+    approvalPolicyService
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
@@ -4372,7 +4378,10 @@ export const registerRoutes = async (
 
   approvalResources[ApprovalPolicyType.CertRequest] = certRequestApprovalResourceFactory({
     approvalPolicyDAL,
+    approvalPolicyService,
+    auditLogService,
     certificateApprovalService,
+    certificateAuthorityDAL,
     certificateRequestDAL,
     certificateRequestService,
     certificateRenewalService: certificateV3Service,

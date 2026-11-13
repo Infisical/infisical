@@ -41,6 +41,7 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { CertRequestRenewalApproval } from "../approval-policy/approval-policy-enums";
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
   extractAlgorithmsFromCSR,
@@ -3084,19 +3085,115 @@ describe("CertificateV3Service", () => {
           source: CertificateSource.Imported
         });
 
-        await service.recordRejectedRenewal("cert-123");
+        await service.recordRejectedRenewal("cert-123", { raisedByAutoRenewal: false });
 
         expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
           renewalError: expect.stringContaining("was rejected")
         });
       });
 
-      it("keeps automatic renewal of an issued certificate when an edit is rejected", async () => {
+      it("keeps automatic renewal of an issued certificate when a renewal someone asked for is rejected", async () => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
 
-        await service.recordRejectedRenewal("cert-123");
+        await service.recordRejectedRenewal("cert-123", { raisedByAutoRenewal: false });
 
         expect(mockCertificateDAL.updateById).not.toHaveBeenCalled();
+      });
+
+      it("stops automatic renewal of an issued certificate when an automatic renewal is rejected", async () => {
+        vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+
+        await service.recordRejectedRenewal("cert-123", { raisedByAutoRenewal: true });
+
+        expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+          renewalError: expect.stringContaining("was rejected")
+        });
+      });
+
+      describe("when the policy holds every renewal for approval", () => {
+        const alwaysPolicy = {
+          ...approvalPolicy,
+          constraints: { version: 1, constraints: { renewalApproval: CertRequestRenewalApproval.Always } }
+        };
+
+        it("holds an unchanged manual renewal of a certificate it issued", async () => {
+          setupRenewal(mockOriginalCert);
+          mockApprovalPolicyService.matchPolicy.mockResolvedValue(alwaysPolicy);
+
+          const result = await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+
+          expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+          expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+          expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              requesterUserId: "user-123",
+              requestData: expect.objectContaining({
+                renewal: expect.objectContaining({ certificateId: "cert-123", raisedByAutoRenewal: false })
+              })
+            })
+          );
+        });
+
+        it("holds an automatic renewal", async () => {
+          setupRenewal(mockOriginalCert);
+          mockApprovalPolicyService.matchPolicy.mockResolvedValue(alwaysPolicy);
+
+          const result = await service.renewCertificate({
+            certificateId: "cert-123",
+            actor: ActorType.PLATFORM,
+            actorId: "",
+            actorAuthMethod: null,
+            actorOrgId: "",
+            internal: true
+          });
+
+          expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+          expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+          expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              requesterUserId: null,
+              machineIdentityId: null,
+              requestData: expect.objectContaining({ renewal: expect.objectContaining({ raisedByAutoRenewal: true }) })
+            })
+          );
+        });
+
+        it("issues the approved renewal without holding it again", async () => {
+          setupRenewal(mockOriginalCert);
+          mockApprovalPolicyService.matchPolicy.mockResolvedValue(alwaysPolicy);
+          const reviewedCertificateRequest = await holdAndReadSnapshot();
+          setupRenewal(mockOriginalCert);
+          mockApprovalPolicyService.matchPolicy.mockResolvedValue(alwaysPolicy);
+          mockCertificateRequestDAL.updateById.mockResolvedValue({ id: "held-req-1", createdAt: new Date() });
+
+          const result = await service.renewApprovedCertificate({
+            certificateRequestId: "held-req-1",
+            organizationId: "org-123",
+            renewal: { certificateId: "cert-123", renewalKeySource: CertificateRenewalKeySource.New, caId: "ca-123" },
+            reviewedCertificateRequest
+          });
+
+          expect(result.status).toBe(CertificateRequestStatus.ISSUED);
+          expect(result.originalCertificateId).toBe("cert-123");
+          expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+          expect(mockInternalCaService.issueCertFromCa).toHaveBeenCalled();
+        });
+      });
+
+      it.each([
+        [
+          "holds renewals on change",
+          { version: 1, constraints: { renewalApproval: CertRequestRenewalApproval.OnChange } }
+        ],
+        ["predates the renewal setting", { version: 1, constraints: {} }]
+      ])("renews an unchanged certificate it issued without approval when the policy %s", async (_, constraints) => {
+        setupRenewal(mockOriginalCert);
+        mockApprovalPolicyService.matchPolicy.mockResolvedValue({ ...approvalPolicy, constraints });
+
+        const result = await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+
+        expect(result.status).toBe(CertificateRequestStatus.ISSUED);
+        expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
       });
     });
 

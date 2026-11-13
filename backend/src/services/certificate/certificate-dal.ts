@@ -11,7 +11,11 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
-import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  CertRequestRenewalApproval
+} from "@app/services/approval-policy/approval-policy-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr } from "@app/services/certificate-authority/certificate-authority-maps";
 import {
@@ -840,10 +844,26 @@ export const certificateDALFactory = (db: TDbClient) => {
                     .whereNotNull(`${TableName.Certificate}.source`)
                     .whereNot(`${TableName.Certificate}.source`, CertificateSource.Issued);
                 })
-                .orWhere((raisedByAutoRenewalQb) => {
-                  void raisedByAutoRenewalQb
+                .orWhereRaw(
+                  `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'raisedByAutoRenewal' = 'true'`
+                )
+                // Requests raised before the flag existed: the daily job raised them with no requester.
+                .orWhere((legacyAutoRenewalQb) => {
+                  void legacyAutoRenewalQb
+                    .whereRaw(
+                      `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->'raisedByAutoRenewal' IS NULL`
+                    )
                     .whereNull(`${TableName.ApprovalRequests}.requesterId`)
                     .whereNull(`${TableName.ApprovalRequests}.machineIdentityId`);
+                })
+                .orWhereExists((alwaysHeldQb) => {
+                  void alwaysHeldQb
+                    .select(db.raw("1"))
+                    .from(TableName.ApprovalPolicies)
+                    .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.ApprovalRequests}"."policyId"`)
+                    .whereRaw(`"${TableName.ApprovalPolicies}"."constraints"->'constraints'->>'renewalApproval' = ?`, [
+                      CertRequestRenewalApproval.Always
+                    ]);
                 });
             })
             .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.CertRequest)

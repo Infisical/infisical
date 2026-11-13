@@ -3734,6 +3734,10 @@ interface CertificateIssuanceFailedEvent {
     commonName?: string;
     applicationId?: string;
     applicationName?: string;
+    approvalRequestId?: string;
+    approvalPolicyName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     errorName: string;
     error: string;
   };
@@ -4409,7 +4413,7 @@ interface RenewCertificate {
   type: EventType.RENEW_CERTIFICATE;
   metadata: {
     originalCertificateId: string;
-    newCertificateId: string;
+    newCertificateId?: string;
     certificateRequestId: string;
     profileName: string;
     commonName: string;
@@ -4418,8 +4422,14 @@ interface RenewCertificate {
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
     externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
-    changedAttributes: TRenewalAuditChange[];
+    // Absent on the event recording the certificate an external CA issued after an approved renewal: the
+    // approval's own renew-certificate event, with the same certificateRequestId, lists what changed.
+    changedAttributes?: TRenewalAuditChange[];
     status?: CertificateRequestStatus;
+    approvalRequestId?: string;
+    approvalPolicyName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
   };
 }
 

@@ -40,7 +40,11 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
-import { recordCertificateRequestFailure } from "./certificate-request-fns";
+import {
+  recordApprovedRenewalIssued,
+  recordCertificateRequestFailure,
+  TRecordCertificateRequestFailureDeps
+} from "./certificate-request-fns";
 import {
   CertificateRequestStatus,
   TAttachCertificateToRequestDTO,
@@ -63,8 +67,11 @@ type TCertificateRequestServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog" | "createAuditLog">;
   digicertFns: Pick<TDigiCertCertificateAuthorityFns, "cancelPendingRequest">;
+  approvalRequestDAL: TRecordCertificateRequestFailureDeps["approvalRequestDAL"];
+  approvalPolicyDAL: TRecordCertificateRequestFailureDeps["approvalPolicyDAL"];
+  approvalPolicyService: TRecordCertificateRequestFailureDeps["approvalPolicyService"];
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -166,7 +173,10 @@ export const certificateRequestServiceFactory = ({
   certificateProfileDAL,
   certificateAuthorityDAL,
   auditLogService,
-  digicertFns
+  digicertFns,
+  approvalRequestDAL,
+  approvalPolicyDAL,
+  approvalPolicyService
 }: TCertificateRequestServiceFactoryDep) => {
   const $resolveApplicationName = async (applicationId?: string | null) => {
     if (!applicationId) return null;
@@ -481,10 +491,23 @@ export const certificateRequestServiceFactory = ({
 
   const recordIssuanceFailure = (
     certificateRequest: TCertificateRequests,
-    options: { operation?: CertificateIssuanceOperation; originalCertificateId?: string; error?: unknown } = {}
+    options: {
+      operation?: CertificateIssuanceOperation;
+      originalCertificateId?: string;
+      error?: unknown;
+      notifyApprovers?: boolean;
+    } = {}
   ) =>
     recordCertificateRequestFailure(
-      { auditLogService, certificateAuthorityDAL, certificateProfileDAL, pkiApplicationDAL },
+      {
+        auditLogService,
+        certificateAuthorityDAL,
+        certificateProfileDAL,
+        pkiApplicationDAL,
+        approvalRequestDAL,
+        approvalPolicyDAL,
+        approvalPolicyService
+      },
       { certificateRequest, ...options }
     );
 
@@ -504,7 +527,8 @@ export const certificateRequestServiceFactory = ({
     const updated = await certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
     // A null result means the request already left pending, so its failure was recorded then.
     if (updated && status === CertificateRequestStatus.FAILED) {
-      await recordIssuanceFailure(updated, { operation, originalCertificateId, error });
+      // A background job failed it, so nobody who approved it would hear about it otherwise.
+      await recordIssuanceFailure(updated, { operation, originalCertificateId, error, notifyApprovers: true });
     }
     return updated;
   };
@@ -523,7 +547,22 @@ export const certificateRequestServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    return certificateRequestDAL.attachCertificate(certificateRequestId, certificateId);
+    const attached = await certificateRequestDAL.attachCertificate(certificateRequestId, certificateId);
+    // Attaching to an already issued request is a retry, and its renewal was recorded the first time.
+    if (attached && certificateRequest.status !== CertificateRequestStatus.ISSUED) {
+      await recordApprovedRenewalIssued(
+        {
+          auditLogService,
+          approvalRequestDAL,
+          approvalPolicyDAL,
+          certificateDAL,
+          certificateProfileDAL,
+          pkiApplicationDAL
+        },
+        { certificateRequest: attached, certificateId }
+      );
+    }
+    return attached;
   };
 
   const listCertificateRequests = async ({

@@ -1,6 +1,10 @@
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { describeCaOperationFailure } from "@app/services/certificate-common/certificate-failure-fns";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -19,12 +23,17 @@ import {
   ApprovalPolicyType,
   ApprovalRequestStatus
 } from "../approval-policy-enums";
+import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
+import { getApprovalRequestAuditLabel } from "../approval-request-fns";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findById">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "notifyApprovedActionFailed">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateApprovalService: TCertificateApprovalService;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "recordIssuanceFailure">;
   certificateRenewalService: Pick<
@@ -36,7 +45,10 @@ type TCertRequestApprovalResourceDep = {
 
 export const certRequestApprovalResourceFactory = ({
   approvalPolicyDAL,
+  approvalPolicyService,
+  auditLogService,
   certificateApprovalService,
+  certificateAuthorityDAL,
   certificateRequestDAL,
   certificateRequestService,
   certificateRenewalService,
@@ -65,8 +77,25 @@ export const certRequestApprovalResourceFactory = ({
 
   validateConstraints: () => ({ valid: true }),
 
-  // Cert approvals notify approvers when raised; the decision shows up on the certificate itself.
-  buildNotification: async ({ event, request }) => {
+  // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
+  buildNotification: async ({ event, request, failureReason }) => {
+    if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
+      const { renewal, certificateRequest } = (request.requestData as { requestData: TCertRequestRequestData })
+        .requestData;
+      const action = renewal ? "renewal" : "issuance";
+      const certificate = certificateRequest?.commonName
+        ? ` of the certificate '${certificateRequest.commonName}'`
+        : "";
+      return {
+        inApp: {
+          type: NotificationType.APPROVED_ACTION_FAILED,
+          title: renewal ? "Certificate Renewal Failed" : "Certificate Issuance Failed",
+          body: `The approved ${action}${certificate} didn't complete. Reason: ${failureReason}`,
+          link: `${getConfig().SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`
+        }
+      };
+    }
+
     if (event !== ApprovalNotificationEvent.Requested) return null;
 
     const cfg = getConfig();
@@ -118,9 +147,10 @@ export const certRequestApprovalResourceFactory = ({
       approvalRequestId: request.id
     });
 
+    let renewed: Awaited<ReturnType<typeof certificateRenewalService.renewApprovedCertificate>> | undefined;
     try {
       if (renewal) {
-        await certificateRenewalService.renewApprovedCertificate({
+        renewed = await certificateRenewalService.renewApprovedCertificate({
           certificateRequestId: certReqId,
           organizationId: request.organizationId,
           renewal,
@@ -146,11 +176,57 @@ export const certRequestApprovalResourceFactory = ({
           originalCertificateId: renewal.certificateId
         })
       });
+      const caId = failedRequest?.caId ?? renewal?.caId;
+      const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId).catch(() => undefined) : undefined;
+      await approvalPolicyService.notifyApprovedActionFailed(
+        request,
+        describeCaOperationFailure({
+          action: renewal ? "Renewing the certificate" : "Issuing the certificate",
+          ca,
+          error,
+          fallback: "An unexpected error stopped the certificate from being issued."
+        })
+      );
       logger.error(
         { error, certificateRequestId: certReqId, approvalRequestId: request.id },
         `Failed to issue certificate after approval [certificateRequestId=${certReqId}]`
       );
       return;
+    }
+
+    if (renewal && renewed) {
+      // The approval has already committed, so a failed audit write must not surface to the approver.
+      try {
+        // An external-CA renewal still pending returns its order id in certificateId, not a certificate.
+        const isIssued = renewed.status === CertificateRequestStatus.ISSUED;
+        const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : undefined;
+        await auditLogService.createAuditLog({
+          projectId: request.projectId,
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.RENEW_CERTIFICATE,
+            metadata: {
+              originalCertificateId: renewed.originalCertificateId,
+              ...(isIssued && { newCertificateId: renewed.certificateId, serialNumber: renewed.serialNumber }),
+              certificateRequestId: renewed.certificateRequestId,
+              profileName: renewed.profileName,
+              commonName: renewed.commonName || "",
+              applicationId: renewed.applicationId,
+              applicationName: renewed.applicationName,
+              renewalKeySource: renewal.renewalKeySource,
+              externalConfiguration: renewal.externalConfiguration,
+              changedAttributes: renewed.changedAttributes ?? [],
+              status: renewed.status,
+              ...getApprovalRequestAuditLabel(request, policy)
+            }
+          }
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to record an approved certificate renewal [certificateRequestId=${certReqId}] [approvalRequestId=${request.id}]`
+        );
+      }
     }
 
     const requesterDistinctId = request.machineIdentityId
@@ -173,7 +249,11 @@ export const certRequestApprovalResourceFactory = ({
       approvalRequestId: request.id
     });
     if (renewal && request.status === ApprovalRequestStatus.Rejected) {
-      await certificateRenewalService.recordRejectedRenewal(renewal.certificateId);
+      // A rejected request the daily job raised would otherwise be raised again the next day. Requests raised
+      // before the flag existed fall back to having no requester, which a deleted requester also matches.
+      await certificateRenewalService.recordRejectedRenewal(renewal.certificateId, {
+        raisedByAutoRenewal: renewal.raisedByAutoRenewal ?? (!request.requesterId && !request.machineIdentityId)
+      });
     }
   }
 });
