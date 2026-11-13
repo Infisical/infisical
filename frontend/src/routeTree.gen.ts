@@ -99,6 +99,7 @@ import { Route as v4SecretScanningSecretScanningFindingsPageRouteImport } from '
 import { Route as v4ProjectAccessControlPageSecretScanningRouteImport } from './pages/v4/project/AccessControlPage/secret-scanning/route'
 import { Route as v4OrganizationRoleByIDPageRouteImport } from './pages/v4/organization/RoleByIDPage/route'
 import { Route as v4OrganizationNotPortedPageProjectsRouteImport } from './pages/v4/organization/NotPortedPage/projects/route'
+import { Route as v4PamPamSessionsPageRouteImport } from './pages/v4/pam/PamSessionsPage/route'
 import { Route as v4ProjectAuditLogsPagePamRouteImport } from './pages/v4/project/AuditLogsPage/pam/route'
 import { Route as v4PamPamApprovalRequestsPageRouteImport } from './pages/v4/pam/PamApprovalRequestsPage/route'
 import { Route as v4ProjectAccessControlPagePamRouteImport } from './pages/v4/project/AccessControlPage/pam/route'
@@ -1183,6 +1184,12 @@ const v4OrganizationNotPortedPageProjectsRouteRoute =
     path: '/$',
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
+
+const v4PamPamSessionsPageRouteRoute = v4PamPamSessionsPageRouteImport.update({
+  id: '/pam/sessions',
+  path: '/pam/sessions',
+  getParentRoute: () => v4OrganizationRouteRoute,
+} as any)
 
 const v4ProjectAuditLogsPagePamRouteRoute =
   v4ProjectAuditLogsPagePamRouteImport.update({
@@ -4611,6 +4618,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4ProjectAuditLogsPagePamRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/pam/sessions': {
+      id: '/v4/organizations/$orgId/pam/sessions'
+      path: '/pam/sessions'
+      fullPath: '/v4/organizations/$orgId/pam/sessions'
+      preLoaderRoute: typeof v4PamPamSessionsPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/projects/$': {
       id: '/v4/organizations/$orgId/projects/$'
       path: '/$'
@@ -7159,6 +7173,7 @@ interface v4OrganizationRouteRouteChildren {
   v4ProjectAccessControlPagePamRouteRoute: typeof v4ProjectAccessControlPagePamRouteRoute
   v4PamPamApprovalRequestsPageRouteRoute: typeof v4PamPamApprovalRequestsPageRouteRoute
   v4ProjectAuditLogsPagePamRouteRoute: typeof v4ProjectAuditLogsPagePamRouteRoute
+  v4PamPamSessionsPageRouteRoute: typeof v4PamPamSessionsPageRouteRoute
   v4OrganizationRoleByIDPageRouteRoute: typeof v4OrganizationRoleByIDPageRouteRoute
   v4ProjectAccessControlPageSecretScanningRouteRoute: typeof v4ProjectAccessControlPageSecretScanningRouteRoute
   v4SecretScanningSecretScanningFindingsPageRouteRoute: typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
@@ -7226,6 +7241,7 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
   v4PamPamApprovalRequestsPageRouteRoute:
     v4PamPamApprovalRequestsPageRouteRoute,
   v4ProjectAuditLogsPagePamRouteRoute: v4ProjectAuditLogsPagePamRouteRoute,
+  v4PamPamSessionsPageRouteRoute: v4PamPamSessionsPageRouteRoute,
   v4OrganizationRoleByIDPageRouteRoute: v4OrganizationRoleByIDPageRouteRoute,
   v4ProjectAccessControlPageSecretScanningRouteRoute:
     v4ProjectAccessControlPageSecretScanningRouteRoute,
@@ -8797,6 +8813,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/pam/access-management': typeof v4ProjectAccessControlPagePamRouteRoute
   '/v4/organizations/$orgId/pam/approval-requests': typeof v4PamPamApprovalRequestsPageRouteRoute
   '/v4/organizations/$orgId/pam/audit-logs': typeof v4ProjectAuditLogsPagePamRouteRoute
+  '/v4/organizations/$orgId/pam/sessions': typeof v4PamPamSessionsPageRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
@@ -9216,6 +9233,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/pam/access-management': typeof v4ProjectAccessControlPagePamRouteRoute
   '/v4/organizations/$orgId/pam/approval-requests': typeof v4PamPamApprovalRequestsPageRouteRoute
   '/v4/organizations/$orgId/pam/audit-logs': typeof v4ProjectAuditLogsPagePamRouteRoute
+  '/v4/organizations/$orgId/pam/sessions': typeof v4PamPamSessionsPageRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
@@ -9628,6 +9646,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/pam/access-management': typeof v4ProjectAccessControlPagePamRouteRoute
   '/v4/organizations/$orgId/pam/approval-requests': typeof v4PamPamApprovalRequestsPageRouteRoute
   '/v4/organizations/$orgId/pam/audit-logs': typeof v4ProjectAuditLogsPagePamRouteRoute
+  '/v4/organizations/$orgId/pam/sessions': typeof v4PamPamSessionsPageRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
@@ -10064,6 +10083,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/pam/access-management'
     | '/v4/organizations/$orgId/pam/approval-requests'
     | '/v4/organizations/$orgId/pam/audit-logs'
+    | '/v4/organizations/$orgId/pam/sessions'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
@@ -10482,6 +10502,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/pam/access-management'
     | '/v4/organizations/$orgId/pam/approval-requests'
     | '/v4/organizations/$orgId/pam/audit-logs'
+    | '/v4/organizations/$orgId/pam/sessions'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
@@ -10892,6 +10913,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/pam/access-management'
     | '/v4/organizations/$orgId/pam/approval-requests'
     | '/v4/organizations/$orgId/pam/audit-logs'
+    | '/v4/organizations/$orgId/pam/sessions'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
@@ -11562,6 +11584,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/pam/access-management",
         "/v4/organizations/$orgId/pam/approval-requests",
         "/v4/organizations/$orgId/pam/audit-logs",
+        "/v4/organizations/$orgId/pam/sessions",
         "/v4/organizations/$orgId/roles/$roleId",
         "/v4/organizations/$orgId/secret-scanning/access-management",
         "/v4/organizations/$orgId/secret-scanning/findings",
@@ -11949,6 +11972,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/pam/audit-logs": {
       "filePath": "v4/project/AuditLogsPage/pam/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/pam/sessions": {
+      "filePath": "v4/pam/PamSessionsPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/projects/$": {

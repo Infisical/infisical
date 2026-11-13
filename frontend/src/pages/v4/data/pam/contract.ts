@@ -14,7 +14,10 @@ import type {
   useRemovePamProductIdentityMember,
   useRemovePamProductUserMember,
   useReviewPamAccessRequest,
+  useListPamSessions,
+  usePamAccountPermission,
   useRevokePamAccessRequest,
+  useTerminatePamSession,
   useUpdatePamProductGroupMember,
   useUpdatePamProductIdentityMember,
   useUpdatePamProductUserMember
@@ -28,6 +31,10 @@ export type TPamAccountsParams = NonNullable<Parameters<typeof useListPamAccount
 export type TPamAccessCapabilities = NonNullable<
   ReturnType<typeof useGetPamAccessCapabilities>["data"]
 >;
+
+export type TPamSessionsParams = NonNullable<Parameters<typeof useListPamSessions>[1]>;
+export type TPamSessionList = NonNullable<ReturnType<typeof useListPamSessions>["data"]>;
+export type TPamAccountPermission = NonNullable<ReturnType<typeof usePamAccountPermission>["data"]>;
 
 export type PamAdapter = {
   useAccessCapabilities: () => V4QueryResult<TPamAccessCapabilities>;
@@ -53,4 +60,10 @@ export type PamAdapter = {
   usePendingMyApproval: () => V4QueryResult<TPamAccessRequest[]>;
   useReviewAccessRequest: MutationOf<typeof useReviewPamAccessRequest>;
   useRevokeAccessRequest: MutationOf<typeof useRevokePamAccessRequest>;
+  useSessions: (projectId: string, params?: TPamSessionsParams) => V4QueryResult<TPamSessionList>;
+  useAccountPermission: (
+    accountId: string,
+    enabled?: boolean
+  ) => V4QueryResult<TPamAccountPermission>;
+  useTerminateSession: MutationOf<typeof useTerminatePamSession>;
 };
