@@ -154,7 +154,7 @@ export const scepIntuneRevocationSyncQueueFactory = ({
     };
   };
 
-  const revokeMatchedCertificate = async (certificateId: string, revokedCaIds: string[]) => {
+  const revokeMatchedCertificate = async (certificateId: string) => {
     const revocation = await certificateService.revokeCertAsPlatform({
       certificateId,
       revocationReason: CrlReason.UNSPECIFIED
@@ -162,7 +162,6 @@ export const scepIntuneRevocationSyncQueueFactory = ({
     if (revocation.outcome !== PlatformRevocationOutcome.Revoked) return revocation;
 
     const { cert, ca, applicationName } = revocation;
-    revokedCaIds.push(ca.id);
     try {
       await auditLogService.createAuditLog({
         projectId: ca.projectId,
@@ -192,13 +191,13 @@ export const scepIntuneRevocationSyncQueueFactory = ({
     request,
     candidates,
     readIssuer,
-    revokedCaIds
+    crlCaIds
   }: {
     tenantId: string;
     request: TIntuneRevocationRequest;
     candidates: TMatchedCertificate[];
     readIssuer: (certificate: TMatchedCertificate) => Promise<string | null>;
-    revokedCaIds: string[];
+    crlCaIds: string[];
   }): Promise<TIntuneRevocationResult | null> => {
     const logContext = `[tenantId=${tenantId}] [serial=${request.serialNumber}] [issuer=${request.issuerName ?? ""}]`;
 
@@ -229,8 +228,9 @@ export const scepIntuneRevocationSyncQueueFactory = ({
 
       let notRevocableReason: string | undefined;
       for (const certificate of matches) {
+        if (certificate.caId) crlCaIds.push(certificate.caId);
         if (certificate.status !== CertStatus.REVOKED) {
-          const revocation = await revokeMatchedCertificate(certificate.id, revokedCaIds);
+          const revocation = await revokeMatchedCertificate(certificate.id);
           if (revocation.outcome === PlatformRevocationOutcome.NotRevocable) notRevocableReason = revocation.reason;
         }
       }
@@ -276,7 +276,7 @@ export const scepIntuneRevocationSyncQueueFactory = ({
       );
 
       const results: TIntuneRevocationResult[] = [];
-      const revokedCaIds: string[] = [];
+      const crlCaIds: string[] = [];
       for (const request of revocationRequests) {
         const result = await handleRevocationRequest({
           tenantId,
@@ -285,13 +285,13 @@ export const scepIntuneRevocationSyncQueueFactory = ({
             (certificate) => certificate.serialNumber.toLowerCase() === request.serialNumber.toLowerCase()
           ),
           readIssuer,
-          revokedCaIds
+          crlCaIds
         });
         if (result) results.push(result);
       }
 
       try {
-        await certificateService.rebuildCrlsAfterPlatformRevocations(revokedCaIds);
+        await certificateService.rebuildCrlsAfterPlatformRevocations(crlCaIds);
       } catch (err) {
         logger.error(
           `scep-intune-revocation-sync: failed to rebuild CRLs, the hourly CRL rebuild job will retry [tenantId=${tenantId}] [error=${errorMessageOf(err)}]`
@@ -303,7 +303,7 @@ export const scepIntuneRevocationSyncQueueFactory = ({
       }
 
       logger.info(
-        `scep-intune-revocation-sync: batch done [tenantId=${tenantId}] [requests=${revocationRequests.length}] [answered=${results.length}] [revoked=${revokedCaIds.length}]`
+        `scep-intune-revocation-sync: batch done [tenantId=${tenantId}] [requests=${revocationRequests.length}] [answered=${results.length}] [crlCas=${new Set(crlCaIds).size}]`
       );
 
       if (revocationRequests.length < INTUNE_MAX_REVOCATION_REQUESTS) return;

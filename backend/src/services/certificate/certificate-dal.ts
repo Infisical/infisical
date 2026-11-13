@@ -216,10 +216,11 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.serialNumber`,
           `${TableName.Certificate}.status`,
           `${TableName.Certificate}.projectId`,
+          `${TableName.Certificate}.caId`,
           `${TableName.Certificate}.caCertId`
         );
 
-      return certs as Pick<TCertificates, "id" | "serialNumber" | "status" | "projectId" | "caCertId">[];
+      return certs as Pick<TCertificates, "id" | "serialNumber" | "status" | "projectId" | "caId" | "caCertId">[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find SCEP certs by validation connections and serial numbers" });
     }

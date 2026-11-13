@@ -8,7 +8,14 @@ type TUploadedResults = {
   results: { requestContext: string; succeeded: boolean; errorCode: string; errorMessage: string | null }[];
 };
 type TRequest = { requestContext: string; serialNumber: string; issuerName?: string | null };
-type TMatched = { id: string; serialNumber: string; status: string; projectId: string; caCertId?: string | null };
+type TMatched = {
+  id: string;
+  serialNumber: string;
+  status: string;
+  projectId: string;
+  caId: string | null;
+  caCertId?: string | null;
+};
 
 const downloadRevocationRequests = vi.fn<(...args: unknown[]) => Promise<TRequest[]>>();
 const uploadRevocationResults = vi.fn<(args: TUploadedResults) => Promise<void>>();
@@ -54,7 +61,8 @@ const matched = (id: string, serialNumber: string, status: string = CertStatus.A
   id,
   serialNumber,
   status,
-  projectId: "project-1"
+  projectId: "project-1",
+  caId: "ca-1"
 });
 const revoked = (certificateId: string, caId = "ca-1") => ({
   outcome: PlatformRevocationOutcome.Revoked,
@@ -292,13 +300,14 @@ describe("Intune SCEP revocation sync", () => {
   });
 
   test("reports an already revoked certificate as succeeded without revoking it again", async () => {
-    const { revokeCertAsPlatform } = await runSync({
+    const { revokeCertAsPlatform, certificateService } = await runSync({
       connections: [connection("conn-1", "tenant-a")],
       batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
       certificates: [matched("cert-1", "aa", CertStatus.REVOKED)]
     });
 
     expect(revokeCertAsPlatform).not.toHaveBeenCalled();
+    expect(certificateService.rebuildCrlsAfterPlatformRevocations).toHaveBeenCalledWith(["ca-1"]);
     expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ctx-1", succeeded: true })]);
   });
 
@@ -334,8 +343,20 @@ describe("Intune SCEP revocation sync", () => {
     ]);
   });
 
+  test("rebuilds the CA's CRL when a revocation fails after it committed", async () => {
+    const { certificateService } = await runSync({
+      connections: [connection("conn-1", "tenant-a")],
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
+      certificates: [matched("cert-1", "aa")],
+      revokeCertAsPlatform: vi.fn().mockRejectedValue(new Error("alert queue unavailable"))
+    });
+
+    expect(certificateService.rebuildCrlsAfterPlatformRevocations).toHaveBeenCalledWith(["ca-1"]);
+    expect(uploadRevocationResults).not.toHaveBeenCalled();
+  });
+
   test("leaves an upstream CA failure in the queue so a later run retries it", async () => {
-    await runSync({
+    const { certificateService } = await runSync({
       connections: [connection("conn-1", "tenant-a")],
       batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
       certificates: [matched("cert-1", "aa")],
@@ -345,6 +366,7 @@ describe("Intune SCEP revocation sync", () => {
     });
 
     expect(uploadRevocationResults).not.toHaveBeenCalled();
+    expect(certificateService.rebuildCrlsAfterPlatformRevocations).toHaveBeenCalledWith(["ca-1"]);
   });
 
   test("falls back to the next connection when the first one cannot reach Intune", async () => {
@@ -377,7 +399,9 @@ describe("Intune SCEP revocation sync", () => {
 
   test.each([
     ["S=", "CN=Root CA, S=California, C=US", "C=US, ST=California, CN=Root CA"],
-    ["emailAddress=", "CN=Root CA, emailAddress=pki@example.com", "E=pki@example.com, CN=Root CA"]
+    ["emailAddress=", "CN=Root CA, emailAddress=pki@example.com", "E=pki@example.com, CN=Root CA"],
+    ["EMAILADDRESS=", "CN=Root CA, EMAILADDRESS=pki@example.com", "E=pki@example.com, CN=Root CA"],
+    ["SERIALNUMBER=", "SERIALNUMBER=123, CN=Root CA", "CN=Root CA, 2.5.4.5=123"]
   ])("matches an issuer that spells %s differently", async (_name, intuneIssuer, storedIssuer) => {
     const { revokeCertAsPlatform } = await runSync({
       connections: [connection("conn-1", "tenant-a")],

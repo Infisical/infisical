@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ActorType } from "@app/services/auth/auth-type";
 import { rebuildCaCrlAfterChange } from "@app/services/certificate-authority/certificate-authority-fns";
 
 import { certificateServiceFactory } from "./certificate-service";
@@ -9,6 +10,10 @@ vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), war
 vi.mock("@app/services/certificate-authority/certificate-authority-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/services/certificate-authority/certificate-authority-fns")>()),
   rebuildCaCrlAfterChange: vi.fn().mockResolvedValue({ isRegenerated: true })
+}));
+vi.mock("@app/services/certificate-common/certificate-permission-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/services/certificate-common/certificate-permission-fns")>()),
+  assertCanRevokeCertificate: vi.fn().mockResolvedValue(undefined)
 }));
 
 type TDeps = Parameters<typeof certificateServiceFactory>[0];
@@ -34,7 +39,10 @@ const internalCa = {
   externalCa: undefined
 };
 
-const buildService = (certificate: Record<string, unknown> | null = activeCertificate) => {
+const buildService = (
+  certificate: Record<string, unknown> | null = activeCertificate,
+  overrides: Record<string, unknown> = {}
+) => {
   const certificateDAL = {
     findById: vi.fn().mockResolvedValue(certificate ?? undefined),
     update: vi.fn().mockResolvedValue([]),
@@ -51,7 +59,9 @@ const buildService = (certificate: Record<string, unknown> | null = activeCertif
     certificateSyncDAL: { find: vi.fn().mockResolvedValue([]) },
     pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },
     pkiSyncQueue: {},
-    auditLogService: { createAuditLog: vi.fn() }
+    pkiApplicationDAL: { findById: vi.fn().mockResolvedValue(undefined) },
+    auditLogService: { createAuditLog: vi.fn() },
+    ...overrides
   } as unknown as TDeps;
 
   return { service: certificateServiceFactory(deps), certificateDAL, internalCertificateAuthorityDAL };
@@ -137,5 +147,56 @@ describe("certificateService.rebuildCrlsAfterPlatformRevocations", () => {
     await service.rebuildCrlsAfterPlatformRevocations(["ca-1", "ca-1"]);
 
     expect(rebuildCaCrlAfterChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps rebuilding the other CAs when one CA cannot be read", async () => {
+    const { service } = buildService(activeCertificate, {
+      certificateAuthorityDAL: {
+        findByIdWithAssociatedCa: vi.fn().mockRejectedValueOnce(new Error("CA not found")).mockResolvedValue(internalCa)
+      }
+    });
+
+    await service.rebuildCrlsAfterPlatformRevocations(["ca-gone", "ca-1"]);
+
+    expect(rebuildCaCrlAfterChange).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("certificateService.revokeCert", () => {
+  beforeEach(() => {
+    vi.mocked(rebuildCaCrlAfterChange).mockClear();
+  });
+
+  const revokeAsUser = (service: ReturnType<typeof buildService>["service"]) =>
+    service.revokeCert({
+      id: "cert-1",
+      revocationReason: CrlReason.KEY_COMPROMISE,
+      actor: ActorType.USER,
+      actorId: "user-1",
+      actorAuthMethod: null,
+      actorOrgId: "org-1"
+    });
+
+  it("rebuilds the CRL right after the revocation commits, before later steps can fail", async () => {
+    const { service, certificateDAL } = buildService(activeCertificate, {
+      certificateAlertEventEmitter: { notify: vi.fn().mockRejectedValue(new Error("alert queue unavailable")) }
+    });
+
+    await expect(revokeAsUser(service)).rejects.toThrow("alert queue unavailable");
+
+    expect(certificateDAL.update).toHaveBeenCalled();
+    expect(rebuildCaCrlAfterChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves the application name before committing, so a failed lookup revokes nothing", async () => {
+    const { service, certificateDAL } = buildService(
+      { ...activeCertificate, applicationId: "app-1" },
+      { pkiApplicationDAL: { findById: vi.fn().mockRejectedValue(new Error("read replica unavailable")) } }
+    );
+
+    await expect(revokeAsUser(service)).rejects.toThrow("read replica unavailable");
+
+    expect(certificateDAL.update).not.toHaveBeenCalled();
+    expect(rebuildCaCrlAfterChange).not.toHaveBeenCalled();
   });
 });
