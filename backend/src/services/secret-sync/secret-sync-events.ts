@@ -31,7 +31,7 @@ type TSecretSyncFailedInput = {
 export const emitSecretSyncFailed = (
   eventEmitter: TEventEmitter,
   { orgId, projectId, syncId, action, failureMessage, attemptedAt }: TSecretSyncFailedInput,
-  tx?: Knex
+  tx: Knex
 ): Promise<void> =>
   eventEmitter.emit(
     [

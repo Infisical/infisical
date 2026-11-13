@@ -112,30 +112,36 @@ const permissionInput = (action: AlertPermissionAction, resourceId: string | nul
   actor
 });
 
+const emitFailure = async (failureMessage: string) => {
+  let emitted: Record<string, unknown> | undefined;
+  await emitSecretSyncFailed(
+    {
+      emit: async ([event]) => {
+        emitted = event.data;
+      }
+    },
+    {
+      orgId: "org-1",
+      projectId: "proj-1",
+      syncId: "sync-1",
+      action: SecretSyncAction.ImportSecrets,
+      failureMessage,
+      attemptedAt: ATTEMPTED_AT
+    },
+    {} as never
+  );
+  return emitted!;
+};
+
 describe("secret sync alert provider", () => {
   test("delivers what the sync failure path emits", async () => {
-    let emitted: Record<string, unknown> | undefined;
-    await emitSecretSyncFailed(
-      {
-        emit: async ([event]) => {
-          emitted = event.data;
-        }
-      },
-      {
-        orgId: "org-1",
-        projectId: "proj-1",
-        syncId: "sync-1",
-        action: SecretSyncAction.ImportSecrets,
-        failureMessage: "Vercel returned 403",
-        attemptedAt: ATTEMPTED_AT
-      }
-    );
+    const emitted = await emitFailure("Vercel returned 403");
 
     const { provider } = buildProvider();
     const targets = await provider.findEventTargets({
       ...failedEvent(),
-      targetIds: emitted!.targetIds as string[],
-      payload: emitted!
+      targetIds: emitted.targetIds as string[],
+      payload: emitted
     });
 
     expect(targets).toHaveLength(1);
@@ -148,24 +154,9 @@ describe("secret sync alert provider", () => {
   });
 
   test("truncates a long failure message before it reaches the outbox", async () => {
-    let emitted: Record<string, unknown> | undefined;
-    await emitSecretSyncFailed(
-      {
-        emit: async ([event]) => {
-          emitted = event.data;
-        }
-      },
-      {
-        orgId: "org-1",
-        projectId: "proj-1",
-        syncId: "sync-1",
-        action: SecretSyncAction.SyncSecrets,
-        failureMessage: "x".repeat(10_000),
-        attemptedAt: ATTEMPTED_AT
-      }
-    );
+    const emitted = await emitFailure("x".repeat(10_000));
 
-    expect((emitted!.failureMessage as string).length).toBe(2000);
+    expect((emitted.failureMessage as string).length).toBe(2000);
   });
 
   test("reads sync paths from the primary", async () => {

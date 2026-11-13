@@ -93,7 +93,6 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       });
       return { ...state };
     }),
-    deleteById: vi.fn(async () => ({ ...state })),
     updateAndReturnIds: vi.fn(async () => [] as string[]),
     transaction: vi.fn(async <T>(callback: (tx: unknown) => Promise<T>) => callback(TX))
   };
@@ -154,8 +153,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     runJob,
     secretSyncDAL,
     eventEmitter,
-    alertService,
-    queueService
+    alertService
   };
 };
 
@@ -331,21 +329,20 @@ describe("failure alert event", () => {
     vi.clearAllMocks();
   });
 
-  const queuedEventJobs = (queueService: { queue: { mock: { calls: unknown[][] } } }) =>
-    queueService.queue.mock.calls.filter(([, name]) => name === QueueJobs.SecretSyncEmitFailedAlertEvent);
-
-  test("a sync that fails its final attempt queues its own event job, which writes the event", async () => {
+  test("is emitted in the transaction that marks a sync failed on its final attempt", async () => {
     syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, runJob, eventEmitter, queueService, state } = createHarness(healthy);
+    const { runSync, eventEmitter, secretSyncDAL, state } = createHarness(healthy);
 
     await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    expect(eventEmitter.emit).not.toHaveBeenCalled();
 
-    const [[, , payload]] = queuedEventJobs(queueService);
-    await runJob(QueueJobs.SecretSyncEmitFailedAlertEvent, payload as Record<string, unknown>);
-
+    expect(secretSyncDAL.updateById).toHaveBeenCalledWith(
+      "sync-1",
+      expect.objectContaining({ syncStatus: "failed" }),
+      expect.objectContaining({ tx: TX })
+    );
     expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
-    const [[events]] = eventEmitter.emit.mock.calls;
+    const [[events, tx]] = eventEmitter.emit.mock.calls;
+    expect(tx).toBe(TX);
     expect(events.map((event) => event.type)).toEqual(["secret.sync.failed"]);
     expect(events[0].data).toMatchObject({
       orgId: "org-1",
@@ -358,56 +355,32 @@ describe("failure alert event", () => {
     });
   });
 
-  test("each failed run gets its own event job, apart from the grouped notification job", async () => {
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, queueService } = createHarness(healthy);
-
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
-
-    const jobIds = queuedEventJobs(queueService).map(([, , , options]) => (options as { jobId: string }).jobId);
-    expect(jobIds).toHaveLength(2);
-    expect(new Set(jobIds).size).toBe(2);
-  });
-
-  test("a failed event write fails the event job so it is retried", async () => {
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, runJob, eventEmitter, queueService } = createHarness(healthy);
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    eventEmitter.emit.mockRejectedValueOnce(new Error("connection reset"));
-
-    const [[, , payload]] = queuedEventJobs(queueService);
-    await expect(runJob(QueueJobs.SecretSyncEmitFailedAlertEvent, payload as Record<string, unknown>)).rejects.toThrow(
-      "connection reset"
-    );
-  });
-
-  test("is not queued for an attempt that will be retried", async () => {
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, queueService } = createHarness(healthy);
-
-    await expect(runSync(1)).rejects.toThrow();
-
-    expect(queuedEventJobs(queueService)).toEqual([]);
-  });
-
-  test("is not queued when a sync succeeds", async () => {
-    syncSecrets.mockResolvedValue({} as never);
-    const { runSync, queueService } = createHarness(failed);
-
-    await runSync(1);
-
-    expect(queuedEventJobs(queueService)).toEqual([]);
-  });
-
-  test("is queued when lock contention ends a sync", async () => {
-    const { runSync, queueService } = createHarness(healthy, { lockFails: true });
+  test("is emitted in the transaction that marks a sync failed on lock contention", async () => {
+    const { runSync, eventEmitter } = createHarness(healthy, { lockFails: true });
 
     await runSync(1, { failedToAcquireLockCount: REQUEUE_LIMIT });
 
-    expect(queuedEventJobs(queueService).map(([, , payload]) => (payload as { action: string }).action)).toEqual([
-      "sync-secrets"
-    ]);
+    const [[events, tx]] = eventEmitter.emit.mock.calls;
+    expect(tx).toBe(TX);
+    expect(events[0].data).toMatchObject({ action: "sync-secrets" });
+  });
+
+  test("is not emitted for an attempt that will be retried", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const { runSync, eventEmitter } = createHarness(healthy);
+
+    await expect(runSync(1)).rejects.toThrow();
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("is not emitted when a sync succeeds", async () => {
+    syncSecrets.mockResolvedValue({} as never);
+    const { runSync, eventEmitter } = createHarness(failed);
+
+    await runSync(1);
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 });
 

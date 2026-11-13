@@ -1,6 +1,7 @@
 import { AxiosError, isAxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -60,7 +61,6 @@ import {
   TQueueSendSecretSyncActionFailedNotificationsDTO,
   TSecretMap,
   TSecretSync,
-  TSecretSyncEmitFailedAlertEventJobDTO,
   TSecretSyncImportSecretsDTO,
   TSecretSyncRaw,
   TSecretSyncRemoveSecretsDTO,
@@ -383,14 +383,17 @@ export const secretSyncQueueFactory = ({
       jobId: randomUUID()
     });
 
-  const $queueSendSecretSyncFailedNotifications = async (payload: TQueueSendSecretSyncActionFailedNotificationsDTO) => {
-    const { secretSync, action } = payload;
-
-    // Each failed run gets its own job, apart from the notices below, whose job id groups a sync's failures. The
-    // job's retries cover a failed outbox write, which this attempt, the last one, could not.
-    await queueService.queue(
-      QueueName.AppConnectionSecretSync,
-      QueueJobs.SecretSyncEmitFailedAlertEvent,
+  // Runs in the transaction that marks the sync failed, so the failure and its alert event commit together.
+  const $emitSecretSyncFailed = (
+    secretSync: Pick<
+      TSecretSyncRaw,
+      "id" | "projectId" | "connection" | "lastSyncMessage" | "lastImportMessage" | "lastRemoveMessage"
+    >,
+    action: SecretSyncAction,
+    tx: Knex
+  ) =>
+    emitSecretSyncFailed(
+      eventEmitter,
       {
         orgId: secretSync.connection.orgId,
         projectId: secretSync.projectId,
@@ -401,20 +404,12 @@ export const secretSyncQueueFactory = ({
           [SecretSyncAction.ImportSecrets]: secretSync.lastImportMessage,
           [SecretSyncAction.RemoveSecrets]: secretSync.lastRemoveMessage
         }[action],
-        attemptedAt: new Date().toISOString()
+        attemptedAt: new Date()
       },
-      {
-        jobId: randomUUID(),
-        attempts: 5,
-        backoff: {
-          type: "exponential",
-          delay: 3000
-        },
-        removeOnFail: true,
-        removeOnComplete: true
-      }
+      tx
     );
 
+  const $queueSendSecretSyncFailedNotifications = async (payload: TQueueSendSecretSyncActionFailedNotificationsDTO) => {
     await queueService.queue(
       QueueName.AppConnectionSecretSync,
       QueueJobs.SecretSyncSendActionFailedNotifications,
@@ -725,17 +720,21 @@ export const secretSyncQueueFactory = ({
           });
         }
 
-        const updatedSecretSync = await secretSyncDAL.updateById(
-          secretSync.id,
-          {
-            syncStatus,
-            lastSyncJobId: job.id,
-            lastSyncMessage: syncMessage,
-            lastSyncedAt: isSynced ? ranAt : undefined,
-            lastSyncResult: syncStatus
-          },
-          { includeFolderPath: false }
-        );
+        const updatedSecretSync = await secretSyncDAL.transaction(async (tx) => {
+          const sync = await secretSyncDAL.updateById(
+            secretSync.id,
+            {
+              syncStatus,
+              lastSyncJobId: job.id,
+              lastSyncMessage: syncMessage,
+              lastSyncedAt: isSynced ? ranAt : undefined,
+              lastSyncResult: syncStatus
+            },
+            { includeFolderPath: false, tx }
+          );
+          if (!isSynced) await $emitSecretSyncFailed(sync, SecretSyncAction.SyncSecrets, tx);
+          return sync;
+        });
 
         if (!isSynced) {
           void telemetryService
@@ -862,16 +861,20 @@ export const secretSyncQueueFactory = ({
       });
 
       if (isSuccess || isFinalAttempt) {
-        const updatedSecretSync = await secretSyncDAL.updateById(
-          secretSync.id,
-          {
-            importStatus,
-            lastImportJobId: job.id,
-            lastImportMessage: importMessage,
-            lastImportedAt: isSuccess ? ranAt : undefined
-          },
-          { includeFolderPath: false }
-        );
+        const updatedSecretSync = await secretSyncDAL.transaction(async (tx) => {
+          const sync = await secretSyncDAL.updateById(
+            secretSync.id,
+            {
+              importStatus,
+              lastImportJobId: job.id,
+              lastImportMessage: importMessage,
+              lastImportedAt: isSuccess ? ranAt : undefined
+            },
+            { includeFolderPath: false, tx }
+          );
+          if (!isSuccess) await $emitSecretSyncFailed(sync, SecretSyncAction.ImportSecrets, tx);
+          return sync;
+        });
 
         if (!isSuccess) {
           await $queueSendSecretSyncFailedNotifications({
@@ -1018,16 +1021,20 @@ export const secretSyncQueueFactory = ({
             await secretSyncDAL.deleteById(secretSync.id, tx);
           });
         } else {
-          const updatedSecretSync = await secretSyncDAL.updateById(
-            secretSync.id,
-            {
-              removeStatus,
-              lastRemoveJobId: job.id,
-              lastRemoveMessage: removeMessage,
-              lastRemovedAt: isSuccess ? ranAt : undefined
-            },
-            { includeFolderPath: false }
-          );
+          const updatedSecretSync = await secretSyncDAL.transaction(async (tx) => {
+            const sync = await secretSyncDAL.updateById(
+              secretSync.id,
+              {
+                removeStatus,
+                lastRemoveJobId: job.id,
+                lastRemoveMessage: removeMessage,
+                lastRemovedAt: isSuccess ? ranAt : undefined
+              },
+              { includeFolderPath: false, tx }
+            );
+            if (!isSuccess) await $emitSecretSyncFailed(sync, SecretSyncAction.RemoveSecrets, tx);
+            return sync;
+          });
 
           if (!isSuccess) {
             await $queueSendSecretSyncFailedNotifications({
@@ -1053,17 +1060,17 @@ export const secretSyncQueueFactory = ({
 
     const project = await projectDAL.findById(projectId);
 
-    let adminUserIds = [
-      ...(await findProjectAdminUserIds({ projectMembershipDAL, orgDAL, userDAL }, { orgId: project.orgId, projectId }))
-    ];
+    const adminUserIds = await findProjectAdminUserIds(
+      { projectMembershipDAL, orgDAL, userDAL },
+      { orgId: project.orgId, projectId }
+    );
 
     const triggeredByUserId =
       auditLogInfo && auditLogInfo.actor.type === ActorType.USER && auditLogInfo.actor.metadata.userId;
 
     // only notify triggering user if triggered by admin
-    if (triggeredByUserId && adminUserIds.includes(triggeredByUserId)) {
-      adminUserIds = [triggeredByUserId];
-    }
+    const recipientUserIds =
+      triggeredByUserId && adminUserIds.has(triggeredByUserId) ? [triggeredByUserId] : [...adminUserIds];
 
     const syncDestination = SECRET_SYNC_NAME_MAP[destination as SecretSync];
 
@@ -1120,7 +1127,7 @@ export const secretSyncQueueFactory = ({
         }
       }),
       notificationService.createUserNotifications(
-        adminUserIds.map((userId) => ({
+        recipientUserIds.map((userId) => ({
           userId,
           orgId: project.orgId,
           type: NotificationType.SECRET_SYNC_FAILED,
@@ -1203,11 +1210,19 @@ export const secretSyncQueueFactory = ({
           return;
         }
 
-        const secretSync = await secretSyncDAL.updateById(syncId, {
-          syncStatus: SecretSyncStatus.Failed,
-          lastSyncMessage:
-            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
-          lastSyncJobId: job.id
+        const secretSync = await secretSyncDAL.transaction(async (tx) => {
+          const sync = await secretSyncDAL.updateById(
+            syncId,
+            {
+              syncStatus: SecretSyncStatus.Failed,
+              lastSyncMessage:
+                "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
+              lastSyncJobId: job.id
+            },
+            { tx }
+          );
+          await $emitSecretSyncFailed(sync, SecretSyncAction.SyncSecrets, tx);
+          return sync;
         });
 
         recordSecretSyncOutcomeMetric({
@@ -1227,11 +1242,19 @@ export const secretSyncQueueFactory = ({
       }
       // Scott: the two cases below are unlikely to happen as we check the lock at the API level but including this as a fallback
       case QueueJobs.SecretSyncImportSecrets: {
-        const secretSync = await secretSyncDAL.updateById(syncId, {
-          importStatus: SecretSyncStatus.Failed,
-          lastImportMessage:
-            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
-          lastImportJobId: job.id
+        const secretSync = await secretSyncDAL.transaction(async (tx) => {
+          const sync = await secretSyncDAL.updateById(
+            syncId,
+            {
+              importStatus: SecretSyncStatus.Failed,
+              lastImportMessage:
+                "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
+              lastImportJobId: job.id
+            },
+            { tx }
+          );
+          await $emitSecretSyncFailed(sync, SecretSyncAction.ImportSecrets, tx);
+          return sync;
         });
 
         recordSecretSyncOutcomeMetric({
@@ -1250,11 +1273,19 @@ export const secretSyncQueueFactory = ({
         break;
       }
       case QueueJobs.SecretSyncRemoveSecrets: {
-        const secretSync = await secretSyncDAL.updateById(syncId, {
-          removeStatus: SecretSyncStatus.Failed,
-          lastRemoveMessage:
-            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
-          lastRemoveJobId: job.id
+        const secretSync = await secretSyncDAL.transaction(async (tx) => {
+          const sync = await secretSyncDAL.updateById(
+            syncId,
+            {
+              removeStatus: SecretSyncStatus.Failed,
+              lastRemoveMessage:
+                "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
+              lastRemoveJobId: job.id
+            },
+            { tx }
+          );
+          await $emitSecretSyncFailed(sync, SecretSyncAction.RemoveSecrets, tx);
+          return sync;
         });
 
         recordSecretSyncOutcomeMetric({
@@ -1324,12 +1355,6 @@ export const secretSyncQueueFactory = ({
   queueService.start(QueueName.AppConnectionSecretSync, async (job) => {
     if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
       await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
-      return;
-    }
-
-    if (job.name === QueueJobs.SecretSyncEmitFailedAlertEvent) {
-      const { attemptedAt, ...event } = (job as TSecretSyncEmitFailedAlertEventJobDTO).data;
-      await emitSecretSyncFailed(eventEmitter, { ...event, attemptedAt: new Date(attemptedAt) });
       return;
     }
 
