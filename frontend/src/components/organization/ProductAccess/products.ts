@@ -21,8 +21,10 @@ export const useIsNamedByProduct = () => {
 
   return (type: string) => {
     if (!isSingleProjectProduct(type)) return false;
-    if (type === ProjectType.CertificateManager) return !certManagerInstance?.isMultiInstance;
-    if (type === ProjectType.SecretScanning) return !secretScanningInstance?.isMultiInstance;
+    if (type === ProjectType.CertificateManager)
+      return certManagerInstance?.isMultiInstance === false;
+    if (type === ProjectType.SecretScanning)
+      return secretScanningInstance?.isMultiInstance === false;
     return true;
   };
 };

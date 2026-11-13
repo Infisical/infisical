@@ -25,13 +25,8 @@ import {
 import { useOrganization } from "@app/context";
 import { getProjectLucideIcon } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
-import {
-  useAddUserToWsNonE2EE,
-  useGetOrgMembershipProjectMemberships,
-  useGetUserProjects
-} from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 import { PRODUCT_DEFINITIONS } from "@app/pages/organization/AccessManagementPage/components/OrgMembersTab/components/OrgMembersSection/ProjectAssignmentFields";
 import {
   DEFAULT_PROJECT_ROLE,
@@ -58,23 +53,36 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 type Props = {
-  membershipId: string;
-  popUp: UsePopUpState<["addUserToProduct"]>;
-  handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["addUserToProduct"]>,
-    state?: boolean
-  ) => void;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  actorLabel: string;
+  title: string;
+  memberProjectIds?: string[];
+  isMembershipsLoading: boolean;
+  isMembershipsError: boolean;
+  excludeV1Projects?: boolean;
+  onAddToProject: (
+    project: { id: string; type: ProjectType },
+    roleSlug: string
+  ) => Promise<unknown>;
 };
 
-export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }: Props) => {
+export const AddToProductDialog = ({
+  isOpen,
+  onOpenChange,
+  actorLabel,
+  title,
+  memberProjectIds,
+  isMembershipsLoading,
+  isMembershipsError,
+  excludeV1Projects = false,
+  onAddToProject
+}: Props) => {
   const { currentOrg } = useOrganization();
   const scopeVariant = useScopeVariant();
   const orgId = currentOrg?.id || "";
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
-  const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
   const isNamedByProduct = useIsNamedByProduct();
-
-  const { username } = (popUp.addUserToProduct.data ?? {}) as { username: string };
 
   const {
     control,
@@ -88,34 +96,24 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
     defaultValues: { projects: [], role: DEFAULT_PROJECT_ROLE }
   });
 
-  const {
-    data: projectMemberships,
-    isPending: isMembershipsLoading,
-    isError: isMembershipsError
-  } = useGetOrgMembershipProjectMemberships(
-    orgId,
-    membershipId,
-    {},
-    { enabled: Boolean(popUp.addUserToProduct.isOpen) }
-  );
-  // Until the user's memberships load, the picker cannot leave out projects they already belong to.
+  // Until the memberships load, the pickers cannot leave out projects the actor already belongs to.
   const isMembershipsReady = !isMembershipsLoading && !isMembershipsError;
 
   const availableProjectsByType = useMemo(() => {
-    const memberProjectIds = new Set(
-      projectMemberships?.memberships.map((membership) => membership.project.id)
-    );
+    const memberIds = new Set(memberProjectIds);
     const grouped = new Map<string, typeof projects>();
     projects
       .filter(
         ({ id, orgId: projectOrgId, version }) =>
-          !memberProjectIds.has(id) && projectOrgId === orgId && version !== ProjectVersion.V1
+          !memberIds.has(id) &&
+          projectOrgId === orgId &&
+          !(excludeV1Projects && version === ProjectVersion.V1)
       )
       .forEach((project) => {
         grouped.set(project.type, [...(grouped.get(project.type) ?? []), project]);
       });
     return grouped;
-  }, [projects, projectMemberships, orgId]);
+  }, [projects, memberProjectIds, orgId, excludeV1Projects]);
 
   const availableProducts = PRODUCT_DEFINITIONS.filter((product) =>
     availableProjectsByType.has(product.type)
@@ -133,9 +131,9 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
     setValue("role", DEFAULT_PROJECT_ROLE);
   }, [productType, targetProjects.length === 1 ? targetProjects[0].id : undefined]);
 
-  const handleOpenChange = (isOpen: boolean) => {
-    handlePopUpToggle("addUserToProduct", isOpen);
-    if (!isOpen) reset();
+  const handleOpenChange = (open: boolean) => {
+    onOpenChange(open);
+    if (!open) reset();
   };
 
   const onFormSubmit = async ({ role }: FormData) => {
@@ -147,13 +145,7 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
 
     const results = await Promise.allSettled(
       targetProjects.map((project) =>
-        addUserToProject({
-          projectId: project.id,
-          projectType: product.type,
-          usernames: [username],
-          roleSlugs: [role.slug],
-          orgId
-        })
+        onAddToProject({ id: project.id, type: product.type }, role.slug)
       )
     );
     const failedCount = results.filter((result) => result.status === "rejected").length;
@@ -162,12 +154,12 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
 
     if (failedCount) {
       createNotification({
-        text: `Added user to ${targetProjects.length - failedCount} of ${targetProjects.length} ${product.name} projects`,
+        text: `Added ${actorLabel} to ${targetProjects.length - failedCount} of ${targetProjects.length} ${product.name} projects`,
         type: "warning"
       });
     } else {
       createNotification({
-        text: `Successfully added user to ${product.name}`,
+        text: `Successfully added ${actorLabel} to ${product.name}`,
         type: "success"
       });
     }
@@ -176,12 +168,12 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
   };
 
   return (
-    <Dialog open={popUp?.addUserToProduct?.isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent isPending={isSubmitting}>
         <DialogHeader>
-          <DialogTitle>Add User to Product</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Choose a product, then the projects to add this user to.
+            Choose a product, then the projects to add this {actorLabel} to.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
@@ -190,7 +182,7 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
             name="productType"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel htmlFor="add-user-to-product-product">Product</FieldLabel>
+                <FieldLabel htmlFor="add-to-product-product">Product</FieldLabel>
                 <Select
                   value={value ?? ""}
                   onValueChange={(type) => {
@@ -200,7 +192,7 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
                   disabled={isProjectsLoading || !isMembershipsReady || !availableProducts.length}
                 >
                   <SelectTrigger
-                    id="add-user-to-product-product"
+                    id="add-to-product-product"
                     className="w-full"
                     isError={Boolean(error)}
                   >
@@ -229,7 +221,7 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
                 <FieldError>
                   {error?.message ??
                     (isMembershipsError
-                      ? "Could not load this user's memberships. Close and try again."
+                      ? `Could not load this ${actorLabel}'s memberships. Close and try again.`
                       : undefined)}
                 </FieldError>
               </Field>
@@ -241,9 +233,9 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
               name="projects"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel htmlFor="add-user-to-product-projects">Projects</FieldLabel>
+                  <FieldLabel htmlFor="add-to-product-projects">Projects</FieldLabel>
                   <Combobox
-                    id="add-user-to-product-projects"
+                    id="add-to-product-projects"
                     multiple
                     value={value}
                     onValueChange={onChange}
@@ -269,9 +261,9 @@ export const UserAddToProductModal = ({ membershipId, popUp, handlePopUpToggle }
               name="role"
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel htmlFor="add-user-to-product-role">Role</FieldLabel>
+                  <FieldLabel htmlFor="add-to-product-role">Role</FieldLabel>
                   <ProjectRoleSelect
-                    inputId="add-user-to-product-role"
+                    inputId="add-to-product-role"
                     value={value}
                     onChange={onChange}
                     isError={Boolean(error)}
