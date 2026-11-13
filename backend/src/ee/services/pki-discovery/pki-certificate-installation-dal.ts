@@ -1,7 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiCertificateInstallations } from "@app/db/schemas";
+import {
+  TableName,
+  TCertificates,
+  TPkiCertificateInstallationCerts,
+  TPkiCertificateInstallations,
+  TResourceMetadata
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -229,7 +235,7 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
 
       if (!installation) return null;
 
-      const certLinks = await (tx || db.replicaNode())(TableName.PkiCertificateInstallationCert)
+      const certLinks = (await (tx || db.replicaNode())(TableName.PkiCertificateInstallationCert)
         .select(
           selectAllTableCols(TableName.PkiCertificateInstallationCert),
           `${TableName.Certificate}.commonName`,
@@ -240,23 +246,61 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.deletedAt`,
           `${TableName.Certificate}.friendlyName`,
           `${TableName.Certificate}.fingerprintSha256`,
+          `${TableName.Certificate}.altNames`,
+          `${TableName.Certificate}.applicationId`,
           `${TableName.Certificate}.subjectOrganization`,
           `${TableName.Certificate}.subjectOrganizationalUnit`,
           `${TableName.Certificate}.subjectCountry`,
           `${TableName.Certificate}.subjectState`,
-          `${TableName.Certificate}.subjectLocality`
+          `${TableName.Certificate}.subjectLocality`,
+          `${TableName.CertificateSecret}.certId as privateKeyRef`
         )
         .join(
           TableName.Certificate,
           `${TableName.PkiCertificateInstallationCert}.certificateId`,
           `${TableName.Certificate}.id`
         )
+        .leftJoin(TableName.CertificateSecret, `${TableName.CertificateSecret}.certId`, `${TableName.Certificate}.id`)
         .where(`${TableName.PkiCertificateInstallationCert}.installationId`, id)
-        .orderBy(`${TableName.PkiCertificateInstallationCert}.lastSeenAt`, "desc");
+        .orderBy(
+          `${TableName.PkiCertificateInstallationCert}.lastSeenAt`,
+          "desc"
+        )) as (TPkiCertificateInstallationCerts &
+        Pick<
+          TCertificates,
+          | "commonName"
+          | "serialNumber"
+          | "notBefore"
+          | "notAfter"
+          | "status"
+          | "deletedAt"
+          | "friendlyName"
+          | "fingerprintSha256"
+          | "altNames"
+          | "applicationId"
+          | "subjectOrganization"
+          | "subjectOrganizationalUnit"
+          | "subjectCountry"
+          | "subjectState"
+          | "subjectLocality"
+        > & { privateKeyRef: string | null })[];
+
+      const certificateIds = certLinks.map((link) => link.certificateId);
+      const metadataRows = certificateIds.length
+        ? await knex(TableName.ResourceMetadata)
+            .select("certificateId", "key", "value")
+            .whereIn("certificateId", certificateIds)
+        : ([] as Pick<TResourceMetadata, "certificateId" | "key" | "value">[]);
 
       return {
         ...installation,
-        certificates: certLinks
+        certificates: certLinks.map(({ privateKeyRef, ...link }) => ({
+          ...link,
+          hasPrivateKey: Boolean(privateKeyRef),
+          metadata: metadataRows
+            .filter((row) => row.certificateId === link.certificateId)
+            .map(({ key, value }) => ({ key, value: value || "" }))
+        }))
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI certificate installation by ID with certificates" });
