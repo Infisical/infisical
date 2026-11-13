@@ -21,11 +21,11 @@ export class RootKey {
     return new RootKey(bytes);
   }
 
-  encrypt(plainText: Buffer): Buffer {
+  encrypt(plainText: Buffer): Buffer<ArrayBuffer> {
     return rootCipher().encrypt(plainText, this.bytes);
   }
 
-  decrypt(cipherText: Buffer): Buffer {
+  decrypt(cipherText: Buffer): Buffer<ArrayBuffer> {
     return rootCipher().decrypt(cipherText, this.bytes);
   }
 

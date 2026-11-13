@@ -45,13 +45,14 @@ export class RootKeyConfigStore implements TRootKeyConfigStore {
   async insert(config: RootKeyConfig): Promise<void> {
     const record = config.toJSON();
     try {
+      // Null columns are left out: migrations that predate the rotation columns bootstrap through this insert.
       await this.knex()(TableName.KmsServerRootConfig).insert({
         id: record.id,
         encryptedRootKey: record.encryptedRootKey,
         encryptionStrategy: record.encryptionStrategy,
-        ...(record.kekLabel !== undefined ? { kekLabel: record.kekLabel } : {}),
-        ...(record.activatedAt !== undefined ? { activatedAt: record.activatedAt } : {}),
-        ...(record.supersededAt !== undefined ? { supersededAt: record.supersededAt } : {})
+        ...(record.kekLabel != null ? { kekLabel: record.kekLabel } : {}),
+        ...(record.activatedAt != null ? { activatedAt: record.activatedAt } : {}),
+        ...(record.supersededAt != null ? { supersededAt: record.supersededAt } : {})
       } as never);
     } catch (error) {
       throw new DatabaseError({ error, name: "Insert root key config" });

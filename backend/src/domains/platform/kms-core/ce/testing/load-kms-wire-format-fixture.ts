@@ -2,17 +2,20 @@ import type { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
 
-import { TKmsKeyProps } from "../model/kms-key";
-import { TRootKeyConfigProps } from "../model/root-key-config";
-import { InMemoryKmsCoreState } from "./in-memory-kms-core-state";
+import { KekHistoryEntry, TKekHistoryEntryRecord } from "../models/kek-history-entry";
+import { KmsKey, TKmsKeyRecord } from "../models/kms-key";
+import { KmsKeyVersion } from "../models/kms-key-version";
+import { LegacyEncryptionKey } from "../models/legacy-encryption-key";
+import { RootKeyConfig, TRootKeyConfigRecord } from "../models/root-key-config";
+import { InMemoryKmsCoreStores } from "./in-memory-kms-core-stores";
 import { TKmsWireFormatFixture } from "./kms-wire-format-fixture";
 
 type TRow = Record<string, unknown>;
 
-const keyProps = (fixture: TKmsWireFormatFixture, key: TRow): TKmsKeyProps => {
+const keyRecord = (fixture: TKmsWireFormatFixture, key: TRow): TKmsKeyRecord => {
   const internal = fixture.rows.internalKms.find((row) => row.kmsKeyId === key.id) as TRow | undefined;
   return {
-    ...(key as unknown as TKmsKeyProps),
+    ...(key as unknown as TKmsKeyRecord),
     internal: internal
       ? {
           id: internal.id as string,
@@ -20,40 +23,55 @@ const keyProps = (fixture: TKmsWireFormatFixture, key: TRow): TKmsKeyProps => {
           encryptionAlgorithm: internal.encryptionAlgorithm as string,
           version: internal.version as number
         }
-      : undefined
+      : null,
+    external: null
   };
 };
 
-export const loadFixtureIntoMemory = (fixture: TKmsWireFormatFixture, state: InMemoryKmsCoreState) => {
+export const loadFixtureIntoMemory = async (fixture: TKmsWireFormatFixture, memory: InMemoryKmsCoreStores) => {
   const { rows } = fixture;
-  const { tables } = state;
-  rows.kmsRootConfig.forEach((row) =>
-    tables.rootKeyConfigs.set(row.id as string, row as unknown as TRootKeyConfigProps)
-  );
-  rows.kmsKekHistory.forEach((row) => tables.kekHistory.set(row.id as string, row as never));
+  for (const row of rows.kmsRootConfig) {
+    // eslint-disable-next-line no-await-in-loop
+    await memory.rootKeyConfigStore.insert(RootKeyConfig.restore(row as unknown as TRootKeyConfigRecord));
+  }
+  for (const row of rows.kmsKekHistory) {
+    // eslint-disable-next-line no-await-in-loop
+    await memory.kekHistoryStore.insert(KekHistoryEntry.restore(row as unknown as TKekHistoryEntryRecord));
+  }
   const [legacy] = rows.kmsLegacyEncryptionKeys;
-  if (legacy)
-    tables.legacyEncryptionKey = {
-      id: legacy.id as string,
-      encryptedKeySnapshot: legacy.encryptedKeySnapshot as Buffer
-    };
-  rows.kmsKeys.forEach((key) => tables.kmsKeys.set(key.id as string, keyProps(fixture, key)));
-  tables.kmsKeyVersions = rows.internalKmsKeyVersions.map((row) => ({
-    id: row.id as string,
-    internalKmsId: row.internalKmsId as string,
-    encryptedKey: row.encryptedKey as Buffer,
-    version: row.version as number
-  }));
-  tables.orgs.set(rows.organization.id, {
+  if (legacy) {
+    await memory.legacyEncryptionKeyStore.insert(
+      LegacyEncryptionKey.restore({
+        id: legacy.id as string,
+        encryptedKeySnapshot: legacy.encryptedKeySnapshot as Buffer
+      })
+    );
+  }
+  memory.platformRows.orgs.set(rows.organization.id, {
     id: rows.organization.id,
     kmsDefaultKeyId: rows.organization.kmsDefaultKeyId,
     kmsEncryptedDataKey: rows.organization.kmsEncryptedDataKey
   });
-  tables.projects.set(rows.project.id, {
+  memory.platformRows.projects.set(rows.project.id, {
     ...rows.project,
     deleteAfter: null,
     kmsCertificateKeyId: null
   });
+  for (const key of rows.kmsKeys) {
+    // eslint-disable-next-line no-await-in-loop
+    await memory.kmsKeyStore.insert(KmsKey.restore(keyRecord(fixture, key)));
+  }
+  for (const row of rows.internalKmsKeyVersions) {
+    // eslint-disable-next-line no-await-in-loop
+    await memory.kmsKeyVersionStore.insert(
+      KmsKeyVersion.restore({
+        id: row.id as string,
+        internalKmsId: row.internalKmsId as string,
+        encryptedKey: row.encryptedKey as Buffer,
+        version: row.version as number
+      })
+    );
+  }
 };
 
 // Expects an empty instance (a fresh database): the root config is instance-wide.

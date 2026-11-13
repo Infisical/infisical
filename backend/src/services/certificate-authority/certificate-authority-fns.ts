@@ -4,6 +4,7 @@ import { CRLNumber, id_ce_cRLNumber } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
+import { DomainError } from "@app/domains/lib/errors";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
@@ -942,7 +943,12 @@ export const rebuildCaCrlAfterChange = async (
         reason: "Another CRL update for this CA is in progress. The CRL will be regenerated automatically."
       };
     }
-    if (error instanceof BadRequestError || error instanceof NotFoundError || error instanceof InternalServerError) {
+    if (
+      error instanceof BadRequestError ||
+      error instanceof NotFoundError ||
+      error instanceof InternalServerError ||
+      error instanceof DomainError
+    ) {
       return { isRegenerated: false, reason: error.message };
     }
     return {

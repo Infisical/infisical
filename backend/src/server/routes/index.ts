@@ -7,7 +7,7 @@ import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
 import { createDomains } from "@app/domains/domains";
-import { InstanceFeature, PlanFeature } from "@app/domains/platform/license/ce/module";
+import { InstanceFeature } from "@app/domains/platform/license/ce/module";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -4728,11 +4728,6 @@ export const registerRoutes = async (
 
   await superAdminService.initServerCfg();
 
-  // HSM first, with the instance license's entitlement, then the root key.
-  await domains.kmsCoreEe.start({
-    isHsmEntitled: () => licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)
-  });
-  await domains.kmsCore.start();
   server.addHook("onClose", async () => domains.kmsCoreEe.stop());
 
   server.decorate("cookieSigningKey", appCfg.COOKIE_SECRET_SIGN_KEY || kmsCoreDomain.getCookieSigningKey());

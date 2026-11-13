@@ -1,68 +1,51 @@
-import { randomBytes } from "node:crypto";
-
-import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
-import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
-
-import { InstanceEncryptionKey } from "../model/instance-encryption-key";
-import { KMS_ROOT_CONFIG_UUID, RootKeyEncryptionStrategy } from "../model/root-key-config";
+import { InstanceEncryptionKey } from "../models/instance-encryption-key";
+import { RootKey } from "../models/root-key";
+import { RootKeyConfig, RootKeyEncryptionStrategy } from "../models/root-key-config";
 import { KmsCoreModule, TKmsCoreDomain } from "../module";
-import { TKmsCoreHooks } from "../service/kms-core-hooks";
-import { testKmsCoreEnv } from "./build-kms-core";
-import { InMemoryKmsCoreDataAccess } from "./in-memory-kms-core-data-access";
+import { TKmsCoreHooks } from "../services/dependencies";
+import { InMemoryKmsCoreStores } from "./in-memory-kms-core-stores";
+import { rootKeyTestEnv } from "./root-key-fixture";
 
 type TAsyncMethods = {
   [K in keyof TKmsCoreDomain]: ReturnType<TKmsCoreDomain[K]> extends Promise<unknown> ? K : never;
 }[keyof TKmsCoreDomain];
 
 /**
- * For consumers of KMS Core: the real domain over in-memory data access, with real AES-GCM. Orgs and projects are
- * created the first time a test names them, so a test only passes ids. `inMemory` exposes the tables.
+ * For consumers of KMS Core: the real domain over in-memory stores, with real AES-GCM. Orgs and projects are created
+ * the first time a test names them, so a test only passes ids. `memory` exposes the stores.
  */
 export class FakeKmsCoreDomain implements TKmsCoreDomain {
-  readonly inMemory = new InMemoryKmsCoreDataAccess();
+  readonly memory = new InMemoryKmsCoreStores();
 
-  private readonly rootKey = randomBytes(32);
+  private readonly rootKey = RootKey.generate();
 
-  private readonly module: KmsCoreModule;
-
-  private readonly started: Promise<void>;
+  private readonly module: Promise<KmsCoreModule>;
 
   constructor({ hooks = {} }: { hooks?: TKmsCoreHooks } = {}) {
-    const env = testKmsCoreEnv();
-    this.inMemory.state.autoCreateScopes = true;
-    const now = new Date();
-    this.inMemory.state.tables.rootKeyConfigs.set(KMS_ROOT_CONFIG_UUID, {
-      id: KMS_ROOT_CONFIG_UUID,
-      encryptedRootKey: symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256).encrypt(
-        this.rootKey,
-        InstanceEncryptionKey.fromEnv(env).buffer
-      ),
-      encryptionStrategy: RootKeyEncryptionStrategy.Software,
-      activatedAt: now,
-      createdAt: now,
-      updatedAt: now
+    const env = rootKeyTestEnv();
+    this.memory.platformRows.autoCreate = true;
+    const config = RootKeyConfig.bootstrap({
+      encryptedRootKey: InstanceEncryptionKey.fromEnv(env).wrapRootKey(this.rootKey),
+      strategy: RootKeyEncryptionStrategy.Software,
+      withRotationState: false
     });
-    this.module = new KmsCoreModule({
-      transactionRunner: this.inMemory.transactionRunner,
-      dataAccess: this.inMemory.dataAccess,
-      env,
-      hooks,
-      isFipsEnabled: () => false
-    });
-    this.started = this.module.start({ skipRotationState: true });
+    this.module = this.memory.rootKeyConfigStore.insert(config).then(() =>
+      KmsCoreModule.create({
+        transactionRunner: this.memory.transactionRunner,
+        stores: this.memory.stores,
+        env,
+        hooks,
+        isFipsEnabled: () => false,
+        skipRotationState: true
+      })
+    );
   }
 
-  encryptWithRootKey = () => {
-    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
-    return (plainText: Buffer) => cipher.encrypt(plainText, this.rootKey);
-  };
+  encryptWithRootKey = () => (plainText: Buffer) => this.rootKey.encrypt(plainText);
 
-  decryptWithRootKey = () => {
-    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
-    return (cipherText: Buffer) => cipher.decrypt(cipherText, this.rootKey);
-  };
+  decryptWithRootKey = () => (cipherText: Buffer) => this.rootKey.decrypt(cipherText);
 
-  getCookieSigningKey = () => deriveCookieSigningKey(this.rootKey);
+  getCookieSigningKey = () => this.rootKey.cookieSigningKey();
 
   listEncryptionStrategies = this.delegate("listEncryptionStrategies");
 
@@ -77,6 +60,8 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
   deleteStagedKey = this.delegate("deleteStagedKey");
 
   deleteExpiringKey = this.delegate("deleteExpiringKey");
+
+  removeInactiveKeys = this.delegate("removeInactiveKeys");
 
   generateKmsKey = this.delegate("generateKmsKey");
 
@@ -155,8 +140,8 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
   // Waits for the in-memory module to load the root key, then calls it.
   private delegate<K extends TAsyncMethods>(method: K): TKmsCoreDomain[K] {
     return (async (...args: unknown[]) => {
-      await this.started;
-      return (this.module.service[method] as (...input: unknown[]) => unknown)(...args);
+      const module = await this.module;
+      return (module.service[method] as (...input: unknown[]) => unknown)(...args);
     }) as unknown as TKmsCoreDomain[K];
   }
 }

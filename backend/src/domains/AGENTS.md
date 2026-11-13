@@ -30,14 +30,14 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
 `index.ts` and keeps its test doubles in its own `testing/`:
 
-| Folder | Exports | Test doubles |
-| --- | --- | --- |
-| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `ExternalSystemError` | |
-| `lib/transactions/` | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
-| `lib/key-store/` | `TDomainKeyStore` | `InMemoryKeyStore` |
-| `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
-| `lib/data-access/` | `toCount` and other row helpers every store needs | |
-| `lib/testing/integration/` | The Postgres integration harness (`setupIntegration`) | |
+| Folder                     | Exports                                                                                                              | Test doubles                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `lib/errors/`              | `RuleViolationError`, `EntityNotFoundError`, `ExternalSystemError`                                                   |                             |
+| `lib/transactions/`        | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
+| `lib/key-store/`           | `TDomainKeyStore`                                                                                                    | `InMemoryKeyStore`          |
+| `lib/jobs/`                | `TDomainQueue`, `TDomainCron`                                                                                        | `FakeQueue`                 |
+| `lib/data-access/`         | `toCount` and other row helpers every store needs                                                                    |                             |
+| `lib/testing/integration/` | The Postgres integration harness (`setupIntegration`)                                                                |                             |
 
 Import `@app/domains/lib/<folder>` or `@app/domains/lib/<folder>/testing/<file>`, never a file inside a folder;
 lint enforces it. Code goes here only when it has no business rule and a second domain needs it (or will, like
@@ -48,30 +48,30 @@ A domain has `ce/`, `ee/`, or both, with the same layout inside. Nothing else at
 `src/ee/**` goes to the domain's `ee/`, and a domain may be `ee/` only: everything under an `ee/` path is
 EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer's call, never part of a refactor.
 
-| Path | Holds |
-| --- | --- |
-| `module.ts` | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts`, so a `ce/` domain never depends on an `ee/`-only one |
-| `models/` | One class per entity or value, with its rules. A file holds the class and its record type (`T<Model>Record`, what `restore()` takes and `toJSON()` returns), nothing else (no request types, key/queue names, helpers). Knows nothing about the DB |
-| `data-access/` | Stores (`<entity>-store.ts`, Postgres) and caches (`<thing>-cache.ts`, key store or memory), each implementing a type from `services/dependencies.ts`. Stores return models |
-| `clients/<system>/` | Client for an external system, one folder per system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in |
-| `services/` | Business logic. One folder per use case group: `services/<name>/service.ts` holds the class (`T<Name>Service`) and its input types, with its unit and integration tests and the helpers only it uses beside it. Helpers two or more services use go in `services/helpers/`. `services/dependencies.ts` holds the store and cache types, the `T<Domain>Stores` bundle included, and what the services need from EE or a domain they can't import |
-| `router/` | Fastify routes: validate, call a service, shape the response |
-| `testing/` | In-memory stores, a `Fake<Name>Service` per service another domain or legacy code calls, contract suites |
+| Path                | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `module.ts`         | The module class that builds everything, plus re-exports of the types other code uses. Other domains import only `ce/module.ts`, so a `ce/` domain never depends on an `ee/`-only one                                                                                                                                                                                                                                                           |
+| `models/`           | One class per entity or value, with its rules. A file holds the class and its record type (`T<Model>Record`, what `restore()` takes and `toJSON()` returns), nothing else (no request types, key/queue names, helpers). Knows nothing about the DB                                                                                                                                                                                              |
+| `data-access/`      | Stores (`<entity>-store.ts`, Postgres) and caches (`<thing>-cache.ts`, key store or memory), each implementing a type from `services/dependencies.ts`. Stores return models                                                                                                                                                                                                                                                                     |
+| `clients/<system>/` | Client for an external system, one folder per system. Speaks domain terms at its boundary: builds the request and maps statuses into outcomes, so services never match on status codes. A paid system's client lives in `ee/` and implements a `ce/` type; `ce/` never holds a stand-in                                                                                                                                                         |
+| `services/`         | Business logic. One folder per use case group: `services/<name>/service.ts` holds the class (`T<Name>Service`) and its input types, with its unit and integration tests and the helpers only it uses beside it. Helpers two or more services use go in `services/helpers/`. `services/dependencies.ts` holds the store and cache types, the `T<Domain>Stores` bundle included, and what the services need from EE or a domain they can't import |
+| `router/`           | Fastify routes: validate, call a service, shape the response                                                                                                                                                                                                                                                                                                                                                                                    |
+| `testing/`          | In-memory stores, a `Fake<Name>Service` per service another domain or legacy code calls, contract suites                                                                                                                                                                                                                                                                                                                                        |
 
 ## Building blocks
 
-| Piece | Rule |
-| --- | --- |
-| Model | One per entity, even if stored across several tables. Private constructor taking each field directly as a parameter property (`private readonly offlineLicenseId: string \| null`), never a `props` object; static `create()`/`restore()` take the record and spread it into the constructor, and `toJSON()` rebuilds it. The one exception is a record read by key, like `Plan`'s features (`plan.has(PlanFeature.X)` indexes it), which stays one frozen object. Fields stay private: expose behavior, plus getters for the fields callers need, so nobody reads a raw field the model has a rule for (`plan.has(PlanFeature.Rbac)`, not `plan.rbac`) or mutates it. Never a bare type or function |
-| Entity | Has an id and changes over time. `create()` validates, generates the id and throws `RuleViolationError` for bad input; `restore()` trusts the row. Changes go through intention-revealing methods that enforce the rules and mutate the private fields (`trustedIp.changeAddress(...)`, `membership.deactivate()`), never a generic `update(record)` or a setter; its store then persists the instance |
-| Value object | No id, compared by value, immutable (`Plan` is deep-frozen, `Meter` and `SeatUsage` are readonly). A change returns a new instance. Use one for any value with rules attached: a quota, a key, a scope |
-| Store | One per model (`OrganizationStore`). Owns every table storing that model, returns models not rows. A table belongs to exactly one store; other domains go through the owner's service. Shared query fragments are private methods |
-| Cache | Expiring state over the key store or memory (`PlanCache`). Stores keep data durably, caches can lose it |
-| Stores bundle | A domain's stores plus `locks`, bound to one transaction: what `run` hands a service as `stores`. Built inline in `module.ts` and passed to `TransactionRunner` |
-| Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
-| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsProjectsModule.organizationsProjectsService`, `LicenseModule.licenseService`). Never wraps a service method |
-| Router | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.
-| Helpers | Plain functions |
+| Piece         | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model         | One per entity, even if stored across several tables. Private constructor taking each field directly as a parameter property (`private readonly offlineLicenseId: string \| null`), never a `props` object; static `create()`/`restore()` take the record and spread it into the constructor, and `toJSON()` rebuilds it. The one exception is a record read by key, like `Plan`'s features (`plan.has(PlanFeature.X)` indexes it), which stays one frozen object. Fields stay private: expose behavior, plus getters for the fields callers need, so nobody reads a raw field the model has a rule for (`plan.has(PlanFeature.Rbac)`, not `plan.rbac`) or mutates it. Never a bare type or function |
+| Entity        | Has an id and changes over time. `create()` validates, generates the id and throws `RuleViolationError` for bad input; `restore()` trusts the row. Changes go through intention-revealing methods that enforce the rules and mutate the private fields (`trustedIp.changeAddress(...)`, `membership.deactivate()`), never a generic `update(record)` or a setter; its store then persists the instance                                                                                                                                                                                                                                                                                               |
+| Value object  | No id, compared by value, immutable (`Plan` is deep-frozen, `Meter` and `SeatUsage` are readonly). A change returns a new instance. Use one for any value with rules attached: a quota, a key, a scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Store         | One per model (`OrganizationStore`). Owns every table storing that model, returns models not rows. A table belongs to exactly one store; other domains go through the owner's service. Shared query fragments are private methods                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Cache         | Expiring state over the key store or memory (`PlanCache`). Stores keep data durably, caches can lose it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Stores bundle | A domain's stores plus `locks`, bound to one transaction: what `run` hands a service as `stores`. Built inline in `module.ts` and passed to `TransactionRunner`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Service       | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Module        | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsProjectsModule.organizationsProjectsService`, `LicenseModule.licenseService`). Never wraps a service method                                                                                                                                                                                                                                                                                                                                                                           |
+| Router        | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.                                                                                                                                                                                                                                                                                                                                                                                          |
+| Helpers       | Plain functions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 Children: if there are a few and they're always read with the parent, the parent holds them (`Secret` holds
 its tags). If there are many and they're read separately, the child is its own entity holding the parent id
@@ -86,14 +86,14 @@ the model. The model is the only code that reads its own fields to make a decisi
 
 Signs a model is anemic, and what to do instead:
 
-| Smell | Instead |
-| --- | --- |
-| A service or helper branches on a model's field (`if (plan.slug === "enterprise" && plan.enforceIdentityLimit)`) | A method on the model that answers the question (`plan.exceeds(PlanLimit.Identities, used, 1)`) |
-| A public getter or field for every column | Getters only for data with no rule attached (`plan.slug`, `meter.key`) |
-| A setter, or `update(partial)` | One method per change, named for the intent, that checks the rules (`membership.deactivate()`) |
-| The service validates input before `create()` | `create()` validates and throws `RuleViolationError` |
-| `x-fns.ts` functions taking the record as their first argument | Methods on the model; what's left (needs `stores` or another domain) goes to `services/helpers/` |
-| The same check repeated in several services | One model method; services call it and don't re-check |
+| Smell                                                                                                            | Instead                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| A service or helper branches on a model's field (`if (plan.slug === "enterprise" && plan.enforceIdentityLimit)`) | A method on the model that answers the question (`plan.exceeds(PlanLimit.Identities, used, 1)`)  |
+| A public getter or field for every column                                                                        | Getters only for data with no rule attached (`plan.slug`, `meter.key`)                           |
+| A setter, or `update(partial)`                                                                                   | One method per change, named for the intent, that checks the rules (`membership.deactivate()`)   |
+| The service validates input before `create()`                                                                    | `create()` validates and throws `RuleViolationError`                                             |
+| `x-fns.ts` functions taking the record as their first argument                                                   | Methods on the model; what's left (needs `stores` or another domain) goes to `services/helpers/` |
+| The same check repeated in several services                                                                      | One model method; services call it and don't re-check                                            |
 
 Where a rule goes:
 
@@ -253,11 +253,11 @@ A domain throws only the kinds in `lib/errors/`, never `BadRequestError` and the
 also run from queues and crons, where a status code means nothing. `toHttpError` (`server/lib/domain-errors.ts`)
 maps them at the HTTP boundary.
 
-| Kind | Throw when | HTTP |
-| --- | --- | --- |
-| `RuleViolationError` | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan, a conflict | 400 |
-| `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404 |
-| `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong | 500 |
+| Kind                  | Throw when                                                                                                                   | HTTP |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---- |
+| `RuleViolationError`  | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan, a conflict           | 400  |
+| `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404  |
+| `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong                   | 500  |
 
 Who throws:
 
@@ -328,51 +328,51 @@ in-memory stores and lets EE plug in without `ce/` importing it.
 
 Inside `ce/` unless it's a paid feature or comes from `src/ee/**` (then the same layer in `ee/`).
 
-| Adding | Goes in |
-| --- | --- |
-| A rule about one entity | `models/` |
-| A query or write | A store in `data-access/`, plus its in-memory version in `testing/` and a contract suite case |
-| A use case | `services/` |
-| Logic two services share | A helper in `services/helpers/` that takes `stores` |
-| An endpoint | `router/`, registered beside the legacy routers (see Router above) |
-| Something other domains call | A method on the service type, re-exported from `module.ts` |
+| Adding                                                               | Goes in                                                                                                                              |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| A rule about one entity                                              | `models/`                                                                                                                            |
+| A query or write                                                     | A store in `data-access/`, plus its in-memory version in `testing/` and a contract suite case                                        |
+| A use case                                                           | `services/`                                                                                                                          |
+| Logic two services share                                             | A helper in `services/helpers/` that takes `stores`                                                                                  |
+| An endpoint                                                          | `router/`, registered beside the legacy routers (see Router above)                                                                   |
+| Something other domains call                                         | A method on the service type, re-exported from `module.ts`                                                                           |
 | Something from a store or cache, EE, or a domain that depends on you | A type in `services/dependencies.ts`, passed through the constructor. Anything else from another domain: take its whole service type |
-| Cross-request memory | A state holder built in the module constructor |
-| A capability with its own tables | A new domain folder with `ce/`, or `ee/` if its code is EE |
+| Cross-request memory                                                 | A state holder built in the module constructor                                                                                       |
+| A capability with its own tables                                     | A new domain folder with `ce/`, or `ee/` if its code is EE                                                                           |
 
 ## Reference code
 
 Copy these before inventing a shape. Pieces marked "none yet" have no example: the first domain to need one
 sets the pattern from the rules above, and its PR names it here.
 
-| Piece | Copy |
-| --- | --- |
-| Value object with rules | `platform/license/ce/models/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts` |
-| Stores bundle passed to `TransactionRunner` | `platform/organizations-projects/ce/module.ts` |
-| Entity, in-memory store, contract suite, router | none yet |
-| Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-store.ts` |
-| Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
-| Module with async setup, workers and crons | `platform/license/ce/module.ts` |
-| EE implementing a `ce/` type, external client | `platform/license/ee/` |
-| Fake for consumers | `platform/license/ce/testing/fake-license-service.ts` |
-| A product handing a platform domain its implementation | `secrets-manager/secrets/ce/module.ts` (`usageCounters`) |
-| Legacy code calling a domain | any `licenseService: TLicenseService` in `src/services/**` |
+| Piece                                                                      | Copy                                                                                                       |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Value object with rules                                                    | `platform/license/ce/models/plan.ts` (`has`/`assert`/`limit`/`exceeds`), `seat-usage.ts`, `meter.ts`       |
+| Stores bundle passed to `TransactionRunner`                                | `platform/organizations-projects/ce/module.ts`                                                             |
+| Entity, in-memory store, contract suite, router                            | none yet                                                                                                   |
+| Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-store.ts`                                     |
+| Joining a caller's transaction                                             | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
+| Module with async setup, workers and crons                                 | `platform/license/ce/module.ts`                                                                            |
+| EE implementing a `ce/` type, external client                              | `platform/license/ee/`                                                                                     |
+| Fake for consumers                                                         | `platform/license/ce/testing/fake-license-service.ts`                                                      |
+| A product handing a platform domain its implementation                     | `secrets-manager/secrets/ce/module.ts` (`usageCounters`)                                                   |
+| Legacy code calling a domain                                               | any `licenseService: TLicenseService` in `src/services/**`                                                 |
 
 ## Migrating a legacy module
 
 Where each legacy piece lands:
 
-| Legacy | Becomes |
-| --- | --- |
-| `xServiceFactory({ deps })` returning an object of arrow functions | `class XService implements TXService` in `services/x/service.ts`, deps as constructor parameter properties. Split it by use case group if callers use halves (see Service) |
-| `x-dal.ts` (`ormify` plus custom queries, optional `tx?: Knex` on each method) | One `<Entity>Store` per model in `data-access/`, typed in `services/dependencies.ts`. The `tx` parameter goes: the stores bundle from `run` supplies the connection |
-| `x-types.ts` | DTOs become the service's input types (in its `service.ts`), the entity shape becomes the model's `T<Model>Record`, enums go to the model that owns the concept |
-| `x-fns.ts` | Rules about one entity become model methods; the rest go to `services/helpers/` taking `stores` |
-| `x-queue.ts` | Workers and crons registered in the module's `start()`, each calling a service method. Queue and job names stay |
-| `keyStore` reads and writes in the service | A `<Thing>Cache` in `data-access/` |
-| `BadRequestError` / `NotFoundError` / `ConflictError` | `RuleViolationError` / `EntityNotFoundError` (see Errors) |
-| `permissionService` | Blocked until the permissions domain exists (see Dependency direction) |
-| Wiring in `server/routes/index.ts` | `new` in the module, the module built in `domains.ts` |
+| Legacy                                                                         | Becomes                                                                                                                                                                    |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `xServiceFactory({ deps })` returning an object of arrow functions             | `class XService implements TXService` in `services/x/service.ts`, deps as constructor parameter properties. Split it by use case group if callers use halves (see Service) |
+| `x-dal.ts` (`ormify` plus custom queries, optional `tx?: Knex` on each method) | One `<Entity>Store` per model in `data-access/`, typed in `services/dependencies.ts`. The `tx` parameter goes: the stores bundle from `run` supplies the connection        |
+| `x-types.ts`                                                                   | DTOs become the service's input types (in its `service.ts`), the entity shape becomes the model's `T<Model>Record`, enums go to the model that owns the concept            |
+| `x-fns.ts`                                                                     | Rules about one entity become model methods; the rest go to `services/helpers/` taking `stores`                                                                            |
+| `x-queue.ts`                                                                   | Workers and crons registered in the module's `start()`, each calling a service method. Queue and job names stay                                                            |
+| `keyStore` reads and writes in the service                                     | A `<Thing>Cache` in `data-access/`                                                                                                                                         |
+| `BadRequestError` / `NotFoundError` / `ConflictError`                          | `RuleViolationError` / `EntityNotFoundError` (see Errors)                                                                                                                  |
+| `permissionService`                                                            | Blocked until the permissions domain exists (see Dependency direction)                                                                                                     |
+| Wiring in `server/routes/index.ts`                                             | `new` in the module, the module built in `domains.ts`                                                                                                                      |
 
 1. Check its dependencies. Every legacy service or DAL it calls must already be a domain, or be one this module
    will own (see Dependency direction). Otherwise migrate that first, or stop.
@@ -421,36 +421,36 @@ Where each legacy piece lands:
 
 ## Naming
 
-| Kind | Pattern | Example |
-| --- | --- | --- |
-| Folder | kebab-case noun | `static-secrets` |
-| Model | `models/<entity>.ts`, class `<Entity>`, record `T<Entity>Record` | `instance-entitlements.ts`, `InstanceEntitlements`, `TInstanceEntitlementsRecord` |
-| Store | `data-access/<entity>-store.ts`, `class <Entity>Store implements T<Entity>Store` | `OrganizationStore` |
-| Cache | `data-access/<thing>-cache.ts`, `class <Thing>Cache implements T<Thing>Cache` | `PlanCache` |
-| Client | `clients/<system>/client.ts`, `class <System>Client`; its error mapping in `errors.ts` beside it | `LicenseServerClient` |
-| Test doubles | `testing/fake-<name>.ts` → `Fake<Name>`, `testing/in-memory-<name>.ts` → `InMemory<Name>`, rows for integration tests in `testing/<thing>-fixture.ts`, a module on fakes in `testing/build-<domain>.ts` → `build<Domain>()` | `FakeLicenseService`, `build-license.ts` |
-| Module | `<Domain>Module` in `ce/module.ts`, `<Domain>EeModule` in `ee/module.ts` | `StaticSecretsModule` |
-| Service | `class <Name>Service implements T<Name>Service`: both the class and its type end in `Service`. That holds for every class in `services/<name>/service.ts`, including one that queue jobs or a cron call and an EE class implementing a CE type. Name it for what it does, not how it is triggered (`UsageReportService`, not `UsageReportWorkerService`) | `LicenseService`, `UsageReportService`, `LicensePolicyService` |
-| Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |
-| Service deps | Constructor parameter properties (`private readonly planCache: TPlanCache`), one per dependency, never a deps object. Only the module calls `new`, so the order is checked in one place | `LicenseService` |
-| Dependency name | The type's name without the `T`, in camelCase, so a field says what it holds: `counterRegistry: CounterRegistry`, `organizationStore: TOrganizationStore`, `transactionRunner: TTransactionRunner<...>`. Infrastructure handles keep the names the backend uses everywhere (`db`, `knex`, `trx`, `keyStore`, `queueService`) | `planCache: TPlanCache` |
-| Module deps | `T<Name>Deps`, named, beside the module, never inline: `domains.ts` passes it as an object | `TLicenseDeps` |
-| Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |
-| Stores bundle | `T<Domain>Stores` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`), one field per store named like its type without the `T` (`organizationStore: TOrganizationStore`, the Dependency name rule), plus `locks`; the run context field is `stores` | `TOrganizationsProjectsStores` |
-| Transaction arg | `tx: TTransaction` | |
-| Service file | `services/<name>/service.ts`; the folder carries the name | `license/service.ts` |
-| Tests | `<file>.test.ts` (unit), `<file>.integration-test.ts` (integration), beside the code | `service.test.ts` |
+| Kind             | Pattern                                                                                                                                                                                                                                                                                                                                                  | Example                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Folder           | kebab-case noun                                                                                                                                                                                                                                                                                                                                          | `static-secrets`                                                                  |
+| Model            | `models/<entity>.ts`, class `<Entity>`, record `T<Entity>Record`                                                                                                                                                                                                                                                                                         | `instance-entitlements.ts`, `InstanceEntitlements`, `TInstanceEntitlementsRecord` |
+| Store            | `data-access/<entity>-store.ts`, `class <Entity>Store implements T<Entity>Store`                                                                                                                                                                                                                                                                         | `OrganizationStore`                                                               |
+| Cache            | `data-access/<thing>-cache.ts`, `class <Thing>Cache implements T<Thing>Cache`                                                                                                                                                                                                                                                                            | `PlanCache`                                                                       |
+| Client           | `clients/<system>/client.ts`, `class <System>Client`; its error mapping in `errors.ts` beside it                                                                                                                                                                                                                                                         | `LicenseServerClient`                                                             |
+| Test doubles     | `testing/fake-<name>.ts` → `Fake<Name>`, `testing/in-memory-<name>.ts` → `InMemory<Name>`, rows for integration tests in `testing/<thing>-fixture.ts`, a module on fakes in `testing/build-<domain>.ts` → `build<Domain>()`                                                                                                                              | `FakeLicenseService`, `build-license.ts`                                          |
+| Module           | `<Domain>Module` in `ce/module.ts`, `<Domain>EeModule` in `ee/module.ts`                                                                                                                                                                                                                                                                                 | `StaticSecretsModule`                                                             |
+| Service          | `class <Name>Service implements T<Name>Service`: both the class and its type end in `Service`. That holds for every class in `services/<name>/service.ts`, including one that queue jobs or a cron call and an EE class implementing a CE type. Name it for what it does, not how it is triggered (`UsageReportService`, not `UsageReportWorkerService`) | `LicenseService`, `UsageReportService`, `LicensePolicyService`                    |
+| Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license`                                                                                                                                                                                                                                                      | `licenseService: TLicenseService`                                                 |
+| Service deps     | Constructor parameter properties (`private readonly planCache: TPlanCache`), one per dependency, never a deps object. Only the module calls `new`, so the order is checked in one place                                                                                                                                                                  | `LicenseService`                                                                  |
+| Dependency name  | The type's name without the `T`, in camelCase, so a field says what it holds: `counterRegistry: CounterRegistry`, `organizationStore: TOrganizationStore`, `transactionRunner: TTransactionRunner<...>`. Infrastructure handles keep the names the backend uses everywhere (`db`, `knex`, `trx`, `keyStore`, `queueService`)                             | `planCache: TPlanCache`                                                           |
+| Module deps      | `T<Name>Deps`, named, beside the module, never inline: `domains.ts` passes it as an object                                                                                                                                                                                                                                                               | `TLicenseDeps`                                                                    |
+| Dependency type  | Named for what the service needs                                                                                                                                                                                                                                                                                                                         | `TPlanCache`, `TUsageCounter`                                                     |
+| Stores bundle    | `T<Domain>Stores` in `services/dependencies.ts` (the service's runner needs it, and `services/` can't import `data-access/`), one field per store named like its type without the `T` (`organizationStore: TOrganizationStore`, the Dependency name rule), plus `locks`; the run context field is `stores`                                               | `TOrganizationsProjectsStores`                                                    |
+| Transaction arg  | `tx: TTransaction`                                                                                                                                                                                                                                                                                                                                       |                                                                                   |
+| Service file     | `services/<name>/service.ts`; the folder carries the name                                                                                                                                                                                                                                                                                                | `license/service.ts`                                                              |
+| Tests            | `<file>.test.ts` (unit), `<file>.integration-test.ts` (integration), beside the code                                                                                                                                                                                                                                                                     | `service.test.ts`                                                                 |
 
 ## Testing
 
 Same philosophy as the blackbox suite (`tests/docs/writing-tests.md`): test (operation, outcome) pairs a
 caller depends on, not line coverage.
 
-| Layer | Tests | Uses |
-| --- | --- | --- |
-| Unit (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory stores and `InMemoryTransactionRunner`, no DB or network |
-| Integration (`*.integration-test.ts`) | Things only Postgres proves: SQL, store contract, locks, rollback, `within(tx)`, `afterCommit`, concurrency | Real stores on real Postgres via the harness |
-| Not here | HTTP responses, queue/cron effects, the full server | `tests/` and `e2e-test/` |
+| Layer                                 | Tests                                                                                                       | Uses                                                               |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Unit (`*.test.ts`)                    | Model rules, helpers, service use cases, input matrices                                                     | In-memory stores and `InMemoryTransactionRunner`, no DB or network |
+| Integration (`*.integration-test.ts`) | Things only Postgres proves: SQL, store contract, locks, rollback, `within(tx)`, `afterCommit`, concurrency | Real stores on real Postgres via the harness                       |
+| Not here                              | HTTP responses, queue/cron effects, the full server                                                         | `tests/` and `e2e-test/`                                           |
 
 Rules:
 
@@ -506,12 +506,12 @@ describe("KmsKeyService.generateKmsKey", () => {
 });
 ```
 
-| `h.` | Gives |
-| --- | --- |
-| `db` | Knex on this describe's DB (`primaryNode()`/`replicaNode()` resolve to it) |
-| `newTenant()` | New org, admin user, one project with dev/staging/prod |
-| `factories` | Single rows: `user`, `organization`, `orgMembership`, `project`, `projectMembership` |
-| `newDatabase()` | Empty DB on the same server, dropped after the test |
+| `h.`            | Gives                                                                                |
+| --------------- | ------------------------------------------------------------------------------------ |
+| `db`            | Knex on this describe's DB (`primaryNode()`/`replicaNode()` resolve to it)           |
+| `newTenant()`   | New org, admin user, one project with dev/staging/prod                               |
+| `factories`     | Single rows: `user`, `organization`, `orgMembership`, `project`, `projectMembership` |
+| `newDatabase()` | Empty DB on the same server, dropped after the test                                  |
 
 - Only read `h.*` inside tests and hooks; reading it at describe time throws.
 - Factories only insert platform rows no domain owns yet. Create a domain's rows through its module so its
@@ -534,7 +534,10 @@ One file in `lib/testing/integration/servers/`:
 
 ```ts
 const startLdapServer = async (): Promise<TLdapServer> => {
-  const started = await container("<image>:<exact tag>").withExposedPorts(389).withWaitStrategy(Wait.forListeningPorts()).start();
+  const started = await container("<image>:<exact tag>")
+    .withExposedPorts(389)
+    .withWaitStrategy(Wait.forListeningPorts())
+    .start();
   return { host: started.getHost(), port: started.getMappedPort(389), containerId: started.getId() };
 };
 

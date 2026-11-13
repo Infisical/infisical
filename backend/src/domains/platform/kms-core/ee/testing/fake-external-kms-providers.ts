@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 
-import { TExternalKmsProviders } from "../external-kms-client/external-kms-providers";
+import { TExternalKmsProviders } from "../services/dependencies";
 
 // Stands in for AWS and GCP: real AES-GCM under one key per fake, and a hook that runs on every provider call so a
 // test can check what else is happening at that moment (an open transaction, say).

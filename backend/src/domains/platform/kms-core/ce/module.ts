@@ -1,206 +1,108 @@
-import { ProjectType } from "@app/db/schemas";
-import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transactions";
+import type { Knex } from "knex";
+
+import { TDbClient } from "@app/db";
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { CronJobName, type TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
-import type { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import type { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
-import { NotFoundError } from "@app/lib/errors";
 
-import { DataAccessDb, TReadOptions } from "./data-access/data-access-db";
-import { buildKmsCoreDataAccess, TKmsCoreDataAccess } from "./data-access/kms-core-data-access";
-import { noKmsCoreLocks, PostgresKmsCoreLocks } from "./data-access/kms-core-locks";
-import { TKmsKeyFilter } from "./data-access/kms-key-data-access";
-import { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
-import { RootKeyEncryptionStrategy } from "./model/root-key-config";
-import { TKmsCoreState } from "./service/key-material";
-import {
-  TCreateExternalKmsInput,
-  TExternalKmsDetails,
-  TExternalKmsHook,
-  TExternalKmsSummary,
-  TKmsCoreHooks,
-  TUpdateExternalKmsInput
-} from "./service/kms-core-hooks";
-import {
-  KmsDataKey,
-  TAsyncDecryptor,
-  TAsyncEncryptor,
-  TCipherPair,
+import { buildKmsCoreStoreAccess } from "./data-access/kms-core-stores";
+import { RootKey } from "./models/root-key";
+import { DataKeyService, TDataKeyService } from "./services/data-key/service";
+import { TKmsCoreHooks, TKmsCoreStores } from "./services/dependencies";
+import { KmsKeyService, TKmsKeyService } from "./services/kms-key/service";
+import { loadRootKey } from "./services/root-key/load-root-key";
+import { RootKeyService, TKmsCoreEnv, TRootKeyService } from "./services/root-key/service";
+
+export type { TCipherPair, TDecryptor, TEncryptor } from "./models/data-key";
+export { KmsCiphertextUndecryptableError } from "./models/kms-ciphertext-undecryptable-error";
+export { KmsKeyUsage } from "./models/kms-key";
+export type { TKmsKeyDetails, TKmsKeyRecord } from "./models/kms-key";
+export { RootKeyEncryptionStrategy } from "./models/root-key-config";
+export { WrappedKeyPayload } from "./models/wrapped-key";
+export { KmsDataKey, KmsType } from "./services/data-key/service";
+export type {
+  TDataKeyService,
   TEncryptWithKmsDataKeyDTO,
-  TGenerateKMSDTO,
-  TImportKeyMaterialDTO,
-  TListKmsKeysDTO,
-  TSignWithKmsDTO,
-  TUpdateProjectSecretManagerKmsKeyDTO,
-  TVerifyWithKmsDTO
-} from "./service/kms-core-types";
-import { KmsCryptoService } from "./service/kms-crypto-service";
-import { KmsKeyService, TKmsKeyDetails } from "./service/kms-key-service";
-import { RootKeyHolder } from "./service/root-key-holder";
-import {
-  RootKeyRotationService,
-  TCreatedRotation,
-  TRootKeyStatus,
-  TRotationHistoryEntry
-} from "./service/root-key-rotation-service";
-import {
-  RootKeyService,
-  TEncryptionStrategyOption,
-  TKmsCoreEnv,
-  TRootKeyStartOptions
-} from "./service/root-key-service";
-import { ScopeKeyService } from "./service/scope-key-service";
-
-export { DataAccessDb, ReadFrom } from "./data-access/data-access-db";
-export type { TReadOptions } from "./data-access/data-access-db";
-export { KmsKeyUsage } from "./model/kms-key";
-export type { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
-export { RootKeyEncryptionStrategy } from "./model/root-key-config";
-export { WrappedKeyPayload } from "./model/wrapped-key";
+  TUpdateProjectSecretManagerKmsKeyDTO
+} from "./services/data-key/service";
 export type {
   TCreateExternalKmsInput,
-  TExternalKeyRef,
   TExternalKmsConfig,
   TExternalKmsDetails,
   TExternalKmsHook,
   TExternalKmsSummary,
   TKmsCoreHooks,
+  TKmsKeyFilter,
   TRootKeyWrapper,
   TUpdateExternalKmsInput
-} from "./service/kms-core-hooks";
-export * from "./service/kms-core-types";
-export type { TKmsKeyDetails } from "./service/kms-key-service";
-export type { TCreatedRotation, TRootKeyStatus, TRotationHistoryEntry } from "./service/root-key-rotation-service";
-export type { TEncryptionStrategyOption, TKmsCoreEnv } from "./service/root-key-service";
+} from "./services/dependencies";
+export type { TAsyncDecryptor, TAsyncEncryptor } from "./services/helpers/key-cipher";
+export { ReadFrom } from "./services/helpers/read-options";
+export type { TReadOptions } from "./services/helpers/read-options";
+export { KmsKeyOrderBy } from "./services/kms-key/service";
+export type {
+  TGenerateKMSDTO,
+  TImportKeyMaterialDTO,
+  TKmsKeyAttributes,
+  TKmsKeyService,
+  TListKmsKeysDTO,
+  TSignWithKmsDTO,
+  TVerifyWithKmsDTO
+} from "./services/kms-key/service";
+export type {
+  TCreatedRotation,
+  TEncryptionStrategyOption,
+  TKmsCoreEnv,
+  TRootKeyService,
+  TRootKeyStatus,
+  TRotationHistoryEntry
+} from "./services/root-key/service";
 
-export type TKmsCoreDomain = {
-  // Root key. The key itself never leaves the domain; these encrypt and decrypt with it.
-  encryptWithRootKey: () => (plainText: Buffer) => Buffer<ArrayBuffer>;
-  decryptWithRootKey: () => (cipherText: Buffer) => Buffer<ArrayBuffer>;
-  // Derived from the root key (HKDF), so it is stable across restarts and replicas.
-  getCookieSigningKey: () => string;
-  listEncryptionStrategies: () => Promise<{ strategies: TEncryptionStrategyOption[] }>;
-  // Refused while a rotation is staged or retained, and for HSM when the instance is not entitled to it.
-  updateEncryptionStrategy: (strategy: RootKeyEncryptionStrategy) => Promise<void>;
+// Every KMS Core service in one object, for consumers that still take a single dependency.
+export type TKmsCoreDomain = TRootKeyService & TKmsKeyService & TDataKeyService;
 
-  // Root key rotation (the admin console).
-  getRootKey: () => Promise<TRootKeyStatus>;
-  listRotations: (page: {
-    offset: number;
-    limit: number;
-  }) => Promise<{ rotations: TRotationHistoryEntry[]; totalCount: number }>;
-  createRotation: (input: { replaceStaged?: boolean }) => Promise<TCreatedRotation>;
-  deleteStagedKey: (input: { label: string }) => Promise<void>;
-  deleteExpiringKey: (input: { label: string; force?: boolean }) => Promise<void>;
-
-  // KMS keys.
-  generateKmsKey: (input: TGenerateKMSDTO) => Promise<TKmsKeyRecord>;
-  importKeyMaterial: (input: TImportKeyMaterialDTO) => Promise<TKmsKeyRecord>;
-  rotateKmsKey: (kmsId: string) => Promise<{ id: string; version: number }>;
-  getKmsById: (kmsId: string) => Promise<{ id: string; name: string; orgId: string; isExternal: boolean }>;
-  findKeyById: (kmsId: string) => Promise<TKmsKeyDetails | undefined>;
-  // A key published as a JWKS, read from the primary. Undefined when unpublished, missing, or its project is
-  // pending deletion.
-  findPublishedKeyById: (kmsId: string) => Promise<TKmsKeyDetails | undefined>;
-  findKeys: (filter: TKmsKeyFilter, options?: TReadOptions) => Promise<TKmsKeyDetails[]>;
-  listProjectKeys: (input: TListKmsKeysDTO) => Promise<{ keys: TKmsKeyDetails[]; totalCount: number }>;
-  updateKeyAttributes: (kmsId: string, attributes: TKmsKeyAttributes) => Promise<TKmsKeyDetails>;
-  // Null when the key has delete protection.
-  deleteKey: (kmsId: string) => Promise<TKmsKeyDetails | null>;
-  deleteKeys: (kmsIds: string[]) => Promise<number>;
-  countProjectKeysInOrg: (orgId: string, projectType: ProjectType) => Promise<number>;
-  getKeyMaterial: (input: { kmsId: string }) => Promise<Buffer<ArrayBuffer>>;
-  getBulkKeyMaterial: (input: {
-    kmsIds: string[];
-  }) => Promise<{ kmsId: string; name: string; keyMaterial: Buffer<ArrayBuffer> }[]>;
-
-  // Cryptography with a KMS key.
-  encryptWithKmsKey: (input: { kmsId: string }) => Promise<TAsyncEncryptor>;
-  decryptWithKmsKey: (input: { kmsId: string }) => Promise<TAsyncDecryptor>;
-  getPublicKey: (input: { kmsId: string }, options?: TReadOptions) => Promise<Buffer>;
-  signWithKmsKey: (
-    input: Pick<TSignWithKmsDTO, "kmsId">,
-    options?: TReadOptions
-  ) => Promise<
-    (input: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm" | "isDigest">) => Promise<{
-      signature: Buffer;
-      algorithm: TSignWithKmsDTO["signingAlgorithm"];
-    }>
-  >;
-  verifyWithKmsKey: (input: Pick<TVerifyWithKmsDTO, "kmsId" | "signingAlgorithm">) => Promise<
-    (input: Pick<TVerifyWithKmsDTO, "data" | "signature" | "isDigest">) => Promise<{
-      signatureValid: boolean;
-      algorithm: TVerifyWithKmsDTO["signingAlgorithm"];
-    }>
-  >;
-  generateMac: (input: {
-    kmsId: string;
-  }) => Promise<(input: { data: Buffer }) => { mac: Buffer; algorithm: HmacAlgorithm }>;
-  verifyMac: (input: {
-    kmsId: string;
-  }) => Promise<(input: { data: Buffer; mac: Buffer }) => { macValid: boolean; algorithm: HmacAlgorithm }>;
-
-  // Org and project keys. Each is created on first use in KMS Core's own short transaction: never call these
-  // inside a caller's transaction (see kms-core/AGENTS.md).
-  // Read the org or project from the replica by default; a caller that has just created it passes
-  // { readFrom: ReadFrom.Primary }.
-  createCipherPairWithDataKey: (context: TEncryptWithKmsDataKeyDTO, options?: TReadOptions) => Promise<TCipherPair>;
-  getProjectSecretManagerKmsKeyId: (projectId: string, options?: TReadOptions) => Promise<string>;
-  getProjectCertificateKmsKeyId: (projectId: string, options?: TReadOptions) => Promise<string>;
-  wrapKey: (input: { projectId: string; label: string; key: Buffer }) => Promise<Buffer<ArrayBuffer>>;
-  unwrapKey: (input: {
-    projectId: string;
-    label: string;
-    wrappedKey: Buffer;
-    keyBytes: number;
-  }) => Promise<Buffer | null>;
-  updateProjectSecretManagerKmsKey: (
-    input: TUpdateProjectSecretManagerKmsKeyDTO
-  ) => Promise<TKmsKeyRecord & { isExternal: boolean }>;
-  getProjectKeyBackup: (projectId: string) => Promise<{ secretManager: string }>;
-  loadProjectKeyBackup: (projectId: string, backup: string) => Promise<{ secretManagerKmsKey: TKmsKeyDetails }>;
-  // After a project is deleted: removes the reserved keys it owned that nothing references any more.
-  deleteProjectKeys: (input: { orgId: string; kmsKeyIds: string[] }) => Promise<void>;
-
-  // External KMS keys. Paid: the enterprise edition implements them, and the caller checks the plan.
-  createExternalKms: (input: TCreateExternalKmsInput) => Promise<TExternalKmsDetails>;
-  updateExternalKms: (input: TUpdateExternalKmsInput) => Promise<TExternalKmsDetails>;
-  deleteExternalKms: (kmsId: string) => Promise<TExternalKmsDetails>;
-  getExternalKms: (kmsId: string) => Promise<TExternalKmsDetails>;
-  getExternalKmsByName: (orgId: string, name: string) => Promise<TExternalKmsDetails>;
-  listExternalKms: (orgId: string) => Promise<TExternalKmsSummary[]>;
-  fetchGcpKeys: (input: { credential: unknown; gcpRegion: string }) => Promise<{ keys: string[] }>;
-};
-
-export type TKmsCoreDataAccessDeps = {
-  transactionRunner: TTransactionRunner<TKmsCoreDataAccess>;
-  // Outside a transaction. Fetches read the replica unless they pass ReadFrom.Primary.
-  dataAccess: TKmsCoreDataAccess;
+export type TKmsCoreStoreAccess = {
+  transactionRunner: TTransactionRunner<TKmsCoreStores>;
+  // Outside a transaction: the replica on the server.
+  stores: TKmsCoreStores;
 };
 
 export type TKmsCoreDeps = (
   | {
-      // DataAccessDb.fromClient for the server; migrations pass DataAccessDb.single on their own connection.
-      db: DataAccessDb;
+      db: TDbClient;
+      // Where reads outside a transaction go: the replica on the server, the same connection in a migration (never
+      // the global replica, which a migration must not read through).
+      readKnex: () => Knex;
     }
-  // Tests pass in-memory data access instead.
-  | TKmsCoreDataAccessDeps
+  // Tests pass in-memory stores instead.
+  | TKmsCoreStoreAccess
 ) & {
-  cronJob?: Pick<TCronJobFactory, "register">;
   env: TKmsCoreEnv;
   originalEnv?: TLegacyKeySnapshot;
   hooks: TKmsCoreHooks;
   isFipsEnabled?: () => boolean;
+  /**
+   * For callers inside a database migration: loads only the root key, with no promotion, labels or legacy snapshot,
+   * which historical migrations predate.
+   */
+  skipRotationState?: boolean;
 };
 
-// The runner's generic store locks are not used: KMS Core takes its frozen lock ids (PostgresKmsCoreLocks), which
-// pods of the previous release share during a deploy.
-export const buildKmsCoreDataAccessDeps = (db: DataAccessDb): TKmsCoreDataAccessDeps => ({
-  transactionRunner: new TransactionRunner<TKmsCoreDataAccess>(db.writer(), (trx) =>
-    buildKmsCoreDataAccess(DataAccessDb.single(trx), new PostgresKmsCoreLocks(trx))
-  ),
-  dataAccess: buildKmsCoreDataAccess(db, noKmsCoreLocks)
-});
+const bindAll = <T extends object>(service: T): T => {
+  const bound = {} as Record<string, unknown>;
+  let proto = Object.getPrototypeOf(service) as object | null;
+  while (proto && proto !== Object.prototype) {
+    Object.getOwnPropertyNames(proto).forEach((name) => {
+      const member = (service as Record<string, unknown>)[name];
+      if (name !== "constructor" && typeof member === "function" && !(name in bound)) {
+        bound[name] = (member as (...args: unknown[]) => unknown).bind(service);
+      }
+    });
+    proto = Object.getPrototypeOf(proto) as object | null;
+  }
+  return bound as T;
+};
 
 // The root key, internal KMS keys, org and project keys, HSM and external keys (through hooks), and root key
 // rotation. Owns kms_keys, internal_kms, internal_kms_key_version, external_kms, kms_root_config,
@@ -208,150 +110,51 @@ export const buildKmsCoreDataAccessDeps = (db: DataAccessDb): TKmsCoreDataAccess
 export class KmsCoreModule {
   readonly name = "kms-core";
 
+  // Every service in one object, until consumers take the services they call.
   readonly service: TKmsCoreDomain;
 
-  private readonly state: TKmsCoreState;
-
-  private readonly rootKeys: RootKeyService;
-
-  private readonly rotation: RootKeyRotationService;
-
-  constructor(private readonly deps: TKmsCoreDeps) {
-    const { transactionRunner, dataAccess } = "db" in deps ? buildKmsCoreDataAccessDeps(deps.db) : deps;
-    const isFipsEnabled = deps.isFipsEnabled ?? (() => crypto.isFipsModeEnabled());
-    this.state = { rootKey: new RootKeyHolder(), hooks: deps.hooks };
-    const { state } = this;
-
-    this.rootKeys = new RootKeyService({
-      transactionRunner,
-      dataAccess,
-      state,
-      env: deps.env,
-      originalEnv: deps.originalEnv,
-      isFipsEnabled
-    });
-    const { rootKeys } = this;
-    this.rotation = new RootKeyRotationService({
-      transactionRunner,
-      dataAccess,
-      state,
-      retentionDays: deps.env.KMS_ROOT_KEY_RETENTION_DAYS,
-      currentKekLabel: () => rootKeys.currentKekLabel(),
-      isFipsEnabled
-    });
-    const kmsKeys = new KmsKeyService({ transactionRunner, dataAccess, state });
-    const cryptoService = new KmsCryptoService({ dataAccess, state });
-    const scopeKeys = new ScopeKeyService({ transactionRunner, dataAccess, state });
-    this.service = this.build(kmsKeys, cryptoService, scopeKeys);
+  private constructor(
+    readonly rootKeyService: RootKeyService,
+    readonly kmsKeyService: KmsKeyService,
+    readonly dataKeyService: DataKeyService
+  ) {
+    this.service = {
+      ...bindAll<TRootKeyService>(rootKeyService),
+      ...bindAll<TKmsKeyService>(kmsKeyService),
+      ...bindAll<TDataKeyService>(dataKeyService)
+    };
   }
 
-  // Loads the root key (bootstrapping it on a new instance) and registers the rotation cron. Called once at boot,
-  // after the enterprise module started.
-  async start(options: TRootKeyStartOptions = {}): Promise<void> {
-    await this.rootKeys.start(options);
-    if (options.skipRotationState || !this.deps.cronJob) return;
-    this.deps.cronJob.register({
+  // Loads the root key (bootstrapping it on a new instance) before any service exists, so none can run without it.
+  // Built after KmsCoreEeModule, which may need the HSM to unwrap it.
+  static async create(deps: TKmsCoreDeps): Promise<KmsCoreModule> {
+    const { transactionRunner, stores } = "db" in deps ? buildKmsCoreStoreAccess(deps.db, deps.readKnex) : deps;
+    const isFipsEnabled = deps.isFipsEnabled ?? (() => crypto.isFipsModeEnabled());
+    const { rootKeyWrapper, externalKms } = deps.hooks;
+
+    const rootKey: RootKey = await loadRootKey({
+      transactionRunner,
+      stores,
+      env: deps.env,
+      originalEnv: deps.originalEnv,
+      isFipsEnabled,
+      rootKeyWrapper,
+      skipRotationState: deps.skipRotationState
+    });
+
+    const rootKeyService = new RootKeyService(transactionRunner, rootKey, deps.env, isFipsEnabled, rootKeyWrapper);
+    const dataKeyService = new DataKeyService(transactionRunner, stores, rootKey, externalKms);
+    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms, dataKeyService);
+    return new KmsCoreModule(rootKeyService, kmsKeyService, dataKeyService);
+  }
+
+  // Registers the weekly removal of root keys past their retention.
+  start(cronJob: Pick<TCronJobFactory, "register">) {
+    cronJob.register({
       name: CronJobName.KmsRootKeyCleanup,
       pattern: "0 3 * * 0",
       runHashTtlS: 60 * 60,
-      handler: () => this.rotation.removeInactiveKeys()
+      handler: () => this.rootKeyService.removeInactiveKeys()
     });
-  }
-
-  private externalKms(): TExternalKmsHook {
-    const hook = this.state.hooks.externalKms;
-    if (!hook) throw new NotFoundError({ message: "External KMS keys require the Infisical enterprise edition." });
-    return hook;
-  }
-
-  private build(kmsKeys: KmsKeyService, cryptoService: KmsCryptoService, scopeKeys: ScopeKeyService): TKmsCoreDomain {
-    const { rootKeys, rotation } = this;
-    const orgCipher = (orgId: string) =>
-      scopeKeys.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
-    // The org of an existing external key, which owns the data key its provider inputs are encrypted with.
-    const keyOrgCipher = async (kmsId: string) => {
-      const key = await kmsKeys.findKeyById(kmsId);
-      if (!key?.isExternal) throw new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
-      return orgCipher(key.orgId);
-    };
-
-    return {
-      encryptWithRootKey: () => rootKeys.encryptWithRootKey(),
-      decryptWithRootKey: () => rootKeys.decryptWithRootKey(),
-      getCookieSigningKey: () => rootKeys.getCookieSigningKey(),
-      listEncryptionStrategies: () => rootKeys.listEncryptionStrategies(),
-      updateEncryptionStrategy: (strategy) => rootKeys.updateEncryptionStrategy(strategy),
-
-      getRootKey: () => rotation.getRootKey(),
-      listRotations: (page) => rotation.listRotations(page),
-      createRotation: (input) => rotation.createRotation(input),
-      deleteStagedKey: (input) => rotation.deleteStagedKey(input),
-      deleteExpiringKey: (input) => rotation.deleteExpiringKey(input),
-
-      generateKmsKey: (input) => kmsKeys.generateKmsKey(input),
-      importKeyMaterial: (input) => kmsKeys.importKeyMaterial(input),
-      rotateKmsKey: (kmsId) => kmsKeys.rotateKmsKey(kmsId),
-      getKmsById: (kmsId) => kmsKeys.getKmsById(kmsId),
-      findKeyById: (kmsId) => kmsKeys.findKeyById(kmsId),
-      findPublishedKeyById: (kmsId) => kmsKeys.findPublishedKeyById(kmsId),
-      findKeys: (filter, options) => kmsKeys.findKeys(filter, options),
-      listProjectKeys: (input) => kmsKeys.listProjectKeys(input),
-      updateKeyAttributes: (kmsId, attributes) => kmsKeys.updateKeyAttributes(kmsId, attributes),
-      deleteKey: (kmsId) => kmsKeys.deleteKey(kmsId),
-      deleteKeys: (kmsIds) => kmsKeys.deleteKeys(kmsIds),
-      countProjectKeysInOrg: (orgId, projectType) => kmsKeys.countProjectKeysInOrg(orgId, projectType),
-      getKeyMaterial: (input) => kmsKeys.getKeyMaterial(input),
-      getBulkKeyMaterial: (input) => kmsKeys.getBulkKeyMaterial(input),
-
-      encryptWithKmsKey: (input) => cryptoService.encryptWithKmsKey(input),
-      decryptWithKmsKey: (input) => cryptoService.decryptWithKmsKey(input),
-      getPublicKey: (input, options) => cryptoService.getPublicKey(input, options),
-      signWithKmsKey: (input, options) => cryptoService.signWithKmsKey(input, options),
-      verifyWithKmsKey: (input) => cryptoService.verifyWithKmsKey(input),
-      generateMac: (input) => cryptoService.generateMac(input),
-      verifyMac: (input) => cryptoService.verifyMac(input),
-
-      createCipherPairWithDataKey: (context, options) => scopeKeys.createCipherPairWithDataKey(context, options),
-      getProjectSecretManagerKmsKeyId: (projectId, options) =>
-        scopeKeys.getProjectSecretManagerKmsKeyId(projectId, options),
-      getProjectCertificateKmsKeyId: (projectId, options) =>
-        scopeKeys.getProjectCertificateKmsKeyId(projectId, options),
-      wrapKey: (input) => scopeKeys.wrapKey(input),
-      unwrapKey: (input) => scopeKeys.unwrapKey(input),
-      updateProjectSecretManagerKmsKey: (input) => scopeKeys.updateProjectSecretManagerKmsKey(input),
-      getProjectKeyBackup: (projectId) => scopeKeys.getProjectKeyBackup(projectId),
-      loadProjectKeyBackup: (projectId, backup) => scopeKeys.loadProjectKeyBackup(projectId, backup),
-      deleteProjectKeys: (input) => scopeKeys.deleteProjectKeys(input),
-
-      createExternalKms: async (input) => {
-        const hook = this.externalKms();
-        const cipher = await orgCipher(input.orgId);
-        return hook.create(input, cipher);
-      },
-      updateExternalKms: async (input) => {
-        const hook = this.externalKms();
-        const cipher = await keyOrgCipher(input.kmsId);
-        return hook.update(input, cipher);
-      },
-      deleteExternalKms: async (kmsId) => {
-        const hook = this.externalKms();
-        const cipher = await keyOrgCipher(kmsId);
-        return hook.delete(kmsId, cipher);
-      },
-      getExternalKms: async (kmsId) => {
-        const hook = this.externalKms();
-        const cipher = await keyOrgCipher(kmsId);
-        return hook.get(kmsId, cipher);
-      },
-      getExternalKmsByName: async (orgId, name) => {
-        const hook = this.externalKms();
-        const [key] = await kmsKeys.findKeys({ orgId, name });
-        if (!key?.isExternal) throw new NotFoundError({ message: `External KMS with name '${name}' not found` });
-        const cipher = await orgCipher(orgId);
-        return hook.get(key.id, cipher);
-      },
-      listExternalKms: (orgId) => this.externalKms().list(orgId),
-      fetchGcpKeys: (input) => this.externalKms().fetchGcpKeys(input)
-    };
   }
 }

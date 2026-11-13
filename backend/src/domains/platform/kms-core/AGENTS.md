@@ -5,12 +5,12 @@ the project certificate key), root key rotation, and, through the enterprise hoo
 KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS product and call it through
 `TKmsCoreDomain`; so does every other service that encrypts.
 
-| Layer | Holds |
-| --- | --- |
-| `ce/model/` | `KmsKey` (`kms_keys` + `internal_kms` + `external_kms`), `KmsKeyVersion`, `RootKeyConfig`, `KekHistoryEntry`, `LegacyEncryptionKey`, `ScopeKey`, and the frozen formats: `KmsCiphertext`, `WrappedKeyPayload`, `ProjectKeyBackup`, `InstanceEncryptionKey` |
-| `ce/data-access/` | One class per model, `KmsCoreLocks` (the frozen lock ids), `buildKmsCoreDataAccess(db, locks)` |
-| `ce/service/` | `RootKeyService`, `RootKeyRotationService`, `KmsKeyService`, `KmsCryptoService`, `ScopeKeyService`; `key-material.ts` (helpers they share); `TKmsCoreHooks` |
-| `ee/` | `HsmRootKeyWrapper` over the PKCS#11 client (`hsm-client/`), `ExternalKmsService` over the provider clients (`external-kms-client/`), `KmsCoreEeModule` providing both as hooks |
+| Layer             | Holds                                                                                                                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ce/model/`       | `KmsKey` (`kms_keys` + `internal_kms` + `external_kms`), `KmsKeyVersion`, `RootKeyConfig`, `KekHistoryEntry`, `LegacyEncryptionKey`, `ScopeKey`, and the frozen formats: `KmsCiphertext`, `WrappedKeyPayload`, `ProjectKeyBackup`, `InstanceEncryptionKey` |
+| `ce/data-access/` | One class per model, `KmsCoreLocks` (the frozen lock ids), `buildKmsCoreDataAccess(db, locks)`                                                                                                                                                             |
+| `ce/service/`     | `RootKeyService`, `RootKeyRotationService`, `KmsKeyService`, `KmsCryptoService`, `ScopeKeyService`; `key-material.ts` (helpers they share); `TKmsCoreHooks`                                                                                                |
+| `ee/`             | `HsmRootKeyWrapper` over the PKCS#11 client (`hsm-client/`), `ExternalKmsService` over the provider clients (`external-kms-client/`), `KmsCoreEeModule` providing both as hooks                                                                            |
 
 ## Rules
 

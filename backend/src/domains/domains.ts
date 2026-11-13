@@ -9,9 +9,9 @@ import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
-import { DataAccessDb, KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
+import { KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
-import { LicenseModule, TLicenseServerBilling } from "./platform/license/ce/module";
+import { LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsProjectsModule } from "./platform/organizations-projects/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
@@ -46,27 +46,35 @@ export type TDomainDeps = {
     TKmsCoreEnvConfig;
 };
 
-const buildKmsCore = ({
+const kmsCoreEnv = (envConfig: TKmsCoreEnvConfig) => ({
+  ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY,
+  ROOT_ENCRYPTION_KEY: envConfig.ROOT_ENCRYPTION_KEY,
+  KMS_ROOT_KEY_RETENTION_DAYS: envConfig.KMS_ROOT_KEY_RETENTION_DAYS,
+  isHsmConfigured: envConfig.isHsmConfigured
+});
+
+// The enterprise module comes first: the HSM may be what unwraps the root key.
+const buildKmsCore = async ({
   db,
+  readKnex,
   envConfig,
-  cronJob
+  isHsmEntitled,
+  skipRotationState
 }: {
-  db: DataAccessDb;
+  db: TDbClient;
+  readKnex: () => Knex;
   envConfig: TKmsCoreEnvConfig;
-  cronJob?: TDomainCron;
+  isHsmEntitled: () => boolean;
+  skipRotationState?: boolean;
 }) => {
-  const kmsCoreEe = new KmsCoreEeModule({ db, hsmConfig: envConfig });
-  const kmsCore = new KmsCoreModule({
+  const kmsCoreEe = await KmsCoreEeModule.create({ db, readKnex, hsmConfig: envConfig, isHsmEntitled });
+  const kmsCore = await KmsCoreModule.create({
     db,
-    cronJob,
-    env: {
-      ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY,
-      ROOT_ENCRYPTION_KEY: envConfig.ROOT_ENCRYPTION_KEY,
-      KMS_ROOT_KEY_RETENTION_DAYS: envConfig.KMS_ROOT_KEY_RETENTION_DAYS,
-      isHsmConfigured: envConfig.isHsmConfigured
-    },
-    originalEnv: getOriginalConfig(),
-    hooks: kmsCoreEe.hooks
+    readKnex,
+    env: kmsCoreEnv(envConfig),
+    originalEnv: skipRotationState ? undefined : getOriginalConfig(),
+    hooks: kmsCoreEe.hooks,
+    skipRotationState
   });
   return { kmsCoreEe, kmsCore };
 };
@@ -81,9 +89,13 @@ export const startStandaloneKmsCore = async ({
   db: Knex;
   envConfig: TKmsCoreEnvConfig;
 }): Promise<TKmsCoreDomain> => {
-  const { kmsCoreEe, kmsCore } = buildKmsCore({ db: DataAccessDb.single(db), envConfig });
-  await kmsCoreEe.start({ isHsmEntitled: () => true });
-  await kmsCore.start({ skipRotationState: true });
+  const { kmsCore } = await buildKmsCore({
+    db,
+    readKnex: () => db,
+    envConfig,
+    isHsmEntitled: () => true,
+    skipRotationState: true
+  });
   return kmsCore.service;
 };
 
@@ -118,13 +130,15 @@ export const createDomains = async (deps: TDomainDeps) => {
   // Subscriptions are managed on the EE client itself; License never calls its billing methods.
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
 
-  // KMS Core depends on no other domain. HSM and external keys plug in from its enterprise edition; boot starts
-  // kmsCoreEe (with the instance's HSM entitlement from License) and then kmsCore.
-  const { kmsCoreEe, kmsCore } = buildKmsCore({
-    db: DataAccessDb.fromClient(deps.db),
+  // KMS Core depends on no other domain. HSM and external keys plug in from its enterprise edition, which reads the
+  // instance's HSM entitlement from License.
+  const { kmsCoreEe, kmsCore } = await buildKmsCore({
+    db: deps.db,
+    readKnex: () => deps.db.replicaNode(),
     envConfig: deps.envConfig,
-    cronJob: deps.cronJob
+    isHsmEntitled: () => license.licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)
   });
+  kmsCore.start(deps.cronJob);
 
   return { license, licenseBilling, kmsCoreEe, kmsCore, organizationsProjects, certManager };
 };

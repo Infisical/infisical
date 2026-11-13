@@ -1289,10 +1289,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -1316,6 +1318,188 @@
                   "unsealTransaction"
                 ],
                 "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/platform/kms-core/ce/models/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "./**/services/**",
+                  "../**/services/**",
+                  "**/data-access/**",
+                  "**/router/**",
+                  "**/clients/**",
+                  "**/testing/**"
+                ],
+                "message": "models/ imports no other layer: rules about the data stay pure and testable. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "@app/ee/**"
+                ],
+                "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/platform/kms-core/ce/services/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "**/data-access/**",
+                  "**/clients/**",
+                  "**/router/**"
+                ],
+                "message": "A service never imports data-access/, a client or router/: declare what it needs as a type in services/dependencies.ts and take the implementation through the constructor. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module",
+                  "../../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "@app/ee/**"
+                ],
+                "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
               }
             ]
           }
@@ -1341,10 +1525,259 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "./**/services/**",
+                  "../**/services/**",
+                  "!../**/services/dependencies",
+                  "!../**/services/helpers/*-types",
+                  "**/router/**"
+                ],
+                "message": "data-access/ imports from services/ only dependencies.ts (and the helpers/*-types shapes it exposes), never a service class or helper, and never router/. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "@app/ee/**"
+                ],
+                "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/platform/kms-core/ce/clients/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "./**/services/**",
+                  "../**/services/**",
+                  "!../**/services/dependencies",
+                  "!../**/services/helpers/*-types",
+                  "**/router/**"
+                ],
+                "message": "A clients/<system>/ client imports from services/ only dependencies.ts (and the helpers/*-types shapes it exposes), never a service class or helper, and never router/. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module",
+                  "../../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "@app/ee/**"
+                ],
+                "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/platform/kms-core/ce/router/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
+              },
+              {
+                "group": [
+                  "../**/ee/**",
+                  "./**/ee/**",
+                  "@app/domains/**/ee/**"
+                ],
+                "message": "ce/ never imports ee/: the community edition builds alone, and EE plugs in through hooks wired in domains.ts."
+              },
+              {
+                "group": [
+                  "**/data-access/**",
+                  "**/clients/**"
+                ],
+                "message": "router/ calls a service: it never imports data-access/ or a client. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "../module",
+                  "../../module",
+                  "../../ce/module",
+                  "../../../ce/module"
+                ],
+                "message": "No layer imports module.ts: the module builds the layers, and its types are defined in services/ and re-exported. See src/domains/AGENTS.md (Dependency direction)."
+              },
+              {
+                "group": [
+                  "@app/ee/**"
+                ],
+                "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domains/platform/kms-core/ce/**/*.test.ts",
+        "src/domains/platform/kms-core/ce/**/*.integration-test.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@opentelemetry/*"
+                ],
+                "message": "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              },
+              {
+                "group": [
+                  "@app/domains/**",
+                  "!@app/domains/*/*/ce/module",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
+                  "!@app/domains/*/*/ce/testing/**"
+                ],
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -1359,6 +1792,27 @@
                   "@app/ee/**"
                 ],
                 "message": "KMS Core's community edition never imports enterprise code: HSM and external KMS plug in through TKmsCoreHooks, wired in domains.ts."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@app/domains/lib/transactions",
+                "importNames": [
+                  "unsealTransaction"
+                ],
+                "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
+              },
+              {
+                "name": "@app/lib/errors",
+                "importNames": [
+                  "BadRequestError",
+                  "NotFoundError",
+                  "ConflictError",
+                  "UnauthorizedError",
+                  "ForbiddenRequestError",
+                  "InternalServerError"
+                ],
+                "message": "A domain does not know the HTTP layer: throw an error from @app/domains/lib/errors, which server/lib/domain-errors.ts maps to a response."
               }
             ]
           }
