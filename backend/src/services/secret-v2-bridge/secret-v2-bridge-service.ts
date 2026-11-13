@@ -78,7 +78,6 @@ import {
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
-import { createSecretBlindIndexer } from "./secret-blind-index-fns";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
@@ -471,14 +470,9 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const projectCipher = await dataKeyService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const { encryptor: secretManagerEncryptor } = projectCipher;
-
-    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actorOrgId, dataKeyService });
+    const ciphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId });
+    const { encryptor: secretManagerEncryptor } = ciphers.secretManager;
+    const { blindIndexer } = ciphers;
     const blindIndexes = await (inputSecretData.secretValue
       ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
       : null);
@@ -770,14 +764,9 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const projectCipher = await dataKeyService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
-
-    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actorOrgId, dataKeyService });
+    const ciphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
+    const { blindIndexer } = ciphers;
     const encryptedValue =
       typeof secretValue === "string"
         ? {

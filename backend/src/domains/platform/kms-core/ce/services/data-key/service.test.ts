@@ -645,6 +645,26 @@ describe("DataKeyService project data key cache", () => {
     });
   });
 
+  test("should drop the entry a miss wrote when a key switch committed while it was reading", async () => {
+    // Setup
+    const { mem, keyStore, service } = buildCached();
+    await projectCipher(service);
+    await keyStore.deleteItem(projectDataKeyCacheKey("project-1"));
+    const write = keyStore.setItemWithExpiry.bind(keyStore);
+    vi.spyOn(keyStore, "setItemWithExpiry").mockImplementationOnce(async (...args) => {
+      const result = await write(...args);
+      const row = mem.platformRows.projects.get("project-1");
+      if (row) mem.platformRows.projects.set("project-1", { ...row, kmsSecretManagerKeyId: "switched-key" });
+      return result;
+    });
+
+    // Action
+    await projectCipher(service);
+
+    // Assert
+    expect(await keyStore.getItem(projectDataKeyCacheKey("project-1"))).toBeNull();
+  });
+
   test("should overwrite a partial entry written by a pod of the previous release", async () => {
     // Setup
     const { mem, keyStore, service } = buildCached();
@@ -662,7 +682,7 @@ describe("DataKeyService project data key cache", () => {
     expect(await cachedEntry(keyStore)).toMatchObject({ kmsSecretManagerKeyId: project?.kmsSecretManagerKeyId });
   });
 
-  test("should replace an entry naming a deleted KMS key with one primary read and rewrite it", async () => {
+  test("should replace an entry naming a deleted KMS key from the primary, check it again after writing, and rewrite it", async () => {
     // Setup
     const { mem, keyStore, cache, service } = buildCached();
     const blob = seal(await projectCipher(service), "kept");
@@ -681,7 +701,7 @@ describe("DataKeyService project data key cache", () => {
     const healed = await projectCipher(service);
 
     // Assert
-    expect(find).toHaveBeenCalledTimes(1);
+    expect(find).toHaveBeenCalledTimes(2);
     expect(healed.decryptor({ cipherTextBlob: blob }).toString()).toBe("kept");
     expect(await cachedEntry(keyStore)).toMatchObject({ kmsSecretManagerKeyId: current.currentKmsKeyId });
   });

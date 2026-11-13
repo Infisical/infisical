@@ -1,6 +1,7 @@
 import { ForbiddenError, MongoAbility, MongoQuery } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { DomainError } from "@app/domains/lib/errors";
 import {
   KmsCiphertextUndecryptableError,
   KmsKeyOrderBy,
@@ -807,7 +808,7 @@ export const cmekServiceFactory = ({
           (reason.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
         ) {
           message = `A key with the name "${entry.name}" already exists in this project`;
-        } else if (reason instanceof BadRequestError) {
+        } else if (reason instanceof BadRequestError || reason instanceof DomainError) {
           message = reason.message;
         }
         errors.push({ name: entry.name, message });

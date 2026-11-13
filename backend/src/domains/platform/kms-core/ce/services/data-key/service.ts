@@ -11,7 +11,7 @@ import { ProjectKeyBackup } from "../../models/project-key-backup";
 import { RootKey } from "../../models/root-key";
 import { WrappedKeyPayload } from "../../models/wrapped-key";
 import { TExternalKmsHook, TKmsCoreStores, TProjectDataKeyCache } from "../dependencies";
-import { openDataKey, requireKey, sealDataKey } from "../helpers/key-cipher";
+import { keyEncryptor, openDataKey, requireKey, sealDataKey } from "../helpers/key-cipher";
 import { ReadFrom, TReadOptions } from "../helpers/read-options";
 
 export enum KmsDataKey {
@@ -206,7 +206,10 @@ export class DataKeyService implements TDataKeyService {
     }
 
     const { projectKey, dataKey } = await this.openProjectDataKey(keyed, currentKey);
-    const sealed = await sealDataKey(this.stores, this.rootKey, this.externalKms, target, dataKey);
+    // An external target is sealed with the org data key, which a replica may not have yet for a new org key. Only
+    // the reads run on the primary: the provider call happens after the short run returns.
+    const encrypt = await this.read(PRIMARY, (stores) => keyEncryptor(stores, this.rootKey, this.externalKms, target));
+    const { cipherTextBlob: sealed } = await encrypt({ plainText: dataKey.exportForWrapping() });
 
     return this.transactionRunner.run(async ({ stores, tx }) => {
       this.evictAfterCommit(tx, projectId);
@@ -307,7 +310,16 @@ export class DataKeyService implements TDataKeyService {
     }
 
     const { projectKey, dataKey } = await this.resolveProjectKey(projectId, PRIMARY);
-    await cache.set(projectId, projectKey.material());
+    const material = projectKey.material();
+    await cache.set(projectId, material);
+    // A key switch can commit and evict between the read above and the write: read the row again after writing, and
+    // drop the entry if it no longer matches, so this refill cannot undo that eviction.
+    const current = await this.findProjectKey(projectId, PRIMARY);
+    if (!current.hasDataKey() || !current.material().equals(material)) {
+      await cache.evict(projectId).catch((err: unknown) => {
+        logger.warn({ err, projectId }, `KMS: failed to drop a stale project data key entry [projectId=${projectId}]`);
+      });
+    }
     return dataKey;
   }
 
