@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
@@ -11,7 +10,7 @@ import {
   OrganizationActionScope,
   TIdentityJwtAuthsUpdate
 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -20,6 +19,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -30,7 +30,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeJwksFetcher } from "@app/lib/validator";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -70,7 +70,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -141,29 +141,56 @@ export const identityJwtAuthServiceFactory = ({
       let tokenData: Record<string, string | boolean | number> = {};
 
       if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-        await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
+        const decryptedJwksCaCert = orgDataKeyDecryptor({
+          cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+        }).toString();
 
-        let client: JwksClient;
-        if (identityJwtAuth.jwksUrl.includes("https:")) {
-          const decryptedJwksCaCert = orgDataKeyDecryptor({
-            cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
-          }).toString();
-
-          const requestAgent = decryptedJwksCaCert
-            ? new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: true })
-            : undefined;
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl,
-            requestAgent
-          });
-        } else {
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl
-          });
-        }
+        const client = new JwksClient({
+          jwksUri: identityJwtAuth.jwksUrl,
+          fetcher: await buildSsrfSafeJwksFetcher(identityJwtAuth.jwksUrl, { ca: decryptedJwksCaCert || undefined })
+        });
 
         const { kid } = decodedToken.header as { kid: string };
-        const jwtSigningKey = await client.getSigningKey(kid);
+        let jwtSigningKey;
+        try {
+          jwtSigningKey = await client.getSigningKey(kid);
+        } catch (error) {
+          if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+            throw new UnauthorizedError({
+              message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the configured JWKS.`,
+              detail: {
+                reasonCode: "signing_key_not_found",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
+            });
+          }
+          // The fetch error can carry network details or the endpoint's response body, and this
+          // route is unauthenticated, so the caller gets a fixed message and the detail is logged.
+          // The JWKS URL can carry credentials in its path or query, so it is logged sanitized and
+          // the error as name, message and code rather than an object that may hold the request.
+          logger.error(
+            {
+              errorName: error instanceof Error ? error.name : undefined,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              errorCode: (error as NodeJS.ErrnoException)?.code,
+              identityId: identity.id,
+              jwksUrl: sanitizeUrlForLog(identityJwtAuth.jwksUrl),
+              kid
+            },
+            `JWT auth signing key retrieval failed [identityId=${identity.id}] [kid=${kid}]`
+          );
+          throw new UnauthorizedError({
+            message: "Access denied: Failed to retrieve the signing key from the configured JWKS endpoint.",
+            detail: {
+              reasonCode: "signing_key_retrieval_failed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
 
         try {
           tokenData = crypto.jwt().verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;
@@ -473,7 +500,7 @@ export const identityJwtAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -608,7 +635,7 @@ export const identityJwtAuthServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

@@ -1,4 +1,4 @@
-import { type JSX, useRef } from "react";
+import { type JSX, KeyboardEvent, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -89,8 +89,18 @@ export const FolderForm = ({
     reset();
   };
 
+  const submitForm = handleSubmit(onSubmit);
+
+  const handleFormKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isSubmitting) {
+      e.preventDefault();
+      submitForm();
+    }
+  };
+
   return (
-    <form className="min-w-0" onSubmit={handleSubmit(onSubmit)}>
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+    <form className="min-w-0" onSubmit={submitForm} onKeyDown={handleFormKeyDown}>
       <Controller
         control={control}
         name="name"

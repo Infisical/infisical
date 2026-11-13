@@ -22,6 +22,7 @@
     "test:e2e": "vitest run -c vitest.e2e.config.mts --bail=1",
     "test:e2e-watch": "vitest -c vitest.e2e.config.mts --bail=1",
     "test:e2e-coverage": "vitest run --coverage -c vitest.e2e.config.mts",
+    "test:integration": "vitest run -c vitest.integration.config.mts",
     "test:bdd": "cd bdd && uv run behave",
     "bake:announcements": "tsx ./scripts/bake-announcements.ts",
     "generate:component": "tsx ./scripts/create-backend-file.ts",
@@ -108,6 +109,12 @@
     },
     "google-auth-library": {
       "uuid": "^11.1.1"
+    },
+    "jsforce": {
+      "csv-parse": "^7.0.2"
+    },
+    "@azure/identity": {
+      "@azure/msal-node": "^7.1.0"
     }
   },
   "devDependencies": {
@@ -142,6 +149,7 @@
     "pino-pretty": "^10.2.3",
     "prompt-sync": "^4.2.0",
     "react-email": "^5.0.6",
+    "testcontainers": "^12.2.1",
     "tsdown": "0.23.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
@@ -211,7 +219,7 @@
     "@peculiar/x509": "^1.12.1",
     "@platformatic/kafka": "^2.12.1",
     "@react-email/components": "^1.0.1",
-    "@simplewebauthn/server": "^13.2.2",
+    "@simplewebauthn/server": "^13.3.3",
     "@sindresorhus/slugify": "1.1.0",
     "@slack/oauth": "^3.0.2",
     "@slack/web-api": "^7.8.0",
@@ -232,8 +240,9 @@
     "dd-trace": "^5.128.0",
     "dns-packet": "^5.6.1",
     "dotenv": "^16.4.1",
+    "fast-json-stringify": "^7.1.3",
     "fast-xml-parser": "^5.7.0",
-    "fastify": "^5.8.3",
+    "fastify": "^5.12.7",
     "fastify-plugin": "^5.0.1",
     "file-type": "^22.0.0",
     "google-auth-library": "^9.9.0",
@@ -258,8 +267,8 @@
     "mysql2": "^3.24.5",
     "nanoid": "^3.3.18",
     "netmask": "^2.0.2",
-    "node-forge": "^1.4.0",
-    "nodemailer": "^10.0.16",
+    "node-forge": "^1.4.2",
+    "nodemailer": "^10.1.7",
     "oauth4webapi": "3.8.8",
     "oci-common": "^2.142.2",
     "oci-identity": "^2.142.2",
@@ -283,7 +292,7 @@
     "pino": "^8.16.2",
     "pkcs11js": "^2.1.6",
     "pkijs": "^3.4.2",
-    "posthog-node": "^5.28.1",
+    "posthog-node": "^5.57.2",
     "probot": "^13.3.8",
     "qs": "^6.15.2",
     "randexp": "^0.5.3",

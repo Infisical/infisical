@@ -147,6 +147,21 @@ const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessAppro
     return result.data;
   });
 
+// Read path only. Creation already verified the stored rules and
+// that they all share one environment and path, so the first packed rule's conditions are the request's.
+export const readRequestedScope = (permissions: unknown): { envSlug: string; secretPath: string } | null => {
+  if (!Array.isArray(permissions)) return null;
+  const [firstRule] = permissions as unknown[];
+  if (!Array.isArray(firstRule)) return null;
+
+  const conditions = firstRule[2] as { environment?: unknown; secretPath?: { $glob?: unknown } } | undefined;
+  const envSlug = conditions?.environment;
+  const secretPath = conditions?.secretPath?.$glob;
+  if (typeof envSlug !== "string" || typeof secretPath !== "string") return null;
+
+  return { envSlug, secretPath };
+};
+
 export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) => {
   try {
     validateHandlebarTemplate("Access Request Permissions", JSON.stringify(permissions ?? []), {
@@ -211,3 +226,13 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
     requestedPermissions
   };
 };
+
+// The folder lookup skips empty segments, so "/a//b" or "/a/b/" reads "/a/b" but can match a broader policy than
+// "/a/b" does.
+export const isRequestableSecretPath = (secretPath: string) =>
+  secretPath === "/" ||
+  (secretPath.startsWith("/") &&
+    secretPath
+      .slice(1)
+      .split("/")
+      .every((segment) => segment.length > 0 && segment === segment.trim() && segment !== "." && segment !== ".."));

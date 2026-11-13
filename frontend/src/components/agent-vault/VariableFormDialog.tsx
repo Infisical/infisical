@@ -25,6 +25,8 @@ import {
   InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { AGENT_VAULT_NO_CONTROL_CHARS_RE } from "@app/helpers/agentVaultControlChars";
 import {
   normalizeVariableKey,
   toVariableReference,
@@ -46,9 +48,6 @@ import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 // zod reports a refine as "custom", and the taken-key check is the key's only one, so this tells a taken key apart
 // from the key's other errors. The API's duplicate is flagged with it too.
 const TAKEN_KEY_ERROR_TYPE = "custom";
-
-// eslint-disable-next-line no-control-regex
-const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 
 // A stored value never comes back, so on edit its field starts empty and empty keeps it. Taken keys are read
 // when the form validates, as the lookup of the typed key answers after it was typed.
@@ -78,7 +77,7 @@ const buildSchema = (
         `A value can be at most ${VARIABLE_VALUE_MAX_LENGTH} characters.`
       )
       .regex(
-        NO_CONTROL_CHARS_RE,
+        AGENT_VAULT_NO_CONTROL_CHARS_RE,
         "A value can't contain line breaks or other control characters. Check for a stray newline if you pasted it."
       )
       .refine((value) => !isValueRequired || value.length > 0, "Required")
@@ -109,9 +108,10 @@ const VariableForm = ({
   onCreated,
   scope = AgentVaultVariableScope.Global
 }: Omit<Props, "onCloseAutoFocus">) => {
+  const { projectId } = useProject();
   const isPersonal = scope === AgentVaultVariableScope.Personal;
-  const createVariable = useCreateAgentVaultVariable();
-  const updateVariable = useUpdateAgentVaultVariable();
+  const createVariable = useCreateAgentVaultVariable(projectId);
+  const updateVariable = useUpdateAgentVaultVariable(projectId);
   const isUpdate = Boolean(variable);
   const usedByCount = variable?.usedByServices.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
@@ -149,7 +149,7 @@ const VariableForm = ({
     key !== variable?.key
       ? key
       : null;
-  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], {
+  const { existing } = useAgentVaultVariableKeyStatus(projectId, lookupKey ? [lookupKey] : [], {
     isCached: false,
     scope
   });

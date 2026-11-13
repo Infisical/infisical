@@ -6,7 +6,7 @@ import { agentVaultSkillSheetSearchParams } from "@app/hooks/useAgentVaultSheetS
 import { AgentVaultSkillsPage } from "./AgentVaultSkillsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/skills"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/skills"
 )({
   component: AgentVaultSkillsPage,
   validateSearch: zodValidator(agentVaultSkillSheetSearchParams),

@@ -4,14 +4,33 @@ sidebarTitle: "Quickstart"
 description: "Store your credentials in an access bundle and connect the agents that use them."
 ---
 
-This quickstart walks you through the setup shared by every Agent Vault workflow. You'll create an [access bundle](/documentation/platform/agent-vault/access-bundles), add a [service](/documentation/platform/agent-vault/services) for each key your agent uses, and then continue with the guide for where your agent runs.
+This quickstart walks you through the setup shared by every Agent Vault workflow. You'll create an [Agent Vault project](/documentation/platform/agent-vault/projects), create an [access bundle](/documentation/platform/agent-vault/access-bundles), add a [service](/documentation/platform/agent-vault/services) for each key your agent uses, and then continue with the guide for where your agent runs.
 
 ## Prerequisites
 
-- An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)
+- An Infisical organization where you can create projects (organization admins and members can by default)
 - The API keys your agent uses, such as its model provider's key
 
-## Step 1: Add your credentials
+## Step 1: Create an Agent Vault project
+
+An Agent Vault project holds the credentials, members, and proxies for one agentic system or team. If you already have a project for this agent, such as **My first project**, open it and skip to [Step 2](#step-2-add-your-credentials).
+
+<Steps>
+  <Step>
+    On your organization's overview in Infisical, select **Agent Vault**.
+  </Step>
+  <Step>
+    Select **New Project**, enter a **Project Name**, then select **Create Project**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-create.png" alt="The Create a New Agent Vault Project dialog, with a project name, a description, and a Create Project button" />
+    </Frame>
+  </Step>
+</Steps>
+
+You become the project's admin.
+
+## Step 2: Add your credentials
 
 <Tabs>
   <Tab title="Infisical dashboard">
@@ -21,13 +40,13 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
 
     <Steps>
       <Step>
-        In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
+        In your Agent Vault project, go to **Access Bundles**.
       </Step>
       <Step>
         Select **Create Access Bundle**. Give the access bundle a **Name**, such as `code-review`, then select **Create Access Bundle**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
+          <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with a name and a description entered" />
         </Frame>
       </Step>
     </Steps>
@@ -45,17 +64,21 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
 
     <Steps>
       <Step>
-        In the access bundle, select **Add Service**.
+        In the access bundle, select **Add Service**. In the **Services** list, select **Create New Service**.
       </Step>
       <Step>
         On the **Choose a template** panel, pick the template for the API, or select **Custom HTTP API**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+          <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with MCP server templates and HTTP API templates, GitHub among them" />
         </Frame>
       </Step>
       <Step>
         On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom HTTP API**. Select **Continue**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/service-details.png" alt="The Details step of a GitHub service, with api.github.com as the host" />
+        </Frame>
       </Step>
       <Step>
         On the **Credential** step, paste the real key, then select **Continue**.
@@ -72,11 +95,11 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
   <Tab title="API">
     ### Log in as a machine identity
 
-    You call the Infisical API as a [machine identity](/documentation/platform/identities/machine-identities) with the **Admin** role in Agent Vault.
+    You call the Infisical API as a [machine identity](/documentation/platform/identities/machine-identities) with the **Admin** role in your Agent Vault project.
 
     <Steps>
       <Step>
-        In Agent Vault, go to **Access Control** > **Machine Identities** and select **Add Machine Identity**.
+        In your Agent Vault project, go to **Access Control** > **Machine Identities** and select **Add Machine Identity**.
       </Step>
       <Step>
         On the **Create New** tab, enter a **Name**, choose **Admin** in **Role**, then select **Create**.
@@ -112,34 +135,42 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
 
     The response includes an `accessToken`, which you send with each request in the next steps.
 
+    ### Copy the project ID
+
+    Requests that create something in Agent Vault take the ID of the project to create it in. In your Agent Vault project, go to **Administration** > **Settings** and copy the **Project ID**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-settings-general.png" alt="The General settings of an Agent Vault project, with the Project ID and its copy button in the Project Overview card" />
+    </Frame>
+
     ### Create an access bundle
 
-    In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. Call [the endpoint to create an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create), replacing `<access-token>` with the `accessToken` from the login response. In the body, send a name for the access bundle:
+    In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. Call [the endpoint to create an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create), replacing `<access-token>` with the `accessToken` from the login response and `<project-id>` with the project ID. In the body, send the project ID and a name for the access bundle:
 
     <CodeGroup>
       ```bash US Cloud
       curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
-        -d '{"name": "code-review"}'
+        -d '{"projectId": "<project-id>", "name": "code-review"}'
       ```
 
       ```bash EU Cloud
       curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
-        -d '{"name": "code-review"}'
+        -d '{"projectId": "<project-id>", "name": "code-review"}'
       ```
 
       ```bash Self-hosted
       curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
-        -d '{"name": "code-review"}'
+        -d '{"projectId": "<project-id>", "name": "code-review"}'
       ```
     </CodeGroup>
 
-    The response includes the access bundle's `id`, which you need to add a service.
+    The response includes the access bundle's `id`, which you need to add a service to the access bundle.
 
     ### Add a service
 
@@ -152,16 +183,18 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
       - Each remote MCP server it connects to, such as Linear's (see [add an MCP server](/documentation/platform/agent-vault/mcp-servers#add-an-mcp-server))
     </Accordion>
 
-    Call [the endpoint to create a service](/api-reference/endpoints/agent-vault-services/create), replacing `<access-bundle-id>` in the URL with the `id` from the previous step and `<access-token>` with the `accessToken` from the login response.
-    
-    In the body, send the hosts that the credential applies to and the credential itself. For example, to add a GitHub personal access token:
+    Call the [Create service](/api-reference/endpoints/agent-vault-services/create) endpoint, replacing `<access-token>` with the `accessToken` from the login response.
+
+    In the body, send the project ID, the access bundle's `id` in `accessBundleIds`, the hosts that the credential applies to, and the credential itself. For example, to add a GitHub personal access token:
 
     <CodeGroup>
       ```bash US Cloud
-      curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST https://app.infisical.com/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",
@@ -174,10 +207,12 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
       ```
 
       ```bash EU Cloud
-      curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST https://eu.infisical.com/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",
@@ -190,10 +225,12 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
       ```
 
       ```bash Self-hosted
-      curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+      curl -X POST <your-instance-url>/api/v1/agent-vault/services \
         -H "Authorization: Bearer <access-token>" \
         -H "Content-Type: application/json" \
         -d '{
+          "projectId": "<project-id>",
+          "accessBundleIds": ["<access-bundle-id>"],
           "type": "http",
           "name": "github",
           "hostPattern": "api.github.com, github.com",
@@ -223,7 +260,7 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
   </Tab>
 </Tabs>
 
-## Step 2: Connect your agents
+## Step 3: Connect your agents
 
 Pick the guide for where your agents run. Each guide continues from the access bundle you just created.
 
@@ -231,45 +268,23 @@ Pick the guide for where your agents run. Each guide continues from the access b
 If you're not sure which guide fits, [plan your setup](/documentation/platform/agent-vault/plan-your-setup) to get a recommendation.
 </Tip>
 
-### Sandboxes
-
-Start each agent in its own sandbox, with its own proxy.
-
 <CardGroup cols={2}>
-  <Card title="Modal sandboxes" icon="/images/agent-vault-agents/modal.svg" href="/documentation/platform/agent-vault/guides/modal">
+  <Card title="Modal" icon="/images/agent-vault-agents/modal.svg" href="/documentation/platform/agent-vault/guides/modal">
     Run an Agent Vault proxy in each Modal sandbox so the agent never has access to a credential.
   </Card>
-  <Card title="Daytona sandboxes" icon="/images/agent-vault-agents/daytona.svg" href="/documentation/platform/agent-vault/guides/daytona">
+  <Card title="Daytona" icon="/images/agent-vault-agents/daytona.svg" href="/documentation/platform/agent-vault/guides/daytona">
     Run an Agent Vault proxy beside each Daytona sandbox so the agent never has access to a credential.
   </Card>
-  <Card title="Docker containers" icon="/images/agent-vault-agents/docker.svg" href="/documentation/platform/agent-vault/guides/docker">
+  <Card title="Kubernetes" icon="/images/stack/kubernetes.png" href="/documentation/platform/agent-vault/guides/kubernetes">
+    Learn how to run AI agents in Kubernetes pods that contain no credentials and can only connect to the Agent Vault proxy.
+  </Card>
+  <Card title="Docker" icon="/images/agent-vault-agents/docker.svg" href="/documentation/platform/agent-vault/guides/docker">
     Run an Agent Vault proxy beside each agent container so the agent never has access to a credential.
   </Card>
-</CardGroup>
-
-### Messaging gateways
-
-Keep an assistant running on a server so people can message it from Slack, Telegram, or another platform.
-
-<CardGroup cols={2}>
-  <Card title="Hermes gateway" icon="/images/agent-vault-agents/hermes.png" href="/documentation/platform/agent-vault/guides/hermes-gateway" />
-  <Card title="OpenClaw gateway" icon="/images/agent-vault-agents/openclaw.svg" href="/documentation/platform/agent-vault/guides/openclaw-gateway" />
-</CardGroup>
-
-### Your own code
-
-<Card title="Your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent">
-  Launch your custom agent with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
-</Card>
-
-### Local development
-
-Launch an agent from your terminal with the Infisical CLI.
-
-<CardGroup cols={3}>
-  <Card title="Claude Code" icon="/images/agent-vault-agents/claude-code.svg" href="/documentation/platform/agent-vault/guides/claude-code" />
-  <Card title="Codex" icon="/images/agent-vault-agents/OpenAI.png" href="/documentation/platform/agent-vault/guides/codex" />
-  <Card title="OpenCode" icon="/images/agent-vault-agents/opencode.svg" href="/documentation/platform/agent-vault/guides/opencode" />
-  <Card title="Hermes Agent" icon="/images/agent-vault-agents/hermes.png" href="/documentation/platform/agent-vault/guides/hermes" />
-  <Card title="OpenClaw" icon="/images/agent-vault-agents/openclaw.svg" href="/documentation/platform/agent-vault/guides/openclaw" />
+  <Card title="E2B sandboxes" icon="/images/agent-vault-agents/e2b.svg" href="/documentation/platform/agent-vault/guides/e2b">
+    Run an Agent Vault proxy for your E2B sandboxes so the agent never has access to a credential.
+  </Card>
+  <Card title="Cursor Cloud Agents" icon="/images/agent-vault-agents/cursor.svg" href="/documentation/platform/agent-vault/guides/cursor">
+    Run an Agent Vault proxy beside your Cursor workers on Kubernetes so the agent never has access to a credential.
+  </Card>
 </CardGroup>

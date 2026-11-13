@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { oidcIssuerLimit } from "@app/server/config/rateLimiter";
+import { publicJwksLimit } from "@app/server/config/rateLimiter";
 
 // The next key is published a full signing period (24h) before it signs, so a cached JWKS younger than that
 // always holds the signing key
@@ -17,9 +17,10 @@ export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/organizations/:organizationId/.well-known/openid-configuration",
     config: {
-      rateLimit: oidcIssuerLimit
+      rateLimit: publicJwksLimit
     },
     schema: {
+      operationId: "getOidcIssuerDiscoveryDocument",
       hide: true,
       params: OrgParamsSchema,
       response: {
@@ -44,9 +45,10 @@ export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/organizations/:organizationId/.well-known/jwks.json",
     config: {
-      rateLimit: oidcIssuerLimit
+      rateLimit: publicJwksLimit
     },
     schema: {
+      operationId: "getOidcIssuerJwks",
       hide: true,
       params: OrgParamsSchema,
       response: {

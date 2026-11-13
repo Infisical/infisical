@@ -28,11 +28,12 @@ export const PgSqlLock = {
   GatewayPamSessionKey: (gatewayId: string) => pgAdvisoryLockHashText(`gateway-pam-session-key:${gatewayId}`),
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
-  CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
   CreateAgentVaultSkill: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-skill:${projectId}`),
+  // Taken by every write that adds a service name to a bundle or a session, so names checked under it stay unique.
+  AgentVaultServiceNames: (projectId: string) => pgAdvisoryLockHashText(`agent-vault-service-names:${projectId}`),
   CreateAgentVaultPersonalVariable: (projectId: string, ownerId: string) =>
     pgAdvisoryLockHashText(`create-agent-vault-personal-variable:${projectId}:${ownerId}`),
   ClearAgentVaultPersonalValues: (projectId: string) =>
@@ -55,6 +56,9 @@ export const PgSqlLock = {
   AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
 } as const;
 
+// Shared by the secret list cache keys and the pattern the admin cache wipe deletes, so they cannot drift apart.
+export const SECRET_MANAGER_CACHE_PREFIX = "secret-manager";
+
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
   SecretReplication: "secret-replication-import-lock",
@@ -69,6 +73,8 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  CloudflareWorkerVersionLock: (accountId: string, scriptId: string) =>
+    `cloudflare-worker-version-mutex-${accountId}-${scriptId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
@@ -85,12 +91,14 @@ export const KeyStorePrefixes = {
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   OidcIssuerKeyRotationLock: (orgId: string) => `oidc-issuer-key-rotation-mutex-${orgId}` as const,
   OidcIssuerJwks: (orgId: string) => `oidc-issuer-jwks:${orgId}` as const,
+  CmekPublicJwks: (keyId: string) => `cmek-public-jwks:${keyId}` as const,
   SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   SecretScanningDataSourceLock: (dataSourceId: string) =>
     `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
+  CaCrlRebuildLock: (caId: string) => `ca-crl-rebuild-lock-${caId}` as const,
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
@@ -165,19 +173,30 @@ export const KeyStorePrefixes = {
     `project-sse-conn:${projectId}:${connectionId}` as const,
 
   ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
+  HoneyTokenCreateLock: (orgId: string) => `honey-token-create-lock-${orgId}` as const,
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   TelemetryAuditLogsViewed: (orgId: string, distinctId: string) =>
     `telemetry-audit-logs-viewed:${orgId}:${distinctId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
+  SecretDalVersion: (projectId: string) =>
+    `${SECRET_MANAGER_CACHE_PREFIX}:${projectId}:secrets_v2-dal-version` as const,
+  SecretsServiceLayerCache: (arg: {
+    projectId: string;
+    version: number;
+    actorId: string;
+    permissionFingerprint: string;
+    permissionHash: string;
+    requestParamsHash: string;
+  }) =>
+    `${SECRET_MANAGER_CACHE_PREFIX}:${arg.projectId}:secrets_v2-dal:v${arg.version}:get-secrets-service-layer-zstd:${arg.actorId}-${arg.permissionFingerprint}-${arg.permissionHash}-${arg.requestParamsHash}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
   SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
     `secret-perm-fingerprint:${projectId}:${actorType}:${actorId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
-  AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
   AgentVaultOauthAuthorization: (authorizationId: string) =>
@@ -185,6 +204,9 @@ export const KeyStorePrefixes = {
   AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>
     `agent-vault-oauth-authorization:${authorizationId}:complete` as const,
   AgentVaultOauthRefreshLock: (serviceId: string) => `agent-vault-oauth-refresh-lock:${serviceId}` as const,
+  // By service and owner, not row id: a reconnect replaces the member's row.
+  AgentVaultOauthPersonalRefreshLock: (serviceId: string, ownerId: string) =>
+    `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
 
@@ -216,26 +238,14 @@ export const KeyStorePrefixes = {
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
-  SecretManagerCachePattern: "secret-manager:*",
+  SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
-  LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
-  // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
-  LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
-  LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
   AuditLogOrgSettings: (orgId: string) => `audit-log-settings-org-${orgId}` as const,
   AuditLogProjectSettings: (orgId: string, projectId: string) =>
     `audit-log-settings-project-${orgId}-${projectId}` as const,
   AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,
   AuditLogCollapseCount: (key: string, windowStart: string) =>
     `audit-log-collapse-count-${key}-${windowStart}` as const,
-  // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
-  LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
-  // Single-flight guard so only one background revalidation runs per org per lock window.
-  LicenseCacheRevalidateLock: (orgId: string) => `license-cache-revalidate-lock-${orgId}` as const,
-  // Throttles the demand-driven usage reconciliation (fired from getPlan) to once per org per interval.
-  LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
-  LicenseUsageLastReported: (orgId: string, featureKey: string) =>
-    `license-usage-last-reported-${orgId}-${featureKey}` as const,
   PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
   PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
@@ -261,7 +271,10 @@ export const KeyStorePrefixes = {
     `native-integration-deprecation-notice:${orgId}:${period}` as const,
 
   LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
-    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const,
+
+  SamlAssertionReplay: (samlConfigId: string, assertionIdHash: string) =>
+    `saml-assertion-replay:${samlConfigId}:${assertionIdHash}` as const
 };
 
 export const KeyStoreTtls = {
@@ -303,22 +316,9 @@ export const KeyStoreTtls = {
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
-  LicenseCloudPlanInSeconds: 900, // 15 minutes
-  LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
   AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
-  AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
-  // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
-  LicenseCachePassThroughInSeconds: 180, // 3 minutes
-  // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
-  // after the customer finishes the hosted checkout/card-setup (which can take a few minutes).
-  LicenseCachePassThroughCheckoutInSeconds: 900, // 15 minutes
-  // Throttle window for the single-flight background revalidation.
-  LicenseCacheRevalidateLockInSeconds: 10,
-  // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
-  LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
-  LicenseUsageLastReportedInSeconds: 604800, // 7 days
   // Short: the count drifts high as certificates expire and low when an ungated path such as a
   // discovery scan inserts rows, and only this expiry corrects either.
   PkiCertificateQuotaCountInSeconds: 60,
@@ -336,7 +336,8 @@ export const KeyStoreTtls = {
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   WorkerHeartbeatInSeconds: 300, // 5 minutes - tolerates several missed 60s beats
-  OidcIssuerJwksInSeconds: 600 // 10 minutes
+  OidcIssuerJwksInSeconds: 600, // 10 minutes
+  CmekPublicJwksInSeconds: 60
 };
 
 type TDeleteItems = {

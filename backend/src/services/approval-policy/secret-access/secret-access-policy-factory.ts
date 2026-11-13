@@ -12,13 +12,17 @@ import {
   getSecretAccessRequestData,
   hasSameAccessCriteria,
   isSecretAccessBreakGlassEligible,
+  resolveSecretAccessPolicyForPath,
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
 import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
 import { TSecretAccessPolicy, TSecretAccessPolicyInputs, TSecretAccessRequestData } from "./secret-access-policy-types";
 
 type TSecretAccessApprovalGlobalResourceDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findSecretAccessPoliciesByEnvId" | "findStepsByPolicyId" | "findBypassersByPolicyId"
+  >;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
   membershipDAL: Pick<TMembershipDALFactory, "lockUserProjectMemberships">;
@@ -34,13 +38,16 @@ export const secretAccessApprovalGlobalResourceFactory = ({
 }: TSecretAccessApprovalGlobalResourceDep) =>
   ({
     matchPolicy: async (projectId, inputs) => {
-      const policy = await approvalPolicyDAL.findSecretAccessPolicyByEnvIdAndSecretPath({
-        projectId,
-        envId: inputs.envId,
-        secretPath: inputs.secretPath
-      });
+      const policies = await approvalPolicyDAL.findSecretAccessPoliciesByEnvId({ projectId, envId: inputs.envId });
+      const policy = resolveSecretAccessPolicyForPath(policies, inputs.secretPath);
+      if (!policy) return null;
 
-      return policy as TSecretAccessPolicy | null;
+      const [steps, bypassers] = await Promise.all([
+        approvalPolicyDAL.findStepsByPolicyId(policy.id),
+        approvalPolicyDAL.findBypassersByPolicyId(policy.id)
+      ]);
+
+      return { ...policy, steps, bypassers } as TSecretAccessPolicy;
     },
 
     canAccess: async (projectId, actorId, inputs) => {

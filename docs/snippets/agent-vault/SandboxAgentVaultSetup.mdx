@@ -4,14 +4,10 @@ import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Proxies** and select **Create Proxy**.
+    In the Agent Vault project that holds your access bundle, go to **Proxies** and select **Create Proxy**. An agent can only use a proxy in the same project as its session.
   </Step>
   <Step>
-    Enter a **Name**, such as `sandboxes`, and expand **Advanced Options**. Under **Traffic Policy**, choose **Access bundle hosts only**. Then add any other hosts the agent needs to reach to **Exceptions** (for example, `registry.npmjs.org`).
-
-    <Note>
-    Make sure you select the **Access bundle hosts only** [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). The proxy can reach the internet, so if you leave the traffic policy set to **Any host**, the agent can send requests through the proxy to any host.
-    </Note>
+    Enter a **Name**, such as `sandboxes`.
   </Step>
   <Step>
     Select **Create**, then copy the proxy token from the **Proxy Token** dialog. Infisical shows the token only once.
@@ -20,6 +16,6 @@ import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx
 
 ### Create a machine identity for your code
 
-Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an Agent Vault admin can create sessions for every access bundle.
+Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an admin of the Agent Vault project can create sessions with every access bundle in the project.
 
 <MachineIdentitySetup />

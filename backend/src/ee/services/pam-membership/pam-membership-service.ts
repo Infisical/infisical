@@ -2,11 +2,17 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
@@ -17,8 +23,6 @@ import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approva
 import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { PamIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -79,7 +83,7 @@ type TPamMembershipServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: TUsageMeteringService;
 };
 
 export type TPamMembershipServiceFactory = ReturnType<typeof pamMembershipServiceFactory>;
@@ -274,14 +278,21 @@ export const pamMembershipServiceFactory = ({
     memberships: Awaited<ReturnType<typeof membershipDAL.find>>,
     defaultRole: string
   ) => {
+    const userIds = memberships.map((m) => m.actorUserId).filter((v): v is string => Boolean(v));
+    const users = userIds.length ? await userDAL.find({ $in: { id: userIds } }) : [];
+    const userById = new Map(users.map((u) => [u.id, u]));
+
     return Promise.all(
       memberships.map(async (m) => {
         const roles = await membershipRoleDAL.find({ membershipId: m.id });
+        const user = m.actorUserId ? userById.get(m.actorUserId) : undefined;
         return {
           membershipId: m.id,
           userId: m.actorUserId,
           identityId: m.actorIdentityId,
           groupId: m.actorGroupId,
+          email: user?.email ?? null,
+          username: user?.username ?? null,
           role: roles[0]?.role ?? defaultRole,
           isActive: m.isActive,
           expiresAt: roles[0]?.isTemporary ? (roles[0]?.temporaryAccessEndTime ?? null) : null,
@@ -344,7 +355,7 @@ export const pamMembershipServiceFactory = ({
   // Product members
 
   const listProductMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -352,6 +363,7 @@ export const pamMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     return resolveMemberships(memberships, PamProductRole.Member);
@@ -360,7 +372,7 @@ export const pamMembershipServiceFactory = ({
   // Identity members enriched with the identity's name and scope, so the PAM UI never has to
   // join against org- or project-level identity endpoints (the org list excludes PAM-scoped identities).
   const listProductIdentityMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -368,6 +380,10 @@ export const pamMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
+    );
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     const identityMemberships = memberships.filter((m) => m.actorIdentityId);
@@ -440,7 +456,7 @@ export const pamMembershipServiceFactory = ({
     });
 
     // A new PAM project member (user/identity/group) changes the pam_identities meter.
-    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities);
     return result;
   };
 
@@ -573,7 +589,7 @@ export const pamMembershipServiceFactory = ({
 
     // Only re-meter when project members were actually added.
     if (memberships.length > 0) {
-      usageMeteringService.emitForProject(projectId, PamIdentities.key);
+      usageMeteringService.emit(ctx.actorOrgId, Meter.PamIdentities);
     }
 
     return { memberships, skipped };
@@ -724,7 +740,7 @@ export const pamMembershipServiceFactory = ({
 
     sendSessionCancellations();
 
-    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emit(dto.actorOrgId, Meter.PamIdentities);
     return result;
   };
 

@@ -10,6 +10,7 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { DATA_EXPLORER_MAX_RESULT_BYTES, estimateRowBytes } from "../pam-web-access-fns";
 import { extractCommand, nextTransactionState, splitSnowflakeStatements } from "./pam-snowflake-data-explorer-fns";
 import {
   COLUMNS_QUERY,
@@ -43,12 +44,17 @@ const readRows = (
   new Promise((resolve, reject) => {
     const rows: Record<string, unknown>[] = [];
     let truncated = false;
+    let bytes = 0;
     const stream = statement.streamRows();
 
     stream.on("data", (row: Record<string, unknown>) => {
+      if (truncated) return;
       if (rows.length < MAX_ROWS) {
-        rows.push(row);
-        return;
+        bytes += estimateRowBytes(row);
+        if (bytes <= DATA_EXPLORER_MAX_RESULT_BYTES) {
+          rows.push(row);
+          return;
+        }
       }
       truncated = true;
       stream.destroy();

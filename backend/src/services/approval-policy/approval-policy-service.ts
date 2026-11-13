@@ -10,9 +10,9 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
@@ -111,7 +111,7 @@ type TApprovalPolicyServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -673,7 +673,7 @@ export const approvalPolicyServiceFactory = ({
     // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
     if (policyType === ApprovalPolicyType.CertRequest) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.pkiApprovals) {
+      if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({
           message:
             "Failed to create certificate approval policy due to plan restriction. Upgrade plan to use certificate approvals."
@@ -1077,6 +1077,7 @@ export const approvalPolicyServiceFactory = ({
     requesterName,
     requesterEmail,
     skipApproverNotification,
+    deferApproverNotification,
     autoApprovalEvidence,
     tx
   }: TCreateRequestFromPolicyDTO) => {
@@ -1109,16 +1110,20 @@ export const approvalPolicyServiceFactory = ({
         : (request, trx) => $emitEvent({ event: ApprovalNotificationEvent.Requested, request }, trx)
     );
 
-    if (!skipApproverNotification) {
+    const notifyApprovers = async () => {
+      if (skipApproverNotification) return;
       await $notify({
         event: ApprovalNotificationEvent.Requested,
         request: requestWithSteps,
         approvers: requestWithSteps.steps[0]?.approvers ?? []
       });
-    }
+    };
+
+    if (!deferApproverNotification) await notifyApprovers();
 
     return {
-      request: requestWithSteps
+      request: requestWithSteps,
+      notifyApprovers
     };
   };
 
@@ -2146,7 +2151,7 @@ export const approvalPolicyServiceFactory = ({
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
 
-    // Secret access grants are managed by the secret-access-approval-global-request-bridge service
+    // Secret access grants are managed by the access-approval-request service
     if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
       throw new BadRequestError({
         message: "This grant is for a secret access request. Revoke it from the access request instead."

@@ -37,6 +37,11 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TClickHouseCredentialsRotation,
+  TClickHouseCredentialsRotationGeneratedCredentialsResponse,
+  TClickHouseCredentialsRotationOption
+} from "./clickhouse-credentials-rotation";
+import {
   TCloudflareApiTokenRotation,
   TCloudflareApiTokenRotationGeneratedCredentialsResponse,
   TCloudflareApiTokenRotationOption
@@ -181,6 +186,7 @@ export type TSecretRotationV2 = (
   | TCloudflareR2AccessKeyRotation
   | TStripeApiKeyRotation
   | TGcpServiceAccountKeyRotation
+  | TClickHouseCredentialsRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -212,7 +218,8 @@ export type TSecretRotationV2Option =
   | TCloudflareApiTokenRotationOption
   | TCloudflareR2AccessKeyRotationOption
   | TStripeApiKeyRotationOption
-  | TGcpServiceAccountKeyRotationOption;
+  | TGcpServiceAccountKeyRotationOption
+  | TClickHouseCredentialsRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -248,7 +255,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TCloudflareApiTokenRotationGeneratedCredentialsResponse
   | TCloudflareR2AccessKeyRotationGeneratedCredentialsResponse
   | TStripeApiKeyRotationGeneratedCredentialsResponse
-  | TGcpServiceAccountKeyRotationGeneratedCredentialsResponse;
+  | TGcpServiceAccountKeyRotationGeneratedCredentialsResponse
+  | TClickHouseCredentialsRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -333,6 +341,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.CloudflareR2AccessKey]: TCloudflareR2AccessKeyRotationOption;
   [SecretRotation.StripeApiKey]: TStripeApiKeyRotationOption;
   [SecretRotation.GcpServiceAccountKey]: TGcpServiceAccountKeyRotationOption;
+  [SecretRotation.ClickHouseCredentials]: TClickHouseCredentialsRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -366,6 +375,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.CloudflareR2AccessKey]: TCloudflareR2AccessKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.StripeApiKey]: TStripeApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.GcpServiceAccountKey]: TGcpServiceAccountKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.ClickHouseCredentials]: TClickHouseCredentialsRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

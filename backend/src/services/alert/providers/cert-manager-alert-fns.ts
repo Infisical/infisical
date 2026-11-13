@@ -2,9 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -134,14 +135,14 @@ export const certificateDisplayName = (certificate: {
 }): string => certificate.commonName || splitAltNames(certificate.altNames)[0] || certificate.serialNumber;
 
 export const assertCertManagerAlertChannelTypesAllowed = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: TLicenseService,
   { orgId, channelTypes }: { orgId: string; channelTypes: string[] }
 ) => {
   const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);
   if (!gatedType) return;
 
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.pkiEnterpriseAlerting) {
+  if (!plan.has(PlanFeature.PkiEnterpriseAlerting)) {
     throw new BadRequestError({
       message: `Failed to save a ${gatedType} channel due to plan restriction. Upgrade plan to alert on channels other than email, or disable or remove the ${gatedType} channel.`
     });
@@ -297,7 +298,8 @@ export const buildCertificateAlertPayload = ({
           profileName: certificate.profileName,
           applicationId: certificate.applicationId,
           applicationName: certificate.applicationName
-        }
+        },
+        url: `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager/certificates/${certificate.id}`
       };
     })
   };

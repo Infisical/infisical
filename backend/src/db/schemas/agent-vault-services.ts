@@ -11,9 +11,9 @@ import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultServicesSchema = z.object({
   id: z.string().uuid(),
-  accessBundleId: z.string().uuid(),
-  name: z.string(),
-  hostPattern: z.string(),
+  accessBundleId: z.string().uuid().nullable().optional(),
+  name: z.string().nullable().optional(),
+  hostPattern: z.string().nullable().optional(),
   credentialType: z.string(),
   credentialConfig: z.unknown(),
   encryptedCredential: zodBuffer.nullable().optional(),
@@ -23,7 +23,15 @@ export const AgentVaultServicesSchema = z.object({
   allowedPathPrefixes: z.string().array().nullable().optional(),
   memberProvidedFields: z.string().array().nullable().optional(),
   type: z.string().default("http"),
-  config: z.unknown().nullable().optional()
+  config: z.unknown().nullable().optional(),
+  allowedTools: z.string().array().nullable().optional(),
+  description: z.string().nullable().optional(),
+  projectId: z.string(),
+  sessionId: z.string().uuid().nullable().optional(),
+  position: z.number().nullable().optional(),
+  secretsDeletedAt: z.date().nullable().optional(),
+  hookUrl: z.string().nullable().optional(),
+  encryptedHookSecret: zodBuffer.nullable().optional()
 });
 
 export type TAgentVaultServices = z.infer<typeof AgentVaultServicesSchema>;

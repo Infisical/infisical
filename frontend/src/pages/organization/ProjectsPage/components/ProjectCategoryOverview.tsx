@@ -37,7 +37,6 @@ import {
 } from "@app/helpers/project";
 import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
-import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
@@ -146,8 +145,6 @@ export const ProjectCategoryOverview = () => {
   );
   const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
-  const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
-  const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
   const [isSecretScanningRequestAccessOpen, setIsSecretScanningRequestAccessOpen] = useState(false);
   const [pendingSecretScanningProjectId, setPendingSecretScanningProjectId] = useState<
     string | null
@@ -180,20 +177,6 @@ export const ProjectCategoryOverview = () => {
   );
   const isPamAccessBlocked =
     Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
-
-  const isAgentVaultMember = useMemo(
-    () =>
-      Boolean(
-        currentOrg?.agentVaultProjectId &&
-        projects.some((project) => project.id === currentOrg.agentVaultProjectId)
-      ),
-    [currentOrg?.agentVaultProjectId, projects]
-  );
-  const isAgentVaultAccessBlocked =
-    Boolean(currentOrg?.agentVaultProjectId) &&
-    !isOrgAdmin &&
-    !canRequestAccess &&
-    !isAgentVaultMember;
 
   const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg?.id ?? "");
   const activeSecretScanningProjectId = secretScanningInstance?.activeProjectId ?? null;
@@ -263,7 +246,7 @@ export const ProjectCategoryOverview = () => {
         return [
           { label: "access bundles", value: productStats.agentVault.accessBundlesCount },
           { label: "services", value: productStats.agentVault.servicesCount },
-          { label: "proxies", value: productStats.agentVault.proxiesCount }
+          { label: "projects", value: productStats.agentVault.projectsCount }
         ];
       default:
         return [];
@@ -366,57 +349,6 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
-  const navigateToAgentVault = () => {
-    navigate({
-      to: "/organizations/$orgId/agent-vault",
-      params: { orgId: currentOrg?.id ?? "" }
-    });
-  };
-
-  const enterAgentVaultProject = async () => {
-    let agentVaultProjectId: string;
-    try {
-      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
-      });
-      return;
-    }
-
-    const isMember = projects.some((p) => p.id === agentVaultProjectId);
-    if (isMember) {
-      navigateToAgentVault();
-      return;
-    }
-
-    setPendingAgentVaultProjectId(agentVaultProjectId);
-
-    if (isOrgAdmin) {
-      try {
-        await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
-        navigateToAgentVault();
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
-        });
-      }
-      return;
-    }
-
-    if (canRequestAccess) {
-      setIsAgentVaultRequestAccessOpen(true);
-      return;
-    }
-
-    createNotification({
-      type: "error",
-      text: "You don't have access to Agent Vault. Ask an Agent Vault admin to add you."
-    });
-  };
-
   const navigateToSecretScanning = (projectId: string) => {
     if (currentOrg?.id) setSecretScanningActiveProjectCookie(currentOrg.id, projectId);
     navigate({
@@ -493,9 +425,6 @@ export const ProjectCategoryOverview = () => {
     if (type === ProjectType.PAM && isPamMember) {
       return { to: "/organizations/$orgId/pam/accounts", params: { orgId } } as const;
     }
-    if (type === ProjectType.AgentVault && isAgentVaultMember) {
-      return { to: "/organizations/$orgId/agent-vault", params: { orgId } } as const;
-    }
     return null;
   };
 
@@ -518,11 +447,6 @@ export const ProjectCategoryOverview = () => {
 
     if (type === ProjectType.PAM) {
       await enterPamProject();
-      return;
-    }
-
-    if (type === ProjectType.AgentVault) {
-      await enterAgentVaultProject();
       return;
     }
 
@@ -582,13 +506,6 @@ export const ProjectCategoryOverview = () => {
     ? ({
         id: pendingSecretScanningProjectId,
         name: "Secret Scanning"
-      } as Project)
-    : undefined;
-
-  const agentVaultRequestAccessProject: Project | undefined = pendingAgentVaultProjectId
-    ? ({
-        id: pendingAgentVaultProjectId,
-        name: "Agent Vault"
       } as Project)
     : undefined;
 
@@ -655,7 +572,6 @@ export const ProjectCategoryOverview = () => {
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
             (type === ProjectType.PAM && isPamAccessBlocked) ||
-            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked) ||
             (type === ProjectType.SecretScanning && isSecretScanningAccessBlocked);
 
           if (isAccessBlocked) {
@@ -689,7 +605,6 @@ export const ProjectCategoryOverview = () => {
           if (
             type === ProjectType.CertificateManager ||
             type === ProjectType.PAM ||
-            type === ProjectType.AgentVault ||
             type === ProjectType.SecretScanning
           ) {
             return (
@@ -746,16 +661,6 @@ export const ProjectCategoryOverview = () => {
         }}
         project={secretScanningRequestAccessProject}
         subTitle="Requesting access to Secret Scanning. You may include an optional note for admins to review your request."
-      />
-
-      <RequestProjectAccessModal
-        isOpen={isAgentVaultRequestAccessOpen}
-        onOpenChange={(isOpen) => {
-          setIsAgentVaultRequestAccessOpen(isOpen);
-          if (!isOpen) setPendingAgentVaultProjectId(null);
-        }}
-        project={agentVaultRequestAccessProject}
-        subTitle="Requesting access to Agent Vault. You may include an optional note for admins to review your request."
       />
 
       <CertManagerNotConfiguredModal

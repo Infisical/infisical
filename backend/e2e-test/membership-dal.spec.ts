@@ -1,47 +1,47 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
+import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 import { createIsolatedOrgAndProject } from "./testUtils/fixtures";
 import { createProjectGroup } from "./testUtils/groups";
-import { pollUntil } from "./testUtils/poll";
+import { waitUntilBlockedBy } from "./testUtils/poll";
 import { addUserMembership, createUser, deleteUsers } from "./testUtils/users";
 
 const membershipDAL = membershipDALFactory(testDb);
 
 const removalDeps = {
+  usageMeteringService: new FakeUsageMeteringService(),
   userDAL: userDALFactory(testDb),
   userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+  identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+  agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
   membershipGroupDAL: membershipGroupDALFactory(testDb),
   projectKeyDAL: projectKeyDALFactory(testDb),
   additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
   alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
   groupDAL: groupDALFactory(testDb),
-  eventEmitter: { emit: async () => {} }
+  eventEmitter: { emit: async () => {} },
+  membershipDAL,
+  membershipRoleDAL: membershipRoleDALFactory(testDb),
+  pamAccountDAL: pamAccountDALFactory(testDb),
+  pamSessionDAL: pamSessionDALFactory(testDb),
+  gatewayV2Service: { getPAMConnectionDetails: () => Promise.reject(new Error("unexpected gateway call")) }
 };
-
-const waitUntilBlockedBy = (pid: number) =>
-  pollUntil({
-    describe: `a query blocked by backend ${pid}`,
-    read: async () => {
-      const { rows } = await testDb.raw(
-        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
-        [pid]
-      );
-      return rows[0].waiting as number;
-    },
-    done: (waiting) => waiting > 0,
-    timeoutMs: 5_000
-  });
 
 describe("membershipDAL.lockUserProjectMemberships", () => {
   let fixture: Awaited<ReturnType<typeof createIsolatedOrgAndProject>>;

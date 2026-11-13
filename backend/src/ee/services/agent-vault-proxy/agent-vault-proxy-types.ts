@@ -9,7 +9,8 @@ import {
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
-  trafficPolicy: AgentVaultTrafficPolicy;
+  // The name proxies understand; the admin API calls bundle-hosts service-hosts.
+  trafficPolicy: AgentVaultTrafficPolicy.AnyHost | AgentVaultTrafficPolicy.BundleHosts;
   allowedHosts: string | null;
   pollInterval: number;
 };
@@ -24,6 +25,7 @@ export type TListProxiesDTO = TAgentVaultProxyScoped & {
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -32,6 +34,7 @@ export type TCreateProxyDTO = TAgentVaultProxyScoped & {
 export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
   proxyId: string;
   name?: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -52,6 +55,7 @@ export type TProxyRootCa = {
 
 export type THeartbeatDTO = {
   proxyId: string;
+  tokenVersion: number;
 };
 
 export type TAuthorizeSessionDTO = {
@@ -61,6 +65,21 @@ export type TAuthorizeSessionDTO = {
 };
 
 export type TGetSessionSkillsDTO = {
+  sessionToken: string;
+};
+
+export type TGetSessionProxyCaFingerprintsDTO = {
+  sessionToken: string;
+};
+
+export type TGetSessionServicesDTO = {
+  sessionToken: string;
+  // Set by a proxy that forwarded the request, naming itself and its version.
+  proxyId?: string;
+  proxyVersion?: string;
+};
+
+export type TRevokeSessionByTokenDTO = {
   sessionToken: string;
 };
 
@@ -82,14 +101,25 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
   requiredScopes: string[];
 };
 
+export type TResolvedNativeTarget = {
+  host: string;
+  port: number;
+  database: string | null;
+  tls: { enabled: boolean; verify: boolean; ca: string | null } | null;
+};
+
 export type TResolvedService = {
   id: string;
   name: string;
-  accessBundleName: string;
+  // Null for a service sent inline with the session, which belongs to no bundle.
+  accessBundleName: string | null;
   type: AgentVaultServiceType;
-  hostPattern: string;
+  // Null for a database or SSH service, whose server is in `native` instead.
+  hostPattern: string | null;
+  native: TResolvedNativeTarget | null;
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
+  allowedTools: string[] | null;
   credential:
     | {
         type: AgentVaultCredentialType.Bearer;
@@ -101,10 +131,17 @@ export type TResolvedService = {
         expiresAt?: string | null;
       }
     | { type: AgentVaultCredentialType.Basic; username: string; password: string }
+    | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string }
     | { type: AgentVaultCredentialType.Passthrough };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];
-  // The service takes part of its credential from each member and the session's actor has not set their values,
-  // so the proxy refuses its requests rather than sending them without one.
+  // The service takes part of its credential from each member and the member whose values the session uses (its owner,
+  // or the user it acts for) hasn't set them, so the proxy refuses its requests rather than sending them without one.
   personalValuesMissing: boolean;
+  // Some of the credential is each member's own, so a rejection is theirs to fix, not the admin's.
+  memberProvided: boolean;
+  // The bundle the service came from. Null for a service sent inline with the session.
+  accessBundleId: string | null;
+  // Asked before each request (each connection for a database or SSH service). Null when the service has none.
+  hook: { url: string; secret: string } | null;
 };

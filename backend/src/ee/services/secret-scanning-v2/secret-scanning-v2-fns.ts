@@ -397,7 +397,8 @@ export const scanGitRepositoryAndGetFindings = async (
     details: toFindingDetails(finding),
     fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
     severity: SecretScanningFindingSeverity.High,
-    rule: finding.RuleID
+    rule: finding.RuleID,
+    secretValue: finding.Secret
   }));
 };
 
@@ -419,6 +420,10 @@ export const replaceNonChangesWithNewlines = (patch: string) => {
 
 const HunkHeaderRegex = new RE2(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
 
+/**
+ * Maps a line of `patch`, numbered from 1 as the scanner numbers the lines of `replaceNonChangesWithNewlines(patch)`,
+ * to the line it is on in the new file. The patch must be scanned exactly as it is, with nothing added before it.
+ */
 export const convertPatchLineToFileLineNumber = (patch: string, patchLineNumber: number) => {
   const lines = patch.split("\n");
   let currentPatchLine = 0;

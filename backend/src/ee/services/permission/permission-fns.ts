@@ -42,25 +42,17 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
   >,
   subjectFields?: SecretSubjectFields
 ) {
-  try {
-    if (subjectFields) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.DescribeAndReadValue,
-        subject(ProjectPermissionSub.Secrets, subjectFields)
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.DescribeAndReadValue,
-        ProjectPermissionSub.Secrets
-      );
-    }
-  } catch {
-    if (subjectFields) {
-      ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, subjectFields));
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Secrets);
-    }
+  const secretSubject = subjectFields
+    ? subject(ProjectPermissionSub.Secrets, subjectFields)
+    : ProjectPermissionSub.Secrets;
+  // ForbiddenError captures a stack trace, so only build one when access is actually denied.
+  if (
+    permission.can(ProjectPermissionSecretActions.DescribeAndReadValue, secretSubject) ||
+    permission.can(action, secretSubject)
+  ) {
+    return;
   }
+  ForbiddenError.from(permission).throwUnlessCan(action, secretSubject);
 }
 
 export function hasSecretReadValueOrDescribePermission(
@@ -273,13 +265,27 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
   ].includes(actorAuthMethod);
 }
 
-function validateOrgSSO(
-  actorAuthMethod: ActorAuthMethod,
-  isOrgSsoEnforced: TOrganizations["authEnforced"],
-  isOrgGoogleSsoEnforced: TOrganizations["googleSsoAuthEnforced"],
-  isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"],
-  isAdmin: boolean
-) {
+export const FOREIGN_SSO_SESSION_ERROR_NAME = "ForeignSsoSession";
+
+function validateOrgSSO({
+  actorAuthMethod,
+  isOrgSsoEnforced,
+  isOrgGoogleSsoEnforced,
+  isOrgSsoBypassEnabled,
+  isAdmin,
+  issuingRootOrgId,
+  rootOrgId
+}: {
+  actorAuthMethod: ActorAuthMethod;
+  isOrgSsoEnforced: TOrganizations["authEnforced"];
+  isOrgGoogleSsoEnforced: TOrganizations["googleSsoAuthEnforced"];
+  isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"];
+  isAdmin: boolean;
+  // Root org whose IdP issued the session, when the session is the request's own; tokens issued
+  // before the claim existed carry none and are taken at their auth method.
+  issuingRootOrgId?: string;
+  rootOrgId: string;
+}) {
   if (actorAuthMethod === undefined) {
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
@@ -306,6 +312,16 @@ function validateOrgSSO(
     throw new ForbiddenRequestError({
       message:
         "Organization authentication is enforced. Cannot access org-scoped resource. Login with SAML SSO to access this resource."
+    });
+  }
+
+  // A session another org's IdP minted would otherwise satisfy this org's enforcement without its
+  // IdP, MFA or deprovisioning ever seeing the login.
+  if (isOrgSsoEnforced && actorAuthMethod !== null && issuingRootOrgId && issuingRootOrgId !== rootOrgId) {
+    throw new ForbiddenRequestError({
+      name: FOREIGN_SSO_SESSION_ERROR_NAME,
+      message:
+        "This organization requires its own SSO. Your session was issued by another organization's identity provider; log in again through this organization's SSO."
     });
   }
 }

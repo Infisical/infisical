@@ -1,6 +1,7 @@
-import { calculateJwkThumbprint, JWK } from "jose";
+import { calculateJwkThumbprint } from "jose";
 
-import { crypto } from "@app/lib/crypto/cryptography";
+import { getPublicJwkParams } from "@app/lib/crypto/sign";
+import { InternalServerError } from "@app/lib/errors";
 
 export const OIDC_ISSUER_KEY_NAME_PREFIX = "oidc-issuer-";
 export const OIDC_ISSUER_SIGNING_ALG = "RS256";
@@ -9,6 +10,13 @@ const KEY_SIGNING_PERIOD_MS = 24 * 60 * 60 * 1000;
 const MAX_KEYS = 3;
 
 type TIssuerKey = { id: string; createdAt: Date };
+
+// Customers copy this into their provider, so its shape can never change. The prefix keeps it from matching a
+// credential set up for a future use of the issuer.
+export const getAppConnectionOidcSubject = (connectionId: string) => `app-connection:${connectionId}`;
+
+export const getOidcIssuerUrl = (siteUrl: string, orgId: string) =>
+  `${siteUrl}/api/v1/oidc-issuer/organizations/${orgId}`;
 
 // Keys are oldest first: previous, current, next. The next key is published a full signing period before it
 // takes over, so a provider that cached the JWKS already has it.
@@ -28,10 +36,12 @@ export const getKeyRotationPlan = (
 };
 
 export const publicKeyToJwk = async (spki: Buffer) => {
-  const { kty, n, e } = crypto.nativeCrypto
-    .createPublicKey({ key: spki, format: "der", type: "spki" })
-    .export({ format: "jwk" }) as Required<Pick<JWK, "kty" | "n" | "e">>;
+  const params = getPublicJwkParams(spki);
+  if (params.kty !== "RSA") {
+    throw new InternalServerError({ message: "The OIDC issuer signing key isn't an RSA key." });
+  }
 
+  const { kty, n, e } = params;
   return { kty, n, e, kid: await calculateJwkThumbprint({ kty, n, e }), alg: OIDC_ISSUER_SIGNING_ALG, use: "sig" };
 };
 

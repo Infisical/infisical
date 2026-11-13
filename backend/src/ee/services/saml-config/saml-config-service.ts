@@ -14,9 +14,17 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordSsoConfigChangeMetric, SsoConfigAction, SsoProvider } from "@app/lib/telemetry/metrics";
@@ -31,8 +39,8 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
@@ -49,14 +57,26 @@ import { ensureSsoAccountVerified, isStaleSsoAlias, syncSsoUserProfile } from "@
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import {
+  findOrgIdByVerifiedDomain,
+  isIdpAuthoritativeForDomain,
+  verifyEmailDomainOwnership
+} from "../email-domain/email-domain-fns";
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
+import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { getSamlAssertionReplayDetails, getSamlAssertionReplayWindow } from "./saml-assertion-fns";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
 
@@ -89,10 +109,12 @@ type TSamlConfigServiceFactoryDep = {
     | "lockActorsForOrgAccess"
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -110,7 +132,12 @@ type TSamlConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export const samlConfigServiceFactory = ({
@@ -129,16 +156,23 @@ export const samlConfigServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   tokenService,
   smtpService,
   identityMetadataDAL,
   kmsService,
+  membershipDAL,
   membershipRoleDAL,
   membershipGroupDAL,
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  keyStore,
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -176,6 +210,8 @@ export const samlConfigServiceFactory = ({
     samlGroups: string[];
     tx?: Knex;
   }) => {
+    const pamCancellations: (() => void)[] = [];
+
     const processGroupSync = async (transaction: Knex) => {
       const currentGroupMemberships = await userGroupMembershipDAL.find(
         {
@@ -255,16 +291,19 @@ export const samlConfigServiceFactory = ({
         }
       }
 
+      const removedGroupProjectIds = new Set<string>();
       // eslint-disable-next-line no-await-in-loop
       for (const groupName of groupsToRemove) {
         if (groupName) {
           const group = orgGroupsMap.get(groupName);
           if (group) {
-            await removeUsersFromGroupByUserIds({
+            const { sendPamCancellations, projectIds } = await removeUsersFromGroupByUserIds({
               userIds: [userId],
               group,
               userDAL,
               userGroupMembershipDAL,
+              identityGroupMembershipDAL,
+              agentVaultPersonalValueDAL,
               membershipGroupDAL,
               groupDAL,
               projectKeyDAL,
@@ -272,12 +311,27 @@ export const samlConfigServiceFactory = ({
               usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
+              membershipDAL,
+              membershipRoleDAL,
+              pamAccountDAL,
+              pamSessionDAL,
+              gatewayV2Service,
               shouldFailOnMissingMembers: false,
+              deferPersonalValueClear: true,
               tx: transaction
             });
+            pamCancellations.push(sendPamCancellations);
+            projectIds.forEach((projectId) => removedGroupProjectIds.add(projectId));
           }
         }
       }
+
+      // After every group's rows are locked, so the row locks come before the cleanup lock like every other removal.
+      await clearPersonalValuesInProjects(
+        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        { projectIds: [...removedGroupProjectIds], userIds: [userId] },
+        transaction
+      );
     };
 
     if (tx) {
@@ -285,6 +339,8 @@ export const samlConfigServiceFactory = ({
     } else {
       await userDAL.transaction(processGroupSync);
     }
+
+    return () => pamCancellations.forEach((send) => send());
   };
 
   const createSamlCfg: TSamlConfigServiceFactory["createSamlCfg"] = async ({
@@ -298,7 +354,9 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider,
-    enableGroupSync
+    enableGroupSync,
+    mfaSignalAttribute,
+    mfaAuthnContexts
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -311,7 +369,7 @@ export const samlConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.has(PlanFeature.SamlSso))
       throw new BadRequestError({
         message:
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
@@ -336,7 +394,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.has(PlanFeature.Groups)) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
@@ -354,7 +412,9 @@ export const samlConfigServiceFactory = ({
       encryptedSamlCertificate: encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob,
       encryptedSamlEntryPoint: encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob,
       encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
-      enableGroupSync: enableGroupSync || false
+      enableGroupSync: enableGroupSync || false,
+      mfaSignalAttribute,
+      mfaAuthnContexts
     });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Create, orgId });
@@ -373,7 +433,9 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider,
-    enableGroupSync
+    enableGroupSync,
+    mfaSignalAttribute,
+    mfaAuthnContexts
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -385,7 +447,7 @@ export const samlConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.has(PlanFeature.SamlSso))
       throw new BadRequestError({
         message:
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -410,20 +472,30 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.has(PlanFeature.Groups)) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
     }
 
+    const isMfaSignalOnlyUpdate = [authProvider, isActive, entryPoint, issuer, idpCert, enableGroupSync].every(
+      (value) => value === undefined
+    );
+
     const updateQuery: TSamlConfigsUpdate = {
       authProvider,
       isActive,
-      lastUsed: null
+      ...(!isMfaSignalOnlyUpdate && { lastUsed: null })
     };
 
     if (enableGroupSync !== undefined) {
       updateQuery.enableGroupSync = enableGroupSync;
+    }
+    if (mfaSignalAttribute !== undefined) {
+      updateQuery.mfaSignalAttribute = mfaSignalAttribute;
+    }
+    if (mfaAuthnContexts !== undefined) {
+      updateQuery.mfaAuthnContexts = mfaAuthnContexts;
     }
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -443,7 +515,9 @@ export const samlConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);
-    await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
+    if (!isMfaSignalOnlyUpdate) {
+      await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
+    }
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Update, orgId });
 
@@ -535,8 +609,54 @@ export const samlConfigServiceFactory = ({
       issuer,
       cert,
       lastUsed: samlConfig.lastUsed,
-      enableGroupSync: samlConfig.enableGroupSync
+      enableGroupSync: samlConfig.enableGroupSync,
+      mfaSignalAttribute: samlConfig.mfaSignalAttribute,
+      mfaAuthnContexts: samlConfig.mfaAuthnContexts
     };
+  };
+
+  // Called with the assertion node-saml has already verified, before any login logic. The ID is claimed in
+  // Redis, which every instance shares, until the assertion expires, so a captured response cannot start a
+  // second session; that matters most when the org trusts the MFA it carries. This covers IdP-initiated logins
+  // too, which InResponseTo validation would not.
+  const consumeSamlAssertion: TSamlConfigServiceFactory["consumeSamlAssertion"] = async ({
+    samlConfigId,
+    parsedAssertion
+  }) => {
+    const { assertionId, issuedAt, expiresAt } = getSamlAssertionReplayDetails(parsedAssertion);
+    if (!assertionId) {
+      throw new BadRequestError({
+        message:
+          "The SAML response from your identity provider has no assertion ID, so Infisical cannot make sure it is used only once. Check the SAML app settings in your identity provider."
+      });
+    }
+
+    const replayWindow = getSamlAssertionReplayWindow({ expiresAt, issuedAt });
+    if (!replayWindow.accepted) {
+      throw new BadRequestError({
+        message:
+          replayWindow.reason === "expired"
+            ? "This SAML response has expired. Sign in again through your identity provider."
+            : "The SAML response from your identity provider has no expiry (NotOnOrAfter) or issue time (IssueInstant), so Infisical cannot make sure it is used only once. Check the SAML app settings in your identity provider."
+      });
+    }
+
+    const assertionIdHash = crypto.nativeCrypto.createHash("sha256").update(assertionId).digest("hex");
+    const claimed = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.SamlAssertionReplay(samlConfigId, assertionIdHash),
+      replayWindow.ttlSeconds,
+      "1"
+    );
+
+    if (!claimed) {
+      logger.warn(
+        { samlConfigId, assertionIdHash },
+        `Rejected a SAML assertion that was already used [samlConfigId=${samlConfigId}] [assertionIdHash=${assertionIdHash}]`
+      );
+      throw new BadRequestError({
+        message: "This SAML response was already used. Sign in again through your identity provider."
+      });
+    }
   };
 
   const samlLogin: TSamlConfigServiceFactory["samlLogin"] = async ({
@@ -549,7 +669,8 @@ export const samlConfigServiceFactory = ({
     ip,
     userAgent,
     callbackPort,
-    metadata
+    metadata,
+    idpMfa
   }) => {
     const serverCfg = await getServerCfg();
 
@@ -565,26 +686,26 @@ export const samlConfigServiceFactory = ({
       aliasType: UserAliasType.SAML
     });
 
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const ownedDomain = await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
-    // separate email-verification step (the email-domain ownership check above already proves the
-    // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    // The IdP is authoritative, and the separate email-verification step is skipped, only when the
+    // org enforces SSO and owns the asserted domain. Enforcement alone would promote an alias for
+    // any address the IdP asserts; ownership is what makes the assertion proof of the mailbox.
+    const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
 
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
     const plan = await licenseService.getPlan(orgId);
-    const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
-    const identityLimit = getEnforcedIdentityLimit(plan);
+    const shouldSyncGroups = !!samlConfig?.enableGroupSync && plan.has(PlanFeature.Groups);
 
     let user: TUsers;
+    let sendPamCancellations = () => {};
     if (userAlias) {
       const foundUser = await userDAL.findById(userAlias.userId);
       // Verify the existing user's stored email domain + cross-org check
@@ -656,7 +777,7 @@ export const samlConfigServiceFactory = ({
         if (shouldSyncGroups && metadata && foundUser.id) {
           const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
 
-          await syncUserGroupMemberships({
+          sendPamCancellations = await syncUserGroupMemberships({
             userId: foundUser.id,
             orgId,
             samlGroups,
@@ -668,6 +789,7 @@ export const samlConfigServiceFactory = ({
       });
     } else {
       let isNewUser = false;
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -678,8 +800,8 @@ export const samlConfigServiceFactory = ({
             {
               username: sanitizedEmail,
               email: sanitizedEmail,
-              isEmailVerified: skipEmailVerification,
-              isAccepted: skipEmailVerification,
+              isEmailVerified: isIdpAuthoritative,
+              isAccepted: isIdpAuthoritative,
               firstName,
               lastName,
               authMethods: [],
@@ -699,7 +821,7 @@ export const samlConfigServiceFactory = ({
             externalId,
             emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
-            isEmailVerified: skipEmailVerification
+            isEmailVerified: isIdpAuthoritative
           },
           tx
         );
@@ -714,13 +836,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached({
-            licenseService,
-            orgId,
-            identityLimit,
-            tx,
-            aliasType: UserAliasType.SAML
-          });
+          seatUsage?.assertAvailable(plan, UserAliasType.SAML);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -763,7 +879,7 @@ export const samlConfigServiceFactory = ({
         if (shouldSyncGroups && metadata && newUser.id) {
           const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
 
-          await syncUserGroupMemberships({
+          sendPamCancellations = await syncUserGroupMemberships({
             userId: newUser.id,
             orgId,
             samlGroups,
@@ -787,12 +903,14 @@ export const samlConfigServiceFactory = ({
         });
       }
     }
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    sendPamCancellations();
+
+    await usageMeteringService.syncSeats(organization.id);
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
-    if (skipEmailVerification) {
+    // When the IdP is authoritative, mark the user + alias as verified/accepted before issuing a session.
+    if (isIdpAuthoritative) {
       ({ user, userAlias } = await ensureSsoAccountVerified({
         user,
         userAlias,
@@ -811,7 +929,7 @@ export const samlConfigServiceFactory = ({
       assertedFirstName: firstName,
       assertedLastName: lastName,
       orgId,
-      isAuthEnforced: Boolean(organization.authEnforced),
+      isIdpAuthoritative,
       userDAL,
       userAliasDAL,
       emailDomainDAL,
@@ -843,7 +961,8 @@ export const samlConfigServiceFactory = ({
       ip,
       userAgent,
       organizationId: organization.id,
-      callbackPort
+      callbackPort,
+      idpMfa
     });
 
     return { ...callbackResult, userId: user.id, orgId: organization.id, orgName: organization.name };
@@ -853,6 +972,7 @@ export const samlConfigServiceFactory = ({
     createSamlCfg,
     updateSamlCfg,
     getSaml,
-    samlLogin
+    samlLogin,
+    consumeSamlAssertion
   };
 };

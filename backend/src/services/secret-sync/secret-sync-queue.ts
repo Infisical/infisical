@@ -3,10 +3,10 @@ import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -25,6 +25,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -134,7 +135,7 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -144,6 +145,7 @@ type TSecretSyncQueueFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type SecretSyncActionJob = Job<
@@ -198,7 +200,8 @@ export const secretSyncQueueFactory = ({
   microsoftTeamsService,
   telemetryService,
   projectFolderGrantDAL,
-  orgDAL
+  orgDAL,
+  oidcIssuerService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -315,6 +318,7 @@ export const secretSyncQueueFactory = ({
         sourcePath: folder.path,
         sourceFolderId: folderId,
         syncOptions: secretSync.syncOptions as TSecretSync["syncOptions"],
+        includeAllSubFolders: secretSync.includeAllSubFolders,
         includeImports
       },
       {
@@ -413,7 +417,8 @@ export const secretSyncQueueFactory = ({
       gitHubAppDAL,
       kmsService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      oidcIssuerService
     });
 
     if (!Object.keys(importedSecrets).length) return {};
@@ -576,10 +581,13 @@ export const secretSyncQueueFactory = ({
         gitHubAppDAL,
         kmsService,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        oidcIssuerService,
+        keyStore
       });
 
       syncResult = result ?? undefined;
+      syncMessage = syncResult?.message ?? null;
 
       isSynced = true;
     } catch (err) {
@@ -891,7 +899,8 @@ export const secretSyncQueueFactory = ({
           gitHubAppDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }
       );
 
@@ -1124,9 +1133,7 @@ export const secretSyncQueueFactory = ({
     // not is never triggered by a change it was never configured to cover.
     // The move and copy warnings in frontend/src/helpers/secretSyncCoverage.ts mirror this rule.
     const secretSyncs = candidateSyncs.filter(
-      (sync) =>
-        (folder && sync.folderId === folder.id) ||
-        Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
+      (sync) => (folder && sync.folderId === folder.id) || sync.includeAllSubFolders
     );
 
     await secretSyncDAL.update(

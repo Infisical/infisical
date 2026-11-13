@@ -4,7 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -16,7 +16,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
-import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
+import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -63,7 +63,7 @@ type TSecretImportServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -169,7 +169,7 @@ export const secretImportServiceFactory = ({
     if (isCrossProjectImport) {
       const plan = await licenseService.getPlan(actorOrgId);
       const org = await orgDAL.findOrgById(actorOrgId);
-      if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
+      if (!plan.has(PlanFeature.CrossProjectSecretSharing) || !org?.allowCrossProjectSecretSharing) {
         throw new ForbiddenRequestError({
           message: "Cross-project secret sharing is not enabled for this organization"
         });
@@ -212,7 +212,7 @@ export const secretImportServiceFactory = ({
       }
 
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.secretApproval) {
+      if (!plan.has(PlanFeature.SecretApproval)) {
         throw new BadRequestError({
           message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
         });
@@ -404,7 +404,7 @@ export const secretImportServiceFactory = ({
           const pairIds = new Set([secImp.id, ...(reservedImport ? [reservedImport.id] : [])]);
 
           // Fetch all imports for this folder in position order.
-          const allImports = await secretImportDAL.find({ folderId: folder.id }, tx);
+          const allImports = await secretImportDAL.findIncludingExpired(folder.id, tx);
           const otherImports = allImports
             .filter((imp) => !pairIds.has(imp.id))
             .sort((a, b) => Number(a.position) - Number(b.position));
@@ -609,7 +609,7 @@ export const secretImportServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.has(PlanFeature.SecretApproval)) {
       throw new BadRequestError({
         message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
       });

@@ -261,10 +261,16 @@ const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF
 const WINDOWS_INVALID_CHARS_RE = /[:<>"|?*]/;
 const WINDOWS_DEVICE_NAME_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i;
 
-export const isReservedSkillName = (name: string) => WINDOWS_DEVICE_NAME_RE.test(name);
+// Agents get Agent Vault's built-in skill under this name, so the API refuses it for a library skill.
+const BUILTIN_SKILL_NAME = "infisical-agent-vault";
+
+export const isReservedSkillName = (name: string) =>
+  name === BUILTIN_SKILL_NAME || WINDOWS_DEVICE_NAME_RE.test(name);
 
 export const getReservedSkillNameMessage = (name: string) =>
-  `'${name}' is a reserved name and can't be used as a skill name.`;
+  name === BUILTIN_SKILL_NAME
+    ? `'${BUILTIN_SKILL_NAME}' is reserved for the skill Agent Vault gives every agent. Choose another name in SKILL.md.`
+    : `'${name}' is a reserved name and can't be used as a skill name.`;
 
 /** Why the server would refuse a file path, or null. Mirrors assertValidPath in the backend's agent-vault-skill-fns.ts. */
 export const getSkillPathError = (path: string): string | null => {
@@ -298,6 +304,33 @@ export const joinSkillPath = (parentPath: string, name: string) =>
 export const getSkillParentPath = (path: string) => {
   const slash = path.lastIndexOf("/");
   return slash === -1 ? "" : path.slice(0, slash);
+};
+
+/**
+ * The skill path a relative link in `fromPath` points at, the way an agent reading the folder would follow it.
+ * A leading slash means the skill's root. Null for a link to a heading only, or one that climbs out of the skill.
+ */
+export const resolveSkillLinkPath = (fromPath: string, href: string): string | null => {
+  const [target] = href.split(/[?#]/);
+  if (!target) return null;
+  let decoded = target;
+  try {
+    decoded = decodeURIComponent(target);
+  } catch {
+    // A stray % is part of the name.
+  }
+  const segments = decoded.startsWith("/")
+    ? []
+    : getSkillParentPath(fromPath).split("/").filter(Boolean);
+  for (const segment of decoded.split("/")) {
+    if (segment === "..") {
+      if (segments.length === 0) return null;
+      segments.pop();
+    } else if (segment !== "" && segment !== ".") {
+      segments.push(segment);
+    }
+  }
+  return segments.length ? segments.join("/") : null;
 };
 
 export const getSkillBaseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);

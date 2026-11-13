@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -30,7 +31,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { convertRawCertsToPkcs7 } from "../../ee/services/certificate-est/certificate-est-fns";
-import { TLicenseServiceFactory } from "../../ee/services/license/license-service";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 
 type TCertificateEstV3ServiceFactoryDep = {
@@ -40,7 +40,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
@@ -230,7 +230,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleEnroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -324,7 +324,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleReenroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -349,7 +349,9 @@ export const certificateEstV3ServiceFactory = ({
     const verifiedChains = await Promise.all(
       caCertChains.map((chain) => {
         const caCert = new x509.X509Certificate(chain.certificate);
-        const caChain = extractX509CertFromChain(chain.certificateChain)?.map((c) => new x509.X509Certificate(c)) || [];
+        const caChain = chain.certificateChain
+          ? extractX509CertFromChain(chain.certificateChain).map((c) => new x509.X509Certificate(c))
+          : [];
 
         return isCertChainValid([cert, caCert, ...caChain]);
       })
@@ -368,6 +370,12 @@ export const certificateEstV3ServiceFactory = ({
 
     if (storedCert?.status === CertStatus.REVOKED) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
+    }
+
+    if (storedCert?.deletedAt) {
+      throw new UnauthorizedError({
+        message: `Client certificate with serial number '${cert.serialNumber}' was deleted and can no longer be re-enrolled. Enroll a new certificate instead.`
+      });
     }
 
     const $rejectReenrollCsr = async (message: string) => {
@@ -484,7 +492,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."
       });

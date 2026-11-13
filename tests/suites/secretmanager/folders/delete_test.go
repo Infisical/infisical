@@ -119,6 +119,38 @@ func TestFolder_Delete(t *testing.T) {
 		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
 	})
 
+	t.Run("should refuse deleting a folder with an open change request without naming it to an actor who cannot read change requests", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		proj.NewRole(t, "folder-deleter", fixture.Permission{Subject: "secret-folders", Action: []string{"delete"}})
+		deleter := proj.NewUser(t, fixture.WithPrincipalName("deleter"), fixture.WithRoles("folder-deleter"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app"}, reviewer)
+		held, err := committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/app"), SecretValue: "value",
+		})
+		require.NoError(t, err)
+		require.Containsf(t, string(held.Body), `"approval"`, "the write was not held: %s", held.Body)
+
+		// Action
+		res, err := deleter.API.DeleteSecretFolderWithResponse(t.Context(), folderID.String(), api.DeleteSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), ForceDelete: new(true),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			`You cannot delete the selected folder because it contains resources that are protected by a change policy. Contact a project admin and try again.`,
+			res.JSON400.Message)
+		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
+	})
+
 	t.Run("should refuse deleting a folder whose secrets a policy protects, naming the policy, and keep them", func(t *testing.T) {
 		t.Parallel()
 
@@ -143,6 +175,40 @@ func TestFolder_Delete(t *testing.T) {
 			fmt.Sprintf(`You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy %q at folder path "/app/api". Please remove the secrets at folder path "/app/api" and try again.`, guard),
 			res.JSON400.Message)
 		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/app/api"))
+	})
+
+	t.Run("should refuse deleting a folder whose secret import a policy protects, naming the policy, and keep it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app/api")
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "dev", Path: "/"}, secretmanager.IntoPath("/app/api"))
+		guard := secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app/api"}, reviewer)
+
+		// Action
+		res, err := tn.Admin.API.DeleteSecretFolderWithResponse(t.Context(), folderID.String(), api.DeleteSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), ForceDelete: new(true),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			fmt.Sprintf(`You cannot delete the selected folder because it contains one or more secret imports that are protected by the change policy %q at folder path "/app/api". Please remove the secret imports at folder path "/app/api" and try again.`, guard),
+			res.JSON400.Message)
+		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
+		imports, err := tn.Admin.API.ListSecretImportsWithResponse(t.Context(), &api.ListSecretImportsParams{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/app/api"),
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, imports.JSON200, "listing imports of dev:/app/api returned %d: %s", imports.StatusCode(), imports.Body)
+		require.Len(t, imports.JSON200.SecretImports, 1)
+		require.Equal(t, "/", imports.JSON200.SecretImports[0].ImportPath)
+		require.Equal(t, "dev", imports.JSON200.SecretImports[0].ImportEnv.Slug)
 	})
 
 	t.Run("should refuse a viewer and keep the folder", func(t *testing.T) {

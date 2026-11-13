@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
 - `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/AGENTS.md` for why running `npm run test:e2e` directly can destroy your dev data.
+- `make test-api-integration`: run the `src/domains/` integration tests on real Postgres via Testcontainers (needs Docker). Narrow with `SPEC=<pattern>`.
 - `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
@@ -101,6 +102,8 @@ If the user wrote or edited the docs prose themselves, don't just accept it. Tel
 
 The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
 
+The CLI reference exists twice: `docs/cli/reference.mdx` renders the page, and `docs/cli/reference-agents.mdx` is a plain Markdown copy that agents read. The reference page's Markdown version holds only a pointer to it. When you change a command in one, make the same change in the other (see [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD#editing-the-cli-reference)).
+
 Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It lints only the `.mdx` files the branch touched; `make lint-docs` checks every page. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. Every rule except `Infisical.EmDashes` reports at error level, including `Infisical.UIActions` (click/tap where the verb should be select) and `Infisical.Contractions`, so the run fails if either one reports a finding. `Infisical.EmDashes` reports at warning level and never changes the exit code -- read the printed output, not just the status. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
 
 ### Auth & Permissions
@@ -109,7 +112,9 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/sr
 
 ### Org-Scoped Products
 
-PAM and Agent Vault are products over one implicit project per organization, not projects a user creates. Their URLs are `/organizations/$orgId/<product>/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, their roles are admin or member only, and each has its own metered identities dimension (`pam_identities`, `agent_vault_identities`). When you add a `ProjectType.PAM` arm anywhere, add the Agent Vault arm beside it. See `backend/src/ee/services/pam/AGENTS.md` and `backend/src/ee/services/agent-vault/AGENTS.md`.
+PAM is a product over one implicit project per organization, not projects a user creates. Its URLs are `/organizations/$orgId/pam/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, its roles are admin or member only, and it has its own metered identities dimension (`pam_identities`). See `backend/src/ee/services/pam/AGENTS.md`.
+
+Agent Vault is a normal project type that users create, like Secrets Management, at `/organizations/$orgId/projects/agent-vault/$projectId/…`. It shares PAM's admin-or-member roles and has its own metered `agent_vault_identities` dimension (each meter's count lives in the domain that owns it, see `backend/src/domains/platform/license/AGENTS.md`), so a `ProjectType.PAM` arm for roles or metering usually needs an Agent Vault arm beside it. See `backend/src/ee/services/agent-vault/AGENTS.md`.
 
 ### Single-Project Products
 
@@ -142,8 +147,11 @@ A policy type plugs in through **one** extension point, a `TApprovalResource` (s
 constructed with its own dependencies and registered in the `approvalResources` map in
 `server/routes/index.ts`; that also gives it the generic `/v1/approval-policies/<type>/...` endpoints,
 which every type now uses for policy CRUD, requests, approve, reject and grant revocation. **Do not stand up a per-product approval service, request table, or review
-endpoint**: `access-approval-*` and `secret-approval-*` predate this module and are what we are
-converging away from. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+endpoint**: secret access (`ee/services/access-approval-*`) and secret change
+(`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
+longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
+`secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
@@ -161,9 +169,9 @@ never `autoApprovalEvidence`.
 A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
 through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
 `delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`
-on create and update (`secret-access-approval-global-policy-bridge-service.ts`). A delegated policy has no
-Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, cannot be updated
-while it has pending requests, and a policy on the legacy approval system can never be delegated. Keep those
+on create and update (`ee/services/access-approval-policy/access-approval-policy-service.ts`). A delegated policy has no
+Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, and cannot be
+updated while it has pending requests. Keep those
 rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opts in. Only secret access
 policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
 policies return it as a 400 rather than dropping the field.
@@ -183,7 +191,7 @@ request goes `cancelled`, and the consumer returns `Failed`. A terminal failure 
 `UnrecoverableError`: SITE_URL unset, the app connection gone, the policy no longer delegated) stays
 `failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
 `failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
-product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
+access approval request service (`ee/services/access-approval-request/`) checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
 retried. A resend supersedes the event still in the outbox rather than running beside it: the row stores the
 live event id in `dispatchEventId`, and a resend writes a new random one (only while the row is
 `failed_dispatch`) and emits the event under it in one transaction. The consumer marks any event whose id no
@@ -264,7 +272,35 @@ React Query + Axios with query key factories per domain. Each API domain in `fro
 
 ## Keeping AGENTS.md Up to Date
 
-When making significant changes to the codebase (new services, architectural shifts, new patterns, major refactors), update the relevant AGENTS.md file(s) with high-level findings. This includes this root file for cross-cutting concerns, `backend/AGENTS.md` for Node.js backend changes, `backend-go/AGENTS.md` for Go backend changes, and `frontend/AGENTS.md` for frontend changes. The goal is to keep these files accurate as living documentation so future sessions start with correct context.
+When a change adds a service, a pattern, or a rule other code must follow, update the AGENTS.md that owns it in the same PR. This file and the package files are loaded into every session, so every line costs context; add what prevents a mistake, not everything you learned.
+
+**Where it goes:**
+
+| Content | Home |
+|---|---|
+| Rules that span packages | this file |
+| Rules that code anywhere in a package must follow | `backend/AGENTS.md`, `backend-go/AGENTS.md`, `frontend/AGENTS.md` |
+| How a module works inside, for someone editing it | an `AGENTS.md` next to the code (e.g. `backend/src/services/<module>/AGENTS.md`), plus a one-line "read X before touching Y" pointer in the package file |
+| Why one piece of code is written the way it is | a code comment |
+| What must not regress | a test |
+
+Nested files are not loaded automatically; an agent reaches them only through those pointers, so never add one without its pointer.
+
+**The test for a line:** would an agent working outside this module get something wrong without it? If not, it belongs in the module's own file, a comment, or nowhere.
+
+**Write:**
+- Rules as imperatives, with the reason in the same sentence when it isn't obvious. The reason is what stops a later "simplification" from breaking the rule, so don't cut it to save space.
+- The names of the functions, constants and files involved, so the rule can be found in code.
+- Commands that can be copied and run as written.
+
+**Don't write:**
+- Line numbers, file counts, or "currently N of X"; they go stale silently.
+- Change history or incident narration ("this used to...", "after the outage...").
+- What the code already says, or a walkthrough of a module's internals in a package file.
+- A second copy of a rule; link the existing one.
+- Generic advice that holds for any codebase.
+
+When a section in a package file grows past about 30 lines of internals, move them to a nested `AGENTS.md` and keep only the rules other code must follow plus the pointer. Before deleting a section, check a code comment or test actually covers it.
 
 ## Wiring a New Full-Stack Feature
 
@@ -310,5 +346,5 @@ Pickers for entities a user may need to create first (app connections, gateways,
 ## Workflow Guardrails
 
 - Do not reformat existing code as incidental cleanup. Preserve the repository's current formatting unless a review agent, CI check, or user explicitly asks for a formatting change.
-- Never push changes to `license-fns` or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
+- Never push changes to `default-features.ts` (the License free tier) or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
 - When resolving merge conflicts, optimize for a correct, minimal, strategically unblocking resolution. Do not let a slow or stalled local check block the push when the corresponding frontend or backend CI checks on GitHub can validate the branch; push the resolved code and use CI to complete the expensive verification.

@@ -161,6 +161,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Cloud66:
     case SecretSync.Daytona:
     case SecretSync.Keeper:
+    case SecretSync.Jenkins:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     case SecretSync.Spacelift:

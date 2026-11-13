@@ -65,6 +65,7 @@ import {
   useUpdateSecretBatch
 } from "@app/hooks/api";
 import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
@@ -75,6 +76,11 @@ import {
   overviewResponsePhase,
   useOverviewTelemetry
 } from "../../OverviewTelemetry";
+import {
+  notifySecretsCreatedWithoutShare,
+  TCreatedSecret,
+  TNotifySecretsCreated
+} from "../../useNotifySecretsCreated";
 import { normalizeCopyPath } from "../CopySecretsSheet/copySecrets.utils";
 import { getCopySecretsQueryOptions } from "../CopySecretsSheet/useCopySecretsQuery";
 import { SecretConflictsDialog } from "../SecretConflictsDialog";
@@ -107,6 +113,7 @@ type Props = {
   initialFile?: File | null;
   initialStep?: "upload" | "paste";
   initialSelectedEnvironments?: { name: string; slug: string }[];
+  notifySecretsCreated?: TNotifySecretsCreated;
   onComplete?: (envSlugs: string[]) => void;
 };
 
@@ -131,6 +138,7 @@ type ContentProps = {
   initialFile?: File | null;
   initialStep?: "upload" | "paste";
   initialSelectedEnvironments?: { name: string; slug: string }[];
+  notifySecretsCreated?: TNotifySecretsCreated;
   onComplete?: (envSlugs: string[]) => void;
   onClose: () => boolean;
   onLockChange?: (isLocked: boolean) => void;
@@ -145,6 +153,7 @@ const ImportSecretsContent = ({
   initialFile,
   initialStep = "upload",
   initialSelectedEnvironments = [],
+  notifySecretsCreated = notifySecretsCreatedWithoutShare,
   onComplete,
   onClose,
   onLockChange,
@@ -470,6 +479,7 @@ const ImportSecretsContent = ({
     let failureCount = 0;
     let folderResponseCount = 0;
     let folderFailureCount = 0;
+    const shareableSecrets: TCreatedSecret[] = [];
 
     try {
       const requestedSlugs = new Set<string>();
@@ -511,6 +521,18 @@ const ImportSecretsContent = ({
       }
 
       const skippedCountByEnv = new Map<string, number>();
+      const createdCountByEnv = new Map<string, number>();
+      const updatedCountByEnv = new Map<string, number>();
+      const addCount = (
+        counts: Map<string, number>,
+        environment: string,
+        result: object,
+        count: number
+      ) => {
+        if (!("approval" in result))
+          counts.set(environment, (counts.get(environment) ?? 0) + count);
+        return result;
+      };
 
       const resolveTagIds = (slugs?: string[]): string[] | undefined => {
         if (!slugs?.length) return undefined;
@@ -568,6 +590,7 @@ const ImportSecretsContent = ({
 
         const existingSecrets = mergePersonalSecrets(rawExisting);
         const existingKeys = new Set(existingSecrets.map((s) => s.key));
+        const existingSecretsByKey = new Map(existingSecrets.map((s) => [s.key, s]));
 
         // Resolve edited keys (file-based secrets can be renamed in the review table)
         const resolvedEntries = Object.entries(secrets).map(([origKey, secretData]) => ({
@@ -622,6 +645,20 @@ const ImportSecretsContent = ({
                       environment,
                       secretPath: path,
                       secrets: secretsToCreate
+                    }).then((result) => {
+                      addCount(createdCountByEnv, environment, result, secretsToCreate.length);
+                      if (!("approval" in result))
+                        shareableSecrets.push(
+                          ...resolvedEntries
+                            .filter(({ finalKey }) => !existingKeys.has(finalKey))
+                            .map(({ finalKey, secretData }) => ({
+                              environment,
+                              key: finalKey,
+                              value: secretData.value,
+                              tags: secretData.tagSlugs?.filter((slug) => slugToTagId.has(slug))
+                            }))
+                        );
+                      return result;
                     })
                   ]
                 : []),
@@ -632,6 +669,35 @@ const ImportSecretsContent = ({
                       environment,
                       secretPath: path,
                       secrets: secretsToUpdate
+                    }).then((result) => {
+                      addCount(updatedCountByEnv, environment, result, secretsToUpdate.length);
+                      if (!("approval" in result))
+                        shareableSecrets.push(
+                          ...resolvedEntries.flatMap(({ finalKey, secretData }) => {
+                            const existing = existingSecretsByKey.get(finalKey);
+                            // The API keeps the stored value of rotated secrets and honey tokens
+                            if (
+                              !existing ||
+                              existing.isRotatedSecret ||
+                              existing.isHoneyTokenSecret
+                            )
+                              return [];
+                            const uploadedTags = secretData.tagSlugs?.filter((slug) =>
+                              slugToTagId.has(slug)
+                            );
+                            return [
+                              {
+                                environment,
+                                key: finalKey,
+                                value: secretData.value,
+                                tags: uploadedTags?.length
+                                  ? uploadedTags
+                                  : existing.tags?.map((tag) => tag.slug)
+                              }
+                            ];
+                          })
+                        );
+                      return result;
                     })
                   ]
                 : [])
@@ -654,10 +720,14 @@ const ImportSecretsContent = ({
         );
         const results = await Promise.allSettled([
           ...creates.chunks.map((chunk) =>
-            enqueue(() => createNestedSecretBatch({ ...envelope, secrets: chunk }))
+            enqueue(() => createNestedSecretBatch({ ...envelope, secrets: chunk })).then((result) =>
+              addCount(createdCountByEnv, environment, result, chunk.length)
+            )
           ),
           ...updates.chunks.map((chunk) =>
-            enqueue(() => updateNestedSecretBatch({ ...envelope, secrets: chunk }))
+            enqueue(() => updateNestedSecretBatch({ ...envelope, secrets: chunk })).then((result) =>
+              addCount(updatedCountByEnv, environment, result, chunk.length)
+            )
           ),
           ...(oversizedKeys.length ? [Promise.reject(new Error("Secret exceeds 1 MB"))] : [])
         ]);
@@ -790,6 +860,7 @@ const ImportSecretsContent = ({
       const approvalEnvs: string[] = [];
       const approvalEnvSlugs: string[] = [];
       const failedEnvs: string[] = [];
+      const rejectedEnvErrors: unknown[] = [];
       const partialEnvs: string[] = [];
       const partialEnvSlugs: string[] = [];
 
@@ -816,6 +887,7 @@ const ImportSecretsContent = ({
         } else if (result.status === "rejected") {
           failureCount += 1;
           failedEnvs.push(selectedEnvs[idx].name);
+          rejectedEnvErrors.push(result.reason);
         }
       });
 
@@ -823,13 +895,28 @@ const ImportSecretsContent = ({
         (count, slug) => count + (skippedCountByEnv.get(slug) ?? 0),
         0
       );
-      if (successEnvs.length) {
-        createNotification({
-          type: "success",
-          text: skippedCount
-            ? `Uploaded secrets${folderSummary} into ${successEnvs.join(", ")}; ${skippedCount} existing ${skippedCount === 1 ? "secret" : "secrets"} skipped`
-            : `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""}${folderSummary} into ${successEnvs.join(", ")}`
-        });
+      const sumAll = (counts: Map<string, number>) =>
+        [...counts.values()].reduce((count, value) => count + value, 0);
+      const createdCount = sumAll(createdCountByEnv);
+      const updatedCount = sumAll(updatedCountByEnv);
+      const existingDetail = [
+        updatedCount &&
+          `${updatedCount} existing ${updatedCount === 1 ? "secret" : "secrets"} overwritten`,
+        skippedCount &&
+          `${skippedCount} existing ${skippedCount === 1 ? "secret" : "secrets"} skipped`
+      ]
+        .filter(Boolean)
+        .join(", ");
+      if (createdCount) {
+        notifySecretsCreated(createdCount, shareableSecrets, existingDetail || undefined);
+      } else if (successEnvs.length || updatedCount) {
+        notifySecretsCreated(
+          0,
+          shareableSecrets,
+          successEnvs.length
+            ? `Uploaded secrets${folderSummary} into ${successEnvs.join(", ")}; ${existingDetail || "no new secrets"}`
+            : `Uploaded secrets${folderSummary}; ${existingDetail}`
+        );
       }
 
       if (approvalEnvs.length) {
@@ -846,7 +933,10 @@ const ImportSecretsContent = ({
         });
       }
 
-      if (failedEnvs.length) {
+      // A flat import's batch failures were already toasted by the global handler, so it shows only
+      // what failed before any write, such as reading the existing secrets
+      if (!nestedImport) showSecretWriteErrors(rejectedEnvErrors.map((error) => ({ error })));
+      else if (failedEnvs.length) {
         createNotification({
           type: "error",
           text: `Failed to upload secrets into ${failedEnvs.join(", ")}`
@@ -866,18 +956,12 @@ const ImportSecretsContent = ({
         folderResponseCountBucket: overviewCountBucket(folderResponseCount),
         folderFailureCountBucket: overviewCountBucket(folderFailureCount)
       });
-      const closedCurrentInvocation = onClose();
       const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs, ...partialEnvSlugs];
-      if (completedEnvSlugs.length && closedCurrentInvocation) {
-        onComplete?.(completedEnvSlugs);
-      }
+      if (!completedEnvSlugs.length) return;
+      if (onClose()) onComplete?.(completedEnvSlugs);
     } catch (err) {
       attempt.flow({ ...flow, phase: "failed" });
-      console.error(err);
-      createNotification({
-        type: "error",
-        text: "Failed to upload secrets"
-      });
+      showSecretWriteErrors([{ error: err }]);
     } finally {
       isImportRunningRef.current = false;
       setNestedProgress(null);
@@ -1432,6 +1516,7 @@ export const ImportSecretsSheet = ({
   initialFile,
   initialStep,
   initialSelectedEnvironments,
+  notifySecretsCreated,
   onComplete
 }: Props) => {
   const telemetry = useOverviewTelemetry();
@@ -1498,6 +1583,7 @@ export const ImportSecretsSheet = ({
           initialFile={initialFile}
           initialStep={initialStep}
           initialSelectedEnvironments={initialSelectedEnvironments}
+          notifySecretsCreated={notifySecretsCreated}
           onComplete={onComplete}
           onClose={() => closeSheet(false)}
           onLockChange={handleLockChange}

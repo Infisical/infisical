@@ -13,7 +13,7 @@ You set up rotation in two places:
 
 An account rotates only after both are set.
 
-You can rotate PostgreSQL, MySQL, Microsoft SQL Server, Oracle, Windows, and Windows AD accounts. If an account doesn't store a password, it has nothing to rotate. For example, a PostgreSQL account that uses [AWS IAM authentication](/documentation/platform/pam/accounts/postgresql#aws-iam-authentication) can't rotate.
+You can rotate PostgreSQL, CockroachDB, MySQL, Microsoft SQL Server, Oracle, Windows, and Windows AD accounts. If an account doesn't store a password, it has nothing to rotate. For example, a PostgreSQL account that uses [AWS IAM authentication](/documentation/platform/pam/accounts/postgresql#aws-iam-authentication) can't rotate.
 
 ## How it works
 
@@ -98,6 +98,9 @@ To rotate the password right away, select **Rotate now**. The next scheduled rot
 <CardGroup cols={2}>
   <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/credential-rotation/postgresql">
     Rotate the passwords of PostgreSQL accounts.
+  </Card>
+  <Card title="CockroachDB" icon="database" href="/documentation/platform/pam/accounts/cockroachdb#credential-rotation">
+    Rotate the passwords of CockroachDB accounts.
   </Card>
   <Card title="MySQL" icon="database" href="/documentation/platform/pam/credential-rotation/mysql">
     Rotate the passwords of MySQL accounts.
