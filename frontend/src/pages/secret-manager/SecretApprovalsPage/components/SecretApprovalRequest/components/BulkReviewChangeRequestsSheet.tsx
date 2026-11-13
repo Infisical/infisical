@@ -52,7 +52,8 @@ type Outcome =
   | { status: "merged"; reviewError?: string }
   | { status: "rejected" }
   | { status: "awaiting" }
-  | { status: "approved"; message: string }
+  | { status: "approved" }
+  | { status: "unmerged"; message: string }
   | { status: "failed"; message: string };
 
 const PENDING_APPROVALS_PATTERN = /needs \d+ approval\(s\)/;
@@ -102,6 +103,7 @@ const BulkReviewChangeRequestsSheetContent = ({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [comment, setComment] = useState("");
   const [outcomes, setOutcomes] = useState<Record<string, Outcome> | null>(null);
+  const [submitMode, setSubmitMode] = useState<"review" | "merge" | null>(null);
 
   const { mutateAsync: bulkAct } = useBulkActOnSecretApprovalRequests();
   const detailQueries = useGetSecretApprovalRequestDetailsList({
@@ -164,7 +166,12 @@ const BulkReviewChangeRequestsSheetContent = ({
     setCollapsed((prev) => ({ ...prev, [requestId]: true }));
   };
 
-  const handleSubmit = async () => {
+  const decideAll = (decision: Decision) => {
+    setDecisions(Object.fromEntries(requests.map(({ id }) => [id, decision])));
+  };
+
+  const handleSubmit = async (shouldMerge: boolean) => {
+    setSubmitMode(shouldMerge ? "merge" : "review");
     setIsSubmitting(true);
     try {
       const reviewComment = comment.trim() || undefined;
@@ -189,13 +196,14 @@ const BulkReviewChangeRequestsSheetContent = ({
             requestIds: rejectIds
           })
         : [];
-      const mergeResults = approveIds.length
-        ? await bulkAct({
-            projectId,
-            action: BulkChangeRequestAction.Merge,
-            requestIds: approveIds
-          })
-        : [];
+      const mergeResults =
+        shouldMerge && approveIds.length
+          ? await bulkAct({
+              projectId,
+              action: BulkChangeRequestAction.Merge,
+              requestIds: approveIds
+            })
+          : [];
 
       const nextOutcomes: Record<string, Outcome> = {};
       rejectResults.forEach(({ id, isSuccess, errorMessage }) => {
@@ -203,6 +211,12 @@ const BulkReviewChangeRequestsSheetContent = ({
           ? { status: "rejected" }
           : { status: "failed", message: errorMessage ?? "Review failed" };
       });
+      if (!shouldMerge)
+        approveResults.forEach(({ id, isSuccess, errorMessage }) => {
+          nextOutcomes[id] = isSuccess
+            ? { status: "approved" }
+            : { status: "failed", message: errorMessage ?? "Review failed" };
+        });
       mergeResults.forEach(({ id, isSuccess, errorMessage }) => {
         const review = approveResults.find((result) => result.id === id);
         if (isSuccess) {
@@ -217,19 +231,19 @@ const BulkReviewChangeRequestsSheetContent = ({
           return;
         }
         nextOutcomes[id] = review?.isSuccess
-          ? { status: "approved", message: errorMessage ?? "Could not be merged" }
+          ? { status: "unmerged", message: errorMessage ?? "Could not be merged" }
           : { status: "failed", message: review?.errorMessage ?? errorMessage ?? "Review failed" };
       });
       setOutcomes(nextOutcomes);
 
       const listResults: TBulkChangeRequestResult[] = requests.map(({ id }) => {
         const outcome = nextOutcomes[id];
-        if (outcome.status === "approved" || outcome.status === "failed")
+        if (outcome.status === "unmerged" || outcome.status === "failed")
           return {
             id,
             isSuccess: false,
             errorMessage:
-              outcome.status === "approved"
+              outcome.status === "unmerged"
                 ? `Approved, but not merged: ${outcome.message}`
                 : outcome.message
           };
@@ -252,6 +266,14 @@ const BulkReviewChangeRequestsSheetContent = ({
   const renderOutcome = (requestId: string) => {
     const outcome = outcomes?.[requestId];
     if (!outcome) return <Spinner size="xs" />;
+
+    if (outcome.status === "approved")
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm text-success">
+          <CheckIcon className="size-4" />
+          Approved
+        </span>
+      );
 
     if (outcome.status === "awaiting")
       return (
@@ -301,7 +323,7 @@ const BulkReviewChangeRequestsSheetContent = ({
       <span
         className={cn(
           "inline-flex items-center gap-1.5 text-sm",
-          outcome.status === "approved" ? "text-warning" : "text-danger"
+          outcome.status === "unmerged" ? "text-warning" : "text-danger"
         )}
       >
         <Tooltip>
@@ -313,7 +335,7 @@ const BulkReviewChangeRequestsSheetContent = ({
               aria-label={outcome.message}
               className="inline-flex rounded-sm outline-0 focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {outcome.status === "approved" ? (
+              {outcome.status === "unmerged" ? (
                 <TriangleAlertIcon className="size-4" />
               ) : (
                 <CircleXIcon className="size-4" />
@@ -322,7 +344,7 @@ const BulkReviewChangeRequestsSheetContent = ({
           </TooltipTrigger>
           <TooltipContent className="max-w-sm">{outcome.message}</TooltipContent>
         </Tooltip>
-        {outcome.status === "approved" ? "Approved, Not Merged" : "Failed"}
+        {outcome.status === "unmerged" ? "Approved, Not Merged" : "Failed"}
       </span>
     );
   };
@@ -363,8 +385,9 @@ const BulkReviewChangeRequestsSheetContent = ({
   const summary = (
     [
       ["merged", "merged"],
+      ["approved", "approved"],
       ["awaiting", "approved and awaiting other reviewers"],
-      ["approved", "approved but not merged"],
+      ["unmerged", "approved but not merged"],
       ["rejected", "rejected"],
       ["failed", "failed"]
     ] as const
@@ -377,7 +400,7 @@ const BulkReviewChangeRequestsSheetContent = ({
     .map(({ count, label }) => `${count} ${label}`)
     .join(", ");
   const hasUnfinished = outcomeValues.some(
-    ({ status }) => status === "approved" || status === "failed"
+    ({ status }) => status === "unmerged" || status === "failed"
   );
 
   return (
@@ -387,9 +410,36 @@ const BulkReviewChangeRequestsSheetContent = ({
           Review {requests.length} Change Request{requests.length === 1 ? "" : "s"}
         </SheetTitle>
         <SheetDescription>
-          Approve or reject each request. Approved requests merge once they meet their policy.
+          Approve or reject each request, then submit your reviews. To also merge approved requests
+          that meet their policy, use Submit & Merge.
         </SheetDescription>
       </SheetHeader>
+
+      {!outcomes && !isSubmitting && (
+        <div className="flex items-center gap-3 border-b border-border px-4 py-2">
+          <p className="flex-1 text-sm text-muted">Apply one decision to every request</p>
+          <ButtonGroup>
+            <Button
+              size="xs"
+              variant={approveCount === requests.length ? "success" : "outline"}
+              aria-pressed={approveCount === requests.length}
+              onClick={() => decideAll("approve")}
+            >
+              <CheckIcon />
+              Approve All
+            </Button>
+            <Button
+              size="xs"
+              variant={decidedCount === requests.length && !approveCount ? "danger" : "outline"}
+              aria-pressed={decidedCount === requests.length && !approveCount}
+              onClick={() => decideAll("reject")}
+            >
+              <XIcon />
+              Reject All
+            </Button>
+          </ButtonGroup>
+        </div>
+      )}
 
       <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-6 overflow-y-auto p-4">
         {groups.map((group) => {
@@ -531,23 +581,34 @@ const BulkReviewChangeRequestsSheetContent = ({
                   disabled={isSubmitting}
                 />
               </Field>
-              <div className="flex items-center gap-3">
-                <p className="flex-1 text-sm text-muted">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <p className="flex-1 text-sm whitespace-nowrap text-muted">
                   {decidedCount} of {requests.length} reviewed
                 </p>
                 <Button variant="ghost" size="sm" isDisabled={isSubmitting} onClick={onClose}>
                   Cancel
                 </Button>
                 <Button
-                  variant="project"
+                  variant={approveCount ? "outline" : "project"}
                   size="sm"
-                  isDisabled={!isReadyToSubmit}
-                  isPending={isSubmitting}
-                  onClick={handleSubmit}
+                  isDisabled={!isReadyToSubmit || isSubmitting}
+                  isPending={isSubmitting && submitMode === "review"}
+                  onClick={() => handleSubmit(false)}
                 >
-                  <GitMergeIcon />
-                  {approveCount ? `Submit & Merge ${approveCount}` : "Submit Reviews"}
+                  Submit Reviews
                 </Button>
+                {Boolean(approveCount) && (
+                  <Button
+                    variant="project"
+                    size="sm"
+                    isDisabled={!isReadyToSubmit || isSubmitting}
+                    isPending={isSubmitting && submitMode === "merge"}
+                    onClick={() => handleSubmit(true)}
+                  >
+                    <GitMergeIcon />
+                    Submit & Merge {approveCount}
+                  </Button>
+                )}
               </div>
             </>
           )}
