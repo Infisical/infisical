@@ -88,7 +88,7 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
 
     if (response.status === CertificateRevocationStatus.PendingApproval) {
       createNotification({
-        text: "Revocation request submitted. The certificate stays active until the request is approved.",
+        text: "Revocation request submitted. The certificate isn't revoked until the request is approved.",
         type: "success"
       });
       return;
@@ -122,7 +122,7 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
           <DialogTitle>Revoke Certificate</DialogTitle>
           <DialogDescription>
             {isRevocationApprovalRequired
-              ? "Submitting creates an approval request, and the certificate stays active until it's approved."
+              ? "Submitting creates an approval request. The certificate isn't revoked until it's approved."
               : "Mark this certificate as revoked."}
           </DialogDescription>
         </DialogHeader>

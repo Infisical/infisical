@@ -358,7 +358,7 @@ const Page = () => {
           description={
             pendingRevocation.isPending && pendingRevocationRequestId ? (
               <>
-                This certificate stays active until its{" "}
+                This certificate isn&apos;t revoked until its{" "}
                 <Link
                   {...getCertManagerLink(
                     currentProject,
