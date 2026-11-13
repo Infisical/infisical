@@ -16,7 +16,6 @@ import {
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Media, Tile } from "@infisical/cipher/ui/item";
@@ -562,7 +561,6 @@ export function SecretRotationFlow({
     rotation ? rotationTypeOf(rotation) : null
   );
   const [step, setStep] = useState(0);
-  const [submitError, setSubmitError] = useState<string>();
   const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
   const [addedConnections, setAddedConnections] = useState<RotationConnection[]>([]);
   const form = useForm<FieldValues>({
@@ -591,13 +589,9 @@ export function SecretRotationFlow({
       )
     );
     setStep(0);
-    setSubmitError(undefined);
     setType(next);
   };
-  const reset = () => {
-    setType(null);
-    setSubmitError(undefined);
-  };
+  const reset = () => setType(null);
   const close = () => {
     if (!isUpdate) reset();
     onOpenChange(false);
@@ -613,34 +607,41 @@ export function SecretRotationFlow({
   const conflict = (values: FieldValues) => {
     const path = values.secretPath as string;
     const env = values.environment as RotationEnvironment;
-    const keys = Object.values(values.secretsMapping as Record<string, string>);
+    const { fields } = FORM_STEPS[step];
     const scoped = resources.filter(
       (entry) => entry.project === project && entry.environment === env.slug && entry.path === path
     );
+    if (fields.includes("secretsMapping")) {
+      const current = new Set(rotation ? Object.values(rotationSecretsMapping(rotation)) : []);
+      const existing = new Set(
+        scoped.filter((entry) => entry.kind === "secret").map((entry) => entry.name)
+      );
+      const seen = new Set<string>();
+      for (const [credential, key] of Object.entries(
+        values.secretsMapping as Record<string, string>
+      )) {
+        const field = `secretsMapping.${credential}`;
+        if (seen.has(key))
+          return { field, message: "Use a different secret name for each credential." };
+        if (existing.has(key) && !current.has(key))
+          return { field, message: `A secret named "${key}" already exists at "${path}".` };
+        seen.add(key);
+      }
+    }
     if (
+      fields.includes("name") &&
       scoped.some(
         (entry) =>
           entry.kind === "rotation" && entry.name === values.name && entry.id !== rotation?.id
       )
     )
-      return `A Secret Rotation with the name "${values.name}" already exists at the secret path "${path}"`;
-    if (new Set(keys).size !== keys.length)
-      return `Secrets mapping keys must be unique. "${keys.join(", ")}" contains duplicate keys.`;
-    const currentKeys = rotation ? Object.values(rotationSecretsMapping(rotation)) : [];
-    const conflicts = scoped.filter(
-      (entry) =>
-        entry.kind === "secret" && keys.includes(entry.name) && !currentKeys.includes(entry.name)
-    );
-    if (conflicts.length)
-      return `The following secrets already exist at the path "${path}": ${conflicts.map((entry) => entry.name).join(", ")}`;
+      return {
+        field: "name",
+        message: `A secret rotation named "${values.name}" already exists at "${path}".`
+      };
     return undefined;
   };
   const submit = (values: FieldValues) => {
-    const error = conflict(values);
-    if (error) {
-      setSubmitError(error);
-      return;
-    }
     const env = values.environment as RotationEnvironment;
     const now = new Date();
     const secretsMapping = values.secretsMapping as Record<string, string>;
@@ -707,15 +708,19 @@ export function SecretRotationFlow({
     isUpdate ? "edit this rotation" : "create secret rotations here"
   );
   const handleNext = async () => {
-    setSubmitError(undefined);
     if (isFinalStep) {
       await form.handleSubmit(submit)();
       return;
     }
-    if (await form.trigger(FORM_STEPS[step].fields)) setStep(step + 1);
+    if (!(await form.trigger(FORM_STEPS[step].fields))) return;
+    const error = conflict(form.getValues());
+    if (error) {
+      form.setError(error.field, { message: error.message }, { shouldFocus: true });
+      return;
+    }
+    setStep(step + 1);
   };
   const handlePrev = () => {
-    setSubmitError(undefined);
     if (step === 0) request(isUpdate ? "close" : "provider");
     else setStep(step - 1);
   };
@@ -781,11 +786,7 @@ export function SecretRotationFlow({
             {type && (
               <SheetFooter>
                 <Inline justify="between" wrap={false}>
-                  {submitError ? (
-                    <FieldError>{submitError}</FieldError>
-                  ) : (
-                    <SmallText muted>{isDirty ? "Unsaved changes" : ""}</SmallText>
-                  )}
+                  <SmallText muted>{isDirty ? "Unsaved changes" : ""}</SmallText>
                   <Inline gap={12} wrap={false}>
                     <SmallText muted>
                       Step {step + (isUpdate ? 1 : 2)} of {FORM_STEPS.length + (isUpdate ? 0 : 1)}
