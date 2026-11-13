@@ -1523,6 +1523,9 @@
                       "api-reference/endpoints/projects/get-project",
                       "api-reference/endpoints/projects/list-projects",
                       "api-reference/endpoints/projects/update-project",
+                      "api-reference/endpoints/projects/list-deleted-projects",
+                      "api-reference/endpoints/projects/restore-project",
+                      "api-reference/endpoints/projects/permanently-delete-project",
                       {
                         "group": "Legacy",
                         "pages": [
