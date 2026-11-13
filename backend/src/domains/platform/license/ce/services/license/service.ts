@@ -56,15 +56,28 @@ export class LicenseService implements TLicenseService {
   }
 
   // Self-hosted orgs get the instance license. On cloud, an unknown org gets the fallback uncached, and a License
-  // Server outage serves the fallback until the cache expires.
+  // Server outage serves the fallback until the cache expires. A database or key store error serves the fallback
+  // for that call only, so a request still gets an answer without replacing a cached paid plan.
   async getPlan(orgId: string): Promise<Plan> {
     const instance = this.getInstanceEntitlements();
     if (!instance.isCloud()) return instance.plan();
+    try {
+      return await this.getCloudPlan(orgId);
+    } catch (error) {
+      logger.error(error, `getPlan: failed to read the plan, serving the fallback uncached [orgId=${orgId}]`);
+      return this.licensePolicyService.fallbackPlan();
+    }
+  }
 
-    const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
-    if (!rootOrgId) return this.licensePolicyService.fallbackPlan();
+  private async getCloudPlan(orgId: string): Promise<Plan> {
+    let rootOrgId: string | null = orgId;
+    let cached = await this.planCache.read(orgId);
+    if (!cached.plan) {
+      rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
+      if (!rootOrgId) return this.licensePolicyService.fallbackPlan();
+      if (rootOrgId !== orgId) cached = await this.planCache.read(rootOrgId);
+    }
 
-    const cached = await this.planCache.read(rootOrgId);
     const plan = cached.plan ?? (await this.fetchPlanOrFallback(rootOrgId));
     if (cached.plan && cached.passThrough) this.revalidateInBackground(rootOrgId);
     if (plan.isPaid) this.usageQueue.reconcile(orgId);
@@ -76,8 +89,8 @@ export class LicenseService implements TLicenseService {
   async refreshPlan(orgId: string, opts: TRefreshPlanOptions = {}): Promise<void> {
     if (opts.afterBillingChange) {
       if (!this.getInstanceEntitlements().isCloud()) return;
-      const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
       try {
+        const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
         await this.planCache.markForRevalidation(rootOrgId, Boolean(opts.afterBillingChange.checkout));
       } catch (error) {
         logger.error(error, `refreshPlan: failed to mark the plan for revalidation [orgId=${orgId}]`);
@@ -144,7 +157,7 @@ export class LicenseService implements TLicenseService {
     return SeatUsage.fromBillableActors(await this.organizationsProjectsService.countBillableOrgActors(orgId));
   }
 
-  // Only a License Server failure caches the fallback. DB or key store errors throw, so they never clobber a paid plan.
+  // Only a License Server failure caches the fallback. DB or key store errors propagate, so they never clobber a paid plan.
   private async fetchPlanOrFallback(rootOrgId: string): Promise<Plan> {
     const rootOrg = await this.rootOrg(rootOrgId);
     let fetched: Plan;

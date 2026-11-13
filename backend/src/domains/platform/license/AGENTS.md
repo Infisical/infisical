@@ -34,8 +34,10 @@ Rules:
   them fresh each fetch (`findOrganization`), since orgs get renamed.
 - **Key names, TTLs and queue names are frozen** (`plan-cache.ts`, `usage-report-cache.ts`, `UsageQueues`): old
   pods share them during a rolling deploy.
-- **Only a License Server failure writes the fallback plan** (`fetchPlanOrFallback`). DB or key store errors
-  throw, so they never clobber a cached paid plan.
+- **Only a License Server failure writes the fallback plan** (`fetchPlanOrFallback`). In `getPlan`, a DB or key
+  store error serves the fallback for that call only and writes nothing, so it never clobbers a cached paid plan.
+  `refreshPlan` throws on them instead. `getPlan` reads the cache under the given org id before resolving the
+  root, so a root org's cached plan is served without the database.
 - **`getPlan` returns a `Plan`, which keeps its features private and frozen.** Check a feature with
   `plan.has(PlanFeature.X)` / `plan.assert(PlanFeature.X)`, a product a plan can switch off (null means available)
   with `plan.allows(PlanProduct.X)`, and read data through its getters (`slug`, `rateLimits`, ...). Add a getter only

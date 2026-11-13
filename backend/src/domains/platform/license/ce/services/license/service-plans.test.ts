@@ -184,7 +184,7 @@ describe("LicenseService.getPlan", () => {
     expect(lastKnown).toBeNull();
   });
 
-  test("should throw and keep the cached plan when the org lookup fails", async () => {
+  test("should serve a root org's cached plan when the org lookup fails", async () => {
     // Setup
     const { licenseService, keyStore } = await buildLicense({
       organizations: {
@@ -197,15 +197,35 @@ describe("LicenseService.getPlan", () => {
     await keyStore.setItemWithExpiry(`infisical-cloud-plan-${ROOT.id}`, 900, cachedPlan);
 
     // Action
-    const result = licenseService.getPlan(ROOT.id);
+    const plan = await licenseService.getPlan(ROOT.id);
 
     // Assert
-    await expect(result).rejects.toThrow("replica timeout");
+    expect(plan.slug).toBe("pro");
+    expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBe(cachedPlan);
+  });
+
+  test("should serve the fallback uncached and keep the cached plan when a sub-org's lookup fails", async () => {
+    // Setup
+    const { licenseService, keyStore } = await buildLicense({
+      organizations: {
+        findRootOrgId: async () => {
+          throw new Error("replica timeout");
+        }
+      }
+    });
+    const cachedPlan = JSON.stringify({ ...enterprisePlan(), slug: "pro" });
+    await keyStore.setItemWithExpiry(`infisical-cloud-plan-${ROOT.id}`, 900, cachedPlan);
+
+    // Action
+    const plan = await licenseService.getPlan(SUB_ORG_ID);
+
+    // Assert
+    expect(plan.slug).toBeNull();
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBe(cachedPlan);
     expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
   });
 
-  test("should throw and cache no fallback when reading the org's name fails on a cache miss", async () => {
+  test("should serve the fallback uncached when reading the org's name fails on a cache miss", async () => {
     // Setup
     const { licenseService, licenseServer, keyStore } = await buildLicense({
       organizations: {
@@ -216,10 +236,10 @@ describe("LicenseService.getPlan", () => {
     });
 
     // Action
-    const result = licenseService.getPlan(ROOT.id);
+    const plan = await licenseService.getPlan(ROOT.id);
 
     // Assert
-    await expect(result).rejects.toThrow("replica timeout");
+    expect(plan.slug).toBeNull();
     expect(licenseServer.fetchedOrgs).toEqual([]);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBeNull();
     expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
@@ -351,6 +371,23 @@ describe("LicenseService.refreshPlan after a billing change", () => {
     expect(served.slug).toBe("enterprise");
     expect((await licenseService.getPlan(ROOT.id)).slug).toBe("pro");
     expect(licenseServer.fetches).toHaveLength(2);
+  });
+
+  test("should not fail the billing change when the root org lookup fails", async () => {
+    // Setup
+    const { licenseService } = await buildLicense({
+      organizations: {
+        findRootOrgId: async () => {
+          throw new Error("replica unavailable");
+        }
+      }
+    });
+
+    // Action
+    const refresh = licenseService.refreshPlan(SUB_ORG_ID, { afterBillingChange: {} });
+
+    // Assert
+    await expect(refresh).resolves.toBeUndefined();
   });
 
   test("should do nothing on self-hosted", async () => {
