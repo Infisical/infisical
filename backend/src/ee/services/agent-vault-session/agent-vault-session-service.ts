@@ -1,10 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -21,11 +24,15 @@ import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { AgentVaultMemberType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
+import { assertAgentVaultHooksOnPlan } from "../agent-vault/agent-vault-hook-fns";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
-import { TAgentVaultSessionInlineServiceDALFactory } from "./agent-vault-session-inline-service-dal";
+import {
+  TAgentVaultInlineServiceInsert,
+  TAgentVaultSessionInlineServiceDALFactory
+} from "./agent-vault-session-inline-service-dal";
 import {
   assertNoAccessBundleConflicts,
   prepareInlineServices,
@@ -54,7 +61,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultSessionInlineServiceDAL: Pick<
     TAgentVaultSessionInlineServiceDALFactory,
-    "insertMany" | "findSummariesBySessionIds" | "deleteSecretsBySessionId"
+    "insertForSession" | "findSummariesBySessionIds" | "deleteSecretsBySessionId"
   >;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findByAccessBundleId">;
@@ -64,6 +71,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "wrapKey" | "createCipherPairWithDataKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -79,7 +87,8 @@ export const agentVaultSessionServiceFactory = ({
   userDAL,
   orgDAL,
   permissionService,
-  kmsService
+  kmsService,
+  licenseService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -150,6 +159,9 @@ export const agentVaultSessionServiceFactory = ({
     }
 
     const preparedInlineServices = prepareInlineServices(services);
+    if (preparedInlineServices.some((service) => service.hookUrl)) {
+      await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
+    }
 
     const bundles = accessBundles.length
       ? await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } })
@@ -209,33 +221,45 @@ export const agentVaultSessionServiceFactory = ({
       }
     }
 
-    if (preparedInlineServices.length) {
-      const bundlesWithServices = await Promise.all(
-        accessBundles.map(async (name) => {
-          const bundle = bundlesByName.get(name)!;
-          return { name: bundle.name, services: await agentVaultServiceDAL.findByAccessBundleId(bundle.id) };
-        })
-      );
-      bundlesWithServices.forEach((bundle) => assertNoAccessBundleConflicts(preparedInlineServices, bundle));
-    }
+    // A fast failure only: the check that counts runs again in the transaction, under the lock renames take.
+    const assertNoBundleConflicts = async (tx?: Knex) => {
+      if (!preparedInlineServices.length) return;
+      for (const name of accessBundles) {
+        const bundle = bundlesByName.get(name)!;
+        // eslint-disable-next-line no-await-in-loop
+        const bundleServices = await agentVaultServiceDAL.findByAccessBundleId(bundle.id, tx);
+        assertNoAccessBundleConflicts(preparedInlineServices, { name: bundle.name, services: bundleServices });
+      }
+    };
+    await assertNoBundleConflicts();
 
     // Sealed before the transaction: with an external KMS this is a network call, and the transaction stays short.
-    let sealInlineSecrets: ((plainText: Buffer) => Buffer) | null = null;
+    // Each value is sealed on its own, the way a project's services keep them, so the two can share one table.
+    let seal: ((value: unknown) => Buffer) | null = null;
     if (preparedInlineServices.some((service) => service.secrets)) {
       const { encryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      sealInlineSecrets = (plainText) => encryptor({ plainText }).cipherTextBlob;
+      seal = (value) => encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;
     }
-    const inlineServiceRows = preparedInlineServices.map(({ secrets, customHeaders, substitutions, ...service }) => ({
-      ...service,
-      credentialType: service.credentialConfig.type,
-      // Serialized here because the pg driver writes a bare array as a Postgres array, which a jsonb column refuses.
-      customHeaders: JSON.stringify(customHeaders),
-      substitutions: JSON.stringify(substitutions),
-      encryptedSecrets: secrets ? sealInlineSecrets!(Buffer.from(JSON.stringify(secrets))) : null
-    }));
+    const inlineServiceRows: TAgentVaultInlineServiceInsert[] = preparedInlineServices.map(
+      ({ secrets, customHeaders, substitutions, ...service }) => ({
+        ...service,
+        projectId,
+        credentialType: service.credentialConfig.type,
+        encryptedCredential: secrets?.credential ? seal!(secrets.credential) : null,
+        encryptedHookSecret: secrets?.hookSecret ? seal!({ value: secrets.hookSecret }) : null,
+        customHeaders: customHeaders.map((header, index) => ({
+          ...header,
+          encryptedValue: seal!({ value: secrets!.customHeaders[index] })
+        })),
+        substitutions: substitutions.map((substitution, index) => ({
+          ...substitution,
+          encryptedValue: seal!({ value: secrets!.substitutions[index] })
+        }))
+      })
+    );
 
     const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
     const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
@@ -265,6 +289,10 @@ export const agentVaultSessionServiceFactory = ({
     };
 
     const { session, insertedInlineServices } = await agentVaultSessionDAL.transaction(async (tx) => {
+      if (preparedInlineServices.length && accessBundles.length) {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
+        await assertNoBundleConflicts(tx);
+      }
       const created = await agentVaultSessionDAL.createWithId(
         {
           id: sessionId,
@@ -288,8 +316,8 @@ export const agentVaultSessionServiceFactory = ({
         tx
       );
 
-      const inserted = await agentVaultSessionInlineServiceDAL.insertMany(
-        inlineServiceRows.map((row) => ({ ...row, sessionId: created.id })),
+      const inserted = await agentVaultSessionInlineServiceDAL.insertForSession(
+        { sessionId: created.id, services: inlineServiceRows },
         tx
       );
 

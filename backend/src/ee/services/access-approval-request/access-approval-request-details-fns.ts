@@ -28,7 +28,7 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
 import { TSecretAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TSecretAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { readRequestedScope } from "./access-approval-request-fns";
 import { ApprovalStatus, TSecretAccessApprovalRequestServiceFactoryDep } from "./access-approval-request-types";
 
 export type TSecretAccessRequestRow = TApprovalRequests & {
@@ -533,6 +533,8 @@ export const toSecretAccessRequestListItem = (
     row.approvedByUser?.userId ?? null
   );
 
+  const requested = readRequestedScope(data.permissions);
+
   let { status } = legacy;
   let environment: { slug: string; name: string };
   let policy: TSecretAccessRequestListPolicy;
@@ -541,12 +543,7 @@ export const toSecretAccessRequestListItem = (
     environment = row.environment;
     policy = row.policy;
   } else {
-    let requested: { envSlug: string; secretPath: string };
-    try {
-      requested = verifyRequestedPermissions({ permissions: data.permissions });
-    } catch {
-      return null;
-    }
+    if (!requested) return null;
     const requestedEnvironment = environmentsBySlug.get(requested.envSlug);
     if (!requestedEnvironment) return null;
 
@@ -577,7 +574,9 @@ export const toSecretAccessRequestListItem = (
     status,
     projectId,
     environment: environment.slug,
-    environmentName: environment.name,
+    // Despite the name, clients read this as the slug of the environment the request targets, which
+    // differs from the policy's first environment when the policy spans several.
+    environmentName: requested?.envSlug ?? environment.slug,
     policy,
     requestedByUser: row.requestedByUser,
     approvedByUser: row.approvedByUser,

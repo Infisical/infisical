@@ -40,7 +40,7 @@ import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -439,6 +439,7 @@ export enum EventType {
   IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
   DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
+  REGENERATE_CA_CRL = "regenerate-certificate-authority-crl",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
   INSTALL_CA_CERT_ADCS = "install-ca-cert-adcs",
@@ -846,6 +847,8 @@ export enum EventType {
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD = "agent-vault-access-bundle-service-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_REMOVE = "agent-vault-access-bundle-service-remove",
   AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
@@ -3098,6 +3101,7 @@ interface CreateCa {
     name: string;
     dn?: string;
     isOcspEnabled?: boolean;
+    crlValidityDays?: number;
   };
 }
 
@@ -3125,6 +3129,7 @@ interface UpdateCa {
     dn?: string;
     status: CaStatus;
     isOcspEnabled?: boolean;
+    crlValidityDays?: number;
   };
 }
 
@@ -3230,6 +3235,19 @@ interface GetCaCrls {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface RegenerateCaCrl {
+  type: EventType.REGENERATE_CA_CRL;
+  metadata: {
+    caId: string;
+    caName: string;
+    crlId: string;
+    crlNumber: number;
+    thisUpdate: string;
+    nextUpdate: string;
+    trigger: CaCrlRegenerationTrigger;
   };
 }
 
@@ -4362,6 +4380,7 @@ interface RenewCertificate {
     renewalKeySource: CertificateRenewalKeySource;
     externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
+    status?: CertificateRequestStatus;
   };
 }
 
@@ -4444,6 +4463,7 @@ interface CreateCmekEvent {
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
     hasDeleteProtection?: boolean;
+    isPublicKeyPublished?: boolean;
   };
 }
 
@@ -4462,6 +4482,7 @@ interface UpdateCmekEvent {
     name?: string;
     description?: string;
     hasDeleteProtection?: boolean;
+    isPublicKeyPublished?: boolean;
   };
 }
 
@@ -6670,8 +6691,12 @@ interface AgentVaultAccessBundleDeleteEvent {
 interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
+    // The access bundles the service was in. Absent on events recorded before services moved to the project.
+    accessBundles?: { id: string; name: string }[];
     serviceId: string;
     name: string;
     description?: string | null;
@@ -6679,7 +6704,16 @@ interface AgentVaultServiceCreateEvent {
     // MCP services only.
     serverUrl?: string;
     transport?: string;
-    hostPattern: string;
+    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    host?: string;
+    port?: number;
+    database?: string;
+    tlsEnabled?: boolean;
+    tlsVerify?: boolean;
+    // Whether the proxy checks the server's certificate against a CA stored on the service rather than the system's.
+    hasTlsCa?: boolean;
+    // Absent for a database or SSH service.
+    hostPattern?: string;
     credentialType: string;
     // OAuth credentials only.
     oauthIssuer?: string;
@@ -6695,15 +6729,21 @@ interface AgentVaultServiceCreateEvent {
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
     variableKeys?: string[];
+    // The hook's URL when the service was created with one. Its signing secret is never recorded.
+    hookUrl?: string;
   };
 }
 
 interface AgentVaultServiceUpdateEvent {
   type: EventType.AGENT_VAULT_SERVICE_UPDATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
     serviceId: string;
+    // The service's name after the update. Absent on events recorded before it was added; `name` is set only by a rename.
+    serviceName?: string;
     name?: string;
     // Null when the update removed it.
     description?: string | null;
@@ -6711,6 +6751,19 @@ interface AgentVaultServiceUpdateEvent {
     serviceType: string;
     serverUrl?: string;
     transport?: string;
+    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    host?: string;
+    port?: number;
+    database?: string;
+    tlsEnabled?: boolean;
+    tlsVerify?: boolean;
+    // Present only when the update changed the stored CA the proxy checks the server's certificate against.
+    tlsCaChanged?: "set" | "removed" | "replaced";
+    // Present only when the update changed the hook. hookUrl is set when it set the hook, changed its URL or
+    // removed it, and hookSecretReplaced when a new signing secret was saved. The secret itself is never recorded.
+    hookChanged?: "set" | "removed" | "updated";
+    hookUrl?: string;
+    hookSecretReplaced?: boolean;
     hostPattern?: string;
     credentialType?: string;
     // Present when the update connected or reauthorized an OAuth credential.
@@ -6738,8 +6791,12 @@ interface AgentVaultServiceUpdateEvent {
 interface AgentVaultServiceDeleteEvent {
   type: EventType.AGENT_VAULT_SERVICE_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
+    // The access bundles the service was in. Absent on events recorded before services moved to the project.
+    accessBundles?: { id: string; name: string }[];
     serviceId: string;
     name: string;
   };
@@ -6802,8 +6859,10 @@ interface AgentVaultVariableValueViewEvent {
 interface AgentVaultPersonalValuesSetEvent {
   type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
     serviceId: string;
     serviceName: string;
     // Which credential the fields belong to: credential-value is a token for bearer and a password for basic.
@@ -6820,8 +6879,10 @@ interface AgentVaultPersonalValuesSetEvent {
 interface AgentVaultPersonalValuesDeleteEvent {
   type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
     serviceId: string;
     serviceName: string;
     credentialType: string;
@@ -6902,6 +6963,27 @@ interface AgentVaultAccessBundleSkillRemoveEvent {
   metadata: {
     skillId: string;
     skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+interface AgentVaultAccessBundleServiceAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD;
+  metadata: {
+    serviceId: string;
+    serviceName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+// The service stays in the project. Personal values of members who reached it only through this bundle are deleted.
+interface AgentVaultAccessBundleServiceRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_REMOVE;
+  metadata: {
+    serviceId: string;
+    serviceName: string;
     accessBundleId: string;
     accessBundleName: string;
   };
@@ -7010,13 +7092,25 @@ interface AgentVaultSessionMintEvent {
       description?: string | null;
       serviceType: string;
       serverUrl?: string;
-      hostPattern: string;
+      transport?: string;
+      // Absent for a database or SSH service, which reports host, port and database instead.
+      hostPattern?: string;
+      host?: string;
+      port?: number;
+      database?: string;
+      tlsEnabled?: boolean;
+      tlsVerify?: boolean;
+      // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
+      hasTlsCa?: boolean;
       credentialType: string;
       headerName?: string;
       allowedMethods: string[] | null;
       allowedPathPrefixes: string[] | null;
+      // Absent for every type but MCP. Null when the agent can call every tool.
+      allowedTools?: string[] | null;
       customHeaderNames: string[];
       substitutionPlaceholders: string[];
+      hookUrl?: string;
     }[];
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
@@ -8732,6 +8826,7 @@ export type Event =
   | ImportCaCrossSignedCert
   | DeleteCaCrossSignedCert
   | GetCaCrls
+  | RegenerateCaCrl
   | GenerateCaCertificate
   | InstallCaCertVenafi
   | InstallCaCertAdcs
@@ -9097,6 +9192,8 @@ export type Event =
   | AgentVaultSkillDeleteEvent
   | AgentVaultAccessBundleSkillAddEvent
   | AgentVaultAccessBundleSkillRemoveEvent
+  | AgentVaultAccessBundleServiceAddEvent
+  | AgentVaultAccessBundleServiceRemoveEvent
   | AgentVaultSkillsDeliveredEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent

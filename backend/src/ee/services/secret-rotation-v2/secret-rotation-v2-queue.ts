@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
@@ -18,19 +17,25 @@ import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { findProjectAdminUserIds } from "@app/services/alert/alert-principal-scope-fns";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findSecretRotationsToQueue" | "findById">;
-  secretRotationV2Service: Pick<TSecretRotationV2ServiceFactory, "rotateGeneratedCredentials">;
-  smtpService: Pick<TSmtpService, "sendMail">;
+  secretRotationV2Service: Pick<
+    TSecretRotationV2ServiceFactory,
+    "rotateGeneratedCredentials" | "reapOrphanedRotationAlerts"
+  >;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findActorsWithActiveOrgAccess">;
+  userDAL: Pick<TUserDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
@@ -41,8 +46,9 @@ export const secretRotationV2QueueServiceFactory = async ({
   secretRotationV2DAL,
   secretRotationV2Service,
   projectMembershipDAL,
+  orgDAL,
+  userDAL,
   projectDAL,
-  smtpService,
   notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   const appCfg = getConfig();
@@ -122,15 +128,7 @@ export const secretRotationV2QueueServiceFactory = async ({
     } else if (job.name === QueueJobs.SecretRotationV2SendNotification) {
       const { secretRotation } = job.data as TSecretRotationSendNotificationJobPayload;
       try {
-        const {
-          name: rotationName,
-          type,
-          projectId,
-          lastRotationAttemptedAt,
-          folder,
-          environment,
-          id: rotationId
-        } = secretRotation;
+        const { name: rotationName, type, projectId, id: rotationId } = secretRotation;
 
         logger.info(`secretRotationV2Queue: Sending Status Notification [rotationId=${rotationId}]`);
 
@@ -142,10 +140,9 @@ export const secretRotationV2QueueServiceFactory = async ({
           return;
         }
 
-        const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-
-        const projectAdmins = projectMembers.filter((member) =>
-          member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
+        const adminUserIds = await findProjectAdminUserIds(
+          { projectMembershipDAL, orgDAL, userDAL },
+          { orgId: project.orgId, projectId }
         );
 
         const rotationType = SECRET_ROTATION_NAME_MAP[type as SecretRotation];
@@ -153,8 +150,8 @@ export const secretRotationV2QueueServiceFactory = async ({
         const rotationPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}/overview`;
 
         await notificationService.createUserNotifications(
-          projectAdmins.map((admin) => ({
-            userId: admin.userId,
+          [...adminUserIds].map((userId) => ({
+            userId,
             orgId: project.orgId,
             type: NotificationType.SECRET_ROTATION_FAILED,
             title: "Secret Rotation Failed",
@@ -162,24 +159,6 @@ export const secretRotationV2QueueServiceFactory = async ({
             link: rotationPath
           }))
         );
-
-        await smtpService.sendMail({
-          recipients: projectAdmins.map((member) => member.user.email!).filter(Boolean),
-          template: SmtpTemplates.SecretRotationFailed,
-          subjectLine: `Secret Rotation Failed`,
-          substitutions: {
-            rotationName,
-            rotationType,
-            content: `Your ${rotationType} Rotation failed to rotate during it's scheduled rotation. The last rotation attempt occurred at ${new Date(
-              lastRotationAttemptedAt
-            ).toISOString()}. Please check the rotation status in Infisical for more details.`,
-            secretPath: folder.path,
-            environment: environment.name,
-            environmentSlug: environment.slug,
-            projectName: project.name,
-            rotationUrl: encodeURI(`${appCfg.SITE_URL}${rotationPath}`)
-          }
-        });
       } catch (error) {
         logger.error(
           error,
@@ -201,6 +180,11 @@ export const secretRotationV2QueueServiceFactory = async ({
         undefined as never,
         { jobId: CronJobName.SecretRotationV2QueueRotations }
       );
+      try {
+        await secretRotationV2Service.reapOrphanedRotationAlerts();
+      } catch (error) {
+        logger.error(error, "secretRotationV2Queue: failed to reap orphaned rotation alerts");
+      }
     }
   });
 };

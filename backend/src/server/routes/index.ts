@@ -47,6 +47,7 @@ import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSessionStatsDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-stats-dal";
 import { agentVaultSkillBundleDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-bundle-dal";
 import { agentVaultSkillDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-dal";
 import { agentVaultSkillServiceFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-service";
@@ -274,6 +275,8 @@ import { pamFolderAlertDALFactory } from "@app/services/alert/providers/pam-fold
 import { pamFolderAlertProviderFactory } from "@app/services/alert/providers/pam-folder-alert-provider";
 import { secretReminderAlertDALFactory } from "@app/services/alert/providers/secret-reminder-alert-dal";
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
+import { secretRotationAlertDALFactory } from "@app/services/alert/providers/secret-rotation-alert-dal";
+import { secretRotationAlertProviderFactory } from "@app/services/alert/providers/secret-rotation-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -1163,6 +1166,13 @@ export const registerRoutes = async (
     })
   );
   alertProviderRegistry.register(
+    secretRotationAlertProviderFactory({
+      secretRotationAlertDAL: secretRotationAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
     certManagerApplicationAlertProviderFactory({
       certManagerCertificateAlertDAL,
       permissionService,
@@ -1571,9 +1581,32 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+
+  const reminderService = reminderServiceFactory({
+    reminderDAL,
+    eventEmitter: eventOutboxService,
+    alertService,
+    permissionService,
+    secretV2BridgeDAL,
+    folderDAL
+  });
+
+  const orgDeletionService = orgDeletionServiceFactory({
+    orgDAL,
+    projectDAL,
+    secretDAL,
+    folderDAL,
+    projectBotService,
+    reminderService,
+    honeyTokenCleanupService,
+    eventEmitter: eventOutboxService
+  });
+
   const userService = userServiceFactory({
     userDAL,
     orgDAL,
+    orgDeletionService,
     tokenService,
     permissionService,
     groupProjectDAL,
@@ -1722,29 +1755,7 @@ export const registerRoutes = async (
     emailDispatchGuard
   });
 
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
-
-  const reminderService = reminderServiceFactory({
-    reminderDAL,
-    eventEmitter: eventOutboxService,
-    alertService,
-    permissionService,
-    secretV2BridgeDAL,
-    folderDAL
-  });
-
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
-
-  const orgDeletionService = orgDeletionServiceFactory({
-    orgDAL,
-    projectDAL,
-    secretDAL,
-    folderDAL,
-    projectBotService,
-    reminderService,
-    honeyTokenCleanupService,
-    eventEmitter: eventOutboxService
-  });
 
   const orgService = orgServiceFactory({
     auditLogSettingsService,
@@ -2002,15 +2013,6 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
-  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
-    certificateAuthorityDAL,
-    certificateAuthorityCrlDAL,
-    projectDAL,
-    kmsService,
-    permissionService
-    // licenseService
-  });
-
   const certificateTemplateService = certificateTemplateServiceFactory({
     certificateTemplateDAL,
     certificateTemplateEstConfigDAL,
@@ -2077,6 +2079,7 @@ export const registerRoutes = async (
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultSessionInlineServiceDAL = agentVaultSessionInlineServiceDALFactory(db);
+  const agentVaultSessionStatsDAL = agentVaultSessionStatsDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
@@ -2090,7 +2093,6 @@ export const registerRoutes = async (
     keyStore,
     kmsService,
     agentVaultServiceDAL,
-    agentVaultAccessBundleDAL,
     agentVaultPersonalValueDAL,
     permissionService,
     membershipDAL
@@ -2136,6 +2138,7 @@ export const registerRoutes = async (
     agentVaultPersonalValueService,
     permissionService,
     kmsService,
+    licenseService,
     membershipDAL,
     membershipRoleDAL,
     agentVaultMemberDAL,
@@ -2160,7 +2163,8 @@ export const registerRoutes = async (
     userDAL,
     orgDAL,
     permissionService,
-    kmsService
+    kmsService,
+    licenseService
   });
 
   const agentVaultDelegationService = agentVaultDelegationServiceFactory({
@@ -3300,7 +3304,8 @@ export const registerRoutes = async (
     kmsDAL,
     kmsService,
     permissionService,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
@@ -3413,7 +3418,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     queueService,
-    secretAccessApprovalGlobalResource
+    secretAccessApprovalGlobalResource,
+    licenseService
   });
 
   const delegatedApprovalDecisionMaps = delegatedApprovalDecisionMapsFactory({
@@ -3437,6 +3443,7 @@ export const registerRoutes = async (
   const secretAccessApprovalPolicyService = secretAccessApprovalPolicyServiceFactory({
     projectDAL,
     permissionService,
+    licenseService,
     projectEnvDAL,
     userDAL,
     groupDAL,
@@ -3467,6 +3474,7 @@ export const registerRoutes = async (
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
+    agentVaultSessionStatsDAL,
     agentVaultProxyDAL,
     appConnectionDAL,
     appConnectionService,
@@ -3639,6 +3647,7 @@ export const registerRoutes = async (
 
   const secretRotationV2Service = secretRotationV2ServiceFactory({
     eventEmitter: eventOutboxService,
+    alertService,
     secretRotationV2DAL,
     permissionService,
     appConnectionService,
@@ -3845,10 +3854,10 @@ export const registerRoutes = async (
     appConnectionService,
     pkiSyncDAL,
     pkiSyncQueue,
-    internalCertificateAuthorityDAL,
     caKeySourceService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    auditLogService
   });
 
   const certificateAuthorityOcspService = certificateAuthorityOcspServiceFactory({
@@ -3860,6 +3869,21 @@ export const registerRoutes = async (
     kmsService,
     caKeySourceService,
     keyStore
+  });
+
+  const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    licenseService,
+    caKeySourceService,
+    keyStore,
+    auditLogService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -3883,7 +3907,9 @@ export const registerRoutes = async (
     licenseService,
     caSigningConfigDAL,
     usageMeteringService,
-    caKeySourceService
+    caKeySourceService,
+    keyStore,
+    auditLogService
   });
 
   const certificateAuthorityCrossSignedCertService = certificateAuthorityCrossSignedCertServiceFactory({
@@ -4141,12 +4167,6 @@ export const registerRoutes = async (
 
   const approvalResources: TApprovalResourceRegistry = {
     [ApprovalPolicyType.PamAccess]: pamAccessApprovalResource as TApprovalResourceRegistry[ApprovalPolicyType],
-    [ApprovalPolicyType.CertRequest]: certRequestApprovalResourceFactory({
-      approvalPolicyDAL,
-      certificateApprovalService,
-      certificateRequestDAL,
-      certificateRequestService
-    }) as TApprovalResourceRegistry[ApprovalPolicyType],
     [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
       approvalPolicyDAL,
       approvalRequestGrantsDAL
@@ -4387,6 +4407,15 @@ export const registerRoutes = async (
     auditLogService
   });
 
+  approvalResources[ApprovalPolicyType.CertRequest] = certRequestApprovalResourceFactory({
+    approvalPolicyDAL,
+    certificateApprovalService,
+    certificateRequestDAL,
+    certificateRequestService,
+    certificateRenewalService: certificateV3Service,
+    telemetryService
+  }) as TApprovalResourceRegistry[ApprovalPolicyType];
+
   const certificateV3Queue = certificateV3QueueServiceFactory({
     cronJob,
     certificateDAL,
@@ -4477,7 +4506,9 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     auditLogService,
     permissionService,
-    pkiApplicationProfileDAL
+    pkiApplicationProfileDAL,
+    approvalPolicyService,
+    approvalPolicyDAL
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
@@ -4692,7 +4723,8 @@ export const registerRoutes = async (
     cronJob,
     projectDAL,
     projectMembershipDAL,
-    smtpService,
+    orgDAL,
+    userDAL,
     notificationService
   });
 

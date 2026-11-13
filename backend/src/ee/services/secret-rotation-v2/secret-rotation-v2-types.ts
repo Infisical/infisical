@@ -504,9 +504,6 @@ export type TSecretRotationSendNotificationJobPayload = {
     name: string;
     type: string;
     projectId: string;
-    folder: { path: string };
-    lastRotationAttemptedAt: Date;
-    environment: { name: string; slug: string };
   };
 };
 

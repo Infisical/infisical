@@ -11,7 +11,7 @@ vi.mock("@app/lib/logger", () => ({
 import { BadRequestError } from "@app/lib/errors";
 
 // eslint-disable-next-line import/first
-import { isRequestableSecretPath, verifyRequestedPermissions } from "./access-approval-request-fns";
+import { isRequestableSecretPath, readRequestedScope, verifyRequestedPermissions } from "./access-approval-request-fns";
 
 describe("verifyRequestedPermissions", () => {
   const makeRule = (action: string, env: string, secretPath: string, subject = "secrets") => ({
@@ -310,4 +310,26 @@ describe("isRequestableSecretPath", () => {
     "rejects %j",
     (secretPath) => expect(isRequestableSecretPath(secretPath)).toBe(false)
   );
+});
+
+describe("readRequestedScope", () => {
+  const makeScopeRule = (action: string) => ({
+    action,
+    subject: "secrets",
+    conditions: { environment: "dev", secretPath: { $glob: "/app" } }
+  });
+
+  test("reads the environment and secret path from the first packed rule", () => {
+    const permissions = packRules([makeScopeRule("read"), makeScopeRule("edit")]);
+
+    expect(readRequestedScope(permissions)).toEqual({ envSlug: "dev", secretPath: "/app" });
+  });
+
+  test("returns null for a shape it cannot read", () => {
+    expect(readRequestedScope(undefined)).toBeNull();
+    expect(readRequestedScope([])).toBeNull();
+    expect(readRequestedScope([{ environment: "dev" }])).toBeNull();
+    expect(readRequestedScope(packRules([{ action: "read", subject: "secrets" }]))).toBeNull();
+    expect(readRequestedScope([["read", "secrets", { environment: "dev" }]])).toBeNull();
+  });
 });

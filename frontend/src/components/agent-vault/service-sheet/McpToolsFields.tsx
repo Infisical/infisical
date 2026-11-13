@@ -47,7 +47,7 @@ const formatAddLabel = (inputValue: string) => (
 );
 
 type Props = {
-  accessBundleId: string;
+  projectId: string;
   service?: TAgentVaultService | null;
   loaded: TLoadedMcpTools | null;
   onLoaded: (loaded: TLoadedMcpTools) => void;
@@ -61,7 +61,7 @@ type Props = {
 };
 
 export const McpToolsFields = ({
-  accessBundleId,
+  projectId,
   service,
   loaded,
   onLoaded,
@@ -81,7 +81,7 @@ export const McpToolsFields = ({
   const baseId = useId();
 
   const toolsSource = (data: TServiceForm) =>
-    JSON.stringify(buildListMcpToolsRequest(accessBundleId, serviceId, data));
+    JSON.stringify(buildListMcpToolsRequest(projectId, serviceId, data));
   const source = toolsSource(form);
   // An expired sign-in changes the request, but the list it loaded is still the server's, so it stays on screen.
   const serverTools =
@@ -130,7 +130,7 @@ export const McpToolsFields = ({
   // is shown in the dialog it was entered in, so it is only returned.
   const loadTools = async (own?: TMcpToolsOwnCredential): Promise<string | null> => {
     setLoadError(null);
-    const request = buildListMcpToolsRequest(accessBundleId, serviceId, getValues(), own);
+    const request = buildListMcpToolsRequest(projectId, serviceId, getValues(), own);
     // Serialized before the request: field edits mutate nested form values in place.
     const requestSource = toolsSource(getValues());
     // A response for a connection the admin has since changed would replace the current one's list.
@@ -216,7 +216,7 @@ export const McpToolsFields = ({
                 <FieldLabel htmlFor={`${baseId}-tools`}>Allowed Tools</FieldLabel>
                 {isCredentialMemberProvided ? (
                   <McpToolsLoadButton
-                    accessBundleId={accessBundleId}
+                    projectId={projectId}
                     service={service}
                     label={loadLabel}
                     isLoading={listTools.isPending}

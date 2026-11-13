@@ -55,6 +55,29 @@ describe("orgDeletionServiceFactory", () => {
     );
   });
 
+  test("asks assertDeletable before the cleanup and again in the delete's tx", async () => {
+    const { service, orgDAL, calls } = build();
+    const assertDeletable = vi.fn(async (tx?: unknown) => {
+      calls.push(tx ? "assert-in-tx" : "assert");
+    });
+
+    await service.deleteOrganization(ORG_ID, undefined, assertDeletable);
+
+    expect(calls).toEqual(["assert", "honey-tokens", "tx", "assert-in-tx"]);
+    expect(assertDeletable).toHaveBeenLastCalledWith(TX);
+    expect(orgDAL.deleteById).toHaveBeenCalled();
+  });
+
+  test("deletes nothing when assertDeletable refuses in the delete's tx", async () => {
+    const { service, orgDAL } = build();
+    const assertDeletable = vi.fn(async (tx?: unknown) => {
+      if (tx) throw new Error("not deletable");
+    });
+
+    await expect(service.deleteOrganization(ORG_ID, undefined, assertDeletable)).rejects.toThrow("not deletable");
+    expect(orgDAL.deleteById).not.toHaveBeenCalled();
+  });
+
   test("runs inDeleteTx in the delete's tx and returns what it returns", async () => {
     const { service } = build();
     const inDeleteTx = vi.fn(async (org: { id: string }, tx: unknown) => ({ id: org.id, tx }));

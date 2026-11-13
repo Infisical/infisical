@@ -829,7 +829,7 @@ What the client can do with sessions depends on the [role](/documentation/platfo
 | **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.4.0 or newer.
 </Note>
 
 #### List sessions
@@ -935,7 +935,7 @@ session = client.agent_vault.sessions.create(
 )
 ```
 
-- Each service is a dictionary that describes an HTTP API (`"type": "http"`) or an MCP server (`"type": "mcp"`)
+- Each service is a dictionary that describes an HTTP API (`"type": "http"`), an MCP server (`"type": "mcp"`), or a [database or SSH server](/documentation/platform/agent-vault/databases-and-ssh) (`"type": "postgres"`, `"mysql"`, or `"ssh"`)
 - The dictionaries use the API's field names, such as `hostPattern` rather than `host_pattern`
 - Credentials, custom header values, and substitution values can't contain text in double braces, such as `{{GITHUB_TOKEN}}`, because inline services can't use [variables](/documentation/platform/agent-vault/variables)
 - A session can have up to 20 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
@@ -991,7 +991,7 @@ This sub-class manages [Agent Vault proxies](/documentation/platform/agent-vault
 To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.4.0 or newer.
 </Note>
 
 #### List proxies
@@ -1133,7 +1133,7 @@ This sub-class manages [Agent Vault access bundles](/documentation/platform/agen
 To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.4.0 or newer.
 </Note>
 
 #### List access bundles
@@ -1182,7 +1182,7 @@ bundle = client.agent_vault.access_bundles.get(
 - `access_bundle_id` (str): the ID of the access bundle
 
 **Returns:**
-- `AgentVaultAccessBundle`: the access bundle, with its services in `services`
+- `AgentVaultAccessBundle`: the access bundle, with its services in `services` (each service has only the fields of its `type`, so a database or SSH service has `host` and `port` and no `hostPattern`)
 
 #### Create access bundle
 
@@ -1348,7 +1348,7 @@ This sub-class manages [delegations](/documentation/platform/agent-vault/session
 To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.3.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.4.0 or newer.
 </Note>
 
 #### List delegations
