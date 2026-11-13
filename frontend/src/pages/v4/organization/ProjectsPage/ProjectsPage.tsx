@@ -1,4 +1,5 @@
 import { hueScope } from "@infisical/cipher/lib/hue";
+import { CipherLink, type CipherLinkProps } from "@infisical/cipher/lib/link";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Card, CardLink } from "@infisical/cipher/ui/card";
 import { Halftone } from "@infisical/cipher/ui/halftone";
@@ -9,6 +10,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { TooltipProvider, TooltipText } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
+import { ArrowRightIcon } from "lucide-react";
 
 import type { TOrgProductStats } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -64,6 +66,32 @@ const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][
   }
 };
 
+const ProductStats = ({
+  stats,
+  link
+}: {
+  stats: [number, string][];
+  link?: CipherLinkProps["link"];
+}) => {
+  const shown = stats.filter(([value]) => value > 0);
+  if (!shown.length)
+    return link ? (
+      <CipherLink link={link} className={styles.setUp}>
+        <Icon icon={ArrowRightIcon} size={14} />
+        Set up now
+      </CipherLink>
+    ) : null;
+  return (
+    <Inline gap={24}>
+      {shown.map(([value, label]) => (
+        <span key={label}>
+          <strong>{value.toLocaleString()}</strong> {value === 1 ? label.replace(/s$/, "") : label}
+        </span>
+      ))}
+    </Inline>
+  );
+};
+
 export const ProjectsPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { organization, projects } = useV4Session();
@@ -95,6 +123,10 @@ export const ProjectsPage = () => {
         )}
         <Grid columns={2} gap={32}>
           {products.map((product) => {
+            const link = {
+              to: v4Path("/organizations/$orgId/$"),
+              params: { orgId, _splat: productHome(product).slice(1) }
+            };
             const card = (
               <Card
                 variant="framed"
@@ -102,17 +134,16 @@ export const ProjectsPage = () => {
                 {...hueScope(product.hue)}
                 className={blocked.has(product.type) ? styles.blocked : undefined}
                 footerPlacement="frame"
-                backdrop={<Halftone />}
+                backdrop={<Halftone seed={product.type} />}
                 title={
                   <Inline gap={8} align="center">
-                    <Icon name={product.icon} size={18} className={styles.productIcon} />
-                    <CardLink
-                      disabled={blocked.has(product.type)}
-                      link={{
-                        to: v4Path("/organizations/$orgId/$"),
-                        params: { orgId, _splat: productHome(product).slice(1) }
-                      }}
-                    >
+                    <Icon
+                      name={product.icon}
+                      size={18}
+                      motion="draw"
+                      className={styles.productIcon}
+                    />
+                    <CardLink disabled={blocked.has(product.type)} link={link}>
                       {product.label}
                     </CardLink>
                     {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
@@ -121,14 +152,10 @@ export const ProjectsPage = () => {
                 description={product.blurb}
                 footer={
                   stats ? (
-                    <Inline gap={24}>
-                      {statsFor(product.type, stats).map(([value, label]) => (
-                        <span key={label}>
-                          <strong>{value.toLocaleString()}</strong>{" "}
-                          {value === 1 ? label.replace(/s$/, "") : label}
-                        </span>
-                      ))}
-                    </Inline>
+                    <ProductStats
+                      stats={statsFor(product.type, stats)}
+                      link={blocked.has(product.type) ? undefined : link}
+                    />
                   ) : (
                     <Skeleton width={240} height={12} />
                   )

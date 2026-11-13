@@ -1,5 +1,19 @@
 .productIcon {
+  transition: color var(--v4-duration-slow) var(--v4-ease-fade);
+}
+:global([data-slot="card"]):is(:hover, :focus-within) .productIcon {
   color: var(--v4-hue-icon);
+}
+.setUp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-6);
+  color: var(--v4-ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+.setUp:hover {
+  text-decoration: underline;
 }
 .blocked.blocked,
 .blocked.blocked * {

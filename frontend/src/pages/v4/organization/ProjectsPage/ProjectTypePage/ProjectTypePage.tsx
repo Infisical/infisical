@@ -291,7 +291,13 @@ const ProjectCard = ({
         </CardLink>
       }
       action={favorite}
-      backdrop={isFavorite ? <Halftone reach={200} depth={1.4} /> : undefined}
+      backdrop={
+        isFavorite ? (
+          <Halftone reach={280} depth={2} intensity={1.35} seed={project.type} />
+        ) : (
+          <Halftone reach={200} depth={1.4} seed={project.type} />
+        )
+      }
       footer={
         <Inline gap={16} justify="between">
           {project.type !== ProjectType.AgentVault && (
