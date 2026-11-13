@@ -2939,8 +2939,7 @@ export const registerRoutes = async (
     projectDAL,
     secretV2BridgeService,
     folderCommitDAL,
-    secretQueueService,
-    dataKeyService
+    secretQueueService
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
@@ -4752,8 +4751,7 @@ export const registerRoutes = async (
     gatewayPoolService,
     folderService,
     folderDAL,
-    projectEnvDAL,
-    dataKeyService
+    projectEnvDAL
   });
 
   // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.

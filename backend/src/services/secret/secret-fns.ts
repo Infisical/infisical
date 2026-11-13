@@ -954,7 +954,7 @@ export const updateManySecretsRawFnFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
+      const { encryptor: secretManagerEncryptor } = projectCipher;
       const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, dataKeyService });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
@@ -1022,7 +1022,6 @@ export const updateManySecretsRawFnFactory = ({
           eventScope: { projectId, environment, secretPath: folder.path },
           orgId: project.orgId,
           tx,
-          secretManagerDecryptor,
           inputSecrets: inputSecrets.map((el) => ({
             filter: { id: secretsToUpdateInDBGroupedByKey[el.key][0].id, type: SecretType.Shared },
             data: el

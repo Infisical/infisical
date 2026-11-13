@@ -63,7 +63,6 @@ import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bri
 import { TFnSecretMoveResult } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
-import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import { emitFoldersModified, FolderModifiedEventV1 } from "./secret-folder-events";
@@ -2016,7 +2015,6 @@ export const secretFolderServiceFactory = ({
     // the entire operation: enumerate + lock the source subtree, recreate the tree at the destination, move every
     // folder's secrets (sharing this tx), then delete the emptied source root. a failure anywhere rolls all of
     // it back. side effects (snapshots/syncs/cache) are dispatched after the commit.
-    const moveCiphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId });
     const { moveResults } = await folderDAL.transaction(async (tx) => {
       const destinationParentFolder = await folderDAL.findBySecretPath(
         projectId,
@@ -2248,7 +2246,7 @@ export const secretFolderServiceFactory = ({
             actorOrgId,
             tx,
             permissionService,
-            ciphers: moveCiphers,
+            dataKeyService,
             folderDAL,
             secretDAL: secretV2BridgeDAL,
             secretVersionDAL,

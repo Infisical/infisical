@@ -375,12 +375,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
     ];
 
     if (secretsToValidate.length) {
-      await validateSecrets(
-        { projectId, environment, envId, secretPath, secrets: secretsToValidate },
-        permission,
-        tx,
-        cipher
-      );
+      await validateSecrets({ projectId, environment, envId, secretPath, secrets: secretsToValidate }, permission, tx);
     }
 
     const creationBlindIndexes = await Promise.all(
@@ -501,7 +496,6 @@ export const secretApprovalRequestMergeFnsFactory = ({
           orgId: actorOrgId,
           actor: { actorId, type: actor },
           tx,
-          secretManagerDecryptor,
           inputSecrets: updates.map((el, idx) => {
             const encryptedValue =
               !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined

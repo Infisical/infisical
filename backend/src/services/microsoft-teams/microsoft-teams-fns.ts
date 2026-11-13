@@ -4,7 +4,8 @@ import { TeamsActivityHandler, TurnContext } from "botbuilder";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
@@ -93,25 +94,28 @@ export const verifyTenantFromCode = async (
 
 export const getMicrosoftTeamsAccessToken = async (
   {
+    orgId,
     microsoftTeamsIntegrationId,
     tenantId,
     clientId,
     clientSecret,
-    orgCipher,
+    dataKeyService,
     microsoftTeamsIntegrationDAL,
     getBotFrameworkToken
   }: {
     microsoftTeamsIntegrationId: string;
+    orgId: string;
     tenantId: string;
     clientId: string;
     clientSecret: string;
-    // The org data-key cipher, fetched before any transaction the caller holds.
-    orgCipher: TCipherPair;
+    dataKeyService: TDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     getBotFrameworkToken?: boolean;
   },
   tx?: Knex
 ) => {
+  const cipherSource = tx ? dataKeyService.within(sealKnexTransaction(tx)) : dataKeyService;
+
   try {
     const details = getBotFrameworkToken
       ? {
@@ -143,7 +147,10 @@ export const getMicrosoftTeamsAccessToken = async (
         integration.botAccessTokenExpiresAt &&
         integration.botAccessTokenExpiresAt > currentTime
       ) {
-        const { decryptor } = orgCipher;
+        const { decryptor } = await cipherSource.createCipherPairWithDataKey({
+          orgId,
+          type: KmsDataKey.Organization
+        });
 
         const botAccessToken = decryptor({
           cipherTextBlob: integration.encryptedBotAccessToken
@@ -160,7 +167,10 @@ export const getMicrosoftTeamsAccessToken = async (
         integration.accessTokenExpiresAt &&
         integration.accessTokenExpiresAt > currentTime
       ) {
-        const { decryptor } = orgCipher;
+        const { decryptor } = await cipherSource.createCipherPairWithDataKey({
+          orgId,
+          type: KmsDataKey.Organization
+        });
 
         const accessToken = decryptor({
           cipherTextBlob: integration.encryptedAccessToken
@@ -181,7 +191,10 @@ export const getMicrosoftTeamsAccessToken = async (
     );
 
     if (getBotFrameworkToken) {
-      const { encryptor } = orgCipher;
+      const { encryptor } = await cipherSource.createCipherPairWithDataKey({
+        orgId,
+        type: KmsDataKey.Organization
+      });
 
       const { cipherTextBlob: encryptedBotAccessToken } = encryptor({
         plainText: Buffer.from(tokenResponse.data.access_token)
@@ -200,7 +213,10 @@ export const getMicrosoftTeamsAccessToken = async (
         tx
       );
     } else {
-      const { encryptor } = orgCipher;
+      const { encryptor } = await cipherSource.createCipherPairWithDataKey({
+        orgId,
+        type: KmsDataKey.Organization
+      });
 
       const { cipherTextBlob: encryptedAccessToken } = encryptor({
         plainText: Buffer.from(tokenResponse.data.access_token)
@@ -240,7 +256,8 @@ export const isBotInstalledInTenant = async (
     botAppId,
     botAppPassword,
     botId,
-    orgCipher,
+    orgId,
+    dataKeyService,
     microsoftTeamsIntegrationDAL,
     microsoftTeamsIntegrationId
   }: {
@@ -248,8 +265,8 @@ export const isBotInstalledInTenant = async (
     botAppId: string;
     botAppPassword: string;
     botId: string;
-    // The org data-key cipher, fetched before any transaction the caller holds.
-    orgCipher: TCipherPair;
+    orgId: string;
+    dataKeyService: TDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     microsoftTeamsIntegrationId: string;
   },
@@ -262,7 +279,8 @@ export const isBotInstalledInTenant = async (
         clientId: botAppId.toString(),
         clientSecret: botAppPassword.toString(),
         getBotFrameworkToken: true,
-        orgCipher,
+        orgId,
+        dataKeyService,
         microsoftTeamsIntegrationDAL,
         microsoftTeamsIntegrationId
       },
@@ -271,10 +289,11 @@ export const isBotInstalledInTenant = async (
 
     const accessToken = await getMicrosoftTeamsAccessToken(
       {
+        orgId,
         tenantId,
         clientId: botAppId.toString(),
         clientSecret: botAppPassword.toString(),
-        orgCipher,
+        dataKeyService,
         microsoftTeamsIntegrationDAL,
         microsoftTeamsIntegrationId
       },

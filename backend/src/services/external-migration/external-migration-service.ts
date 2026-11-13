@@ -1,7 +1,6 @@
 import { MongoAbility, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   AuditLogInfo,
   EventType,
@@ -50,7 +49,6 @@ import {
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "../secret-folder/secret-folder-service";
-import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
@@ -170,7 +168,6 @@ type TExternalMigrationServiceFactoryDep = {
   folderService: Pick<TSecretFolderServiceFactory, "createManyFolders">;
   folderDAL: Pick<TSecretFolderDALFactory, "transaction" | "findByManySecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  dataKeyService: TDataKeyService;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -187,8 +184,7 @@ export const externalMigrationServiceFactory = ({
   appConnectionService,
   folderService,
   folderDAL,
-  projectEnvDAL,
-  dataKeyService
+  projectEnvDAL
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
@@ -523,8 +519,6 @@ export const externalMigrationServiceFactory = ({
 
     const unitsWithSecrets = units.filter(({ secrets }) => secrets.length);
 
-    // Fetched before the transaction: KMS Core is never called inside one.
-    const ciphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actor.orgId });
     const results = await folderDAL.transaction(async (tx) => {
       const [baseFolder, ...candidateFolders] = await folderDAL.findByManySecretPath(
         [basePath, ...candidatePaths].map((candidatePath) => ({ envId: env.id, secretPath: candidatePath })),
@@ -608,7 +602,6 @@ export const externalMigrationServiceFactory = ({
           folder,
           secrets,
           tx,
-          ciphers,
           skipPostProcessing: true
         });
 

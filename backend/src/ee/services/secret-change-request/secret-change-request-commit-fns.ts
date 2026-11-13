@@ -2,7 +2,8 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
-import { KmsDataKey, TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
@@ -28,10 +29,7 @@ import {
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
-import {
-  TGenerateSecretApprovalRequestV2BridgeDTO,
-  TSecretApprovalCommitTransaction
-} from "./secret-change-request-types";
+import { TGenerateSecretApprovalRequestV2BridgeDTO } from "./secret-change-request-types";
 
 type TSecretApprovalRequestCommitFnsFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -47,8 +45,7 @@ type TSecretApprovalRequestCommitFnsFactoryDep = {
 export type TBuildSecretApprovalCommitsDTO = Omit<
   TGenerateSecretApprovalRequestV2BridgeDTO,
   "policy" | "commitMessage"
-> &
-  TSecretApprovalCommitTransaction;
+> & { trx?: Knex };
 
 export type TSecretApprovalCommit = Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId" | "secretChangeId">;
 
@@ -101,11 +98,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
   const $validateSecrets = async (
     dto: TValidateSecretsDTO,
     permission: MongoAbility<ProjectPermissionSet>,
-    tx?: Knex,
-    cipher?: TCipherPair
+    tx?: Knex
   ) => {
     try {
-      await secretValidationRuleService.validateSecrets(dto, tx, cipher);
+      await secretValidationRuleService.validateSecrets(dto, tx);
     } catch (error) {
       if (!(error instanceof SecretValidationError)) throw error;
 
@@ -131,8 +127,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
     environment,
     folder: providedFolder,
     updateMode = SecretUpdateMode.FailOnNotFound,
-    trx: providedTx,
-    cipher: providedCipher
+    trx: providedTx
   }: TBuildSecretApprovalCommitsDTO) => {
     if (actor === ActorType.SERVICE)
       throw new BadRequestError({ message: "Cannot use service token over protected branches" });
@@ -173,10 +168,9 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
 
-    const cipher =
-      providedCipher ??
-      (await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }));
-    const { encryptor: secretManagerEncryptor } = cipher;
+    const { encryptor: secretManagerEncryptor } = await (
+      providedTx ? dataKeyService.within(sealKnexTransaction(providedTx)) : dataKeyService
+    ).createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const project = await projectDAL.findById(projectId, providedTx);
 
@@ -516,8 +510,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
           secrets: secretsToValidate
         },
         permission,
-        providedTx,
-        cipher
+        providedTx
       );
     }
 

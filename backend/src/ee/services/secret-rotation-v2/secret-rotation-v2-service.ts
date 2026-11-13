@@ -864,12 +864,6 @@ export const secretRotationV2ServiceFactory = ({
 
     let secretsMappingUpdated = false;
 
-    // Fetched before the transaction: KMS Core is never called inside one.
-    const mappingSecretManager =
-      payload.secretsMapping && !isEqual(payload.secretsMapping, secretsMapping)
-        ? await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId })
-        : undefined;
-
     try {
       const updatedSecretRotation = await secretRotationV2DAL.transaction(async (tx) => {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
@@ -905,7 +899,6 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
             folderCommitService,
-            secretManagerDecryptor: mappingSecretManager!.decryptor,
             resourceMetadataDAL,
             actor: {
               type: actor.type,
@@ -1445,7 +1438,7 @@ export const secretRotationV2ServiceFactory = ({
             type: KmsDataKey.SecretManager,
             projectId
           });
-          const { encryptor, decryptor } = projectCipher;
+          const { encryptor } = projectCipher;
           const blindIndexer = await createSecretBlindIndexer({
             projectCipher,
             orgId: connection.orgId,
@@ -1485,7 +1478,6 @@ export const secretRotationV2ServiceFactory = ({
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretVersionTagDAL: secretVersionTagV2BridgeDAL,
               folderCommitService,
-              secretManagerDecryptor: decryptor,
               actor: {
                 type: ActorType.PLATFORM
               },
@@ -2218,7 +2210,7 @@ export const secretRotationV2ServiceFactory = ({
           type: KmsDataKey.SecretManager,
           projectId
         });
-        const { encryptor, decryptor } = projectCipher;
+        const { encryptor } = projectCipher;
         const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, dataKeyService });
 
         let isRecovery = false;
@@ -2233,7 +2225,6 @@ export const secretRotationV2ServiceFactory = ({
             folderId,
             orgId: connection.orgId,
             tx,
-            secretManagerDecryptor: decryptor,
             inputSecrets: [
               {
                 filter: {

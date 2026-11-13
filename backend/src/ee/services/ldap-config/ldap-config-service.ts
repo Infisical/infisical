@@ -9,6 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
@@ -287,7 +288,9 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await dataKeyService.createCipherPairWithDataKey({
+    const { decryptor } = await (
+      tx ? dataKeyService.within(sealKnexTransaction(tx)) : dataKeyService
+    ).createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: ldapConfig.orgId
     });
@@ -427,44 +430,29 @@ export const ldapConfigServiceFactory = ({
         : null;
     }
 
-    // The update is checked and tested on the merged config before anything is written, so neither KMS Core nor the
-    // LDAP bind runs while a transaction holds a connection. Undefined keeps the stored value, as the update does.
-    const existingLdapCfg = await getLdapCfg({ orgId });
-    const keepUnlessSet = <T>(value: T | undefined, existing: T) => (value !== undefined ? value : existing);
-    const mergedLdapCfg = {
-      ...existingLdapCfg,
-      isActive: keepUnlessSet(isActive, existingLdapCfg.isActive),
-      url: keepUnlessSet(url, existingLdapCfg.url),
-      bindDN: keepUnlessSet(bindDN, existingLdapCfg.bindDN),
-      bindPass: keepUnlessSet(bindPass, existingLdapCfg.bindPass),
-      uniqueUserAttribute: keepUnlessSet(uniqueUserAttribute, existingLdapCfg.uniqueUserAttribute),
-      searchBase: keepUnlessSet(searchBase, existingLdapCfg.searchBase),
-      searchFilter: keepUnlessSet(searchFilter, existingLdapCfg.searchFilter),
-      groupSearchBase: keepUnlessSet(groupSearchBase, existingLdapCfg.groupSearchBase),
-      groupSearchFilter: keepUnlessSet(groupSearchFilter, existingLdapCfg.groupSearchFilter),
-      caCert: keepUnlessSet(caCert, existingLdapCfg.caCert),
-      clientCertificate: clientCertificate !== undefined ? clientCertificate || "" : existingLdapCfg.clientCertificate,
-      clientKeyCertificate:
-        clientKeyCertificate !== undefined ? clientKeyCertificate || "" : existingLdapCfg.clientKeyCertificate
-    };
+    const config = await ldapConfigDAL.transaction(async (tx) => {
+      const [updatedLdapCfg] = await ldapConfigDAL.update({ orgId }, updateQuery, tx);
+      const decryptedLdapCfg = await getLdapCfg({ orgId }, tx);
 
-    if (Boolean(mergedLdapCfg.clientCertificate) !== Boolean(mergedLdapCfg.clientKeyCertificate)) {
-      throw new BadRequestError({
-        message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."
-      });
-    }
-
-    const isSoftDeletion = !mergedLdapCfg.url && !mergedLdapCfg.bindDN && !mergedLdapCfg.bindPass;
-    if (!isSoftDeletion) {
-      const isConnected = await testLDAPConfig(mergedLdapCfg);
-      if (!isConnected) {
+      if (Boolean(decryptedLdapCfg.clientCertificate) !== Boolean(decryptedLdapCfg.clientKeyCertificate)) {
         throw new BadRequestError({
-          message: "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
+          message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."
         });
       }
-    }
 
-    const [config] = await ldapConfigDAL.update({ orgId }, updateQuery);
+      const isSoftDeletion = !decryptedLdapCfg.url && !decryptedLdapCfg.bindDN && !decryptedLdapCfg.bindPass;
+      if (!isSoftDeletion) {
+        const isConnected = await testLDAPConfig(decryptedLdapCfg);
+        if (!isConnected) {
+          throw new BadRequestError({
+            message:
+              "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
+          });
+        }
+      }
+
+      return updatedLdapCfg;
+    });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Update, orgId });
 

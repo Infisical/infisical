@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -391,49 +392,59 @@ export const secretScanningV2ServiceFactory = ({
           secretScanningV2DAL
         },
         async ({ credentials, externalId }) => {
-          let encryptedCredentials: Buffer | null = null;
-
-          if (credentials) {
-            const { encryptor } = await dataKeyService.createCipherPairWithDataKey({
-              type: KmsDataKey.SecretManager,
-              projectId: payload.projectId
-            });
-
-            const { cipherTextBlob } = encryptor({
-              plainText: Buffer.from(JSON.stringify(credentials))
-            });
-
-            encryptedCredentials = cipherTextBlob;
-          }
-
-          const dataSource = await secretScanningV2DAL.dataSources.create({
-            encryptedCredentials,
-            externalId,
-            ...payload
-          });
-
-          // Registered after the data source is stored, not inside a transaction: it calls the provider and may
-          // refresh the connection's token through KMS Core. A failed registration removes the data source again.
           try {
-            await factory.postInitialization({
-              payload: payload as TSecretScanningDataSourceInput,
-              connection: connection as TSecretScanningDataSourceWithConnection["connection"],
-              dataSourceId: dataSource.id,
-              credentials
+            return await secretScanningV2DAL.dataSources.transaction(async (tx) => {
+              let encryptedCredentials: Buffer | null = null;
+
+              if (credentials) {
+                const { encryptor } = await dataKeyService.within(sealKnexTransaction(tx)).createCipherPairWithDataKey({
+                  type: KmsDataKey.SecretManager,
+                  projectId: payload.projectId
+                });
+
+                const { cipherTextBlob } = encryptor({
+                  plainText: Buffer.from(JSON.stringify(credentials))
+                });
+
+                encryptedCredentials = cipherTextBlob;
+              }
+
+              const dataSource = await secretScanningV2DAL.dataSources.create(
+                {
+                  encryptedCredentials,
+                  externalId,
+                  ...payload
+                },
+                tx
+              );
+
+              await factory.postInitialization({
+                payload: payload as TSecretScanningDataSourceInput,
+                connection: connection as TSecretScanningDataSourceWithConnection["connection"],
+                dataSourceId: dataSource.id,
+                credentials
+              });
+
+              return dataSource;
             });
           } catch (error) {
-            await secretScanningV2DAL.dataSources
-              .deleteById(dataSource.id)
-              .catch((cleanupError) =>
+            // The provider-side webhook outlives the rolled back transaction, so it is removed here.
+            if (credentials) {
+              try {
+                await factory.teardown({
+                  dataSource: { ...payload, connection } as unknown as TSecretScanningDataSourceWithConnection,
+                  credentials
+                });
+              } catch (teardownError) {
                 logger.error(
-                  cleanupError,
-                  `Failed to remove Secret Scanning Data Source after its setup failed [dataSourceId=${dataSource.id}]`
-                )
-              );
+                  teardownError,
+                  `Failed to remove the webhook of a Secret Scanning Data Source that was not created [projectId=${payload.projectId}]`
+                );
+              }
+            }
+
             throw error;
           }
-
-          return dataSource;
         }
       );
 

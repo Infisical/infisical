@@ -53,6 +53,7 @@ import {
   TFnSecretMoveResult
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
+import { prepareSecretWriteCiphers } from "./secret-write-cipher-fns";
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
@@ -250,8 +251,7 @@ export const fnSecretBulkUpdate = async ({
   resourceMetadataDAL,
   eventEmitter,
   eventScope,
-  actor,
-  secretManagerDecryptor
+  actor
 }: TFnSecretBulkUpdate) => {
   const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
   const identityActorId = actor && actor?.type === ActorType.IDENTITY ? actor?.actorId : undefined;
@@ -427,8 +427,7 @@ export const fnSecretBulkUpdate = async ({
           },
           message: "Secret Updated",
           folderId,
-          changes,
-          secretManagerDecryptor
+          changes
         },
         tx
       );
@@ -1027,8 +1026,7 @@ export const fnUpdateSecretLinkedReferences = async ({
           },
           message: "Secret references updated after referenced secret(s) was renamed",
           folderId: updateFolderId,
-          changes,
-          secretManagerDecryptor: decryptor
+          changes
         },
         tx
       );
@@ -1444,8 +1442,7 @@ export const fnUpdateMovedSecretReferences = async ({
           },
           message: "Secret references updated after referenced secret(s) was moved to a new location",
           folderId: updateFolderId,
-          changes,
-          secretManagerDecryptor: decryptor
+          changes
         },
         tx
       );
@@ -1688,7 +1685,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     actorOrgId,
     permission,
     tx,
-    ciphers,
+    dataKeyService,
     folderDAL,
     secretDAL,
     secretVersionDAL,
@@ -1780,8 +1777,13 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     }
   });
 
-  const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
-  const { blindIndexer } = ciphers;
+  const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
+    dataKeyService,
+    projectId,
+    orgId: actorOrgId,
+    tx
+  });
+  const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = secretManager;
   const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
     ...secret,
     value: secret.encryptedValue
@@ -1903,8 +1905,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         })),
         excludedSecretIds: secretsToApplyAtDestination.map((secret) => secret.id)
       },
-      tx,
-      ciphers.secretManager
+      tx
     );
   } catch (error) {
     if (!(error instanceof SecretValidationError)) throw error;
@@ -2058,7 +2059,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         orgId: actorOrgId,
         resourceMetadataDAL,
         folderCommitService,
-        secretManagerDecryptor,
         secretVersionDAL,
         secretDAL,
         tx,

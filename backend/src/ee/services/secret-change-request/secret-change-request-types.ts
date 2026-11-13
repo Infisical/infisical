@@ -8,7 +8,7 @@ import {
   TSecretApprovalRequestsSecretsV2Insert,
   TSecretFolders
 } from "@app/db/schemas";
-import { TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
@@ -89,12 +89,6 @@ export type TApprovalUpdateSecretV2Bridge = Partial<TApprovalCreateSecretV2Bridg
   newSecretName?: string;
   tagIds?: string[];
 };
-
-// A caller that builds the request inside its own transaction fetches the project cipher before opening it:
-// KMS Core is never called inside a transaction.
-export type TSecretApprovalCommitTransaction =
-  | { trx: Knex; cipher: TCipherPair }
-  | { trx?: undefined; cipher?: undefined };
 
 export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   environment: string;
@@ -287,7 +281,7 @@ export type TCountSecretChangeRequestsDTO = { projectId: string; userId?: string
 
 export type TSecretChangeRequestMethods = {
   generateSecretApprovalRequestV2Bridge: (
-    dto: TGenerateSecretApprovalRequestV2BridgeDTO & TSecretApprovalCommitTransaction & { skipPostProcessing?: boolean }
+    dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
   ) => Promise<TSecretChangeRequest>;
   createSecretApprovalRequestV2Bridge: (
     dto: TCreateSecretApprovalRequestV2BridgeDTO,

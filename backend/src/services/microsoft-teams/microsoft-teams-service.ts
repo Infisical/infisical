@@ -9,6 +9,7 @@ import {
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { KmsDataKey, TDataKeyService, TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -250,10 +251,8 @@ export const microsoftTeamsServiceFactory = ({
       botAppId: decryptedAppId.toString(),
       botAppPassword: decryptedAppPassword.toString(),
       botId: decryptedBotId.toString(),
-      orgCipher: await dataKeyService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: microsoftTeamsIntegration.orgId
-      }),
+      orgId: microsoftTeamsIntegration.orgId,
+      dataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
@@ -324,12 +323,6 @@ export const microsoftTeamsServiceFactory = ({
 
     await verifyTenantFromCode(tenantId, code, redirectUri, botAppId.toString(), botAppPassword.toString());
 
-    // Fetched before the transaction: KMS Core is never called inside one.
-    const orgCipher = await dataKeyService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: actorOrgId
-    });
-
     await workflowIntegrationDAL.transaction(async (tx) => {
       const workflowIntegration = await workflowIntegrationDAL.create(
         {
@@ -367,7 +360,8 @@ export const microsoftTeamsServiceFactory = ({
           botAppId: botAppId.toString(),
           botAppPassword: botAppPassword.toString(),
           botId: botId.toString(),
-          orgCipher,
+          orgId: workflowIntegration.orgId,
+          dataKeyService,
           microsoftTeamsIntegrationDAL,
           microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
         },
@@ -375,7 +369,12 @@ export const microsoftTeamsServiceFactory = ({
       );
 
       if (teamsBotInfo.installed) {
-        const { encryptor: orgDataKeyEncryptor } = orgCipher;
+        const { encryptor: orgDataKeyEncryptor } = await dataKeyService
+          .within(sealKnexTransaction(tx))
+          .createCipherPairWithDataKey({
+            orgId: workflowIntegration.orgId,
+            type: KmsDataKey.Organization
+          });
         const { cipherTextBlob: encryptedAccessToken } = orgDataKeyEncryptor({
           plainText: Buffer.from(teamsBotInfo.accessToken, "utf8")
         });
@@ -637,10 +636,8 @@ export const microsoftTeamsServiceFactory = ({
       botAppId: decryptedAppId.toString(),
       botAppPassword: decryptedAppPassword.toString(),
       botId: decryptedBotId.toString(),
-      orgCipher: await dataKeyService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: microsoftTeamsIntegration.orgId
-      }),
+      orgId: microsoftTeamsIntegration.orgId,
+      dataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId: microsoftTeamsIntegration.id
     });
@@ -762,7 +759,8 @@ export const microsoftTeamsServiceFactory = ({
       clientId: botAppId.toString(),
       clientSecret: botAppPassword.toString(),
       getBotFrameworkToken: true,
-      orgCipher: await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }),
+      orgId,
+      dataKeyService,
       microsoftTeamsIntegrationDAL,
       microsoftTeamsIntegrationId
     });

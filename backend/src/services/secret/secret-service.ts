@@ -1,6 +1,7 @@
 /* eslint-disable no-unreachable-loop */
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -28,7 +29,6 @@ import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-ev
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
-import { TSecretApprovalCommitTransaction } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -63,13 +63,8 @@ import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
-import {
-  TGetSecretKeyEnvironmentsDTO,
-  TGetSecretReferencesTreeDTO,
-  TSecretWriteTransaction
-} from "../secret-v2-bridge/secret-v2-bridge-types";
+import { TGetSecretKeyEnvironmentsDTO, TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
-import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   conditionallyHideSecretValue,
@@ -2150,9 +2145,8 @@ export const secretServiceFactory = ({
     folder,
     secrets: inputSecrets = [],
     tx,
-    ciphers,
     skipPostProcessing
-  }: TCreateManySecretRawDTO & TSecretWriteTransaction & { skipPostProcessing?: boolean }) => {
+  }: TCreateManySecretRawDTO & { tx?: Knex; skipPostProcessing?: boolean }) => {
     if (!projectSlug && !optionalProjectId)
       throw new BadRequestError({
         message: "Must provide either project slug or projectId"
@@ -2208,7 +2202,7 @@ export const secretServiceFactory = ({
           actorOrgId,
           actorAuthMethod,
           folder,
-          ...((tx && ciphers ? { trx: tx, cipher: ciphers.secretManager } : {}) as TSecretApprovalCommitTransaction),
+          trx: tx,
           skipPostProcessing,
           data: {
             [SecretOperations.Create]: inputSecrets.map((el) => ({
@@ -2234,7 +2228,7 @@ export const secretServiceFactory = ({
         actorId,
         folder,
         secrets: inputSecrets,
-        ...((tx && ciphers ? { tx, ciphers } : {}) as TSecretWriteTransaction),
+        tx,
         skipPostProcessing
       });
       return { secrets, type: SecretProtectionType.Direct as const };
@@ -3473,13 +3467,11 @@ export const secretServiceFactory = ({
       actorOrgId
     } as const;
 
-    const ciphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId });
     const { createdSecrets, updatedSecrets } = await secretDAL.transaction(async (tx) => {
       const created = sourcesToCreate.length
         ? await secretV2BridgeService.createManySecret({
             ...baseManyArgs,
             tx,
-            ciphers,
             skipPostProcessing: true,
             secrets: sourcesToCreate.map((sourceSecret) => {
               const { secretKey, secretValue, ...rest } = buildSecretPayload(sourceSecret);
@@ -3492,7 +3484,6 @@ export const secretServiceFactory = ({
         ? await secretV2BridgeService.updateManySecret({
             ...baseManyArgs,
             tx,
-            ciphers,
             skipPostProcessing: true,
             mode: SecretUpdateMode.FailOnNotFound,
             secrets: sourcesToUpdate.map(buildSecretPayload)

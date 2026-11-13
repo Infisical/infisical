@@ -1,5 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TDataKeyService, TDataKeyTransaction } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
@@ -353,6 +353,8 @@ import {
 import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
+export type TCipherPairSource = Pick<TDataKeyTransaction, "createCipherPairWithDataKey">;
+
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
 );
@@ -542,7 +544,7 @@ export const encryptAppConnectionCredentials = async ({
 }: {
   orgId: string;
   credentials: TAppConnection["credentials"];
-  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
+  dataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
   const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
@@ -572,7 +574,7 @@ export const decryptAppConnectionCredentials = async ({
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
-  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
+  dataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
   const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
@@ -599,7 +601,7 @@ export const encryptAppConnectionConfiguration = async ({
 }: {
   orgId: string;
   configuration: TAppConnectionConfiguration;
-  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
+  dataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
   if (!configuration) return null;
@@ -631,7 +633,7 @@ export const decryptAppConnectionConfiguration = async ({
 }: {
   orgId: string;
   encryptedConfiguration: Buffer | null | undefined;
-  dataKeyService: TAppConnectionServiceFactoryDep["dataKeyService"];
+  dataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }): Promise<TAppConnectionConfiguration> => {
   if (!encryptedConfiguration) return undefined;

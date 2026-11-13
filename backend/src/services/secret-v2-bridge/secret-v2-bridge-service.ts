@@ -10,7 +10,8 @@ import {
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
-import { KmsDataKey, TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -116,7 +117,6 @@ import {
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
   TSecretReference,
-  TSecretWriteTransaction,
   TUpdateManySecretDTO,
   TUpdateSecretDTO
 } from "./secret-v2-bridge-types";
@@ -226,11 +226,10 @@ export const secretV2BridgeServiceFactory = ({
   const $validateSecrets = async (
     dto: TValidateSecretsDTO,
     permission: MongoAbility<ProjectPermissionSet>,
-    tx?: Knex,
-    cipher?: TCipherPair
+    tx?: Knex
   ) => {
     try {
-      await secretValidationRuleService.validateSecrets(dto, tx, cipher);
+      await secretValidationRuleService.validateSecrets(dto, tx);
     } catch (error) {
       if (!(error instanceof SecretValidationError)) throw error;
 
@@ -821,7 +820,6 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         resourceMetadataDAL,
         folderCommitService,
-        secretManagerDecryptor,
         inputSecrets: [
           {
             filter: { id: secretId },
@@ -2294,14 +2292,13 @@ export const secretV2BridgeServiceFactory = ({
     folder: providedFolder,
     secrets: inputSecrets,
     tx: providedTx,
-    ciphers: providedCiphers,
     commitChanges,
     skipPostProcessing = false
-  }: TCreateManySecretDTO &
-    TSecretWriteTransaction & {
-      commitChanges?: TCommitResourceChangeDTO[];
-      skipPostProcessing?: boolean;
-    }) => {
+  }: TCreateManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+  }) => {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2375,8 +2372,7 @@ export const secretV2BridgeServiceFactory = ({
         secrets: deduplicatedSecrets.map((el) => ({ key: el.secretKey, value: el.secretValue }))
       },
       permission,
-      providedTx,
-      providedCiphers?.secretManager
+      providedTx
     );
 
     // get all tags
@@ -2415,8 +2411,12 @@ export const secretV2BridgeServiceFactory = ({
     });
     await $validateSecretReferences(projectId, permission, secretReferences, providedTx);
 
-    const ciphers =
-      providedCiphers ?? (await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId }));
+    const ciphers = await prepareSecretWriteCiphers({
+      dataKeyService,
+      projectId,
+      orgId: actorOrgId,
+      tx: providedTx
+    });
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
     const { blindIndexer } = ciphers;
 
@@ -2532,16 +2532,15 @@ export const secretV2BridgeServiceFactory = ({
     secrets: inputSecrets,
     mode: updateMode,
     tx: providedTx,
-    ciphers: providedCiphers,
     commitChanges,
     skipPostProcessing = false,
     deferredReferenceSyncs
-  }: TUpdateManySecretDTO &
-    TSecretWriteTransaction & {
-      commitChanges?: TCommitResourceChangeDTO[];
-      skipPostProcessing?: boolean;
-      deferredReferenceSyncs?: Parameters<TSecretQueueFactory["syncSecrets"]>[0][];
-    }) => {
+  }: TUpdateManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+    deferredReferenceSyncs?: Parameters<TSecretQueueFactory["syncSecrets"]>[0][];
+  }) => {
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2584,8 +2583,12 @@ export const secretV2BridgeServiceFactory = ({
     );
     const secretPaths = Object.keys(secretsToUpdateGroupByPath);
 
-    const ciphers =
-      providedCiphers ?? (await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId }));
+    const ciphers = await prepareSecretWriteCiphers({
+      dataKeyService,
+      projectId,
+      orgId: actorOrgId,
+      tx: providedTx
+    });
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
     const { blindIndexer } = ciphers;
 
@@ -2799,8 +2802,7 @@ export const secretV2BridgeServiceFactory = ({
               secrets: secretsToValidate
             },
             permission,
-            tx,
-            ciphers.secretManager
+            tx
           );
         }
 
@@ -2861,7 +2863,6 @@ export const secretV2BridgeServiceFactory = ({
           eventScope: { projectId, environment, secretPath },
           orgId: actorOrgId,
           folderCommitService,
-          secretManagerDecryptor,
           tx,
           commitChanges,
           inputSecrets: inputSecretsForUpdate,
@@ -3048,14 +3049,13 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     tx: providedTx,
-    ciphers: providedCiphers,
     commitChanges,
     skipPostProcessing = false
-  }: TDeleteManySecretDTO &
-    TSecretWriteTransaction & {
-      commitChanges?: TCommitResourceChangeDTO[];
-      skipPostProcessing?: boolean;
-    }) => {
+  }: TDeleteManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -3135,9 +3135,6 @@ export const secretV2BridgeServiceFactory = ({
     };
 
     try {
-      const { decryptor: secretManagerDecryptor } =
-        providedCiphers?.secretManager ??
-        (await dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }));
       const secretsDeleted = providedTx
         ? await executeBulkDelete(providedTx)
         : await secretDAL.transaction(executeBulkDelete);
@@ -3163,6 +3160,9 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
 
+      const { decryptor: secretManagerDecryptor } = await (
+        providedTx ? dataKeyService.within(sealKnexTransaction(providedTx)) : dataKeyService
+      ).createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
       return secretsDeleted.map((el) => {
         const secretToDeleteMatch = secretsToDelete.find(
           (i) => i.key === el.key && (i.type || SecretType.Shared) === el.type
@@ -3406,17 +3406,12 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   const moveSecrets = async (dto: TMoveSecretsDTO) => {
-    const ciphers = await prepareSecretWriteCiphers({
-      dataKeyService,
-      projectId: dto.projectId,
-      orgId: dto.actorOrgId
-    });
     const result = await secretDAL.transaction((tx) =>
       fnSecretMoveInTransaction({
         ...dto,
         tx,
         permissionService,
-        ciphers,
+        dataKeyService,
         folderDAL,
         secretDAL,
         secretVersionDAL,

@@ -42,7 +42,7 @@ export type TExternalMigrationQueueFactoryDep = {
   smtpService: TSmtpService;
   queueService: TQueueServiceFactory;
 
-  projectDAL: Pick<TProjectDALFactory, "transaction" | "delete">;
+  projectDAL: Pick<TProjectDALFactory, "transaction">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
   dataKeyService: TDataKeyService;
 

@@ -1,7 +1,8 @@
 import { AxiosError } from "axios";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
+import { TCipherPairSource } from "@app/services/app-connection/app-connection-fns";
 
 import { AppConnectionCredentialRotationStatus } from "./app-connection-credential-rotation-enums";
 import {
@@ -108,7 +109,7 @@ export const encryptCredentialRotationGeneratedCredentials = async ({
   orgId: string;
   projectId: string | null | undefined;
   generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials;
-  dataKeyService: TDataKeyService;
+  dataKeyService: TCipherPairSource;
 }) => {
   const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
@@ -138,7 +139,7 @@ export const decryptCredentialRotationGeneratedCredentials = async ({
   orgId: string;
   projectId: string | null | undefined;
   encryptedGeneratedCredentials: Buffer;
-  dataKeyService: TDataKeyService;
+  dataKeyService: TCipherPairSource;
 }) => {
   const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
@@ -168,7 +169,7 @@ export const encryptStrategyConfig = async ({
   orgId: string;
   projectId: string | null | undefined;
   config: Record<string, unknown>;
-  dataKeyService: TDataKeyService;
+  dataKeyService: TCipherPairSource;
 }) => {
   const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
@@ -198,7 +199,7 @@ export const decryptStrategyConfig = async <T>({
   orgId: string;
   projectId: string | null | undefined;
   encryptedStrategyConfig: Buffer;
-  dataKeyService: TDataKeyService;
+  dataKeyService: TCipherPairSource;
 }) => {
   const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
@@ -228,7 +229,7 @@ export const encryptRotationMessage = async ({
   orgId: string;
   projectId: string | null | undefined;
   message: string;
-  dataKeyService: TDataKeyService;
+  dataKeyService: TCipherPairSource;
 }) => {
   const { encryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
@@ -258,7 +259,7 @@ export const decryptRotationMessage = async ({
   orgId: string;
   projectId: string | null | undefined;
   encryptedLastRotationMessage: Buffer;
-  dataKeyService: TDataKeyService;
+  dataKeyService: TCipherPairSource;
 }) => {
   const { decryptor } = await dataKeyService.createCipherPairWithDataKey(
     projectId
@@ -283,7 +284,7 @@ export const expandCredentialRotation = async (
   { encryptedLastRotationMessage, ...rotation }: TAppConnectionCredentialRotationRaw,
   orgId: string,
   projectId: string | null | undefined,
-  dataKeyService: TDataKeyService
+  dataKeyService: TCipherPairSource
 ): Promise<TAppConnectionCredentialRotation> => {
   let lastRotationMessage: string | null = null;
 

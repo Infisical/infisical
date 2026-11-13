@@ -10,7 +10,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "../auth/auth-type";
 import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
 import { SecretModifiedEventV1 } from "../secret-v2-bridge/secret-events";
-import { TSecretWriteCiphers } from "../secret-v2-bridge/secret-v2-bridge-types";
 import {
   ChangeType,
   CommitType,
@@ -19,6 +18,9 @@ import {
   ResourceType,
   TFolderCommitServiceFactory
 } from "./folder-commit-service";
+
+const mockSealKnexTransaction = vi.hoisted(() => vi.fn((tx: unknown) => ({ sealed: tx })));
+vi.mock("@app/domains/lib/transactions", () => ({ sealKnexTransaction: mockSealKnexTransaction }));
 
 // Mock config
 vi.mock("@app/lib/config/env", () => ({
@@ -58,7 +60,8 @@ describe("folderCommitServiceFactory", () => {
   };
 
   const mockKmsService = {
-    createCipherPairWithDataKey: vi.fn().mockResolvedValue({})
+    createCipherPairWithDataKey: vi.fn().mockResolvedValue({}),
+    within: vi.fn()
   };
 
   const mockFolderCommitChangesDAL = {
@@ -182,6 +185,8 @@ describe("folderCommitServiceFactory", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockKmsService.within.mockImplementation(() => mockKmsService);
+    mockSealKnexTransaction.mockImplementation((tx: unknown) => ({ sealed: tx }));
 
     folderCommitService = folderCommitServiceFactory({
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
@@ -284,11 +289,12 @@ describe("folderCommitServiceFactory", () => {
       expect(result).toEqual(commitData);
     });
 
-    it("should compare an updated secret with the decryptor it was given, without calling KMS Core inside the transaction", async () => {
+    it("should fetch its own decryptor on the caller's transaction instead of calling KMS Core directly", async () => {
       // Setup
       const tx = {} as Knex;
       const version = { key: "A", encryptedValue: Buffer.from("v"), skipMultilineEncoding: false, tags: [] };
       const decryptor = vi.fn(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob);
+      mockKmsService.createCipherPairWithDataKey.mockResolvedValueOnce({ decryptor });
       mockFolderDAL.findById.mockResolvedValue({ id: "folder-id", envId: "env-id" });
       mockProjectDAL.findProjectByEnvId.mockResolvedValue({ id: "project-id" });
       mockSecretVersionV2BridgeDAL.findByIdAndPreviousVersion.mockResolvedValue([version, { ...version }]);
@@ -298,40 +304,17 @@ describe("folderCommitServiceFactory", () => {
         {
           actor: { type: ActorType.PLATFORM },
           folderId: "folder-id",
-          changes: [{ type: CommitType.ADD, isUpdate: true, secretVersionId: "secret-version-1" }],
-          secretManagerDecryptor: decryptor
-        },
-        tx
-      );
-
-      // Assert
-      expect(result).toBeUndefined();
-      expect(decryptor).toHaveBeenCalled();
-      expect(mockKmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
-      expect(mockFolderCommitDAL.create).not.toHaveBeenCalled();
-    });
-
-    it("should refuse to compare an updated secret inside a transaction when no decryptor was given", async () => {
-      // Setup
-      const tx = {} as Knex;
-      const version = { key: "A", encryptedValue: Buffer.from("v"), skipMultilineEncoding: false, tags: [] };
-      mockFolderDAL.findById.mockResolvedValue({ id: "folder-id", envId: "env-id" });
-      mockProjectDAL.findProjectByEnvId.mockResolvedValue({ id: "project-id" });
-      mockSecretVersionV2BridgeDAL.findByIdAndPreviousVersion.mockResolvedValue([version, { ...version }]);
-
-      // Action
-      const result = folderCommitService.createCommit(
-        {
-          actor: { type: ActorType.PLATFORM },
-          folderId: "folder-id",
           changes: [{ type: CommitType.ADD, isUpdate: true, secretVersionId: "secret-version-1" }]
         },
         tx
       );
 
       // Assert
-      await expect(result).rejects.toThrow();
-      expect(mockKmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+      expect(result).toBeUndefined();
+      expect(mockSealKnexTransaction).toHaveBeenCalledWith(tx);
+      expect(mockKmsService.within).toHaveBeenCalledWith({ sealed: tx });
+      expect(mockKmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+      expect(decryptor).toHaveBeenCalled();
       expect(mockFolderCommitDAL.create).not.toHaveBeenCalled();
     });
 
@@ -853,11 +836,7 @@ describe("folderCommitServiceFactory", () => {
         folderId,
         projectId,
         reconstructNewFolders: false,
-        tx,
-        ciphers: {
-          secretManager: {} as TSecretWriteCiphers["secretManager"],
-          blindIndexer: {} as TSecretWriteCiphers["blindIndexer"]
-        }
+        tx
       });
 
       const calls = mockEventEmitter.emit.mock.calls as [{ type: string; data: unknown }[], unknown][];

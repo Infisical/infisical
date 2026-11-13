@@ -2,7 +2,6 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -21,7 +20,7 @@ vi.mock("../secret-scanning-v2/secret-scanning-v2-fns", () => ({
   scanSecretPolicyViolations: vi.fn().mockResolvedValue(undefined)
 }));
 
-const TX = { isTx: true } as unknown as Knex;
+const TX = { isTx: true, executionPromise: Promise.resolve() } as unknown as Knex;
 const FOLDER = { id: "folder-1", envId: "env-1" };
 const PROJECT = { id: "project-1", name: "Project", orgId: "org-1", secretDetectionIgnoreValues: [] };
 
@@ -57,6 +56,10 @@ const buildFns = ({
   const findBySecretKeys = vi.fn((_folderId: string, keys: { key: string }[]) =>
     Promise.resolve(stored.filter((secret) => keys.some((el) => el.key === secret.key)))
   );
+  const dataKeyService = {
+    createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }),
+    within: vi.fn(() => dataKeyService)
+  };
   const deps = {
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
@@ -66,7 +69,7 @@ const buildFns = ({
     },
     folderDAL: { findBySecretPath: vi.fn().mockResolvedValue(FOLDER) },
     projectDAL: { findById: vi.fn().mockResolvedValue(PROJECT) },
-    dataKeyService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }) },
+    dataKeyService,
     secretV2BridgeDAL: {
       findBySecretKeys,
       find: vi.fn(() => Promise.resolve(stored))
@@ -177,21 +180,18 @@ describe("buildSecretApprovalCommits", () => {
           { key: "B", value: "two" }
         ]
       }),
-      undefined,
-      expect.objectContaining({ encryptor })
+      undefined
     );
     expect(scanSecretPolicyViolations).toHaveBeenCalledTimes(1);
   });
 
-  test("threads the caller's transaction and cipher into every read, never calls KMS Core, and skips secret scanning", async () => {
+  test("threads the caller's transaction into every read and skips secret scanning", async () => {
     const stored = [{ id: "secret-1", key: "A", version: 2, tags: [{ id: "tag-9", slug: "old" }] }];
-    const { fns, deps, encryptor } = buildFns({ stored, tags: [{ id: "tag-9", slug: "old" }] });
-    const cipher = { encryptor, decryptor: vi.fn() } as unknown as TCipherPair;
+    const { fns, deps } = buildFns({ stored, tags: [{ id: "tag-9", slug: "old" }] });
 
     await fns.buildSecretApprovalCommits(
       input({
         trx: TX,
-        cipher,
         data: {
           [SecretOperations.Update]: [{ secretKey: "A", secretValue: "new" }],
           [SecretOperations.Delete]: [{ secretKey: "A" }]
@@ -201,13 +201,14 @@ describe("buildSecretApprovalCommits", () => {
 
     expect(scanSecretPolicyViolations).not.toHaveBeenCalled();
     expect(deps.folderDAL.findBySecretPath).toHaveBeenCalledWith("project-1", "dev", "/", TX);
+    expect(deps.dataKeyService.within).toHaveBeenCalledTimes(1);
+    expect(deps.dataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
     expect(deps.projectDAL.findById).toHaveBeenCalledWith("project-1", TX);
     expect(deps.secretV2BridgeDAL.findBySecretKeys).toHaveBeenCalledWith("folder-1", expect.anything(), TX);
     expect(deps.secretV2BridgeDAL.find).toHaveBeenCalledWith(expect.anything(), { tx: TX });
     expect(deps.secretVersionV2BridgeDAL.findLatestVersionMany).toHaveBeenCalledWith("folder-1", ["secret-1"], TX);
     expect(deps.secretTagDAL.findManyTagsById).toHaveBeenCalledWith("project-1", ["tag-9"], TX);
-    expect(deps.secretValidationRuleService.validateSecrets).toHaveBeenCalledWith(expect.anything(), TX, cipher);
-    expect(deps.dataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(deps.secretValidationRuleService.validateSecrets).toHaveBeenCalledWith(expect.anything(), TX);
   });
 
   test("rejects a create whose key already exists", async () => {

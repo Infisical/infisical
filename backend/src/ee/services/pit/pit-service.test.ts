@@ -1,6 +1,5 @@
 import { vi } from "vitest";
 
-import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { ChangeType, ResourceType } from "@app/services/folder-commit/folder-commit-service";
@@ -140,8 +139,7 @@ describe("processNewCommitRaw", () => {
       secretV2BridgeService: {
         createManySecret: vi.fn().mockResolvedValue([]),
         updateManySecret: vi.fn().mockResolvedValue([])
-      },
-      dataKeyService: new FakeKmsCore().dataKeyService
+      }
     };
     const service = pitServiceFactory(deps as unknown as Parameters<typeof pitServiceFactory>[0]);
     const run = (secrets: object) =>

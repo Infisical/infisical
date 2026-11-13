@@ -342,28 +342,6 @@ export const projectServiceFactory = ({
     // Before the transaction: a plan cache miss calls the License Server.
     const plan = await licenseService.getPlan(organization.id);
 
-    // Validated before the transaction: KMS Core is never called inside one.
-    if (kmsKeyId) {
-      if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
-        throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
-      }
-
-      const kms = await kmsKeyService.getKmsById(kmsKeyId);
-
-      if (kms.orgId !== organization.id) {
-        throw new ForbiddenRequestError({
-          message: "KMS does not belong in the organization"
-        });
-      }
-
-      // an internal key here belongs to another project or to the org
-      if (!kms.isExternal) {
-        throw new BadRequestError({
-          message: "Only an external KMS key can be assigned to a project"
-        });
-      }
-    }
-
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
@@ -389,6 +367,27 @@ export const projectServiceFactory = ({
         if (existingSecretScanningProject) {
           throw new BadRequestError({
             message: "Secret Scanning is limited to one project per organization at this time."
+          });
+        }
+      }
+
+      if (kmsKeyId) {
+        if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
+          throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
+        }
+
+        const kms = await kmsKeyService.within(sealKnexTransaction(tx)).getKmsById(kmsKeyId);
+
+        if (kms.orgId !== organization.id) {
+          throw new ForbiddenRequestError({
+            message: "KMS does not belong in the organization"
+          });
+        }
+
+        // an internal key here belongs to another project or to the org
+        if (!kms.isExternal) {
+          throw new BadRequestError({
+            message: "Only an external KMS key can be assigned to a project"
           });
         }
       }

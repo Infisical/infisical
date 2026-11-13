@@ -2,7 +2,7 @@ import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
-import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
+import { TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
@@ -21,11 +21,7 @@ import {
 } from "@app/services/secret/secret-types";
 
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
-import {
-  TCommitResourceChangeDTO,
-  TFolderCommitServiceFactory,
-  TSecretDecryptor
-} from "../folder-commit/folder-commit-service";
+import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -263,8 +259,6 @@ export type TFnSecretBulkUpdate = {
   };
   tx?: Knex;
   commitChanges?: TCommitResourceChangeDTO[];
-  // The commit compares updated secret versions; fetched before the caller's transaction.
-  secretManagerDecryptor: TSecretDecryptor;
 };
 
 export type TFnSecretBulkDelete = {
@@ -293,11 +287,6 @@ export type TSecretWriteCiphers = {
   blindIndexer: TSecretBlindIndexer;
 };
 
-// A caller that runs a secret write inside its own transaction fetches the ciphers before opening it.
-export type TSecretWriteTransaction =
-  | { tx: Knex; ciphers: TSecretWriteCiphers }
-  | { tx?: undefined; ciphers?: undefined };
-
 // performs the two-step move (create/update at destination + delete at source) inside the caller-supplied
 // transaction. does no snapshot/sync/cache-invalidation — the caller runs those after the tx commits.
 export type TFnSecretMove = {
@@ -313,8 +302,7 @@ export type TFnSecretMove = {
   actorOrgId: string;
   permission: MongoAbility<ProjectPermissionSet>;
   tx: Knex;
-  // Fetched before the caller opens its transaction: KMS Core is never called inside one.
-  ciphers: TSecretWriteCiphers;
+  dataKeyService: TDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: Pick<
     TSecretV2BridgeDALFactory,

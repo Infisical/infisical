@@ -24,7 +24,7 @@ import { TSecretVersionV2TagDALFactory } from "../../secret-v2-bridge/secret-ver
 import { InfisicalImportData, TEnvKeyExportJSON, TImportInfisicalDataCreate } from "../external-migration-types";
 
 export type TImportDataIntoInfisicalDTO = {
-  projectDAL: Pick<TProjectDALFactory, "transaction" | "delete">;
+  projectDAL: Pick<TProjectDALFactory, "transaction">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
   dataKeyService: TDataKeyService;
 

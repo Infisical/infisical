@@ -2,7 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { KmsDataKey, TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretValidationRuleActions,
@@ -106,8 +107,11 @@ export const secretValidationRuleServiceFactory = ({
     }
   };
 
-  const $getCipher = (projectId: string) =>
-    dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  const $getCipher = (projectId: string, tx?: Knex) =>
+    (tx ? dataKeyService.within(sealKnexTransaction(tx)) : dataKeyService).createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
   // Listed rather than spread so `encryptedInputs` can never reach a response.
   const $toRecord = (rule: TSecretValidationRuleWithEnv, config: TSecretValidationRuleConfig) =>
@@ -479,11 +483,9 @@ export const secretValidationRuleServiceFactory = ({
     return duplicates;
   };
 
-  // A caller validating inside its own transaction passes the project cipher it fetched before opening it.
   const validateSecrets = async (
     { projectId, environment, envId, secretPath, secrets, excludedSecretIds }: TValidateSecretsDTO,
-    tx?: Knex,
-    cipher?: TCipherPair
+    tx?: Knex
   ) => {
     if (!secrets.length) return;
 
@@ -494,7 +496,7 @@ export const secretValidationRuleServiceFactory = ({
     const rulesInScope = findRulesCoveringScope(rules, { envId, secretPath });
     if (!rulesInScope.length) return;
 
-    const { decryptor, generateSecretBlindIndex } = cipher ?? (await $getCipher(projectId));
+    const { decryptor, generateSecretBlindIndex } = await $getCipher(projectId, tx);
 
     const coveringRules = rulesInScope.map((rule) => ({
       name: rule.name,

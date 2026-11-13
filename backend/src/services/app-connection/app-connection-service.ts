@@ -1,6 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
@@ -686,58 +688,28 @@ export const appConnectionServiceFactory = ({
       validatedCredentials = await runValidation(gatewayId);
     }
 
-    const shouldCreateRotation = Boolean(isAutoRotationEnabled && rotation);
-
-    // A rotation issues credentials at the provider before the connection is written, so a name that is already
-    // taken has to be refused first rather than after the provider has changed anything.
-    if (shouldCreateRotation) {
-      const sameName = await appConnectionDAL.find({ orgId: actor.orgId, name: params.name });
-      if (sameName.some((existing) => (existing.projectId ?? null) === (projectId ?? null))) {
-        throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
-      }
-    }
-
     // Set only once the transaction that wrote the rotation has committed.
     let revokeReplacedCredential: (() => Promise<void>) | undefined;
 
     try {
-      // KMS Core and the rotation provider are called before the transaction opens: neither may hold a connection
-      // while this transaction does.
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
-        const [encryptedCredentials, encryptedConfiguration] = await Promise.all([
-          encryptAppConnectionCredentials({
+        const created = await appConnectionDAL.transaction(async (tx) => {
+          const txDataKeyService = dataKeyService.within(sealKnexTransaction(tx));
+
+          const encryptedCredentials = await encryptAppConnectionCredentials({
             credentials: connectionCredentials,
             orgId: actor.orgId,
-            dataKeyService,
+            dataKeyService: txDataKeyService,
             projectId
-          }),
-          encryptAppConnectionConfiguration({
+          });
+
+          const encryptedConfiguration = await encryptAppConnectionConfiguration({
             configuration,
             orgId: actor.orgId,
-            dataKeyService,
+            dataKeyService: txDataKeyService,
             projectId
-          })
-        ]);
+          });
 
-        const preparedRotation =
-          shouldCreateRotation && rotation
-            ? await appConnectionCredentialRotationService.prepareRotation({
-                connection: {
-                  app,
-                  method,
-                  orgId: actor.orgId,
-                  projectId: projectId ?? null,
-                  name: params.name,
-                  gatewayId: gatewayPoolId ? null : (gatewayId ?? null),
-                  gatewayPoolId: gatewayPoolId ?? null
-                },
-                credentials: connectionCredentials as Record<string, unknown>,
-                rotationInterval: rotation.rotationInterval,
-                rotateAtUtc: rotation.rotateAtUtc
-              })
-            : undefined;
-
-        const created = await appConnectionDAL.transaction(async (tx) => {
           const appConnection = await appConnectionDAL.create(
             {
               orgId: actor.orgId,
@@ -755,8 +727,15 @@ export const appConnectionServiceFactory = ({
             tx
           );
 
-          if (preparedRotation) {
-            await appConnectionCredentialRotationService.persistRotation(appConnection.id, preparedRotation, tx);
+          if (isAutoRotationEnabled && rotation) {
+            const createdRotation = await appConnectionCredentialRotationService.createRotation(
+              {
+                connectionId: appConnection.id,
+                ...rotation
+              },
+              tx
+            );
+            revokeReplacedCredential = createdRotation.postCommitCallback;
           }
 
           // Which GitHub App the connection references is mirrored from the encrypted credentials
@@ -775,7 +754,6 @@ export const appConnectionServiceFactory = ({
           return appConnection;
         });
 
-        revokeReplacedCredential = preparedRotation?.postCommitCallback;
         return created;
       };
 
@@ -1051,6 +1029,45 @@ export const appConnectionServiceFactory = ({
     }
 
     try {
+      // Set only once the transaction that wrote the rotation has committed.
+      let revokeReplacedCredential: (() => Promise<void>) | undefined;
+
+      const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx: Knex) => {
+        const txDataKeyService = dataKeyService.within(sealKnexTransaction(tx));
+
+        const encryptedCredentials = connectionCredentials
+          ? await encryptAppConnectionCredentials({
+              credentials: connectionCredentials,
+              orgId: actor.orgId,
+              dataKeyService: txDataKeyService,
+              projectId: appConnection.projectId
+            })
+          : undefined;
+
+        const encryptedConfiguration =
+          configuration !== undefined
+            ? await encryptAppConnectionConfiguration({
+                configuration,
+                orgId: actor.orgId,
+                dataKeyService: txDataKeyService,
+                projectId: appConnection.projectId
+              })
+            : undefined;
+
+        return appConnectionDAL.updateById(
+          connectionId,
+          {
+            orgId: actor.orgId,
+            encryptedCredentials,
+            ...(encryptedConfiguration !== undefined && { encryptedConfiguration }),
+            ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
+            ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
+            ...params
+          },
+          tx
+        );
+      };
+
       // Check if the connection has an existing rotation
       const existingRotation = await appConnectionCredentialRotationService.getRotationByConnectionId(connectionId);
 
@@ -1060,181 +1077,104 @@ export const appConnectionServiceFactory = ({
           throw new BadRequestError({ message: "Credentials required to transition to platform managed credentials" });
       }
 
-      const newRotation = !existingRotation && isAutoRotationEnabled && rotation ? rotation : undefined;
-      if (newRotation) {
-        if (!newRotation.rotationInterval || !newRotation.rotateAtUtc) {
-          throw new BadRequestError({
-            message: "Rotation interval and schedule are required when enabling rotation"
-          });
+      const updatedConnection = await appConnectionDAL.transaction(async (tx) => {
+        if (credentials && existingRotation) {
+          // Credential change with active rotation: tear down old rotation first
+          await appConnectionCredentialRotationService.updateRotation(
+            { connectionId, isAutoRotationEnabled: false },
+            tx
+          );
         }
 
-        // The new rotation issues credentials at the provider before the update is written, so a rename onto a
-        // taken name has to be refused first rather than after the provider has changed anything.
-        if (params.name && params.name !== appConnection.name) {
-          const sameName = await appConnectionDAL.find({ orgId: appConnection.orgId, name: params.name });
-          if (sameName.some((existing) => (existing.projectId ?? null) === (appConnection.projectId ?? null))) {
-            throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
-          }
-        }
-      }
-
-      // Set only once the transaction that wrote the rotation has committed.
-      let revokeReplacedCredential: (() => Promise<void>) | undefined;
-
-      // KMS Core and the rotation provider are called before the transaction opens: neither may hold a connection
-      // while this transaction does.
-      const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined) => {
-        const [encryptedCredentials, encryptedConfiguration] = await Promise.all([
-          connectionCredentials
-            ? encryptAppConnectionCredentials({
-                credentials: connectionCredentials,
-                orgId: actor.orgId,
-                dataKeyService,
-                projectId: appConnection.projectId
-              })
-            : undefined,
-          configuration !== undefined
-            ? encryptAppConnectionConfiguration({
-                configuration,
-                orgId: actor.orgId,
-                dataKeyService,
-                projectId: appConnection.projectId
-              })
-            : undefined
-        ]);
-
-        const preparedRotation =
-          newRotation?.rotationInterval && newRotation.rotateAtUtc
-            ? await appConnectionCredentialRotationService.prepareRotation({
-                connection: {
-                  app: appConnection.app,
-                  method: appConnection.method,
-                  orgId: appConnection.orgId,
-                  projectId: appConnection.projectId,
-                  name: params.name ?? appConnection.name,
-                  gatewayId: effectiveGatewayIdForUpdate ?? null,
-                  gatewayPoolId: effectiveGatewayPoolIdForUpdate ?? null
-                },
-                credentials: (connectionCredentials ??
-                  (await decryptAppConnectionCredentials({
-                    orgId: appConnection.orgId,
-                    projectId: appConnection.projectId,
-                    encryptedCredentials: appConnection.encryptedCredentials,
-                    dataKeyService
-                  }))) as Record<string, unknown>,
-                rotationInterval: newRotation.rotationInterval,
-                rotateAtUtc: newRotation.rotateAtUtc
-              })
-            : undefined;
-
-        const updated = await appConnectionDAL.transaction(async (tx) => {
-          if (credentials && existingRotation) {
-            // Credential change with active rotation: tear down old rotation first
-            await appConnectionCredentialRotationService.updateRotation(
-              { connectionId, isAutoRotationEnabled: false },
-              tx
-            );
-          }
-
-          const connection = await appConnectionDAL.updateById(
-            connectionId,
+        let connection: TAppConnectionRaw;
+        if (params.isPlatformManagedCredentials) {
+          connection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
             {
+              app,
               orgId: actor.orgId,
-              encryptedCredentials,
-              ...(encryptedConfiguration !== undefined && { encryptedConfiguration }),
-              ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
-              ...(gatewayPoolIdValue !== undefined && { gatewayPoolId: gatewayPoolIdValue }),
-              ...params
+              credentials: updatedCredentials,
+              method,
+              gatewayId: validationGatewayIdForUpdate
+            } as TAppConnectionConfig,
+            (platformCredentials) => updateConnection(platformCredentials, tx),
+            gatewayV2Service
+          );
+        } else {
+          connection = await updateConnection(updatedCredentials, tx);
+        }
+
+        // Keep the github_app_connections link in sync with the (re-validated) credentials: see
+        // the matching block in createAppConnection.
+        if (updatedCredentials && app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+          await gitHubAppDAL.upsertConnectionLink(
+            {
+              appConnectionId: connectionId,
+              githubAppId: (updatedCredentials as { gitHubAppId?: string | null }).gitHubAppId ?? null
             },
             tx
           );
+        }
 
-          // Keep the github_app_connections link in sync with the (re-validated) credentials: see
-          // the matching block in createAppConnection.
-          if (updatedCredentials && app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
-            await gitHubAppDAL.upsertConnectionLink(
-              {
-                appConnectionId: connectionId,
-                githubAppId: (updatedCredentials as { gitHubAppId?: string | null }).gitHubAppId ?? null
-              },
-              tx
-            );
-          }
-
-          // Handle rotation updates
-          if (isAutoRotationEnabled !== undefined || rotation) {
-            if (isAutoRotationEnabled === false) {
-              // Disabling rotation: preserve config but stop scheduling
-              if (!credentials && existingRotation) {
-                await appConnectionCredentialRotationService.updateRotation(
-                  { connectionId, isAutoRotationEnabled: false },
-                  tx
-                );
-              }
-            } else if (credentials && existingRotation) {
-              // Credentials were changed and rotation was torn down above: re-enable with updated config
+        // Handle rotation updates
+        if (isAutoRotationEnabled !== undefined || rotation) {
+          if (isAutoRotationEnabled === false) {
+            // Disabling rotation: preserve config but stop scheduling
+            if (!credentials && existingRotation) {
               await appConnectionCredentialRotationService.updateRotation(
-                {
-                  connectionId,
-                  isAutoRotationEnabled: true,
-                  rotationInterval: rotation?.rotationInterval ?? existingRotation.rotationInterval,
-                  rotateAtUtc:
-                    rotation?.rotateAtUtc ?? (existingRotation.rotateAtUtc as { hours: number; minutes: number })
-                },
+                { connectionId, isAutoRotationEnabled: false },
                 tx
               );
-            } else if (existingRotation && isAutoRotationEnabled === true) {
-              // Re-enabling rotation on a connection that was previously disabled
-              await appConnectionCredentialRotationService.updateRotation(
-                { connectionId, isAutoRotationEnabled: true, ...rotation },
-                tx
-              );
-            } else if (preparedRotation) {
-              // Enabling rotation on a connection that never had it
-              await appConnectionCredentialRotationService.persistRotation(connectionId, preparedRotation, tx);
-              await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true }, tx);
-            } else if (existingRotation && rotation) {
-              // Updating schedule/interval on existing rotation
-              await appConnectionCredentialRotationService.updateRotation({ connectionId, ...rotation }, tx);
             }
           } else if (credentials && existingRotation) {
-            // Credentials changed but no rotation fields provided: re-enable with previous config
+            // Credentials were changed and rotation was torn down above: re-enable with updated config
             await appConnectionCredentialRotationService.updateRotation(
               {
                 connectionId,
                 isAutoRotationEnabled: true,
-                rotationInterval: existingRotation.rotationInterval,
-                rotateAtUtc: existingRotation.rotateAtUtc as { hours: number; minutes: number }
+                rotationInterval: rotation?.rotationInterval ?? existingRotation.rotationInterval,
+                rotateAtUtc:
+                  rotation?.rotateAtUtc ?? (existingRotation.rotateAtUtc as { hours: number; minutes: number })
               },
               tx
             );
+          } else if (existingRotation && isAutoRotationEnabled === true) {
+            // Re-enabling rotation on a connection that was previously disabled
+            await appConnectionCredentialRotationService.updateRotation(
+              { connectionId, isAutoRotationEnabled: true, ...rotation },
+              tx
+            );
+          } else if (!existingRotation && isAutoRotationEnabled && rotation) {
+            // Enabling rotation on a connection that never had it
+            if (!rotation.rotationInterval || !rotation.rotateAtUtc) {
+              throw new BadRequestError({
+                message: "Rotation interval and schedule are required when enabling rotation"
+              });
+            }
+            const created = await appConnectionCredentialRotationService.createRotation(
+              { connectionId, rotationInterval: rotation.rotationInterval, rotateAtUtc: rotation.rotateAtUtc },
+              tx
+            );
+            revokeReplacedCredential = created.postCommitCallback;
+            await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: true }, tx);
+          } else if (existingRotation && rotation) {
+            // Updating schedule/interval on existing rotation
+            await appConnectionCredentialRotationService.updateRotation({ connectionId, ...rotation }, tx);
           }
+        } else if (credentials && existingRotation) {
+          // Credentials changed but no rotation fields provided: re-enable with previous config
+          await appConnectionCredentialRotationService.updateRotation(
+            {
+              connectionId,
+              isAutoRotationEnabled: true,
+              rotationInterval: existingRotation.rotationInterval,
+              rotateAtUtc: existingRotation.rotateAtUtc as { hours: number; minutes: number }
+            },
+            tx
+          );
+        }
 
-          return connection;
-        });
-
-        revokeReplacedCredential = preparedRotation?.postCommitCallback;
-        return updated;
-      };
-
-      let updatedConnection: TAppConnectionRaw;
-      if (params.isPlatformManagedCredentials) {
-        // The remote credential change wraps the update, as on create: the remote side commits only after the
-        // connection is stored.
-        updatedConnection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
-          {
-            app,
-            orgId: actor.orgId,
-            credentials: updatedCredentials,
-            method,
-            gatewayId: validationGatewayIdForUpdate
-          } as TAppConnectionConfig,
-          (platformCredentials) => updateConnection(platformCredentials),
-          gatewayV2Service
-        );
-      } else {
-        updatedConnection = await updateConnection(updatedCredentials);
-      }
+        return connection;
+      });
 
       if (revokeReplacedCredential) await revokeReplacedCredential();
 

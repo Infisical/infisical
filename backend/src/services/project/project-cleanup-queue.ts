@@ -1,4 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -204,14 +205,16 @@ export const projectCleanupQueueFactory = ({
 
         const delProject = await projectDAL.deleteById(projectId, tx);
         // a racing worker may have hard-deleted it after our re-read but before we acquired the row
-        if (!delProject) return null;
+        if (!delProject) return false;
+
+        // KMS Core skips a key that another project (including one pending deletion) still references
+        const kmsKeyIds = [delProject.kmsCertificateKeyId, delProject.kmsSecretManagerKeyId].filter(
+          (id): id is string => Boolean(id)
+        );
+        await dataKeyService.within(sealKnexTransaction(tx)).deleteProjectKeys({ orgId: delProject.orgId, kmsKeyIds });
 
         if (ghostUser) await userDAL.deleteById(ghostUser.id, tx);
-        return {
-          kmsKeyIds: [delProject.kmsCertificateKeyId, delProject.kmsSecretManagerKeyId].filter((id): id is string =>
-            Boolean(id)
-          )
-        };
+        return true;
       });
 
       if (!deleted) {
@@ -221,12 +224,6 @@ export const projectCleanupQueueFactory = ({
         return;
       }
 
-      // After the commit: KMS Core deletes the reserved keys the project owned once nothing else references them.
-      await dataKeyService
-        .deleteProjectKeys({ orgId: project.orgId, kmsKeyIds: deleted.kmsKeyIds })
-        .catch((error) =>
-          logger.error(error, `project-hard-delete: failed to delete the project's KMS keys [projectId=${projectId}]`)
-        );
       await releaseCaKeys();
       await licenseService.invalidatePlan(project.orgId);
       await auditLogService.createAuditLog({

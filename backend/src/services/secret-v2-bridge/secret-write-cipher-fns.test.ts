@@ -1,9 +1,11 @@
+import { Knex } from "knex";
 import { describe, expect, it, vi } from "vitest";
 
 import { KmsDataKey, ReadFrom } from "@app/domains/platform/kms-core/ce/module";
 
 import { prepareSecretWriteCiphers } from "./secret-write-cipher-fns";
 
+const TX = { isTx: true, executionPromise: Promise.resolve() } as unknown as Knex;
 const PROJECT_ID = "6c1b0e3a-0e3a-4c1b-8e3a-0e3a4c1b8e3a";
 const ORG_ID = "9d2c1f4b-1f4b-4d2c-9f4b-1f4b4d2c9f4b";
 
@@ -56,5 +58,29 @@ describe("prepareSecretWriteCiphers", () => {
       { type: KmsDataKey.SecretManager, projectId: PROJECT_ID },
       readOptions
     );
+  });
+
+  it("should fetch both ciphers on the caller's transaction instead of the connection pool", async () => {
+    // Setup
+    const dataKeyService = makeDataKeyService();
+    const joined = makeDataKeyService();
+    const within = vi.fn(() => joined);
+
+    // Action
+    const ciphers = await prepareSecretWriteCiphers({
+      dataKeyService: { ...dataKeyService, within } as never,
+      projectId: PROJECT_ID,
+      orgId: ORG_ID,
+      tx: TX
+    });
+
+    // Assert
+    expect(within).toHaveBeenCalledTimes(1);
+    expect(joined.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
+    expect(dataKeyService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+    await expect(ciphers.blindIndexer.generateBlindIndexes(Buffer.from("v"))).resolves.toEqual({
+      secretValueBlindIndex: "project:v",
+      secretValueOrgBlindIndex: "org:v"
+    });
   });
 });

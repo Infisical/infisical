@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TSecretFolders } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
@@ -27,7 +26,6 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { SecretOperations, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
-import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";
@@ -58,7 +56,6 @@ type TPitServiceFactoryDep = {
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   folderCommitDAL: Pick<TFolderCommitDALFactory, "transaction">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
-  dataKeyService: TDataKeyService;
 };
 
 export type TPitServiceFactory = ReturnType<typeof pitServiceFactory>;
@@ -75,8 +72,7 @@ export const pitServiceFactory = ({
   projectDAL,
   secretV2BridgeService,
   folderCommitDAL,
-  secretQueueService,
-  dataKeyService
+  secretQueueService
 }: TPitServiceFactoryDep) => {
   const getCommitsCount = async ({
     actor,
@@ -715,8 +711,6 @@ export const pitServiceFactory = ({
     let approvalSideEffects: TCreateSecretApprovalSideEffectsDTO | undefined;
     let environmentName = environment;
     const deferredReferenceSyncs: Parameters<TSecretQueueFactory["syncSecrets"]>[0][] = [];
-    // Fetched before the transaction: KMS Core is never called inside one.
-    const ciphers = await prepareSecretWriteCiphers({ dataKeyService, projectId, orgId: actorOrgId });
     const response = await folderCommitDAL.transaction(async (trx) => {
       const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
       if (!targetFolder)
@@ -849,8 +843,7 @@ export const pitServiceFactory = ({
               },
               message,
               folderId: targetFolder.id,
-              changes: commitChanges,
-              secretManagerDecryptor: ciphers.secretManager.decryptor
+              changes: commitChanges
             },
             trx
           );
@@ -900,7 +893,6 @@ export const pitServiceFactory = ({
                 })) ?? []
             },
             trx,
-            cipher: ciphers.secretManager,
             skipPostProcessing: true
           });
           approvalSideEffects = {
@@ -955,7 +947,6 @@ export const pitServiceFactory = ({
           actorId,
           secrets: changes.secrets?.create ?? [],
           tx: trx,
-          ciphers,
           skipPostProcessing: true,
           commitChanges
         });
@@ -991,7 +982,6 @@ export const pitServiceFactory = ({
           secrets: changes.secrets?.update ?? [],
           mode: SecretUpdateMode.FailOnNotFound,
           tx: trx,
-          ciphers,
           skipPostProcessing: true,
           deferredReferenceSyncs,
           commitChanges
@@ -1027,7 +1017,6 @@ export const pitServiceFactory = ({
           actorId,
           secrets: changes.secrets?.delete ?? [],
           tx: trx,
-          ciphers,
           skipPostProcessing: true,
           commitChanges
         });
@@ -1056,8 +1045,7 @@ export const pitServiceFactory = ({
             },
             message,
             folderId: targetFolder.id,
-            changes: commitChanges,
-            secretManagerDecryptor: ciphers.secretManager.decryptor
+            changes: commitChanges
           },
           trx
         );

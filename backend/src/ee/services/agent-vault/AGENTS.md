@@ -8,12 +8,12 @@ would get something wrong from the code alone; cut anything the code already sta
 attaches the real credential on the way out. What an agent may reach lives in a **session** row on our side,
 never in anything the agent holds.
 
-| Noun | What it is |
-| --- | --- |
-| **Access bundle** | A named set of the project's services and skills. The unit you grant |
-| **Service** | One host pattern set (or database or SSH server) plus its credential, defined once per project and linked to any number of bundles |
-| **Session** | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token *is* the session |
-| **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
+| Noun              | What it is                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Access bundle** | A named set of the project's services and skills. The unit you grant                                                               |
+| **Service**       | One host pattern set (or database or SSH server) plus its credential, defined once per project and linked to any number of bundles |
+| **Session**       | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token _is_ the session     |
+| **Proxy**         | One egress identity and its CA. Any number of processes can run it from its proxy token                                            |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
@@ -425,8 +425,8 @@ The proxy then runs PAM's protocol handler, which logs in as the service's accou
 `agent-vault-host-pattern-fns.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
-- Paths are rejected *in a host pattern*; `allowedPathPrefixes` is a separate filter that never decodes.
-  A filter is judged by what it *allows*, so the refusals are the load-bearing half. The grammar is an
+- Paths are rejected _in a host pattern_; `allowedPathPrefixes` is a separate filter that never decodes.
+  A filter is judged by what it _allows_, so the refusals are the load-bearing half. The grammar is an
   allowlist because a prefix is compared against the escaped path: one carrying anything Go's encoder
   rewrites could never match. `agent-vault-path-prefix-schemas.ts` is the grammar of record, `policy.go` the match.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
@@ -1007,7 +1007,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
     `infisical_unreachable`, `proxy_revoked` and `session_unresolvable` answers as the proxy's
     (`agentvault.IsInfisicalForwardRefusal`), and its
     `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`). The session endpoints pass Infisical's
-  `Retry-After` on, which `run`'s retries honor.
+    `Retry-After` on, which `run`'s retries honor.
 - **Every forwarded or refused response carries `X-Agent-Vault-Decision`** (and `X-Agent-Vault-Service` when a
   service matched), set after the upstream's headers so an upstream can't forge them. The proxy's own errors are
   JSON with an `error` code and a `hint`; `message` keeps the text the proxy always sent.
