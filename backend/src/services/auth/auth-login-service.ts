@@ -33,7 +33,7 @@ import {
   recordAuthAttemptMetric,
   recordLegacyRootKeyUsageMetric
 } from "@app/lib/telemetry/metrics";
-import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -859,6 +859,8 @@ export const authLoginServiceFactory = ({
     const aliasType = authMethodToAliasType(authMethod);
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
+    // A disposable address never creates or renames an account, and verifies only an account already on it.
+    const isDisposableAddress = await isDisposableEmail(sanitizedEmail);
 
     // Step 1: Look up user by provider alias (stable, immutable ID)
     let user: TUsers | undefined;
@@ -928,6 +930,12 @@ export const authLoginServiceFactory = ({
             name: "Oauth 2 login"
           });
       }
+
+      if (isDisposableAddress)
+        throw new BadRequestError({
+          message: `Email address '${sanitizedEmail}' is from a disposable email provider. Sign in with an account that uses a different email address.`,
+          name: "Oauth 2 login"
+        });
 
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
@@ -1044,7 +1052,7 @@ export const authLoginServiceFactory = ({
       // letting the stale-alias guard below decline promotion and fall through to the email-
       // verification flow (no session). With existingAlias set, isTrustedForAccount requires the
       // alias to be non-stale AND already verified or provider-verified in this login.
-      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount) {
+      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount && !isDisposableAddress) {
         const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
@@ -1107,7 +1115,7 @@ export const authLoginServiceFactory = ({
     // an unverified alias: an attacker can plant an unverified alias (email-fallback backfill) for the
     // victim's email under their own externalId, and inheriting the flag on a later login would mint a
     // session as the victim. An already-verified alias stays trusted via existingAlias.isEmailVerified.
-    const isAliasVerified = isEmailVerifiedByProvider;
+    const isAliasVerified = isEmailVerifiedByProvider && (!isDisposableAddress || user.email === sanitizedEmail);
     // Self-healing backfill: create alias for existing users found by email fallback
     if (isNewAlias) {
       try {
