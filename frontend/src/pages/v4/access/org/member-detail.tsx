@@ -53,6 +53,7 @@ import type { OrgUser } from "@app/hooks/api/users/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useV4Adapter } from "../../data/adapters";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -446,10 +447,11 @@ export const OrgMemberDetail = () => {
                     ["Name", name ?? <Dash key="name" />],
                     [
                       "ID",
-                      <Value key="id" mono>
-                        {user.id}
-                        <CopyButton value={user.id} label="Copy user ID to clipboard" />
-                      </Value>
+                      <TruncatedValue
+                        key="id"
+                        value={user.id}
+                        copyLabel="Copy user ID to clipboard"
+                      />
                     ],
                     [
                       "Email",

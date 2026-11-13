@@ -225,16 +225,19 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
           />
         }
         actions={
-          <Tabs
-            variant="segmented"
-            label="Connection scope"
-            value={scope}
-            onChange={setScope}
-            tabs={[
-              { value: "org", label: "Organization", count: orgRows.length },
-              { value: "all", label: "All", count: rows.length }
-            ]}
-          />
+          <>
+            <Tabs
+              variant="segmented"
+              label="Connection scope"
+              value={scope}
+              onChange={setScope}
+              tabs={[
+                { value: "org", label: "Organization", count: orgRows.length },
+                { value: "all", label: "All", count: rows.length }
+              ]}
+            />
+            <NewConnection />
+          </>
         }
       />
       <DataTable
@@ -354,7 +357,6 @@ export const IntegrationsPage = () => {
       <PageHeader
         title="Integrations"
         description="Connect external services once and use them across this organization."
-        actions={<NewConnection />}
         tabs={
           <Tabs
             label="Integration sections"

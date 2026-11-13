@@ -269,6 +269,9 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
   const hasSecrets = !projectType || !productsWithoutSecrets.has(projectType);
   const actorType = value("actor-type")[0] as ActorType | undefined;
   const [pickedActorType, pickedActor] = (value("actor")[0] ?? "").split(":");
+  const eventTypes = (projectType && projectToEventsMap[projectType]) || Object.values(EventType);
+  const pickedEvents = new Set(value("event"));
+  const everyEvent = eventTypes.every((type) => pickedEvents.has(type));
 
   const users = access.useProjectUsers(projectId ?? "", false, [], { enabled: Boolean(projectId) });
   const identities = access.useProjectIdentities(
@@ -293,7 +296,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
     startDate: new Date(active.from),
     endDate: new Date(active.to),
     limit: PAGE_SIZE,
-    eventType: value("event") as EventType[],
+    eventType: everyEvent ? [] : (value("event") as EventType[]),
     eventClass: value("class") as AuditLogEventClass[],
     actorType: actorType ?? ((pickedActorType || undefined) as ActorType | undefined),
     actor: pickedActor || undefined,
@@ -309,7 +312,6 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
   const rows = pages.flat();
   const canLoadMore = hasNextPage && pages[pages.length - 1]?.length === PAGE_SIZE;
   const filtered = filters.some((filter) => filter.values.length > 0);
-  const productEvents = projectType ? projectToEventsMap[projectType] : undefined;
 
   const fields: FilterBarField[] = [
     {
@@ -317,7 +319,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
       label: "Event type",
       type: "multi-select",
       searchable: true,
-      options: (productEvents ?? Object.values(EventType)).map((type) => ({
+      options: eventTypes.map((type) => ({
         value: type,
         label: eventToNameMap[type] ?? type
       }))
