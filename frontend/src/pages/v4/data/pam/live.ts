@@ -1,4 +1,7 @@
+import { useParams } from "@tanstack/react-router";
+
 import {
+  usePamAccountActions,
   useAddPamProductGroupMember,
   useAddPamProductIdentityMember,
   useAddPamProductUserMember,
@@ -8,17 +11,22 @@ import {
   useListPamFolders,
   useListPamPendingMyApproval,
   useListPamProductIdentities,
+  useListPamSessions,
   useRemovePamProductGroupMember,
   useRemovePamProductIdentityMember,
   useRemovePamProductUserMember,
   useReviewPamAccessRequest,
   useRevokePamAccessRequest,
+  useTerminatePamSession,
   useUpdatePamProductGroupMember,
   useUpdatePamProductIdentityMember,
   useUpdatePamProductUserMember
 } from "@app/hooks/api/pam";
 
 import type { PamAdapter } from "./contract";
+
+// The server resolves the PAM project from the org, so main's projectId argument only keys the cache.
+const useOrgId = () => useParams({ from: "/v4/organizations/$orgId" }).orgId;
 
 export const pamLive: PamAdapter = {
   useAccessCapabilities: useGetPamAccessCapabilities,
@@ -37,5 +45,15 @@ export const pamLive: PamAdapter = {
   useRemoveProductIdentityMember: useRemovePamProductIdentityMember,
   usePendingMyApproval: () => useListPamPendingMyApproval(),
   useReviewAccessRequest: useReviewPamAccessRequest,
-  useRevokeAccessRequest: useRevokePamAccessRequest
+  useRevokeAccessRequest: useRevokePamAccessRequest,
+  useSessions: (params) => useListPamSessions(useOrgId(), params),
+  useTerminateSession: () => {
+    const orgId = useOrgId();
+    const terminate = useTerminatePamSession();
+    return {
+      isPending: terminate.isPending,
+      mutateAsync: ({ sessionId }) => terminate.mutateAsync({ sessionId, projectId: orgId })
+    };
+  },
+  useAccountActions: usePamAccountActions
 };

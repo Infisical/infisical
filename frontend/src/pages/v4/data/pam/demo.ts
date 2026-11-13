@@ -1,8 +1,12 @@
 import type { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
+import { useRouterState } from "@tanstack/react-router";
 import ms from "ms";
 
 import {
+  buildPamAccountCan,
+  PamSessionStatus,
+  type TPamSession,
   PamAccessGrantStatus,
   PamAccessRequestDecision,
   PamAccessRequestStatus,
@@ -581,6 +585,170 @@ const memberFolderIds = new Set(
     .map(({ id }) => id)
 );
 
+const SESSION_SCENARIOS = ["default", "empty", "loading", "error"] as const;
+type SessionScenario = (typeof SESSION_SCENARIOS)[number];
+
+const useSessionScenario = () =>
+  useRouterState({
+    select: (state): SessionScenario => {
+      const value = (state.location.search as { scenario?: unknown }).scenario;
+      return SESSION_SCENARIOS.find((scenario) => scenario === value) ?? "default";
+    }
+  });
+
+type SessionActor =
+  | { kind: "user"; name: string; email: string }
+  | { kind: "identity"; name: string }
+  | { kind: "deleted-identity"; name: string };
+
+type SessionSeed = {
+  account: string;
+  actor: SessionActor;
+  status: PamSessionStatus;
+  startedMinutesAgo?: number;
+  lengthMinutes?: number;
+  deletedAccount?: PamAccountType;
+};
+
+const sarah: SessionActor = { kind: "user", name: "Sarah Lin", email: "sarah@acme.dev" };
+const priya: SessionActor = { kind: "user", name: "Priya Raman", email: "priya@acme.dev" };
+const jonas: SessionActor = { kind: "user", name: "Jonas Weber", email: "jonas@acme.dev" };
+const amara: SessionActor = { kind: "user", name: "Amara Okafor", email: "amara@acme.dev" };
+const jo: SessionActor = { kind: "user", name: "Jo", email: "jo@acme.dev" };
+const aleksandra: SessionActor = {
+  kind: "user",
+  name: "Aleksandra Wiśniewska-Kowalczyk",
+  email: "aleksandra.wisniewska-kowalczyk@northwind-industries-holdings.example.com"
+};
+const deployBot: SessionActor = { kind: "identity", name: "deploy-bot" };
+
+const sessionSeeds: SessionSeed[] = [
+  { account: "rdp-jumpbox", actor: jonas, status: PamSessionStatus.Starting },
+  {
+    account: "orders-primary",
+    actor: priya,
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 7
+  },
+  {
+    account: "prod-us-east-1",
+    actor: deployBot,
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 42
+  },
+  {
+    account: "contractor-ssh",
+    actor: aleksandra,
+    status: PamSessionStatus.Active,
+    startedMinutesAgo: 192
+  },
+  {
+    account: "billing-admin",
+    actor: sarah,
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 130,
+    lengthMinutes: 38
+  },
+  {
+    account: "aws-org-admin",
+    actor: amara,
+    status: PamSessionStatus.Terminated,
+    startedMinutesAgo: 300,
+    lengthMinutes: 12
+  },
+  {
+    account: "bastion-deploy",
+    actor: { kind: "deleted-identity", name: "ci-runner-legacy" },
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 410,
+    lengthMinutes: 3
+  },
+  {
+    account: "legacy-reporting-replica",
+    deletedAccount: PamAccountType.Postgres,
+    actor: priya,
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 9,
+    lengthMinutes: 64
+  },
+  {
+    account: "gcp-billing",
+    actor: jo,
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 11,
+    lengthMinutes: 0.75
+  },
+  {
+    account: "dc01-administrator",
+    actor: jonas,
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo: 60 * 24 * 3,
+    lengthMinutes: 60 * 52
+  },
+  ...(
+    [
+      ["warehouse-loader", sarah, 60 * 26, 22],
+      ["sessions-cache", amara, 60 * 29, 5],
+      ["prod-eu-west-1", deployBot, 60 * 31, 14],
+      ["catalog-mongo", priya, 60 * 34, 47],
+      ["contractor-staging-db", aleksandra, 60 * 40, 95],
+      ["events-readonly", jo, 60 * 46, 8],
+      ["bastion-ops", jonas, 60 * 50, 31],
+      ["azure-ops", amara, 60 * 55, 19],
+      ["orders-replica", sarah, 60 * 60, 72],
+      ["ledger-sa", priya, 60 * 70, 26],
+      ["staging-cluster", deployBot, 60 * 75, 2],
+      ["reporting-oracle", jonas, 60 * 80, 41],
+      ["rdp-jumpbox", sarah, 60 * 96, 133],
+      ["prod-us-east-1", amara, 60 * 120, 9]
+    ] as const
+  ).map(([account, actor, startedMinutesAgo, lengthMinutes]) => ({
+    account,
+    actor,
+    status: PamSessionStatus.Ended,
+    startedMinutesAgo,
+    lengthMinutes
+  }))
+];
+
+const accountsByName = new Map(accounts.map((account) => [account.name, account]));
+
+const sessions: TPamSession[] = sessionSeeds.map((seed, index) => {
+  const account = accountsByName.get(seed.account);
+  const { actor } = seed;
+  const startedAt = seed.startedMinutesAgo === undefined ? null : ago(seed.startedMinutesAgo);
+  const endedAt =
+    seed.startedMinutesAgo !== undefined && seed.lengthMinutes !== undefined
+      ? ago(seed.startedMinutesAgo - seed.lengthMinutes)
+      : null;
+  return {
+    id: uuid("s0", index + 1),
+    accountId: account?.id ?? null,
+    accountType: (account?.accountType ??
+      seed.deletedAccount ??
+      PamAccountType.Postgres) as PamAccountType,
+    accountName: seed.account,
+    folderId: account?.folderId ?? null,
+    folderName: account?.folderName ?? null,
+    userId: actor.kind === "user" ? `u-${actor.name.split(" ")[0].toLowerCase()}` : null,
+    identityId: actor.kind === "identity" ? uuid("i0", 1) : null,
+    actorName: actor.name,
+    actorEmail: actor.kind === "user" ? actor.email : "",
+    actorIp: "10.0.4.17",
+    actorUserAgent: "infisical-cli/0.43.2",
+    status: seed.status,
+    startedAt,
+    endedAt,
+    createdAt: ago((seed.startedMinutesAgo ?? 0) + 0.2),
+    updatedAt: endedAt ?? startedAt ?? ago(0)
+  };
+});
+
+const sessionStore = createFixtureStore(
+  [...sessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+);
+const sessionsRecovered = createFixtureStore(false);
+
 export const pamDemo: PamAdapter = {
   useAccessCapabilities: () => ({
     data: {
@@ -804,5 +972,64 @@ export const pamDemo: PamAdapter = {
       );
       return {};
     }
-  })
+  }),
+  useSessions: (params) => {
+    const scenario = useSessionScenario();
+    const all = sessionStore.use();
+    const isRecovered = sessionsRecovered.use();
+    const refetch = () => sessionsRecovered.update(() => true);
+    if (scenario === "loading") return { data: undefined, isPending: true, error: null, refetch };
+    if (scenario === "error" && !isRecovered)
+      return {
+        data: undefined,
+        isPending: false,
+        error: new Error("The demo scenario simulates a timeout."),
+        refetch
+      };
+    const search = params.search?.trim().toLowerCase();
+    const matching = (scenario === "empty" ? [] : all).filter(
+      (session) =>
+        (!params.status || session.status === params.status) &&
+        (!search ||
+          [session.accountName, session.actorName, session.actorEmail, session.folderName ?? ""]
+            .join(" ")
+            .toLowerCase()
+            .includes(search))
+    );
+    const offset = params.offset ?? 0;
+    return {
+      data: {
+        sessions: matching.slice(offset, offset + (params.limit ?? 20)),
+        totalCount: matching.length
+      },
+      isPending: false,
+      error: null,
+      refetch
+    };
+  },
+  useTerminateSession: () => ({
+    isPending: false,
+    mutateAsync: async ({ sessionId }) => {
+      const session = sessionStore.get().find((entry) => entry.id === sessionId);
+      if (
+        !session ||
+        (session.status !== PamSessionStatus.Active && session.status !== PamSessionStatus.Starting)
+      )
+        throw new Error("This session has already ended");
+      const terminated = {
+        ...session,
+        status: PamSessionStatus.Terminated,
+        endedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      sessionStore.update((current) =>
+        current.map((entry) => (entry.id === sessionId ? terminated : entry))
+      );
+      return terminated;
+    }
+  }),
+  useAccountActions: (accountId) => {
+    const account = accountStore.use().find((entry) => entry.id === accountId);
+    return { can: buildPamAccountCan(account?.permissions ?? fullAccess), isLoading: false };
+  }
 };
