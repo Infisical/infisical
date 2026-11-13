@@ -220,26 +220,24 @@ export const CrossProjectSharingSection = ({
       <Card
         variant="framed"
         flush
-        title={
-          <Inline gap={8} wrap={false}>
-            Cross-project secret sharing
-            <DocumentationLink href={DOCS_URL} subject="cross-project secret sharing" />
-          </Inline>
-        }
-        description="Give another project read access to folders here. It can then import them or reference them inline."
+        title="Cross-project secret sharing"
+        hint="Gives other projects read access to folders here, to import or reference inline."
         action={
-          <Button
-            variant="accent"
-            size="xs"
-            icon="plus"
-            disabledReason={shareBlocked}
-            onClick={() => {
-              setEditData(null);
-              setSheetOpen(true);
-            }}
-          >
-            Share secrets
-          </Button>
+          <Inline gap={8} wrap={false}>
+            <DocumentationLink href={DOCS_URL} subject="cross-project secret sharing" />
+            <Button
+              variant="accent"
+              size="xs"
+              icon="plus"
+              disabledReason={shareBlocked}
+              onClick={() => {
+                setEditData(null);
+                setSheetOpen(true);
+              }}
+            >
+              Share secrets
+            </Button>
+          </Inline>
         }
       >
         {canReadGrants ? (

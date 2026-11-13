@@ -35,13 +35,11 @@ const inventory = v4Path("/organizations/$orgId/cert-manager/inventory");
 
 export const DonutCard = ({
   title,
-  description,
   slices,
   emptyTitle = "No data available",
   stacked = false
 }: {
   title: string;
-  description?: string;
   slices: DonutSlice[];
   emptyTitle?: string;
   stacked?: boolean;
@@ -56,7 +54,7 @@ export const DonutCard = ({
   );
 
   return (
-    <Card variant="framed" title={title} description={description}>
+    <Card variant="framed" title={title}>
       {plotted.length === 0 ? (
         <EmptyState size="sm" icon="cert" title={emptyTitle} />
       ) : (

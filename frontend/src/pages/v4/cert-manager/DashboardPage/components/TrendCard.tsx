@@ -23,7 +23,6 @@ const axisTick = { fill: "var(--cipher-text2)", style: { fill: "var(--cipher-tex
 
 export const TrendCard = <TPoint extends { period: string }>({
   title,
-  description,
   data,
   series,
   range,
@@ -32,7 +31,6 @@ export const TrendCard = <TPoint extends { period: string }>({
   controls
 }: {
   title: string;
-  description?: string;
   data?: TPoint[];
   series: TrendSeries[];
   range: string;
@@ -114,7 +112,6 @@ export const TrendCard = <TPoint extends { period: string }>({
     <Card
       variant="framed"
       title={title}
-      description={description}
       action={
         <Inline gap={8} wrap={false}>
           <ToggleGroup

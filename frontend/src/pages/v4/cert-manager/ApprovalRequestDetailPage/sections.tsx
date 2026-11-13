@@ -230,7 +230,7 @@ export const SigningScopeCard = ({ request }: { request: TApprovalRequest }) => 
     <Card
       variant="framed"
       title="Request scope"
-      description="Signing is only allowed when every parameter below matches exactly."
+      hint="Signing is only allowed when every parameter below matches exactly."
     >
       <DataList
         variant="props"

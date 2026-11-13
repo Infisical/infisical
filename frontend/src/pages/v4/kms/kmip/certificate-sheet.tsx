@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
-import { Card } from "@infisical/cipher/ui/card";
-import { Field } from "@infisical/cipher/ui/field";
+import { Field, FieldDescription, FieldLegend, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
@@ -145,11 +144,13 @@ export const KmipCertificateSheet = ({
                       onChange={(event) => setCsr(event.target.value)}
                     />
                   </Field>
-                  <Card
-                    variant="framed"
-                    title="Certificate subject values"
-                    description="The signed certificate uses these fixed CN and OU values. Use them if your device asks for subject values when it generates the CSR. O, L, ST and C values from the CSR carry over."
-                  >
+                  <FieldSet>
+                    <FieldLegend variant="label">Certificate subject values</FieldLegend>
+                    <FieldDescription>
+                      The signed certificate uses these fixed CN and OU values. Use them if your
+                      device asks for subject values when it generates the CSR. O, L, ST and C
+                      values from the CSR carry over.
+                    </FieldDescription>
                     <DataList
                       variant="props"
                       density="compact"
@@ -164,7 +165,7 @@ export const KmipCertificateSheet = ({
                         ]
                       ]}
                     />
-                  </Card>
+                  </FieldSet>
                 </>
               ) : (
                 <Field label="Key algorithm" description="Signs the client certificate." wide>

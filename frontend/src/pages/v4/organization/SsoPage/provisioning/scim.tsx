@@ -360,7 +360,6 @@ export const ScimProvisioning = () => {
       <Card
         variant="framed"
         title="SCIM provisioning"
-        description="Provision and deprovision members from your identity provider."
         action={
           <Button
             variant="outline"

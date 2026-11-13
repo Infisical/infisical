@@ -157,7 +157,7 @@ export const ConnectClientsCard = () => (
         <DocumentationLink href={KMIP_CLIENT_DOCS} subject="KMIP clients" />
       </Inline>
     }
-    description="Clients connect with a client certificate and are managed per KMS project."
+    hint="Clients connect with a client certificate and are managed per KMS project."
   >
     <ol className={css.steps}>
       <li className={css.step}>Deploy this KMIP server on a target host.</li>

@@ -438,7 +438,6 @@ export const EmailDomainsSection = () => {
             />
           </Inline>
         }
-        description="Verified domains for your IdP."
         flush={hasEmailDomainVerification && canRead}
         action={
           <Inline gap={8} wrap={false}>

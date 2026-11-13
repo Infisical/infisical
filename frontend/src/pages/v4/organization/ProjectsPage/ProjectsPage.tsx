@@ -95,10 +95,8 @@ export const ProjectsPage = () => {
           {products.map((product) => {
             const card = (
               <Card
-                variant="framed"
                 key={product.type}
                 className={blocked.has(product.type) ? styles.blocked : undefined}
-                footerPlacement="frame"
                 title={
                   <Inline gap={8} align="center">
                     <Icon name={product.icon} size={18} />

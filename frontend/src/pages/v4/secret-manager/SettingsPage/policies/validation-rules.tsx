@@ -512,7 +512,7 @@ export const ValidationRulesSection = ({
         variant="framed"
         flush
         title="Secret validation rules"
-        description="Checked when static secrets are written and when dynamic secrets and rotations generate passwords."
+        hint="Checked on secret writes and when dynamic secrets or rotations generate passwords."
         action={
           <Button
             variant="accent"
