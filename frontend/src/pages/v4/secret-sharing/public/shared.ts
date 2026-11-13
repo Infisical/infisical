@@ -37,7 +37,7 @@ export const brandTheme = (primary: string, secondary: string) => {
     page: {
       "--brand-page": `linear-gradient(to bottom right, ${shift(primary, isLight(primary) ? -20 : 20)}, ${primary})`
     } as CSSProperties,
-    panelTheme: lightPanel ? "peach" : "dark",
+    panelTheme: lightPanel ? "light" : "dark",
     panel: {
       background: secondary,
       borderColor: line,
