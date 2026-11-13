@@ -55,7 +55,9 @@ The machine identity bypass applies to renewals the same way it applies to issua
 - While a renewal is waiting for approval, you can't submit another renewal that needs approval for the same certificate, and automatic renewal doesn't request another one
 - If an approver rejects an automatic renewal, or any renewal of an imported or discovered certificate, automatic renewal stops for that certificate until you renew it manually and that renewal is approved
 - If an approval request for an automatic renewal expires, automatic renewal requests approval again the next time it runs
-- If a renewal is approved but then fails, for example because the CA is disabled, Infisical tells the requester and the approvers why. Fix the problem, then renew the certificate manually
+- If an approved renewal fails, for example because the CA is disabled, Infisical sends the requester and the approvers an in-app notification with the reason
+
+To try a failed renewal again, fix the problem, then renew the certificate manually.
 
 If nobody approves a renewal before the certificate expires, Infisical can't renew the certificate. To give approvers time, set automatic renewal to start well before the certificate expires.
 
