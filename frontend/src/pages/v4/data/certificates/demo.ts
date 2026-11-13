@@ -295,6 +295,109 @@ const store = createFixtureStore<TCertificate[]>([
     tlsServer,
     CertKeyAlgorithm.ML_DSA_65,
     { applicationName: "platform-core", renewBeforeDays: 10 }
+  ),
+  certificate(
+    "4c9e7b12-6a3f-4d85-b1e7-0f2d8c5a9e31",
+    "sso.acme.dev",
+    ["sso.acme.dev", "login.acme.dev"],
+    "D2:6A:0F:B9:34:E7:81:5C",
+    363,
+    2,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    {
+      applicationName: "identity",
+      renewBeforeDays: 14,
+      renewalError: "The certificate authority did not respond to the renewal request"
+    }
+  ),
+  certificate(
+    "b17f3e60-9d2c-4a48-8e05-6c3b1a7d2f94",
+    "mqtt.iot.acme.dev",
+    ["mqtt.iot.acme.dev"],
+    "3B:E1:7C:52:A9:0D:F6:28",
+    361,
+    4,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { source: CertSource.Imported, profileId: undefined, profileName: undefined }
+  ),
+  certificate(
+    "f2a85c3d-1e7b-4960-a3d8-9b4e0c6f1a57",
+    "metrics.platform-core.internal",
+    ["metrics.platform-core.internal"],
+    "8C:04:D7:6E:1F:B3:29:A5",
+    71,
+    19,
+    mtlsClient,
+    CertKeyAlgorithm.ECDSA_P256,
+    { applicationName: "platform-core", renewBeforeDays: 7 }
+  ),
+  certificate(
+    "0d6b9a47-3c2e-4f71-b8a5-e1f7c3d90b26",
+    "*.internal.acme.dev",
+    ["*.internal.acme.dev", "internal.acme.dev"],
+    "E5:19:A2:C8:70:3F:D4:6B",
+    332,
+    33,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { source: CertSource.Discovered }
+  ),
+  certificate(
+    "73e1c8b5-0f4a-4d29-9c6e-2a8d5b1f7e03",
+    "smtp.acme.dev",
+    ["smtp.acme.dev", "mail.acme.dev"],
+    "29:D0:6B:F3:85:1A:C7:4E",
+    307,
+    58,
+    tlsServer,
+    CertKeyAlgorithm.RSA_4096,
+    { applicationName: "notifications", renewBeforeDays: 30 }
+  ),
+  certificate(
+    "a9c04f7e-5b3d-4e12-86a1-7f0e2d9c4b58",
+    "ldap.corp.acme.dev",
+    ["ldap.corp.acme.dev"],
+    "71:AF:3E:0C:D6:52:B8:94",
+    299,
+    66,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { source: CertSource.Imported, profileId: undefined, profileName: undefined }
+  ),
+  certificate(
+    "5e2d7a91-8c4f-4b30-a6e9-3d1b0f5c8a72",
+    "search.acme.dev",
+    ["search.acme.dev"],
+    "B4:58:E2:1D:9A:07:C3:6F",
+    13,
+    77,
+    { ...tlsServer, enrollmentType: EnrollmentType.ACME },
+    CertKeyAlgorithm.ECDSA_P256,
+    { applicationName: "web-dashboard", renewBeforeDays: 30 }
+  ),
+  certificate(
+    "c8f36b04-2a9e-4d57-b1c3-5e7a0d4f9b16",
+    "cdn.acme.dev",
+    ["cdn.acme.dev", "static.acme.dev", "assets.acme.dev"],
+    "0E:93:5C:A7:F1:48:2D:B6",
+    1,
+    89,
+    { ...tlsServer, enrollmentType: EnrollmentType.ACME },
+    CertKeyAlgorithm.ECDSA_P256,
+    { renewBeforeDays: 30 }
+  ),
+  certificate(
+    "19b5e3c7-7d0a-4f86-9e24-b6c1f8a3d540",
+    "status.acme.dev",
+    ["status.acme.dev"],
+    "F7:2C:81:4B:E9:06:5A:D3",
+    269,
+    96,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    { renewBeforeDays: 30 }
   )
 ]);
 
