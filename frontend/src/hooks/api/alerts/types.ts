@@ -8,7 +8,8 @@ export enum AlertResourceType {
   PamFolder = "pam.folder",
   SecretReminder = "secret.reminder",
   AuditLogStream = "audit-log.stream",
-  SecretRotation = "secret.rotation"
+  SecretRotation = "secret.rotation",
+  HoneyToken = "secret.honey-token"
 }
 
 export enum AlertEventType {
@@ -19,7 +20,8 @@ export enum AlertEventType {
   PamAccessRequestDenied = "pam.folder.access-request-denied",
   PamAccessRequestBypassed = "pam.folder.access-request-bypassed",
   AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed",
-  SecretRotationFailed = "secret.rotation.failed"
+  SecretRotationFailed = "secret.rotation.failed",
+  HoneyTokenTriggered = "secret.honey-token.triggered"
 }
 
 export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
@@ -37,7 +39,9 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
   [AlertResourceType.SecretReminder]: [],
   [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed],
   // Rotation alerts are edited from the rotation form, not the generic alert form.
-  [AlertResourceType.SecretRotation]: []
+  [AlertResourceType.SecretRotation]: [],
+  // Honey token alerts are edited from the honey token form, not the generic alert form.
+  [AlertResourceType.HoneyToken]: []
 };
 
 // Resource types whose provider accepts plain email addresses as email channel recipients
@@ -46,7 +50,8 @@ export const ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES: string[] = [AlertResourc
 // Only secrets have a project-wide audience, so other resource types don't offer project recipients
 export const ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS: string[] = [
   AlertResourceType.SecretReminder,
-  AlertResourceType.SecretRotation
+  AlertResourceType.SecretRotation,
+  AlertResourceType.HoneyToken
 ];
 
 export enum AlertChannelType {
@@ -151,7 +156,8 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.PamFolder]: "PAM Folder",
   [AlertResourceType.SecretReminder]: "Secret Reminder",
   [AlertResourceType.AuditLogStream]: "Audit Log Stream",
-  [AlertResourceType.SecretRotation]: "Secret Rotation"
+  [AlertResourceType.SecretRotation]: "Secret Rotation",
+  [AlertResourceType.HoneyToken]: "Honey Token"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -162,7 +168,8 @@ export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.PamAccessRequestDenied]: "Request Denied",
   [AlertEventType.PamAccessRequestBypassed]: "Break-Glass Used",
   [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure",
-  [AlertEventType.SecretRotationFailed]: "Rotation Failure"
+  [AlertEventType.SecretRotationFailed]: "Rotation Failure",
+  [AlertEventType.HoneyTokenTriggered]: "Honey Token Triggered"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
@@ -181,7 +188,9 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.AuditLogStreamDeliveryFailed]:
     "Notify when an external log stream fails to deliver audit log events after all retries.",
   [AlertEventType.SecretRotationFailed]:
-    "Notify when a scheduled rotation fails after all of its retries."
+    "Notify when a scheduled rotation fails after all of its retries.",
+  [AlertEventType.HoneyTokenTriggered]:
+    "Notify when someone uses the honey token's decoy credentials."
 };
 
 // Channel types a plan doesn't include, and the paywall shown when one is picked.

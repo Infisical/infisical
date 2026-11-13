@@ -16,66 +16,86 @@ description: "Create, monitor, and manage AWS honey tokens in your projects."
 ## Creating a honey token
 
 <Steps>
-  <Step title="Open the Secrets Dashboard">
-    Navigate to your project's Secrets Management dashboard and select the environment and secret path where you want to plant the honey token.
+  <Step>
+    Go to your project's secrets overview and open the secret path where you want to plant the honey token.
   </Step>
-  <Step title="Add a Honey Token">
-    Select the **Add Honey Token** button to open the creation dialog.
+  <Step>
+    Select **Add New** > **Add Honey Token**.
 
     ![Add Honey Token](/images/platform/honey-tokens/create-honey-token.png)
   </Step>
-  <Step title="Select the honey token type">
-    Choose the type of honey token you want to create.
+  <Step>
+    Select the type of honey token you want to create.
 
     ![Select Honey Token Type](/images/platform/honey-tokens/honey-token-type.png)
   </Step>
-  <Step title="Environment Configuration">
-    Configure where the honey token and its credentials will be planted within your project:
-
-    - **Environment** — choose the target environment.
-
-    <Note>
-      The secret path is automatically determined based on which secret path you are currently in while creating the honey token.
-    </Note>
+  <Step>
+    In the **Configuration** step, choose the **AWS account** that holds the decoy credentials and the **Environment** to plant the honey token in. Infisical uses the secret path you're currently in.
 
     ![Honey Token Environment Step](/images/platform/honey-tokens/honey-token-environment.png)
   </Step>
-  <Step title="Configure Secret Mappings">
-    Configure the secret mappings. This dictates which secret keys will be created in your selected environment and secret path to hold the honey token credentials.
+  <Step>
+    In the **Mapping** step, enter the names of the secrets that hold the decoy credentials. Infisical creates these secrets in the selected environment and path.
 
-    - **Access Key ID** — secret name for the AWS access key ID (for example: `AWS_ACCESS_KEY_ID`).
-    - **Secret Access Key** — secret name for the AWS secret access key (for example: `AWS_SECRET_ACCESS_KEY`).
+    - **Access Key ID**: the secret name for the AWS access key ID, such as `AWS_ACCESS_KEY_ID`.
+    - **Secret Access Key**: the secret name for the AWS secret access key, such as `AWS_SECRET_ACCESS_KEY`.
 
     ![Honey Token Mapping Step](/images/platform/honey-tokens/honey-token-mapping.png)
   </Step>
-  <Step title="Configure Details">
-    Add the honey token details to help you better identify it in the future:
+  <Step>
+    In the **Details** step, enter details that help you identify the honey token later.
 
-    - **Name** — a slug-friendly identifier (must be unique within the selected folder).
-    - **Description** (optional) — context for this honey token.
-
-    Click **Create**. Infisical provisions the decoy credentials in your AWS account and stores them as secrets in the selected environment and path.
+    - **Name**: a slug-friendly identifier, unique within the selected folder.
+    - **Description** (optional): context for this honey token.
 
     ![Honey Token Details Step](/images/platform/honey-tokens/honey-token-create.png)
+  </Step>
+  <Step>
+    In the **Alerts** step, choose who Infisical notifies when someone uses the honey token. By default, **Alert When Triggered** is on, with an email to the project's admins. To change the recipients or add channels, see [Get alerted when a honey token is triggered](#get-alerted-when-a-honey-token-is-triggered).
+  </Step>
+  <Step>
+    Select **Create Honey Token**. Infisical provisions the decoy credentials in your AWS account and stores them as secrets in the selected environment and path.
   </Step>
 </Steps>
 
 The honey token is now **Active**. The decoy secrets appear alongside your real secrets and are included in any secret syncs or integrations.
 
-## Notifications
+## Get alerted when a honey token is triggered
 
-When someone uses a honey token's credentials to make any AWS API call, Infisical detects the activity, marks the honey token as **Triggered**, and sends an email alert to all organization admins with:
-   - The name of the triggered honey token and its project
-   - The AWS API call that was made (e.g., `GetUser`, `ListBuckets`)
-   - The source IP address and AWS region
-   - The time of the event
-   - A direct link to the honey token in the Infisical dashboard
+When someone uses a honey token's credentials to make an AWS API call, Infisical marks the honey token as **Triggered**, records the event, and sends the honey token's alert to your team by email, Slack, webhook, or PagerDuty. The alert includes:
+
+- The name, environment, and path of the honey token
+- The AWS API call that was made, such as `GetUser` or `ListBuckets`
+- The source IP address and AWS region
+- The time AWS recorded the call, and the time Infisical received it
+- A link to the honey token in Infisical
+
+If you create a honey token in the Infisical UI and can edit honey tokens in its environment and path, the alert is on by default, with an email to the project's admins. If a honey token existed before honey token alerts were available, it has the same alert.
 
 <Note>
-  To avoid alert fatigue, Infisical sends at most one email notification per
-  honey token every 24 hours. All trigger events are still recorded and
-  viewable in the event log.
+  To avoid alert fatigue, Infisical sends at most one alert per honey token
+  every 24 hours. Infisical still records every use of the credentials in the
+  event log.
 </Note>
+
+To set up or change a honey token's alert, you need [permission](/documentation/platform/honey-tokens/overview#permissions) to edit honey tokens in the honey token's environment and path.
+
+<Steps>
+    <Step>
+        For a new honey token, go to your project's secrets overview and select **Add New** > **Add Honey Token**. For an existing honey token, open the menu on the honey token's row and select **Edit**.
+    </Step>
+    <Step>
+        Go to the **Alerts** step and make sure **Alert When Triggered** is on.
+    </Step>
+    <Step>
+        Select **Add channel** and set up at least one [notification channel](/documentation/platform/identities/machine-identities#notification-channels). The **Project Admins** recipient emails members who have the Admin role directly on the project, and **All Project Members** emails everyone in the project. If someone is an admin only through a group, add the group as a recipient too.
+    </Step>
+    <Step>
+        Select **Create Honey Token** for a new honey token, or **Update Honey Token** for an existing one.
+    </Step>
+</Steps>
+
+If you create honey tokens through the API, create each honey token's alert with the [Create alert](/api-reference/endpoints/alerts/create) endpoint, using `secret.honey-token` as the resource type, the honey token's ID as the resource ID, and `secret.honey-token.triggered` as the event.
 
 ## Managing honey tokens
 
@@ -87,7 +107,7 @@ Open a honey token's detail page to see a chronological log of all trigger event
 
 ### Resetting a triggered token
 
-If a honey token is in **Triggered** status and you've addressed the incident, select **Reset** to return it to **Active** status. This hides previous events from the event log view (events are still stored in the database) and re-enables email notifications.
+If a honey token is in **Triggered** status and you've addressed the incident, select **Reset** to return it to **Active** status. This hides previous events from the event log view (events are still stored in the database), and Infisical sends an alert the next time someone uses the credentials, without waiting out the 24-hour limit.
 
 ![Honey Token Events](/images/platform/honey-tokens/honey-token-reset.png)
 

@@ -1,17 +1,23 @@
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 
 import { honeyTokenCleanupLogContext, THoneyTokenCleanupServiceFactory } from "./honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenStatus } from "./honey-token-enums";
+import { HONEY_TOKEN_RESOURCE_TYPE } from "./honey-token-events";
 
 const FOLDERLESS_CLEANUP_BATCH = 100;
 const MAX_CLEANUP_ATTEMPTS = 3;
 const CLEANUP_WORKER_CONCURRENCY = 3;
 
 type THoneyTokenCleanupQueueFactoryDep = {
-  honeyTokenDAL: Pick<THoneyTokenDALFactory, "findFolderlessForCleanup" | "findByIdForCleanup" | "deleteById">;
+  honeyTokenDAL: Pick<
+    THoneyTokenDALFactory,
+    "findFolderlessForCleanup" | "findByIdForCleanup" | "deleteById" | "transaction"
+  >;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeHoneyToken">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
 };
 
@@ -20,6 +26,7 @@ export type THoneyTokenCleanupQueueFactory = ReturnType<typeof honeyTokenCleanup
 export const honeyTokenCleanupQueueFactory = ({
   honeyTokenDAL,
   honeyTokenCleanupService,
+  alertService,
   queueService
 }: THoneyTokenCleanupQueueFactoryDep) => {
   // Deleting a folder or environment leaves its honey tokens behind with a null folderId (the foreign key is
@@ -66,7 +73,14 @@ export const honeyTokenCleanupQueueFactory = ({
       );
     }
 
-    await honeyTokenDAL.deleteById(honeyToken.id);
+    // alerts.resourceId has no foreign key, so the token's alerts go in the same transaction as the row.
+    await honeyTokenDAL.transaction(async (tx) => {
+      await alertService.deleteAlertsForDeletedResources(
+        { resourceType: HONEY_TOKEN_RESOURCE_TYPE, resourceIds: [honeyToken.id] },
+        tx
+      );
+      await honeyTokenDAL.deleteById(honeyToken.id, tx);
+    });
   };
 
   const init = () => {

@@ -5415,6 +5415,7 @@ const OverviewPageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
       />
       <EditHoneyTokenModal
+        secretPath={secretPath}
         isOpen={popUp.editHoneyToken.isOpen}
         honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
