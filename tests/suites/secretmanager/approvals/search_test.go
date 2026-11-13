@@ -13,10 +13,10 @@ import (
 func TestSecretApprovalRequest_Search(t *testing.T) {
 	t.Parallel()
 
-	// requestsByFolder opens one request in each folder, under a policy on every path.
-	requestsByFolder := func(t *testing.T, folders ...string) (protectedProject, map[string]uuid.UUID) {
+	// requestsByFolder opens one request in each folder, under a policy on policyPath.
+	requestsByFolder := func(t *testing.T, policyPath string, folders ...string) (protectedProject, map[string]uuid.UUID) {
 		t.Helper()
-		p := newProtectedProject(t, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) { b.SecretPath = "/**" })
+		p := newProtectedProject(t, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) { b.SecretPath = policyPath })
 		requests := map[string]uuid.UUID{}
 		for _, folder := range folders {
 			secretmanager.CreateFolder(t, p.proj, "dev", folder)
@@ -47,7 +47,7 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/parameters/sanda/settlement-service", "/parameters/sanda/settlement-service-v2",
+		p, requests := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service", "/parameters/sanda/settlement-service-v2",
 			"/parameters/alpha/settlement-service")
 
 		// Action
@@ -63,7 +63,7 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/parameters/sanda/settlement-service", "/parameters/sanda/other")
+		p, requests := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service", "/parameters/sanda/other")
 
 		// Action
 		found := search(t, p, "/PARAMETERS/Sanda/Settlement-Service/")
@@ -76,7 +76,7 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/parameters/sanda/settlement-service", "/parameters/alpha/settlement-service",
+		p, requests := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service", "/parameters/alpha/settlement-service",
 			"/parameters/sanda/other")
 
 		// Action
@@ -92,7 +92,7 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, requests := requestsByFolder(t, "/apps/pay_api", "/apps/payXapi")
+		p, requests := requestsByFolder(t, "/**", "/apps/pay_api", "/apps/payXapi")
 
 		// Action
 		found := search(t, p, "/apps/pay_")
@@ -101,11 +101,24 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		require.Equal(t, []uuid.UUID{requests["/apps/pay_api"]}, found)
 	})
 
+	t.Run("should find a request by its full folder path when a glob policy below the root holds it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p, requests := requestsByFolder(t, "/parameters/**", "/parameters/sanda/settlement-service", "/parameters/sanda/other")
+
+		// Action
+		found := search(t, p, "/parameters/sanda/settlement-service")
+
+		// Assert
+		require.Equal(t, []uuid.UUID{requests["/parameters/sanda/settlement-service"]}, found)
+	})
+
 	t.Run("should find nothing when no request is under the path searched", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		p, _ := requestsByFolder(t, "/parameters/sanda/settlement-service")
+		p, _ := requestsByFolder(t, "/**", "/parameters/sanda/settlement-service")
 
 		// Action
 		found := search(t, p, "/parameters/sanda/other")

@@ -168,4 +168,29 @@ func TestSecretApprovalRequest_FolderGuard(t *testing.T) {
 		closeRequest(t, p.committer, held.ID)
 		require.Equal(t, http.StatusOK, deleteFolder(t, p.proj, "/", "parent").StatusCode())
 	})
+
+	t.Run("should refuse deleting a folder with an open request that a glob policy holds, directly or through its parent", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) { b.SecretPath = "/parameters/**" })
+		secretmanager.CreateFolder(t, p.proj, "dev", "/parameters/sanda/settlement-service")
+		res, err := p.committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: p.proj.ID, Environment: "dev", SecretPath: new("/parameters/sanda/settlement-service"), SecretValue: "value",
+		})
+		require.NoError(t, err)
+		heldRequest(t, p.proj, res.Body)
+		want := `You cannot delete the selected folder because it has open change requests at folder path "/parameters/sanda/settlement-service". Merge or close the change requests and try again.`
+
+		// Action
+		leaf := deleteFolder(t, p.proj, "/parameters/sanda", "settlement-service")
+		top := deleteFolder(t, p.proj, "/", "parameters")
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, leaf.StatusCode())
+		require.Equal(t, want, leaf.JSON400.Message)
+		require.Equal(t, http.StatusBadRequest, top.StatusCode())
+		require.Equal(t, want, top.JSON400.Message)
+		require.Equal(t, 1, openRequestCount(t, p.proj))
+	})
 }
