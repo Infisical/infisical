@@ -3,10 +3,11 @@
 //
 // It checks what a real CA checks on the wire: every request is a JWS whose
 // signature, nonce and url are verified, an account only reaches its own orders, and a
-// finalize CSR has to name exactly the order's identifiers. It does not resolve the
-// DNS-01 record: the record lives in a DNS provider fake, so a test asserts it there.
-// Answering a challenge marks it valid, which is what Pebble does with
-// PEBBLE_VA_ALWAYS_VALID.
+// finalize CSR has to name exactly the order's identifiers. It validates DNS-01 by
+// reading the TXT record the DNS provider fakes publish to fakenet: an answer whose
+// _acme-challenge record does not hold the key authorization digest makes the
+// challenge, its authorization and the order invalid, so a record with the wrong name
+// or value fails issuance as it would against Let's Encrypt.
 package acmeca
 
 import (
@@ -83,6 +84,7 @@ type challenge struct {
 	token     string
 	status    string
 	validated time.Time
+	err       *problem
 }
 
 func (c *CA) Snapshot() ([]byte, error) {

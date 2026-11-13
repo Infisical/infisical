@@ -48,6 +48,15 @@ func (e Emitter) SetTXT(name string, values ...string) {
 	e.txt.set(name, values)
 }
 
+// LookupTXT returns the TXT values fakenet's DNS answers for name, for a fake that
+// checks a record another fake published (a CA validating DNS-01).
+func (e Emitter) LookupTXT(name string) []string {
+	if e.txt == nil {
+		return nil
+	}
+	return e.txt.lookup(name)
+}
+
 func (e Emitter) Publish(ev Event) {
 	if e.log == nil {
 		return

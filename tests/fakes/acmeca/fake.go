@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
@@ -238,8 +239,10 @@ func (c *CA) getAuthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, body)
 }
 
-// respondChallenge marks a challenge valid when the client says it is ready (a
-// non-empty payload), and only reports it on a POST-as-GET.
+// respondChallenge validates DNS-01 when the client says it is ready (a non-empty
+// payload): the challenge is valid only if the identifier's _acme-challenge record
+// holds the key authorization digest (RFC 8555 section 8.4). A POST-as-GET only
+// reports it.
 func (c *CA) respondChallenge(w http.ResponseWriter, r *http.Request) {
 	acct, req, p := c.owner(r)
 	if p != nil {
@@ -253,21 +256,39 @@ func (c *CA) respondChallenge(w http.ResponseWriter, r *http.Request) {
 		notFound("challenge").write(w)
 		return
 	}
-	accepted := len(req.payload) > 0 && ch.status == "pending"
-	if accepted {
-		ch.status, ch.validated = "valid", time.Now().UTC()
-		az := c.authzs[ch.authzID]
-		az.status = "valid"
+	az := c.authzs[ch.authzID]
+	identifier := az.identifier.Value
+	answered := len(req.payload) > 0 && ch.status == "pending"
+	var rejected *ChallengeRejected
+	if answered {
+		record := "_acme-challenge." + strings.TrimPrefix(identifier, "*.")
+		digest := sha256.Sum256([]byte(ch.token + "." + acct.thumbprint))
+		want := b64.EncodeToString(digest[:])
+		got := c.events.LookupTXT(record)
 		o := c.orders[az.orderID]
-		if allValid(c, o) {
-			o.status = "ready"
+		if slices.Contains(got, want) {
+			ch.status, ch.validated = "valid", time.Now().UTC()
+			az.status = "valid"
+			if allValid(c, o) {
+				o.status = "ready"
+			}
+		} else {
+			detail := "no TXT record found at " + record
+			if len(got) > 0 {
+				detail = "TXT record " + record + " does not hold the key authorization digest"
+			}
+			ch.status, ch.err = "invalid", &problem{Type: "incorrectResponse", Detail: detail, Status: http.StatusForbidden}
+			az.status, o.status = "invalid", "invalid"
+			rejected = &ChallengeRejected{Identifier: identifier, Record: record, Want: want, Got: got}
 		}
 	}
 	body := c.challengeJSON(base(r), ch)
-	identifier := c.authzs[ch.authzID].identifier.Value
 	c.mu.Unlock()
 
-	if accepted {
+	switch {
+	case rejected != nil:
+		c.events.Publish(*rejected)
+	case answered:
 		c.events.Publish(ChallengeAccepted{Identifier: identifier, Token: ch.token})
 	}
 	w.Header().Set("Link", "<"+base(r)+"/authz/"+ch.authzID+`>;rel="up"`)
@@ -422,6 +443,9 @@ func (c *CA) challengeJSON(b string, ch *challenge) map[string]any {
 	body := map[string]any{"type": "dns-01", "url": b + "/challenges/" + ch.id, "token": ch.token, "status": ch.status}
 	if !ch.validated.IsZero() {
 		body["validated"] = ch.validated.Format(time.RFC3339)
+	}
+	if ch.err != nil {
+		body["error"] = map[string]any{"type": "urn:ietf:params:acme:error:" + ch.err.Type, "detail": ch.err.Detail, "status": ch.err.Status}
 	}
 	return body
 }

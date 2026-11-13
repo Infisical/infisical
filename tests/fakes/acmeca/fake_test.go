@@ -21,8 +21,9 @@ import (
 )
 
 // newCA serves fakenet in-process over TLS and returns an ACME client whose every
-// dial reaches it, so the client uses the real acme.ca.test URLs the CA hands out.
-func newCA(t *testing.T, scope string) (*acme.Client, *acmeca.ControlPlane) {
+// dial reaches it, so the client uses the real acme.ca.test URLs the CA hands out,
+// and fakenet's admin URL, where a test publishes DNS-01 records.
+func newCA(t *testing.T, scope string) (*acme.Client, *acmeca.ControlPlane, string) {
 	t.Helper()
 	srv := fakenet.New(acmeca.Service)
 	fakes := httptest.NewTLSServer(srv)
@@ -41,7 +42,28 @@ func newCA(t *testing.T, scope string) (*acme.Client, *acmeca.ControlPlane) {
 			return (&net.Dialer{}).DialContext(ctx, network, fakes.Listener.Addr().String())
 		},
 	}
-	return &acme.Client{Key: key, DirectoryURL: cp.DirectoryURL(), HTTPClient: &http.Client{Transport: transport}}, cp
+	return &acme.Client{Key: key, DirectoryURL: cp.DirectoryURL(), HTTPClient: &http.Client{Transport: transport}}, cp, admin.URL
+}
+
+// answer publishes txt as the DNS-01 record for the order's only identifier and
+// answers its challenge. Nil txt publishes the record the client's key authorizes.
+func answer(t *testing.T, client *acme.Client, admin string, order *acme.Order, txt []string) *acme.Challenge {
+	t.Helper()
+	ctx := t.Context()
+	authz, err := client.GetAuthorization(ctx, order.AuthzURLs[0])
+	require.NoError(t, err)
+	chal := authz.Challenges[0]
+	if txt == nil {
+		rec, err := client.DNS01ChallengeRecord(chal.Token)
+		require.NoError(t, err)
+		txt = []string{rec}
+	}
+	if len(txt) > 0 {
+		fakenet.SetTXT(t, admin, "_acme-challenge."+authz.Identifier.Value, txt...)
+	}
+	answered, err := client.Accept(ctx, chal)
+	require.NoError(t, err)
+	return answered
 }
 
 func csrFor(t *testing.T, names ...string) []byte {
@@ -56,16 +78,13 @@ func csrFor(t *testing.T, names ...string) []byte {
 func TestAcmeCAFake_Issue(t *testing.T) {
 	t.Run("should issue a certificate naming the order's identifiers after its challenge is answered", func(t *testing.T) {
 		// Setup
-		client, ca := newCA(t, "issue")
+		client, ca, admin := newCA(t, "issue")
 		ctx := t.Context()
 		_, err := client.Register(ctx, &acme.Account{}, acme.AcceptTOS)
 		require.NoError(t, err)
 		order, err := client.AuthorizeOrder(ctx, acme.DomainIDs("a.example.test"))
 		require.NoError(t, err)
-		authz, err := client.GetAuthorization(ctx, order.AuthzURLs[0])
-		require.NoError(t, err)
-		_, err = client.Accept(ctx, authz.Challenges[0])
-		require.NoError(t, err)
+		answer(t, client, admin, order, nil)
 		order, err = client.WaitOrder(ctx, order.URI)
 		require.NoError(t, err)
 
@@ -82,7 +101,7 @@ func TestAcmeCAFake_Issue(t *testing.T) {
 
 	t.Run("should refuse to finalize when the challenge was never answered", func(t *testing.T) {
 		// Setup
-		client, ca := newCA(t, "unready")
+		client, ca, _ := newCA(t, "unready")
 		ctx := t.Context()
 		_, err := client.Register(ctx, &acme.Account{}, acme.AcceptTOS)
 		require.NoError(t, err)
@@ -101,16 +120,13 @@ func TestAcmeCAFake_Issue(t *testing.T) {
 
 	t.Run("should refuse a CSR naming more than the order", func(t *testing.T) {
 		// Setup
-		client, ca := newCA(t, "mismatch")
+		client, ca, admin := newCA(t, "mismatch")
 		ctx := t.Context()
 		_, err := client.Register(ctx, &acme.Account{}, acme.AcceptTOS)
 		require.NoError(t, err)
 		order, err := client.AuthorizeOrder(ctx, acme.DomainIDs("c.example.test"))
 		require.NoError(t, err)
-		authz, err := client.GetAuthorization(ctx, order.AuthzURLs[0])
-		require.NoError(t, err)
-		_, err = client.Accept(ctx, authz.Challenges[0])
-		require.NoError(t, err)
+		answer(t, client, admin, order, nil)
 
 		// Action
 		_, _, err = client.CreateOrderCert(ctx, order.FinalizeURL, csrFor(t, "c.example.test", "d.example.test"), true)
@@ -121,4 +137,41 @@ func TestAcmeCAFake_Issue(t *testing.T) {
 		require.Equal(t, "urn:ietf:params:acme:error:badCSR", acmeErr.ProblemType)
 		require.Empty(t, ca.State(t).Issued)
 	})
+
+	for _, tc := range []struct {
+		name, scope string
+		txt         []string
+		detail      string
+	}{
+		{"holds another value", "wrong-value", []string{"not-the-digest"}, "does not hold the key authorization digest"},
+		{"is missing", "no-record", []string{}, "no TXT record found at _acme-challenge.e.example.test"},
+	} {
+		t.Run("should make the challenge and order invalid when the DNS-01 record "+tc.name, func(t *testing.T) {
+			// Setup
+			client, ca, admin := newCA(t, tc.scope)
+			ctx := t.Context()
+			_, err := client.Register(ctx, &acme.Account{}, acme.AcceptTOS)
+			require.NoError(t, err)
+			order, err := client.AuthorizeOrder(ctx, acme.DomainIDs("e.example.test"))
+			require.NoError(t, err)
+
+			// Action
+			chal := answer(t, client, admin, order, tc.txt)
+
+			// Assert
+			require.Equal(t, acme.StatusInvalid, chal.Status)
+			var chalErr *acme.Error
+			require.ErrorAs(t, chal.Error, &chalErr)
+			require.Equal(t, "urn:ietf:params:acme:error:incorrectResponse", chalErr.ProblemType)
+			require.Contains(t, chalErr.Detail, tc.detail)
+			order, err = client.GetOrder(ctx, order.URI)
+			require.NoError(t, err)
+			require.Equal(t, acme.StatusInvalid, order.Status)
+			_, _, err = client.CreateOrderCert(ctx, order.FinalizeURL, csrFor(t, "e.example.test"), true)
+			var acmeErr *acme.Error
+			require.ErrorAs(t, err, &acmeErr)
+			require.Equal(t, "urn:ietf:params:acme:error:orderNotReady", acmeErr.ProblemType)
+			require.Empty(t, ca.State(t).Issued)
+		})
+	}
 }

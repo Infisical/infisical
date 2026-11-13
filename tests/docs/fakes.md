@@ -141,7 +141,7 @@ their APIs the same way, through `Emitter.SetTXT`, as the provider's nameservers
 | Fake | Host | Scope | Used by |
 |---|---|---|---|
 | `website` | every name under `web.test`, over plain HTTP on port 80 | the label left of `web.test` | ACME HTTP-01: the web server behind a name the test makes up (`website.Name(scope, "www")`) |
-| `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, and accepts a challenge once answered |
+| `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, and validates DNS-01 against the TXT records the DNS provider fakes publish |
 | `cloudflare` | `api.cloudflare.com` | bearer API token | Cloudflare App Connections and DNS-01 records |
 | `dnsmadeeasy` | `api.dnsmadeeasy.com` | `x-dnsme-apiKey`, with the HMAC checked | DNS Made Easy App Connections and DNS-01 records |
 
