@@ -89,21 +89,20 @@ export const folderPermissionServiceFactory = ({
   licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
-  const isFolderRbacLicensed = async (orgId: string) =>
-    (await licenseService.getPlan(orgId)).has(PlanFeature.SecretsFolderRbac);
-
+  // checked only on create and edit, so existing grants stay listable and revocable after a downgrade;
   // self-hosted instances get folder access on the root folder (environment roles) without a license;
   // Infisical Cloud and every other folder need the plan feature
-  const assertFolderRbacLicensed = async (orgId: string, folder?: TResolvedFolder) => {
+  const assertFolderRbacLicensed = async (orgId: string, folder: TResolvedFolder) => {
     const { isCloud } = getConfig();
-    if (!isCloud && folder?.path === "/") return;
-    if (await isFolderRbacLicensed(orgId)) return;
+    if (!isCloud && folder.path === "/") return;
+
+    const plan = await licenseService.getPlan(orgId);
+    if (plan.has(PlanFeature.SecretsFolderRbac)) return;
 
     throw new BadRequestError({
-      message:
-        !isCloud && folder
-          ? `Failed to access folder access controls on '${folder.path}' in environment with slug '${folder.environmentSlug}' due to plan restriction. Without a license, folder access can only be managed on the root folder '/'. Upgrade your Infisical plan to manage access on other folders.`
-          : "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."
+      message: !isCloud
+        ? `Failed to grant folder access on '${folder.path}' in environment with slug '${folder.environmentSlug}' due to plan restriction. Without a license, folder access can only be granted on the root folder '/'. Upgrade your Infisical plan to grant access on other folders.`
+        : "Failed to grant folder access due to plan restriction. Upgrade your Infisical plan."
     });
   };
 
@@ -207,7 +206,6 @@ export const folderPermissionServiceFactory = ({
     const { projectId, environmentSlug, secretPath, target } = dto;
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertFolderRbacLicensed(dto.permission.orgId, folder);
     assertManageFolderAccess(callerPermission, folder);
     // no membership check on revoke: removing access from an actor that already left the project
     // must keep working
@@ -308,7 +306,6 @@ export const folderPermissionServiceFactory = ({
     const { orgId } = dto.permission;
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertFolderRbacLicensed(orgId, folder);
     assertManageFolderAccess(callerPermission, folder);
 
     const page = { limit, offset, search };
@@ -420,8 +417,6 @@ export const folderPermissionServiceFactory = ({
 
   const listActorFolderGrants = async (dto: TListActorFolderGrantsDTO) => {
     const { projectId, target } = dto;
-    const isLicensed = await isFolderRbacLicensed(dto.permission.orgId);
-    if (!isLicensed && getConfig().isCloud) await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     assertReadActorGrantsAccess(callerPermission, target);
 
@@ -441,7 +436,7 @@ export const folderPermissionServiceFactory = ({
     const folderAccess = grantRows
       .flatMap((row, idx) => {
         const folder = folders[idx];
-        if (!folder || (!isLicensed && folder.path !== "/")) return [];
+        if (!folder) return [];
         return [
           toFolderGrant(row, projectId, { id: folder.id, path: folder.path, environmentSlug: folder.environmentSlug })
         ];

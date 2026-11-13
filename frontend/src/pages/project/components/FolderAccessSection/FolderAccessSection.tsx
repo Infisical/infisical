@@ -13,10 +13,6 @@ import {
   UsersIcon
 } from "lucide-react";
 
-import {
-  FolderAccessControlsUpgradeIntent,
-  useUpgradeGate
-} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
@@ -53,10 +49,8 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission,
-  useSubscription
+  useProjectPermission
 } from "@app/context";
-import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   TFolderAccess,
   useDeleteIdentityFolderAccess,
@@ -90,10 +84,6 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const { projectId, currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  const { subscription } = useSubscription();
-  // self-hosted instances manage root folder access without the plan, so the card loads there too
-  const canUseFolderAccess = Boolean(subscription?.secretsFolderRbac) || !isInfisicalCloud();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const [isGrantOpen, setIsGrantOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<TFolderAccess | null>(null);
@@ -101,25 +91,18 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
 
   const userAccess = useListUserFolderAccess({
     projectId,
-    userId: actor.type === "user" ? actor.id : "",
-    enabled: canUseFolderAccess
+    userId: actor.type === "user" ? actor.id : ""
   });
   const identityAccess = useListIdentityFolderAccess({
     projectId,
-    identityId: actor.type === "identity" ? actor.id : "",
-    enabled: canUseFolderAccess
+    identityId: actor.type === "identity" ? actor.id : ""
   });
   const {
-    data,
-    isPending: isQueryPending,
-    isError: isQueryError,
+    data: folderAccess,
+    isPending,
+    isError,
     refetch
   } = actor.type === "user" ? userAccess : identityAccess;
-  // a disabled query stays pending and keeps grants cached from before a plan change, so without
-  // the plan its state is ignored and the card shows the plan-gated empty state
-  const folderAccess = canUseFolderAccess ? data : undefined;
-  const isPending = canUseFolderAccess && isQueryPending;
-  const isError = canUseFolderAccess && isQueryError;
 
   const deleteUserAccess = useDeleteUserFolderAccess();
   const deleteIdentityAccess = useDeleteIdentityFolderAccess();
@@ -139,13 +122,6 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
   const actorNoun = actor.type === "user" ? "user" : "machine identity";
 
   const openGrantSheet = (source: FolderAccessGrantSheetSource) => {
-    if (!canUseFolderAccess) {
-      openUpgradeGate({
-        intent: FolderAccessControlsUpgradeIntent,
-        paywallKey: "project.folder-access-section"
-      });
-      return;
-    }
     setIsGrantOpen(true);
     analytics.captureForOrganization(AnalyticsEvent.FolderAccessGrantSheetOpened, currentOrg.id, {
       source,
@@ -365,22 +341,13 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
               </Table>
             ) : (
               <Empty className="border">
-                {canUseFolderAccess ? (
-                  <EmptyHeader>
-                    <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
-                    <EmptyDescription>
-                      Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
-                      project roles within it
-                    </EmptyDescription>
-                  </EmptyHeader>
-                ) : (
-                  <EmptyHeader>
-                    <EmptyTitle>Folder access controls aren&apos;t on your plan</EmptyTitle>
-                    <EmptyDescription>
-                      Upgrade to grant this {actorNoun} access to specific folders
-                    </EmptyDescription>
-                  </EmptyHeader>
-                )}
+                <EmptyHeader>
+                  <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
+                  <EmptyDescription>
+                    Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
+                    project roles within it
+                  </EmptyDescription>
+                </EmptyHeader>
                 {!hideActions && (
                   <EmptyContent>
                     <Button
@@ -422,7 +389,6 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
         folderPath={deleteTarget?.secretPath ?? ""}
         environmentName={deleteTarget ? environmentNameOf(deleteTarget.environment) : ""}
       />
-      {upgradeGate}
     </>
   );
 };

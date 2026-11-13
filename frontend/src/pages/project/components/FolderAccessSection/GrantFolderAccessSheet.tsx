@@ -2,6 +2,10 @@ import { useState } from "react";
 import { subject } from "@casl/ability";
 import { InfoIcon } from "lucide-react";
 
+import {
+  FolderAccessControlsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -34,7 +38,10 @@ import {
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
-import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
+import {
+  canGrantFolderAccess,
+  normalizeFolderPath
+} from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { ActorSummary } from "./ActorSummary";
 import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
@@ -57,6 +64,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const environments = currentProject?.environments ?? [];
 
@@ -93,8 +101,6 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
 
   const targetError = (() => {
     if (!environmentSlug) return "Select an environment.";
-    if (!subscription?.secretsFolderRbac && !isRoot)
-      return "Without a license, folder access can only be granted on the root folder /. Upgrade your Infisical plan to grant access on other folders.";
     if (isCheckingFolder) return null;
     if (!folderExists) return `No folder at ${normalizedPath} in this environment.`;
     // the backend authorizes a grant against the target folder's own path, not its parent
@@ -123,6 +129,13 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
     (Boolean(existingGrant) && !grant.hasChanges);
 
   const handleSubmit = async () => {
+    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), normalizedPath)) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent,
+        paywallKey: "project.folder-access-section"
+      });
+      return;
+    }
     const target = { projectId, environmentSlug, secretPath: normalizedPath };
 
     if (existingGrant) {
@@ -218,6 +231,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
           {existingGrant ? "Save Changes" : "Grant Access"}
         </Button>
       </SheetFooter>
+      {upgradeGate}
     </>
   );
 };

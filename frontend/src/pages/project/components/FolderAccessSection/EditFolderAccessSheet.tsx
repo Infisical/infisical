@@ -1,3 +1,7 @@
+import {
+  FolderAccessControlsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -8,12 +12,16 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import {
   TFolderAccess,
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
-import { isRootFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
+import {
+  canGrantFolderAccess,
+  isRootFolderPath
+} from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 import { FolderPathBreadcrumb } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderPathBreadcrumb";
 
 import { ActorSummary } from "./ActorSummary";
@@ -39,8 +47,17 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
 
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
+  const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleSave = async () => {
+    if (!canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), access.secretPath)) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent,
+        paywallKey: "project.folder-access-section"
+      });
+      return;
+    }
     const payload = {
       projectId: access.projectId,
       environmentSlug: access.environment,
@@ -85,6 +102,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
           Save Changes
         </Button>
       </SheetFooter>
+      {upgradeGate}
     </>
   );
 };

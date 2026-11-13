@@ -52,7 +52,6 @@ import {
   DynamicSecretsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
   EnvironmentLimitUpgradeIntent,
-  FolderAccessControlsUpgradeIntent,
   hasEnvironmentCapacity,
   HoneyTokensUpgradeIntent,
   PointInTimeRecoveryUpgradeIntent,
@@ -153,7 +152,6 @@ import {
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
-import { isInfisicalCloud } from "@app/helpers/platform";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   getUserTablePreference,
@@ -1747,37 +1745,18 @@ const OverviewPageContent = () => {
 
   const handleFolderAccessOpen = useCallback(
     (folderName: string) => {
-      const openFolderAccess = () => {
-        const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
-        if (!folder) return;
-        setFolderAccessTarget({
-          folderPath: childFolderPath(folderName),
-          environmentSlug: singleEnvSlug
-        });
-        analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-          source: "folder_row",
-          projectId
-        });
-      };
-
-      if (!subscription?.secretsFolderRbac) {
-        openUpgradeGate({
-          intent: FolderAccessControlsUpgradeIntent
-        });
-        return;
-      }
-
-      openFolderAccess();
+      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+      if (!folder) return;
+      setFolderAccessTarget({
+        folderPath: childFolderPath(folderName),
+        environmentSlug: singleEnvSlug
+      });
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "folder_row",
+        projectId
+      });
     },
-    [
-      getFolderByNameAndEnv,
-      singleEnvSlug,
-      childFolderPath,
-      orgId,
-      projectId,
-      subscription?.secretsFolderRbac,
-      openUpgradeGate
-    ]
+    [getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
   );
 
   // an inherited grant is managed on the root folder, so the nested sheet hands off to the root one
@@ -1790,31 +1769,12 @@ const OverviewPageContent = () => {
   }, [navigate]);
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
-    const openCurrentFolderAccess = () => {
-      setIsCurrentFolderAccessOpen(true);
-      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "breadcrumb",
-        projectId
-      });
-    };
-
-    const isSelfHostedRootFolder = secretPath === "/" && !isInfisicalCloud();
-    if (!subscription?.secretsFolderRbac && !isSelfHostedRootFolder) {
-      openUpgradeGate({
-        intent: FolderAccessControlsUpgradeIntent
-      });
-      return;
-    }
-
-    openCurrentFolderAccess();
-  }, [
-    openUpgradeGate,
-    orgId,
-    projectId,
-    secretPath,
-    singleEnvSlug,
-    subscription?.secretsFolderRbac
-  ]);
+    setIsCurrentFolderAccessOpen(true);
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+      source: "breadcrumb",
+      projectId
+    });
+  }, [orgId, projectId]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
