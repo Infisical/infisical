@@ -57,6 +57,8 @@ This prevents audit logs from being written to PostgreSQL while still streaming 
 		    Your audit logs are now ready to be streamed.
 
         ![stream list](/images/platform/audit-log-streams/stream-list.png)
+
+		    To get notified if the stream stops delivering events, [set up a delivery failure alert](#get-alerted-when-a-stream-starts-dropping-events).
 		</Step>
 </Steps>
 
@@ -414,7 +416,7 @@ If a delivery attempt to your destination fails, the event is **not** discarded 
 
 ### Get alerted when a stream starts dropping events
 
-A **Delivery Failure** alert notifies your team when any stream in your organization drops events after all retries. The alert covers every stream in the organization, and you can't scope it to one stream or project.
+Set up a **Delivery Failure** alert after you create your first stream. The alert notifies your team when any stream in your organization drops events after all retries. It covers every stream in the organization.
 
 Infisical sends one notification when a stream starts failing. Later drops on the same stream don't send another notification until the stream recovers. The stream recovers after a batch has at least one successful delivery and no delivery failures, or when you successfully update its credentials. While a stream is failing, the stream list shows a **Failing** badge next to it. Hover over the badge to see when the stream started failing and the last delivery error.
 
@@ -452,7 +454,7 @@ Because streaming is best-effort with bounded retries, your durable source of tr
 3. **Re-ingest into your SIEM.** Push the exported events into your SIEM using its native ingestion API. The exported fields match the [audit log structure](#audit-logs-structure) below, so the same parsing and transformation rules you already use for the live stream apply to backfilled events.
 
 <Warning>
-    Backfilling depends on the events still being stored in Infisical. If you have set `DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true` and aren't using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), the stream is your **only** sink and dropped events can't be recovered. Keep at least one durable audit log store (PostgreSQL or ClickHouse) enabled if you rely on streams for compliance. Also note that backfilling is bounded by your plan's audit log **retention period**: events older than your retention window are no longer available to export.
+    Backfilling depends on the events still being stored in Infisical. If you have set `DISABLE_POSTGRES_AUDIT_LOG_STORAGE=true` and aren't using [ClickHouse](/documentation/platform/audit-logs-clickhouse-setup), the stream is your **only** sink and dropped events can't be recovered. Keep at least one durable audit log store (PostgreSQL or ClickHouse) enabled if you rely on streams for compliance. If you can't, set up a [delivery failure alert](#get-alerted-when-a-stream-starts-dropping-events) so you find out as soon as a stream starts dropping events. Also note that backfilling is bounded by your plan's audit log **retention period**: events older than your retention window are no longer available to export.
 </Warning>
 
 ## Delivery format
