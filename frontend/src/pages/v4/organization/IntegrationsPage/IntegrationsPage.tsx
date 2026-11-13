@@ -22,6 +22,7 @@ import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnect
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { failed } from "../../access/toast";
+import { GhostEmpty } from "../../components/ghost-empty";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { projectBase } from "../../shell/navigation";
@@ -299,7 +300,7 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
               }
             />
           ) : (
-            <EmptyState size="sm" icon="apps" title="No app connections yet" />
+            <GhostEmpty layout="rows" icon="apps" title="No app connections yet" />
           )
         }
         persistentStatus={`${visible.length} of ${scoped.length} connections`}

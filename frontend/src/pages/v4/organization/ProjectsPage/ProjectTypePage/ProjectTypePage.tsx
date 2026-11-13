@@ -80,6 +80,7 @@ import { AccessFrame } from "../../../access/AccessFrame";
 import { useDebounced } from "../../../access/org/use-debounced";
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
+import { GhostEmpty } from "../../../components/ghost-empty";
 import { useV4Adapter } from "../../../data/adapters";
 import type { TSearchedProject } from "../../../data/projects/contract";
 import { v4Path } from "../../../links";
@@ -312,26 +313,26 @@ const ProjectCard = ({
 
 const NoProjects = ({
   projectType,
+  layout,
   canCreate,
   onCreate
 }: {
   projectType: ProjectType;
+  layout: "cards" | "rows";
   canCreate: boolean;
   onCreate: () => void;
-}) => {
-  const title = getProjectTitle(projectType);
-  return (
-    <EmptyState
-      icon={productOf(projectType).icon}
-      title={`No ${title} projects yet`}
-      actions={
-        <Button icon="plus" disabled={!canCreate} onClick={onCreate}>
-          Create project
-        </Button>
-      }
-    />
-  );
-};
+}) => (
+  <GhostEmpty
+    layout={layout}
+    icon={productOf(projectType).icon}
+    title={`No ${getProjectTitle(projectType)} projects yet`}
+    action={
+      <Button variant="outline" icon="plus" disabled={!canCreate} onClick={onCreate}>
+        Create project
+      </Button>
+    }
+  />
+);
 
 const NoMatch = () => <EmptyState size="sm" icon="search" title="No projects match your search" />;
 
@@ -432,9 +433,17 @@ const MyProjects = ({
     }
   ];
 
+  const isEmpty = !isPending && !projects.length;
   let body: ReactNode;
-  if (!isPending && !projects.length) {
-    body = <NoProjects projectType={projectType} canCreate={canCreate} onCreate={onCreate} />;
+  if (isEmpty) {
+    body = (
+      <NoProjects
+        projectType={projectType}
+        layout={viewMode === ProjectsViewMode.GRID ? "cards" : "rows"}
+        canCreate={canCreate}
+        onCreate={onCreate}
+      />
+    );
   } else if (viewMode === ProjectsViewMode.LIST) {
     body = (
       <DataTable
@@ -480,21 +489,23 @@ const MyProjects = ({
 
   return (
     <Stack gap={16}>
-      <Toolbar
-        search={search}
-        onSearchChange={(value) => {
-          setSearch(value);
-          setPage(1);
-        }}
-        listView={listView}
-        onListViewChange={onListViewChange}
-        showListToggle={showListToggle}
-        viewMode={viewMode}
-        onViewModeChange={(mode) => {
-          localStorage.setItem("projectsViewMode", mode);
-          setViewMode(mode);
-        }}
-      />
+      {(!isEmpty || showListToggle) && (
+        <Toolbar
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          listView={listView}
+          onListViewChange={onListViewChange}
+          showListToggle={showListToggle}
+          viewMode={viewMode}
+          onViewModeChange={(mode) => {
+            localStorage.setItem("projectsViewMode", mode);
+            setViewMode(mode);
+          }}
+        />
+      )}
       {body}
     </Stack>
   );
@@ -754,7 +765,12 @@ const AllProjects = ({
         viewMode={ProjectsViewMode.LIST}
       />
       {!isPending && !totalCount && !debouncedSearch ? (
-        <NoProjects projectType={projectType} canCreate={canCreate} onCreate={onCreate} />
+        <NoProjects
+          projectType={projectType}
+          layout="rows"
+          canCreate={canCreate}
+          onCreate={onCreate}
+        />
       ) : (
         <DataTable
           label={`All ${getProjectTitle(projectType)} projects`}
