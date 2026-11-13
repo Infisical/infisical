@@ -62,19 +62,20 @@ export const RevokeSignerCertificateDialog = ({
         <DialogHeader>
           <DialogTitle>Revoke Certificate for {signer.name}</DialogTitle>
           <DialogDescription>
-            The signer stops signing right away. This can&apos;t be undone, so create a new signer
-            to keep signing. Signatures made before revocation may stop validating.
+            The signer stops signing right away, and this can&apos;t be undone. To keep signing,
+            create a new signer. Signatures made before the revocation may stop validating.
             {signer.pendingCertificateRequest && (
               <span className="mt-2 block">
-                This also cancels the certificate request in progress.
-                {openDigicertOrderId &&
-                  ` DigiCert order #${openDigicertOrderId} stays open, so cancel it in CertCentral.`}
+                {openDigicertOrderId
+                  ? `This also cancels the pending certificate request, including DigiCert order #${openDigicertOrderId}.`
+                  : "This also cancels the pending certificate request."}
               </span>
             )}
             {isDigicertSigner && (
               <span className="mt-2 block font-medium text-warning">
-                Depending on your CertCentral revocation policy, DigiCert may wait for an
-                administrator to approve the revocation before revoking the certificate on its side.
+                If your CertCentral account requires approval for revocations, the certificate stays
+                valid until an administrator approves the request in CertCentral. Revoke again after
+                it&apos;s approved.
               </span>
             )}
           </DialogDescription>

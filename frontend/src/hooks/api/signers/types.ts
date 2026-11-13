@@ -228,6 +228,8 @@ export const getNextDigicertOrderId = (signer: TSigner) => {
 
 export const hasFailedRenewal = (signer: TSigner) =>
   Boolean(signer.certificateFailureReason) &&
+  !signer.pendingCertificateRequest &&
+  !signer.hasOpenCertificateRequest &&
   signer.status !== SignerStatus.Failed &&
   signer.status !== SignerStatus.Pending &&
   signer.status !== SignerStatus.Revoked;
@@ -422,6 +424,8 @@ export type TRevokeSignerCertificateDTO = {
   signerId: string;
   revocationReason: CrlReason;
 };
+
+export type TRevokeSignerCertificateResponse = TSigner & { crlWarning?: string };
 
 export type TReissueSignerCertificateDTO = {
   signerId: string;

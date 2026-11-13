@@ -107,7 +107,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       operationId: "renewSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
       description:
-        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source.",
+        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source. An internal CA issues the new certificate right away, and the response holds it. An external CA such as DigiCert issues it later, so the response still holds the current certificate. Get the signer to check: while the request is open, `pendingCertificateRequest` is set. Once it's empty and `certificateId` has changed, the renewed certificate is attached.",
       params: SignerIdParamsSchema,
       response: { 200: PkiSignersSchema }
     },
@@ -154,18 +154,26 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       body: z.object({
         revocationReason: z.enum(PERMANENT_REVOCATION_REASONS).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
-      response: { 200: PkiSignersSchema }
+      response: {
+        200: PkiSignersSchema.extend({
+          crlWarning: z
+            .string()
+            .optional()
+            .describe("Set when the certificate was revoked but its CA's CRL couldn't be regenerated yet.")
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { signer, certificateId, serialNumber, commonName } = await server.services.pkiSigner.revokeCertificate({
-        signerId: req.params.signerId,
-        revocationReason: req.body.revocationReason,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
+      const { signer, certificateId, serialNumber, commonName, crlWarning } =
+        await server.services.pkiSigner.revokeCertificate({
+          signerId: req.params.signerId,
+          revocationReason: req.body.revocationReason,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -183,7 +191,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         }
       });
 
-      return signer;
+      return { ...signer, crlWarning };
     }
   });
 

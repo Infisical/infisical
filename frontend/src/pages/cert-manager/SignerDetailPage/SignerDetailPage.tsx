@@ -189,7 +189,7 @@ export const SignerDetailPage = () => {
   } else if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
     statusTooltip = signer.certificateFailureReason;
   } else if (signer.status === SignerStatus.Pending && pendingExternalOrder) {
-    statusTooltip = `DigiCert order #${pendingExternalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
+    statusTooltip = `DigiCert order #${pendingExternalOrder.orderId} is waiting for approval. DigiCert emailed the order's approver a link, and the certificate is issued as soon as they approve it.`;
   }
 
   const showsRenewalBadge =
@@ -199,14 +199,14 @@ export const SignerDetailPage = () => {
   let isRenewalFailed = false;
   if (showsRenewalBadge && signer.pendingCertificateRequest) {
     const keepsSigning = signsUntilRenewed
-      ? " The signer keeps signing with its current certificate until the new one is issued."
+      ? " The signer keeps signing with its current certificate until then."
       : "";
     renewalTooltip = pendingExternalOrder
-      ? `DigiCert order #${pendingExternalOrder.orderId} is awaiting approval.${keepsSigning}`
+      ? `DigiCert order #${pendingExternalOrder.orderId} is waiting for approval.${keepsSigning}`
       : `A new certificate is being issued.${keepsSigning}`;
   } else if (hasFailedRenewal(signer)) {
     isRenewalFailed = true;
-    renewalTooltip = `${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer keeps its current certificate. Renew it again once the cause is fixed.`;
+    renewalTooltip = `${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer still has its current certificate. Fix the cause, then renew again.`;
   }
   const nextDigicertOrderId = getNextDigicertOrderId(signer);
 
@@ -436,13 +436,13 @@ export const SignerDetailPage = () => {
             </AlertDialogMedia>
             <AlertDialogTitle>Renew Certificate for &apos;{signer.name}&apos;?</AlertDialogTitle>
             <AlertDialogDescription>
-              A new certificate is requested from the signer&apos;s certificate authority.
+              This requests a new certificate from the signer&apos;s certificate authority.
               {signsUntilRenewed &&
-                " The signer keeps signing with its current certificate and switches to the new one once it's issued."}
+                " The signer keeps signing with its current certificate until the new one is issued."}
               {isDigicertSigner && (
                 <span className="mt-2 block font-medium text-warning">
                   This places a renewal order on DigiCert. If your account has no unused code
-                  signing subscription, it reissues the current order instead, and DigiCert revokes
+                  signing subscription, the current order is reissued instead, and DigiCert revokes
                   the current certificate within 72 hours.
                 </span>
               )}
@@ -478,7 +478,7 @@ export const SignerDetailPage = () => {
                   This also revokes the certificate on DigiCert, so it can no longer be used to sign
                   anywhere. Other certificates on the same order stay valid.
                   {nextDigicertOrderId &&
-                    ` DigiCert order #${nextDigicertOrderId} stays open, so cancel it in CertCentral.`}
+                    ` DigiCert order #${nextDigicertOrderId} stays open. Cancel it in CertCentral.`}
                 </span>
               )}
             </AlertDialogDescription>

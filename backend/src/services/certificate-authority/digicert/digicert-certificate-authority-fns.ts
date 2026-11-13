@@ -41,7 +41,8 @@ import {
   DIGICERT_FINAL_ISSUED_STATUSES,
   DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS,
   DigiCertOrderStatus,
-  DigiCertPollOutcome
+  DigiCertPollOutcome,
+  DigiCertRevocationRequestStatus
 } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose, DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
 import {
@@ -980,10 +981,18 @@ export const DigiCertCertificateAuthorityFns = ({
 
     try {
       const comments = `Revoked via Infisical. Reason: ${reason}`;
-      if (digicertCertificateId) {
-        await client.revokeCertificate(digicertCertificateId, comments);
-      } else {
-        await client.revokeOrder(orderId, comments);
+      const { requestStatus } = digicertCertificateId
+        ? await client.revokeCertificate(digicertCertificateId, comments)
+        : await client.revokeOrder(orderId, comments);
+      if (requestStatus === DigiCertRevocationRequestStatus.Rejected) {
+        throw new BadRequestError({
+          message: `DigiCert rejected the revocation request for order #${orderId}, so the certificate is still valid. Check the request in CertCentral.`
+        });
+      }
+      if (requestStatus && requestStatus !== DigiCertRevocationRequestStatus.Approved) {
+        throw new BadRequestError({
+          message: `DigiCert needs an administrator to approve this revocation, so the certificate is still valid. Approve the request for order #${orderId} in CertCentral, then revoke again.`
+        });
       }
     } catch (err) {
       const message = (err as Error)?.message ?? "";

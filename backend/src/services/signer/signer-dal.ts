@@ -53,7 +53,7 @@ export const signerDALFactory = (db: TDbClient) => {
             .on(`${TableName.Certificate}.caId`, "=", `${TableName.CertificateAuthority}.id`)
             .orOn((signerCaJoin) => {
               void signerCaJoin
-                .onNull(`${TableName.Certificate}.caId`)
+                .onNull(`${TableName.PkiSigners}.certificateId`)
                 .andOn(`${TableName.PkiSigners}.caId`, "=", `${TableName.CertificateAuthority}.id`);
             });
         })
@@ -226,7 +226,7 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateById: typeof orm.updateById = async (id, data, tx) => {
+  const updateUnlessRevoked: typeof orm.updateById = async (id, data, tx) => {
     if (data.status === undefined || data.status === SignerStatus.Revoked) return orm.updateById(id, data, tx);
     const [updated] = await orm.update({ id, $notEqual: { status: SignerStatus.Revoked } }, data, tx);
     if (updated) return updated;
@@ -264,7 +264,7 @@ export const signerDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
-    updateById,
+    updateUnlessRevoked,
     restoreStatusAfterFailedRevoke,
     findByIdWithCertificate,
     findByStatusWithCertificate,

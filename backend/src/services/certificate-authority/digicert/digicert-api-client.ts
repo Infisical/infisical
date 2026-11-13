@@ -5,6 +5,7 @@ import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { DIGICERT_AUTH_HEADER } from "@app/services/app-connection/digicert/digicert-connection-constants";
 import { extractDigiCertErrorMessage } from "@app/services/app-connection/digicert/digicert-connection-errors";
 
+import { DigiCertRevocationRequestStatus } from "./digicert-certificate-authority-enums";
 import {
   TCheckValidationResponse,
   TDigiCertAlternateOrdersResponse,
@@ -130,11 +131,12 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
 
   const revokeOrder = async (orderId: number, comments: string) =>
     wrap(async () => {
-      await request.put(
+      const { data } = await request.put<{ status?: DigiCertRevocationRequestStatus } | "">(
         `${baseURL}/order/certificate/${orderId}/revoke`,
-        { comments },
+        { comments, skip_approval: true },
         { headers, ...boundedRequestConfig }
       );
+      return { requestStatus: typeof data === "object" ? data?.status : undefined };
     }, `order revocation for ${orderId}`);
 
   const cancelOrderReissue = async (orderId: number, note: string) =>
@@ -148,11 +150,12 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
 
   const revokeCertificate = async (certificateId: number, comments: string) =>
     wrap(async () => {
-      await request.put(
+      const { data } = await request.put<{ status?: DigiCertRevocationRequestStatus } | "">(
         `${baseURL}/certificate/${certificateId}/revoke`,
-        { comments },
+        { comments, skip_approval: true },
         { headers, ...boundedRequestConfig }
       );
+      return { requestStatus: typeof data === "object" ? data?.status : undefined };
     }, `certificate revocation for ${certificateId}`);
 
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>

@@ -26,6 +26,7 @@ import {
   TRemoveSignerUserDTO,
   TRequestToSignDTO,
   TRevokeSignerCertificateDTO,
+  TRevokeSignerCertificateResponse,
   TRevokeSignerRequestDTO,
   TSigner,
   TSignerMember,
@@ -166,20 +167,27 @@ export const useRenewSignerCertificate = () => {
       return data;
     },
     onSuccess: (signer) => {
-      const previousCertificateId = queryClient.getQueryData<TSigner>(
-        signerKeys.byId(signer.id)
-      )?.certificateId;
-      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
-      queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
-      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
+      const previousSigner = queryClient.getQueryData<TSigner>(signerKeys.byId(signer.id));
       invalidateInventoryCertificates(queryClient, signer.certificateId);
+      let renewalRequestedText =
+        "Renewal requested. The signer can sign again once the new certificate is issued.";
+      if (previousSigner?.status === SignerStatus.Active) {
+        renewalRequestedText =
+          "Renewal requested. The signer keeps signing with its current certificate until the new one is issued.";
+      }
       createNotification({
         text:
-          signer.certificateId === previousCertificateId
-            ? "Certificate renewal requested. The signer keeps signing with its current certificate until the new one is issued."
+          signer.certificateId === previousSigner?.certificateId
+            ? renewalRequestedText
             : "Certificate renewed",
         type: "success"
       });
+    },
+    onSettled: (_, __, signerId) => {
+      const projectId = queryClient.getQueryData<TSigner>(signerKeys.byId(signerId))?.projectId;
+      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signerId) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signerId) });
+      if (projectId) queryClient.invalidateQueries({ queryKey: signerKeys.list(projectId) });
     }
   });
 };
@@ -187,9 +195,9 @@ export const useRenewSignerCertificate = () => {
 export const useRevokeSignerCertificate = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TSigner, object, TRevokeSignerCertificateDTO>({
+  return useMutation<TRevokeSignerCertificateResponse, object, TRevokeSignerCertificateDTO>({
     mutationFn: async ({ signerId, ...body }) => {
-      const { data } = await apiRequest.post<TSigner>(
+      const { data } = await apiRequest.post<TRevokeSignerCertificateResponse>(
         `/api/v1/cert-manager/signers/${signerId}/certificate/revoke`,
         body
       );
@@ -198,6 +206,14 @@ export const useRevokeSignerCertificate = () => {
     onSuccess: (signer) => {
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       invalidateInventoryCertificates(queryClient, signer.certificateId);
+      if (signer.crlWarning) {
+        createNotification({
+          title: "Certificate revoked, CRL not regenerated",
+          text: signer.crlWarning,
+          type: "warning"
+        });
+        return;
+      }
       createNotification({ text: "Certificate revoked", type: "success" });
     },
     onSettled: (_, __, { signerId }) => {
@@ -261,7 +277,7 @@ export const useCheckSignerIssuance = () => {
       let text = "Issuance status updated";
       if (stillPending) {
         text = pendingOrder
-          ? `Still pending. DigiCert order #${pendingOrder.orderId} is awaiting approval in DigiCert.`
+          ? `DigiCert order #${pendingOrder.orderId} is still waiting for approval.`
           : "Issuance still pending. Checked just now.";
       }
       createNotification({
