@@ -5,7 +5,7 @@ import { getDenoDeployAuthHeaders } from "@app/services/app-connection/deno-depl
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
+import { setSecretMapEntry, TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { DenoDeploySyncContext } from "./deno-deploy-sync-enums";
@@ -218,7 +218,7 @@ export const DenoDeploySyncFns = {
 
     for (const envVar of ownedVars(app.env_vars, context)) {
       if (!envVar.secret && envVar.value !== undefined) {
-        imported[envVar.key] = { value: envVar.value };
+        setSecretMapEntry(imported, envVar.key, { value: envVar.value });
       }
     }
 

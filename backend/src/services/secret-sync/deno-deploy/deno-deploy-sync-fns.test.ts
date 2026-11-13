@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { parseSyncErrorMessage } from "@app/services/secret-sync/secret-sync-fns";
+import { parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { createSecretSyncPayload, TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 import { DenoDeploySyncContext } from "./deno-deploy-sync-enums";
@@ -249,6 +249,44 @@ describe("DenoDeploySyncFns", () => {
     await expect(DenoDeploySyncFns.getSecrets(sync)).resolves.toEqual({
       PLAIN: { value: "visible" }
     });
+  });
+
+  it("imports an unmasked variable named __proto__ as an own key on initial import", async () => {
+    get.mockResolvedValue({
+      data: appWith([
+        {
+          id: "proto-id",
+          key: "__proto__",
+          value: "proto-value",
+          secret: false,
+          contexts: [DenoDeploySyncContext.Production]
+        },
+        {
+          id: "prefixed-proto-id",
+          key: "APP___proto__",
+          value: "prefixed-value",
+          secret: false,
+          contexts: [DenoDeploySyncContext.Production]
+        }
+      ])
+    });
+
+    const imported = await DenoDeploySyncFns.getSecrets(sync);
+    expect(Object.getPrototypeOf(imported)).toBe(Object.prototype);
+    expect(Object.hasOwn(imported, "__proto__")).toBe(true);
+    expect(Object.keys(imported)).toEqual(["__proto__", "APP___proto__"]);
+
+    const withSchema = {
+      ...sync,
+      syncOptions: { ...sync.syncOptions, keySchema: "APP_{{secretKey}}" }
+    } as TDenoDeploySyncWithCredentials;
+    const stripped = await SecretSyncFns.getSecrets(withSchema, {} as Parameters<typeof SecretSyncFns.getSecrets>[1]);
+    expect(Object.getPrototypeOf(stripped)).toBe(Object.prototype);
+    expect(Object.keys(stripped)).toEqual(["__proto__"]);
+    expect(Object.getOwnPropertyDescriptor(stripped, "__proto__")?.value).toEqual({ value: "prefixed-value" });
+
+    const unprefixed = await SecretSyncFns.getSecrets(sync, {} as Parameters<typeof SecretSyncFns.getSecrets>[1]);
+    expect(Object.keys(unprefixed)).toEqual(["__proto__", "APP___proto__"]);
   });
 
   it("removeSecrets only deletes the synced keys in the destination context", async () => {

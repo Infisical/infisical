@@ -95,7 +95,7 @@ import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
-import { TSecretSyncPayload } from "./secret-sync-payload";
+import { setSecretMapEntry, TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -230,7 +230,7 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
     }
 
     const strippedKey = key.slice(prefix.length, key.length - suffix.length);
-    strippedMap[strippedKey] = value;
+    setSecretMapEntry(strippedMap, strippedKey, value);
   }
 
   return strippedMap;
@@ -285,7 +285,7 @@ const filterForSchema = (secretMap: TSecretMap, environment: string, schema?: st
 
   for (const [key, value] of Object.entries(secretMap)) {
     if (matchesSchema(key, environment, schema)) {
-      filteredMap[key] = value;
+      setSecretMapEntry(filteredMap, key, value);
     }
   }
 
