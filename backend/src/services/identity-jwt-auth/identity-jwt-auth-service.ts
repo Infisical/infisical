@@ -50,7 +50,7 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityJwtAuthDALFactory } from "./identity-jwt-auth-dal";
-import { doesFieldValueMatchJwtPolicy } from "./identity-jwt-auth-fns";
+import { doesAudValueMatchJwtPolicy, doesFieldValueMatchJwtPolicy } from "./identity-jwt-auth-fns";
 import {
   JwtConfigurationType,
   TAttachJwtAuthDTO,
@@ -283,7 +283,7 @@ export const identityJwtAuthServiceFactory = ({
 
         if (
           !splitCommaSeparatedPolicyValues(identityJwtAuth.boundAudiences).some((policyValue) =>
-            doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue)
+            doesAudValueMatchJwtPolicy(tokenData.aud, policyValue)
           )
         ) {
           throw new UnauthorizedError({
