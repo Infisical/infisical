@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
 import {
@@ -375,7 +376,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
     const { project } = await $getProjectBySlug({ projectSlug, actor, actorId, actorOrgId, actorAuthMethod });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.has(PlanFeature.SecretApproval)) {
       throw new BadRequestError({
         message:
           "Failed to create access approval request due to plan restriction. Upgrade plan to create access approval request."

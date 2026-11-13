@@ -65,8 +65,8 @@ export default defineConfig({
     // generic "@app" prefix alias in resolve.alias below.
     alias: [
       {
-        find: "./license-fns",
-        replacement: path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
+        find: /^\.\/default-features$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/default-features")
       },
       {
         find: "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns",

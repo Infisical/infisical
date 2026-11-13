@@ -1,7 +1,8 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, it, vi } from "vitest";
 
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -28,7 +29,7 @@ const actor = {
 };
 
 const createService = (secretApproval: boolean) => {
-  const getPlan = vi.fn().mockResolvedValue({ secretApproval } as unknown as TFeatureSet);
+  const getPlan = vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), secretApproval }));
 
   const deps = {
     projectDAL: {

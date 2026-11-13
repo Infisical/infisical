@@ -1,10 +1,17 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  PlanProduct,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -34,8 +41,6 @@ import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CrlReason } from "../certificate/certificate-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { InternalCas } from "../license-client";
-import { TUsageMeteringServiceFactory } from "../license-client/usage";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -89,7 +94,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { assertNoCertificateProfilesUsingCa, deleteCaAndReleaseExternalKey } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
-import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
+import { assertCertificateAuthorityQuota } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -169,10 +174,10 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -203,10 +208,10 @@ export const certificateAuthorityServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
+  licenseService,
   usageMeteringService,
   caKeySourceService,
   certificateAuthoritySecretDAL,
-  licenseService,
   pkiAlertV2Queue,
   certificateAlertEventEmitter,
   auditLogService
@@ -344,13 +349,13 @@ export const certificateAuthorityServiceFactory = ({
 
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (typeof plan.certManager === "boolean" && !plan.certManager) {
+    if (!plan.allows(PlanProduct.CertManager)) {
       throw new BadRequestError({
         message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
       });
     }
 
-    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
       throw new BadRequestError({
         message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
       });
@@ -391,7 +396,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emitForProject(projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -686,8 +691,11 @@ export const certificateAuthorityServiceFactory = ({
     ]);
 
     return {
-      certificateAuthorities: { used: totalUsed, limit: resolveEffectiveMaxCas(plan) },
-      internalCertificateAuthorities: { used: internalUsed, limit: plan.maxInternalCas ?? null }
+      certificateAuthorities: { used: totalUsed, limit: plan.limit(PlanLimit.CertificateAuthorities) },
+      internalCertificateAuthorities: {
+        used: internalUsed,
+        limit: plan.limit(PlanLimit.InternalCertificateAuthorities)
+      }
     };
   };
 
@@ -972,7 +980,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,
@@ -1211,7 +1219,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas);
       return {
         id: certificateAuthority.id,
         type,

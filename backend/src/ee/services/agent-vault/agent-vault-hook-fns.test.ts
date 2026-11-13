@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "./agent-vault-credential-schemas";
@@ -197,7 +199,9 @@ describe("describeHookChange", () => {
 
 describe("assertAgentVaultHooksOnPlan", () => {
   test("throws the plan message when hooks are off", async () => {
-    const licenseService = { getPlan: vi.fn().mockResolvedValue({ agentVaultHooks: false }) };
+    const licenseService = {
+      getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: false }))
+    };
     await expect(assertAgentVaultHooksOnPlan(licenseService as never, "org-1")).rejects.toThrow(
       AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE
     );
@@ -205,7 +209,9 @@ describe("assertAgentVaultHooksOnPlan", () => {
   });
 
   test("passes when hooks are on", async () => {
-    const licenseService = { getPlan: vi.fn().mockResolvedValue({ agentVaultHooks: true }) };
+    const licenseService = {
+      getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: true }))
+    };
     await expect(assertAgentVaultHooksOnPlan(licenseService as never, "org-1")).resolves.toBeUndefined();
   });
 });

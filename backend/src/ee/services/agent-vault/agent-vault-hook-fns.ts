@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
@@ -130,10 +130,8 @@ export const describeHookChange = (
   };
 };
 
-export const assertAgentVaultHooksOnPlan = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
-  orgId: string
-) => {
+export const assertAgentVaultHooksOnPlan = async (licenseService: Pick<TLicenseService, "getPlan">, orgId: string) => {
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.agentVaultHooks) throw new BadRequestError({ message: AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE });
+  if (!plan.has(PlanFeature.AgentVaultHooks))
+    throw new BadRequestError({ message: AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE });
 };

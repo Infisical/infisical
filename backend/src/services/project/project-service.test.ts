@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -31,7 +32,7 @@ const setup = () => {
   const permissionService = {
     getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
   };
-  const licenseService = { getPlan: vi.fn().mockResolvedValue({ workspaceLimit: null }) };
+  const licenseService = new FakeLicenseService();
   const service = projectServiceFactory({
     orgDAL,
     projectDAL,

@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { orgAdminPermissions } from "@app/ee/services/permission/org-permission";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -38,13 +39,14 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
   };
   const userDAL = { findOne: vi.fn().mockResolvedValue({ id: "user-id", username: USERNAME }) };
   const membershipDAL = { findOne: vi.fn().mockResolvedValue({ id: "identity-membership-id" }) };
+  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { groups: true });
 
   const service = groupServiceFactory({
     permissionService: {
       getOrgPermission: vi.fn().mockResolvedValue({ permission: admin }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: admin }])
     } as never,
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ groups: true }) } as never,
+    licenseService,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findMembership: vi.fn().mockResolvedValue([])
@@ -68,7 +70,6 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
     identityDAL: { find: vi.fn().mockResolvedValue([]) } as never,
     membershipDAL: membershipDAL as never,
     identityAccessTokenService: { bumpIdentityRevocationVersion: vi.fn() } as never,
-    usageMeteringService: { emit: vi.fn() } as never,
     projectDAL: { find: vi.fn().mockResolvedValue([]) } as never,
     projectKeyDAL: { find: vi.fn().mockResolvedValue([]), delete: vi.fn() } as never,
     projectBotDAL: { findOne: vi.fn().mockResolvedValue(undefined) } as never,
