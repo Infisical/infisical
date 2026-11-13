@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { ApproverType } from "../approval-policy/approval-policy-enums";
+import { ApprovalPolicyScope, ApproverType } from "../approval-policy/approval-policy-enums";
 import { ActorType } from "../auth/auth-type";
 import { holdCertificateRequestForApproval } from "./certificate-request-approval-fns";
 
-const setup = (steps: unknown[]) => {
+const setup = (steps: unknown[], scopeType: ApprovalPolicyScope | null = ApprovalPolicyScope.PkiApplication) => {
   const deps = {
     certificateRequestDAL: { updateById: vi.fn().mockResolvedValue({}) },
     approvalPolicyService: {
@@ -16,7 +16,13 @@ const setup = (steps: unknown[]) => {
   const createCertificateRequest = vi.fn().mockResolvedValue({ id: "cert-req-1" });
   const hold = () =>
     holdCertificateRequestForApproval(deps as never, {
-      approvalPolicy: { id: "policy-1", name: "production-cert-approval", maxRequestTtl: null, steps } as never,
+      approvalPolicy: {
+        id: "policy-1",
+        name: "production-cert-approval",
+        maxRequestTtl: null,
+        scopeType,
+        steps
+      } as never,
       projectId: "project-1",
       organizationId: "org-1",
       createCertificateRequest,
@@ -42,6 +48,18 @@ describe("holdCertificateRequestForApproval", () => {
     );
     expect(createCertificateRequest).not.toHaveBeenCalled();
     expect(deps.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+  });
+
+  it("tells the requester to ask a Product Admin when the policy belongs to no Application", async () => {
+    const { createCertificateRequest, hold } = setup(
+      [{ id: "step-1", stepNumber: 1, requiredApprovals: 1, approvers: [] }],
+      null
+    );
+
+    await expect(hold()).rejects.toThrow(
+      "Approval step 1 has no approvers. Add at least one user or group. Ask a Product Admin to update the policy."
+    );
+    expect(createCertificateRequest).not.toHaveBeenCalled();
   });
 
   it("refuses to hold a certificate under a policy with no steps", async () => {

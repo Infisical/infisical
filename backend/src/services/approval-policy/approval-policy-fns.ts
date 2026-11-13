@@ -1,3 +1,4 @@
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { BadRequestError } from "@app/lib/errors";
 
 import { ApproverType } from "./approval-policy-enums";
@@ -13,14 +14,16 @@ const describeStep = (step: Pick<ApprovalPolicyStep, "name">, index: number) =>
 export const findPolicyStepsProblem = ({
   steps,
   hasAutoApprovalRules,
-  supportsAutoApproval
+  supportsAutoApproval,
+  noStepsMeansNoApproval = false
 }: {
   steps: TPolicyStepShape[];
   hasAutoApprovalRules: boolean;
   supportsAutoApproval: boolean;
+  noStepsMeansNoApproval?: boolean;
 }): string | null => {
   if (steps.length === 0) {
-    if (hasAutoApprovalRules) return null;
+    if (hasAutoApprovalRules || noStepsMeansNoApproval) return null;
     return supportsAutoApproval
       ? "Add at least one approval step or an auto-approval rule. Without either, requests on this policy can never be approved."
       : "Add at least one approval step. Without one, requests on this policy can never be approved.";
@@ -48,4 +51,29 @@ export const findPolicyStepsProblem = ({
 export const assertPolicyStepsCanApprove = (args: Parameters<typeof findPolicyStepsProblem>[0]) => {
   const problem = findPolicyStepsProblem(args);
   if (problem) throw new BadRequestError({ message: problem });
+};
+
+// A user named on a step can review while they reach the scope through a group, so notifications must count that
+// membership too, or they're left out of a step they can still decide.
+export const filterApproversByActiveMemberships = async (
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">,
+  approvers: { type: ApproverType; id: string }[],
+  memberships: { actorUserId?: string | null; actorGroupId?: string | null }[]
+) => {
+  const activeUserIds = new Set(memberships.flatMap((m) => (m.actorUserId ? [m.actorUserId] : [])));
+  const activeGroupIds = new Set(memberships.flatMap((m) => (m.actorGroupId ? [m.actorGroupId] : [])));
+
+  const userIdsToResolve = approvers
+    .filter((approver) => approver.type === ApproverType.User && !activeUserIds.has(approver.id))
+    .map((approver) => approver.id);
+  if (userIdsToResolve.length > 0 && activeGroupIds.size > 0) {
+    const viaGroup = await userGroupMembershipDAL.find({
+      $in: { userId: userIdsToResolve, groupId: [...activeGroupIds] }
+    });
+    viaGroup.forEach((membership) => activeUserIds.add(membership.userId));
+  }
+
+  return approvers.filter((approver) =>
+    approver.type === ApproverType.User ? activeUserIds.has(approver.id) : activeGroupIds.has(approver.id)
+  );
 };

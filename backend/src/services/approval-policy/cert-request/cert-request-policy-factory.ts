@@ -43,6 +43,7 @@ export const certRequestApprovalResourceFactory = ({
   certificateRenewalService,
   telemetryService,
   membershipDAL,
+  userGroupMembershipDAL,
   pkiApplicationProfileDAL,
   certificateProfileDAL
 }: TCertRequestApprovalResourceDep): TApprovalResource<
@@ -50,7 +51,12 @@ export const certRequestApprovalResourceFactory = ({
   TCertRequestPolicy,
   TCertRequestRequestData
 > => ({
-  ...pkiApplicationPolicyHooksFactory({ membershipDAL, pkiApplicationProfileDAL, certificateProfileDAL }),
+  ...pkiApplicationPolicyHooksFactory({
+    membershipDAL,
+    userGroupMembershipDAL,
+    pkiApplicationProfileDAL,
+    certificateProfileDAL
+  }),
 
   matchPolicy: async (projectId, inputs) => {
     const policies = await approvalPolicyDAL.findByProjectId(ApprovalPolicyType.CertRequest, projectId);

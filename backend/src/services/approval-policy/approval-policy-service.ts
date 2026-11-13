@@ -710,7 +710,8 @@ export const approvalPolicyServiceFactory = ({
     assertPolicyStepsCanApprove({
       steps,
       hasAutoApprovalRules: Boolean(autoApproval?.rules.length),
-      supportsAutoApproval: Boolean(resources[policyType]?.supportsAutoApproval)
+      supportsAutoApproval: Boolean(resources[policyType]?.supportsAutoApproval),
+      noStepsMeansNoApproval: Boolean(resources[policyType]?.noStepsMeansNoApproval)
     });
 
     await resources[policyType]?.validateConditions?.({ projectId, scopeId: dbScopeId, conditions });
@@ -918,23 +919,6 @@ export const approvalPolicyServiceFactory = ({
 
     $assertSupportsAutoApproval(policy.type as ApprovalPolicyType, autoApproval);
 
-    // Either one can leave the policy unable to approve anything: new steps, or new rules on a policy with no steps.
-    if (steps !== undefined || autoApproval !== undefined) {
-      const [effectiveSteps, hasAutoApprovalRules] = await Promise.all([
-        steps ?? approvalPolicyDAL.findStepsByPolicyId(policyId),
-        autoApproval
-          ? autoApproval.rules.length > 0
-          : autoApprovalService
-              .findByPolicyIds([policyId])
-              .then((stored) => Boolean(stored.get(policyId)?.rules.length))
-      ]);
-      assertPolicyStepsCanApprove({
-        steps: effectiveSteps,
-        hasAutoApprovalRules,
-        supportsAutoApproval: Boolean(resources[policy.type as ApprovalPolicyType]?.supportsAutoApproval)
-      });
-    }
-
     if (conditions !== undefined) {
       await resources[policy.type as ApprovalPolicyType]?.validateConditions?.({
         projectId: policy.projectId,
@@ -959,6 +943,26 @@ export const approvalPolicyServiceFactory = ({
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {
       await approvalPolicyDAL.findByIdForUpdate(policyId, tx);
+
+      // Either one can leave the policy unable to approve anything: new steps, or new rules on a policy with no
+      // steps. Read the other one under the lock, or two edits that each clear one can both pass and clear both.
+      if (steps !== undefined || autoApproval !== undefined) {
+        const [effectiveSteps, hasAutoApprovalRules] = await Promise.all([
+          steps ?? approvalPolicyDAL.findStepsByPolicyId(policyId, tx),
+          autoApproval
+            ? autoApproval.rules.length > 0
+            : autoApprovalService
+                .findByPolicyIds([policyId], tx)
+                .then((stored) => Boolean(stored.get(policyId)?.rules.length))
+        ]);
+        assertPolicyStepsCanApprove({
+          steps: effectiveSteps,
+          hasAutoApprovalRules,
+          supportsAutoApproval: Boolean(resources[policy.type as ApprovalPolicyType]?.supportsAutoApproval),
+          noStepsMeansNoApproval: Boolean(resources[policy.type as ApprovalPolicyType]?.noStepsMeansNoApproval)
+        });
+      }
+
       const updateDoc: Partial<TApprovalPolicies> = {};
 
       if (name !== undefined) {
@@ -1968,17 +1972,25 @@ export const approvalPolicyServiceFactory = ({
 
       const userGroupIds = await ctx.getUserGroupIds();
 
+      // Check each request's own scope, since a project-wide list (the Requests page and its pending badge) spans
+      // scopes the actor may have left.
       const checkLiveApprover = resources[policyType]?.isLiveApprover;
-      if (
-        checkLiveApprover &&
-        dbScopeId &&
-        !(await checkLiveApprover({ projectId, scopeId: dbScopeId, actor, userGroupIds }))
-      ) {
-        return requests.filter((request) => $isRequester(request, actor));
-      }
+      const requestScopeIds = [...new Set(requests.flatMap((request) => (request.scopeId ? [request.scopeId] : [])))];
+      const liveScopeIds = new Set(
+        checkLiveApprover
+          ? (
+              await Promise.all(
+                requestScopeIds.map(async (scopeId) =>
+                  (await checkLiveApprover({ projectId, scopeId, actor, userGroupIds })) ? [scopeId] : []
+                )
+              )
+            ).flat()
+          : requestScopeIds
+      );
 
       return requests.filter((request) => {
         if ($isRequester(request, actor)) return true;
+        if (request.scopeId && !liveScopeIds.has(request.scopeId)) return false;
         return request.steps.some((step) =>
           step.approvers.some(
             (approver) =>

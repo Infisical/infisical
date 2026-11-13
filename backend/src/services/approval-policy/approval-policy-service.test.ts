@@ -41,6 +41,9 @@ const allowPolicyManagement = createMongoAbility([
   { action: ["read", "create", "edit", "delete"], subject: ResourcePermissionSub.ApprovalPolicies }
 ]);
 
+const POLICY_TX = { id: "policy-tx" };
+const REACHED_POLICY_WRITE = "reached the policy write";
+
 // Only the collaborators these paths touch; anything else is undefined, so an unexpected reach crashes the test.
 const buildService = ({
   applicationMembers = [] as { actorUserId?: string; actorGroupId?: string }[],
@@ -73,10 +76,13 @@ const buildService = ({
   const deps = {
     approvalPolicyDAL: {
       findById: vi.fn().mockResolvedValue(storedPolicy),
+      findByIdForUpdate: vi.fn().mockResolvedValue(storedPolicy),
       findStepsByPolicyId: vi.fn().mockResolvedValue(storedSteps),
       findBypassersByPolicyId: vi.fn().mockResolvedValue([]),
-      transaction: vi.fn()
+      updateById: vi.fn().mockRejectedValue(new Error(REACHED_POLICY_WRITE)),
+      transaction: vi.fn(async (run: (tx: unknown) => unknown) => run(POLICY_TX))
     },
+    approvalPolicyStepsDAL: { delete: vi.fn().mockRejectedValue(new Error(REACHED_POLICY_WRITE)) },
     approvalRequestDAL: {
       findById: vi.fn().mockResolvedValue(request),
       findStepsByRequestId: vi.fn().mockResolvedValue(requestSteps),
@@ -188,7 +194,7 @@ describe("approvalPolicyService.updateById", () => {
         ApprovalPolicyType.CertRequest
       )
     ).rejects.toThrow("Approval step 1 ('Security review') has no approvers.");
-    expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
+    expect(deps.approvalPolicyStepsDAL.delete).not.toHaveBeenCalled();
   });
 
   it("refuses new profiles the Application doesn't have", async () => {
@@ -207,13 +213,13 @@ describe("approvalPolicyService.updateById", () => {
 
   it("doesn't re-check steps or profiles the update leaves alone", async () => {
     const { deps, service } = buildService({ storedPolicy: storedCertPolicy });
-    deps.approvalPolicyDAL.transaction.mockResolvedValue({ id: POLICY_ID });
 
-    await service.updateById(POLICY_ID, { name: "renamed" }, actorFor(ALICE), ApprovalPolicyType.CertRequest);
+    await expect(
+      service.updateById(POLICY_ID, { name: "renamed" }, actorFor(ALICE), ApprovalPolicyType.CertRequest)
+    ).rejects.toThrow(REACHED_POLICY_WRITE);
 
     expect(deps.autoApprovalService.findByPolicyIds).not.toHaveBeenCalled();
-    expect(deps.approvalPolicyDAL.findStepsByPolicyId).toHaveBeenCalledTimes(1);
-    expect(deps.approvalPolicyDAL.transaction).toHaveBeenCalledTimes(1);
+    expect(deps.approvalPolicyDAL.findStepsByPolicyId).not.toHaveBeenCalled();
   });
 
   describe("on a policy type with auto-approval", () => {
@@ -230,7 +236,7 @@ describe("approvalPolicyService.updateById", () => {
       scopeId: APP_ID
     };
 
-    it("refuses removing the last auto-approval rule from a policy with no steps", async () => {
+    it("refuses removing the last auto-approval rule, reading the steps under the policy lock", async () => {
       const { deps, service } = buildService({
         storedPolicy: storedPamPolicy,
         storedSteps: [],
@@ -246,20 +252,43 @@ describe("approvalPolicyService.updateById", () => {
           ApprovalPolicyType.PamAccess
         )
       ).rejects.toThrow("Add at least one approval step or an auto-approval rule.");
-      expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
+
+      // Another edit can clear the steps between an unlocked read and this write, so the read must follow the lock.
+      expect(deps.approvalPolicyDAL.findStepsByPolicyId).toHaveBeenCalledWith(POLICY_ID, POLICY_TX);
+      expect(deps.approvalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+        deps.approvalPolicyDAL.findStepsByPolicyId.mock.invocationCallOrder[0]
+      );
+      expect(deps.approvalPolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("refuses removing the last step, reading the rules under the policy lock", async () => {
+      const { deps, service } = buildService({
+        storedPolicy: storedPamPolicy,
+        storedRuleCount: 0,
+        extraResources: { [ApprovalPolicyType.PamAccess]: autoApprovalResource }
+      });
+
+      await expect(
+        service.updateById(POLICY_ID, { steps: [] }, actorFor(ALICE), ApprovalPolicyType.PamAccess)
+      ).rejects.toThrow("Add at least one approval step or an auto-approval rule.");
+
+      expect(deps.autoApprovalService.findByPolicyIds).toHaveBeenCalledWith([POLICY_ID], POLICY_TX);
+      expect(deps.approvalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+        deps.autoApprovalService.findByPolicyIds.mock.invocationCallOrder[0]
+      );
+      expect(deps.approvalPolicyStepsDAL.delete).not.toHaveBeenCalled();
     });
 
     it("lets steps be removed while stored auto-approval rules can still approve requests", async () => {
-      const { deps, service } = buildService({
+      const { service } = buildService({
         storedPolicy: storedPamPolicy,
         storedRuleCount: 1,
         extraResources: { [ApprovalPolicyType.PamAccess]: autoApprovalResource }
       });
-      deps.approvalPolicyDAL.transaction.mockResolvedValue({ id: POLICY_ID });
 
-      await service.updateById(POLICY_ID, { steps: [] }, actorFor(ALICE), ApprovalPolicyType.PamAccess);
-
-      expect(deps.approvalPolicyDAL.transaction).toHaveBeenCalledTimes(1);
+      await expect(
+        service.updateById(POLICY_ID, { steps: [] }, actorFor(ALICE), ApprovalPolicyType.PamAccess)
+      ).rejects.toThrow(REACHED_POLICY_WRITE);
     });
   });
 });
@@ -328,5 +357,68 @@ describe("approvalPolicyService review by an approver removed from the Applicati
       service.approveRequest(REQUEST_ID, {}, actorFor(ALICE), ApprovalPolicyType.CertRequest)
     ).rejects.toThrow("reached the write");
     expect(deps.approvalRequestDAL.transaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("approvalPolicyService.listRequests for an approver removed from the Application", () => {
+  const LEGACY_REQUEST_ID = "5a0c6d2e-9f13-4b8a-a1c2-3d4e5f6a7b06";
+  const pendingRequestNaming = (
+    id: string,
+    scope: { scopeType: ApprovalPolicyScope | null; scopeId: string | null }
+  ) => ({
+    id,
+    type: ApprovalPolicyType.CertRequest,
+    status: ApprovalRequestStatus.Pending,
+    currentStep: 1,
+    organizationId: ORG_ID,
+    projectId: PROJECT_ID,
+    policyId: POLICY_ID,
+    requesterId: ALICE,
+    ...scope,
+    steps: [{ stepNumber: 1, requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: BOB }], approvals: [] }]
+  });
+
+  const buildListService = () => {
+    const noRead = createMongoAbility([]);
+    const certRequestResource = certRequestApprovalResourceFactory({
+      approvalPolicyDAL: { findByProjectId: vi.fn() },
+      membershipDAL: { find: vi.fn().mockResolvedValue([{ actorUserId: ALICE, actorGroupId: null, isActive: true }]) },
+      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
+      pkiApplicationProfileDAL: { findByApplicationId: vi.fn() },
+      certificateProfileDAL: { find: vi.fn() }
+    } as never);
+    return approvalPolicyServiceFactory({
+      approvalPolicyDAL: {
+        find: vi.fn().mockResolvedValue([]),
+        findBypassersByPolicyIds: vi.fn().mockResolvedValue({})
+      },
+      approvalRequestDAL: {
+        findByProjectId: vi
+          .fn()
+          .mockResolvedValue([
+            pendingRequestNaming(REQUEST_ID, { scopeType: ApprovalPolicyScope.PkiApplication, scopeId: APP_ID }),
+            pendingRequestNaming(LEGACY_REQUEST_ID, { scopeType: null, scopeId: null })
+          ])
+      },
+      approvalRequestGrantsDAL: { find: vi.fn().mockResolvedValue([]) },
+      pkiApplicationDAL: { findById: vi.fn().mockResolvedValue({ id: APP_ID, projectId: PROJECT_ID }) },
+      permissionService: {
+        getProjectPermission: vi.fn().mockResolvedValue({ permission: noRead }),
+        getResourcePermission: vi.fn().mockResolvedValue({ permission: noRead })
+      },
+      userGroupMembershipDAL: { findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]) },
+      resources: { [ApprovalPolicyType.CertRequest]: certRequestResource }
+    } as never);
+  };
+
+  it("drops the Application's requests from the project-wide list (Requests page and pending badge)", async () => {
+    const { requests } = await buildListService().listRequests(
+      ApprovalPolicyType.CertRequest,
+      ApprovalPolicyScope.Project,
+      PROJECT_ID,
+      actorFor(BOB)
+    );
+
+    expect(requests.map((request) => request.id)).toEqual([LEGACY_REQUEST_ID]);
   });
 });

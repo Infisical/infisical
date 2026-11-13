@@ -4374,6 +4374,7 @@ export const registerRoutes = async (
     certificateRenewalService: certificateV3Service,
     telemetryService,
     membershipDAL,
+    userGroupMembershipDAL,
     pkiApplicationProfileDAL,
     certificateProfileDAL
   }) as TApprovalResourceRegistry[ApprovalPolicyType];

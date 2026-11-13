@@ -1,16 +1,19 @@
 import { ResourceType } from "@app/db/schemas";
 import { RESOURCE_SCOPE } from "@app/db/schemas/models";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 
-import { ApprovalPolicyScope, ApproverType } from "./approval-policy-enums";
+import { ApprovalPolicyScope } from "./approval-policy-enums";
+import { filterApproversByActiveMemberships } from "./approval-policy-fns";
 import { TApprovalResource } from "./approval-policy-types";
 import { TCertRequestPolicyConditions } from "./cert-request/cert-request-policy-types";
 
 export type TPkiApplicationPolicyHooksDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findByApplicationId">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">;
 };
@@ -58,6 +61,7 @@ const holdsApplicationMembership = async (
 // Application's members, so every certificate approval type shares these checks.
 export const pkiApplicationPolicyHooksFactory = ({
   membershipDAL,
+  userGroupMembershipDAL,
   pkiApplicationProfileDAL,
   certificateProfileDAL
 }: TPkiApplicationPolicyHooksDep): Required<
@@ -118,10 +122,6 @@ export const pkiApplicationPolicyHooksFactory = ({
     }
 
     const memberships = await findActiveApplicationMemberships(membershipDAL, request.projectId, request.scopeId);
-    const activeKeys = new Set([
-      ...memberships.filter((m) => m.actorUserId).map((m) => `${ApproverType.User}:${m.actorUserId}`),
-      ...memberships.filter((m) => m.actorGroupId).map((m) => `${ApproverType.Group}:${m.actorGroupId}`)
-    ]);
-    return approvers.filter((approver) => activeKeys.has(`${approver.type}:${approver.id}`));
+    return filterApproversByActiveMemberships(userGroupMembershipDAL, approvers, memberships);
   }
 });

@@ -156,11 +156,15 @@ Any rule about what is *allowed* belongs in the resource, or the product's own A
 stop agreeing.
 
 The shared `create` and `updateById` refuse steps that can never complete (`assertPolicyStepsCanApprove`
-in `approval-policy-fns.ts`), so a type adds no step checks of its own. A type whose conditions name
-things in its scope implements `validateConditions`, so a condition that matches nothing is refused on
-save instead of silently never applying. A type whose approvers must belong to the scope implements
-`assertCanReview`, `isLiveApprover` and `filterActiveApprovers`, because a request's approver snapshot
-outlives the membership behind it. Certificate types scoped to a PKI Application get all four from
+in `approval-policy-fns.ts`), so a type adds no step checks of its own. `updateById` runs that check under
+the policy row lock, because two edits that each clear steps or rules would otherwise both pass. A type
+where a policy with no steps means "no approval needed" (code signing) sets `noStepsMeansNoApproval`. A
+type whose conditions name things in its scope implements `validateConditions`, so a condition that
+matches nothing is refused on save instead of silently never applying. A type whose approvers must belong
+to the scope implements `assertCanReview`, `isLiveApprover` and `filterActiveApprovers`, because a
+request's approver snapshot outlives the membership behind it. All three must count membership through a
+group the same way (`filterApproversByActiveMemberships` for notifications), or someone who can review a
+request isn't told about it. Certificate types scoped to a PKI Application get all four from
 `pkiApplicationPolicyHooksFactory`.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in

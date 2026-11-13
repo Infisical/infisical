@@ -4,7 +4,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
-import { ApprovalPolicyType } from "../approval-policy/approval-policy-enums";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "../approval-policy/approval-policy-enums";
 import { findPolicyStepsProblem } from "../approval-policy/approval-policy-fns";
 import { TApprovalPolicyServiceFactory } from "../approval-policy/approval-policy-service";
 import { TCertRequestPolicy, TCertRequestRequestData } from "../approval-policy/cert-request/cert-request-policy-types";
@@ -85,8 +85,10 @@ export const holdCertificateRequestForApproval = async (
     supportsAutoApproval: false
   });
   if (stepsProblem) {
+    const policyEditor =
+      approvalPolicy.scopeType === ApprovalPolicyScope.PkiApplication ? "an Application admin" : "a Product Admin";
     throw new BadRequestError({
-      message: `This certificate needs approval under the approval policy '${approvalPolicy.name}', but that policy can't approve requests. ${stepsProblem} Ask an Application admin to update the policy.`
+      message: `This certificate needs approval under the approval policy '${approvalPolicy.name}', but that policy can't approve requests. ${stepsProblem} Ask ${policyEditor} to update the policy.`
     });
   }
 

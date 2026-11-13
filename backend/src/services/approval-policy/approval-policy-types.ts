@@ -225,6 +225,8 @@ export type TApprovalResource<
 
   // Policies of this type can hold auto-approval rules
   supportsAutoApproval?: boolean;
+  // A policy of this type with no steps is valid and means no approval is needed, so it isn't refused for having none
+  noStepsMeansNoApproval?: boolean;
   // Whether the policy's auto-approval rules may decide this request
   allowsAutoApproval?: (args: {
     projectId: string;

@@ -146,6 +146,7 @@ type TMembershipRow = { actorUserId?: string | null; actorGroupId?: string | nul
 
 const setupMembership = ({
   memberships = [] as TMembershipRow[],
+  groupMembers = [] as { userId: string; groupId: string }[],
   applicationProfileSlugs = [] as string[],
   projectProfileSlugs = [] as string[]
 } = {}) => {
@@ -154,6 +155,11 @@ const setupMembership = ({
       find: vi
         .fn()
         .mockResolvedValue(memberships.map((m) => ({ actorUserId: null, actorGroupId: null, isActive: true, ...m })))
+    },
+    userGroupMembershipDAL: {
+      find: vi.fn(async ({ $in }: { $in: { userId: string[]; groupId: string[] } }) =>
+        groupMembers.filter((m) => $in.userId.includes(m.userId) && $in.groupId.includes(m.groupId))
+      )
     },
     pkiApplicationProfileDAL: {
       findByApplicationId: vi.fn().mockResolvedValue(applicationProfileSlugs.map((profileSlug) => ({ profileSlug })))
@@ -363,5 +369,19 @@ describe("certRequestApprovalResourceFactory live approver checks", () => {
       { type: ApproverType.User, id: ALICE },
       { type: ApproverType.Group, id: SECURITY_GROUP }
     ]);
+  });
+
+  it("notifies a named user who is still in the Application through a group", async () => {
+    const { resource } = setupMembership({
+      memberships: [{ actorGroupId: SECURITY_GROUP }],
+      groupMembers: [{ userId: BOB, groupId: SECURITY_GROUP }]
+    });
+
+    await expect(
+      resource.filterActiveApprovers!(appRequest, [
+        { type: ApproverType.User, id: ALICE },
+        { type: ApproverType.User, id: BOB }
+      ])
+    ).resolves.toEqual([{ type: ApproverType.User, id: BOB }]);
   });
 });

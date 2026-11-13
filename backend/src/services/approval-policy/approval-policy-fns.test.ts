@@ -15,10 +15,10 @@ const GROUP_A = "7d3f9c1a-0b52-4c44-9a1e-1f5e8c2b7a03";
 const check =
   (
     steps: Parameters<typeof assertPolicyStepsCanApprove>[0]["steps"],
-    { hasAutoApprovalRules = false, supportsAutoApproval = false } = {}
+    { hasAutoApprovalRules = false, supportsAutoApproval = false, noStepsMeansNoApproval = false } = {}
   ) =>
   () =>
-    assertPolicyStepsCanApprove({ steps, hasAutoApprovalRules, supportsAutoApproval });
+    assertPolicyStepsCanApprove({ steps, hasAutoApprovalRules, supportsAutoApproval, noStepsMeansNoApproval });
 
 describe("assertPolicyStepsCanApprove", () => {
   it("refuses a policy with no steps", () => {
@@ -36,6 +36,13 @@ describe("assertPolicyStepsCanApprove", () => {
 
   it("allows a policy with no steps when its auto-approval rules can approve requests", () => {
     expect(check([], { hasAutoApprovalRules: true, supportsAutoApproval: true })).not.toThrow();
+  });
+
+  it("allows no steps on a policy type where that means no approval, but still refuses an empty step", () => {
+    expect(check([], { noStepsMeansNoApproval: true })).not.toThrow();
+    expect(check([{ requiredApprovals: 1, approvers: [] }], { noStepsMeansNoApproval: true })).toThrow(
+      "Approval step 1 has no approvers."
+    );
   });
 
   it("refuses a step with no approvers and names the step", () => {
