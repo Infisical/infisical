@@ -49,7 +49,7 @@ import {
   toLegacyAccessApprovalRequest,
   toSecretAccessRequestListItem
 } from "./access-approval-request-details-fns";
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { isRequestableSecretPath, verifyRequestedPermissions } from "./access-approval-request-fns";
 import {
   ApprovalStatus,
   TSecretAccessApprovalRequestServiceFactoryDep,
@@ -392,6 +392,11 @@ export const secretAccessApprovalRequestServiceFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const { envSlug, secretPath } = verifyRequestedPermissions({ permissions });
+    if (!isRequestableSecretPath(secretPath)) {
+      throw new BadRequestError({
+        message: `Secret path '${secretPath}' is not valid. Use a path like '/folder/subfolder', with no trailing '/', empty, '.' or '..' folder names, or spaces around folder names.`
+      });
+    }
     const environment = await projectEnvDAL.findOne({ projectId, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
     const envId = environment.id;
@@ -404,7 +409,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
     });
     if (!policy) {
       throw new NotFoundError({
-        message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
+        message: `Access requests aren't enabled for secret path '${secretPath}' in environment '${environment.name}'. Ask a project admin to add an access policy that covers this path.`
       });
     }
 
@@ -736,6 +741,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
             policy,
             actingUser,
             environmentName: policy.environment.name,
+            secretPath: verifyRequestedPermissions({ permissions: data.permissions }).secretPath,
             bypassReason: trimmedBypassReason
           },
           { userDAL, userGroupMembershipDAL, notificationService, smtpService }
@@ -855,7 +861,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
             requestedByUser,
             data,
             environment: policy.environment,
-            secretPath: policy.secretPath
+            secretPath: verifyRequestedPermissions({ permissions: data.permissions }).secretPath
           },
           {
             userDAL,

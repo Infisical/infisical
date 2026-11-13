@@ -254,13 +254,15 @@ export const notifySecretAccessBypass = async (
     policy,
     actingUser,
     environmentName,
+    secretPath,
     bypassReason
   }: {
     request: Pick<TSecretAccessRequestRow, "id" | "organizationId">;
     project: { id: string; name: string; orgId: string };
-    policy: { secretPath: string; approvers: { type: ApproverType; id?: string | null }[] };
+    policy: { approvers: { type: ApproverType; id?: string | null }[] };
     actingUser: Pick<TUsers, "id" | "firstName" | "lastName" | "email">;
     environmentName: string;
+    secretPath: string;
     bypassReason: string;
   },
   { userDAL, userGroupMembershipDAL, notificationService, smtpService }: TNotifySecretAccessBypassDep
@@ -288,7 +290,7 @@ export const notifySecretAccessBypass = async (
         orgId: request.organizationId,
         type: NotificationType.ACCESS_POLICY_BYPASSED,
         title: "Secret Access Policy Bypassed",
-        body: `**${actingUserFullName}** (${actingUser.email}) has accessed a secret in **${policy.secretPath || "/"}** in the **${environmentName}** environment for project **${project.name}** without obtaining the required approval.`,
+        body: `**${actingUserFullName}** (${actingUser.email}) has accessed a secret in **${secretPath}** in the **${environmentName}** environment for project **${project.name}** without obtaining the required approval.`,
         link: approvalPath
       }))
     );
@@ -303,7 +305,7 @@ export const notifySecretAccessBypass = async (
           requesterFullName: actingUserFullName,
           requesterEmail: actingUser.email,
           bypassReason,
-          secretPath: policy.secretPath || "/",
+          secretPath,
           environment: environmentName,
           approvalUrl: `${cfg.SITE_URL}${approvalPath}`,
           requestType: "access"
