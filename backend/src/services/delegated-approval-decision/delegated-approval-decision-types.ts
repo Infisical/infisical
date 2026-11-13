@@ -25,7 +25,7 @@ export type TDelegatedApprovalDecisionReadResult =
       decision: DelegatedApprovalDecision;
       approvalRequestId: string | null;
       permissions: string[];
-      decidedBy: string | null;
+      approvedBy: string[];
       decidedAt: string | null;
       notes: string | null;
     };

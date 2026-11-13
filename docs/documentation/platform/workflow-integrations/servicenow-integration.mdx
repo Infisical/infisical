@@ -287,7 +287,7 @@ Both sides keep their own record:
 - In ServiceNow, the access request record carries the full approval history, including who approved at each step and when, through the standard approval and audit tables
 - In Infisical, the project's [audit log](/documentation/platform/audit-logs) records the request, the decision received from ServiceNow (`access-approval-request-delegated-decision`), and the resulting access grant
 
-If your flow fills in **Approved By** or **Decision Notes** on the record, Infisical copies them into the decision's audit log event.
+If your flow fills in **Approvals** or **Decision Notes** on the record, Infisical copies them into the decision's audit log event, with every user listed in **Approvals** as an approver.
 
 ## Troubleshooting
 
