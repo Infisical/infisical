@@ -5,11 +5,15 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { ApprovalRequestStatus, CertRequestRenewalApproval } from "../approval-policy-enums";
+import { ApprovalNotificationEvent, ApprovalRequestStatus } from "../approval-policy-enums";
 import { certRequestApprovalResourceFactory } from "./cert-request-policy-factory";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
+
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => ({ SITE_URL: "https://app.example.com" })
 }));
 
 describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
@@ -21,7 +25,8 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
   const setup = (issueCertificate: () => Promise<unknown>) => {
     const failedRequest = { id: "cert-req-1", status: CertificateRequestStatus.FAILED };
     const deps = {
-      approvalPolicyDAL: { findByProjectId: vi.fn(), findById: vi.fn().mockResolvedValue(undefined) },
+      approvalPolicyDAL: { findByProjectId: vi.fn() },
+      approvalPolicyService: { notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined) },
       auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
       certificateApprovalService: { issueCertificate: vi.fn(issueCertificate) },
       certificateRequestDAL: { updateById: vi.fn().mockResolvedValue(failedRequest), findById: vi.fn() },
@@ -46,6 +51,7 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
       errorMessage: "CA is disabled"
     });
     expect(deps.certificateRequestService.recordIssuanceFailure).toHaveBeenCalledWith(failedRequest, { error });
+    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(request, "CA is disabled.");
   });
 
   it("issues an approved renewal as a renewal of the original certificate", async () => {
@@ -104,36 +110,71 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
     expect(deps.telemetryService.sendPostHogEvents).not.toHaveBeenCalled();
   });
 
-  it.each([
-    [
-      { version: 1, constraints: { renewalApproval: CertRequestRenewalApproval.Always } },
-      CertRequestRenewalApproval.Always
-    ],
-    [
-      { version: 1, constraints: { renewalApproval: CertRequestRenewalApproval.OnChange } },
-      CertRequestRenewalApproval.OnChange
-    ],
-    [{ version: 1, constraints: {} }, CertRequestRenewalApproval.OnChange]
-  ])("records a rejected renewal under the policy's renewal setting %j", async (constraints, renewalApproval) => {
+  it("tells the requester and approvers when an approved renewal fails", async () => {
     const { deps, resource } = setup(() => Promise.resolve());
-    deps.approvalPolicyDAL.findById.mockResolvedValue({ id: "policy-1", constraints });
+    deps.certificateRenewalService.renewApprovedCertificate.mockRejectedValue(new Error("CA is disabled"));
+    const renewalRequest = {
+      id: "approval-1",
+      organizationId: "org-1",
+      requestData: { requestData: { certificateRequestId: "cert-req-1", renewal: { certificateId: "cert-1" } } }
+    } as never;
+
+    await resource.postApprovalRoutine!(renewalRequest);
+
+    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+      renewalRequest,
+      "CA is disabled."
+    );
+  });
+
+  it("words the failure notification for a renewal and names the certificate", async () => {
+    const { resource } = setup(() => Promise.resolve());
+
+    const notification = await resource.buildNotification!({
+      event: ApprovalNotificationEvent.ApprovedActionFailed,
+      request: {
+        id: "approval-1",
+        organizationId: "org-1",
+        type: "cert-request",
+        requestData: {
+          requestData: {
+            certificateRequestId: "cert-req-1",
+            renewal: { certificateId: "cert-1" },
+            certificateRequest: { commonName: "billing.local" }
+          }
+        }
+      } as never,
+      failureReason: "CA is disabled."
+    });
+
+    expect(notification?.inApp?.title).toBe("Certificate Renewal Failed");
+    expect(notification?.inApp?.body).toBe(
+      "The approved renewal of the certificate 'billing.local' didn't complete. Reason: CA is disabled."
+    );
+    expect(notification?.inApp?.link).toContain("/cert-manager/approvals/approval-1?policyType=cert-request");
+  });
+
+  it.each([
+    ["automatic renewal", { requesterId: null, machineIdentityId: null }, true],
+    ["a user", { requesterId: "user-1", machineIdentityId: null }, false],
+    ["a machine identity", { requesterId: null, machineIdentityId: "identity-1" }, false]
+  ])("records a rejected renewal raised by %s", async (_by, requester, raisedByAutoRenewal) => {
+    const { deps, resource } = setup(() => Promise.resolve());
 
     await resource.postRejectionRoutine!({
       id: "approval-1",
-      policyId: "policy-1",
+      ...requester,
       status: ApprovalRequestStatus.Rejected,
       requestData: { requestData: { certificateRequestId: "cert-req-1", renewal: { certificateId: "cert-1" } } }
     } as never);
 
-    expect(deps.certificateRenewalService.recordRejectedRenewal).toHaveBeenCalledWith("cert-1", renewalApproval);
+    expect(deps.certificateRenewalService.recordRejectedRenewal).toHaveBeenCalledWith("cert-1", {
+      raisedByAutoRenewal
+    });
   });
 
   it("keeps automatic renewal when a renewal request expires", async () => {
     const { deps, resource } = setup(() => Promise.resolve());
-    deps.approvalPolicyDAL.findById.mockResolvedValue({
-      id: "policy-1",
-      constraints: { version: 1, constraints: { renewalApproval: CertRequestRenewalApproval.Always } }
-    });
 
     await resource.postRejectionRoutine!({
       id: "approval-1",

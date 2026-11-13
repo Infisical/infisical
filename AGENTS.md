@@ -163,9 +163,10 @@ action fails there, record the failure in the audit log and call
 (`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording, and its
 `filterActiveApprovers` drops approvers who have since lost access to the scope, since the request's approver list
 outlives their removal. Certificate
-revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance
-(`cert-request-policy-factory.ts`) doesn't follow this pattern: its status updates, failure recording and telemetry
-run outside any guard, so it can still throw, and a failed issuance is audited but nobody is notified. Don't copy it.
+revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
+(`cert-request-policy-factory.ts`) notify through it when the approved action fails, but they have no
+`filterActiveApprovers`, and their status updates, failure recording and telemetry still run outside any guard, so
+they can still throw. Don't copy that part.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a
