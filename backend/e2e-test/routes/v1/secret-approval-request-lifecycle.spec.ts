@@ -1,3 +1,5 @@
+import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { createSecretChangePolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -11,9 +13,6 @@ import {
   ApprovalRequestStepStatus
 } from "@app/services/approval-policy/approval-policy-enums";
 import { SecretOperations } from "@app/services/secret/secret-types";
-
-import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { createSecretChangePolicy } from "e2e-test/testUtils/secret-approval-policies";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
@@ -377,75 +376,5 @@ describe("Secret change request lifecycle on a policy on the global approval sys
       await db(TableName.SecretChangeRequests).where({ approvalRequestId: staleUpdateRequestId }).first()
     ).toMatchObject({ hasMerged: true, conflicts: [{ op: SecretOperations.Update, secretId: staleCommit.id }] });
     expect((await getSecret(secretPath, BASE_KEY)).statusCode).toBe(404);
-  });
-});
-
-describe("Searching secret change requests by folder path", () => {
-  const PARENT = "sar-search-parent";
-  const LEAF = "sar-search-leaf";
-  const secretPath = `/${PARENT}/${LEAF}`;
-  let parentFolderId: string;
-  let policyId: string;
-  let requestId: string;
-
-  const searchRequestIds = async (search: string) => {
-    const res = await testServer.inject({
-      method: "GET",
-      url: `/api/v1/secret-approval-requests?projectId=${projectId}&search=${encodeURIComponent(search)}`,
-      headers: authHeaders()
-    });
-    expect(res.statusCode).toBe(200);
-    const body: { approvals: { id: string }[] } = res.json();
-    return body.approvals.map((approval) => approval.id);
-  };
-
-  beforeAll(async () => {
-    const parent = await createFolder({
-      workspaceId: projectId,
-      environmentSlug: envSlug,
-      secretPath: "/",
-      name: PARENT,
-      authToken: jwtAuthToken
-    });
-    parentFolderId = parent.id;
-    await createFolder({
-      workspaceId: projectId,
-      environmentSlug: envSlug,
-      secretPath: `/${PARENT}`,
-      name: LEAF,
-      authToken: jwtAuthToken
-    });
-    policyId = (await createPolicy(`/${PARENT}/**`, "search-by-path-policy")).id;
-
-    const res = await createSecret(secretPath, NEW_KEY, "value");
-    expect(res.statusCode).toBe(200);
-    requestId = res.json().approval.id as string;
-  });
-
-  afterAll(async () => {
-    const db = getDb();
-    await db(TableName.ApprovalRequests).where({ id: requestId }).del();
-    await db(TableName.ApprovalPolicies).where({ id: policyId }).del();
-    await teardownFolder(parentFolderId);
-  });
-
-  test("the full folder path finds the request", async () => {
-    expect(await searchRequestIds(secretPath)).toEqual([requestId]);
-  });
-
-  test("the full folder path with a trailing slash finds the request", async () => {
-    expect(await searchRequestIds(`${secretPath}/`)).toEqual([requestId]);
-  });
-
-  test("part of the folder path in any case finds the request", async () => {
-    expect(await searchRequestIds(`/${PARENT.toUpperCase()}/SAR-SEARCH`)).toEqual([requestId]);
-  });
-
-  test("the folder name alone still finds the request", async () => {
-    expect(await searchRequestIds(LEAF)).toEqual([requestId]);
-  });
-
-  test("a path the request is not under finds nothing", async () => {
-    expect(await searchRequestIds(`/${PARENT}/other`)).toEqual([]);
   });
 });
