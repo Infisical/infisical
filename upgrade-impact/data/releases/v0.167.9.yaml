@@ -1,0 +1,96 @@
+version: v0.167.9
+releasedAt: 2026-11-12T20:58:46-07:00
+sourceTag: v0.167.9
+previousTag: v0.167.8
+impactLevel: medium
+summary: Database migrations run on startup. Agent Vault adds rollback limits
+  for native services and hooks; standalone images also refresh bundled system
+  packages.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault native services rollback
+    description: If you roll back after creating PostgreSQL, MySQL, or SSH Agent
+      Vault services, older code cannot handle those service types and can fail
+      for affected sessions or bundles.
+    action: Before rolling back past this version, delete Agent Vault PostgreSQL,
+      MySQL, and SSH services.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261106132107_agent-vault-native-services.ts
+        path: backend/src/db/migrations/20261106132107_agent-vault-native-services.ts
+        description: Rollback requires deleting native services first.
+      - type: pr
+        ref: "#9235"
+        url: https://github.com/Infisical/infisical/pull/9235
+        description: Older backend returns 500 for new service types.
+  - title: Agent Vault hooks rollback
+    description: If you roll back after enabling Agent Vault service hooks, older
+      proxies do not call hooks and hooked services can bypass that control.
+    action: Before rolling back past this version, remove Agent Vault service hooks.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261112130000_agent-vault-service-hooks.ts
+        path: backend/src/db/migrations/20261112130000_agent-vault-service-hooks.ts
+        description: Adds hook URL and encrypted secret columns.
+      - type: pr
+        ref: "#9408"
+        url: https://github.com/Infisical/infisical/pull/9408
+        description: Older proxies do not know about hooks.
+dbSchemaChanges:
+  - title: Platform startup migrations
+    description: Startup adds Agent Vault, PKI, secret rotation, secret scanning,
+      and indexing schema changes, including several non-transactional
+      concurrent index migrations.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261104120000_add-secret-rotation-failure-alerts.ts
+        path: backend/src/db/migrations/20261104120000_add-secret-rotation-failure-alerts.ts
+        description: Backfills rotation failure alerts.
+      - type: file
+        ref: backend/src/db/migrations/20261110120000_agent-vault-project-services.ts
+        path: backend/src/db/migrations/20261110120000_agent-vault-project-services.ts
+        description: Moves Agent Vault services to project scope.
+      - type: file
+        ref: backend/src/db/migrations/20261109120100_add-secret-scanning-finding-blind-index-idx.ts
+        path: backend/src/db/migrations/20261109120100_add-secret-scanning-finding-blind-index-idx.ts
+        description: Concurrent index migration outside transaction.
+      - type: file
+        ref: backend/src/db/migrations/20261112180000_add-env-id-indexes-for-environment-cascade.ts
+        path: backend/src/db/migrations/20261112180000_add-env-id-indexes-for-environment-cascade.ts
+        description: Concurrent envId indexes outside transaction.
+configChanges: []
+deploymentNotes:
+  - title: Standalone image package refresh
+    description: Standalone and FIPS images keep the same base runtime but refresh
+      bundled Debian packages, including zlib in the standalone image set.
+    action: If you build custom images from these Dockerfiles, rebuild them from the
+      updated files. No manual action required for stock images.
+    confidence: medium
+    evidence:
+      - type: release
+        ref: v0.167.9
+        url: https://github.com/Infisical/infisical/releases/tag/v0.167.9
+        description: Docker zlib and FIPS OpenSSL verification update.
+      - type: file
+        ref: Dockerfile.standalone-infisical
+        path: Dockerfile.standalone-infisical
+        description: Standalone image pins upgraded zlib package.
+      - type: file
+        ref: Dockerfile.fips.standalone-infisical
+        path: Dockerfile.fips.standalone-infisical
+        description: FIPS image changed in deployment files.
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-13T08:01:09.919Z
+  sourceRange:
+    from: v0.167.8
+    to: v0.167.9
