@@ -1,9 +1,10 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
-import { asSentence } from "@app/lib/fn/string";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { describeCaOperationFailure } from "@app/services/certificate-common/certificate-failure-fns";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -31,6 +32,7 @@ type TCertRequestApprovalResourceDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "notifyApprovedActionFailed">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateApprovalService: TCertificateApprovalService;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "recordIssuanceFailure">;
   certificateRenewalService: Pick<
@@ -45,6 +47,7 @@ export const certRequestApprovalResourceFactory = ({
   approvalPolicyService,
   auditLogService,
   certificateApprovalService,
+  certificateAuthorityDAL,
   certificateRequestDAL,
   certificateRequestService,
   certificateRenewalService,
@@ -172,9 +175,16 @@ export const certRequestApprovalResourceFactory = ({
           originalCertificateId: renewal.certificateId
         })
       });
+      const caId = failedRequest?.caId ?? renewal?.caId;
+      const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId).catch(() => undefined) : undefined;
       await approvalPolicyService.notifyApprovedActionFailed(
         request,
-        errorMessage ? asSentence(errorMessage) : "An unexpected error stopped the certificate from being issued."
+        describeCaOperationFailure({
+          action: renewal ? "Renewing the certificate" : "Issuing the certificate",
+          ca,
+          error,
+          fallback: "An unexpected error stopped the certificate from being issued."
+        })
       );
       logger.error(
         { error, certificateRequestId: certReqId, approvalRequestId: request.id },

@@ -4375,6 +4375,7 @@ export const registerRoutes = async (
     approvalPolicyService,
     auditLogService,
     certificateApprovalService,
+    certificateAuthorityDAL,
     certificateRequestDAL,
     certificateRequestService,
     certificateRenewalService: certificateV3Service,

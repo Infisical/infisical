@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -29,6 +31,9 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
       approvalPolicyService: { notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined) },
       auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
       certificateApprovalService: { issueCertificate: vi.fn(issueCertificate) },
+      certificateAuthorityDAL: {
+        findByIdWithAssociatedCa: vi.fn().mockResolvedValue({ name: "root-ca", externalCa: null })
+      },
       certificateRequestDAL: { updateById: vi.fn().mockResolvedValue(failedRequest), findById: vi.fn() },
       certificateRequestService: { recordIssuanceFailure: vi.fn() },
       certificateRenewalService: {
@@ -51,7 +56,10 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
       errorMessage: "CA is disabled"
     });
     expect(deps.certificateRequestService.recordIssuanceFailure).toHaveBeenCalledWith(failedRequest, { error });
-    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(request, "CA is disabled.");
+    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+      request,
+      "An unexpected error stopped the certificate from being issued."
+    );
   });
 
   it("issues an approved renewal as a renewal of the original certificate", async () => {
@@ -110,21 +118,35 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
     expect(deps.telemetryService.sendPostHogEvents).not.toHaveBeenCalled();
   });
 
-  it("tells the requester and approvers when an approved renewal fails", async () => {
+  it.each([
+    [
+      "an internal CA",
+      { name: "root-ca", externalCa: null },
+      "Certificate Authority is disabled, must be active",
+      "Renewing the certificate at CA 'root-ca' failed: Certificate Authority is disabled, must be active."
+    ],
+    [
+      "an external CA behind an unreachable gateway",
+      { name: "e2e-adcs-ca", externalCa: { type: CaType.ADCS } },
+      "Unable to connect to gateway, no platform connection details found",
+      "Renewing the certificate at CA 'e2e-adcs-ca' (Microsoft ADCS) failed: Unable to connect to gateway, no platform connection details found."
+    ]
+  ])("tells the requester and approvers when an approved renewal fails at %s", async (_ca, ca, message, reason) => {
     const { deps, resource } = setup(() => Promise.resolve());
-    deps.certificateRenewalService.renewApprovedCertificate.mockRejectedValue(new Error("CA is disabled"));
+    deps.certificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue(ca);
+    deps.certificateRenewalService.renewApprovedCertificate.mockRejectedValue(new BadRequestError({ message }));
     const renewalRequest = {
       id: "approval-1",
       organizationId: "org-1",
-      requestData: { requestData: { certificateRequestId: "cert-req-1", renewal: { certificateId: "cert-1" } } }
+      requestData: {
+        requestData: { certificateRequestId: "cert-req-1", renewal: { certificateId: "cert-1", caId: "ca-1" } }
+      }
     } as never;
 
     await resource.postApprovalRoutine!(renewalRequest);
 
-    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
-      renewalRequest,
-      "CA is disabled."
-    );
+    expect(deps.certificateAuthorityDAL.findByIdWithAssociatedCa).toHaveBeenCalledWith("ca-1");
+    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(renewalRequest, reason);
   });
 
   it("words the failure notification for a renewal and names the certificate", async () => {
