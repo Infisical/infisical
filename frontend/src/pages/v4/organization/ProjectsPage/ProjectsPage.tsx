@@ -138,7 +138,12 @@ export const ProjectsPage = () => {
                     <span className={styles.halftoneCorner}>
                       <Halftone seed={product.type} reach={160} depth={1} />
                     </span>
-                    <Icon name={product.icon} size={18} className={styles.productIcon} />
+                    <Icon
+                      name={product.icon}
+                      size={18}
+                      motion="draw"
+                      className={styles.productIcon}
+                    />
                     <CardLink disabled={blocked.has(product.type)} link={link}>
                       {product.label}
                     </CardLink>
