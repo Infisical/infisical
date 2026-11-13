@@ -41,7 +41,7 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
   const cancelOpenForSigner = async (signerId: string, reason: string, tx?: Knex) => {
     try {
       await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
-        .where({ signerId, status: SignerIssuanceJobStatus.Pending })
+        .where({ signerId, status: SignerIssuanceJobStatus.Pending, isCancelledByRevoke: false })
         .update({
           status: SignerIssuanceJobStatus.Failed,
           failureReason: reason.slice(0, 1000),
@@ -52,7 +52,12 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  const cancelPendingByIds = async (jobIds: string[], reason: string, tx?: Knex) => {
+  const cancelPendingByIds = async (
+    jobIds: string[],
+    reason: string,
+    { isCancelledByRevoke = false }: { isCancelledByRevoke?: boolean } = {},
+    tx?: Knex
+  ) => {
     if (!jobIds.length) return;
     try {
       await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
@@ -62,6 +67,7 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
         .update({
           status: SignerIssuanceJobStatus.Failed,
           failureReason: reason.slice(0, 1000),
+          ...(isCancelledByRevoke ? { isCancelledByRevoke } : {}),
           updatedAt: new Date()
         } as Record<string, unknown>);
     } catch (error) {

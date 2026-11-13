@@ -79,6 +79,7 @@ const buildService = ({
     cancelOpenForSigner: vi.fn().mockResolvedValue(undefined),
     find: vi.fn().mockResolvedValue([job]),
     cancelPendingByIds: vi.fn().mockResolvedValue(undefined),
+    findLatestForSigner: vi.fn().mockResolvedValue(job),
     transaction: vi.fn(async (cb: (trx: Knex) => unknown) => cb(tx))
   };
   const signerDAL = {
@@ -215,7 +216,10 @@ describe("signerIssuanceService attaching an issued certificate", () => {
   });
 
   it("keeps the certificate on the job a finished revoke closed when the CA revoke fails", async () => {
-    const { service, deps } = buildService({ signerStatus: SignerStatus.Revoked });
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Revoked,
+      job: buildJob({ isCancelledByRevoke: true })
+    });
     deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("CA unavailable"));
     deps.signerIssuanceJobDAL.update.mockImplementation(async (filter: { status: SignerIssuanceJobStatus }) =>
       filter.status === SignerIssuanceJobStatus.Pending ? [] : [{ id: JOB_ID }]
@@ -224,11 +228,7 @@ describe("signerIssuanceService attaching an issued certificate", () => {
     await service.processJob(JOB_ID);
 
     expect(deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
-      {
-        id: JOB_ID,
-        status: SignerIssuanceJobStatus.Failed,
-        failureReason: "Cancelled because the signer was revoked."
-      },
+      { id: JOB_ID, status: SignerIssuanceJobStatus.Failed, isCancelledByRevoke: true },
       { status: SignerIssuanceJobStatus.Pending, certificateId: NEW_CERT_ID }
     );
   });
@@ -252,6 +252,50 @@ describe("signerIssuanceService attaching an issued certificate", () => {
         failureReason: expect.stringContaining("so the new certificate was revoked too") as string
       }),
       tx
+    );
+  });
+
+  it("keeps a held certificate past its last attempt while the signer's revocation waits for approval", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Revoked,
+      job: buildJob({ certificateId: NEW_CERT_ID, attempts: 100 })
+    });
+    deps.certificateDAL.findById.mockImplementation(async (id: string) => ({
+      id,
+      status: CertStatus.ACTIVE,
+      commonName: "Example Release Signing"
+    }));
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.signerIssuanceJobDAL.update).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: SignerIssuanceJobStatus.Failed }),
+      tx
+    );
+  });
+
+  it("refuses a renewal that reuses the key of a certificate revoked outside the signer", async () => {
+    const revokedKey = Buffer.from("revoked-key");
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Active,
+      job: buildJob({ keySource: CertKeySource.Hsm, hsmPublicKeySpki: revokedKey })
+    });
+    deps.certificateDAL.findById.mockImplementation(async (id: string) =>
+      id === OLD_CERT_ID
+        ? { id, status: CertStatus.REVOKED, hsmPublicKeySpki: revokedKey, externalMetadata: null }
+        : { id, status: CertStatus.ACTIVE, commonName: "Example Release Signing" }
+    );
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.signerDAL.updateUnlessRevoked).not.toHaveBeenCalledWith(
+      SIGNER_ID,
+      expect.objectContaining({ certificateId: NEW_CERT_ID }),
+      tx
+    );
+    expect(deps.certificateService.revokeOwnedCertificate).toHaveBeenCalledWith(
+      expect.objectContaining({ certificateId: NEW_CERT_ID })
     );
   });
 
@@ -426,7 +470,14 @@ describe("signerIssuanceService failing a job", () => {
     const failing = buildService({ signerStatus: SignerStatus.Revoked, job: buildJob({ certificateId: NEW_CERT_ID }) });
     failing.deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("CA unavailable"));
     await failing.service.cancelOpenJobsForRevokedSigner(SIGNER_ID);
-    expect(failing.deps.signerIssuanceJobDAL.update).not.toHaveBeenCalled();
+    expect(failing.deps.signerIssuanceJobDAL.update).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: SignerIssuanceJobStatus.Failed })
+    );
+    expect(failing.deps.signerIssuanceJobDAL.update).toHaveBeenCalledWith(
+      { $in: { id: [JOB_ID] }, status: SignerIssuanceJobStatus.Pending },
+      { isCancelledByRevoke: true }
+    );
   });
 
   it("keeps a DigiCert job whose placement outcome is unknown open on revoke, so the poller recovers the order", async () => {
@@ -441,7 +492,122 @@ describe("signerIssuanceService failing a job", () => {
 
     await service.cancelOpenJobsForRevokedSigner(SIGNER_ID);
 
-    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String));
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String), {
+      isCancelledByRevoke: true
+    });
+  });
+
+  it("doesn't write the signer when a job a revoke canceled fails later", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Active,
+      job: buildJob({ caType: CaType.DIGICERT, externalOrderRef: { digicert: { orderId: 9900 } } })
+    });
+    deps.signerIssuanceJobDAL.update.mockResolvedValue([{ id: JOB_ID, isCancelledByRevoke: true }]);
+    deps.certificateIssuanceQueue.digicertFns.getCodeSigningOrderStatus.mockResolvedValue({
+      status: "rejected",
+      rawStatus: "rejected",
+      certificateId: null
+    });
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.signerDAL.updateUnlessRevoked).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["counts a failed auto-renewal", { isAutoRenewal: true }, true],
+    ["ignores a failed manual request", { isAutoRenewal: false }, false],
+    ["ignores an auto-renewal a revoke canceled", { isAutoRenewal: true, isCancelledByRevoke: true }, false],
+    ["ignores an auto-renewal from a CA the signer no longer uses", { isAutoRenewal: true, caId: "other-ca" }, false]
+  ])("auto-renewal backoff %s", async (_label, overrides, isCounted) => {
+    const { service, deps } = buildService({ signerStatus: SignerStatus.Active });
+    deps.signerIssuanceJobDAL.findLatestForSigner.mockResolvedValue(
+      buildJob({ status: SignerIssuanceJobStatus.Failed, updatedAt: new Date(), ...overrides })
+    );
+
+    expect(Boolean(await service.getLatestFailedAutoRenewalAt(SIGNER_ID, CA_ID))).toBe(isCounted);
+  });
+
+  it("revokes the certificates held on a signer's open jobs, for a signer being deleted", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Revoked,
+      job: buildJob({ certificateId: NEW_CERT_ID })
+    });
+
+    await service.revokeHeldCertificates(SIGNER_ID, PROJECT_ID);
+
+    expect(deps.certificateService.revokeOwnedCertificate).toHaveBeenCalledWith(
+      expect.objectContaining({ certificateId: NEW_CERT_ID })
+    );
+  });
+
+  it("cancels an open renewal's DigiCert order before a reissue replaces it", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Active,
+      job: buildJob({
+        caType: CaType.DIGICERT,
+        externalOrderRef: {
+          digicert: { orderId: 9900, lifecycle: { mode: DigiCertLifecycleMode.Renew, previousOrderId: 9804 } }
+        }
+      })
+    });
+
+    await service.cancelOpenRequestsForReissue(SIGNER_ID, { caId: CA_ID, digicertOrderId: 9804 });
+
+    expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: 9900 })
+    );
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith(
+      [JOB_ID],
+      "Replaced by a newer certificate request."
+    );
+  });
+
+  it("refuses the reissue and keeps the request open when DigiCert won't cancel its order", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Active,
+      job: buildJob({
+        caType: CaType.DIGICERT,
+        externalOrderRef: { digicert: { orderId: 9900 } }
+      })
+    });
+    deps.certificateIssuanceQueue.digicertFns.cancelReissue.mockResolvedValue(false);
+
+    await expect(service.cancelOpenRequestsForReissue(SIGNER_ID, { caId: CA_ID })).rejects.toThrow(
+      "DigiCert order #9900 for the open certificate request couldn't be canceled"
+    );
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).not.toHaveBeenCalled();
+  });
+
+  it("doesn't cancel an open reissue on the order the new reissue targets", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Active,
+      job: buildJob({
+        caType: CaType.DIGICERT,
+        lastAttemptAt: new Date(Date.now() - 60 * 60 * 1000),
+        externalOrderRef: { digicert: { lifecycle: { mode: DigiCertLifecycleMode.Reissue, previousOrderId: 9804 } } }
+      })
+    });
+
+    await service.cancelOpenRequestsForReissue(SIGNER_ID, { caId: CA_ID, digicertOrderId: 9804 });
+
+    expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).not.toHaveBeenCalled();
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith(
+      [JOB_ID],
+      "Replaced by a newer certificate request."
+    );
+  });
+
+  it("asks the user to retry while the open request is still placing its DigiCert order", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Active,
+      job: buildJob({ caType: CaType.DIGICERT, lastAttemptAt: new Date(), externalOrderRef: null })
+    });
+
+    await expect(service.cancelOpenRequestsForReissue(SIGNER_ID, { caId: CA_ID })).rejects.toThrow(
+      "placing its DigiCert order right now"
+    );
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).not.toHaveBeenCalled();
   });
 
   it("leaves an order alone when its job was closed during placement but a newer open request owns that order", async () => {
@@ -509,7 +675,8 @@ describe("signerIssuanceService failing a job", () => {
 
     expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith(
       [JOB_ID],
-      "Cancelled because the signer was revoked."
+      "Cancelled because the signer was revoked.",
+      { isCancelledByRevoke: true }
     );
     expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).not.toHaveBeenCalled();
   });
@@ -533,7 +700,9 @@ describe("signerIssuanceService failing a job", () => {
       orderId,
       requestTimeoutMs: DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS
     });
-    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([JOB_ID], expect.any(String));
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([JOB_ID], expect.any(String), {
+      isCancelledByRevoke: true
+    });
   });
 
   it("leaves renewal orders for later when only DigiCert reissues are cancelled before the revoke", async () => {
@@ -550,7 +719,9 @@ describe("signerIssuanceService failing a job", () => {
     await service.cancelOpenJobsForRevokedSigner(SIGNER_ID, { digicertReissuesOnly: true });
 
     expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).not.toHaveBeenCalled();
-    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String));
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String), {
+      isCancelledByRevoke: true
+    });
   });
 
   it.each([
@@ -575,7 +746,8 @@ describe("signerIssuanceService failing a job", () => {
     });
     expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith(
       [JOB_ID],
-      "Cancelled because the signer was revoked."
+      "Cancelled because the signer was revoked.",
+      { isCancelledByRevoke: true }
     );
     expect(deps.certificateIssuanceQueue.digicertFns.getCodeSigningOrderStatus).toHaveBeenCalledWith(CA_ID, 9960);
   });
@@ -663,7 +835,8 @@ describe("signerIssuanceService failing a job", () => {
     expect(deps.certificateIssuanceQueue.digicertFns.reissueCodeSigningCertificate).not.toHaveBeenCalled();
     expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith(
       [JOB_ID],
-      "Cancelled because the signer was revoked."
+      "Cancelled because the signer was revoked.",
+      { isCancelledByRevoke: true }
     );
   });
 
@@ -684,7 +857,9 @@ describe("signerIssuanceService failing a job", () => {
       expect.objectContaining({ orderId: 9970 })
     );
     expect(deps.certificateIssuanceQueue.digicertFns.orderCodeSigningCertificate).not.toHaveBeenCalled();
-    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([JOB_ID], expect.any(String));
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([JOB_ID], expect.any(String), {
+      isCancelledByRevoke: true
+    });
   });
 
   it("keeps tracking a recovered order for a revoked signer when DigiCert won't cancel it", async () => {
@@ -725,7 +900,9 @@ describe("signerIssuanceService failing a job", () => {
       expect.objectContaining({ orderId: 9804 })
     );
     expect(deps.certificateIssuanceQueue.digicertFns.reissueCodeSigningCertificate).not.toHaveBeenCalled();
-    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([JOB_ID], expect.any(String));
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([JOB_ID], expect.any(String), {
+      isCancelledByRevoke: true
+    });
   });
 
   it("keeps a DigiCert job open when DigiCert doesn't cancel its order, so a late certificate is still revoked", async () => {
@@ -745,6 +922,8 @@ describe("signerIssuanceService failing a job", () => {
       cancelledJobCount: 0
     });
 
-    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String));
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String), {
+      isCancelledByRevoke: true
+    });
   });
 });

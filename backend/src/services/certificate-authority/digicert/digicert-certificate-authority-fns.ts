@@ -929,12 +929,14 @@ export const DigiCertCertificateAuthorityFns = ({
   const revokeCertificate = async ({
     caId,
     serialNumber,
-    reason
+    reason,
+    allowPendingApproval = false
   }: {
     caId: string;
     serialNumber: string;
     reason: CrlReason;
-  }) => {
+    allowPendingApproval?: boolean;
+  }): Promise<number | undefined> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
@@ -981,15 +983,21 @@ export const DigiCertCertificateAuthorityFns = ({
 
     try {
       const comments = `Revoked via Infisical. Reason: ${reason}`;
-      const { requestStatus } = digicertCertificateId
+      const revocationRequest = digicertCertificateId
         ? await client.revokeCertificate(digicertCertificateId, comments)
         : await client.revokeOrder(orderId, comments);
-      if (requestStatus === DigiCertRevocationRequestStatus.Rejected) {
+      if (revocationRequest?.status === DigiCertRevocationRequestStatus.Rejected) {
         throw new BadRequestError({
           message: `DigiCert rejected the revocation request for order #${orderId}, so the certificate is still valid. Check the request in CertCentral.`
         });
       }
-      if (requestStatus && requestStatus !== DigiCertRevocationRequestStatus.Approved) {
+      if (revocationRequest?.status && revocationRequest.status !== DigiCertRevocationRequestStatus.Approved) {
+        if (allowPendingApproval && revocationRequest.id) {
+          logger.info(
+            `DigiCert revocation waiting for approval [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [requestId=${revocationRequest.id}]`
+          );
+          return revocationRequest.id;
+        }
         throw new BadRequestError({
           message: `DigiCert needs an administrator to approve this revocation, so the certificate is still valid. Approve the request for order #${orderId} in CertCentral, then revoke again.`
         });
@@ -1010,6 +1018,12 @@ export const DigiCertCertificateAuthorityFns = ({
     );
   };
 
+  const getRevocationRequestStatus = async ({ caId, requestId }: { caId: string; requestId: number }) => {
+    const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs: DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS });
+    const request = await client.getRequest(requestId);
+    return request.status;
+  };
+
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
@@ -1021,6 +1035,7 @@ export const DigiCertCertificateAuthorityFns = ({
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,
+    getRevocationRequestStatus,
     assertOrderMatchesCertificate,
     orderCodeSigningCertificate: codeSigningFns.orderCodeSigningCertificate,
     reissueCodeSigningCertificate: codeSigningFns.reissueCodeSigningCertificate,

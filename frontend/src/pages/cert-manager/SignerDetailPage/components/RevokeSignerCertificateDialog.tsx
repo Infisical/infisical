@@ -57,8 +57,8 @@ export const RevokeSignerCertificateDialog = ({ signer, isOpen, onOpenChange }: 
         <DialogHeader>
           <DialogTitle>Revoke Certificate for {signer.name}</DialogTitle>
           <DialogDescription>
-            The signer stops signing right away, and this can&apos;t be undone. To keep signing,
-            create a new signer. Signatures made before the revocation may stop validating.
+            The signer stops signing right away. To sign again, reissue the certificate with a new
+            key from Edit Settings. Signatures made before the revocation may stop validating.
             {signer.pendingCertificateRequest && (
               <span className="mt-2 block">
                 {openDigicertOrderId
@@ -69,8 +69,10 @@ export const RevokeSignerCertificateDialog = ({ signer, isOpen, onOpenChange }: 
             {signer.caType === CaType.DIGICERT && (
               <span className="mt-2 block font-medium text-warning">
                 If your CertCentral account requires approval for revocations, the certificate stays
-                valid until an administrator approves the request in CertCentral. Revoke again after
-                it&apos;s approved.
+                valid until an administrator approves the request in CertCentral. The signer
+                can&apos;t sign in the meantime. Other open certificate requests are canceled once
+                it&apos;s approved, and the signer goes back to its earlier status if it&apos;s
+                rejected.
               </span>
             )}
           </DialogDescription>

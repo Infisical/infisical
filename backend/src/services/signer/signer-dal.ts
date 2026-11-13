@@ -233,6 +233,17 @@ export const signerDALFactory = (db: TDbClient) => {
     return (await (tx || db)(TableName.PkiSigners).where({ id }).first()) as TPkiSigners;
   };
 
+  const findWithPendingRevocation = async (): Promise<TPkiSigners[]> => {
+    try {
+      return (await db
+        .replicaNode()(TableName.PkiSigners)
+        .whereNotNull("pendingRevocation")
+        .where({ status: SignerStatus.Revoked })) as TPkiSigners[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSignersWithPendingRevocation" });
+    }
+  };
+
   const findOneInOrgByCurrentHsmPublicKey = async (
     projectId: string,
     hsmPublicKeySpki: Buffer,
@@ -259,6 +270,7 @@ export const signerDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     updateUnlessRevoked,
+    findWithPendingRevocation,
     findByIdWithCertificate,
     findByStatusWithCertificate,
     findByProjectId,

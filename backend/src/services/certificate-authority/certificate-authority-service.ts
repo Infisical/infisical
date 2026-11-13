@@ -1390,12 +1390,14 @@ export const certificateAuthorityServiceFactory = ({
   const revokeCertificate = async ({
     caId,
     serialNumber,
-    reason
+    reason,
+    allowPendingApproval
   }: {
     caId: string;
     serialNumber: string;
     reason: CrlReason;
-  }) => {
+    allowPendingApproval?: boolean;
+  }): Promise<number | undefined> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) {
       throw new NotFoundError({ message: `Could not find certificate authority with id "${caId}"` });
@@ -1409,8 +1411,7 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (caType === CaType.DIGICERT) {
-      await digicertFns.revokeCertificate({ caId, serialNumber, reason });
-      return;
+      return digicertFns.revokeCertificate({ caId, serialNumber, reason, allowPendingApproval });
     }
 
     if (caType === CaType.GODADDY) {

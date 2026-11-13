@@ -19,10 +19,12 @@ import { useSubscription } from "@app/context";
 import { getCaIssuanceCapabilities, useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
 import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
+import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
   SignerKeyAlgorithm,
+  isSignerRevokeUnfinished,
   SignerStatus,
   TSigner,
   useImportSignerCertificate,
@@ -193,17 +195,40 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     externalOrderMode: watchedExternalOrderMode
   });
   const adcsTemplateChanged = isAdcs && (watchedAdcsTemplate?.trim() ?? "") !== signerAdcsTemplate;
-  const isCertificateRevoked = signer.status === SignerStatus.Revoked;
-  const visibleSteps = isCertificateRevoked ? STEPS.slice(0, 1) : STEPS;
+  const isRevocationPending = Boolean(signer.pendingRevocation);
+  const isRevokeUnfinished = isSignerRevokeUnfinished(signer);
+  const isNameOnly = isRevocationPending || isRevokeUnfinished;
+  const isCertificateRevoked =
+    !isNameOnly &&
+    (signer.status === SignerStatus.Revoked || signer.certificateStatus === CertStatus.REVOKED);
+  const visibleSteps = isNameOnly ? STEPS.slice(0, 1) : STEPS;
   const step = Math.min(selectedStep, visibleSteps.length - 1);
   const shouldReissue =
-    !isCertificateRevoked &&
-    (caSwap ||
+    !isNameOnly &&
+    (isCertificateRevoked ||
+      caSwap ||
       subjectChanged ||
       keySourceChanged ||
       keyAlgorithmChanged ||
       isFromExternalOrder ||
       adcsTemplateChanged);
+
+  const getFooterHint = () => {
+    if (isRevocationPending) {
+      return "This signer's revocation is waiting for approval, so only its name and description can change.";
+    }
+    if (isRevokeUnfinished)
+      return "The revoke didn't finish. Revoke the certificate again, then reissue it.";
+    if (usingExistingCertificate)
+      return "Saving switches the signer to the certificate already issued in this order.";
+    if (isCertificateRevoked) {
+      return "The certificate was revoked. Saving reissues it with a new key, and the signer can sign again once it's issued.";
+    }
+    if (!shouldReissue) return "";
+    return signer.pendingCertificateRequest
+      ? "Saving cancels the renewal in progress and reissues the certificate immediately."
+      : "Saving reissues the certificate immediately. The signer switches to the new certificate.";
+  };
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -248,6 +273,14 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       const nextRenew = cert.certificateRenewBeforeDays ?? null;
       const renewChanged = nextRenew !== currentRenew;
 
+      if (nameChanged || descChanged) {
+        await updateSigner.mutateAsync({
+          signerId: signer.id,
+          name: nameChanged ? basics.name : undefined,
+          description: descChanged ? basics.description || null : undefined
+        });
+      }
+
       if (usingExistingCertificate) {
         await importCertificate.mutateAsync({
           signerId: signer.id,
@@ -291,12 +324,10 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       }
 
       const renewSavedByImport = usingExistingCertificate && renewChanged;
-      if (nameChanged || descChanged || (renewChanged && !renewSavedByImport)) {
+      if (renewChanged && !renewSavedByImport) {
         await updateSigner.mutateAsync({
           signerId: signer.id,
-          name: nameChanged ? basics.name : undefined,
-          description: descChanged ? basics.description || null : undefined,
-          certificateRenewBeforeDays: renewChanged && !renewSavedByImport ? nextRenew : undefined
+          certificateRenewBeforeDays: nextRenew
         });
       }
 
@@ -312,7 +343,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     if (step === 0) {
       const ok = await basicsForm.trigger();
       if (!ok) return;
-      if (isCertificateRevoked) {
+      if (isNameOnly) {
         await onSave();
         return;
       }
@@ -458,16 +489,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
           </div>
 
           <SheetFooter className="shrink-0 items-center justify-between border-t">
-            <span className="text-xs text-warning">
-              {isCertificateRevoked &&
-                "This signer's certificate was revoked, so only its name and description can change."}
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {!isCertificateRevoked && usingExistingCertificate
-                ? "Saving switches the signer to the certificate already issued in this order."
-                : shouldReissue
-                  ? "Saving reissues the certificate immediately. The signer switches to the new certificate."
-                  : ""}
-            </span>
+            <span className="text-xs text-warning">{getFooterHint()}</span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
                 Step {step + 1} of {visibleSteps.length}

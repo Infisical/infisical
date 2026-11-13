@@ -5292,6 +5292,7 @@ interface RevokePkiSignerCertificateEvent {
     certificateCommonName: string;
     serialNumber: string;
     revocationReason: CrlReason;
+    digicertRevocationRequestId?: number;
   };
 }
 

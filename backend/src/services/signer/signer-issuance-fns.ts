@@ -17,14 +17,34 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
-  CertKeyAlgorithm
+  CertKeyAlgorithm,
+  CertStatus
 } from "@app/services/certificate/certificate-types";
 import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
-import { CertKeySource, HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
+import { CertKeySource, HsmKeyAlgorithm, SignerStatus } from "@app/services/signer/signer-enums";
+
+export const isRevokeUnfinished = (
+  signer: { status: string } | null | undefined,
+  certificate: { status: string } | null | undefined
+) => signer?.status === SignerStatus.Revoked && Boolean(certificate) && certificate?.status !== CertStatus.REVOKED;
+
+export const assertDigiCertCodeSigningKey = ({ isHsm, keyAlgorithm }: { isHsm: boolean; keyAlgorithm: string }) => {
+  if (!isHsm) {
+    throw new BadRequestError({
+      message:
+        "DigiCert code signing requires an HSM-backed key. Industry rules require code signing private keys to be generated and stored on certified hardware. Choose an HSM key source for this signer."
+    });
+  }
+  if (keyAlgorithm.startsWith("RSA_") && Number(keyAlgorithm.slice(4)) < 3072) {
+    throw new BadRequestError({
+      message: "DigiCert code signing requires an RSA key of at least 3072 bits. Choose RSA-4096 or an ECDSA algorithm."
+    });
+  }
+};
 
 type TIssueSignerCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;

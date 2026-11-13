@@ -45,6 +45,7 @@ import {
   hasFailedRenewal,
   SIGNER_TABLE_PAGE_SIZE,
   SignerStatus,
+  getSignerStatusLabel,
   signerStatusLabels,
   useListSigners
 } from "@app/hooks/api/signers";
@@ -185,7 +186,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                       ) : (
                         <span className="inline-flex items-center gap-1.5">
                           <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                            {signerStatusLabels[signer.status] ?? signer.status}
+                            {getSignerStatusLabel(signer)}
                           </Badge>
                           {hasFailedRenewal(signer) && (
                             <Tooltip>
@@ -193,7 +194,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                                 <span className="cursor-help">
                                   <Badge variant="warning">
                                     <AlertTriangleIcon />
-                                    Renewal Failed
+                                    Request Failed
                                   </Badge>
                                 </span>
                               </TooltipTrigger>

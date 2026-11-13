@@ -31,6 +31,7 @@ import {
 import { useProject } from "@app/context";
 import {
   getSigningOperationStatusBadgeVariant,
+  isSignerRevokeUnfinished,
   SIGNER_TABLE_PAGE_SIZE,
   SignerStatus,
   SigningActorType,
@@ -60,6 +61,19 @@ const getActorDisplayName = (actorType: SigningActorType, actorName?: string | n
     default:
       return "Unknown";
   }
+};
+
+const getEmptyStateMessage = (signer: TSigner) => {
+  if (signer.pendingRevocation) {
+    return "This signer can't sign while its revocation waits for approval in CertCentral.";
+  }
+  if (isSignerRevokeUnfinished(signer)) {
+    return "This signer's revoke didn't finish. Revoke the certificate again, then reissue it to sign again.";
+  }
+  if (signer.status === SignerStatus.Revoked) {
+    return "This signer's certificate was revoked. Reissue it with a new key from Edit Settings to sign again.";
+  }
+  return "Set up a signing tool on your machine to start signing with this Signer.";
 };
 
 export const SigningOperationsTable = ({ signer, signerId }: Props) => {
@@ -195,11 +209,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
             <Empty className="border border-solid">
               <EmptyHeader>
                 <EmptyTitle>No signing activity yet</EmptyTitle>
-                <EmptyDescription>
-                  {signer.status === SignerStatus.Revoked
-                    ? "This signer's certificate was revoked. Create a new signer to keep signing."
-                    : "Set up a signing tool on your machine to start signing with this Signer."}
-                </EmptyDescription>
+                <EmptyDescription>{getEmptyStateMessage(signer)}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}

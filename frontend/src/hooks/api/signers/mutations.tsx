@@ -214,6 +214,14 @@ export const useRevokeSignerCertificate = () => {
         });
         return;
       }
+      if (signer.pendingRevocation) {
+        createNotification({
+          title: "Revocation waiting for approval",
+          text: `DigiCert request #${signer.pendingRevocation.requestId} needs an administrator to approve it in CertCentral. The signer can't sign while it waits.`,
+          type: "info"
+        });
+        return;
+      }
       createNotification({ text: "Certificate revoked", type: "success" });
     },
     onSettled: (_, __, { signerId }) => {

@@ -31,7 +31,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "reissueSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
-      description: "Re-issue the signer's certificate (optionally from a different CA or with a different key source)",
+      description:
+        "Re-issue the signer's certificate, optionally from a different CA or with a different key source. If a certificate request is open, it's canceled first, along with its DigiCert order. If the signer's certificate was revoked, the new certificate always uses a new key, and the signer can sign again once it's issued.",
       params: SignerIdParamsSchema,
       body: z
         .object({
@@ -107,7 +108,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       operationId: "renewSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
       description:
-        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source. An internal CA issues the new certificate right away, and the response holds it. An external CA such as DigiCert issues it later, so the response still holds the current certificate. Get the signer to check: while the request is open, `pendingCertificateRequest` is set. Once it's empty and `certificateId` has changed, the renewed certificate is attached.",
+        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source. An internal CA issues the new certificate right away, and the response holds it. An external CA such as DigiCert issues it later, so the response still holds the current certificate. Get the signer to check: while the request is open, `pendingCertificateRequest` is set. Once it's empty, the renewal finished: if `certificateId` changed, the renewed certificate is attached, and if `certificateFailureReason` is set instead, the renewal failed and the signer keeps its current certificate. If the signer is revoked first, its status is `revoked` and the renewal is canceled.",
       params: SignerIdParamsSchema,
       response: { 200: PkiSignersSchema }
     },
@@ -149,7 +150,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "revokeSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
-      description: "Revoke the signer's certificate. This can't be undone. Create a new signer to keep signing.",
+      description:
+        "Revoke the signer's certificate, which stops the signer from signing right away. To sign again, reissue the certificate with a new key. If the CA's account requires approval for revocations (DigiCert), the signer is Revoked with `pendingRevocation` set until the request is approved. If it's rejected, the signer goes back to its earlier status.",
       params: SignerIdParamsSchema,
       body: z.object({
         revocationReason: z.enum(PERMANENT_REVOCATION_REASONS).describe(CERTIFICATES.REVOKE.revocationReason)
@@ -165,7 +167,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { signer, certificateId, serialNumber, commonName, crlWarning } =
+      const { signer, certificateId, serialNumber, commonName, crlWarning, pendingRevocationRequestId } =
         await server.services.pkiSigner.revokeCertificate({
           signerId: req.params.signerId,
           revocationReason: req.body.revocationReason,
@@ -186,7 +188,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             certificateId,
             certificateCommonName: commonName,
             serialNumber,
-            revocationReason: req.body.revocationReason
+            revocationReason: req.body.revocationReason,
+            digicertRevocationRequestId: pendingRevocationRequestId
           }
         }
       });

@@ -126,11 +126,13 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 | **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry Issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
 | **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
 | **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Renew the certificate from **Options → Renew Certificate**. If the Signer has no CA, choose one in **Options → Edit Settings**, and the Signer requests a new certificate when you save. |
-| **Revoked** | The certificate was revoked. Revocation is permanent, so create a new Signer to keep signing. |
+| **Revoked** | The certificate was revoked, and signing is blocked. To sign again, [reissue the certificate](#edit-a-signer) with a new key. While a DigiCert revocation waits for approval, the badge shows **Revocation Pending**. |
 
 ## Edit a signer
 
-Open the Signer and choose **Options → Edit Settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. If the Signer is revoked, you can change only its name and description. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate.
+Open the Signer and choose **Options → Edit Settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate. If a renewal is still in progress, saving replaces it and cancels any DigiCert order it placed. If DigiCert won't cancel that order, saving fails and shows the order number.
+
+If the Signer's certificate was revoked, saving reissues the certificate with a new key, and the Signer can sign again once the new certificate is issued. While a revocation waits for approval, you can change only the Signer's name and description. If a revoke didn't finish, revoke the certificate again before you reissue it.
 
 <Steps>
   <Step title="Basics">
@@ -174,10 +176,10 @@ Open the Signer and choose an action from the **Options** menu, or call the [Ren
 
 | Action | What happens |
 |--------|--------------|
-| **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. An Active Signer keeps signing with its current certificate until the new one is issued. If the renewal fails, the Signer keeps its certificate and shows a **Renewal Failed** badge with the reason. Not available while the Signer is disabled or has a request in progress. |
-| **Revoke Certificate** | Revokes the certificate at the CA, and the Signer stops signing right away. This can't be undone. If a certificate request is in progress, revoking cancels it. Not available for Azure AD CS or for an imported certificate. |
+| **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. An Active Signer keeps signing with its current certificate until the new one is issued. If the renewal fails, the Signer keeps its certificate and shows a **Request Failed** badge with the reason. Not available while the Signer is disabled or has a request in progress. |
+| **Revoke Certificate** | Revokes the certificate at the CA, and the Signer stops signing right away. To sign again, [reissue the certificate](#edit-a-signer) with a new key. If a certificate request is in progress, revoking cancels it. Not available for Azure AD CS or for an imported certificate. |
 
-If an automatic renewal from an external CA fails, the next automatic renewal waits 7 days, so a DigiCert account doesn't get a new order every day. To try sooner, select **Options → Renew Certificate**.
+If an automatic renewal from an external CA fails, the next automatic renewal waits 7 days, so a DigiCert account doesn't get a new order every day. If the certificate has less than 14 days left, the wait is half of the time left, and at least 1 day. To try sooner, select **Options → Renew Certificate**.
 
 ### DigiCert
 
@@ -185,8 +187,8 @@ If the Signer uses a DigiCert CA:
 
 - Renewing places a renewal order, or reissues the current order if your account has no unused code signing subscription (DigiCert then revokes the current certificate within 72 hours)
 - Revoking revokes only this certificate, not the rest of its order, and cancels any renewal or reissue order still open for the Signer
-- If your CertCentral account requires approval for revocations, the certificate stays valid until an administrator approves the request (revoke the certificate again after the request is approved)
-- If a pending reissue can't be canceled, cancel it in CertCentral before you revoke the certificate
+- If your CertCentral account requires approval for revocations, the Signer shows **Revocation Pending** and can't sign while an administrator reviews the request (open renewals are canceled once it's approved, and if it's rejected, the Signer goes back to its earlier status)
+- If Infisical can't cancel a pending reissue, the revoke fails and shows the order number (cancel the reissue in CertCentral, then revoke again)
 
 ### Update signtool after a renewal
 

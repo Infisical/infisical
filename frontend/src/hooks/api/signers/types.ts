@@ -1,5 +1,5 @@
 import { CaType } from "@app/hooks/api/ca/enums";
-import { CrlReason } from "@app/hooks/api/certificates/enums";
+import { CertStatus, CrlReason } from "@app/hooks/api/certificates/enums";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks";
 
 export type TGetUserSignerPermissionDTO = {
@@ -216,7 +216,13 @@ export type TSigner = {
   externalOrder?: TSignerExternalOrder | null;
   pendingCertificateRequest?: { externalOrder: TSignerExternalOrder | null } | null;
   hasOpenCertificateRequest?: boolean;
+  pendingRevocation?: { requestId: number; requestedAt: string } | null;
 };
+
+export const getSignerStatusLabel = (signer: Pick<TSigner, "status" | "pendingRevocation">) =>
+  signer.pendingRevocation
+    ? "Revocation Pending"
+    : (signerStatusLabels[signer.status] ?? signer.status);
 
 export const getNextDigicertOrderId = (signer: TSigner) => {
   const nextOrderId = signer.pendingCertificateRequest?.externalOrder?.orderId;
@@ -224,6 +230,12 @@ export const getNextDigicertOrderId = (signer: TSigner) => {
     ? nextOrderId
     : null;
 };
+
+export const isSignerRevokeUnfinished = (signer: TSigner) =>
+  !signer.pendingRevocation &&
+  Boolean(signer.certificateId) &&
+  signer.status === SignerStatus.Revoked &&
+  signer.certificateStatus !== CertStatus.REVOKED;
 
 export const hasFailedRenewal = (signer: TSigner) =>
   Boolean(signer.certificateFailureReason) &&

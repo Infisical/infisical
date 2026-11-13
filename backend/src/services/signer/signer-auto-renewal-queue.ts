@@ -12,7 +12,7 @@ type TSignerAutoRenewalQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
   signerDAL: Pick<TSignerDALFactory, "findByStatusWithCertificate">;
-  signerService: Pick<TSignerServiceFactory, "autoRenewCertificate">;
+  signerService: Pick<TSignerServiceFactory, "autoRenewCertificate" | "syncPendingRevocations">;
 };
 
 export type TSignerAutoRenewalQueueFactory = ReturnType<typeof signerAutoRenewalQueueFactory>;
@@ -109,6 +109,12 @@ export const signerAutoRenewalQueueFactory = ({
           jobId: CronJobName.SignerDailyAutoRenewal
         });
       }
+    });
+    cronJob.register({
+      name: CronJobName.SignerPendingRevocationSync,
+      pattern: "* * * * *",
+      runHashTtlS: 15 * 60,
+      handler: () => signerService.syncPendingRevocations()
     });
   };
 

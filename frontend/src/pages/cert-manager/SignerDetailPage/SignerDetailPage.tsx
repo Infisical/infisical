@@ -65,8 +65,9 @@ import {
   getNextDigicertOrderId,
   getSignerStatusBadgeVariant,
   hasFailedRenewal,
+  isSignerRevokeUnfinished,
   SignerStatus,
-  signerStatusLabels,
+  getSignerStatusLabel,
   useCheckSignerIssuance,
   useDeleteSigner,
   useDisableSigner,
@@ -177,6 +178,7 @@ export const SignerDetailPage = () => {
     signer.status !== SignerStatus.Revoked;
   const canRevokeCertificate =
     hasLiveCertificate &&
+    !signer.pendingRevocation &&
     !!signerCaType &&
     caSupportsCapability(signerCaType, CaCapability.REVOKE_CERTIFICATES);
 
@@ -184,8 +186,14 @@ export const SignerDetailPage = () => {
     signer.pendingCertificateRequest?.externalOrder ??
     (signer.certificateId ? null : signer.externalOrder);
   let statusTooltip: string | null = null;
-  if (signer.status === SignerStatus.Revoked) {
-    statusTooltip = "Create a new signer to keep signing.";
+  if (signer.pendingRevocation) {
+    statusTooltip = `DigiCert revocation request #${signer.pendingRevocation.requestId} is waiting for an administrator to approve it in CertCentral. The signer can't sign while it waits. Once it's approved, reissue the certificate with a new key to sign again. If it's rejected, the signer goes back to its earlier status.`;
+  } else if (isSignerRevokeUnfinished(signer)) {
+    statusTooltip =
+      signer.certificateFailureReason ??
+      "The revoke didn't finish, so the certificate is still valid. Revoke it again.";
+  } else if (signer.status === SignerStatus.Revoked) {
+    statusTooltip = "To sign again, reissue the certificate with a new key from Edit Settings.";
   } else if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
     statusTooltip = signer.certificateFailureReason;
   } else if (signer.status === SignerStatus.Pending && pendingExternalOrder) {
@@ -206,7 +214,7 @@ export const SignerDetailPage = () => {
       : `A new certificate is being issued.${keepsSigning}`;
   } else if (hasFailedRenewal(signer)) {
     isRenewalFailed = true;
-    renewalTooltip = `${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer still has its current certificate. Fix the cause, then renew again.`;
+    renewalTooltip = `${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer still has its current certificate.`;
   }
   const nextDigicertOrderId = getNextDigicertOrderId(signer);
 
@@ -234,7 +242,7 @@ export const SignerDetailPage = () => {
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.overview} />
                   <BadgeWithTooltip tooltip={statusTooltip}>
                     <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                      {signerStatusLabels[signer.status] ?? signer.status}
+                      {getSignerStatusLabel(signer)}
                     </Badge>
                   </BadgeWithTooltip>
                   {renewalTooltip && (
@@ -242,7 +250,7 @@ export const SignerDetailPage = () => {
                       {isRenewalFailed ? (
                         <Badge variant="warning">
                           <AlertTriangleIcon />
-                          Renewal Failed
+                          Request Failed
                         </Badge>
                       ) : (
                         <Badge variant="info">
@@ -362,7 +370,8 @@ export const SignerDetailPage = () => {
               {!signer.caId && (
                 <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                   This signer has no Certificate Authority attached, so its certificate cannot be
-                  auto-renewed. Once it expires, signing will stop until you create a new signer.
+                  auto-renewed. Once it expires, signing will stop until you choose one in Edit
+                  Settings.
                 </div>
               )}
 

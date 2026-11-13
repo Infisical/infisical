@@ -22,6 +22,8 @@ export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
 const ORDER_REQUEST_TIMEOUT_MS = 2 * 60_000;
 export const DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS = 20_000;
 
+type TDigiCertRevocationRequest = { id: number; status: DigiCertRevocationRequestStatus };
+
 export const createDigiCertApiClient = (apiKey: string, baseURL: string, options?: { requestTimeoutMs?: number }) => {
   const headers = {
     [DIGICERT_AUTH_HEADER]: apiKey,
@@ -131,12 +133,12 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
 
   const revokeOrder = async (orderId: number, comments: string) =>
     wrap(async () => {
-      const { data } = await request.put<{ status?: DigiCertRevocationRequestStatus } | "">(
+      const { data } = await request.put<TDigiCertRevocationRequest | "">(
         `${baseURL}/order/certificate/${orderId}/revoke`,
         { comments, skip_approval: true },
         { headers, ...boundedRequestConfig }
       );
-      return { requestStatus: typeof data === "object" ? data?.status : undefined };
+      return typeof data === "object" ? data : null;
     }, `order revocation for ${orderId}`);
 
   const cancelOrderReissue = async (orderId: number, note: string) =>
@@ -150,13 +152,22 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
 
   const revokeCertificate = async (certificateId: number, comments: string) =>
     wrap(async () => {
-      const { data } = await request.put<{ status?: DigiCertRevocationRequestStatus } | "">(
+      const { data } = await request.put<TDigiCertRevocationRequest | "">(
         `${baseURL}/certificate/${certificateId}/revoke`,
         { comments, skip_approval: true },
         { headers, ...boundedRequestConfig }
       );
-      return { requestStatus: typeof data === "object" ? data?.status : undefined };
+      return typeof data === "object" ? data : null;
     }, `certificate revocation for ${certificateId}`);
+
+  const getRequest = async (requestId: number) =>
+    wrap(async () => {
+      const { data } = await request.get<TDigiCertRevocationRequest>(`${baseURL}/request/${requestId}`, {
+        headers,
+        ...boundedRequestConfig
+      });
+      return data;
+    }, `request lookup for ${requestId}`);
 
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>
     wrap(async () => {
@@ -179,6 +190,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
     revokeOrder,
     revokeCertificate,
     cancelOrderReissue,
+    getRequest,
     listOrderStatusChanges
   };
 };
