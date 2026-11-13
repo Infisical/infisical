@@ -39,7 +39,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         projectId: z.string().trim(),
         environment: z.string().trim().optional(),
         committer: z.string().trim().optional(),
-        search: z.string().trim().optional(),
+        search: z.string().trim().max(255).optional(),
         status: z.nativeEnum(RequestState).optional(),
         limit: z.coerce.number().default(20),
         offset: z.coerce.number().default(0),
