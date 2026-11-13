@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
+import pLimit from "p-limit";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
@@ -27,10 +28,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
+import { logger } from "@app/lib/logger";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   addAppConnectionFederatedCredential,
   decryptAppConnection,
+  decryptAppConnectionConfiguration,
   decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
@@ -70,8 +73,9 @@ import {
 } from "./app-connection-types";
 import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { auth0ConnectionService } from "./auth0/auth0-connection-service";
-import { ValidateAwsConnectionCredentialsSchema } from "./aws";
+import { AwsConnectionConfigurationSchema, AwsConnectionMethod, ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
+import { doesRoleArnBelongToStack } from "./aws/aws-role-arn-fns";
 import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
 import { azureAdcsConnectionService } from "./azure-adcs/azure-adcs-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
@@ -252,6 +256,10 @@ export type TAppConnectionServiceFactoryDep = {
   >;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
+
+type TRecordedProvisioning = { useCases: string[] } | null;
+
+const RECORDED_PROVISIONING_CONCURRENCY = 5;
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
 
@@ -1017,6 +1025,39 @@ export const appConnectionServiceFactory = ({
       }
     }
 
+    let configurationToSave = configuration;
+
+    const requestedRoleArn =
+      app === AppConnection.AWS ? (credentials as { roleArn?: string } | undefined)?.roleArn : undefined;
+    if (requestedRoleArn) {
+      const effectiveConfiguration = (configuration ??
+        (await decryptAppConnectionConfiguration({
+          encryptedConfiguration: appConnection.encryptedConfiguration,
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          kmsService
+        }))) as { provisioning?: { partition: string; roleName?: string } | null } | undefined;
+
+      if (effectiveConfiguration?.provisioning) {
+        const existingCredentials = (await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        })) as { roleArn?: string };
+
+        if (
+          !doesRoleArnBelongToStack({
+            roleArn: requestedRoleArn,
+            existingRoleArn: existingCredentials.roleArn,
+            provisioning: effectiveConfiguration.provisioning
+          })
+        ) {
+          configurationToSave = { ...effectiveConfiguration, provisioning: null };
+        }
+      }
+    }
+
     try {
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx?: Knex) => {
         const encryptedCredentials = connectionCredentials
@@ -1029,9 +1070,9 @@ export const appConnectionServiceFactory = ({
           : undefined;
 
         const encryptedConfiguration =
-          configuration !== undefined
+          configurationToSave !== undefined
             ? await encryptAppConnectionConfiguration({
-                configuration,
+                configuration: configurationToSave,
                 orgId: actor.orgId,
                 kmsService,
                 projectId: appConnection.projectId
@@ -1346,7 +1387,30 @@ export const appConnectionServiceFactory = ({
     return appConnection;
   };
 
-  const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: OrgServiceActor, projectId?: string) => {
+  const getRecordedProvisioning = async (connection: TAppConnections): Promise<TRecordedProvisioning> => {
+    if (connection.method !== AwsConnectionMethod.AssumeRole || !connection.encryptedConfiguration) return null;
+
+    try {
+      const configuration = await decryptAppConnectionConfiguration({
+        orgId: connection.orgId,
+        projectId: connection.projectId,
+        encryptedConfiguration: connection.encryptedConfiguration,
+        kmsService
+      });
+
+      const parsed = AwsConnectionConfigurationSchema.safeParse(configuration);
+      return parsed.success && parsed.data.provisioning ? { useCases: parsed.data.provisioning.useCases } : null;
+    } catch (error) {
+      logger.warn(error, `Could not read the recorded provisioning of App Connection [connectionId=${connection.id}]`);
+      return null;
+    }
+  };
+
+  const listAvailableAppConnectionsForUser = async (
+    app: AppConnection,
+    actor: OrgServiceActor,
+    projectId?: string
+  ): Promise<(Omit<TAppConnection, "credentials"> & { provisioning?: TRecordedProvisioning })[]> => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -1396,9 +1460,20 @@ export const appConnectionServiceFactory = ({
       )
     );
 
-    return [...availableOrgConnections, ...availableProjectConnections].sort((a, b) =>
+    const availableConnections = [...availableOrgConnections, ...availableProjectConnections].sort((a, b) =>
       a.name.toLowerCase().localeCompare(b.name.toLowerCase())
     ) as Omit<TAppConnection, "credentials">[];
+
+    if (app !== AppConnection.AWS) return availableConnections;
+
+    const limit = pLimit(RECORDED_PROVISIONING_CONCURRENCY);
+
+    return Promise.all(
+      availableConnections.map(async (connection) => ({
+        ...connection,
+        provisioning: await limit(() => getRecordedProvisioning(connection as unknown as TAppConnections))
+      }))
+    );
   };
 
   const findAppConnectionUsageById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {

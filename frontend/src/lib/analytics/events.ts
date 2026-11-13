@@ -20,7 +20,9 @@ export const AnalyticsEvent = {
   OnboardingResourceClicked: "Onboarding Resource Clicked",
   OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
   SecretScanningOpened: "Secret Scanning Opened",
-  AgentVaultRedirectClicked: "Agent Vault Redirect Clicked"
+  AgentVaultRedirectClicked: "Agent Vault Redirect Clicked",
+  AwsLaunchStackClicked: "AWS Launch Stack Clicked",
+  AwsUpdateStackClicked: "AWS Update Stack Clicked"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -224,6 +226,17 @@ type AgentVaultRedirectClickedProperties = {
   action: AgentVaultRedirectAction;
 };
 
+type AwsLaunchStackClickedProperties = {
+  scope: "org" | "project";
+  partition: "aws";
+  useCaseCount: number;
+};
+
+type AwsUpdateStackClickedProperties = {
+  scope: "org" | "project";
+  useCaseCount: number;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -251,6 +264,8 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
   [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
   [AnalyticsEvent.AgentVaultRedirectClicked]: AgentVaultRedirectClickedProperties;
+  [AnalyticsEvent.AwsLaunchStackClicked]: AwsLaunchStackClickedProperties;
+  [AnalyticsEvent.AwsUpdateStackClicked]: AwsUpdateStackClickedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;

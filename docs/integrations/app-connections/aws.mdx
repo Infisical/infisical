@@ -6,24 +6,27 @@ description: "Learn how to configure an AWS connection for Infisical."
 
 import { UseCasePicker, UseCase } from "/snippets/UseCasePicker.jsx";
 import { awsUseCaseGroups } from "/snippets/app-connections/aws/use-cases.jsx";
-import { CombinedIamPolicy } from "/snippets/AwsIamPolicy.jsx";
 import SelfHostedInstance from "/snippets/app-connections/aws/self-hosted-instance.mdx";
 import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
 import CreateIamUser from "/snippets/app-connections/aws/create-iam-user.mdx";
-import ConnectionFormFields from "/snippets/app-connections/aws/form-fields.mdx";
+import AddPermissions from "/snippets/app-connections/aws/add-permissions.mdx";
+import LaunchStackSteps from "/snippets/app-connections/aws/launch-stack-steps.mdx";
+import UpdateStackSteps from "/snippets/app-connections/aws/update-stack-steps.mdx";
 import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
 
 <UseCasePicker prefix="I want the connection to work with" groups={awsUseCaseGroups} />
 
-An AWS connection authenticates Infisical to your AWS account, either by assuming an [IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) or with an [IAM user's access keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html).
+An AWS connection authenticates Infisical to your AWS account, either by assuming an [IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) or with an [IAM user's access keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html). We recommend assuming a role, since Infisical never holds a long-lived credential for it.
+
+With Launch Stack, Infisical opens the AWS CloudFormation console with a stack that creates the role for you. The stack fills in the AWS account to trust and the External ID, and grants permissions for only the integrations you select.
 
 <Note>
-    This guide doesn’t configure any behavior—it just authenticates Infisical with AWS. Once the app connection is ready, you can [use it to set up integrations](#step-4-configure-integrations).
+    This guide doesn’t configure any behavior—it just authenticates Infisical with AWS. Once the app connection is ready, you can [use it to set up integrations](#step-2-configure-integrations).
 </Note>
 
 ## Prerequisites
 
-- An AWS account where you can create IAM roles or users and attach policies to them
+- An AWS account where you can create CloudFormation stacks and IAM roles
 
 <UseCase use="pam-recording" hideWhenEmpty>
     - An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) for PAM session recordings
@@ -41,147 +44,9 @@ An AWS connection authenticates Infisical to your AWS account, either by assumin
     - A [Route 53 hosted zone](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html) for the domain you'll issue certificates for
 </UseCase>
 
-## Step 1: Create an IAM role or IAM user
+## Step 1: Create the connection with Launch Stack
 
-Infisical can either assume an IAM role in your account or sign in as an IAM user with an access key. We recommend using an IAM role, since Infisical never holds a long-lived credential for it.
-
-<Tabs>
-    <Tab title="Assume Role (Recommended)">
-        <SelfHostedInstance />
-
-        <Steps>
-            <CreateIamRole externalId="required" />
-        </Steps>
-    </Tab>
-    <Tab title="Access Key">
-        <Steps>
-            <CreateIamUser />
-        </Steps>
-    </Tab>
-</Tabs>
-
-## Step 2: Add permissions
-
-Next, add the required policies to the IAM role or user from [Step 1](#step-1-create-an-iam-role-or-iam-user):
-
-<Steps>
-    <Step>
-        In the IAM console, open the IAM role or user.
-    </Step>
-    <Step>
-        On the **Permissions** tab, select **Add permissions** > **Create inline policy**.
-
-        ![IAM Role Create Policy](/images/app-connections/aws/assume-role-create-policy.png)
-    </Step>
-    <Step>
-        Switch to the **JSON** editor, and replace the policy in the editor with this one. It combines the permissions of every integration you picked:
-
-        <CombinedIamPolicy groups={awsUseCaseGroups} />
-
-        <UseCase use="pam-recording,agent-vault-session-logs,private-ca,acm-public-ca,acme-route53" hideWhenEmpty>
-            Then replace the placeholders for the integrations you picked:
-        </UseCase>
-
-        <UseCase use="pam-recording" hideWhenEmpty>
-            - `<recording-bucket>`: the bucket you enter in the **Session Recording** card of a PAM account template (if you set a key prefix, such as `pam/prod`, add it after the bucket in both object ARNs)
-        </UseCase>
-
-        <UseCase use="agent-vault-session-logs" hideWhenEmpty>
-            - `<session-logs-bucket>` and `<key-prefix>`: the bucket and key prefix you'll enter in the **Session Logs** dialog in your Agent Vault project (if you won't set a key prefix, delete `<key-prefix>/` in both places)
-        </UseCase>
-
-        <UseCase use="private-ca" hideWhenEmpty>
-            - `<region>`, `<account-id>`, and `<ca-id>`: the parts of your CA's ARN (to use several CAs, list each ARN in a `Resource` array)
-        </UseCase>
-
-        <UseCase use="acm-public-ca,acme-route53" hideWhenEmpty>
-            - `<hosted-zone-id>`: the ID of the Route 53 hosted zone for your domain
-        </UseCase>
-
-        <UseCase use="private-ca" hideWhenEmpty>
-            If you restrict `acm-pca:IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
-
-            - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
-            - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
-        </UseCase>
-
-        <UseCase use="acm-public-ca" hideWhenEmpty>
-            If a different AWS account owns the hosted zone for an ACM public CA, move the `AllowRoute53ForAcmValidation` statement to a second connection in that account instead.
-        </UseCase>
-
-        <UseCase use="secrets-manager,parameter-store" hideWhenEmpty>
-            If a sync encrypts with a customer managed KMS key, select its KMS checkbox above the policy. If that key doesn't use the default key policy, also add the IAM role or user under **Key users** on the key's page in the AWS KMS console.
-        </UseCase>
-
-        <UseCase use="secrets-manager,parameter-store,iam-rotation,honey-tokens,acm-sync,elb-sync,pki-secrets-manager,private-ca,acm-public-ca,acme-route53,pam-recording,agent-vault-session-logs" hideWhenEmpty>
-            <Warning>
-                If you use the **Access Key** method, AWS may reject the policy as too large, because IAM users allow less inline policy than roles do.
-                
-                In this case, create it as a customer managed policy instead: in the IAM console, go to **Policies** > **Create policy**, paste the same JSON, and save it. Then open the IAM user and attach it under **Add permissions** > **Attach policies directly**.
-            </Warning>
-        </UseCase>
-    </Step>
-    <Step>
-        Select **Next**. Enter a **Policy name** that says which integrations the policy covers, such as `secrets-manager-sync`. Then, select **Create policy**. The policy belongs to the role or user, which already names Infisical, so the policy name only has to say what the policy grants.
-    </Step>
-</Steps>
-
-<UseCase use="pam-recording" hideWhenEmpty>
-    ### Add a CORS rule for PAM session recording
-
-    Your browser downloads recordings directly from the bucket during playback, so the bucket needs a CORS rule.
-
-    <Steps>
-        <Step>
-            In the Amazon S3 console, open the recording bucket, go to **Permissions**, and select **Edit** under **Cross-origin resource sharing (CORS)**.
-        </Step>
-        <Step>
-            Paste this rule, then select **Save changes**. If the bucket already has CORS rules, add this rule's object to the existing array instead of replacing it, so other applications that use the bucket keep working:
-
-            <CodeGroup>
-                ```json Infisical Cloud (US)
-                [
-                    {
-                        "AllowedHeaders": ["*"],
-                        "AllowedMethods": ["GET"],
-                        "AllowedOrigins": ["https://app.infisical.com"],
-                        "ExposeHeaders": [],
-                        "MaxAgeSeconds": 3600
-                    }
-                ]
-                ```
-
-                ```json Infisical Cloud (EU)
-                [
-                    {
-                        "AllowedHeaders": ["*"],
-                        "AllowedMethods": ["GET"],
-                        "AllowedOrigins": ["https://eu.infisical.com"],
-                        "ExposeHeaders": [],
-                        "MaxAgeSeconds": 3600
-                    }
-                ]
-                ```
-            </CodeGroup>
-
-            If you self-host Infisical or use a dedicated instance, replace `AllowedOrigins` with your instance's URL.
-        </Step>
-    </Steps>
-</UseCase>
-
-<UseCase use="agent-vault-session-logs" hideWhenEmpty>
-    ### Add a CORS rule for Agent Vault session logs
-
-    Your browser downloads session logs directly from the bucket, so the bucket needs a CORS rule. To see the same rule with your Infisical URL filled in, select **View AWS Setup** in the **Session Logs** dialog.
-
-    <Steps>
-        <AgentVaultSessionLogsCorsRule />
-    </Steps>
-</UseCase>
-
-## Step 3: Create the app connection
-
-Next, create the app connection in Infisical.
+Launch Stack appears in the connection form only if you can create app connections. To create the connection without it, see [Set up the connection without Launch Stack](#set-up-the-connection-without-launch-stack).
 
 <Tip>
     To create the connection using the API, use the [Create AWS Connection](/api-reference/endpoints/app-connections/aws/create) endpoint.
@@ -200,14 +65,9 @@ Next, create the app connection in Infisical.
             ![Select AWS Connection](/images/app-connections/aws/select-aws-connection.png)
         </Step>
         <Step>
-            Fill out the form's fields:
-
-            <ConnectionFormFields />
-
-            Then, select **Connect to AWS**.
-
-            ![AWS Connection Form](/images/app-connections/aws/create-assume-role-method.png)
+            Enter a **Name** for the connection and an optional **Description**.
         </Step>
+        <LaunchStackSteps />
     </Steps>
 </View>
 
@@ -223,22 +83,29 @@ Next, create the app connection in Infisical.
             Select **Add Connection** and choose **AWS**.
         </Step>
         <Step>
-            Fill out the form's fields:
-
-            <ConnectionFormFields />
-
-            Then, select **Connect to AWS**.
+            Enter a **Name** for the connection and an optional **Description**.
         </Step>
+        <LaunchStackSteps />
     </Steps>
 </View>
 
-When you select **Connect to AWS**, Infisical checks the credentials. For **Assume Role**, it assumes the role, so the role's trust policy has to name the right AWS account and External ID. For **Access Key**, it signs in with the access key. Infisical doesn't check the permissions from [Step 2](#step-2-add-permissions) until an integration uses them.
+When you select **Connect to AWS**, Infisical assumes the role, so the role's trust policy has to name the right AWS account and External ID. Launch Stack fills in both. Infisical doesn't check the role's permissions until an integration uses them.
 
 <Check>
     Your AWS app connection is ready to use.
 </Check>
 
-## Step 4: Configure integrations
+### Launch Stack on a self-hosted instance
+
+If you self-host Infisical, Launch Stack trusts the AWS account of your instance's credentials. If Infisical can't determine that account, for example because your instance has no AWS credentials, Launch Stack shows the manual steps instead of a launch link.
+
+To choose the account yourself, set `INF_APP_CONNECTION_AWS_TRUSTED_ACCOUNT_ID` to the 12-digit ID of the account to trust.
+
+To load the stack from your own copy of the template, set `INF_APP_CONNECTION_AWS_TEMPLATE_BASE_URL` to the base URL of your copy. Place the template from [`cloudformation/aws-app-connection`](https://github.com/Infisical/infisical/tree/main/cloudformation/aws-app-connection) at `<base-url>/aws-app-connection/v1/infisical-aws-app-connection.yaml`.
+
+Both variables are listed in [Environment variables](/self-hosting/configuration/envars#app-connections).
+
+## Step 2: Configure integrations
 
 Now that your AWS app connection is configured, you can use it to set up the following integrations:
 
@@ -304,3 +171,137 @@ Now that your AWS app connection is configured, you can use it to set up the fol
         </Card>
     </UseCase>
 </CardGroup>
+
+<UseCase use="pam-recording" hideWhenEmpty>
+    ## Add a CORS rule for PAM session recording
+
+    Your browser downloads recordings directly from the bucket during playback, so the bucket needs a CORS rule.
+
+    <Steps>
+        <Step>
+            In the Amazon S3 console, open the recording bucket, go to **Permissions**, and select **Edit** under **Cross-origin resource sharing (CORS)**.
+        </Step>
+        <Step>
+            Paste this rule, then select **Save changes**. If the bucket already has CORS rules, add this rule's object to the existing array instead of replacing it, so other applications that use the bucket keep working:
+
+            <CodeGroup>
+                ```json Infisical Cloud (US)
+                [
+                    {
+                        "AllowedHeaders": ["*"],
+                        "AllowedMethods": ["GET"],
+                        "AllowedOrigins": ["https://app.infisical.com"],
+                        "ExposeHeaders": [],
+                        "MaxAgeSeconds": 3600
+                    }
+                ]
+                ```
+
+                ```json Infisical Cloud (EU)
+                [
+                    {
+                        "AllowedHeaders": ["*"],
+                        "AllowedMethods": ["GET"],
+                        "AllowedOrigins": ["https://eu.infisical.com"],
+                        "ExposeHeaders": [],
+                        "MaxAgeSeconds": 3600
+                    }
+                ]
+                ```
+            </CodeGroup>
+
+            If you self-host Infisical or use a dedicated instance, replace `AllowedOrigins` with your instance's URL.
+        </Step>
+    </Steps>
+</UseCase>
+
+<UseCase use="agent-vault-session-logs" hideWhenEmpty>
+    ## Add a CORS rule for Agent Vault session logs
+
+    Your browser downloads session logs directly from the bucket, so the bucket needs a CORS rule. To see the same rule with your Infisical URL filled in, select **View AWS Setup** in the **Session Logs** dialog.
+
+    <Steps>
+        <AgentVaultSessionLogsCorsRule />
+    </Steps>
+</UseCase>
+
+## Add permissions to an existing connection
+
+A role that Launch Stack created has permissions for only the integrations you selected. To use the connection for another integration, update the stack in AWS so the role gets the extra permissions. Infisical doesn't update the stack for you. It opens the update in the AWS console and lists the values to use, and you make the change there.
+
+Update Stack is available only for connections that you created with Launch Stack, and only if you can edit the connection. If you created the role yourself or the connection uses an access key, add the permissions in IAM instead, as in [Set up the connection without Launch Stack](#set-up-the-connection-without-launch-stack).
+
+<Steps>
+    <UpdateStackSteps />
+</Steps>
+
+<Warning>
+    If you clear an integration, updating the stack removes its permissions from the role, and any sync or feature that relies on them fails.
+</Warning>
+
+**Mark as updated** doesn't check AWS. It saves the integrations you selected as the record of what the role can do, and nothing is saved if you close the sheet without selecting it.
+
+### Parameters for each integration
+
+Each integration has a toggle parameter on the stack. Some integrations also need the name or ID of the resource they use. Infisical lists the parameters that your selection changes, so you only need this table if you can't use Update Stack, for example because you manage the connection through the API.
+
+In that case, update the stack as in the steps above, with the current template at `https://infisical-static-assets.s3.us-east-1.amazonaws.com/aws-app-connection/v1/infisical-aws-app-connection.yaml`. If you self-host Infisical and load the template from your own copy, use the URL of that copy instead (see [Launch Stack on a self-hosted instance](#launch-stack-on-a-self-hosted-instance)).
+
+| Integration | Toggle parameter | Extra parameters to enter |
+| --- | --- | --- |
+| AWS Secrets Manager sync | `EnableSecretsManager` | `EnableSecretsManagerKms` set to `true` if the sync uses a customer managed KMS key |
+| AWS Parameter Store sync | `EnableParameterStore` | `EnableParameterStoreKms` set to `true` if the sync uses a customer managed KMS key |
+| AWS IAM user secret rotation | `EnableIamRotation` | None |
+| AWS honey tokens | `EnableHoneyTokens` | None |
+| AWS Certificate Manager sync | `EnableAcmSync` | None |
+| AWS Elastic Load Balancer sync | `EnableElbSync` | None |
+| AWS Secrets Manager certificate sync | `EnablePkiSecretsManager` | None |
+| AWS Private CA | `EnablePrivateCa` | `PrivateCaArn` |
+| AWS Certificate Manager public CA | `EnableAcmPublicCa` | `Route53HostedZoneId` |
+| ACME CA with Route 53 | `EnableAcmeRoute53` | `Route53HostedZoneId` |
+| PAM session recording | `EnablePamRecording` | `PamRecordingBucket` |
+| Agent Vault session logs | `EnableAgentVaultSessionLogs` | `AgentVaultSessionLogsBucket` and `AgentVaultSessionLogsKeyPrefix` |
+
+Set a toggle to `true` to add the integration's permissions, or to `false` to remove them. Leave every other parameter on its existing value. If you update the stack without Update Stack, Infisical's record of the connection's integrations doesn't change.
+
+## Set up the connection without Launch Stack
+
+Use one of these methods if you can't use Launch Stack, for example because you use an AWS partition other than AWS Commercial. In each method, you create the credentials in AWS, add permissions to them, and then enter them in the connection form.
+
+<Accordion title="Manual role creation" id="manual-role-creation">
+    <SelfHostedInstance />
+
+    <Steps>
+        <CreateIamRole externalId="required" />
+        <AddPermissions />
+        <Step>
+            In Infisical, open the connection form as in [Step 1](#step-1-create-the-connection-with-launch-stack). Ignore Launch Stack, and fill out the form's fields:
+
+            - **Name**: A descriptive name for the connection
+            - **Description** (optional): A note for future reference
+            - **Method**: **Assume Role (Recommended)**
+            - **Role ARN**: The role's ARN, shown in the **Summary** section of the role in the IAM console (Infisical accepts an ARN in any AWS partition, including a custom one)
+            - **STS Endpoint URL** (optional): A regional AWS STS endpoint to use instead of AWS's default, such as `https://sts.us-east-1.amazonaws.com` (leave it empty unless your network can't reach the default)
+
+            Then, select **Connect to AWS**.
+        </Step>
+    </Steps>
+</Accordion>
+
+<Accordion title="Access key" id="access-key">
+    <Steps>
+        <CreateIamUser />
+        <AddPermissions accessKey />
+        <Step>
+            In Infisical, open the connection form as in [Step 1](#step-1-create-the-connection-with-launch-stack), and fill out the form's fields:
+
+            - **Name**: A descriptive name for the connection
+            - **Description** (optional): A note for future reference
+            - **Method**: **Access Key**
+            - **Access Key ID**: The access key ID you copied from the IAM user
+            - **Secret Access Key**: The secret access key you copied from the IAM user
+
+            Then, select **Connect to AWS**.
+        </Step>
+    </Steps>
+</Accordion>

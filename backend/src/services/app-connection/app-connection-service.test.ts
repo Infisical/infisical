@@ -12,6 +12,11 @@ import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { AppConnection } from "./app-connection-enums";
 import { appConnectionServiceFactory } from "./app-connection-service";
+import { AwsConnectionMethod } from "./aws";
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
 
 const ACTOR_ORG_ID = "org-1";
 const CONNECTION_ID = "conn-1";
@@ -29,7 +34,8 @@ class PermissionReached extends Error {}
 
 const buildService = (
   connection: { orgId: string; projectId: string | null; app?: AppConnection },
-  abilities: { org?: unknown; project?: unknown } = {}
+  abilities: { org?: unknown; project?: unknown } = {},
+  rows: Record<string, unknown>[] = []
 ) => {
   const permissionService = {
     getOrgPermission: vi.fn(async () => {
@@ -44,6 +50,7 @@ const buildService = (
 
   const overrides: Record<string, unknown> = {
     appConnectionDAL: {
+      find: vi.fn(async () => rows),
       findById: vi.fn(async () => ({
         id: CONNECTION_ID,
         app: AppConnection.AWS,
@@ -202,5 +209,69 @@ describe("validateAppConnectionUsageById refuses connections the caller cannot u
         actor
       )
     ).rejects.toThrow(BadRequestError);
+  });
+});
+
+describe("listAvailableAppConnectionsForUser", () => {
+  const canConnectOrg = createMongoAbility([
+    { action: OrgPermissionAppConnectionActions.Connect, subject: OrgPermissionSubjects.AppConnections }
+  ]);
+
+  const row = (id: string, name: string, configuration?: unknown, method = AwsConnectionMethod.AssumeRole) => ({
+    id,
+    name,
+    app: AppConnection.AWS,
+    method,
+    orgId: ACTOR_ORG_ID,
+    projectId: null,
+    encryptedCredentials: Buffer.from("{}"),
+    encryptedConfiguration: configuration === undefined ? null : Buffer.from(JSON.stringify(configuration))
+  });
+
+  const provisioning = {
+    launchMethod: "launch-stack",
+    useCases: ["secrets-manager", "parameter-store"],
+    stackName: "infisical-secret-stack",
+    partition: "aws",
+    templateVersion: "1.0.0"
+  };
+
+  const listAws = async (rows: Record<string, unknown>[]) => {
+    const { service } = buildService({ orgId: ACTOR_ORG_ID, projectId: null }, { org: canConnectOrg }, rows);
+    return service.listAvailableAppConnectionsForUser(AppConnection.AWS, actor);
+  };
+
+  test("an AWS connection provisioned with Launch Stack carries only its recorded use cases", async () => {
+    const [connection] = await listAws([row("c1", "stack", { provisioning })]);
+
+    expect(connection).toMatchObject({ id: "c1", provisioning: { useCases: ["secrets-manager", "parameter-store"] } });
+    expect(Object.keys(connection.provisioning ?? {})).toEqual(["useCases"]);
+  });
+
+  test("an AWS connection without provisioning information has no recorded use cases", async () => {
+    const result = await listAws([
+      row("c1", "manual"),
+      row("c2", "manual-empty", {}),
+      row("c3", "manual-null", { provisioning: null })
+    ]);
+
+    expect(result.map((connection) => connection.provisioning)).toEqual([null, null, null]);
+  });
+
+  test("an Access Key connection never carries recorded use cases", async () => {
+    const [connection] = await listAws([row("c1", "keys", { provisioning }, AwsConnectionMethod.AccessKey)]);
+
+    expect(connection.provisioning).toBeNull();
+  });
+
+  test("an unreadable stored configuration does not fail the list", async () => {
+    const broken = { ...row("c1", "broken"), encryptedConfiguration: Buffer.from("not json") };
+
+    const result = await listAws([broken, row("c2", "stack", { provisioning })]);
+
+    expect(result.map((connection) => connection.provisioning?.useCases ?? null)).toEqual([
+      null,
+      ["secrets-manager", "parameter-store"]
+    ]);
   });
 });

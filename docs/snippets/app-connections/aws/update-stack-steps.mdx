@@ -1,0 +1,26 @@
+{/*
+Bare <Step> elements for adding permissions to a connection that Launch Stack created, so
+integrations/app-connections/aws.mdx can place them inside a <Steps>. The labels match
+AwsUpdateStack.tsx in the frontend.
+*/}
+
+<Step>
+    Open the connection's **App Connections** list as in [Step 1](#step-1-create-the-connection-with-launch-stack), open the connection's actions menu, and select **Edit Credentials**.
+</Step>
+<Step>
+    In the **Role permissions** section, select **Customize** and choose the integrations the role should cover. Infisical starts from the integrations already recorded for the connection. To review the permissions your selection grants, select **View combined policy**. If Infisical asks for the **Stack region**, choose the region where you created the stack.
+</Step>
+<Step>
+    Select **Update stack in AWS**. If you aren't signed in to the AWS account that owns the stack, sign in first. The AWS CloudFormation console opens the update for your stack with the current template already selected.
+</Step>
+<Step>
+    In the console, select **Next** to reach the **Specify stack details** page. Change only the parameters that Infisical lists, setting each to the value Infisical shows: `true` adds an integration's permissions and `false` removes them. The console labels each parameter with the integration's name. If you added an integration that needs a resource, such as a bucket name or a hosted zone ID, also enter a value for each extra parameter that Infisical lists. See [Parameters for each integration](#parameters-for-each-integration).
+
+    Leave every other parameter on its existing value, including the External ID, the trusted account ID, and the role name.
+</Step>
+<Step>
+    Select **Next** through the remaining pages. If CloudFormation asks you to acknowledge that it might create IAM resources, select the checkbox. Then, select **Submit** and wait until the stack status is `UPDATE_COMPLETE`.
+</Step>
+<Step>
+    In Infisical, select **Mark as updated**.
+</Step>

@@ -9,6 +9,7 @@ on:
       - "!frontend/.*"
       - "frontend/.oxlintrc.json"
       - "frontend/.oxfmtrc.json"
+      - "docs/snippets/app-connections/aws/use-cases.jsx"
 
 jobs:
   type-check:

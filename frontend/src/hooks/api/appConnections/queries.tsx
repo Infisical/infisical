@@ -6,6 +6,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   TAppConnection,
   TAppConnectionOptions,
+  TAppConnectionResponse,
   TAvailableAppConnection,
   TAvailableAppConnectionsResponse,
   TListAppConnections
@@ -23,14 +24,13 @@ export const appConnectionKeys = {
   list: (projectId?: string | null) =>
     [...appConnectionKeys.all, "list", ...(projectId ? [projectId] : [])] as const,
   listAvailable: (app: AppConnection, projectId?: string | null) =>
-    [...appConnectionKeys.all, app, "list-available", ...(projectId ? [projectId] : [])] as const
+    [...appConnectionKeys.all, app, "list-available", ...(projectId ? [projectId] : [])] as const,
+  byId: (app: AppConnection, connectionId: string) =>
+    [...appConnectionKeys.all, app, "by-id", connectionId] as const
   // scott: may need these in the future but not using now
   // getUsage: (app: AppConnection, connectionId: string) =>
   //   [...appConnectionKeys.all, "usage", app, connectionId] as const
   // listByApp: (app: AppConnection) => [...appConnectionKeys.list(), app],
-  // scott: we will need this once we have individual app connection page
-  // byId: (app: AppConnection, connectionId: string) =>
-  //   [...appConnectionKeys.all, app, "by-id", connectionId] as const
 };
 
 export const useAppConnectionOptions = (
@@ -138,6 +138,32 @@ export const useListAvailableAppConnections = (
   return useQuery({
     queryKey: appConnectionKeys.listAvailable(app, projectId),
     queryFn: () => fetchAvailableAppConnections(app, projectId),
+    ...options
+  });
+};
+
+export const useGetAppConnectionById = (
+  app: AppConnection,
+  connectionId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TAppConnection,
+      unknown,
+      TAppConnection,
+      ReturnType<typeof appConnectionKeys.byId>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: appConnectionKeys.byId(app, connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAppConnectionResponse>(
+        `/api/v1/app-connections/${app}/${connectionId}`
+      );
+
+      return data.appConnection;
+    },
     ...options
   });
 };

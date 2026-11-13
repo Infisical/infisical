@@ -929,6 +929,14 @@ You can configure third-party app connections for re-use across Infisical Projec
         The AWS IAM User secret key for assuming roles
     </ParamField>
 
+    <ParamField query="INF_APP_CONNECTION_AWS_TRUSTED_ACCOUNT_ID" type="string" default="none" optional>
+        The 12-digit AWS account ID that roles created with Launch Stack trust. If you leave it unset, Infisical uses the account of its own AWS credentials. [Learn more](/integrations/app-connections/aws#launch-stack-on-a-self-hosted-instance)
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_AWS_TEMPLATE_BASE_URL" type="string" default="none" optional>
+        The base URL of a mirror of the Launch Stack template, for use instead of Infisical's template. [Learn more](/integrations/app-connections/aws#launch-stack-on-a-self-hosted-instance)
+    </ParamField>
+
 </Accordion>
 
 <Accordion title="GitHub App Connection">

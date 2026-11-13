@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CloudIcon, TriangleAlertIcon } from "lucide-react";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
-import { AppConnectionOptionContent } from "@app/components/app-connections";
+import { AppConnectionOptionContent, AwsUpdateStackHint } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared";
 import {
@@ -61,6 +61,7 @@ import {
   isAgentVaultSessionLogStorageOnPlan
 } from "@app/helpers/agentVaultSessionLogs";
 import { APP_CONNECTION_MAP, AWS_REGIONS } from "@app/helpers/appConnections";
+import { AGENT_VAULT_SESSION_LOGS_USE_CASES } from "@app/helpers/awsUseCases";
 import { useDiscardChangesGuard, usePopUp } from "@app/hooks";
 import {
   useGetAgentVaultSessionLogSettings,
@@ -470,6 +471,10 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                               Its credentials write the records, and read them back when you open a
                               session&apos;s logs.
                             </FieldDescription>
+                            <AwsUpdateStackHint
+                              connectionId={field.value}
+                              useCases={AGENT_VAULT_SESSION_LOGS_USE_CASES}
+                            />
                             <FieldError>{fieldState.error?.message}</FieldError>
                           </FieldContent>
                         </Field>
@@ -612,6 +617,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
         projectType={currentProject.type}
         projectId={currentProject.id}
         app={AppConnection.AWS}
+        useCases={AGENT_VAULT_SESSION_LOGS_USE_CASES}
         onComplete={(connection) => {
           if (connection) {
             setValue("appConnectionId", connection.id, { shouldValidate: true, shouldDirty: true });

@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 
 import {
   AppConnectionOptionContent,
+  AwsUpdateStackHint,
   useAppConnectionCreation
 } from "@app/components/app-connections";
 import {
@@ -19,6 +20,7 @@ import {
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { AWS_PKI_SYNC_USE_CASES } from "@app/helpers/awsUseCases";
 import { getPkiSyncConnectionApps, PKI_SYNC_CONNECTION_MAP } from "@app/helpers/pkiSyncs";
 import {
   TAvailableAppConnection,
@@ -96,6 +98,7 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
 
   const creation = useAppConnectionCreation<TConnectionOption>({
     apps,
+    useCases: AWS_PKI_SYNC_USE_CASES[destination],
     onCreated: (connection) => {
       setValue("connection", connection, { shouldDirty: true });
       clearLdapTargetFields(connection.app);
@@ -156,6 +159,10 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
           ) : (
             <FieldError errors={[error]} />
           )}
+          <AwsUpdateStackHint
+            connectionId={value?.id}
+            useCases={AWS_PKI_SYNC_USE_CASES[destination]}
+          />
         </Field>
       )}
     />

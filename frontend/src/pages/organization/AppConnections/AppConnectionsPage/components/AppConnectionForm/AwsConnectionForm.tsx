@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
@@ -30,6 +31,8 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
+import { AwsLaunchStack, TAwsProvisioningMetadata } from "./AwsLaunchStack";
+import { AwsUpdateStack } from "./AwsUpdateStack";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -37,9 +40,11 @@ import {
 
 type Props = {
   appConnection?: TAwsConnection;
-  onSubmit: (formData: FormData) => Promise<void>;
+  onSubmit: (formData: FormData & { configuration?: Record<string, unknown> }) => Promise<void>;
   projectType?: ProjectType;
   projectId?: string | null;
+  defaultUseCases?: string[];
+  preselectedUseCases?: string[];
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -99,8 +104,23 @@ const ProjectExternalIdHint = ({ projectId }: { projectId: string }) => {
   );
 };
 
-export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projectId }: Props) => {
+export const AwsConnectionForm = ({
+  appConnection,
+  onSubmit,
+  projectType,
+  projectId,
+  defaultUseCases,
+  preselectedUseCases
+}: Props) => {
   const isUpdate = Boolean(appConnection);
+  const [provisioning, setProvisioning] = useState<TAwsProvisioningMetadata | null>(null);
+  const [isStackSaving, setIsStackSaving] = useState(false);
+  const recordedProvisioning = appConnection?.configuration?.provisioning;
+  const stackProvisioning =
+    appConnection?.method === AwsConnectionMethod.AssumeRole &&
+    recordedProvisioning?.launchMethod === "launch-stack"
+      ? recordedProvisioning
+      : null;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -116,13 +136,22 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projec
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form
+        onSubmit={handleSubmit((formData) => {
+          if (provisioning && formData.method === AwsConnectionMethod.AssumeRole) {
+            if (formData.credentials.roleArn.endsWith(`:role/${provisioning.roleName}`)) {
+              return onSubmit({ ...formData, configuration: { provisioning } });
+            }
+          }
+          return onSubmit(formData);
+        })}
+      >
         {!isUpdate && <GenericAppConnectionsFields />}
         <Controller
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
+            <Field className="mb-2">
               <FieldLabel>
                 Method
                 <Tooltip>
@@ -155,6 +184,22 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projec
         />
         {selectedMethod === AwsConnectionMethod.AssumeRole ? (
           <>
+            {!isUpdate && (
+              <AwsLaunchStack
+                projectId={projectId}
+                defaultUseCases={defaultUseCases}
+                onLaunch={setProvisioning}
+              />
+            )}
+            {appConnection && stackProvisioning && (
+              <AwsUpdateStack
+                projectId={projectId}
+                connectionId={appConnection.id}
+                provisioning={stackProvisioning}
+                preselectedUseCases={preselectedUseCases}
+                onSavingChange={setIsStackSaving}
+              />
+            )}
             <Controller
               name="credentials.roleArn"
               control={control}
@@ -165,12 +210,19 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projec
                   <SecretInput
                     aria-describedby={error ? "app-connection-aws-role-arn-error" : undefined}
                     id="app-connection-aws-role-arn"
+                    placeholder="arn:aws:iam::123456789012:role/infisical-app-connection"
                     isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
                   {projectType === ProjectType.AgentVault && projectId && (
                     <ProjectExternalIdHint projectId={projectId} />
+                  )}
+                  {stackProvisioning && (
+                    <FieldDescription>
+                      Saving a Role ARN that does not belong to this stack stops Infisical treating
+                      the connection as Stack-managed.
+                    </FieldDescription>
                   )}
                   <FieldError id="app-connection-aws-role-arn-error" errors={[error]} />
                 </Field>
@@ -249,7 +301,10 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projec
             />
           </>
         )}
-        <AppConnectionFormFooter submitLabel={isUpdate ? "Update Credentials" : "Connect to AWS"} />
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to AWS"}
+          isLocked={isStackSaving}
+        />
       </form>
     </FormProvider>
   );

@@ -11,6 +11,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionInput, TAppConnectionScope } from "@app/services/app-connection/app-connection-types";
+import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -138,8 +139,9 @@ export const buildListAppConnectionsRoute = (
 export const buildListAvailableAppConnectionsRoute = (
   { server, app, appName, appNameForOpId, tags }: TAppConnectionRouteContext,
   {
-    description = `List the ${appName} Connections the current user has permission to establish connections within this project.`
-  }: { description?: string } = {}
+    description = `List the ${appName} Connections the current user has permission to establish connections within this project.`,
+    extraFields = {}
+  }: { description?: string; extraFields?: z.ZodRawShape } = {}
 ) => {
   server.route({
     method: "GET",
@@ -165,7 +167,8 @@ export const buildListAvailableAppConnectionsRoute = (
               projectId: z.string().nullish(),
               orgId: z.string(),
               gatewayId: z.string().uuid().nullish(),
-              gatewayPoolId: z.string().uuid().nullish()
+              gatewayPoolId: z.string().uuid().nullish(),
+              ...extraFields
             })
             .array()
         })
@@ -470,6 +473,11 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
         resolveScope?.(req)
       );
 
+      const useCaseIds =
+        app === AppConnection.AWS && (configuration !== undefined || credentials)
+          ? ((appConnection as TAwsConnection).configuration?.provisioning?.useCases ?? [])
+          : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
@@ -480,7 +488,10 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
             name,
             description: connectionDescription,
             credentialsUpdated: Boolean(credentials),
+            configurationUpdated: configuration !== undefined,
+            ...(useCaseIds && { useCaseIds }),
             connectionId,
+            connectionName: appConnection.name,
             isPlatformManagedCredentials
           }
         }
@@ -631,18 +642,20 @@ export const registerAppConnectionEndpoints = <I extends TAppConnectionInput>({
   app,
   createSchema,
   updateSchema,
-  sanitizedResponseSchema
+  sanitizedResponseSchema,
+  availableConnectionFields
 }: {
   app: AppConnection;
   server: FastifyZodProvider;
   createSchema: TAppConnectionCreateSchema<I>;
   updateSchema: TAppConnectionUpdateSchema<I>;
   sanitizedResponseSchema: z.ZodTypeAny;
+  availableConnectionFields?: z.ZodRawShape;
 }) => {
   const ctx = buildAppConnectionRouteContext({ server, app, sanitizedResponseSchema });
 
   buildListAppConnectionsRoute(ctx);
-  buildListAvailableAppConnectionsRoute(ctx);
+  buildListAvailableAppConnectionsRoute(ctx, { extraFields: availableConnectionFields });
   buildGetAppConnectionRoute(ctx);
   buildGetAppConnectionByNameRoute(ctx);
   buildCreateAppConnectionRoute(ctx, { createSchema });

@@ -29,3 +29,52 @@ export type TAwsConnectionListIamUsersResponse = {
 };
 
 export type TAwsIamUserSecret = TAwsConnectionIamUser;
+
+export type TGetAwsProvisioningTemplate = {
+  projectId?: string | null;
+  partition: string;
+  region: string;
+  useCases: string[];
+  roleName?: string;
+  stackName?: string;
+};
+
+export type TAwsProvisioningTemplate = {
+  kind: "cloudformation-launch";
+  launchUrl: string;
+  templateUrl: string;
+  stackName: string;
+  region: string;
+  partition: string;
+  templateVersion: string;
+  parameters: Record<string, string>;
+  outputKey: string;
+};
+
+export type TAwsProvisioningTemplateResponse = {
+  provisioningTemplate: TAwsProvisioningTemplate | null;
+};
+
+export type TGetAwsConnectionProvisioningTemplate = {
+  connectionId: string;
+  useCases: string[];
+  region?: string;
+};
+
+export type TAwsUpdateProvisioningTemplate = {
+  kind: "cloudformation-update";
+  stackUrl: string;
+  updateUrl: string;
+  templateUrl: string;
+  stackName: string;
+  region: string;
+  partition: string;
+  templateVersion: string;
+  parameterChanges: { useCase: string; parameter: string; value: "true" | "false" }[];
+  companionParameters: string[];
+  optionalParameters: string[];
+};
+
+export type TAwsConnectionProvisioningTemplateResponse = {
+  provisioningTemplate: TAwsUpdateProvisioningTemplate | null;
+};

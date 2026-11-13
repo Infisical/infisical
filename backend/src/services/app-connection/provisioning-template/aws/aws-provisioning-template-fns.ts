@@ -1,0 +1,220 @@
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connection-enums";
+import { AwsConnectionConfigurationSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
+
+import {
+  ProvisioningTemplateKind,
+  TProvisioningTemplate,
+  TProvisioningTemplateProvider
+} from "../provisioning-template-types";
+import { AWS_PARTITIONS, AwsPartition } from "./aws-partitions";
+import {
+  AWS_PROVISIONING_TEMPLATE_VERSION,
+  DEFAULT_AWS_ROLE_NAME,
+  DEFAULT_AWS_STACK_NAME,
+  DEFAULT_AWS_TEMPLATE_BASE_URL
+} from "./aws-provisioning-template-constants";
+
+const TRUSTED_ACCOUNT_CACHE_TTL_MS = 60 * 60 * 1000;
+
+const trustedAccountCache: Record<string, { accountId: string; expiresAt: number }> = {};
+
+const toggleName = (useCase: string) =>
+  `Enable${useCase.replace(/(^|-)(\w)/g, (_, __, char: string) => char.toUpperCase())}`;
+
+export const getAwsTemplateUrl = () => {
+  const baseUrl = (getConfig().INF_APP_CONNECTION_AWS_TEMPLATE_BASE_URL ?? DEFAULT_AWS_TEMPLATE_BASE_URL).replace(
+    /\/+$/,
+    ""
+  );
+  return `${baseUrl}/aws-app-connection/v${AWS_PROVISIONING_TEMPLATE_VERSION}/infisical-aws-app-connection.yaml`;
+};
+
+export const getAwsTrustedAccountId = async (partitionName: string = AwsPartition.Commercial) => {
+  const appCfg = getConfig();
+  if (appCfg.INF_APP_CONNECTION_AWS_TRUSTED_ACCOUNT_ID) return appCfg.INF_APP_CONNECTION_AWS_TRUSTED_ACCOUNT_ID;
+
+  const cached = trustedAccountCache[partitionName];
+  if (cached && cached.expiresAt > Date.now()) return cached.accountId;
+
+  try {
+    const partition = AWS_PARTITIONS[partitionName];
+    if (!partition) throw new Error(`Unknown AWS partition '${partitionName}'`);
+
+    const client = new STSClient({
+      region: partition.defaultRegion,
+      sha256: CustomAWSHasher,
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      credentials:
+        appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+          ? {
+              accessKeyId: appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID,
+              secretAccessKey: appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+            }
+          : undefined
+    });
+    const { Account: accountId } = await client.send(new GetCallerIdentityCommand({}));
+    if (!accountId) throw new Error("GetCallerIdentity returned no account");
+
+    trustedAccountCache[partitionName] = { accountId, expiresAt: Date.now() + TRUSTED_ACCOUNT_CACHE_TTL_MS };
+    return accountId;
+  } catch (err) {
+    logger.error(err, "Failed to derive the AWS Trusted account for the provisioning template");
+    throw new BadRequestError({
+      message:
+        "Infisical could not determine the AWS account to trust, so a launch link can't be created. Create the role manually, or ask your instance administrator to set INF_APP_CONNECTION_AWS_TRUSTED_ACCOUNT_ID."
+    });
+  }
+};
+
+export type TAwsProvisioningTemplateQuery = {
+  partition: string;
+  region?: string;
+  useCases: string[];
+  roleName?: string;
+  stackName?: string;
+};
+
+export type TAwsProvisioningUpdateQuery = {
+  region?: string;
+  useCases: string[];
+};
+
+export const AWS_USE_CASE_COMPANION_PARAMETERS: Record<string, string[]> = {
+  "private-ca": ["PrivateCaArn"],
+  "acm-public-ca": ["Route53HostedZoneId"],
+  "acme-route53": ["Route53HostedZoneId"],
+  "pam-recording": ["PamRecordingBucket"],
+  "agent-vault-session-logs": ["AgentVaultSessionLogsBucket"]
+};
+
+// Parameters a newly enabled use case may need, depending on the user's setup.
+export const AWS_USE_CASE_OPTIONAL_COMPANION_PARAMETERS: Record<string, string[]> = {
+  "agent-vault-session-logs": ["AgentVaultSessionLogsKeyPrefix"]
+};
+
+// The KMS toggle of a use case is separate from its enable toggle and defaults to false, so it is
+// named for every use case the role keeps, not only added ones: a sync that starts using a customer
+// managed key needs it turned on even when the use case itself is already recorded.
+export const AWS_USE_CASE_KMS_PARAMETERS: Record<string, string> = {
+  "secrets-manager": "EnableSecretsManagerKms",
+  "parameter-store": "EnableParameterStoreKms"
+};
+
+const getNewParameters = (map: Record<string, string[]>, recorded: string[], added: string[]) => {
+  const alreadyFilled = new Set(recorded.flatMap((useCase) => map[useCase] ?? []));
+  const needed = added.flatMap((useCase) => map[useCase] ?? []);
+  return [...new Set(needed)].filter((parameter) => !alreadyFilled.has(parameter));
+};
+
+const getOptionalParameters = (recorded: string[], requested: string[], added: string[]) => [
+  ...requested.flatMap((useCase) =>
+    AWS_USE_CASE_KMS_PARAMETERS[useCase] ? [AWS_USE_CASE_KMS_PARAMETERS[useCase]] : []
+  ),
+  ...getNewParameters(AWS_USE_CASE_OPTIONAL_COMPANION_PARAMETERS, recorded, added)
+];
+
+export const awsProvisioningTemplateProvider: TProvisioningTemplateProvider<
+  TAwsProvisioningTemplateQuery,
+  TAwsProvisioningUpdateQuery
+> = {
+  getUpdateTemplate: async ({ configuration, method }, query): Promise<TProvisioningTemplate | null> => {
+    if (method !== AwsConnectionMethod.AssumeRole) return null;
+
+    const parsed = AwsConnectionConfigurationSchema.safeParse(configuration);
+    const recorded = parsed.success ? parsed.data.provisioning : null;
+    if (!recorded) return null;
+
+    const partition = AWS_PARTITIONS[recorded.partition];
+    if (!partition?.launchSupported) return null;
+
+    const region = recorded.region ?? query.region;
+    if (!region) {
+      throw new BadRequestError({
+        message:
+          "This connection does not have a recorded stack region. Provide the AWS region the stack was launched in."
+      });
+    }
+    if (!partition.isRegionInPartition(region)) {
+      throw new BadRequestError({
+        message: `Region ${region} does not belong to the ${recorded.partition} partition`
+      });
+    }
+
+    const requested = [...new Set(query.useCases)];
+    const added = requested.filter((useCase) => !recorded.useCases.includes(useCase));
+    const removed = recorded.useCases.filter((useCase) => !requested.includes(useCase));
+
+    const parameterChanges = [
+      ...added.map((useCase) => ({ useCase, parameter: toggleName(useCase), value: "true" as const })),
+      ...removed.map((useCase) => ({ useCase, parameter: toggleName(useCase), value: "false" as const }))
+    ];
+
+    const templateUrl = getAwsTemplateUrl();
+    const consoleBaseUrl = `https://${region}.${partition.consoleDomain}/cloudformation/home?region=${region}`;
+
+    return {
+      kind: ProvisioningTemplateKind.CloudFormationUpdate,
+      stackName: recorded.stackName,
+      region,
+      partition: recorded.partition,
+      stackUrl: `${consoleBaseUrl}#/stacks?filteringText=${encodeURIComponent(recorded.stackName)}`,
+      updateUrl: `${consoleBaseUrl}#/stacks/update?stackId=${encodeURIComponent(recorded.stackName)}&templateURL=${encodeURIComponent(templateUrl)}`,
+      templateUrl,
+      templateVersion: AWS_PROVISIONING_TEMPLATE_VERSION,
+      parameterChanges,
+      companionParameters: getNewParameters(AWS_USE_CASE_COMPANION_PARAMETERS, recorded.useCases, added),
+      optionalParameters: getOptionalParameters(recorded.useCases, requested, added)
+    };
+  },
+
+  getTemplate: async ({ externalId }, query): Promise<TProvisioningTemplate | null> => {
+    const partition = AWS_PARTITIONS[query.partition];
+    if (!partition?.launchSupported) return null;
+
+    if (query.region && !partition.isRegionInPartition(query.region)) {
+      throw new BadRequestError({
+        message: `Region ${query.region} does not belong to the ${query.partition} partition`
+      });
+    }
+
+    const region = query.region ?? partition.defaultRegion;
+    const stackName = query.stackName ?? DEFAULT_AWS_STACK_NAME;
+    const templateUrl = getAwsTemplateUrl();
+
+    const parameters: Record<string, string> = {
+      ExternalId: externalId,
+      TrustedAccountId: await getAwsTrustedAccountId(query.partition),
+      RoleName: query.roleName ?? DEFAULT_AWS_ROLE_NAME
+    };
+    query.useCases
+      .filter((useCase) => !partition.unsupportedUseCases.includes(useCase))
+      .forEach((useCase) => {
+        parameters[toggleName(useCase)] = "true";
+      });
+
+    const params = [
+      `templateURL=${encodeURIComponent(templateUrl)}`,
+      `stackName=${encodeURIComponent(stackName)}`,
+      ...Object.entries(parameters).map(([key, value]) => `param_${key}=${encodeURIComponent(value)}`)
+    ].join("&");
+
+    return {
+      kind: ProvisioningTemplateKind.CloudFormationLaunch,
+      launchUrl: `https://${region}.${partition.consoleDomain}/cloudformation/home?region=${region}#/stacks/quickcreate?${params}`,
+      templateUrl,
+      stackName,
+      region,
+      partition: query.partition,
+      templateVersion: AWS_PROVISIONING_TEMPLATE_VERSION,
+      parameters,
+      outputKey: "RoleArn"
+    };
+  }
+};

@@ -187,12 +187,14 @@ type CreateFormProps = FormProps & {
   app: AppConnection;
   projectId?: string;
   projectType?: ProjectType;
+  useCases?: string[];
 };
 type UpdateFormProps = FormProps & {
   appConnection: TAppConnection;
+  preselectedUseCases?: string[];
 };
 
-const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps) => {
+const CreateForm = ({ app, onComplete, projectId, projectType, useCases }: CreateFormProps) => {
   const { layout, onPendingChange } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
@@ -230,7 +232,12 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
     switch (app) {
       case AppConnection.AWS:
         return (
-          <AwsConnectionForm onSubmit={onSubmit} projectType={projectType} projectId={projectId} />
+          <AwsConnectionForm
+            onSubmit={onSubmit}
+            projectType={projectType}
+            projectId={projectId}
+            defaultUseCases={useCases}
+          />
         );
       case AppConnection.GitHub:
         return <GitHubConnectionForm projectId={projectId} onSubmit={onSubmit} />;
@@ -463,7 +470,7 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
   );
 };
 
-const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
+const UpdateForm = ({ appConnection, onComplete, preselectedUseCases }: UpdateFormProps) => {
   const { layout, onPendingChange } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
@@ -507,6 +514,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
             onSubmit={onSubmit}
             projectType={appConnection.project?.type}
             projectId={appConnection.projectId}
+            preselectedUseCases={preselectedUseCases}
           />
         );
       case AppConnection.GitHub:
@@ -803,6 +811,8 @@ type Props = {
   isNewConnection?: boolean;
   projectId?: string;
   projectType?: ProjectType;
+  useCases?: string[];
+  preselectedUseCases?: string[];
 } & Pick<FormProps, "onComplete"> &
   (
     | { app: AppConnection; appConnection?: undefined }
@@ -816,6 +826,8 @@ export const AppConnectionForm = ({
   isNewConnection,
   projectId,
   projectType,
+  useCases,
+  preselectedUseCases,
   ...props
 }: Props) => {
   const { app, appConnection } = props;
@@ -828,9 +840,19 @@ export const AppConnectionForm = ({
   return (
     <AppConnectionFormProvider value={contextValue}>
       {appConnection ? (
-        <UpdateForm {...props} appConnection={appConnection} />
+        <UpdateForm
+          {...props}
+          appConnection={appConnection}
+          preselectedUseCases={preselectedUseCases}
+        />
       ) : (
-        <CreateForm {...props} app={app} projectId={projectId} projectType={projectType} />
+        <CreateForm
+          {...props}
+          app={app}
+          projectId={projectId}
+          projectType={projectType}
+          useCases={useCases}
+        />
       )}
     </AppConnectionFormProvider>
   );

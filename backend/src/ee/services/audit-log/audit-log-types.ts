@@ -4691,7 +4691,10 @@ interface UpdateAppConnectionEvent {
   type: EventType.UPDATE_APP_CONNECTION;
   metadata: Omit<TUpdateAppConnectionDTO, "credentials" | "projectId"> & {
     connectionId: string;
+    connectionName: string;
     credentialsUpdated: boolean;
+    configurationUpdated?: boolean;
+    useCaseIds?: string[];
   };
 }
 

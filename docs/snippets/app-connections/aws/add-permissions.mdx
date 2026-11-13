@@ -1,0 +1,73 @@
+{/*
+Bare <Step> elements for adding the combined IAM policy to a role or user, so a page can place them
+inside its own <Steps> and keep the numbering. Used by the manual role and access key sections of
+integrations/app-connections/aws.mdx. Pass accessKey to adjust the wording for an IAM user.
+*/}
+
+import { UseCase } from "/snippets/UseCasePicker.jsx";
+import { CombinedIamPolicy } from "/snippets/AwsIamPolicy.jsx";
+import { awsUseCaseGroups } from "/snippets/app-connections/aws/use-cases.jsx";
+
+<Step>
+    In the IAM console, open the {accessKey ? "IAM user" : "IAM role"}.
+</Step>
+<Step>
+    On the **Permissions** tab, select **Add permissions** > **Create inline policy**.
+
+    ![IAM Role Create Policy](/images/app-connections/aws/assume-role-create-policy.png)
+</Step>
+<Step>
+    Switch to the **JSON** editor, and replace the policy in the editor with this one. It combines the permissions of every integration you picked:
+
+    <CombinedIamPolicy groups={awsUseCaseGroups} />
+
+    <UseCase use="pam-recording,agent-vault-session-logs,private-ca,acm-public-ca,acme-route53" hideWhenEmpty>
+        Then replace the placeholders for the integrations you picked:
+    </UseCase>
+
+    <UseCase use="pam-recording" hideWhenEmpty>
+        - `<recording-bucket>`: the bucket you enter in the **Session Recording** card of a PAM account template (if you set a key prefix, such as `pam/prod`, add it after the bucket in both object ARNs)
+    </UseCase>
+
+    <UseCase use="agent-vault-session-logs" hideWhenEmpty>
+        - `<session-logs-bucket>` and `<key-prefix>`: the bucket and key prefix you'll enter in the **Session Logs** dialog in your Agent Vault project (if you won't set a key prefix, delete `<key-prefix>/` in both places)
+    </UseCase>
+
+    <UseCase use="private-ca" hideWhenEmpty>
+        - `<region>`, `<account-id>`, and `<ca-id>`: the parts of your CA's ARN (to use several CAs, list each ARN in a `Resource` array)
+    </UseCase>
+
+    <UseCase use="acm-public-ca,acme-route53" hideWhenEmpty>
+        - `<hosted-zone-id>`: the ID of the Route 53 hosted zone for your domain
+    </UseCase>
+
+    <UseCase use="private-ca" hideWhenEmpty>
+        If you restrict `acm-pca:IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
+
+        - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
+        - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
+    </UseCase>
+
+    <UseCase use="acm-public-ca" hideWhenEmpty>
+        If a different AWS account owns the hosted zone for an ACM public CA, move the `AllowRoute53ForAcmValidation` statement to a second connection in that account instead.
+    </UseCase>
+
+    <UseCase use="secrets-manager,parameter-store" hideWhenEmpty>
+        If a sync encrypts with a customer managed KMS key, select its KMS checkbox above the policy. If that key doesn't use the default key policy, also add the {accessKey ? "IAM user" : "IAM role"} under **Key users** on the key's page in the AWS KMS console.
+    </UseCase>
+
+    {accessKey && (
+        <MDX>
+            <UseCase use="secrets-manager,parameter-store,iam-rotation,honey-tokens,acm-sync,elb-sync,pki-secrets-manager,private-ca,acm-public-ca,acme-route53,pam-recording,agent-vault-session-logs" hideWhenEmpty>
+                <Warning>
+                    AWS may reject the policy as too large, because IAM users allow less inline policy than roles do.
+
+                    In this case, create it as a customer managed policy instead: in the IAM console, go to **Policies** &gt; **Create policy**, paste the same JSON, and save it. Then open the IAM user and attach it under **Add permissions** &gt; **Attach policies directly**.
+                </Warning>
+            </UseCase>
+        </MDX>
+    )}
+</Step>
+<Step>
+    Select **Next**. Enter a **Policy name** that says which integrations the policy covers, such as `secrets-manager-sync`. Then, select **Create policy**. The policy belongs to the {accessKey ? "user" : "role"}, which already names Infisical, so the policy name only has to say what the policy grants.
+</Step>

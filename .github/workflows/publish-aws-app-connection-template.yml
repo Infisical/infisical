@@ -1,0 +1,85 @@
+name: "Publish AWS App Connection Template"
+
+# Publishes cloudformation/aws-app-connection/infisical-aws-app-connection.yaml to
+# <AWS_TEMPLATE_BUCKET>/<AWS_TEMPLATE_PREFIX>/aws-app-connection/v<TEMPLATE_VERSION>/.
+# The launch route's default template URL is <base>/aws-app-connection/v<TEMPLATE_VERSION>/infisical-aws-app-connection.yaml,
+# so keep that layout in sync. A published version is immutable: existing stacks reference it.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "cloudformation/aws-app-connection/**"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-aws-app-connection-template
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # OIDC, to assume the publish role
+
+jobs:
+  publish:
+    name: Publish template
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AWS_TEMPLATE_PUBLISH_ROLE_ARN: ${{ secrets.AWS_TEMPLATE_PUBLISH_ROLE_ARN }}
+      AWS_TEMPLATE_BUCKET: ${{ vars.AWS_TEMPLATE_BUCKET }}
+      AWS_TEMPLATE_PREFIX: ${{ vars.AWS_TEMPLATE_PREFIX }}
+      AWS_TEMPLATE_REGION: ${{ vars.AWS_TEMPLATE_REGION || 'us-east-1' }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+
+      - name: Verify configuration
+        run: |
+          for name in AWS_TEMPLATE_PUBLISH_ROLE_ARN AWS_TEMPLATE_BUCKET; do
+            if [ -z "${!name}" ]; then echo "::error::$name is not set"; exit 1; fi
+          done
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Verify committed template is up to date
+        working-directory: cloudformation/aws-app-connection
+        run: node generate-template.mjs --check
+
+      - name: Resolve object key
+        id: target
+        working-directory: cloudformation/aws-app-connection
+        run: |
+          version=$(node -e 'import("./generate-template.mjs").then((m) => console.log(m.TEMPLATE_VERSION))')
+          prefix="${AWS_TEMPLATE_PREFIX#/}"
+          prefix="${prefix%/}"
+          key="${prefix:+$prefix/}aws-app-connection/v${version}/infisical-aws-app-connection.yaml"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: ${{ env.AWS_TEMPLATE_REGION }}
+          role-to-assume: ${{ env.AWS_TEMPLATE_PUBLISH_ROLE_ARN }}
+
+      - name: Publish if this version is not yet published
+        env:
+          KEY: ${{ steps.target.outputs.key }}
+        run: |
+          if aws s3api head-object --bucket "$AWS_TEMPLATE_BUCKET" --key "$KEY" >/dev/null 2>&1; then
+            echo "s3://$AWS_TEMPLATE_BUCKET/$KEY already exists; bump TEMPLATE_VERSION to publish changes. Skipping."
+            exit 0
+          fi
+          # --if-none-match makes S3 reject the write if another run created the object in the meantime
+          aws s3api put-object \
+            --bucket "$AWS_TEMPLATE_BUCKET" \
+            --key "$KEY" \
+            --body cloudformation/aws-app-connection/infisical-aws-app-connection.yaml \
+            --content-type application/x-yaml \
+            --if-none-match "*"
+          echo "Published s3://$AWS_TEMPLATE_BUCKET/$KEY"
