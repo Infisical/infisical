@@ -5,6 +5,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
 import { TResolvedService } from "../agent-vault-proxy/agent-vault-proxy-types";
+import { TSessionServiceCredential, TSessionServiceFacts } from "../agent-vault-proxy/agent-vault-session-services-fns";
 import { findHostPatternConflicts, TConflictCandidate } from "../agent-vault/agent-vault-conflict-fns";
 import { AgentVaultBearerConfigSchema } from "../agent-vault/agent-vault-credential-schemas";
 import {
@@ -17,6 +18,8 @@ import {
   assertServiceFieldsSupported,
   buildServiceConfig,
   getAgentVaultServiceType,
+  getServiceServerUrl,
+  getServiceTransport,
   resolveServiceHostPattern,
   TAgentVaultServiceConfig
 } from "../agent-vault/agent-vault-service-type-fns";
@@ -42,6 +45,7 @@ export type TInlineServiceSecrets = z.infer<typeof InlineServiceSecretsSchema>;
 export type TPreparedInlineService = {
   position: number;
   name: string | null;
+  description: string | null;
   type: AgentVaultServiceType;
   config: TAgentVaultServiceConfig;
   hostPattern: string;
@@ -135,6 +139,7 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
   return {
     position,
     name: input.name ?? null,
+    description: input.description ?? null,
     type: definition.type,
     config,
     hostPattern,
@@ -253,6 +258,7 @@ export const toInlineServiceSummary = (
   return {
     id: row.id,
     name: inlineServiceDisplayName(row),
+    description: row.description ?? null,
     type: row.type as AgentVaultServiceType,
     serverUrl: config.serverUrl ?? null,
     transport: config.transport ?? null,
@@ -272,6 +278,47 @@ export const parseInlineServiceSecrets = (decrypted: unknown) => InlineServiceSe
  * were deleted, or what is stored doesn't line up with the names beside it. Its values were sent as they are, so
  * nothing in them is expanded.
  */
+/**
+ * An inline service as the list an agent reads describes it, built without decrypting anything. Left out when resolve
+ * would leave it out: a service whose credential, custom headers or substitutions have no stored secrets to send.
+ */
+export const toInlineServiceFacts = (row: TAgentVaultSessionInlineServices): TSessionServiceFacts | null => {
+  const credentialConfig = row.credentialConfig as TInlineCredentialConfig;
+  const customHeaders = row.customHeaders as TInlineCustomHeader[];
+  const substitutions = row.substitutions as TInlineSubstitution[];
+  const needsSecrets =
+    credentialConfig.type !== AgentVaultCredentialType.Passthrough ||
+    customHeaders.length > 0 ||
+    substitutions.length > 0;
+  if (needsSecrets && !row.encryptedSecrets) return null;
+
+  let credential: TSessionServiceCredential = { type: "none" };
+  if (credentialConfig.type === AgentVaultCredentialType.Bearer) {
+    credential = { type: "bearer", headerName: credentialConfig.headerName ?? null };
+  } else if (credentialConfig.type === AgentVaultCredentialType.Basic) {
+    credential = { type: "basic" };
+  }
+
+  return {
+    name: inlineServiceDisplayName(row),
+    description: row.description ?? null,
+    type: row.type as AgentVaultServiceType,
+    hostPattern: row.hostPattern,
+    serverUrl: getServiceServerUrl(row.config),
+    transport: getServiceTransport(row.config),
+    allowedMethods: row.allowedMethods ?? null,
+    allowedPathPrefixes: row.allowedPathPrefixes ?? null,
+    // An inline MCP server can't be limited to some of its tools, so the proxy filters none.
+    allowedTools: null,
+    credential,
+    customHeaderNames: customHeaders.map((header) => header.name),
+    substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
+    personalValuesMissing: false,
+    memberProvided: false,
+    memberSignsIn: false
+  };
+};
+
 export const toResolvedInlineService = (
   row: TAgentVaultSessionInlineServices,
   secrets: TInlineServiceSecrets | null

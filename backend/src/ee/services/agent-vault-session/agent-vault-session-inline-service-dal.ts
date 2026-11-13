@@ -17,6 +17,7 @@ const SUMMARY_COLUMNS = [
   "sessionId",
   "position",
   "name",
+  "description",
   "type",
   "config",
   "hostPattern",
@@ -49,9 +50,14 @@ export const agentVaultSessionInlineServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findBySessionId = async (sessionId: string, tx?: Knex): Promise<TAgentVaultSessionInlineServices[]> => {
+  // onPrimary is for a session too new for the replica: its inline services were written with it.
+  const findBySessionId = async (
+    sessionId: string,
+    { onPrimary = false }: { onPrimary?: boolean } = {},
+    tx?: Knex
+  ): Promise<TAgentVaultSessionInlineServices[]> => {
     try {
-      return await (tx || db.replicaNode())(TableName.AgentVaultSessionInlineService)
+      return await (tx || (onPrimary ? db : db.replicaNode()))(TableName.AgentVaultSessionInlineService)
         .where({ sessionId })
         .orderBy("position", "asc");
     } catch (error) {

@@ -123,6 +123,37 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "GET",
+    url: "/builtin",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultBuiltinSkill",
+      description:
+        "Get infisical-agent-vault, the built-in skill that Agent Vault gives every agent, with its files. Infisical provides it, so it is the same in every project, and it can't be edited, deleted, or added to an access bundle.",
+      tags: [ApiDocsTags.AgentVaultSkills],
+      querystring: z.object({ projectId: AgentVaultProjectIdSchema }),
+      response: {
+        200: z.object({
+          skill: z.object({
+            id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+            name: z.string().describe(AGENT_VAULT.SKILL.builtinName),
+            description: z.string().describe(AGENT_VAULT.SKILL.builtinDescription),
+            sha256: z.string().describe(AGENT_VAULT.SKILL.sha256),
+            files: AgentVaultSkillFilesResponseSchema
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await resolveRequestedProjectId(req, req.query.projectId, "query");
+      const skill = await server.services.agentVaultSkill.getBuiltinSkill({ projectId, ctx: actorContext(req) });
+      return { skill };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:skillId",
     config: { rateLimit: readLimit },
     schema: {

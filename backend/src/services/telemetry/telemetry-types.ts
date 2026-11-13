@@ -2624,7 +2624,8 @@ export type TAgentVaultProxyTokenRotatedEvent = {
 };
 
 // Sent per upload link a proxy is given, and aggregated (POSTHOG_AGGREGATED_EVENTS), so bytes and records sum per org.
-// records is the proxy's own count, unchecked, and missing from CLIs that don't send it.
+// records is the proxy's own count, unchecked, and missing from CLIs that don't send it. The per-decision counts
+// (brokered, passthrough, blocked, error) are sent only when they add up to records, so ratios divide by their sum.
 export type TAgentVaultSessionLogChunkAcceptedEvent = {
   event: PostHogEventTypes.AgentVaultSessionLogChunkAccepted;
   properties: {
@@ -2632,6 +2633,10 @@ export type TAgentVaultSessionLogChunkAcceptedEvent = {
     storageType: ObjectStorageType;
     bytes: number;
     records?: number;
+    brokered?: number;
+    passthrough?: number;
+    blocked?: number;
+    error?: number;
   };
 };
 
