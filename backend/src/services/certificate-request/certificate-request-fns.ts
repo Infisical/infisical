@@ -102,7 +102,10 @@ const $findApprovalRequest = async (deps: TApprovalLookupDeps, approvalRequestId
   if (!approvalRequestId) return undefined;
   const approvalRequest = await deps.approvalRequestDAL.findById(approvalRequestId);
   if (!approvalRequest) return undefined;
-  const policy = approvalRequest.policyId ? await deps.approvalPolicyDAL.findById(approvalRequest.policyId) : undefined;
+  // The policy only labels audit events, so failing to read it mustn't drop the notice or the event.
+  const policy = approvalRequest.policyId
+    ? await deps.approvalPolicyDAL.findById(approvalRequest.policyId).catch(() => undefined)
+    : undefined;
   const { requestData } = (approvalRequest.requestData as { requestData?: TCertRequestRequestData } | null) ?? {};
   return { approvalRequest, policy, renewal: requestData?.renewal };
 };
@@ -181,6 +184,7 @@ export const recordCertificateRequestFailure = async (
       commonName,
       originalCertificateId,
       applicationId: certificateRequest.applicationId,
+      approvalRequestId: certificateRequest.approvalRequestId,
       ...(approval && getApprovalRequestAuditLabel(approval.approvalRequest, approval.policy))
     }
   });
@@ -191,6 +195,7 @@ export const recordCertificateRequestFailure = async (
     describeCaOperationFailure({
       action: approval.renewal ? "Renewing the certificate" : "Issuing the certificate",
       ca,
+      error,
       message: certificateRequest.errorMessage,
       fallback: "An unexpected error stopped the certificate from being issued."
     })

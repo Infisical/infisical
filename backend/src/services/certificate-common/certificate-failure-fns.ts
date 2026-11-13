@@ -5,8 +5,9 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { CA_TYPE_LABEL } from "./external-metadata-schemas";
 
 // Only request errors carry text a user can act on; anything else is reported as unexpected rather than leaking
-// internal detail. `message` is for text already written for users (a background job's stored reason), and is used
-// instead. The CA is named so a generic upstream message ("Unable to connect to gateway") says where it failed.
+// internal detail. `message` is text already written for users (a background job's stored reason), used when the
+// error has none, since jobs often store a reason with a prefix of their own. The CA is named so a generic upstream
+// message ("Unable to connect to gateway") says where it failed.
 export const describeCaOperationFailure = ({
   action,
   ca,
@@ -21,7 +22,7 @@ export const describeCaOperationFailure = ({
   fallback: string;
 }) => {
   const message =
-    shownMessage || (error instanceof BadRequestError || error instanceof NotFoundError ? error.message : undefined);
+    (error instanceof BadRequestError || error instanceof NotFoundError ? error.message : undefined) || shownMessage;
   if (!ca) return message ? asSentence(message) : fallback;
 
   const caType = ca.externalCa?.type as CaType | undefined;

@@ -199,7 +199,10 @@ export const certRequestApprovalResourceFactory = ({
       try {
         // An external-CA renewal still pending returns its order id in certificateId, not a certificate.
         const isIssued = renewed.status === CertificateRequestStatus.ISSUED;
-        const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : undefined;
+        // The policy only labels the event, so failing to read it mustn't lose the event.
+        const policy = request.policyId
+          ? await approvalPolicyDAL.findById(request.policyId).catch(() => undefined)
+          : undefined;
         await auditLogService.createAuditLog({
           projectId: request.projectId,
           actor: { type: ActorType.PLATFORM, metadata: {} },

@@ -15,7 +15,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
@@ -871,6 +871,66 @@ describe("CertificateRequestService", () => {
         expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
           approvalRequest,
           "Renewing the certificate at CA 'digicert-ca' (DigiCert CertCentral) failed: DigiCert order expired."
+        );
+      });
+
+      it("uses the CA's own message instead of the job's prefixed reason", async () => {
+        const caMessage = "A certificate template is required to issue through Active Directory Certificate Service";
+        mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+          id: "ca-1",
+          name: "e2e-adcs-ca",
+          externalCa: { type: CaType.ADCS }
+        });
+        (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue({
+          ...failedRequest,
+          errorMessage: `Certificate issuance failed: ${caMessage}`
+        });
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: `Certificate issuance failed: ${caMessage}`,
+          error: new BadRequestError({ message: caMessage })
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          `Renewing the certificate at CA 'e2e-adcs-ca' (Microsoft ADCS) failed: ${caMessage}.`
+        );
+      });
+
+      it("still notifies, without the policy name, when the policy can't be read", async () => {
+        mockApprovalPolicyDAL.findById.mockRejectedValue(new Error("connection reset"));
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalled();
+        expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ approvalRequestId: "approval-1", requesterName: "Dana Approver" })
+            })
+          })
+        );
+      });
+
+      it("keeps the approval request ID in the failure event when the approval request can't be read", async () => {
+        mockApprovalRequestDAL.findById.mockRejectedValue(new Error("connection reset"));
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage
+        });
+
+        expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({ metadata: expect.objectContaining({ approvalRequestId: "approval-1" }) })
+          })
         );
       });
 

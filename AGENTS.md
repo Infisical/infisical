@@ -162,15 +162,16 @@ action fails there, record the failure in the audit log and call
 `approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and the request's approvers why
 (`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording, and its
 `filterActiveApprovers` drops approvers who have since lost access to the scope, since the request's approver list
-outlives their removal. Certificate
-revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
-(`cert-request-policy-factory.ts`) notify through it when the approved action fails, but they have no
-`filterActiveApprovers`, and their status updates, failure recording and telemetry still run outside any guard, so
-they can still throw. Don't copy that part. An external CA can fail an approved certificate request later, in a
-background job. Jobs report that through `updateCertificateRequestStatus`, whose two implementations
+outlives their removal. Certificate revocation (`certificateService.revokeApprovedCertificate`) is the reference.
+Certificate issuance and renewal (`cert-request-policy-factory.ts`) notify through it when the approved action fails,
+but they have no `filterActiveApprovers`, and their status updates, failure recording and telemetry still run outside
+any guard, so they can still throw. Don't copy that part. An external CA can fail an approved certificate request later,
+in a background job. Jobs report that through `updateCertificateRequestStatus`, whose two implementations
 (`certificate-request-service.ts`, and the manual validation one in `certificate-authority-service.ts`) record it with
-`recordCertificateRequestFailure` and `notifyApprovers`. A new job that fails a certificate request must go through
-one of them, or nobody who approved the request hears about it.
+`recordCertificateRequestFailure` and `notifyApprovers`. A new job that fails a certificate request must go through one
+of them, or nobody who approved the request hears about it. The ACME order sync (`checkAndSyncAcmeOrderStatus`) is an
+exception: it fails an abandoned ACME issuance directly inside its transaction, and records no failure event and sends
+no notice.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a
