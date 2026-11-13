@@ -19,6 +19,7 @@ export const PgSqlLock = {
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
+  OrgInviteSeats: (orgId: string) => pgAdvisoryLockHashText(`org-invite-seats:${orgId}`),
   CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
@@ -209,6 +210,8 @@ export const KeyStorePrefixes = {
     `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
+  // Org invitation emails an org has been allowed to send on one UTC day (YYYY-MM-DD).
+  OrgInviteDailyCount: (orgId: string, day: string) => `org-invite:daily-count:${orgId}:${day}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,

@@ -103,7 +103,8 @@ const createGuard = ({
     licenseService: new FakeLicenseService(),
     emailDomainDAL: {} as never,
     oidcConfigDAL: {} as never,
-    samlConfigDAL: {} as never
+    samlConfigDAL: {} as never,
+    orgInviteQuota: { admit: vi.fn(), getSeatPlan: vi.fn(), assertSeatsForInvites: vi.fn() }
   });
 
   return () =>
@@ -327,7 +328,8 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
       userGroupMembershipDAL: {} as never,
       emailDomainDAL: { find: vi.fn().mockResolvedValue([]) } as never,
       oidcConfigDAL: {} as never,
-      samlConfigDAL: {} as never
+      samlConfigDAL: {} as never,
+      orgInviteQuota: { admit: vi.fn(), getSeatPlan: vi.fn(), assertSeatsForInvites: vi.fn() }
     });
 
     return () =>
@@ -337,7 +339,8 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
           scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
           data: { roles: incomingRoles.map((role) => ({ role, isTemporary: false })) }
         } as never,
-        [{ id: "invitee-id", email: "invitee@example.com" }] as never
+        [{ id: "invitee-id", email: "invitee@example.com" }] as never,
+        []
       );
   };
 

@@ -19,7 +19,7 @@ import {
   IconButton
 } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
-import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
+import { emailListSchema, MAX_PROJECT_INVITE_EMAILS } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -32,7 +32,7 @@ import { useFloatingBarClearance } from "./useFloatingBarClearance";
 const SUCCESS_AUTO_DISMISS_MS = 3000;
 
 const inviteMembersNudgeFormSchema = z.object({
-  emails: emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true })
+  emails: emailListSchema({ max: MAX_PROJECT_INVITE_EMAILS, isRequired: true })
 });
 
 export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false }: Props) => {

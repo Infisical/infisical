@@ -87,6 +87,7 @@ import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { TOrgDeletionServiceFactory } from "./org-deletion-service";
 import { deleteOrgMembershipsFn } from "./org-fns";
+import { TOrgInviteQuota } from "./org-invite-quota";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
@@ -143,6 +144,7 @@ type TOrgServiceFactoryDep = {
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -179,7 +181,8 @@ export const orgServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   auditLogSettingsService,
-  eventEmitter
+  eventEmitter,
+  orgInviteQuota
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -1142,6 +1145,8 @@ export const orgServiceFactory = ({
         message: "Organization invitation already accepted"
       });
     }
+
+    await orgInviteQuota.admit(orgId, 1);
 
     if (org?.authEnforced) {
       const ssoLoginUrl = await $getEnforcedSsoLoginUrl(org.id, org.slug);
