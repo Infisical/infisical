@@ -21,7 +21,6 @@ import {
 } from "@app/services/approval-policy/approval-request-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
@@ -991,20 +990,8 @@ export const secretChangeRequestServiceFactory = ({
     };
   };
 
-  const $findFolderIdsByPathSearch = async (projectId: string, search: string) => {
-    const folders = await folderDAL.findByProjectId(projectId);
-    const folderById = buildFolderIdMap(folders);
-    const needle = search.toLowerCase();
-    return folders
-      .filter((folder) => buildFolderPath(folder, folderById).toLowerCase().includes(needle))
-      .map((folder) => folder.id);
-  };
-
   const listSecretChangeRequests: TSecretChangeRequestMethods["listSecretChangeRequests"] = async (filter) => {
-    const searchFolderIds = filter.search
-      ? await $findFolderIdsByPathSearch(filter.projectId, filter.search)
-      : undefined;
-    const { rows, totalCount } = await secretChangeRequestDAL.findByProjectId({ ...filter, searchFolderIds });
+    const { rows, totalCount } = await secretChangeRequestDAL.findByProjectId(filter);
     if (!rows.length) return { approvals: [], totalCount };
 
     const [stepsByRequestId, commits, bypassersByPolicyId] = await Promise.all([

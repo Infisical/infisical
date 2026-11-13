@@ -1,5 +1,3 @@
-import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { createSecretChangePolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -13,6 +11,9 @@ import {
   ApprovalRequestStepStatus
 } from "@app/services/approval-policy/approval-policy-enums";
 import { SecretOperations } from "@app/services/secret/secret-types";
+
+import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { createSecretChangePolicy } from "e2e-test/testUtils/secret-approval-policies";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
@@ -430,6 +431,10 @@ describe("Searching secret change requests by folder path", () => {
 
   test("the full folder path finds the request", async () => {
     expect(await searchRequestIds(secretPath)).toEqual([requestId]);
+  });
+
+  test("part of the folder path in any case finds the request", async () => {
+    expect(await searchRequestIds(`/${PARENT.toUpperCase()}/SAR-SEARCH`)).toEqual([requestId]);
   });
 
   test("the folder name alone still finds the request", async () => {

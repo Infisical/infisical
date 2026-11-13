@@ -315,10 +315,9 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
       limit = 20,
       offset = 0,
       search,
-      searchFolderIds = [],
       orderBy,
       orderDirection
-    }: TSecretApprovalRequestListFilter & { searchFolderIds?: string[] },
+    }: TSecretApprovalRequestListFilter,
     tx?: Knex
   ): Promise<TSecretChangeRequestListResultRows> => {
     try {
@@ -380,30 +379,51 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
 
       if (search) {
         const pattern = `%${sanitizeSqlLikeString(search)}%`;
-        void baseQuery.where((qb) => {
-          void qb
-            .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
-              db.ref("committerUserFirstName"),
-              db.ref("committerUserLastName"),
-              pattern
-            ])
-            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), pattern])
-            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), pattern])
-            .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), pattern])
-            .orWhereILike("environmentName", pattern)
-            .orWhereILike("environment", pattern)
-            .orWhereILike("policySecretPath", pattern)
-            .orWhereIn("folderId", searchFolderIds)
-            .orWhereExists(
-              dbInstance(TableName.SecretApprovalRequestSecretV2)
-                .select(dbInstance.raw("1"))
-                .whereRaw("?? = ??", [
-                  `${TableName.SecretApprovalRequestSecretV2}.secretChangeId`,
-                  "inner.secretChangeId"
-                ])
-                .whereILike(`${TableName.SecretApprovalRequestSecretV2}.key`, pattern)
-            );
-        });
+        void baseQuery
+          .withRecursive("request_search_folder_paths", ["id", "path"], (folders) => {
+            void folders
+              .select("root.id", dbInstance.raw("'/'::text"))
+              .from({ root: TableName.SecretFolder })
+              .join({ scope_env: TableName.Environment }, "scope_env.id", "root.envId")
+              .whereNull("root.parentId")
+              .where("scope_env.projectId", projectId)
+              .unionAll((children) => {
+                void children
+                  .select(
+                    "child.id",
+                    dbInstance.raw(`rtrim(??, '/') || '/' || ??`, ["request_search_folder_paths.path", "child.name"])
+                  )
+                  .from({ child: TableName.SecretFolder })
+                  .join("request_search_folder_paths", "child.parentId", "request_search_folder_paths.id")
+                  .where("child.isReserved", false);
+              });
+          })
+          .where((qb) => {
+            void qb
+              .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
+                db.ref("committerUserFirstName"),
+                db.ref("committerUserLastName"),
+                pattern
+              ])
+              .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), pattern])
+              .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), pattern])
+              .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), pattern])
+              .orWhereILike("environmentName", pattern)
+              .orWhereILike("environment", pattern)
+              .orWhereILike("policySecretPath", pattern)
+              .orWhereIn("folderId", (folderPaths) => {
+                void folderPaths.select("id").from("request_search_folder_paths").whereILike("path", pattern);
+              })
+              .orWhereExists(
+                dbInstance(TableName.SecretApprovalRequestSecretV2)
+                  .select(dbInstance.raw("1"))
+                  .whereRaw("?? = ??", [
+                    `${TableName.SecretApprovalRequestSecretV2}.secretChangeId`,
+                    "inner.secretChangeId"
+                  ])
+                  .whereILike(`${TableName.SecretApprovalRequestSecretV2}.key`, pattern)
+              );
+          });
       }
 
       const pageQuery = applyRequestOrdering(baseQuery.clone(), orderBy, orderDirection)

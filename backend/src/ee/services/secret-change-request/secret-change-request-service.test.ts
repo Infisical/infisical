@@ -246,8 +246,7 @@ const buildService = ({
       findSecretPathByFolderIds: vi
         .fn()
         .mockResolvedValue([{ environmentSlug: "dev", environmentName: "Development", path: "/app" }]),
-      lockFoldersForUpdate: vi.fn().mockResolvedValue([]),
-      findByProjectId: vi.fn().mockResolvedValue([])
+      lockFoldersForUpdate: vi.fn().mockResolvedValue([])
     },
     secretChangePolicyService: {
       findSecretChangePolicyById: vi.fn().mockResolvedValue(policy),
@@ -1544,32 +1543,6 @@ describe("secretChangeRequest getSecretApprovals and requestCount", () => {
     await service.getSecretApprovals(listDto);
 
     expect(deps.secretChangeRequestDAL.findByProjectId).toHaveBeenCalledWith({ ...filter, userId: undefined });
-  });
-
-  test("resolves a search to the folders whose full path contains it", async () => {
-    const { service, deps } = buildService();
-    deps.folderDAL.findByProjectId.mockResolvedValueOnce([
-      { id: "root", name: "root", parentId: null },
-      { id: "parameters", name: "parameters", parentId: "root" },
-      { id: "sanda", name: "sanda", parentId: "parameters" },
-      { id: "settlement", name: "Settlement-Service", parentId: "sanda" },
-      { id: "other", name: "other", parentId: "root" }
-    ]);
-
-    await service.getSecretApprovals({ ...listDto, search: "/parameters/sanda/settlement" });
-
-    expect(deps.folderDAL.findByProjectId).toHaveBeenCalledWith("project-1");
-    expect(deps.secretChangeRequestDAL.findByProjectId).toHaveBeenCalledWith(
-      expect.objectContaining({ search: "/parameters/sanda/settlement", searchFolderIds: ["settlement"] })
-    );
-  });
-
-  test("does not read the project's folders when there is no search", async () => {
-    const { service, deps } = buildService();
-
-    await service.getSecretApprovals(listDto);
-
-    expect(deps.folderDAL.findByProjectId).not.toHaveBeenCalled();
   });
 
   test("refuses a service token before reading anything", async () => {
