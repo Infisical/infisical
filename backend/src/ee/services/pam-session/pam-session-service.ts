@@ -56,6 +56,7 @@ import {
 } from "../pam/pam-permission";
 import {
   buildPamPolicyRules,
+  outputMaskingGatewayOptions,
   PamPolicyType,
   policyAppliesTo,
   resolveAccessControls,
@@ -220,14 +221,10 @@ export const pamSessionServiceFactory = ({
     gatewayId: string,
     account: { accountType: string; templatePolicies: unknown }
   ) => {
-    if (
-      !policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType) ||
-      !resolveOutputMasking(account.templatePolicies)
-    ) {
-      return;
-    }
+    const { filter } = outputMaskingGatewayOptions(account);
+    if (!filter) return;
     const gateway = await gatewayV2DAL.findById(gatewayId);
-    if ((gateway?.capabilities as { outputMasking?: boolean } | null)?.outputMasking !== true) {
+    if (!gateway || !filter(gateway)) {
       throw new BadRequestError({
         message: `Gateway '${gateway?.name ?? gatewayId}' must be updated to the latest version before it can enforce this account's output masking`
       });
@@ -743,7 +740,8 @@ export const pamSessionServiceFactory = ({
     });
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
-      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+      ...outputMaskingGatewayOptions(account)
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });

@@ -5,6 +5,7 @@ import { accountTypeSupportsSessionLogMasking, PamAccountType } from "./pam-enum
 import {
   buildPamPolicyRules,
   getApplicablePolicies,
+  outputMaskingGatewayOptions,
   PAM_OUTPUT_MASKING_PRESET_PATTERNS,
   PamOutputMaskingPreset,
   PamPolicyType,
@@ -292,6 +293,18 @@ describe("output masking presets", () => {
       validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: Array(9).fill("email") } })
         .ok
     ).toBe(false);
+  });
+});
+
+describe("outputMaskingGatewayOptions", () => {
+  test("only lets a masked account's session use a gateway that enforces masking", () => {
+    const { filter } = outputMaskingGatewayOptions({
+      accountType: PamAccountType.Postgres,
+      templatePolicies: { [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.Email], patterns: "" } }
+    });
+    expect(filter?.({ capabilities: { outputMasking: true } })).toBe(true);
+    expect(filter?.({ capabilities: {} })).toBe(false);
+    expect(outputMaskingGatewayOptions({ accountType: PamAccountType.Postgres, templatePolicies: {} })).toEqual({});
   });
 });
 

@@ -326,6 +326,20 @@ export const resolveOutputMasking = (policyMap: unknown): TPamOutputMaskingRule 
     : null;
 };
 
+// An older gateway ignores rules it does not know, so a masked account's session only goes to a gateway that enforces them.
+export const outputMaskingGatewayOptions = (account: {
+  accountType: string;
+  templatePolicies: unknown;
+}): { filter?: (gateway: { capabilities?: unknown }) => boolean; unavailableMessage?: string } =>
+  policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType) &&
+  resolveOutputMasking(account.templatePolicies)
+    ? {
+        filter: (gateway) => (gateway.capabilities as { outputMasking?: boolean } | null)?.outputMasking === true,
+        unavailableMessage:
+          "No healthy gateway in this account's gateway pool can enforce output masking. Update the pool's gateways to the latest version."
+      }
+    : {};
+
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
   const requiresApproval = resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true;
