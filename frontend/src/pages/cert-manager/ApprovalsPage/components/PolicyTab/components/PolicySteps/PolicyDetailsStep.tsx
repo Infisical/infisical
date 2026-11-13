@@ -316,7 +316,8 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                   Bypass approval for machine identities
                 </FieldLabel>
                 <FieldDescription>
-                  When enabled, machine identities can issue certificates without requiring approval
+                  When enabled, machine identities can issue and renew certificates without
+                  requiring approval
                 </FieldDescription>
               </FieldContent>
             </Field>
