@@ -380,57 +380,62 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
       if (search) {
         const pattern = `%${sanitizeSqlLikeString(search)}%`;
         const folderPathPattern = `%${sanitizeSqlLikeString(search.replace(/\/+$/, "") || "/")}%`;
-        void baseQuery
-          .withRecursive("request_search_folder_paths", ["id", "path"], (folders) => {
-            void folders
-              .select("root.id", dbInstance.raw("''::text"))
-              .from({ root: TableName.SecretFolder })
-              .join({ scope_env: TableName.Environment }, "scope_env.id", "root.envId")
-              .whereNull("root.parentId")
-              .where("scope_env.projectId", projectId)
-              .whereNull("scope_env.deleteAfter")
-              .modify((roots) => {
-                if (environment) void roots.where("scope_env.slug", environment);
-              })
-              .unionAll((children) => {
-                void children
-                  .select(
-                    "child.id",
-                    dbInstance.raw("?? || '/' || ??", ["request_search_folder_paths.path", "child.name"])
-                  )
-                  .from({ child: TableName.SecretFolder })
-                  .join("request_search_folder_paths", "child.parentId", "request_search_folder_paths.id");
-              });
-          })
-          .where((qb) => {
-            void qb
-              .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
-                db.ref("committerUserFirstName"),
-                db.ref("committerUserLastName"),
-                pattern
-              ])
-              .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), pattern])
-              .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), pattern])
-              .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), pattern])
-              .orWhereILike("environmentName", pattern)
-              .orWhereILike("environment", pattern)
-              .orWhereILike("policySecretPath", pattern)
-              .orWhereIn("folderId", (folderPaths) => {
-                void folderPaths
-                  .select("id")
-                  .from("request_search_folder_paths")
-                  .whereRaw(`COALESCE(NULLIF(??, ''), '/') ILIKE ?`, ["path", folderPathPattern]);
-              })
-              .orWhereExists(
-                dbInstance(TableName.SecretApprovalRequestSecretV2)
-                  .select(dbInstance.raw("1"))
-                  .whereRaw("?? = ??", [
-                    `${TableName.SecretApprovalRequestSecretV2}.secretChangeId`,
-                    "inner.secretChangeId"
-                  ])
-                  .whereILike(`${TableName.SecretApprovalRequestSecretV2}.key`, pattern)
-              );
-          });
+        void baseQuery.where((qb) => {
+          void qb
+            .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
+              db.ref("committerUserFirstName"),
+              db.ref("committerUserLastName"),
+              pattern
+            ])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), pattern])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), pattern])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), pattern])
+            .orWhereILike("environmentName", pattern)
+            .orWhereILike("environment", pattern)
+            .orWhereILike("policySecretPath", pattern)
+            .orWhereExists((folderPath) => {
+              void folderPath
+                .withRecursive("request_folder_ancestors", ["parentId", "path"], (ancestors) => {
+                  void ancestors
+                    .select(
+                      "folder.parentId",
+                      dbInstance.raw(`CASE WHEN ?? IS NULL THEN '' ELSE '/' || ?? END`, [
+                        "folder.parentId",
+                        "folder.name"
+                      ])
+                    )
+                    .from({ folder: TableName.SecretFolder })
+                    .whereRaw("?? = ??", ["folder.id", "inner.folderId"])
+                    .unionAll((parents) => {
+                      void parents
+                        .select(
+                          "parent.parentId",
+                          dbInstance.raw(`CASE WHEN ?? IS NULL THEN ?? ELSE '/' || ?? || ?? END`, [
+                            "parent.parentId",
+                            "request_folder_ancestors.path",
+                            "parent.name",
+                            "request_folder_ancestors.path"
+                          ])
+                        )
+                        .from({ parent: TableName.SecretFolder })
+                        .join("request_folder_ancestors", "parent.id", "request_folder_ancestors.parentId");
+                    });
+                })
+                .select(dbInstance.raw("1"))
+                .from("request_folder_ancestors")
+                .whereNull("parentId")
+                .whereRaw(`COALESCE(NULLIF(??, ''), '/') ILIKE ?`, ["path", folderPathPattern]);
+            })
+            .orWhereExists(
+              dbInstance(TableName.SecretApprovalRequestSecretV2)
+                .select(dbInstance.raw("1"))
+                .whereRaw("?? = ??", [
+                  `${TableName.SecretApprovalRequestSecretV2}.secretChangeId`,
+                  "inner.secretChangeId"
+                ])
+                .whereILike(`${TableName.SecretApprovalRequestSecretV2}.key`, pattern)
+            );
+        });
       }
 
       const pageQuery = applyRequestOrdering(baseQuery.clone(), orderBy, orderDirection)
