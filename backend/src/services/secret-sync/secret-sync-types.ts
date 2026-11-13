@@ -131,6 +131,12 @@ import {
   TDaytonaSyncListItem,
   TDaytonaSyncWithCredentials
 } from "./daytona/daytona-sync-types";
+import {
+  TDenoDeploySync,
+  TDenoDeploySyncInput,
+  TDenoDeploySyncListItem,
+  TDenoDeploySyncWithCredentials
+} from "./deno-deploy/deno-deploy-sync-types";
 import { TDevinSync, TDevinSyncInput, TDevinSyncListItem, TDevinSyncWithCredentials } from "./devin/devin-sync-types";
 import {
   TDigitalOceanAppPlatformSyncInput,
@@ -314,6 +320,7 @@ export type TSecretSync =
   | TCloud66Sync
   | TSpaceliftSync
   | TDaytonaSync
+  | TDenoDeploySync
   | TKeeperSync
   | TJenkinsSync;
 
@@ -369,6 +376,7 @@ export type TSecretSyncWithCredentials =
   | TCloud66SyncWithCredentials
   | TSpaceliftSyncWithCredentials
   | TDaytonaSyncWithCredentials
+  | TDenoDeploySyncWithCredentials
   | TKeeperSyncWithCredentials
   | TJenkinsSyncWithCredentials;
 
@@ -424,6 +432,7 @@ export type TSecretSyncInput =
   | TCloud66SyncInput
   | TSpaceliftSyncInput
   | TDaytonaSyncInput
+  | TDenoDeploySyncInput
   | TKeeperSyncInput
   | TJenkinsSyncInput;
 
@@ -479,6 +488,7 @@ export type TSecretSyncListItem =
   | TCloud66SyncListItem
   | TSpaceliftSyncListItem
   | TDaytonaSyncListItem
+  | TDenoDeploySyncListItem
   | TKeeperSyncListItem
   | TJenkinsSyncListItem;
 

@@ -105,6 +105,7 @@ export enum IntegrationUrls {
   CAMUNDA_API_URL = "https://api.cloud.camunda.io",
   DEVIN_API_URL = "https://api.devin.ai",
   DAYTONA_API_URL = "https://app.daytona.io/api",
+  DENO_DEPLOY_API_URL = "https://api.deno.com",
   DIGICERT_SERVICES_API_URL = "https://www.digicert.com/services/v2",
   DIGICERT_SERVICES_API_URL_EU = "https://certcentral.digicert.eu/services/v2",
 

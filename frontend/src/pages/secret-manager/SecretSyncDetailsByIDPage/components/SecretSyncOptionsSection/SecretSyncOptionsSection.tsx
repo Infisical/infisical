@@ -112,6 +112,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
     case SecretSync.Daytona:
+    case SecretSync.DenoDeploy:
     case SecretSync.Keeper:
     case SecretSync.Jenkins:
       AdditionalSyncOptionsComponent = null;

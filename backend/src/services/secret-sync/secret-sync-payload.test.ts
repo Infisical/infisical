@@ -27,6 +27,14 @@ describe("createSecretSyncPayload", () => {
     });
   });
 
+  test("flatten() keeps a secret named __proto__ as an own key", () => {
+    const map = createSecretSyncPayload([secret("__proto__", "/", "one")], { environment: "dev" }).flatten();
+
+    expect(Object.hasOwn(map, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(map)).toBe(Object.prototype);
+    expect(Object.keys(map)).toEqual(["__proto__"]);
+  });
+
   test("flatten() throws naming both folders when a name appears twice", () => {
     const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
       environment: "dev"
