@@ -6,7 +6,9 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
  */
 export enum PostgresErrorCode {
   /** string_data_right_truncation — a value was longer than its varchar(n) column. */
-  StringDataRightTruncation = "22001"
+  StringDataRightTruncation = "22001",
+  /** lock_not_available — a bounded `lock_timeout` expired before a lock could be acquired. */
+  LockNotAvailable = "55P03"
 }
 
 const MAX_CAUSE_DEPTH = 5;
