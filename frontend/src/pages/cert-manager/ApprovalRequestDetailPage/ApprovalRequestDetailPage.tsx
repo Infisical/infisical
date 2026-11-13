@@ -118,7 +118,7 @@ const RevocationDetailsSection = ({
         </div>
         {isPending && (
           <p className="mt-4 border-t border-border-control pt-4 text-xs text-muted">
-            The certificate stays active until this request is approved. Once approved, it is
+            The certificate isn&apos;t revoked until this request is approved. Once approved, it is
             revoked with the reason above and added to its CA&apos;s revocation list.
           </p>
         )}

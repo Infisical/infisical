@@ -58,7 +58,7 @@ export const sendRevocationPendingApproval = async (
 
   const body: z.infer<(typeof RevokeCertResponseSchemas)[202]> = {
     message:
-      "This certificate's Application requires approval to revoke it. It stays active until the request is approved.",
+      "This certificate's Application requires approval to revoke it. It isn't revoked until the request is approved.",
     status: CertificateRevocationStatus.PendingApproval,
     serialNumber: cert.serialNumber,
     approvalRequestId: result.approvalRequestId

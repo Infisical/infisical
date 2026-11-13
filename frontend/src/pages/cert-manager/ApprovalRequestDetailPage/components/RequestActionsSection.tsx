@@ -207,7 +207,7 @@ export const RequestActionsSection = ({ request }: Props) => {
             <DialogTitle>Reject request</DialogTitle>
             <DialogDescription>
               {request.type === ApprovalPolicyType.CertRevocation
-                ? "The request is closed and the certificate stays active. The requester can ask again."
+                ? "The request is closed and the certificate isn't revoked. The requester can ask again."
                 : "The request is closed and the requester gets no access. They can open a new one."}
             </DialogDescription>
           </DialogHeader>
