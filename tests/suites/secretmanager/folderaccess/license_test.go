@@ -16,7 +16,7 @@ func TestFolderAccess_License(t *testing.T) {
 	h := harness.From(t)
 
 	withoutFolderRBAC := license.Enterprise().Without(license.SecretsFolderRBAC)
-	const planMessage = "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."
+	const planMessage = "Failed to grant folder access due to plan restriction. Upgrade your Infisical plan."
 
 	t.Run("should refuse a grant create when the plan does not include folder rbac", func(t *testing.T) {
 		t.Parallel()
@@ -29,6 +29,24 @@ func TestFolderAccess_License(t *testing.T) {
 
 		// Action
 		res := grantAs(t, tn.Admin, proj, pr, at("/app"), secretmanager.FolderRead, nil)
+
+		// Assert
+		require.Equalf(t, http.StatusBadRequest, res.status, "granting: %s", res.body)
+		require.Equal(t, planMessage, res.message)
+		tn.SetPlan(t, license.Enterprise())
+		require.Empty(t, grantsOf(t, proj, pr))
+	})
+
+	t.Run("should refuse a root folder grant on cloud when the plan does not include folder rbac", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t, harness.WithPlan(withoutFolderRBAC))
+		proj := newProject(t, tn)
+		pr := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
+
+		// Action
+		res := grantAs(t, tn.Admin, proj, pr, at("/"), secretmanager.FolderRead, nil)
 
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.status, "granting: %s", res.body)
@@ -57,7 +75,7 @@ func TestFolderAccess_License(t *testing.T) {
 		require.Equal(t, map[string]string{"API_KEY": "plaintext"}, got.values)
 	})
 
-	t.Run("should refuse listing and revoking grants after a downgrade, naming the plan (license gate on a read path)", func(t *testing.T) {
+	t.Run("should keep listing and revoking grants after a downgrade", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -74,13 +92,11 @@ func TestFolderAccess_License(t *testing.T) {
 		revoked := revokeGrant(t, tn.Admin, proj, pr, at("/app"))
 
 		// Assert
-		require.Equal(t, http.StatusBadRequest, listed.status)
-		require.Contains(t, string(listed.body), planMessage)
-		require.Equal(t, http.StatusBadRequest, grantsStatus)
-		require.Contains(t, string(grantsBody), planMessage)
-		require.Equal(t, http.StatusBadRequest, revoked.status)
-		require.Equal(t, planMessage, revoked.message)
-		tn.SetPlan(t, license.Enterprise())
-		require.Len(t, grantsOf(t, proj, pr), 1)
+		require.Equalf(t, http.StatusOK, listed.status, "listing folder access: %s", listed.body)
+		require.NotNil(t, listed.with[pr.ID.String()].Grant)
+		require.Equalf(t, http.StatusOK, grantsStatus, "listing grants: %s", grantsBody)
+		require.Contains(t, string(grantsBody), "/app")
+		require.Equalf(t, http.StatusOK, revoked.status, "revoking: %s", revoked.body)
+		require.Empty(t, grantsOf(t, proj, pr))
 	})
 }
