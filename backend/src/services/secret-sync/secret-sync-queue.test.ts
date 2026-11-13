@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TableName } from "@app/db/schemas";
 import { recordSecretSyncOutcomeMetric, recordSecretSyncStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName } from "@app/queue";
 
@@ -10,7 +11,7 @@ import { secretSyncQueueFactory } from "./secret-sync-queue";
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
-  getConfig: () => ({ OTEL_TELEMETRY_COLLECTION_ENABLED: false, isSmtpConfigured: false })
+  getConfig: () => ({ OTEL_TELEMETRY_COLLECTION_ENABLED: false })
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -43,6 +44,7 @@ vi.mock("@app/services/secret-sync/secret-sync-fns", async (importOriginal) => {
 });
 
 const ATTEMPTS = 5;
+const TX = { isTransaction: true };
 // Matches REQUEUE_LIMIT in the queue: at this count a lock failure stops requeueing and fails the sync.
 const REQUEUE_LIMIT = 120;
 const LAST_SYNCED_AT = new Date("2026-10-01T00:00:00.000Z");
@@ -90,7 +92,23 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
         if (value !== undefined) Object.assign(state, { [key]: value });
       });
       return { ...state };
-    })
+    }),
+    deleteById: vi.fn(async () => ({ ...state })),
+    updateAndReturnIds: vi.fn(async () => [] as string[]),
+    transaction: vi.fn(async <T>(callback: (tx: unknown) => Promise<T>) => callback(TX))
+  };
+  const eventEmitter = {
+    emit: vi.fn<(events: { type: string; data: Record<string, unknown> }[], tx?: unknown) => Promise<void>>(
+      async () => undefined
+    )
+  };
+  const alertService = {
+    deleteAlertsForDeletedResources: vi.fn<
+      (input: { resourceType: string; resourceIds: string[] }, tx?: unknown) => Promise<number>
+    >(async () => 0),
+    findOrphanedResourceIds: vi.fn<
+      (input: { resourceType: string; resourceTable: string; limit: number }) => Promise<string[]>
+    >(async () => [])
   };
 
   secretSyncQueueFactory({
@@ -107,7 +125,9 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => ({ decryptor: () => Buffer.from("") })) },
     auditLogService: { createAuditLog: vi.fn(async () => undefined) },
     telemetryService: { sendPostHogEvents: vi.fn(async () => undefined) },
-    licenseService: { getPlan: vi.fn() }
+    licenseService: { getPlan: vi.fn() },
+    eventEmitter,
+    alertService
   } as never);
 
   const runSync = (attempt: number, data: Record<string, unknown> = {}) =>
@@ -119,7 +139,16 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       opts: { attempts: ATTEMPTS }
     });
 
-  return { state, runSync, secretSyncDAL };
+  const runJob = (name: QueueJobs, data: Record<string, unknown> = {}) =>
+    handlers.get(QueueName.AppConnectionSecretSync)!({
+      name,
+      id: "job-1",
+      data: { syncId: "sync-1", ...data },
+      attemptsStarted: 1,
+      opts: { attempts: 1 }
+    });
+
+  return { state, runSync, runJob, secretSyncDAL, eventEmitter, alertService };
 };
 
 const syncSecrets = vi.mocked(SecretSyncFns.syncSecrets);
@@ -286,5 +315,94 @@ describe("secret sync status change", () => {
 
     expect(state.lastSyncResult).toBe("failed");
     expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
+  });
+});
+
+describe("failure alert event", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("is emitted when a sync fails its final attempt, with the failure message", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const { runSync, eventEmitter, state } = createHarness(healthy);
+
+    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+
+    expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+    const [[events]] = eventEmitter.emit.mock.calls;
+    expect(events.map((event) => event.type)).toEqual(["secret.sync.failed"]);
+    expect(events[0].data).toMatchObject({
+      orgId: "org-1",
+      projectId: "project-1",
+      resourceType: "secret.sync",
+      resourceId: "sync-1",
+      targetIds: ["sync-1"],
+      action: "sync-secrets",
+      failureMessage: state.lastSyncMessage
+    });
+  });
+
+  test("is not emitted for an attempt that will be retried", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const { runSync, eventEmitter } = createHarness(healthy);
+
+    await expect(runSync(1)).rejects.toThrow();
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("is not emitted when a sync succeeds", async () => {
+    syncSecrets.mockResolvedValue({} as never);
+    const { runSync, eventEmitter } = createHarness(failed);
+
+    await runSync(1);
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("is emitted when lock contention ends a sync", async () => {
+    const { runSync, eventEmitter } = createHarness(healthy, { lockFails: true });
+
+    await runSync(1, { failedToAcquireLockCount: REQUEUE_LIMIT });
+
+    expect(eventEmitter.emit.mock.calls.map(([events]) => events[0].data.action)).toEqual(["sync-secrets"]);
+  });
+});
+
+describe("sync alert cleanup", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("the daily job reaps orphaned sync alerts batch by batch until a batch comes back short", async () => {
+    const { runJob, alertService } = createHarness(healthy);
+    let fullBatch: string[] = [];
+    alertService.findOrphanedResourceIds
+      .mockImplementationOnce(async ({ limit }) => {
+        fullBatch = Array.from({ length: limit }, (_, index) => `deleted-${index}`);
+        return fullBatch;
+      })
+      .mockResolvedValueOnce(["deleted-last"]);
+
+    await runJob(QueueJobs.DailySecretSyncRetry);
+
+    expect(alertService.findOrphanedResourceIds).toHaveBeenCalledTimes(2);
+    expect(alertService.findOrphanedResourceIds.mock.calls[0][0]).toMatchObject({
+      resourceType: "secret.sync",
+      resourceTable: TableName.SecretSync
+    });
+    expect(alertService.deleteAlertsForDeletedResources.mock.calls).toEqual([
+      [{ resourceType: "secret.sync", resourceIds: fullBatch }],
+      [{ resourceType: "secret.sync", resourceIds: ["deleted-last"] }]
+    ]);
+  });
+
+  test("the daily job deletes nothing when no sync alert is orphaned", async () => {
+    const { runJob, alertService } = createHarness(healthy);
+
+    await runJob(QueueJobs.DailySecretSyncRetry);
+
+    expect(alertService.deleteAlertsForDeletedResources).not.toHaveBeenCalled();
   });
 });

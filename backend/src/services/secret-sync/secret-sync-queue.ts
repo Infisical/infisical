@@ -2,7 +2,7 @@ import { AxiosError, isAxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
-import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -20,6 +20,8 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
+import { findProjectAdminUserIds } from "@app/services/alert/alert-principal-scope-fns";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
@@ -44,6 +46,7 @@ import {
   SecretSyncInitialSyncBehavior
 } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { emitSecretSyncFailed, SECRET_SYNC_RESOURCE_TYPE } from "@app/services/secret-sync/secret-sync-events";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
@@ -74,9 +77,9 @@ import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -86,6 +89,9 @@ import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/proje
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
+
+const ORPHAN_REAP_BATCH_SIZE = 500;
+const MAX_ORPHAN_REAP_BATCHES = 20;
 
 const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
   attempts: 5,
@@ -118,12 +124,18 @@ type TSecretSyncQueueFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretSyncDAL: Pick<
     TSecretSyncDALFactory,
-    "findById" | "find" | "findConnectionId" | "updateById" | "deleteById" | "update" | "updateAndReturnIds"
+    | "findById"
+    | "find"
+    | "findConnectionId"
+    | "updateById"
+    | "deleteById"
+    | "update"
+    | "updateAndReturnIds"
+    | "transaction"
   >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
-  smtpService: Pick<TSmtpService, "sendMail">;
   projectBotDAL: TProjectBotDALFactory;
   secretDAL: TSecretDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
@@ -135,6 +147,7 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources" | "findOrphanedResourceIds">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -144,7 +157,8 @@ type TSecretSyncQueueFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findMembership" | "findActorsWithActiveOrgAccess">;
+  userDAL: Pick<TUserDALFactory, "find">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
@@ -179,7 +193,6 @@ export const secretSyncQueueFactory = ({
   auditLogService,
   projectMembershipDAL,
   projectDAL,
-  smtpService,
   projectBotDAL,
   secretDAL,
   secretVersionDAL,
@@ -191,6 +204,7 @@ export const secretSyncQueueFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   eventEmitter,
+  alertService,
   licenseService,
   gatewayV2Service,
   gatewayPoolService,
@@ -201,6 +215,7 @@ export const secretSyncQueueFactory = ({
   telemetryService,
   projectFolderGrantDAL,
   orgDAL,
+  userDAL,
   oidcIssuerService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
@@ -368,7 +383,30 @@ export const secretSyncQueueFactory = ({
     });
 
   const $queueSendSecretSyncFailedNotifications = async (payload: TQueueSendSecretSyncActionFailedNotificationsDTO) => {
-    if (!appCfg.isSmtpConfigured) return;
+    const { secretSync, action } = payload;
+
+    let failureMessage: string | null | undefined;
+    switch (action) {
+      case SecretSyncAction.ImportSecrets:
+        failureMessage = secretSync.lastImportMessage;
+        break;
+      case SecretSyncAction.RemoveSecrets:
+        failureMessage = secretSync.lastRemoveMessage;
+        break;
+      case SecretSyncAction.SyncSecrets:
+      default:
+        failureMessage = secretSync.lastSyncMessage;
+        break;
+    }
+
+    await emitSecretSyncFailed(eventEmitter, {
+      orgId: secretSync.connection.orgId,
+      projectId: secretSync.projectId,
+      syncId: secretSync.id,
+      action,
+      failureMessage,
+      attemptedAt: new Date()
+    });
 
     await queueService.queue(
       QueueName.AppConnectionSecretSync,
@@ -965,7 +1003,13 @@ export const secretSyncQueueFactory = ({
 
       if (isSuccess || isFinalAttempt) {
         if (isSuccess && deleteSyncOnComplete) {
-          await secretSyncDAL.deleteById(secretSync.id);
+          await secretSyncDAL.transaction(async (tx) => {
+            await alertService.deleteAlertsForDeletedResources(
+              { resourceType: SECRET_SYNC_RESOURCE_TYPE, resourceIds: [secretSync.id] },
+              tx
+            );
+            await secretSyncDAL.deleteById(secretSync.id, tx);
+          });
         } else {
           const updatedSecretSync = await secretSyncDAL.updateById(
             secretSync.id,
@@ -1000,19 +1044,18 @@ export const secretSyncQueueFactory = ({
     const { projectId, destination, name, folder, lastSyncMessage, lastRemoveMessage, lastImportMessage, environment } =
       secretSync;
 
-    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
     const project = await projectDAL.findById(projectId);
 
-    let projectAdmins = projectMembers.filter((member) =>
-      member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
-    );
+    let adminUserIds = [
+      ...(await findProjectAdminUserIds({ projectMembershipDAL, orgDAL, userDAL }, { orgId: project.orgId, projectId }))
+    ];
 
     const triggeredByUserId =
       auditLogInfo && auditLogInfo.actor.type === ActorType.USER && auditLogInfo.actor.metadata.userId;
 
     // only notify triggering user if triggered by admin
-    if (triggeredByUserId && projectAdmins.map((admin) => admin.userId).includes(triggeredByUserId)) {
-      projectAdmins = projectAdmins.filter((admin) => admin.userId === triggeredByUserId);
+    if (triggeredByUserId && adminUserIds.includes(triggeredByUserId)) {
+      adminUserIds = [triggeredByUserId];
     }
 
     const syncDestination = SECRET_SYNC_NAME_MAP[destination as SecretSync];
@@ -1070,30 +1113,15 @@ export const secretSyncQueueFactory = ({
         }
       }),
       notificationService.createUserNotifications(
-        projectAdmins.map((admin) => ({
-          userId: admin.userId,
+        adminUserIds.map((userId) => ({
+          userId,
           orgId: project.orgId,
           type: NotificationType.SECRET_SYNC_FAILED,
           title: `Secret Sync Failed to ${actionLabel} Secrets`,
           body: `Your **${syncDestination}** sync **${name}** failed to complete${failureMessage ? `: \`${failureMessage}\`` : ""}`,
           link: syncPath
         }))
-      ),
-      smtpService.sendMail({
-        recipients: projectAdmins.map((member) => member.user.email!).filter(Boolean),
-        template: SmtpTemplates.SecretSyncFailed,
-        subjectLine: `Secret Sync Failed to ${actionLabel} Secrets`,
-        substitutions: {
-          syncName: name,
-          syncDestination,
-          content: `Your ${syncDestination} Sync named "${name}" failed while attempting to ${action.toLowerCase()} secrets.`,
-          failureMessage,
-          secretPath: folder?.path,
-          environment: environment?.name,
-          projectName: project.name,
-          syncUrl: `${appCfg.SITE_URL}${syncPath}`
-        }
-      })
+      )
     ];
 
     await Promise.allSettled(notifications);
@@ -1264,6 +1292,28 @@ export const secretSyncQueueFactory = ({
     );
   };
 
+  // Deleting a sync reaps its alerts inline. This covers syncs removed by a project cascade, which no sync
+  // code sees and which nothing cascades to because alerts.resourceId has no foreign key.
+  const $reapOrphanedSyncAlerts = async () => {
+    for (let batch = 0; batch < MAX_ORPHAN_REAP_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each batch is deleted before the next is read
+      const orphanedSyncIds = await alertService.findOrphanedResourceIds({
+        resourceType: SECRET_SYNC_RESOURCE_TYPE,
+        resourceTable: TableName.SecretSync,
+        limit: ORPHAN_REAP_BATCH_SIZE
+      });
+      if (orphanedSyncIds.length === 0) return;
+
+      // eslint-disable-next-line no-await-in-loop -- see above
+      await alertService.deleteAlertsForDeletedResources({
+        resourceType: SECRET_SYNC_RESOURCE_TYPE,
+        resourceIds: orphanedSyncIds
+      });
+      if (orphanedSyncIds.length < ORPHAN_REAP_BATCH_SIZE) return;
+    }
+    logger.warn(`Stopped reaping orphaned secret sync alerts after ${MAX_ORPHAN_REAP_BATCHES} batches`);
+  };
+
   queueService.start(QueueName.AppConnectionSecretSync, async (job) => {
     if (job.name === QueueJobs.SecretSyncSendActionFailedNotifications) {
       await $sendSecretSyncFailedNotifications(job as TSendSecretSyncFailedNotificationsJobDTO);
@@ -1272,6 +1322,11 @@ export const secretSyncQueueFactory = ({
 
     if (job.name === QueueJobs.DailySecretSyncRetry) {
       await $handleDailySecretSyncRetry();
+      try {
+        await $reapOrphanedSyncAlerts();
+      } catch (error) {
+        logger.error(error, "SecretSync: failed to reap orphaned secret sync alerts");
+      }
       return;
     }
 

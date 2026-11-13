@@ -108,7 +108,12 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                   if (newValue.id === "_create") {
                     handlePopUpOpen("addConnection");
                     // store for oauth callback connections
-                    localStorage.setItem("secretSyncFormData", JSON.stringify(watch()));
+                    localStorage.setItem(
+                      "secretSyncFormData",
+                      JSON.stringify(watch(), (key, serializedValue) =>
+                        key === "channels" ? undefined : serializedValue
+                      )
+                    );
                     if (callback) callback();
                     return;
                   }
