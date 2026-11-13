@@ -44,7 +44,6 @@ export * from "./SecretReminderTemplate";
 export * from "./SecretRequestCompletedTemplate";
 export * from "./SecretScanningScanFailedTemplate";
 export * from "./SecretScanningSecretsDetectedTemplate";
-export * from "./SecretSyncFailedTemplate";
 export * from "./ServiceTokenExpiryNoticeTemplate";
 export * from "./SignupEmailVerificationTemplate";
 export * from "./SignupExistingAccountTemplate";

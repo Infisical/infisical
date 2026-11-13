@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldErrors, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -12,21 +12,43 @@ import {
   FieldError,
   Label,
   SheetFooter,
+  Spinner,
   Stepper,
   StepperList,
   StepperStep,
   Toggle
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProjectPermission } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import {
+  AlertEventType,
+  AlertResourceType,
+  TAlert,
+  TChannelForm,
+  toChannelForm,
+  toChannelInput,
+  useCreateAlert,
+  useListAlerts,
+  useUpdateAlert
+} from "@app/hooks/api/alerts";
 import {
   TSecretSync,
   useCheckDuplicateDestination,
   useUpdateSecretSync
 } from "@app/hooks/api/secretSyncs";
+import { DEFAULT_ALERT_NAMES } from "@app/views/Alerts";
 
 import { DuplicateDestinationConfirmationModal } from "./DuplicateDestinationConfirmationModal";
-import { TSecretSyncForm, UpdateSecretSyncFormSchema } from "./schemas";
+import {
+  serializeFailureAlertChannels,
+  TSecretSyncForm,
+  UpdateSecretSyncFormSchema
+} from "./schemas";
+import {
+  buildProjectAdminsChannel,
+  canManageFailureAlert,
+  SecretSyncAlertsFields
+} from "./SecretSyncAlertsFields";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
 import { SecretSyncInitialSyncBehaviorFields } from "./SecretSyncInitialSyncBehaviorFields";
@@ -38,6 +60,11 @@ type Props = {
   secretSync: TSecretSync;
   onDirtyChange?: (isDirty: boolean) => void;
   onCancel?: () => void;
+};
+
+type ContentProps = Props & {
+  failureAlert?: TAlert;
+  isFailureAlertUnavailable: boolean;
 };
 
 type FormStep = {
@@ -108,6 +135,17 @@ const getFormSteps = (secretSync: TSecretSync, destinationName: string): FormSte
       "A clear name helps when you have multiple syncs. The description shows up in the sync list as a tooltip."
   });
 
+  steps.push({
+    key: "alerts",
+    name: "Alerts",
+    description: "Failure notifications",
+    title: "Set up failure alerts",
+    subtitle: "Choose where Infisical sends a notice when this sync fails.",
+    rightLabel: "ALERTS",
+    rightDescription:
+      "Infisical sends a notice to every enabled channel when a sync, import or remove fails after all of its retries."
+  });
+
   return steps;
 };
 
@@ -127,8 +165,18 @@ const normalizeConfig = (config: unknown): unknown => {
   return normalized;
 };
 
-export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCancel }: Props) => {
+const EditSecretSyncFormContent = ({
+  secretSync,
+  onComplete,
+  onDirtyChange,
+  onCancel,
+  failureAlert,
+  isFailureAlertUnavailable
+}: ContentProps) => {
   const updateSecretSync = useUpdateSecretSync();
+  const createAlert = useCreateAlert();
+  const updateAlert = useUpdateAlert();
+  const { permission } = useProjectPermission();
   const { name: destinationName } = SECRET_SYNC_MAP[secretSync.destination];
   const { currentOrg } = useOrganization();
   const steps = getFormSteps(secretSync, destinationName);
@@ -139,14 +187,26 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
   const [destinationConfigToCheck, setDestinationConfigToCheck] = useState<unknown>(null);
   const [checkDuplicateEnabled, setCheckDuplicateEnabled] = useState(false);
   const [storedDuplicateProjectId, setStoredDuplicateProjectId] = useState<string | undefined>();
+  // Fixed at open: a later refetch must not change what a save compares against, or saving an unrelated
+  // sync change could write over alert changes made elsewhere.
+  const [savedFailureAlert] = useState(
+    () =>
+      failureAlert && {
+        id: failureAlert.id,
+        enabled: failureAlert.enabled,
+        channels: failureAlert.channels.map(toChannelForm)
+      }
+  );
 
   const formMethods = useForm<TSecretSyncForm>({
-    resolver: zodResolver(UpdateSecretSyncFormSchema),
+    resolver: zodResolver(UpdateSecretSyncFormSchema(savedFailureAlert)),
     defaultValues: {
       ...secretSync,
       environment: secretSync.environment ?? undefined,
       secretPath: secretSync.folder?.path,
-      description: secretSync.description ?? ""
+      description: secretSync.description ?? "",
+      isFailureAlertEnabled: savedFailureAlert?.enabled ?? false,
+      channels: savedFailureAlert?.channels ?? [buildProjectAdminsChannel(secretSync.projectId)]
     } as Partial<TSecretSyncForm>,
     reValidateMode: "onChange"
   });
@@ -160,9 +220,52 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
     { enabled: checkDuplicateEnabled && Boolean(destinationConfigToCheck) }
   );
 
+  const saveFailureAlert = useCallback(
+    async (isFailureAlertEnabled: boolean, channels: TChannelForm[], canManage: boolean) => {
+      if (isFailureAlertUnavailable || !canManage) return;
+
+      if (savedFailureAlert) {
+        if (isFailureAlertEnabled) {
+          const hasChannelChanges =
+            serializeFailureAlertChannels(channels) !==
+            serializeFailureAlertChannels(savedFailureAlert.channels);
+          if (savedFailureAlert.enabled && !hasChannelChanges) return;
+          await updateAlert.mutateAsync({
+            alertId: savedFailureAlert.id,
+            enabled: true,
+            channels: channels.map(toChannelInput)
+          });
+        } else if (savedFailureAlert.enabled) {
+          await updateAlert.mutateAsync({ alertId: savedFailureAlert.id, enabled: false });
+        }
+        return;
+      }
+
+      if (!isFailureAlertEnabled) return;
+      await createAlert.mutateAsync({
+        name: DEFAULT_ALERT_NAMES[AlertEventType.SecretSyncFailed],
+        resourceType: AlertResourceType.SecretSync,
+        resourceId: secretSync.id,
+        eventType: AlertEventType.SecretSyncFailed,
+        projectId: secretSync.projectId,
+        enabled: true,
+        condition: null,
+        channels: channels.map(toChannelInput)
+      });
+    },
+    [
+      isFailureAlertUnavailable,
+      savedFailureAlert,
+      updateAlert,
+      createAlert,
+      secretSync.id,
+      secretSync.projectId
+    ]
+  );
+
   const performUpdate = useCallback(
     async (formData: TSecretSyncForm) => {
-      const { environment, connection, ...updateData } = formData;
+      const { environment, connection, isFailureAlertEnabled, channels, ...updateData } = formData;
       const updatedSecretSync = await updateSecretSync.mutateAsync({
         syncId: secretSync.id,
         ...updateData,
@@ -171,13 +274,35 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
         projectId: secretSync.projectId
       });
 
+      try {
+        await saveFailureAlert(
+          isFailureAlertEnabled,
+          channels,
+          canManageFailureAlert(permission, {
+            environment: environment?.slug,
+            secretPath: updateData.secretPath,
+            connectionId: connection.id
+          })
+        );
+      } catch {
+        // MutationCache reports why the alert request failed. The sync itself is saved either way.
+      }
+
       createNotification({
         text: `Successfully updated ${destinationName} Sync`,
         type: "success"
       });
       onComplete(updatedSecretSync);
     },
-    [updateSecretSync, secretSync.id, secretSync.projectId, destinationName, onComplete]
+    [
+      updateSecretSync,
+      saveFailureAlert,
+      permission,
+      secretSync.id,
+      secretSync.projectId,
+      destinationName,
+      onComplete
+    ]
   );
 
   useEffect(() => {
@@ -241,6 +366,12 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
   const isLoading = isSubmitting || isCheckingDuplicate;
   const currentStep = steps[selectedStepIndex];
 
+  const goToFirstErrorStep = (errors: FieldErrors<TSecretSyncForm>) => {
+    if (errors.channels || errors.isFailureAlertEnabled) {
+      setSelectedStepIndex(steps.findIndex((step) => step.key === "alerts"));
+    }
+  };
+
   const renderStep = () => {
     switch (currentStep.key) {
       case "details":
@@ -251,6 +382,14 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
         return <SecretSyncDestinationFields />;
       case "initialSync":
         return <SecretSyncInitialSyncBehaviorFields />;
+      case "alerts":
+        return (
+          <SecretSyncAlertsFields
+            projectId={secretSync.projectId}
+            syncId={secretSync.id}
+            isAlertUnavailable={isFailureAlertUnavailable}
+          />
+        );
       case "options":
         return (
           <SecretSyncOptionsFields hideInitialSync>
@@ -287,7 +426,10 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
 
   return (
     <FormProvider {...formMethods}>
-      <form className="flex h-full min-h-0 flex-col" onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="flex h-full min-h-0 flex-col"
+        onSubmit={handleSubmit(onSubmit, goToFirstErrorStep)}
+      >
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
             <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
@@ -395,5 +537,41 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
         isDisabled={currentOrg?.blockDuplicateSecretSyncDestinations}
       />
     </FormProvider>
+  );
+};
+
+export const EditSecretSyncForm = (props: Props) => {
+  const { secretSync } = props;
+
+  const {
+    data: alerts,
+    isFetchedAfterMount,
+    isError
+  } = useListAlerts(
+    {
+      resourceType: AlertResourceType.SecretSync,
+      resourceId: secretSync.id,
+      projectId: secretSync.projectId
+    },
+    // A cached list can predate a change made elsewhere, and the form starts from this read.
+    { refetchOnMount: "always" }
+  );
+
+  // The alert goes into the default values rather than a later resetField, which ignores fields
+  // that aren't registered yet, and the Alerts step mounts last.
+  if (!isFetchedAfterMount) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" label="Loading secret sync" />
+      </div>
+    );
+  }
+
+  return (
+    <EditSecretSyncFormContent
+      {...props}
+      failureAlert={alerts?.find((alert) => alert.eventType === AlertEventType.SecretSyncFailed)}
+      isFailureAlertUnavailable={isError}
+    />
   );
 };

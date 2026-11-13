@@ -16,6 +16,7 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
@@ -59,6 +60,7 @@ import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
 import { areSecretSyncDestinationConfigsEqual } from "./secret-sync-duplicate-check";
+import { SECRET_SYNC_RESOURCE_TYPE } from "./secret-sync-events";
 import {
   DESTINATION_DUPLICATE_CHECK_MAP,
   SECRET_SYNC_CONNECTION_MAP,
@@ -90,6 +92,7 @@ type TSecretSyncServiceFactoryDep = {
     "queueSecretSyncSyncSecretsById" | "queueSecretSyncImportSecretsById" | "queueSecretSyncRemoveSecretsById"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources">;
 };
 
 export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFactory>;
@@ -110,7 +113,8 @@ export const secretSyncServiceFactory = ({
   projectBotService,
   secretSyncQueue,
   keyStore,
-  licenseService
+  licenseService,
+  alertService
 }: TSecretSyncServiceFactoryDep) => {
   const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
     sync.connectionId ?? sync.connection?.id;
@@ -1070,7 +1074,13 @@ export const secretSyncServiceFactory = ({
       return updatedSecretSync;
     }
 
-    await secretSyncDAL.deleteById(syncId);
+    await secretSyncDAL.transaction(async (tx) => {
+      await alertService.deleteAlertsForDeletedResources(
+        { resourceType: SECRET_SYNC_RESOURCE_TYPE, resourceIds: [syncId] },
+        tx
+      );
+      await secretSyncDAL.deleteById(syncId, tx);
+    });
 
     return secretSync as TSecretSync;
   };

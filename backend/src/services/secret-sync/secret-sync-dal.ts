@@ -185,22 +185,23 @@ export const secretSyncDALFactory = (
   const updateById = async <IncludeFolderPath extends boolean = true>(
     syncId: string,
     data: Parameters<(typeof secretSyncOrm)["updateById"]>[1],
-    { includeFolderPath = true as IncludeFolderPath }: TFolderPathOptions<IncludeFolderPath> = {}
+    { includeFolderPath = true as IncludeFolderPath, tx }: TFolderPathOptions<IncludeFolderPath> & { tx?: Knex } = {}
   ): Promise<TSecretSyncForFolderOption<IncludeFolderPath>> => {
-    const secretSync = (await secretSyncOrm.transaction(async (tx) => {
-      const sync = await secretSyncOrm.updateById(syncId, data, tx);
+    const updateAndFind = async (trx: Knex) => {
+      const sync = await secretSyncOrm.updateById(syncId, data, trx);
 
       return baseSecretSyncQuery({
         filter: { id: sync.id },
         db,
-        tx
+        tx: trx
       }).first();
-    }))!;
+    };
+    const secretSync = (await (tx ? updateAndFind(tx) : secretSyncOrm.transaction(updateAndFind)))!;
 
     // TODO (scott): replace with cached folder path once implemented
     const [folderWithPath] =
       includeFolderPath && secretSync.folderId
-        ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
+        ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId], tx)
         : [];
     return applyFolderOption(expandSecretSync(secretSync, folderWithPath), includeFolderPath);
   };
