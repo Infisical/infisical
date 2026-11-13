@@ -17,14 +17,11 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { Label } from "@infisical/cipher/ui/label";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 
 import { PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 
 import { failed, saved } from "../../toast";
-import { Muted } from "../../ui";
 
 export const ProductRoleField = ({
   id,
@@ -39,13 +36,13 @@ export const ProductRoleField = ({
 }) => (
   <RadioGroup aria-label="Product role" value={value} onValueChange={onChange} disabled={disabled}>
     {PAM_PRODUCT_ROLE_OPTIONS.map((option) => (
-      <Inline key={option.value} gap={12} align="start">
-        <RadioGroupItem id={`${id}-${option.value}`} value={option.value} />
-        <Stack gap={4}>
-          <Label htmlFor={`${id}-${option.value}`}>{option.label}</Label>
-          <Muted>{option.description}</Muted>
-        </Stack>
-      </Inline>
+      <RadioGroupItem
+        key={option.value}
+        id={`${id}-${option.value}`}
+        value={option.value}
+        label={option.label}
+        description={option.description}
+      />
     ))}
   </RadioGroup>
 );

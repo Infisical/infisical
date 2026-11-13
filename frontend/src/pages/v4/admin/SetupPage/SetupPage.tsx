@@ -7,12 +7,10 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Media, Tile } from "@infisical/cipher/ui/item";
-import { Label } from "@infisical/cipher/ui/label";
 import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { ProgressSteps } from "@infisical/cipher/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
-import { SmallText } from "@infisical/cipher/ui/text";
 import { useRouteContext, useRouter } from "@tanstack/react-router";
 import axios from "axios";
 import { Mail } from "lucide-react";
@@ -292,13 +290,13 @@ const SetupFlow = ({
                       description: "Optionally limited to email domains you allow."
                     }
                   ].map((option) => (
-                    <Inline key={option.value} gap={12} align="start" wrap={false}>
-                      <RadioGroupItem id={`signup-${option.value}`} value={option.value} />
-                      <Stack gap={4}>
-                        <Label htmlFor={`signup-${option.value}`}>{option.label}</Label>
-                        <SmallText muted>{option.description}</SmallText>
-                      </Stack>
-                    </Inline>
+                    <RadioGroupItem
+                      key={option.value}
+                      id={`signup-${option.value}`}
+                      value={option.value}
+                      label={option.label}
+                      description={option.description}
+                    />
                   ))}
                 </RadioGroup>
               </Field>

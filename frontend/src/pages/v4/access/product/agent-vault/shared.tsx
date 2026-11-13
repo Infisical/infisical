@@ -10,8 +10,6 @@ import {
 } from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Label } from "@infisical/cipher/ui/label";
-import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -28,7 +26,6 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useV4Adapter } from "../../../data/adapters";
 import { useDebounced } from "../../org/use-debounced";
 import { failed, saved, toast } from "../../toast";
-import { Muted } from "../../ui";
 
 export const DEFAULT_PRODUCT_ROLE = ProjectMembershipRole.Member;
 
@@ -69,13 +66,13 @@ export const ProductRoleField = ({
   <Field label="Product role" group>
     <RadioGroup value={value} onValueChange={onChange} aria-label="Product role">
       {AGENT_VAULT_PRODUCT_ROLE_OPTIONS.map((role) => (
-        <Stack key={role.value} gap={4}>
-          <Stack gap={8}>
-            <RadioGroupItem id={`${idPrefix}-${role.value}`} value={role.value} />
-            <Label htmlFor={`${idPrefix}-${role.value}`}>{role.label}</Label>
-          </Stack>
-          <Muted>{role.description}</Muted>
-        </Stack>
+        <RadioGroupItem
+          key={role.value}
+          id={`${idPrefix}-${role.value}`}
+          value={role.value}
+          label={role.label}
+          description={role.description}
+        />
       ))}
     </RadioGroup>
   </Field>
