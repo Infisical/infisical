@@ -8,10 +8,11 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { actorContext } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
 import {
   AgentVaultOauthClientIdSchema,
   AgentVaultOauthClientSecretSchema,
+  AgentVaultProjectIdSchema,
   AgentVaultServerUrlSchema
 } from "./agent-vault-schemas";
 
@@ -35,7 +36,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
         "Start an OAuth authorization for an MCP service: discovers the server's authorization server, registers a client, and returns the URL to sign in at.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       body: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.OAUTH.accessBundleId),
+        projectId: AgentVaultProjectIdSchema,
         serverUrl: AgentVaultServerUrlSchema.describe(AGENT_VAULT.OAUTH.serverUrl),
         serviceId: z.string().uuid().optional().describe(AGENT_VAULT.OAUTH.serviceId),
         clientId: AgentVaultOauthClientIdSchema.optional().describe(AGENT_VAULT.OAUTH.clientId),
@@ -63,14 +64,12 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
-        actorContext(req),
-        req.body.accessBundleId
-      );
+      const { projectId: requestedProjectId, ...body } = req.body;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       return server.services.agentVaultOauth.createAuthorization({
+        ...body,
         projectId,
-        ctx: actorContext(req),
-        ...req.body
+        ctx: actorContext(req)
       });
     }
   });

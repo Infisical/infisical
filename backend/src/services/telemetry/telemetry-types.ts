@@ -330,6 +330,8 @@ export enum PostHogEventTypes {
   AgentVaultSkillDeleted = "Agent Vault Skill Deleted",
   AgentVaultAccessBundleSkillAdded = "Agent Vault Access Bundle Skill Added",
   AgentVaultAccessBundleSkillRemoved = "Agent Vault Access Bundle Skill Removed",
+  AgentVaultAccessBundleServiceAdded = "Agent Vault Access Bundle Service Added",
+  AgentVaultAccessBundleServiceRemoved = "Agent Vault Access Bundle Service Removed",
   AgentVaultSkillsDelivered = "Agent Vault Skills Delivered",
   AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
@@ -2454,7 +2456,8 @@ export type TAgentVaultAccessBundleDeletedEvent = {
 export type TAgentVaultServiceCreatedEvent = {
   event: PostHogEventTypes.AgentVaultServiceCreated;
   properties: TAgentVaultEventBase & {
-    accessBundleId: string;
+    // The access bundles it was added to in the same request.
+    accessBundleCount: number;
     serviceId: string;
     serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
@@ -2471,7 +2474,6 @@ export type TAgentVaultServiceCreatedEvent = {
 export type TAgentVaultServiceUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultServiceUpdated;
   properties: TAgentVaultEventBase & {
-    accessBundleId: string;
     serviceId: string;
     serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
@@ -2487,7 +2489,7 @@ export type TAgentVaultServiceUpdatedEvent = {
 
 export type TAgentVaultServiceDeletedEvent = {
   event: PostHogEventTypes.AgentVaultServiceDeleted;
-  properties: TAgentVaultEventBase & { accessBundleId: string; serviceId: string };
+  properties: TAgentVaultEventBase & { serviceId: string };
 };
 
 export type TAgentVaultVariableCreatedEvent = {
@@ -2541,6 +2543,16 @@ export type TAgentVaultAccessBundleSkillAddedEvent = {
 export type TAgentVaultAccessBundleSkillRemovedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleSkillRemoved;
   properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleServiceAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleServiceAdded;
+  properties: TAgentVaultEventBase & { serviceId: string; accessBundleId: string; serviceType: string };
+};
+
+export type TAgentVaultAccessBundleServiceRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleServiceRemoved;
+  properties: TAgentVaultEventBase & { serviceId: string; accessBundleId: string; serviceType: string };
 };
 
 // Fired once per agent start by the route the CLI calls with a session token, which has no request actor.
@@ -2681,6 +2693,8 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultSkillDeletedEvent
   | TAgentVaultAccessBundleSkillAddedEvent
   | TAgentVaultAccessBundleSkillRemovedEvent
+  | TAgentVaultAccessBundleServiceAddedEvent
+  | TAgentVaultAccessBundleServiceRemovedEvent
   | TAgentVaultSkillsDeliveredEvent
   | TAgentVaultAccessBundleMemberAddedEvent
   | TAgentVaultAccessBundleMemberRemovedEvent

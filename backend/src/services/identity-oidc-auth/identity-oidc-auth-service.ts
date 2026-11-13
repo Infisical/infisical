@@ -11,11 +11,11 @@ import {
   TIdentityOidcAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TOidcTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -39,7 +39,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent, safeRequest } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeJwksFetcher, safeRequest } from "@app/lib/validator";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -79,7 +79,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -197,11 +197,9 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      const requestAgent = await buildSsrfSafeAgent(jwksUri, { ca: caCert || undefined });
-
       const client = new JwksClient({
         jwksUri,
-        requestAgent
+        fetcher: await buildSsrfSafeJwksFetcher(jwksUri, { ca: caCert || undefined })
       });
 
       const { kid } = decodedToken.header as { kid?: string };
@@ -657,7 +655,7 @@ export const identityOidcAuthServiceFactory = ({
 
     let template: TIdentityAuthTemplates | undefined;
     if (templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -715,7 +713,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -849,7 +847,7 @@ export const identityOidcAuthServiceFactory = ({
     // link CHANGE requires the attach-template permission; a re-assert must stay editable
     // for actors that hold identity EditAuth alone
     if (templateId && templateId !== identityOidcAuth.templateId) {
-      if (!plan.machineIdentityAuthTemplates) {
+      if (!plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
         throw new BadRequestError({
           message:
             "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -914,7 +912,7 @@ export const identityOidcAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

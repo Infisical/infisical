@@ -1,17 +1,22 @@
-import type { TFeatureSet } from "@app/ee/services/license/license-types";
+import type { InstanceEntitlements, TInstanceFeatures, TLicenseService } from "@app/domains/platform/license/ce/module";
 
-// Turns plan features on for the whole server until the returned function is called, for a spec
-// that exercises a paid feature. The e2e license is a fixed default (see the ./license-fns alias in
-// vitest.e2e.config.mts) and getPlan hands out this one object, so the override is not scoped to an
-// org: call the restore in afterAll, and keep specs that read it in the same file.
-export const overrideLicenseFeatures = (features: Partial<Record<keyof TFeatureSet, boolean | number>>) => {
-  const { license } = (globalThis as unknown as { testServices: { license: { onPremFeatures: TFeatureSet } } })
+// Innermost override last, so a spec can override inside an override and restore in any order.
+const overrides: InstanceEntitlements[] = [];
+
+// Server-wide, not per org: every org gets the instance's plan. Call the restore in afterAll and keep
+// specs that rely on it in the same file. LicenseService reads the instance license only through
+// getInstanceEntitlements, so spying on it covers every check.
+export const overrideLicenseFeatures = (features: Partial<Record<keyof TInstanceFeatures, boolean | number>>) => {
+  const { licenseService } = (globalThis as unknown as { testServices: { licenseService: TLicenseService } })
     .testServices;
-  const plan = license.onPremFeatures as unknown as Record<string, unknown>;
-  const original = Object.fromEntries(Object.keys(features).map((key) => [key, plan[key]]));
-  Object.assign(plan, features);
+  const overridden = licenseService
+    .getInstanceEntitlements()
+    .withFeatures(features as Partial<TInstanceFeatures>);
+  overrides.push(overridden);
+  const spy = vi.spyOn(licenseService, "getInstanceEntitlements").mockImplementation(() => overrides[overrides.length - 1]);
 
   return () => {
-    Object.assign(plan, original);
+    overrides.splice(overrides.lastIndexOf(overridden), 1);
+    if (!overrides.length) spy.mockRestore();
   };
 };

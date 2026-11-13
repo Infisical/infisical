@@ -1,0 +1,8 @@
+# worker/agent-vault-env.sh
+case "${0##*/}" in agent|cursor-agent) return 0 ;; esac
+
+SESSION_TOKEN=$(cat /var/run/worker/session-token)
+PROXY_URL="http://x-agent-vault:${SESSION_TOKEN}@agent-vault-proxy.agent-vault.svc.cluster.local:17323"
+export HTTPS_PROXY="$PROXY_URL" HTTP_PROXY="$PROXY_URL" https_proxy="$PROXY_URL" http_proxy="$PROXY_URL"
+export NODE_USE_ENV_PROXY=1
+unset SESSION_TOKEN PROXY_URL

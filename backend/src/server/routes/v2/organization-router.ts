@@ -1,9 +1,16 @@
 import { z } from "zod";
 
-import { OrgMembershipsSchema, OrgMembershipStatus, ProjectMembershipsSchema, ProjectsSchema } from "@app/db/schemas";
+import {
+  OrgMembershipsSchema,
+  OrgMembershipStatus,
+  ProjectMembershipsSchema,
+  ProjectsSchema,
+  ProjectType
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
@@ -408,11 +415,31 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        organizationId: z.string().trim().describe(ORGANIZATIONS.DELETE_USER_MEMBERSHIP.organizationId),
-        membershipId: z.string().trim().describe(ORGANIZATIONS.DELETE_USER_MEMBERSHIP.membershipId)
+        organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.organizationId),
+        membershipId: z.string().trim().describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.membershipId)
+      }),
+      querystring: z.object({
+        limit: z.coerce
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.limit),
+        offset: z.coerce.number().int().min(0).default(0).describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.offset),
+        search: z.string().trim().max(255).optional().describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.search),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.orderDirection),
+        excludeProjectType: z
+          .nativeEnum(ProjectType)
+          .optional()
+          .describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.excludeProjectType)
       }),
       response: {
         200: z.object({
+          totalCount: z.number().describe(ORGANIZATIONS.LIST_USER_PROJECT_MEMBERSHIPS.totalCount),
           memberships: ProjectMembershipsSchema.extend({
             user: SanitizedUserSchema,
             project: ProjectsSchema.pick({ name: true, id: true, type: true }),
@@ -438,15 +465,15 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const memberships = await server.services.org.listProjectMembershipsByOrgMembershipId({
+      return server.services.org.listProjectMembershipsByOrgMembershipId({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
-        orgMembershipId: req.params.membershipId
+        orgMembershipId: req.params.membershipId,
+        ...req.query
       });
-      return { memberships };
     }
   });
 

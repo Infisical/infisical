@@ -41,6 +41,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { GitHubPullRequestEvent } from "./github-secret-scanning-enums";
 import { GitHubPullRequestScanMetadataSchema } from "./github-secret-scanning-schemas";
 import {
+  TGitHubOversizedFile,
   TGitHubPullRequestScanMetadata,
   TGitHubPullRequestScanPayload,
   TQueueGitHubPullRequestEvent
@@ -55,6 +56,8 @@ const COMMIT_FILES_PER_PAGE = 100;
 const COMMIT_MAX_LISTED_FILES = 3000;
 // A file whose patch GitHub leaves out is fetched whole to rebuild it, so its size is capped.
 const MISSING_PATCH_MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MISSING_PATCH_MAX_FILE_MB = MISSING_PATCH_MAX_FILE_BYTES / 1024 / 1024;
+const CHECK_RUN_MAX_LISTED_OVERSIZED_FILES = 10;
 // Files are scanned in batches as they are fetched, so a large scan never holds every patch in memory at once.
 const SCAN_BATCH_MAX_FILES = 50;
 // GitHub rejects a check run update carrying more than 50 annotations; more are sent as further updates.
@@ -109,6 +112,7 @@ export type TPullRequestCheckRunResult = {
   title: string;
   summary: string;
   findings?: TCheckRunFinding[];
+  oversizedFiles?: TGitHubOversizedFile[];
   offerSkipActions?: boolean;
 };
 
@@ -302,9 +306,10 @@ const scanGitHubFilesAndGetFindings = async (
 };
 
 /**
- * A commit that changes more files than GitHub lists can't be fully scanned from the API. A pull request check passes
- * `requireCompleteCommits` so it fails rather than passing on part of the commit; a push scan scans what it can. The
- * same goes for a file whose patch GitHub left out and that can't be rebuilt from its contents.
+ * The files GitHub's API limits keep out of a scan are skipped and returned, so a pull request check can report them:
+ * the files past the ones GitHub lists for a commit, and a file whose patch GitHub left out that is too large to fetch.
+ * Retrying never changes either. A file whose contents couldn't be read might be readable on a retry, so a pull request
+ * check passes `failOnUnreadableFiles` to fail rather than pass without it; a push scan scans what it can.
  */
 export const scanGitHubCommitsAndGetFindings = async ({
   octokit,
@@ -312,30 +317,28 @@ export const scanGitHubCommitsAndGetFindings = async ({
   resourceName,
   commits,
   configPath,
-  requireCompleteCommits
+  failOnUnreadableFiles
 }: {
   octokit: TGitHubOctokit;
   repositoryFullName: string;
   resourceName: string;
   commits: TGitHubCommitToScan[];
   configPath?: string;
-  requireCompleteCommits?: boolean;
-}): Promise<TFindingsPayload> => {
+  failOnUnreadableFiles?: boolean;
+}): Promise<{ findings: TFindingsPayload; oversizedFiles: TGitHubOversizedFile[]; truncatedCommitShas: string[] }> => {
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const filesToScan: TGitHubFileToScan[] = [];
   const findings: TFindingsPayload = [];
+  const oversizedFiles: TGitHubOversizedFile[] = [];
+  const truncatedCommitShas: string[] = [];
 
   for (const commit of commits) {
     // eslint-disable-next-line no-await-in-loop
     const { files, parentSha, isComplete } = await listCommitFiles(octokit, { owner, repo, sha: commit.sha });
 
     if (!isComplete) {
-      if (requireCompleteCommits) {
-        throw new Error(
-          `Commit ${commit.sha.slice(0, 7)} changes more than ${COMMIT_MAX_LISTED_FILES.toLocaleString("en-US")} files, more than GitHub lists, so it can't be fully scanned.`
-        );
-      }
+      truncatedCommitShas.push(commit.sha);
 
       logger.warn(
         `secretScanningV2DiffScan: GitHub - commit files truncated, scanning the first ${files.length} [repository=${repositoryFullName}] [commit=${commit.sha}]`
@@ -361,19 +364,16 @@ export const scanGitHubCommitsAndGetFindings = async ({
             file
           });
         } catch (error) {
-          const reason =
-            error instanceof MissingPatchFileTooLargeError
-              ? `it is larger than ${MISSING_PATCH_MAX_FILE_BYTES / 1024 / 1024} MB`
-              : "its contents couldn't be read from GitHub";
-
           logger.warn(
             error,
             `secretScanningV2DiffScan: GitHub - file patch missing and couldn't be rebuilt [repository=${repositoryFullName}] [commit=${commit.sha}] [file=${file.filename}]`
           );
 
-          if (requireCompleteCommits) {
+          if (error instanceof MissingPatchFileTooLargeError) {
+            oversizedFiles.push({ commitSha: commit.sha, filename: file.filename });
+          } else if (failOnUnreadableFiles) {
             throw new Error(
-              `Commit ${commit.sha.slice(0, 7)}'s change to ${file.filename} is too large for GitHub to include, and the file couldn't be scanned in full because ${reason}.`
+              `Commit ${commit.sha.slice(0, 7)}'s change to ${file.filename} is too large for GitHub to include, and the file's contents couldn't be read from GitHub to scan it in full.`
             );
           }
         }
@@ -392,7 +392,7 @@ export const scanGitHubCommitsAndGetFindings = async ({
 
   findings.push(...(await scanGitHubFilesAndGetFindings(filesToScan, resourceName, configPath)));
 
-  return findings;
+  return { findings, oversizedFiles, truncatedCommitShas };
 };
 
 // Compares against the exact head the check was created for, so commits pushed after it are left to their own check.
@@ -456,16 +456,19 @@ export const scanGitHubPullRequest = async ({
     headSha: payload.pullRequest.headSha
   });
 
-  const findings = await scanGitHubCommitsAndGetFindings({
+  const { findings, oversizedFiles, truncatedCommitShas } = await scanGitHubCommitsAndGetFindings({
     octokit,
     repositoryFullName: payload.repository.full_name,
     resourceName,
     commits,
     configPath,
-    requireCompleteCommits: true
+    failOnUnreadableFiles: true
   });
 
-  return { findings, details: { scannedCommitCount: commits.length, totalCommitCount: totalCommits } };
+  return {
+    findings,
+    details: { scannedCommitCount: commits.length, totalCommitCount: totalCommits, oversizedFiles, truncatedCommitShas }
+  };
 };
 
 export const createPullRequestCheckRun = async ({
@@ -609,6 +612,16 @@ const toCheckRunAnnotations = (findings: TCheckRunFinding[]) =>
     message: `${description.replace(/\.+$/, "")}. Found in commit ${commit.slice(0, 7)}.`
   }));
 
+const toOversizedFileAnnotations = (oversizedFiles: TGitHubOversizedFile[]) =>
+  oversizedFiles.map(({ commitSha, filename }) => ({
+    path: filename,
+    start_line: 1,
+    end_line: 1,
+    annotation_level: "warning" as const,
+    title: "File not scanned for secrets",
+    message: `This file is larger than ${MISSING_PATCH_MAX_FILE_MB} MB and its change in commit ${commitSha.slice(0, 7)} is too large for GitHub to include, so Infisical didn't scan it. Check it for secrets before merging.`
+  }));
+
 const escapeMarkdownTableCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 
 // GitHub splits table cells on "|" even inside a link, so it is encoded along with the characters that end a link.
@@ -621,21 +634,55 @@ const toStatusLabel = (status?: string | null) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
+const getOversizedFilesNote = (oversizedFiles: TGitHubOversizedFile[]) => {
+  if (!oversizedFiles.length) return "";
+
+  const listed = oversizedFiles
+    .slice(0, CHECK_RUN_MAX_LISTED_OVERSIZED_FILES)
+    .map(({ commitSha, filename }) => `${commitSha.slice(0, 7)} ${filename.replace(/\r?\n/g, " ")}`);
+  const unlistedCount = oversizedFiles.length - listed.length;
+
+  return [
+    `Infisical didn't scan ${oversizedFiles.length} file(s) larger than ${MISSING_PATCH_MAX_FILE_MB} MB whose changes are too large for GitHub to include. Check them for secrets before merging:`,
+    `\`\`\`\n${listed.join("\n")}\n\`\`\``,
+    unlistedCount ? `${unlistedCount} more file(s) were not scanned.` : ""
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+};
+
 export const getPullRequestScanCheckRunResult = ({
   findings: allFindings,
   scannedCommitCount,
   totalCommitCount,
+  oversizedFiles = [],
+  truncatedCommitShas = [],
   findingsUrl
 }: {
   findings: (TCheckRunFinding & { id?: string; status?: string | null })[];
   scannedCommitCount: number;
   totalCommitCount: number;
+  oversizedFiles?: TGitHubOversizedFile[];
+  truncatedCommitShas?: string[];
   findingsUrl?: string;
 }): TPullRequestCheckRunResult => {
-  const truncationNote =
+  const truncationNote = [
     scannedCommitCount < totalCommitCount
       ? `This pull request has ${totalCommitCount} commits. Infisical scanned the first ${scannedCommitCount}; later commits were not scanned.`
-      : "";
+      : "",
+    truncatedCommitShas.length
+      ? `${truncatedCommitShas.length} commit(s) change more than ${COMMIT_MAX_LISTED_FILES.toLocaleString("en-US")} files, more than GitHub lists. Infisical scanned the first ${COMMIT_MAX_LISTED_FILES.toLocaleString("en-US")} files of each: ${truncatedCommitShas.map((sha) => sha.slice(0, 7)).join(", ")}.`
+      : "",
+    getOversizedFilesNote(oversizedFiles)
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const truncationAlert = truncationNote
+    ? `> [!WARNING]\n${truncationNote
+        .split("\n")
+        .map((line) => (line ? `> ${line}` : ">"))
+        .join("\n")}`
+    : "";
 
   const findings = allFindings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
   const skippedCount = allFindings.length - findings.length;
@@ -646,10 +693,11 @@ export const getPullRequestScanCheckRunResult = ({
       title: `${skippedCount} secret(s) skipped`,
       summary: [
         `Found ${skippedCount} secret(s) in the commits of this pull request, all marked as false positives or ignored in Infisical.`,
-        truncationNote
+        truncationAlert
       ]
         .filter(Boolean)
-        .join("\n\n")
+        .join("\n\n"),
+      oversizedFiles
     };
   }
 
@@ -657,8 +705,11 @@ export const getPullRequestScanCheckRunResult = ({
     if (truncationNote) {
       return {
         conclusion: "neutral",
-        title: "Scan incomplete",
-        summary: `No secrets found in the scanned commits. ${truncationNote}`
+        title: oversizedFiles.length
+          ? `No secrets found, ${oversizedFiles.length} file(s) not scanned`
+          : "Scan incomplete",
+        summary: `No secrets found in the scanned commits.\n\n${truncationAlert}`,
+        oversizedFiles
       };
     }
 
@@ -673,7 +724,7 @@ export const getPullRequestScanCheckRunResult = ({
     `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
     "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
     skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
-    truncationNote
+    truncationAlert
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -728,6 +779,7 @@ export const getPullRequestScanCheckRunResult = ({
     title: `${findings.length} secret(s) found`,
     summary,
     findings,
+    oversizedFiles,
     offerSkipActions: true
   };
 };
@@ -758,7 +810,13 @@ export const completePullRequestCheckRun = async ({
   const octokit = getGitHubRadarInstallationOctokit(installationId);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
-  const annotations = toCheckRunAnnotations((result.findings ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS));
+  const findingAnnotations = toCheckRunAnnotations((result.findings ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS));
+  const annotations = [
+    ...findingAnnotations,
+    ...toOversizedFileAnnotations(
+      (result.oversizedFiles ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS - findingAnnotations.length)
+    )
+  ];
   const [firstBatch = [], ...remainingBatches] = chunkArray(annotations, CHECK_RUN_ANNOTATIONS_PER_REQUEST);
 
   await octokit.checks.update({
@@ -848,6 +906,8 @@ export const createPullRequestScanReport = ({
           findings,
           scannedCommitCount: details?.scannedCommitCount ?? 0,
           totalCommitCount: details?.totalCommitCount ?? 0,
+          oversizedFiles: details?.oversizedFiles,
+          truncatedCommitShas: details?.truncatedCommitShas,
           findingsUrl
         })
       }),

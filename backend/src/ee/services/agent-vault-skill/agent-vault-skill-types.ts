@@ -28,6 +28,8 @@ export type TBundleSkillsDTO = TAgentVaultSkillScoped & { accessBundleId: string
 
 export type TBundleSkillDTO = TBundleSkillsDTO & { skillId: string };
 
+export type TAddBundleSkillsDTO = TBundleSkillsDTO & { skillIds: string[] };
+
 export type TAgentVaultSkill = {
   id: string;
   name: string;

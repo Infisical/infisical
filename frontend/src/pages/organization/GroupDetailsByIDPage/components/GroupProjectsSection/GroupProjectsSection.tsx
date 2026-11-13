@@ -1,6 +1,7 @@
 import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { AddToProductDialog } from "@app/components/organization/ProductAccess";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -13,34 +14,57 @@ import {
   ConfirmationAlertDialog
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
-import { useDeleteGroupFromWorkspace as useRemoveProjectFromGroup } from "@app/hooks/api";
+import {
+  useAddGroupToWorkspace,
+  useDeleteGroupFromWorkspace as useRemoveProjectFromGroup,
+  useListGroupProjects
+} from "@app/hooks/api";
+import { FilterReturnedProjects } from "@app/hooks/api/groups/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AddGroupProjectModal } from "../AddGroupProjectModal";
 import { GroupProjectsTable } from "./GroupProjectsTable";
 
 type Props = {
   groupId: string;
-  groupSlug: string;
   hideAddToProject?: boolean;
 };
 
-export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = false }: Props) => {
+export const GroupProjectsSection = ({ groupId, hideAddToProject = false }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "addGroupProjects",
+    "addGroupToProduct",
     "removeProjectFromGroup"
   ] as const);
 
   const { mutateAsync: removeProjectFromGroupMutateAsync } = useRemoveProjectFromGroup();
+  const { mutateAsync: addGroupToProject } = useAddGroupToWorkspace();
 
-  const handleRemoveProjectFromGroup = async (projectId: string, projectName: string) => {
+  // The listing caps a page at 100, so a group in more projects may be offered one it already has;
+  // the server refuses that add and the dialog reports it.
+  const {
+    data: assignedProjects,
+    isPending: isAssignedProjectsLoading,
+    isError: isAssignedProjectsError
+  } = useListGroupProjects({
+    id: groupId,
+    offset: 0,
+    limit: 100,
+    search: "",
+    filter: FilterReturnedProjects.ASSIGNED_PROJECTS
+  });
+
+  const handleRemoveProjectFromGroup = async (
+    projectId: string,
+    projectType: string,
+    projectName: string
+  ) => {
     await removeProjectFromGroupMutateAsync({
       groupId,
-      projectId
+      projectId,
+      projectType
     });
 
     createNotification({
-      text: `Successfully removed the group from project ${projectName}`,
+      text: `Successfully removed the group from ${projectName}`,
       type: "success"
     });
 
@@ -51,8 +75,8 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Projects</CardTitle>
-          <CardDescription>Manage group project memberships</CardDescription>
+          <CardTitle>Products</CardTitle>
+          <CardDescription>Manage the products and projects this group can access</CardDescription>
           <CardAction>
             {!hideAddToProject && (
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
@@ -60,16 +84,13 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
                   <Button
                     isDisabled={!isAllowed}
                     onClick={() => {
-                      handlePopUpOpen("addGroupProjects", {
-                        groupId,
-                        slug: groupSlug
-                      });
+                      handlePopUpOpen("addGroupToProduct");
                     }}
                     size="xs"
                     variant="outline"
                   >
                     <PlusIcon />
-                    Add to Project
+                    Add to Product
                   </Button>
                 )}
               </OrgPermissionCan>
@@ -79,13 +100,28 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
         <CardContent>
           <GroupProjectsTable
             groupId={groupId}
-            groupSlug={groupSlug}
             handlePopUpOpen={handlePopUpOpen}
             hideAddToProject={hideAddToProject}
           />
         </CardContent>
       </Card>
-      <AddGroupProjectModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <AddToProductDialog
+        isOpen={popUp.addGroupToProduct.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addGroupToProduct", isOpen)}
+        title="Add Group to Product"
+        actorLabel="group"
+        memberProjectIds={assignedProjects?.projects.map(({ id }) => id)}
+        isMembershipsLoading={isAssignedProjectsLoading}
+        isMembershipsError={isAssignedProjectsError}
+        onAddToProject={(project, roleSlug) =>
+          addGroupToProject({
+            groupId,
+            projectId: project.id,
+            projectType: project.type,
+            role: roleSlug
+          })
+        }
+      />
       <ConfirmationAlertDialog
         isOpen={popUp.removeProjectFromGroup.isOpen}
         title={`Are you sure you want to remove the group from ${
@@ -97,10 +133,15 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
         onConfirm={() => {
           const projectData = popUp?.removeProjectFromGroup?.data as {
             projectId: string;
+            projectType: string;
             projectName: string;
           };
 
-          return handleRemoveProjectFromGroup(projectData.projectId, projectData.projectName);
+          return handleRemoveProjectFromGroup(
+            projectData.projectId,
+            projectData.projectType,
+            projectData.projectName
+          );
         }}
       />
     </>

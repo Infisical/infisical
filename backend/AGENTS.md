@@ -46,6 +46,8 @@ Run both suites from the repo root, which is the same entry point CI uses:
 - `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
 - `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
 - `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
+- `make test-api-integration`: `./src/**/*.integration-test.ts` (see `src/domains/AGENTS.md`). Runs on the host,
+  not the FIPS image, since Testcontainers needs Docker. `SPEC=` works the same
 - `make up-rotation-databases` — start the databases the secret rotation specs need, required
   only for a full run (`docker-compose.e2e-dbs.yml`, and the Oracle image is large)
 - `make down-test-suite-containers` — stop everything when finished
@@ -114,7 +116,7 @@ copy drifts on its own.
 `isTestMode` branches. Replace the module instead, from `test.alias` in
 `vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
 a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
-are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+are the worked examples, and the License domain's `./default-features` alias is the precedent.
 
 Four things decide whether this works:
 
@@ -240,11 +242,15 @@ site that receives a plain `Buffer`.
 
 ## Architecture
 
+### Domain Modules (new structure)
+
+New backend code goes in domain modules under `src/domains/` (one folder per capability, `ce/` and `ee/` editions, class-based `module.ts`). Read [`src/domains/AGENTS.md`](src/domains/AGENTS.md) before touching one, and follow its "Migrating a legacy module" checklist when moving a service there. The sections below cover the older `src/services/` layout, which sticks around until each service moves.
+
 ### Service Factory + Manual DI
 
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
 
-The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
+The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: `createDomains` and `await domains.license.start()` right after the cron job (legacy services depend on domains, never the reverse, and queue workers read the license as soon as they start), DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
 
 See `secretServiceFactory` in `src/services/secret/secret-service.ts` for a representative factory with ~20 dependencies. See `src/services/user/user-service.ts` for a simpler example (~8 dependencies).
 
@@ -638,6 +644,8 @@ Invariants worth knowing before extending it:
 - **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
 - **One alert per `(scope, resource, event)` for resource-bound alerts**, enforced by the partial `alert_unique_scope_resource_event_bound` index. A provider that sets `supportsScopeWideAlerts` also accepts alerts with no `resourceId`: such an alert watches every resource of its type in scope, several can watch the same event because they differ by condition, and `assertConditionInScope` is where the provider checks the IDs inside a condition, on create and on update (newly added IDs only). `findEnabledForEvent` matches exactly: the bound alerts for a `resourceId`, or the resource-less ones when it is null. To let a scope-wide provider hear another provider's events without a second outbox write, an event definition can declare `sourceEvent: { resourceType, eventKey }`; the consumer then runs the source resource's alerts plus the resource-less alerts of every event sourced from it (`alertProviderRegistry.findEventsBySource`), each under its own `eventType`. Certificate Manager-wide (`cert-manager`) and signer (`cert-manager.signer`) alerts are scope-wide providers, and creating or editing either requires the project Admin role, since PKI permissions are admin or member, not granular. **Every provider hook is opt-in, and its absence must reproduce the behaviour identity alerts had before any other provider existed.** `recipientPolicy` decides who can receive: `atOrgScope` validates and resolves user and group recipients against the org instead of the alert's project, and `allowEmailAddresses` accepts plain `EMAIL` recipients and makes test sends validate recipients like create and update do, instead of silently dropping out-of-scope ones (application alerts set both). `includeLastRun` adds `lastRun` to alert responses, and `resourceName` is only returned by providers that implement `getResourceNames`, and `filters` (read-only `{ id, name }` lists for the IDs inside a condition, keyed by kind, such as `applications` and `profiles` on a Certificate Manager-wide alert, with a null name for deleted IDs, matching how approval policies return approvers) only by providers that implement `getFilters`. Resolve such names there rather than adding ID filters to another domain's list endpoint. `assertChannelTypesAllowed` is where a provider gates paid channel types on create and on update (new, retyped, or re-enabled channels only, so a downgraded org can still edit the alert). `getResourceNames` (batched) supplies the resource's display name for alert responses. `resolveProjectId` lets create, list and test sends omit `projectId` when the resource already belongs to one project (`resolveAlertProjectId` in `alert-provider-registry.ts`). `getTelemetryEvent` lets a provider map alert create, update and delete to its own PostHog event, so the shared router never branches on a resource type. Audit logs are not a provider hook: every alert, whatever its resource type, logs the generic `create-alert`, `update-alert`, `delete-alert` and `test-alert-channel` events (`getAuditEvent` in `alert-service.ts`), which carry `resourceType`, `resourceId` and `resourceName` (from `getResourceNames`, so a provider with resource-bound alerts must implement it) so admins can tell them apart. Do not add per-provider audit event types. The deprecated `pki/alerts` and `applications/:applicationId/alerts` routes only serve legacy PKI Alerts V2 rows. Add features to `/api/v1/alerts`, not to them.
 - **Email channels accept plain addresses as `EMAIL` recipients when the provider opts in** (`recipientPolicy.allowEmailAddresses`), with the address as `principalId`, besides users and groups. Every address must be on one of the org's verified email domains, checked on create, update and test sends (`alert-channel-service.ts`), and again at send time, so an address on a domain the org has since removed stops receiving alerts. The resolver sends to them directly and skips an address that a user recipient on the same channel already covers.
+- **Two recipients name a whole project rather than a principal**, both with the project id as `principalId` and only on project alerts: `project-members` (everyone in the project, directly or through a group) and `project-admins` (direct project members with an unexpired admin role, the audience the rotation failure email had; `findProjectAdminUserIds`, which the in-app rotation notification uses too). Only providers that set `recipientPolicy.allowProjectAdmins` accept `project-admins`, and today those are the secret rotation and secret reminder providers. Both resolve at send time, so the audience follows membership changes. Instead of the resolver's direct-org-membership check, which would drop everyone in a sub-org, they use `findUsersWithOrgAccess`: an active, accepted org membership of the user's own, or without one, a finished signup (`users.isAccepted`) and a group linked into the org. A group row's `isPending` is not trusted either way, since nothing clears it after signup. Project memberships outlive a lost org path until the org access reconcile runs, so the member listings alone would still email those users. Users and groups picked by name keep the direct check. `PROJECT_WIDE_PRINCIPAL_TYPES` (`alert-types.ts`) lists them for validation and scope filtering; a new one goes there and gets its own case in `alert-recipient-resolver.ts`.
+- **Secret rotation failures go only through this module.** The `secret.rotation` provider's single event, `secret.rotation.failed`, is emitted by `rotateGeneratedCredentials` in the transaction that marks a rotation Failed, and only on the final attempt of a scheduled rotation (the same trigger the removed admin email had). Admins still get the in-app notification from the `SecretRotationV2SendNotification` job, and the project webhook still fires. Existing rotations were given a "Rotation failure alert" emailing `project-admins` by migration `20261104120000`; new ones get theirs from the frontend, which creates the alert with a second call after the rotation is saved, so a rotation created through the API has no alert unless the caller creates one. Deleting a rotation reaps its alerts in the delete transaction, and `reapOrphanedRotationAlerts` on the daily rotation cron catches rotations removed by folder, environment or project cascades.
 - **`findScheduledTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
 - **A `findScheduledTargets` that caps its own row count must honour `alreadyAlerted`.** The engine passes `{ alertId, channelIds, since }` (the alert's enabled channels and its dedup cutoff), and the provider drops targets every one of those channels already delivered since then, in SQL before the limit. Dedup otherwise runs after the fetch, so once more targets are due than the cap, the same head of the list comes back every run, is deduped, and nothing past it is ever alerted. For dedup windows shorter than the scan interval (daily reminders), also order least-recently-notified first. `scanExpiringCertificates` (`cert-manager-expiring-certificates-fns.ts`) does both.
 - **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findScheduledTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
@@ -858,6 +866,15 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Outbound requests to user-configured URLs
+
+**Fetch a URL a user configured through `safeRequest` (`src/lib/validator/safe-request.ts`), never `blockLocalAndPrivateIpAddresses` followed by `request` or another client.** The check and the connection each resolve DNS, so a name that answers a public address to the check and an internal one to the connection gets through. `safeRequest` connects to the IPs it validated. For a client that does not go through axios, pick by what it accepts:
+- an agent: `buildSsrfSafeAgent`, but only if the client parses its URL with the WHATWG `URL` parser. The agent pins the checked hostname, and a client using the legacy `url.parse` can read another host from the same string (`http://127.0.0.1%61.example` is `127.0.0.1` to it), which skips the pin. jwks-rsa is one: give `JwksClient` a `fetcher` from `buildSsrfSafeJwksFetcher` instead of a `requestAgent`.
+- a lookup function (openid-client): `ssrfSafeLookup`, with `validateAndPinUrl` on each URL first because Node skips the lookup for an IP literal host (not `validateSsrfUrl`, which rejects bracketed IPv6 literals), and a dedicated agent without keep-alive because a pooled socket skips it too (see `ee/services/oidc/oidc-ssrf-fns.ts`).
+- neither (ldapjs): `buildSsrfSafeUrl`, which puts a validated IP in the URL and keeps the certificate check on the original name.
+
+Do not hand such a URL to a vendor SDK that makes its own requests; it follows redirects and resolves the host again, so call the API through `safeRequest`. To prove a client is pinned, use `src/lib/validator/dns-rebinding.test-utils.ts`, whose DNS answers differently at validation and at connect.
+
 ### Certificate soft delete
 
 **Before changing certificate deletion, the expiry cleanup job, renewal or certificate syncs, read
@@ -939,6 +956,22 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
   The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
+### KMS public key publishing (JWKS per key)
+
+A sign-verify CMEK can publish its public key as a JWKS at `/api/v1/kms/keys/<keyId>/jwks.json`, unauthenticated,
+for verifiers such as Okta `private_key_jwt`. `kms_keys.isPublicKeyPublished` turns it on through the key's `PATCH`.
+
+- **Publishing needs `publish-public-key` on top of `edit`.** Only admins get it by default, like `export-private-key`.
+- **Unpublished, disabled and missing keys all return the same 404**, as does a key in a project pending deletion,
+  so the URL never confirms that a key exists.
+- **The `kid` is `<keyId>:v<version>` and can never change**, because tokens already carry it. Sign-verify keys have
+  one version today; when they get versioning, the same URL serves the versions still being verified, and that is
+  how rotation is meant to work. RSA JWKs omit `alg`, since the key signs RS* and PS*. ML-DSA can't be published.
+- **The JWKS is cached in Redis for 60 seconds** and cleared by every update and delete in `cmek-service`. Changes
+  made elsewhere, such as KMIP, show within that TTL.
+- KMS ECDSA signatures are DER, so an ES* JWT signed through the sign API needs its signature re-encoded as raw R||S
+  before a JWKS verifier accepts it.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -946,7 +979,7 @@ Enterprise code lives in `src/ee/`:
 - `src/ee/services/` — service modules (access approval, audit log, dynamic secrets, external KMS, gateway, KMIP, LDAP, OIDC, PAM, PKI, SAML, SCIM, secret approval/rotation/replication, etc.)
 - `src/ee/routes/v1/`, `src/ee/routes/v2/` — EE route files
 
-EE routes register before community routes so they can override/extend endpoints. Feature gating via license service (`src/ee/services/license/license-service.ts`) which validates online/offline licenses, caches feature sets in keystore with 5-minute TTL, and exposes `getPlan()` to check feature availability.
+EE routes register before community routes so they can override/extend endpoints. Licensing lives in the License domain (`src/domains/platform/license/`, read its `AGENTS.md` first). For feature gating take `licenseService: TLicenseService` and call `getPlan(orgId)`: check with `plan.has(PlanFeature.Rbac)` or refuse with `plan.assert(PlanFeature.Rbac)`, which names the feature in the error, and check numeric limits through `plan.exceeds(PlanLimit.X, used)`, never by reading the field. For usage take `usageMeteringService: TUsageMeteringService`: `emit(orgId, Meter.X)` after a metered write commits, `syncSeats(orgId)` after a member change commits. License never joins your transaction: read `getSeatUsage(orgId)` before opening it and check with `seatUsage.assertAvailable(plan)` inside it.
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/AGENTS.md`](src/ee/services/pam/AGENTS.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
@@ -1174,7 +1207,7 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 
 ## Wiring a New Feature (Checklist)
 
-1. Create service module in `src/services/<name>/` (or `src/ee/services/<name>/` for EE) with DAL, service, and types files
+1. Create service module in `src/services/<name>/` (or `src/ee/services/<name>/` for EE) with DAL, service, and types files. New capabilities can be a domain in `src/domains/` instead (see [`src/domains/AGENTS.md`](src/domains/AGENTS.md))
 2. If adding DB tables: create migration via `npm run migration:new`, run it, then `npm run generate:schema`
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it

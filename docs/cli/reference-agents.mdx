@@ -246,7 +246,7 @@ infisical agent start
 infisical agent-vault
 ```
 
-Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](#agent-vault-run). Create and revoke sessions on their own with [infisical agent-vault sessions create](#agent-vault-sessions-create) and [infisical agent-vault sessions revoke](#agent-vault-sessions-revoke). Upload skills for those agents with [infisical agent-vault skills push](#agent-vault-skills-push).
+Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](#agent-vault-run). Create and revoke sessions on their own with [infisical agent-vault sessions create](#agent-vault-sessions-create) and [infisical agent-vault sessions revoke](#agent-vault-sessions-revoke). Upload skills for those agents with [infisical agent-vault skills push](#agent-vault-skills-push). Reach database and SSH services from an agent with [infisical agent-vault connect](#agent-vault-connect).
 
 `av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does.
 
@@ -321,7 +321,7 @@ The CLI gives flags precedence over environment variables. If you pass either a 
 
 The command also needs the proxy's address. You can provide it either by passing `--proxy` or by setting [`INFISICAL_AGENT_VAULT_PROXY_ADDRESS`](#agent-vault-run).
 
-The command starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the [variables that make the agent's HTTP clients trust the proxy's certificate](/documentation/platform/agent-vault/proxies#certificate-trust). It also sets `INFISICAL_AGENT_VAULT_URL` to the URL of the Infisical instance that the proxy connects to, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy. The agent inherits the rest of your environment, and the command exits with the agent's exit code.
+The command starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the [variables that make the agent's HTTP clients trust the proxy's certificate](/documentation/platform/agent-vault/proxies#certificate-trust). It also sets `INFISICAL_AGENT_VAULT_URL` to the URL of the Infisical instance that the proxy connects to, so the agent can [list the services its session can use](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) through the proxy. The agent inherits the rest of your environment, and the command exits with the agent's exit code. It also gives the agent `INFISICAL_AGENT_VAULT_SESSION_TOKEN`, `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`, `INFISICAL_AGENT_VAULT_CA_FILE` (unless you pass `--no-ca-trust`), and `INFISICAL_DOMAIN` (unless it's already set), so the agent can run [infisical agent-vault connect](#agent-vault-connect).
 
 Before the agent starts, the command gets the [skills](/documentation/platform/agent-vault/skills) in the session's access bundle through the proxy, installs them in `~/.agents/skills`, and links them for Claude Code and Hermes. It also installs Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill), `infisical-agent-vault`, which tells the agent how to work behind the proxy. The installed skills stay after the agent exits.
 
@@ -406,6 +406,62 @@ Read the settings from environment variables
 export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token>
 infisical agent-vault run -- claude
+```
+
+## `agent-vault connect`
+
+```bash
+infisical agent-vault connect [service...] [flags]
+```
+
+Open a port on `127.0.0.1` for each [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) you name, or for every one in the session with `--all`. Each connection goes to the Agent Vault proxy over TLS, and the proxy logs in with the service's account, so the client uses any username and no password. The command keeps running. Once the ports are open, it prints each service's address and an example command, and the ports stay open until you stop the command with Ctrl+C.
+
+Before it opens any port, the command checks each service with the proxy. If the proxy refuses a service you named, the command stops with the proxy's reason. With `--all`, it skips each refused service and prints its name and the reason. It stops only if the proxy refuses every service.
+
+Under [infisical agent-vault run](#agent-vault-run), the command reads the session token, the proxy's address, and the proxy's certificate authority from the variables `run` sets, so it needs no flags. Before it sends the session token to the proxy, it checks the proxy's certificate authority. If you pass `--ca-fingerprint`, it checks against that fingerprint only. Otherwise, it checks against the file `run` wrote, then against the fingerprints Infisical lists for the session's proxies. If none of them matches, it refuses to connect.
+
+### Arguments
+
+- `service`: The names of the database or SSH services to open ports for. Required unless you pass `--all`.
+
+### Flags
+
+- `--all`: Open a port for every database and SSH service in the session, skipping any the proxy refuses. Can't be combined with service names.
+- `--ca-fingerprint <string>`: The SHA256 fingerprint of the proxy's certificate authority, from the **Certificate Authority** column on the **Proxies** page. The command trusts the proxy only if it serves this certificate authority, and checks nothing else. Accepted with or without the `SHA256:` prefix and colons.
+- `--port <int>`: The local port to open. Works only with one named service. Without it, the command picks a free port.
+- `--proxy <string>`: The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. A leading `http://` or `https://` is dropped. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set.
+- `--session-token <string>`: The session token. Can also be set with `INFISICAL_AGENT_VAULT_SESSION_TOKEN`. Prefer the variable, because other users on the machine can read anything on a command line.
+
+### Environment variables
+
+- `INFISICAL_AGENT_VAULT_CA_FILE`: The proxy's certificate authority file that `infisical agent-vault run` wrote. The command trusts the proxy if it serves a certificate authority in this file.
+- `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`: The Agent Vault proxy's address as `host:port`. Used if `--proxy` isn't passed.
+- `INFISICAL_AGENT_VAULT_SESSION_TOKEN`: The session token. Used if `--session-token` isn't passed.
+
+### Examples
+
+Open ports for two services
+
+```bash
+infisical agent-vault connect analytics bastion
+```
+
+Open ports for every database and SSH service in the session
+
+```bash
+infisical agent-vault connect --all
+```
+
+Open a service on a fixed local port
+
+```bash
+infisical agent-vault connect analytics --port 5432
+```
+
+Connect outside `infisical agent-vault run`
+
+```bash
+infisical agent-vault connect analytics --session-token=<session-token> --proxy=10.0.1.5:17323 --ca-fingerprint=SHA256:9F:2C:...
 ```
 
 ## `agent-vault sessions`

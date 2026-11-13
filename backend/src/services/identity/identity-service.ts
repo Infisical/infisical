@@ -1,8 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  SeatUsage,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -10,7 +18,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -18,8 +26,6 @@ import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/v
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -52,10 +58,11 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
+  organizationsProjectsService: TOrganizationsProjectsService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -72,12 +79,13 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
+  organizationsProjectsService,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
   membershipIdentityService,
   membershipRoleDAL,
-  usageMeteringService,
   alertService,
   identityAccessTokenService
 }: TIdentityServiceFactoryDep) => {
@@ -110,7 +118,7 @@ export const identityServiceFactory = ({
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
       const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -136,17 +144,19 @@ export const identityServiceFactory = ({
         });
     }
 
-    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+    // Before the transaction: a plan cache miss calls the License Server.
+    const plan = await licenseService.getPlan(orgId);
+
+    const seatCountScope = licenseService.getSeatCountScope(orgId);
 
     const identity = await identityDAL.transaction(async (tx) => {
-      // Acquire advisory lock to prevent race conditions when checking identity limits
-      // This ensures that concurrent requests cannot bypass the identity limit check
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateIdentity(orgId)]);
-
-      // Count seats inside the transaction, after the lock, so a concurrent create can't slip past
-      if (identityLimit) {
-        const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
-        if (identitiesUsed >= identityLimit) {
+      // Counted under the seat lock on this transaction, so concurrent creates can't pass the limit together.
+      if (plan.isLimited(PlanLimit.Identities)) {
+        const counts = await organizationsProjectsService
+          .within(sealKnexTransaction(tx))
+          .lockAndCountBillableOrgActors(seatCountScope);
+        if (!counts) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+        if (plan.exceeds(PlanLimit.Identities, SeatUsage.fromBillableActors(counts).identitiesUsed)) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
           });
@@ -195,8 +205,8 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
-    usageMeteringService.emit(orgId, IdentitiesMeter.key);
+    await usageMeteringService.syncSeats(orgId);
+    usageMeteringService.emit(orgId, Meter.Identities);
 
     return identity;
   };
@@ -240,7 +250,7 @@ export const identityServiceFactory = ({
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
         const plan = await licenseService.getPlan(actorOrgId);
-        if (!plan?.rbac)
+        if (!plan?.has(PlanFeature.Rbac))
           throw new BadRequestError({
             message:
               "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -437,23 +447,23 @@ export const identityServiceFactory = ({
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
-      await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
+      await usageMeteringService.syncSeats(identityOrgMembership.scopeOrgId);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
     await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
     // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
     // identity meters change too.
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 
@@ -546,7 +556,12 @@ export const identityServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    limit,
+    offset,
+    search,
+    orderDirection,
+    excludeProjectType
   }: TListProjectIdentitiesByIdentityIdDTO) => {
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
@@ -565,8 +580,13 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const identityMemberships = await identityProjectDAL.findByIdentityId(identityId, actorOrgId);
-    return identityMemberships;
+    return identityProjectDAL.findByIdentityId(identityId, actorOrgId, {
+      limit,
+      offset,
+      search,
+      orderDirection,
+      excludeProjectType
+    });
   };
 
   return {

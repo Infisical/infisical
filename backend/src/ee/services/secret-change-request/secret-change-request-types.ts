@@ -8,6 +8,7 @@ import {
   TSecretApprovalRequestsSecretsV2Insert,
   TSecretFolders
 } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
@@ -46,7 +47,6 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSecretChangePolicyServiceFactory } from "../secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
@@ -323,6 +323,7 @@ export type TSecretChangeRequestServiceFactoryDep = {
     | "updateById"
     | "findByProjectId"
     | "countByProjectId"
+    | "findFolderIdsWithOpenRequests"
     | "insertV2Bridge"
     | "insertApprovalSecretV2Tags"
     | "updateV2ById"
@@ -330,11 +331,14 @@ export type TSecretChangeRequestServiceFactoryDep = {
     | "findCommitsBySecretChangeIds"
   >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
-  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "findSecretChangePolicyById">;
+  secretChangePolicyService: Pick<
+    TSecretChangePolicyServiceFactory,
+    "findSecretChangePolicyById" | "getSecretApprovalPolicy"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "lockFoldersForUpdate">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

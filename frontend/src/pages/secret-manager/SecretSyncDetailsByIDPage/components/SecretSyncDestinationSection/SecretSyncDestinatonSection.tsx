@@ -32,6 +32,7 @@ import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationS
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { JenkinsSyncDestinationSection } from "./JenkinsSyncDestinationSection";
 import { KeeperSyncDestinationSection } from "./KeeperSyncDestinationSection";
 import { LaravelForgeSyncDestinationSection } from "./LaravelForgeSyncDestinationSection";
 import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
@@ -228,6 +229,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Spacelift:
       DestinationComponents = <SpaceliftSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Jenkins:
+      DestinationComponents = <JenkinsSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

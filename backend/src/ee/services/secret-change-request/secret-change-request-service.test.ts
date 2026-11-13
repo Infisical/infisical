@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -157,6 +158,8 @@ const buildService = ({
 } = {}) => {
   let requestCounter = 0;
   const hasRole = vi.fn().mockReturnValue(false);
+  const licenseService = new FakeLicenseService().setPlan("org-1", { secretApproval: true });
+  vi.spyOn(licenseService, "getPlan");
   const deps = {
     approvalRequestDAL: {
       findById: vi.fn().mockResolvedValue(APPROVAL_REQUEST),
@@ -231,7 +234,7 @@ const buildService = ({
         { id: "user-1", email: "alice@example.com", username: "alice", firstName: "Alice", lastName: "Smith" }
       ])
     },
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) },
+    licenseService,
     userGroupMembershipDAL: {
       findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]),
       find: vi.fn().mockResolvedValue([])
@@ -242,9 +245,13 @@ const buildService = ({
     folderDAL: {
       findSecretPathByFolderIds: vi
         .fn()
-        .mockResolvedValue([{ environmentSlug: "dev", environmentName: "Development", path: "/app" }])
+        .mockResolvedValue([{ environmentSlug: "dev", environmentName: "Development", path: "/app" }]),
+      lockFoldersForUpdate: vi.fn().mockResolvedValue([])
     },
-    secretChangePolicyService: { findSecretChangePolicyById: vi.fn().mockResolvedValue(policy) }
+    secretChangePolicyService: {
+      findSecretChangePolicyById: vi.fn().mockResolvedValue(policy),
+      getSecretApprovalPolicy: vi.fn().mockResolvedValue(policy)
+    }
   };
   const service = secretChangeRequestServiceFactory(
     deps as unknown as Parameters<typeof secretChangeRequestServiceFactory>[0]
@@ -558,7 +565,7 @@ describe("secretChangeRequest reviewApproval", () => {
 
   test("reviews an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService();
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(review(service)).resolves.toMatchObject({ status: ApprovalStatus.APPROVED });
     expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
@@ -881,7 +888,7 @@ describe("secretChangeRequest mergeSecretApprovalRequest", () => {
 
   test("merges an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(merge(service)).resolves.toMatchObject({ isMergedViaBypass: false });
     expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
@@ -1046,6 +1053,43 @@ describe("secretChangeRequest updateApprovalStatus", () => {
     expect(queueChangeRequestWebhook).toHaveBeenCalledWith(
       expect.objectContaining({ action: ChangeRequestWebhookAction.Reopened })
     );
+    expect(deps.folderDAL.lockFoldersForUpdate).toHaveBeenCalledWith([SECRET_CHANGE_REQUEST.folderId], OWN_TX);
+    expect(deps.secretChangePolicyService.getSecretApprovalPolicy).toHaveBeenCalledWith(
+      "project-1",
+      "dev",
+      "/app",
+      OWN_TX
+    );
+  });
+
+  test.each([
+    ["another policy now covers the folder's path", { ...POLICY, id: "policy-2" }],
+    ["no policy covers the folder's path any more", undefined]
+  ])("refuses to reopen when %s", async (_, currentPolicy) => {
+    const { service, deps } = buildService();
+    const closed = { ...APPROVAL_REQUEST, status: ApprovalRequestStatus.Closed };
+    deps.approvalRequestDAL.findById.mockResolvedValue(closed);
+    deps.approvalRequestDAL.findByIdForUpdate.mockResolvedValue(closed);
+    deps.folderDAL.findSecretPathByFolderIds.mockResolvedValue([
+      { environmentSlug: "dev", environmentName: "Development", path: "/service" }
+    ]);
+    deps.secretChangePolicyService.getSecretApprovalPolicy.mockResolvedValueOnce(currentPolicy);
+
+    await expect(setStatus(service, { status: RequestState.Open })).rejects.toMatchObject({
+      name: "ReopenChangeRequestPolicyChanged",
+      message: `This change request cannot be reopened because its folder is now at path "/service", which the change policy "${POLICY.name}" no longer covers. Create a new change request instead.`
+    });
+    expect(deps.approvalRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(queueChangeRequestWebhook).not.toHaveBeenCalled();
+  });
+
+  test("closes a request without checking the folder's policy", async () => {
+    const { service, deps } = buildService();
+
+    await setStatus(service);
+
+    expect(deps.folderDAL.lockFoldersForUpdate).not.toHaveBeenCalled();
+    expect(deps.secretChangePolicyService.getSecretApprovalPolicy).not.toHaveBeenCalled();
   });
 
   test("refuses when the policy is deleted while the reopen waits on its lock", async () => {
@@ -1075,7 +1119,7 @@ describe("secretChangeRequest updateApprovalStatus", () => {
 
   test("closes a request when the plan lacks secret approvals and refuses reopening one", async () => {
     const { service, deps } = buildService();
-    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+    deps.licenseService.setPlan("org-1", { secretApproval: false });
 
     await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("plan restriction");
     expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();

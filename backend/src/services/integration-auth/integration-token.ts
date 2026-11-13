@@ -2,6 +2,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
 
@@ -363,7 +364,7 @@ const exchangeCodeGitlab = async ({ code, url }: { code: string; url?: string })
   }
 
   const res = (
-    await request.post<ExchangeCodeGitlabResponse>(
+    await safeRequest.post<ExchangeCodeGitlabResponse>(
       url ? `${url}/oauth/token` : IntegrationUrls.GITLAB_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -625,7 +626,7 @@ const exchangeRefreshGitLab = async ({ refreshToken, url }: { url?: string | nul
     data
   }: {
     data: RefreshTokenGitLabResponse;
-  } = await request.post(
+  } = await safeRequest.post(
     url ? `${url}/oauth/token` : IntegrationUrls.GITLAB_TOKEN_URL,
     new URLSearchParams({
       grant_type: "refresh_token",

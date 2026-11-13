@@ -1,15 +1,21 @@
 ---
 title: "Services"
-description: "Anything an AI agent talks to during a session, such as an API or an MCP server."
+description: "Anything an AI agent talks to during a session, such as an API, an MCP server, a database, or an SSH server."
 ---
 
-A service is something your agent talks to during a [session](/documentation/platform/agent-vault/sessions), such as an API or an MCP server, that Agent Vault brokers credentials for. You store the real credential on the service, and the [proxy](/documentation/platform/agent-vault/proxies) adds it to the agent's requests to that service. The agent can authenticate to the service without ever holding the credential.
+A service is something your agent talks to during a [session](/documentation/platform/agent-vault/sessions), such as an API, an MCP server, a database, or an SSH server, that Agent Vault brokers credentials for. You store the real credential on the service, and the [proxy](/documentation/platform/agent-vault/proxies) adds it to the agent's requests to that service, or logs in with it. The agent can authenticate to the service without ever holding the credential.
 
-You can configure services within an [access bundle](/documentation/platform/agent-vault/access-bundles), or an admin can send them with a session as [inline services](/documentation/platform/agent-vault/inline-services) when creating it through the API. For example, you might create a **code-review** access bundle and add services for Slack, GitHub, and Anthropic:
+Each service belongs to an [Agent Vault project](/documentation/platform/agent-vault/projects). You define a service once, then add it to any number of [access bundles](/documentation/platform/agent-vault/access-bundles), and a session can use the services in its access bundle. For example, the **code-review** and **on-call** access bundles can both hold the same Slack service. An admin can also send services with a session as [inline services](/documentation/platform/agent-vault/inline-services) when creating the session through the API.
+
+Every project member can open the **Services** page. A member sees the services that their access bundles give them, and [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the services that need them. An admin sees every service in the project.
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundle-services.png" alt="The code-review access bundle page. The Services table lists anthropic, slack, and github as HTTP APIs and linear as an MCP server, with slack marked Configured, and the Skills table lists pr-summary and review-guidelines." />
+  <img src="/images/platform/agent-vault/services.png" alt="The Services page of the Engineering Agents project. The table lists each service with its type, target, and the access bundles that hold it, such as github in engineering, on-call, and release, with github and notion marked Requires Setup." />
 </Frame>
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project, to add, edit, and delete services, and to add them to access bundles
 
 ## Service types
 
@@ -22,7 +28,67 @@ You choose a service's type when you pick its template:
   <Card title="MCP servers" icon="server" href="/documentation/platform/agent-vault/mcp-servers">
     Remote MCP servers whose tools the agent calls, such as Linear and Notion.
   </Card>
+  <Card title="Databases and SSH" icon="database" href="/documentation/platform/agent-vault/databases-and-ssh">
+    PostgreSQL databases, MySQL databases, and SSH servers that the agent reaches with psql, mysql, or ssh.
+  </Card>
 </CardGroup>
+
+## Add a service
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Services** and select **Add Service**.
+  </Step>
+  <Step>
+    On the **Choose a template** panel, pick a template. The page for each [service type](#service-types) describes its steps and fields, and [Hooks](/documentation/platform/agent-vault/hooks) describes the **Hook** step.
+  </Step>
+  <Step>
+    On the **Review** step, select **Add Service**. The service appears in the list, and agents can use it once you [add it to an access bundle](#add-a-service-to-an-access-bundle).
+  </Step>
+</Steps>
+
+To add a service through the API, call the [Create service](/api-reference/endpoints/agent-vault-services/create) endpoint. To add the new service to access bundles in the same request, send their IDs in `accessBundleIds`.
+
+## Add a service to an access bundle
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Bundles**, select the access bundle, then select **Add Service**.
+  </Step>
+  <Step>
+    In the **Services** list, pick one or more services from the project. To create a service instead, select **Create New Service** and follow the steps for its [service type](#service-types). Infisical adds the new service to the access bundle when you save it.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-add-services.png" alt="The Add Services dialog on the support access bundle, with orders-db and sentry picked and an Add 2 Services button" />
+    </Frame>
+  </Step>
+  <Step>
+    If you picked existing services, select **Add Service**, or **Add 2 Services** if you picked two. Sessions on the access bundle can use the services within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+  </Step>
+</Steps>
+
+An access bundle can't hold two services that cover the same host with the same pattern (see [host conflicts](/documentation/platform/agent-vault/http-apis#host-conflicts)). If one of the services you picked would break that rule, Infisical adds none of them, and the error names the service.
+
+To add services through the API, call the [Add services to access bundle](/api-reference/endpoints/agent-vault-access-bundles/add-services) endpoint with up to 25 service IDs.
+
+## Edit a service
+
+To edit a service, go to **Services**, open the service's actions menu, and select **Edit**. A change to a service applies in every access bundle that holds it. To let your own server allow or refuse the agent's requests or connections to the service, add a [hook](/documentation/platform/agent-vault/hooks) on the **Hook** step.
+
+## Remove or delete a service
+
+Open the service's actions menu and select one of these:
+
+- **Remove From Bundle**, on an access bundle's page, takes the service out of that access bundle only (the service stays in the project)
+- **Delete**, on the **Services** page, deletes the service from the project and from every access bundle that holds it
+
+Sessions stop getting the service's credential within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval). If a member can no longer reach the service through any access bundle, Infisical also deletes their [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it.
+
+## Service names
+
+Each service's name is unique in its project. Before services belonged to the project, two access bundles could each hold a service with the same name. When Infisical upgraded existing projects, the older of the two services kept its name, and Infisical renamed the other to `<name>-<access bundle name>`, such as `github-on-call`.
+
+The agent connects to a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) by its name, so if Infisical renamed one, update the name in your agents' `infisical agent-vault connect` commands.
 
 ## Service descriptions
 
