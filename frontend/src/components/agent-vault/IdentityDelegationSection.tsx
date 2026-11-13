@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject as caslSubject } from "@casl/ability";
 import { format } from "date-fns";
 import { UserCogIcon, UsersRoundIcon } from "lucide-react";
 
@@ -24,10 +25,14 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { useGetAgentVaultDelegation } from "@app/hooks/api/agentVault";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { ManageDelegationSheet, TDelegationSubjectRow } from "./ManageDelegationSheet";
@@ -39,24 +44,28 @@ type Props = {
   machineIdentityName: string;
 };
 
-// Only admins can read or change a delegation, so members don't see the section at all. Changes happen
-// in the Manage Delegation sheet; this lists who the delegation covers.
+// A delegation is read with Read on its machine identity and changed with Edit, so without Read the section is hidden.
+// Changes happen in the Manage Delegation sheet; this lists who the delegation covers.
 export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityName }: Props) => {
   const { projectId } = useProject();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const identitySubject = caslSubject(ProjectPermissionSub.Identity, {
+    identityId: machineIdentityId
+  });
+  const canReadDelegation = permission.can(ProjectPermissionIdentityActions.Read, identitySubject);
+  const canEditDelegation = permission.can(ProjectPermissionIdentityActions.Edit, identitySubject);
 
   const { data, isPending, isError, isFetching, refetch } = useGetAgentVaultDelegation(
     projectId,
     machineIdentityId,
-    isAdmin
+    canReadDelegation
   );
   const delegation = data ?? null;
   // Without a successful read the sheet would start from a list it never saw.
   const isLoadError = isError && data === undefined;
   const [isManageOpen, setIsManageOpen] = useState(false);
 
-  if (!isAdmin) return null;
+  if (!canReadDelegation) return null;
 
   const isAllMembers = delegation?.scope === AgentVaultDelegationScope.AllMembers;
   const subjects: TDelegationSubjectRow[] = [
@@ -180,7 +189,7 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
           Lets this machine identity start sessions on behalf of these users and groups, using each
           user&apos;s personal values. It can still start its own sessions.
         </CardDescription>
-        {!isPending && !isLoadError && (
+        {canEditDelegation && !isPending && !isLoadError && (
           <CardAction>
             <Button variant="av" onClick={() => setIsManageOpen(true)}>
               <UserCogIcon />

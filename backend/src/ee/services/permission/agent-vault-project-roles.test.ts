@@ -20,6 +20,7 @@ import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionCmekActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -37,7 +38,62 @@ const abilityFor = (role: string, permissions?: unknown) =>
     ) as never
   );
 
+// Each of these replaced a check on the admin role, so the admin set has to hold every one and no other role any.
+const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
+  Object.fromEntries([
+    ...[
+      ProjectPermissionAgentVaultSessionActions.ReadAny,
+      ProjectPermissionAgentVaultSessionActions.EditAny,
+      ProjectPermissionAgentVaultSessionActions.RevokeAny,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
+    ].map((action) => [`sessions ${action}`, ability.can(action, ProjectPermissionSub.AgentVaultSessions)]),
+    ...Object.values(ProjectPermissionAgentVaultVariableActions).map((action) => [
+      `variables ${action}`,
+      ability.can(action, ProjectPermissionSub.AgentVaultVariables)
+    ]),
+    ["settings read", ability.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)],
+    ["settings edit", ability.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings)],
+    ["proxies edit", ability.can(ProjectPermissionAgentVaultProxyActions.Edit, ProjectPermissionSub.AgentVaultProxies)],
+    [
+      "bundles manage-members",
+      ability.can(
+        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ],
+    ...[
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete
+    ].map((action) => [`users ${action}`, ability.can(action, ProjectPermissionSub.Member)]),
+    ...[
+      ProjectPermissionGroupActions.Create,
+      ProjectPermissionGroupActions.Edit,
+      ProjectPermissionGroupActions.Delete
+    ].map((action) => [`groups ${action}`, ability.can(action, ProjectPermissionSub.Groups)]),
+    ...[
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Delete
+    ].map((action) => [`identities ${action}`, ability.can(action, ProjectPermissionSub.Identity)])
+  ]) as Record<string, boolean>;
+
 describe("agent vault project roles", () => {
+  test("only the admin set holds the actions that replaced role checks", () => {
+    const allowed = (checks: Record<string, boolean>) => Object.keys(checks).filter((key) => checks[key]);
+    const adminChecks = replacedRoleChecks(abilityFor(ProjectMembershipRole.Admin));
+
+    expect(allowed(adminChecks)).toEqual(Object.keys(adminChecks));
+    expect(allowed(replacedRoleChecks(abilityFor(ProjectMembershipRole.Member)))).toEqual([]);
+    expect(
+      allowed(
+        replacedRoleChecks(
+          abilityFor(ProjectMembershipRole.Custom, packRules(agentVaultProjectAdminPermissions as never))
+        )
+      )
+    ).toEqual([]);
+  });
+
   test("the admin set is written out, not aliased to the generic project admin", () => {
     const admin = abilityFor(ProjectMembershipRole.Admin);
 

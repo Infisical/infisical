@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -63,20 +64,18 @@ export const agentVaultVariableServiceFactory = ({
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   /**
-   * Global variables are admin only, reads included: a member can use a service without seeing what it is built
-   * from, and Edit on access bundles is the action only an admin holds. Personal variables are the caller's own,
-   * and any Agent Vault member keeps them. Nobody, an admin included, can name or read another actor's.
+   * Global variables take their own permission, reads included: a member can use a service without seeing what it is
+   * built from. Personal variables are the caller's own, and any Agent Vault member keeps them. Nobody, an admin
+   * included, can name or read another actor's.
    */
   const resolveScope = async (
     { projectId, ctx }: TAgentVaultVariableScoped,
-    scope: AgentVaultVariableScope
+    scope: AgentVaultVariableScope,
+    action: ProjectPermissionAgentVaultVariableActions
   ): Promise<TAgentVaultVariableOwnerScope> => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     if (scope === AgentVaultVariableScope.Global) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultAccessBundleActions.Edit,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      );
+      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultVariables);
       return { projectId, owner: null };
     }
     ForbiddenError.from(permission).throwUnlessCan(
@@ -90,7 +89,9 @@ export const agentVaultVariableServiceFactory = ({
     { projectId, ctx }: TAgentVaultVariableScoped,
     scope?: AgentVaultVariableScope
   ): Promise<(TAgentVaultOwner | null)[]> => {
-    if (scope) return [(await resolveScope({ projectId, ctx }, scope)).owner];
+    if (scope) {
+      return [(await resolveScope({ projectId, ctx }, scope, ProjectPermissionAgentVaultVariableActions.Read)).owner];
+    }
 
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
@@ -98,17 +99,15 @@ export const agentVaultVariableServiceFactory = ({
       ProjectPermissionSub.AgentVaultAccessBundles
     );
     const owners: (TAgentVaultOwner | null)[] = [];
-    if (
-      permission.can(ProjectPermissionAgentVaultAccessBundleActions.Edit, ProjectPermissionSub.AgentVaultAccessBundles)
-    ) {
+    if (permission.can(ProjectPermissionAgentVaultVariableActions.Read, ProjectPermissionSub.AgentVaultVariables)) {
       owners.push(null);
     }
     const owner = ownerOrNullOf(ctx);
     if (owner) owners.push(owner);
     if (!owners.length) {
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultAccessBundleActions.Edit,
-        ProjectPermissionSub.AgentVaultAccessBundles
+        ProjectPermissionAgentVaultVariableActions.Read,
+        ProjectPermissionSub.AgentVaultVariables
       );
     }
     return owners;
@@ -118,7 +117,10 @@ export const agentVaultVariableServiceFactory = ({
 
   // A variable the caller may not act on reads exactly like one that does not exist, so an id never confirms that
   // someone else's personal variable is there.
-  const findAccessibleVariable = async ({ variableId, projectId, ctx }: TVariableByIdDTO) => {
+  const findAccessibleVariable = async (
+    { variableId, projectId, ctx }: TVariableByIdDTO,
+    action: ProjectPermissionAgentVaultVariableActions
+  ) => {
     const variable = await agentVaultVariableDAL.findByIdInProject({ id: variableId, projectId });
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
 
@@ -132,19 +134,15 @@ export const agentVaultVariableServiceFactory = ({
       if (!isOwnedBy(variable, owner)) throw notFound(variableId);
       return { variable, scope: { projectId, owner } };
     }
-    if (
-      permission.cannot(
-        ProjectPermissionAgentVaultAccessBundleActions.Edit,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      )
-    ) {
+    if (permission.cannot(action, ProjectPermissionSub.AgentVaultVariables)) {
       throw notFound(variableId);
     }
     return { variable, scope: { projectId, owner: null } };
   };
 
   // A member who lost a bundle keeps their personal variables, but not a view into the bundle: its services drop out
-  // of what they see. Global variables are admin-only, and an admin reaches every bundle, so both get null.
+  // of what they see. Global variables get null because only the admin role can read them, and it reaches every
+  // bundle; a role that could read them without that reach would need this filtered too.
   const reachableBundleIdsOf = async ({
     projectId,
     ctx,
@@ -259,7 +257,7 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   const createVariable = async ({ key, value, scope: scopeName, ...rest }: TCreateVariableDTO) => {
-    const scope = await resolveScope(rest, scopeName);
+    const scope = await resolveScope(rest, scopeName, ProjectPermissionAgentVaultVariableActions.Create);
     const { owner } = scope;
     const encryptedValue = await sealValue(rest.projectId, value);
     const cap = owner ? AGENT_VAULT_MAX_PERSONAL_VARIABLES : AGENT_VAULT_MAX_VARIABLES;
@@ -308,7 +306,10 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   const updateVariable = async ({ variableId, key, value, ...rest }: TUpdateVariableDTO) => {
-    const { variable, scope } = await findAccessibleVariable({ variableId, ...rest });
+    const { variable, scope } = await findAccessibleVariable(
+      { variableId, ...rest },
+      ProjectPermissionAgentVaultVariableActions.Edit
+    );
 
     const encryptedValue = value === undefined ? undefined : await sealValue(rest.projectId, value);
 
@@ -353,7 +354,10 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   const deleteVariable = async ({ variableId, ...rest }: TVariableByIdDTO) => {
-    const { scope } = await findAccessibleVariable({ variableId, ...rest });
+    const { scope } = await findAccessibleVariable(
+      { variableId, ...rest },
+      ProjectPermissionAgentVaultVariableActions.Delete
+    );
     const { accessBundleIds } = scope.owner
       ? await getAgentVaultReachability({ permissionService, membershipDAL }, rest)
       : { accessBundleIds: null };
@@ -400,7 +404,10 @@ export const agentVaultVariableServiceFactory = ({
   };
 
   const getVariableValue = async ({ variableId, ...rest }: TVariableByIdDTO) => {
-    const { variable } = await findAccessibleVariable({ variableId, ...rest });
+    const { variable } = await findAccessibleVariable(
+      { variableId, ...rest },
+      ProjectPermissionAgentVaultVariableActions.ReadValue
+    );
 
     const { decryptor } = await getProjectCipher(rest.projectId);
     const { value } = JSON.parse(decryptor({ cipherTextBlob: variable.encryptedValue }).toString("utf-8")) as {

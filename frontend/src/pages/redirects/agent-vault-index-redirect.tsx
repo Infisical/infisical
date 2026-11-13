@@ -9,15 +9,15 @@ import {
 import { PageLoader } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 
-// Until an admin finishes setup (or hides the checklist), the product opens on the first unfinished step.
-// If the progress can't be read, it opens on Sessions as it did before the checklist existed.
+// Until setup is finished (or the checklist hidden), someone who can set Agent Vault up lands on the first unfinished
+// step. If the progress can't be read, it opens on Sessions as it did before the checklist existed.
 const AgentVaultIndexRedirect = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { projectId } = useProject();
-  const { isAdmin, isLoaded, isFailed, isVisible, nextStep, newestBundle } =
+  const { canSetUp, isLoaded, isFailed, isVisible, nextStep, newestBundle } =
     useAgentVaultSetupProgress();
-  const isResolved = !isAdmin || isLoaded || isFailed;
+  const isResolved = !canSetUp || isLoaded || isFailed;
 
   useEffect(() => {
     if (!isResolved) return;

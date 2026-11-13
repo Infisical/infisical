@@ -35,7 +35,14 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission,
+  useUser
+} from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
@@ -46,7 +53,6 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { DashboardSessionForm, TDashboardSessionInput } from "./DashboardSessionForm";
 import { CodeLanguage, highlight } from "./highlightCode";
@@ -128,10 +134,14 @@ type Props = {
 export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { user } = useUser();
   const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // The picker lists the project's machine identities, which takes Read on them.
+  const canPickIdentity = permission.can(
+    ProjectPermissionIdentityActions.Read,
+    ProjectPermissionSub.Identity
+  );
 
   const [platform, setPlatform] = useState<TPlatformTab>(() => SandboxPlatform.Modal);
   const [tab, setTab] = useState<TCreateSessionTab>(() =>
@@ -290,7 +300,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           </FieldContent>
         </Field>
       )}
-      {!isCreateNow && isAdmin && (
+      {!isCreateNow && canPickIdentity && (
         <SessionMachineIdentityField
           identity={identity}
           onIdentityChange={setIdentity}
@@ -299,7 +309,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           hasEnvCredentials={!isOwnSandbox}
         />
       )}
-      {!isCreateNow && !isAdmin && (
+      {!isCreateNow && !canPickIdentity && (
         // Labeled like the picker admins see here, so it lines up with the bundle field beside it.
         <Field>
           <FieldLabel>Machine Identity</FieldLabel>

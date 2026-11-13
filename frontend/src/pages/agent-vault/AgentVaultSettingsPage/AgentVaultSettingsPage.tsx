@@ -4,9 +4,8 @@ import { ScrollTextIcon, SettingsIcon } from "lucide-react";
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectOverviewChangeSection } from "@app/components/project/ProjectOverviewChangeSection";
 import { PageHeader } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { DeleteProjectSection } from "@app/pages/project/SettingsPage/components/DeleteProjectSection";
 
 import { SessionLogAlerts } from "./components/SessionLogAlerts";
@@ -15,17 +14,29 @@ import { SessionLogSection } from "./components/SessionLogSection";
 const SESSION_LOGS_TAB = "tab-session-logs";
 
 export const AgentVaultSettingsPage = () => {
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
+  );
+  const canEditProject = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Project
+  );
+  const canDeleteProject = permission.can(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Project
+  );
   const { selectedTab } = useSearch({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings"
   });
 
-  const isSessionLogsTab = isAdmin && selectedTab === SESSION_LOGS_TAB;
+  const isSessionLogsTab = canReadSessionLogSettings && selectedTab === SESSION_LOGS_TAB;
   let description = "View this project's name and ID.";
   if (isSessionLogsTab)
     description = "Record your agents' requests, and choose where the logs are stored.";
-  else if (isAdmin) description = "Manage this project's name, delete protection, and deletion.";
+  else if (canEditProject)
+    description = "Manage this project's name, delete protection, and deletion.";
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
@@ -45,7 +56,7 @@ export const AgentVaultSettingsPage = () => {
       ) : (
         <>
           <ProjectOverviewChangeSection />
-          {isAdmin && <DeleteProjectSection />}
+          {canDeleteProject && <DeleteProjectSection />}
         </>
       )}
     </div>

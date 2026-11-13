@@ -3,9 +3,9 @@ import { describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
-  ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions
+} from "@app/ee/services/permission/default-roles";
 import { ConflictError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -159,12 +159,9 @@ const setup = (
     permissionService: {
       getProjectPermission: async () =>
         ({
-          permission: createMongoAbility([
-            {
-              action: ProjectPermissionAgentVaultSessionActions.Read,
-              subject: ProjectPermissionSub.AgentVaultSessions
-            }
-          ]),
+          permission: createMongoAbility(
+            isOwnerAdmin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
+          ),
           hasRole: () => isOwnerAdmin,
           memberships: []
         }) as never
@@ -562,12 +559,11 @@ describe("resolve for a session on a user's behalf", () => {
               message: "Not a member of the project"
             });
           }
-          const read = {
-            action: ProjectPermissionAgentVaultSessionActions.Read,
-            subject: ProjectPermissionSub.AgentVaultSessions
-          };
+          const roleRules = actor(actorId).isAdmin
+            ? agentVaultProjectAdminPermissions
+            : agentVaultProjectMemberPermissions;
           return {
-            permission: createMongoAbility(actor(actorId).canRead === false ? [] : [read]),
+            permission: createMongoAbility(actor(actorId).canRead === false ? [] : roleRules),
             hasRole: () => Boolean(actor(actorId).isAdmin),
             memberships: []
           } as never;

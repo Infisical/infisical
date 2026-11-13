@@ -57,7 +57,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useProject } from "@app/context";
+import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useProject
+} from "@app/context";
 import { nameList } from "@app/helpers/string";
 import {
   getUserTablePreference,
@@ -71,7 +77,6 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
@@ -87,8 +92,23 @@ export const AgentVaultAccessBundlesPage = () => {
   const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canCreateBundles = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Create,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+  const canEditBundles = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Edit,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+  const canDeleteBundles = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Delete,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+  const canManageBundleMembers = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -99,7 +119,7 @@ export const AgentVaultAccessBundlesPage = () => {
     getUserTablePreference("agentVaultAccessBundlesTable", PreferenceKey.PerPage, 20)
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), canCreateBundles);
   const [bundleToEdit, setBundleToEdit] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
     null
@@ -152,7 +172,7 @@ export const AgentVaultAccessBundlesPage = () => {
   if (isFiltered) {
     emptyTitle = "No access bundles match your search";
     emptyDescription = "Try a different search term.";
-  } else if (isAdmin) {
+  } else if (canCreateBundles) {
     emptyTitle = "No access bundles yet";
     emptyDescription = "Create one to group the services an agent can reach.";
   } else {
@@ -209,7 +229,7 @@ export const AgentVaultAccessBundlesPage = () => {
             Each bundle holds the services an agent can reach and the members who can create
             sessions with it.
           </CardDescription>
-          {isAdmin && (
+          {canCreateBundles && (
             <CardAction>
               <Button variant="av" onClick={() => setIsCreateOpen(true)}>
                 <PlusIcon />
@@ -241,7 +261,7 @@ export const AgentVaultAccessBundlesPage = () => {
                 <EmptyTitle>{emptyTitle}</EmptyTitle>
                 <EmptyDescription>{emptyDescription}</EmptyDescription>
               </EmptyHeader>
-              {!isFiltered && isAdmin && (
+              {!isFiltered && canCreateBundles && (
                 <Button variant="av" onClick={() => setIsCreateOpen(true)}>
                   <PlusIcon />
                   Create Access Bundle
@@ -324,7 +344,7 @@ export const AgentVaultAccessBundlesPage = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      {isAdmin ? (
+                      {canManageBundleMembers ? (
                         <button
                           type="button"
                           className="cursor-pointer underline decoration-muted underline-offset-2 hover:decoration-foreground"
@@ -375,7 +395,7 @@ export const AgentVaultAccessBundlesPage = () => {
                       </div>
                     </TableCell>
                     <TableCell variant="action">
-                      {isAdmin && (
+                      {(canManageBundleMembers || canEditBundles || canDeleteBundles) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
@@ -388,34 +408,40 @@ export const AgentVaultAccessBundlesPage = () => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setBundleToManage(bundle);
-                              }}
-                            >
-                              <UsersIcon />
-                              Manage Access
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setBundleToEdit(bundle);
-                              }}
-                            >
-                              <PencilIcon />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setBundleToDelete(bundle);
-                              }}
-                            >
-                              <TrashIcon />
-                              Delete
-                            </DropdownMenuItem>
+                            {canManageBundleMembers && (
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setBundleToManage(bundle);
+                                }}
+                              >
+                                <UsersIcon />
+                                Manage Access
+                              </DropdownMenuItem>
+                            )}
+                            {canEditBundles && (
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setBundleToEdit(bundle);
+                                }}
+                              >
+                                <PencilIcon />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDeleteBundles && (
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setBundleToDelete(bundle);
+                                }}
+                              >
+                                <TrashIcon />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}

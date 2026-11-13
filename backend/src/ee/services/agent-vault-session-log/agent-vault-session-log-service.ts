@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -140,9 +141,12 @@ export const agentVaultSessionLogServiceFactory = ({
   keyStore,
   objectStorage
 }: TAgentVaultSessionLogServiceFactoryDep) => {
-  const $requireAdmin = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
-    const { isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    if (!isAdmin) {
+  const $requireSettingsPermission = async (
+    { projectId, ctx }: TAgentVaultSessionLogScoped,
+    action: ProjectPermissionActions.Read | ProjectPermissionActions.Edit
+  ) => {
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    if (permission.cannot(action, ProjectPermissionSub.Settings)) {
       throw new ForbiddenRequestError({
         message: "Only an Agent Vault administrator can view or change session log settings"
       });
@@ -312,14 +316,18 @@ export const agentVaultSessionLogServiceFactory = ({
   };
 
   const $loadSessionLogs = async ({ projectId, ctx, sessionId }: TAgentVaultSessionScoped) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
     );
 
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
-    if (!session || (!isSessionOwnedBy(ctx, session) && !isAdmin)) {
+    if (
+      !session ||
+      (!isSessionOwnedBy(ctx, session) &&
+        permission.cannot(ProjectPermissionAgentVaultSessionActions.ReadAny, ProjectPermissionSub.AgentVaultSessions))
+    ) {
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
 
@@ -346,17 +354,18 @@ export const agentVaultSessionLogServiceFactory = ({
       isRecordable: Boolean(session.encryptedSessionLogKey),
       sessionKey: null as string | null
     };
-    return { session, config: disabledReason ? null : config, isAdmin, sessionLogs };
+    const seesStorageCause = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+    return { session, config: disabledReason ? null : config, seesStorageCause, sessionLogs };
   };
 
-  // An external storage failure names the bucket and connection, so only admins see the cause. Default storage's
-  // message is the same for everyone, since no org admin can fix it.
-  const $toStorageUnavailable = (error: unknown, isAdmin: boolean, sessionId: string) => {
+  // An external storage failure names the bucket and connection, so only those who can read the session log settings
+  // see the cause. Default storage's message is the same for everyone, since no org admin can fix it.
+  const $toStorageUnavailable = (error: unknown, seesStorageCause: boolean, sessionId: string) => {
     if (!(error instanceof ObjectStorageError)) return error;
     logger.warn(error, `agentVaultSessionLog: could not read session logs [sessionId=${sessionId}]`);
     const { isTemporary, message } = describeStorageFailure(error, "read");
     let shownMessage = message;
-    if (!isAdmin && error.storageType === ObjectStorageType.External) {
+    if (!seesStorageCause && error.storageType === ObjectStorageType.External) {
       shownMessage = isTemporary
         ? AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
         : AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE;
@@ -390,7 +399,7 @@ export const agentVaultSessionLogServiceFactory = ({
       throw new BadRequestError({ message: "The 'from' time must be before the 'to' time" });
     }
 
-    const { session, config, isAdmin, sessionLogs } = await $loadSessionLogs(scope);
+    const { session, config, seesStorageCause, sessionLogs } = await $loadSessionLogs(scope);
     if (!config || !session.encryptedSessionLogKey) return { sessionLogs, chunks: [], nextCursor: null };
 
     try {
@@ -438,12 +447,12 @@ export const agentVaultSessionLogServiceFactory = ({
       );
       return { sessionLogs: { ...sessionLogs, sessionKey }, chunks, nextCursor };
     } catch (error) {
-      throw $toStorageUnavailable(error, isAdmin, session.id);
+      throw $toStorageUnavailable(error, seesStorageCause, session.id);
     }
   };
 
   const tailSessionLogs = async ({ cursor = SESSION_LOG_FEED_START, ...scope }: TTailSessionLogsDTO) => {
-    const { session, config, isAdmin, sessionLogs } = await $loadSessionLogs(scope);
+    const { session, config, seesStorageCause, sessionLogs } = await $loadSessionLogs(scope);
     const unchanged = { sessionLogs, chunks: [], nextCursor: encodeTailCursor(cursor) };
     if (!config || !session.encryptedSessionLogKey) return unchanged;
 
@@ -491,12 +500,12 @@ export const agentVaultSessionLogServiceFactory = ({
       );
       return { sessionLogs: { ...sessionLogs, sessionKey }, chunks, nextCursor };
     } catch (error) {
-      throw $toStorageUnavailable(error, isAdmin, session.id);
+      throw $toStorageUnavailable(error, seesStorageCause, session.id);
     }
   };
 
   const getSessionLogSettings = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
-    await $requireAdmin({ projectId, ctx });
+    await $requireSettingsPermission({ projectId, ctx }, ProjectPermissionActions.Read);
 
     return toSessionLogSettingsState(
       await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, { fromPrimary: false })
@@ -512,7 +521,7 @@ export const agentVaultSessionLogServiceFactory = ({
     (await getSessionLogEntitlement(licenseService, orgId, config.storage.type)).entitlement !== "unlicensed";
 
   const getSessionLogHealth = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
-    await $requireAdmin({ projectId, ctx });
+    await $requireSettingsPermission({ projectId, ctx }, ProjectPermissionActions.Read);
 
     const config = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, {
       fromPrimary: false
@@ -540,7 +549,7 @@ export const agentVaultSessionLogServiceFactory = ({
   };
 
   const getSessionLogCorsProbe = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
-    await $requireAdmin({ projectId, ctx });
+    await $requireSettingsPermission({ projectId, ctx }, ProjectPermissionActions.Read);
 
     const config = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, {
       fromPrimary: false
@@ -562,7 +571,7 @@ export const agentVaultSessionLogServiceFactory = ({
   };
 
   const updateSessionLogSettings = async ({ projectId, ctx, actor, ...body }: TUpdateSessionLogSettingsDTO) => {
-    await $requireAdmin({ projectId, ctx });
+    await $requireSettingsPermission({ projectId, ctx }, ProjectPermissionActions.Edit);
 
     const current = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, {
       fromPrimary: true

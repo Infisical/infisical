@@ -218,23 +218,24 @@ export const agentVaultPersonalValueServiceFactory = ({
     return { ...caller, service, reachingBundleIds };
   };
 
-  // Under the service lock, after the reach check: the caller's grants on the bundles the service is in, or for an
-  // admin without one, their admin role rows. A revoke, a removal, a demotion or taking the service out of a bundle
-  // clears what the caller saved for services they lose, so none of those can land between the reach check and the
-  // write and leave values behind. The bundles are read again here, under the lock that taking the service out of a
-  // bundle also takes: the list read before the transaction can still name a bundle that has since let it go.
+  // Under the service lock, after the reach check: the caller's grants on the bundles the service is in, or for a
+  // caller without one whose role reaches every bundle, those role rows. A revoke, a removal, a demotion or taking the
+  // service out of a bundle clears what the caller saved for services they lose, so none of those can land between the
+  // reach check and the write and leave values behind. The bundles are read again here, under the lock that taking the
+  // service out of a bundle also takes: the list read before the transaction can still name a bundle that has since let
+  // it go.
   const lockReach = async (
     {
       projectId,
       callerAccessBundleIds,
       owner,
-      isAdmin,
+      reachesEveryBundle,
       serviceId
     }: {
       projectId: string;
       callerAccessBundleIds: string[] | null;
       owner: TAgentVaultOwner;
-      isAdmin: boolean;
+      reachesEveryBundle: boolean;
       serviceId: string;
     },
     tx: Knex
@@ -246,11 +247,11 @@ export const agentVaultPersonalValueServiceFactory = ({
     const grants = accessBundleIds.length
       ? await agentVaultPersonalValueDAL.lockGrantsForOwner({ projectId, accessBundleIds, owner }, tx)
       : [];
-    const adminRoles =
-      !grants.length && isAdmin
-        ? await agentVaultPersonalValueDAL.lockAdminRolesForOwner({ projectId, owner }, tx)
+    const reachingRoles =
+      !grants.length && reachesEveryBundle
+        ? await agentVaultPersonalValueDAL.lockRolesReachingEveryBundleForOwner({ projectId, owner }, tx)
         : [];
-    if (!grants.length && !adminRoles.length) {
+    if (!grants.length && !reachingRoles.length) {
       throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
     }
   };
@@ -261,7 +262,7 @@ export const agentVaultPersonalValueServiceFactory = ({
    * is single use and only its creator can do it, so a link sent to someone else can't attach their account.
    */
   const connectOauth = async ({ authorizationId, credentialType, ...dto }: TConnectPersonalOauthDTO) => {
-    const { owner, service, isAdmin, accessBundleIds } = await findReachableService(dto);
+    const { owner, service, reachesEveryBundle, accessBundleIds } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -307,7 +308,7 @@ export const agentVaultPersonalValueServiceFactory = ({
             projectId: dto.projectId,
             callerAccessBundleIds: accessBundleIds,
             owner,
-            isAdmin,
+            reachesEveryBundle,
             serviceId: dto.serviceId
           },
           tx
@@ -363,7 +364,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
     const { values, credentialType, ...dto } = input;
 
-    const { owner, service, isAdmin, accessBundleIds } = await findReachableService(dto);
+    const { owner, service, reachesEveryBundle, accessBundleIds } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -443,7 +444,7 @@ export const agentVaultPersonalValueServiceFactory = ({
             projectId: dto.projectId,
             callerAccessBundleIds: accessBundleIds,
             owner,
-            isAdmin,
+            reachesEveryBundle,
             serviceId: dto.serviceId
           },
           tx
