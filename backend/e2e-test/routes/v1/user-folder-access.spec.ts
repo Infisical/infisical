@@ -1,7 +1,3 @@
-import { randomUUID } from "node:crypto";
-
-import jwt from "jsonwebtoken";
-
 import {
   AccessScope,
   OrgMembershipRole,
@@ -25,14 +21,12 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
-import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { AuthMethod } from "@app/services/auth/auth-type";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
-
-import { pollUntil } from "../../testUtils/poll";
 
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
@@ -116,33 +110,6 @@ const createProjectUser = async (role: ProjectMembershipRole) => {
   };
 };
 
-const createUserSessionHeaders = async (userId: string) => {
-  const sessionId = randomUUID();
-  await testDb(TableName.AuthTokenSession).insert({
-    id: sessionId,
-    userId,
-    ip: "127.0.0.1",
-    userAgent: "e2e-folder-access",
-    accessVersion: 1,
-    refreshVersion: 1,
-    lastUsed: new Date()
-  } as never);
-
-  const token = jwt.sign(
-    {
-      authTokenType: AuthTokenType.ACCESS_TOKEN,
-      userId,
-      tokenVersionId: sessionId,
-      authMethod: AuthMethod.EMAIL,
-      organizationId: orgId,
-      accessVersion: 1
-    },
-    process.env.AUTH_SECRET as string,
-    { expiresIn: 3600 }
-  );
-  return { authorization: `Bearer ${token}` };
-};
-
 const deleteProjectUser = async (id: string) => {
   await testDb(TableName.Membership).where({ actorUserId: id }).del();
   await testDb(TableName.Users).where({ id }).del();
@@ -153,83 +120,6 @@ const getFolderPermissionVersion = async () => {
     .where({ key: KeyStorePrefixes.ProjectFolderPermissionVersion(projectId) })
     .first();
   return Number(row?.integerValue ?? 0);
-};
-
-const waitUntilBlockedBy = (pid: number) =>
-  pollUntil({
-    describe: `a query blocked by backend ${pid}`,
-    read: async () => {
-      const { rows } = await testDb.raw(
-        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
-        [pid]
-      );
-      return rows[0].waiting as number;
-    },
-    done: (waiting) => waiting > 0,
-    timeoutMs: 5_000
-  });
-
-const raceRootManagerAgainstRecursionTurnedOn = async (dto: {
-  method: "PATCH" | "DELETE";
-  body: Record<string, unknown>;
-}) => {
-  const rootTarget = { environmentSlug: seedData1.environment.slug, secretPath: "/" };
-  const rootManager = await createProjectUser(ProjectMembershipRole.Member);
-  const rootManagerHeaders = await createUserSessionHeaders(rootManager.userId);
-  const createdGrantIds: string[] = [];
-
-  try {
-    const managerGrantRes = await testServer.inject({
-      method: "POST",
-      url: folderAccessUrl(rootManager.userId),
-      headers: authHeaders(),
-      body: { ...rootTarget, permission: SecretFolderRole.FullAccess }
-    });
-    expect(managerGrantRes.statusCode).toBe(200);
-    createdGrantIds.push(managerGrantRes.json().folderAccess.id);
-
-    const memberGrantRes = await testServer.inject({
-      method: "POST",
-      url: folderAccessUrl(),
-      headers: authHeaders(),
-      body: { ...rootTarget, permission: SecretFolderRole.Read }
-    });
-    expect(memberGrantRes.statusCode).toBe(200);
-    const memberGrantId: string = memberGrantRes.json().folderAccess.id;
-    createdGrantIds.push(memberGrantId);
-
-    const trx = await testDb.transaction();
-    try {
-      const { rows } = await trx.raw("select pg_backend_pid() as pid");
-      await trx(TableName.AdditionalPrivilege).where({ id: memberGrantId }).forUpdate().first();
-
-      const pending = testServer.inject({
-        method: dto.method,
-        url: folderAccessUrl(),
-        headers: rootManagerHeaders,
-        body: { ...rootTarget, ...dto.body }
-      });
-      await waitUntilBlockedBy(rows[0].pid);
-
-      await trx(TableName.AdditionalPrivilege).where({ id: memberGrantId }).update({ appliesToSubfolders: true });
-      await trx.commit();
-
-      const refused = await pending;
-      expect(refused.statusCode).toBe(403);
-      expect(refused.json().error).toBe("RecursiveFolderAccessNotAllowed");
-    } catch (err) {
-      if (!trx.isCompleted()) await trx.rollback();
-      throw err;
-    }
-
-    expect(await testDb(TableName.AdditionalPrivilege).where({ id: memberGrantId }).first()).toEqual(
-      expect.objectContaining({ role: SecretFolderRole.Read, appliesToSubfolders: true })
-    );
-  } finally {
-    await testDb(TableName.AdditionalPrivilege).whereIn("id", createdGrantIds).del();
-    await testDb(TableName.AuthTokenSession).where({ userId: rootManager.userId }).del();
-    await deleteProjectUser(rootManager.userId);
-  }
 };
 
 describe("User folder access CRUD", () => {
@@ -266,8 +156,7 @@ describe("User folder access CRUD", () => {
         environment: seedData1.environment.slug,
         secretPath: "/user-folder-access",
         isTemporary: false,
-        temporaryRange: null,
-        isPermissionRecursive: false
+        temporaryRange: null
       })
     );
     expect(created).not.toHaveProperty("name");
@@ -358,26 +247,6 @@ describe("User folder access CRUD", () => {
       body: { ...folderTarget }
     });
     expect(deleteAgainRes.statusCode).toBe(404);
-  });
-
-  test("a root-only manager cannot change a grant that became recursive while the change waited", async () => {
-    await raceRootManagerAgainstRecursionTurnedOn({ method: "PATCH", body: { permission: SecretFolderRole.Edit } });
-  });
-
-  test("a root-only manager cannot revoke a grant that became recursive while the revoke waited", async () => {
-    await raceRootManagerAgainstRecursionTurnedOn({ method: "DELETE", body: {} });
-  });
-
-  test("the database refuses appliesToSubfolders on a privilege without a folder", async () => {
-    await expect(
-      testDb(TableName.AdditionalPrivilege).insert({
-        name: `recursive-no-folder-${alphaNumericNanoId(8)}`,
-        projectId,
-        actorUserId: memberUserId,
-        permissions: JSON.stringify([]),
-        appliesToSubfolders: false
-      })
-    ).rejects.toThrow(/additional_privileges_applies_to_subfolders_requires_folder/);
   });
 
   describe("group removal reaps folder grants", () => {

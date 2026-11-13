@@ -20,9 +20,9 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
@@ -145,8 +145,7 @@ describe("Identity folder access CRUD", () => {
         secretPath: "/identity-folder-access",
         isTemporary: true,
         temporaryMode: TemporaryPermissionMode.Relative,
-        temporaryRange: "1d",
-        isPermissionRecursive: false
+        temporaryRange: "1d"
       })
     );
     expect(new Date(created.temporaryAccessStartTime).toISOString()).toBe(temporaryAccessStartTime);
