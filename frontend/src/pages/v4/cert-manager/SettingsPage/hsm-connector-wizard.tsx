@@ -7,7 +7,7 @@ import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
-import { saved } from "../../access/toast";
+import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import type { HsmPlan } from "../../data/cert-manager-settings/contract-hsm";
 import {
@@ -104,16 +104,18 @@ export const AddHsmConnectorSheet = ({
         }}
         completeLabel="Add HSM connector"
         onComplete={async () => {
-          await create.mutateAsync({
-            name: draft.name,
-            description: draft.description.trim() || undefined,
-            ...routeIds(draft.route),
-            credentials: {
-              slotLabel: draft.slotLabel,
-              pin: draft.pin,
-              keyNamePrefix: draft.keyNamePrefix.trim() || undefined
-            }
-          });
+          await create
+            .mutateAsync({
+              name: draft.name,
+              description: draft.description.trim() || undefined,
+              ...routeIds(draft.route),
+              credentials: {
+                slotLabel: draft.slotLabel,
+                pin: draft.pin,
+                keyNamePrefix: draft.keyNamePrefix.trim() || undefined
+              }
+            })
+            .catch(readableFailure("Could not add the HSM connector."));
           saved(`HSM connector ${draft.name} created and verified`);
           completed.current = true;
         }}

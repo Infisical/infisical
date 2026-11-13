@@ -37,5 +37,11 @@ export const errorMessage = (error: unknown) => {
   return error instanceof Error ? error.message : undefined;
 };
 
+export const readableFailure =
+  (fallback: string) =>
+  (error: unknown): never => {
+    throw new Error(errorMessage(error) ?? fallback);
+  };
+
 export const failed = (title: string, error?: unknown) =>
   toast({ tone: "bad", title, description: errorMessage(error) });

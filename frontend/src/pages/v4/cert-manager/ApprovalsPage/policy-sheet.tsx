@@ -19,7 +19,7 @@ import {
   type TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies/types";
 
-import { failed, saved } from "../../access/toast";
+import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 
 type StepDraft = {
@@ -226,8 +226,8 @@ export const PolicySheet = ({
         onComplete={async () => {
           if (!policy) return;
           const conditions = (policy.conditions.conditions as CertRequestPolicyConditions).slice(1);
-          try {
-            await update.mutateAsync({
+          await update
+            .mutateAsync({
               policyType: ApprovalPolicyType.CertRequest,
               policyId: policy.id,
               name: draft.name.trim(),
@@ -244,11 +244,8 @@ export const PolicySheet = ({
                   ...entry.groups.map((id) => ({ type: ApproverType.Group, id }))
                 ]
               }))
-            });
-          } catch (error) {
-            failed("Failed to update policy", error);
-            throw error;
-          }
+            })
+            .catch(readableFailure("Could not update the policy."));
           saved("Policy updated");
           completed.current = true;
         }}
