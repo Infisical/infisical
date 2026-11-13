@@ -187,6 +187,19 @@ describe("Plan.allows", () => {
   });
 });
 
+describe("Plan.grants", () => {
+  test("should count a product as granted only when the plan explicitly includes it", () => {
+    // Setup
+    const plans = [null, true, false].map((agentVault) => Plan.restore({ ...testFeatures(), agentVault }));
+
+    // Action
+    const granted = plans.map((plan) => plan.grants(PlanProduct.AgentVault));
+
+    // Assert
+    expect(granted).toEqual([false, true, false]);
+  });
+});
+
 describe("Plan immutability", () => {
   test("should not change when the features it was restored from change afterwards", () => {
     // Setup

@@ -1,10 +1,15 @@
 // "org-tree": root and sub-orgs count as one, reported at the root. "org": reported at the org that changed.
 export type TMeterScope = "org" | "org-tree";
 
+// "count": a domain registers a counter and License reports its current value. "events": the owning domain records
+// each fact through recordMeteringEvents, so there is nothing to count.
+export type TMeterSource = "count" | "events";
+
 export class Meter<K extends string = string> {
   private constructor(
     readonly key: K,
-    readonly scope: TMeterScope
+    readonly scope: TMeterScope,
+    readonly source: TMeterSource = "count"
   ) {}
 
   static readonly Identities = new Meter("identities", "org");
@@ -17,6 +22,9 @@ export class Meter<K extends string = string> {
   static readonly PamIdentities = new Meter("pam_identities", "org");
 
   static readonly AgentVaultIdentities = new Meter("agent_vault_identities", "org");
+
+  // Billed to the root org, like the PKI meters.
+  static readonly AgentVaultBrokeredRequests = new Meter("agent_vault_brokered_requests", "org-tree", "events");
 
   static readonly InternalCas = new Meter("internal_cas", "org-tree");
 
@@ -31,6 +39,7 @@ export class Meter<K extends string = string> {
       Meter.SecretIdentities,
       Meter.PamIdentities,
       Meter.AgentVaultIdentities,
+      Meter.AgentVaultBrokeredRequests,
       Meter.InternalCas,
       Meter.ActiveCerts,
       Meter.WildcardCerts

@@ -84,12 +84,20 @@ export class UsageReportService implements TUsageReportService {
   async handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void> {
     if (!this.licenseServer.canReportUsage() || !events.length) return;
 
-    const reportOrgId = this.isCloud() ? orgId : SELF_HOSTED_LICENSE_ORG_ID;
+    // A job holds one dimension (UsageQueue.recordMeteringEvents), so its first event names the meter.
+    const meter = Meter.fromKey(events[0].dimensionKey);
+    let reportOrgId = SELF_HOSTED_LICENSE_ORG_ID;
 
     try {
+      if (this.isCloud()) {
+        reportOrgId =
+          meter?.scope === "org-tree" ? await this.organizationsProjectsService.resolveRootOrgId(orgId) : orgId;
+      }
+
       const outcome = await this.licenseServer.reportEvents(reportOrgId, events, this.source);
+      // Expected for an org whose plan doesn't price the meter, so not a warning.
       if (outcome.status === "rejected") {
-        logger.warn(
+        logger.info(
           `usage-event-queue: metering events rejected, dropping [orgId=${reportOrgId}] [count=${events.length}] [reason=${outcome.reason}]`
         );
         return;

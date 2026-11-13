@@ -93,6 +93,7 @@ export const getDefaultOnPremFeatures = () => {
     maxSansPerCertificate: null,
     // product gating
     pam: null,
+    agentVault: null,
     certManager: null,
     secretsTemporaryAccess: null,
     enterprisePamAccount: null,
