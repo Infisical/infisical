@@ -345,28 +345,21 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             expiresAt: session.expiresAt?.toISOString() ?? null,
             ...(session.services.length > 0 && {
               services: session.services.map((service) => {
-                const fields = serviceTypeReportFieldsOf(service);
+                const { allowedMethods, allowedPathPrefixes, ...typeFields } = serviceTypeReportFieldsOf(service);
                 return {
                   serviceId: service.id,
                   name: service.name,
                   description: service.description,
                   serviceType: service.type,
-                  serverUrl: fields.serverUrl,
-                  hostPattern: fields.hostPattern,
-                  host: fields.host,
-                  port: fields.port,
-                  database: fields.database,
-                  tlsEnabled: fields.tlsEnabled,
-                  tlsVerify: fields.tlsVerify,
-                  hasTlsCa: fields.hasTlsCa,
+                  ...typeFields,
                   credentialType: service.credential.type,
                   headerName:
                     service.credential.type === AgentVaultCredentialType.Bearer
                       ? service.credential.headerName
                       : undefined,
-                  allowedMethods: fields.allowedMethods ?? null,
-                  allowedPathPrefixes: fields.allowedPathPrefixes ?? null,
-                  allowedTools: fields.allowedTools,
+                  // Present on every service, null outside HTTP, as this event has always sent them.
+                  allowedMethods: allowedMethods ?? null,
+                  allowedPathPrefixes: allowedPathPrefixes ?? null,
                   ...serviceTransformationNamesOf(service)
                 };
               })

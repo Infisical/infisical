@@ -7085,6 +7085,7 @@ interface AgentVaultSessionMintEvent {
       description?: string | null;
       serviceType: string;
       serverUrl?: string;
+      transport?: string;
       // Absent for a database or SSH service, which reports host, port and database instead.
       hostPattern?: string;
       host?: string;
