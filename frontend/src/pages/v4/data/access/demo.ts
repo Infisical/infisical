@@ -1251,9 +1251,9 @@ export const accessDemo: AccessAdapter = {
       return { members: page(matches, offset, limit), totalCount: matches.length };
     }
   ),
-  useGroupProjects: demoQuery("group-projects", (state, { id, offset, limit, search }) => {
-    const matches = membershipsOf(state, "group")
-      .filter((entry) => entry.groupId === id)
+  useGroupProjects: demoQuery("group-projects", (state, groupId: string) =>
+    membershipsOf(state, "group")
+      .filter((entry) => entry.groupId === groupId)
       .map((entry) => {
         const found = projectOf(state, entry.projectId)!;
         return {
@@ -1265,9 +1265,7 @@ export const accessDemo: AccessAdapter = {
           joinedGroupAt: new Date(entry.createdAt)
         };
       })
-      .filter((entry) => contains(entry.name, search));
-    return { projects: page(matches, offset, limit), totalCount: matches.length };
-  }),
+  ),
   useCreateGroup: demoMutation((dto, state) => {
     const group = {
       id: newId(),
