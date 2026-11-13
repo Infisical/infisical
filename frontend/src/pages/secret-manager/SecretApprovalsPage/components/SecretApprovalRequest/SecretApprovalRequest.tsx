@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
@@ -136,6 +136,8 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
   const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
   const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
+  const [allMatchingSelectedFor, setAllMatchingSelectedFor] = useState<string | null>(null);
+  const selectionVersion = useRef(0);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -226,12 +228,19 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const isPageIndeterminate =
     !isPageSelected && secretApprovalRequests.some(({ id }) => selectedRequests[id]);
 
+  const markSelectionEdited = () => {
+    selectionVersion.current += 1;
+    setAllMatchingSelectedFor(null);
+  };
+
   const clearSelection = () => {
+    markSelectionEdited();
     setSelectedRequests({});
     setFailedRequestErrors({});
   };
 
   const toggleRequestSelection = (request: TSecretApprovalRequest) => {
+    markSelectionEdited();
     if (selectedRequests[request.id]) {
       setSelectedRequests(({ [request.id]: _, ...rest }) => rest);
       setFailedRequestErrors(({ [request.id]: _, ...rest }) => rest);
@@ -248,6 +257,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   };
 
   const togglePageSelection = () => {
+    markSelectionEdited();
     if (isPageSelected || isPageIndeterminate) {
       const pageIds = new Set(secretApprovalRequests.map(({ id }) => id));
       setSelectedRequests((prev) =>
@@ -269,13 +279,16 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
     }));
   };
 
+  const listFiltersKey = JSON.stringify(listFilters);
   const canSelectAllMatching =
     isOpenTab &&
     isPageSelected &&
     totalApprovalCount > secretApprovalRequests.length &&
-    selectedCount < Math.min(totalApprovalCount, MAX_BULK_SELECTION);
+    selectedCount < MAX_BULK_SELECTION &&
+    allMatchingSelectedFor !== listFiltersKey;
 
   const selectAllMatching = async () => {
+    const version = selectionVersion.current;
     setIsSelectingAllMatching(true);
     try {
       const { approvals, totalCount } = await fetchSecretApprovalRequestList({
@@ -283,6 +296,8 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         limit: MAX_BULK_SELECTION,
         offset: 0
       });
+      if (version !== selectionVersion.current) return;
+      setAllMatchingSelectedFor(listFiltersKey);
       setSelectedRequests((prev) => {
         const unselected = approvals.filter(({ id }) => !prev[id]);
         const available = Math.max(0, MAX_BULK_SELECTION - Object.keys(prev).length);
@@ -296,7 +311,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
       if (totalCount > MAX_BULK_SELECTION) {
         createNotification({
           type: "info",
-          text: `You can select up to ${MAX_BULK_SELECTION} change requests at once, so only the first ${MAX_BULK_SELECTION} of ${totalCount} were selected`
+          text: `You can select up to ${MAX_BULK_SELECTION} change requests at once, so the selection stopped at ${MAX_BULK_SELECTION} of ${totalCount} matching`
         });
       }
     } catch {
@@ -802,11 +817,16 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
             onClick={selectAllMatching}
           >
             {totalApprovalCount > MAX_BULK_SELECTION
-              ? `Select First ${MAX_BULK_SELECTION}`
+              ? `Select Up to ${MAX_BULK_SELECTION}`
               : `Select All ${totalApprovalCount}`}
           </Button>
         )}
-        <Button variant="project" size="xs" onClick={() => setIsBulkReviewOpen(true)}>
+        <Button
+          variant="project"
+          size="xs"
+          isDisabled={isSelectingAllMatching}
+          onClick={() => setIsBulkReviewOpen(true)}
+        >
           <GitMergeIcon />
           Review & Merge
         </Button>

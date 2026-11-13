@@ -121,11 +121,13 @@ export const useGetSecretApprovalRequests = ({
     refetchInterval: options?.refetchInterval ?? 30_000
   });
 
-const fetchSecretApprovalRequestDetails = async ({
-  id
-}: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) => {
+const fetchSecretApprovalRequestDetails = async (
+  { id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">,
+  signal?: AbortSignal
+) => {
   const { data } = await apiRequest.get<{ approval: TSecretApprovalRequest }>(
-    `/api/v1/secret-approval-requests/${id}`
+    `/api/v1/secret-approval-requests/${id}`,
+    { signal }
   );
 
   return data.approval;
@@ -155,16 +157,27 @@ const DETAILS_LIST_CONCURRENCY = 6;
 let activeDetailsListFetches = 0;
 const queuedDetailsListFetches: (() => void)[] = [];
 
-const fetchSecretApprovalRequestDetailsQueued = async (id: string) => {
+const fetchSecretApprovalRequestDetailsQueued = async (id: string, signal: AbortSignal) => {
+  signal.throwIfAborted();
   if (activeDetailsListFetches < DETAILS_LIST_CONCURRENCY) {
     activeDetailsListFetches += 1;
   } else {
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
       queuedDetailsListFetches.push(resolve);
+      signal.addEventListener(
+        "abort",
+        () => {
+          const index = queuedDetailsListFetches.indexOf(resolve);
+          if (index === -1) return;
+          queuedDetailsListFetches.splice(index, 1);
+          reject(signal.reason);
+        },
+        { once: true }
+      );
     });
   }
   try {
-    return await fetchSecretApprovalRequestDetails({ id });
+    return await fetchSecretApprovalRequestDetails({ id }, signal);
   } finally {
     const next = queuedDetailsListFetches.shift();
     if (next) next();
@@ -184,7 +197,8 @@ export const useGetSecretApprovalRequestDetailsList = ({
   useQueries({
     queries: ids.map((id) => ({
       queryKey: secretApprovalRequestKeys.detail({ id }),
-      queryFn: () => fetchSecretApprovalRequestDetailsQueued(id),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        fetchSecretApprovalRequestDetailsQueued(id, signal),
       enabled,
       retry: (failureCount: number, error: unknown) =>
         failureCount < (isRateLimited(error) ? 3 : 1),
