@@ -529,15 +529,17 @@
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
                   "!@app/domains/domains",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "Outside a domain, import only its ce/module or its ce/testing doubles (or @app/domains/domains). See src/domains/AGENTS.md."
+                "message": "Outside a domain, import only its ce/module or its ce/testing doubles (or @app/domains/domains), and domains/lib only through a folder index. See src/domains/AGENTS.md."
               }
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -583,15 +585,17 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               }
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -633,10 +637,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -649,7 +655,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -692,10 +698,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -728,7 +736,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -771,10 +779,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -805,7 +815,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -848,10 +858,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -919,10 +931,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -955,7 +969,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -998,10 +1012,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -1030,7 +1046,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -1072,10 +1088,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               }
             ],
             "paths": [
@@ -1118,10 +1136,12 @@
                 "group": [
                   "@app/domains/**",
                   "!@app/domains/*/*/ce/module",
-                  "!@app/domains/lib/**",
+                  "!@app/domains/lib/*",
+                  "!@app/domains/lib/*/testing/**",
+                  "!@app/domains/lib/testing/**",
                   "!@app/domains/*/*/ce/testing/**"
                 ],
-                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests). See src/domains/AGENTS.md."
+                "message": "A domain imports another domain only through its ce/module (or its ce/testing doubles, in tests), and domains/lib only through a folder index or its testing/ doubles. See src/domains/AGENTS.md."
               },
               {
                 "group": [
@@ -1134,7 +1154,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],
@@ -1175,7 +1195,7 @@
             ],
             "paths": [
               {
-                "name": "@app/domains/lib/transaction-runner",
+                "name": "@app/domains/lib/transactions",
                 "importNames": [
                   "unsealTransaction"
                 ],

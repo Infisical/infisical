@@ -1,11 +1,11 @@
-import { InMemoryKeyStore } from "@app/domains/lib/testing/in-memory-key-store";
+import { TDomainQueue } from "@app/domains/lib/jobs";
+import { FakeQueue } from "@app/domains/lib/jobs/testing/fake-queue";
+import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
-import { TQueueServiceFactory } from "@app/queue";
 
 import { LicenseModule } from "../module";
 import { TUsageCounter } from "../services/dependencies";
 import { FakeLicenseServer } from "./fake-license-server";
-import { FakeQueue } from "./fake-queue";
 
 export const ROOT = { id: "11111111-1111-4111-8111-111111111111" };
 export const SUB_ORG_ID = "22222222-2222-4222-8222-222222222222";
@@ -42,7 +42,7 @@ export const buildLicense = async ({
   const cronHandlers = new Map<string, () => Promise<void>>();
   const module = await LicenseModule.create({
     keyStore,
-    queueService: queue as unknown as Pick<TQueueServiceFactory, "queue" | "start">,
+    queueService: queue as unknown as TDomainQueue,
     cronJob: {
       register: (job) => {
         registeredCrons.push(`${job.name}:${String(job.enabled)}`);

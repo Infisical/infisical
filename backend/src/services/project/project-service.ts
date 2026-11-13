@@ -17,7 +17,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import {
   Meter,
   PlanFeature,

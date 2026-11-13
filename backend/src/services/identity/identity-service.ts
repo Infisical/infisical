@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import {
   Meter,
   PlanFeature,

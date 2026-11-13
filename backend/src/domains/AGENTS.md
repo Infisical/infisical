@@ -26,8 +26,22 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md).
 
-`lib/` has `TransactionRunner`, `TTransaction`, `sealKnexTransaction` (`legacy-transaction.ts`), the domain
-errors (`errors.ts`) and in-memory versions under `lib/testing/`.
+`lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
+`index.ts` and keeps its test doubles in its own `testing/`:
+
+| Folder | Exports | Test doubles |
+| --- | --- | --- |
+| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `ExternalSystemError` | |
+| `lib/transactions/` | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
+| `lib/key-store/` | `TDomainKeyStore` | `InMemoryKeyStore` |
+| `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
+| `lib/data-access/` | `toCount` and other row helpers every data access class needs | |
+| `lib/testing/integration/` | The Postgres integration harness (`setupIntegration`) | |
+
+Import `@app/domains/lib/<folder>` or `@app/domains/lib/<folder>/testing/<file>`, never a file inside a folder;
+lint enforces it. Code goes here only when it has no business rule and a second domain needs it (or will, like
+the in-memory runner). Something only one domain uses stays in that domain. A new concern gets a new folder,
+not a file at the root of `lib/`.
 
 A domain has `ce/`, `ee/`, or both, with the same layout inside. Nothing else at the root. Code moving from
 `src/ee/**` goes to the domain's `ee/`, and a domain may be `ee/` only: everything under an `ee/` path is
@@ -112,13 +126,14 @@ rule about it shows up.
   why it's a function.
 - Reads outside `run` go to a replica and can lag. A read that must see a write just made, or that guards a
   write, goes through `run` (or `within(tx)`) so it runs on the primary.
+- Convert counts with `toCount` (`lib/data-access/`): Postgres returns `count(*)` as a string.
 - Wrap each query in `try/catch` and rethrow `DatabaseError` from `@app/lib/errors` with a `name` saying what
   failed. It's the one class from that file a domain uses.
 - Use `TableName` and the row types from `@app/db/schemas`, and helpers from `@app/lib/knex` (`orgTreeIds`).
   Don't port `ormify`: write the queries the type declares, nothing generic.
 - Return models (`Model.restore(row)`), `null` for a missing row, and plain shapes only for counts and read-only
   rows (see Rich models).
-- A key store cache is data access too: a `<Thing>Cache` class over `TDomainKeyStore` (`lib/key-store.ts`)
+- A key store cache is data access too: a `<Thing>Cache` class over `TDomainKeyStore` (`lib/key-store/`)
   holding its key names and TTLs as file-local constants (`PlanCache`).
 
 ## Transactions
@@ -231,7 +246,7 @@ If something truly has to be atomic across two domains, the boundary is wrong. M
 
 ## Errors
 
-A domain throws only the kinds in `lib/errors.ts`, never `BadRequestError` and the rest of `@app/lib/errors`: domains
+A domain throws only the kinds in `lib/errors/`, never `BadRequestError` and the rest of `@app/lib/errors`: domains
 also run from queues and crons, where a status code means nothing. `toHttpError` (`server/lib/domain-errors.ts`)
 maps them at the HTTP boundary.
 
@@ -289,7 +304,8 @@ in-memory store and lets EE plug in without `ce/` importing it.
   takes implementations in its constructor (`usageCounters: TUsageCounter[]`). `domains.ts` builds products first.
 - `ce/module.ts` and what it imports touch `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with
   `import type`; `domains.ts` passes the runtime pieces in. Those three are in an import cycle with
-  `@app/lib/crypto` and break any test that loads them first.
+  `@app/lib/crypto` and break any test that loads them first. Take them as `TDomainQueue`, `TDomainCron` and
+  `TDomainKeyStore` from `lib/`, never a fresh `Pick<>` of the legacy factory.
 - No HTTP error classes from `@app/lib/errors` in a domain; see Errors.
 - A domain never takes a legacy service or DAL (`src/services/**`, `src/ee/services/**`), and legacy code never
   feeds one in. If a module needs one, migrate that dependency first. That includes authorization: a module that

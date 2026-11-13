@@ -1,4 +1,4 @@
-import { TTransactionRunner } from "@app/domains/lib/transaction-runner";
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 
 import { TOrganizationsProjectsStore } from "../dependencies";
 

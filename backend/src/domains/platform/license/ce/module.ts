@@ -1,9 +1,8 @@
+import type { TDomainCron, TDomainQueue } from "@app/domains/lib/jobs";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
-import type { TCronJobFactory } from "@app/lib/cron/cron-job";
 import type { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
-import type { TQueueServiceFactory } from "@app/queue";
 
 import { InstanceEntitlementsCache } from "./data-access/instance-entitlements-cache";
 import { PlanCache } from "./data-access/plan-cache";
@@ -41,8 +40,8 @@ export type { TMeteringEventInput } from "./services/usage-metering/service";
 
 export type TLicenseDeps = {
   keyStore: TDomainKeyStore;
-  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  cronJob: Pick<TCronJobFactory, "register">;
+  queueService: TDomainQueue;
+  cronJob: TDomainCron;
   isProductionMode: boolean;
   // Injected because the timer module must not load with this one.
   startLocalRefresh: typeof startLocalRefresh;

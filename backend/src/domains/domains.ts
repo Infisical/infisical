@@ -1,11 +1,10 @@
 import { TDbClient } from "@app/db";
 import { TEnvConfig } from "@app/lib/config/env";
-import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
-import { TQueueServiceFactory } from "@app/queue";
 
 import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
+import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
 import { LicenseModule, TLicenseServerBilling } from "./platform/license/ce/module";
@@ -16,8 +15,8 @@ import { SecretsModule } from "./secrets-manager/secrets/ce/module";
 export type TDomainDeps = {
   db: TDbClient;
   keyStore: TDomainKeyStore;
-  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  cronJob: Pick<TCronJobFactory, "register">;
+  queueService: TDomainQueue;
+  cronJob: TDomainCron;
   envConfig: Pick<
     TEnvConfig,
     | "LICENSE_KEY"

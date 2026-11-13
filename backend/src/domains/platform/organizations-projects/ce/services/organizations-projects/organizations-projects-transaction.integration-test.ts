@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import { Knex } from "knex";
 
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 
 import { OrganizationsProjectsModule } from "../../module";
 

@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { TStoreLocks } from "@app/domains/lib/store-locks";
+import { TStoreLocks } from "@app/domains/lib/transactions";
 
 // projectId is null when the identity is org-owned.
 export type TIdentityOwnership = { orgId: string; projectId: string | null; count: number };

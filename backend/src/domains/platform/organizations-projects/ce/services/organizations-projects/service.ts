@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { TTransaction, TTransactionRunner } from "@app/domains/lib/transaction-runner";
+import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 
 import {
   TBillableActorDataAccess,

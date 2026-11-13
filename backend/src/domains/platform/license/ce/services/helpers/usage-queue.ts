@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 
+import type { TDomainQueue } from "@app/domains/lib/jobs";
 import { logger } from "@app/lib/logger";
-import type { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
+import type { QueueJobs, QueueName, TQueueJobTypes } from "@app/queue";
 
 import { Meter } from "../../models/meter";
 import { TLicenseServer, TUsageReportCache } from "../dependencies";
@@ -25,7 +26,7 @@ const USAGE_DEBOUNCE_MS = 5000;
 // Never throws: the metered write already happened, and a lost report gets fixed by the next one or reconcile.
 export class UsageQueue {
   constructor(
-    private readonly queueService: Pick<TQueueServiceFactory, "queue">,
+    private readonly queueService: Pick<TDomainQueue, "queue">,
     private readonly licenseServer: TLicenseServer,
     private readonly usageReportCache: TUsageReportCache,
     private readonly counterRegistry: CounterRegistry

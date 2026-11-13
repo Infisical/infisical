@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
+import { toCount } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
 import { TBillableActorDataAccess, TIdentityOwnership } from "../services/dependencies";
@@ -8,8 +9,6 @@ import { TBillableActorDataAccess, TIdentityOwnership } from "../services/depend
 // Billable = org member in a Secret Manager/KMS project or in no project at all (direct or via a group).
 // Actors only in PAM, PKI etc. don't count.
 const COUNTED_PROJECT_TYPES = [ProjectType.SecretManager, ProjectType.KMS];
-
-const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
 export class BillableActorDataAccess implements TBillableActorDataAccess {
@@ -40,8 +39,8 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
         | undefined;
 
       return {
-        users: Number(row?.counted_users ?? 0) + Number(row?.projectless_users ?? 0),
-        identities: Number(row?.counted_identities ?? 0) + Number(row?.projectless_identities ?? 0)
+        users: toCount(row?.counted_users) + toCount(row?.projectless_users),
+        identities: toCount(row?.counted_identities) + toCount(row?.projectless_identities)
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "CountBillableOrgActors" });
@@ -70,7 +69,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
         .select({ orgId: "i.orgId", projectId: "i.projectId" })
         .count("i.id as count")) as { orgId: string; projectId: string | null; count: string | number }[];
 
-      return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
+      return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: toCount(row.count) }));
     } catch (error) {
       throw new DatabaseError({ error, name: "GetBillableIdentityOwnershipBreakdown" });
     }
@@ -82,7 +81,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
         .count("* as count")
         .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
         .first()) as { count?: string | number } | undefined;
-      return toCount(row);
+      return toCount(row?.count);
     } catch (error) {
       throw new DatabaseError({ error, name: "CountProjectIdentities" });
     }
@@ -99,7 +98,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
         .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
         .groupBy("kind")) as { kind: string; count: string | number }[];
 
-      const byKind = (kind: string) => Number(rows.find((row) => row.kind === kind)?.count ?? 0);
+      const byKind = (kind: string) => toCount(rows.find((row) => row.kind === kind)?.count);
       return { users: byKind("u"), identities: byKind("i") };
     } catch (error) {
       throw new DatabaseError({ error, name: "CountProjectIdentitiesByKind" });
@@ -121,7 +120,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
         .select({ orgId: "i.orgId", projectId: "i.projectId" })
         .count("i.id as count")) as { orgId: string; projectId: string | null; count: string | number }[];
 
-      return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
+      return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: toCount(row.count) }));
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectIdentityOwnershipBreakdown" });
     }

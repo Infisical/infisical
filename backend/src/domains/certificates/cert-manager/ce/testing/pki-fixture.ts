@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { TDbClient } from "@app/db";
 import { ProjectType, TableName } from "@app/db/schemas";
-import { TPlatformFactories } from "@app/domains/lib/testing/integration/factories";
+import { TPlatformFactories } from "@app/domains/lib/testing/integration";
 
 const DAY = 24 * 60 * 60 * 1000;
 

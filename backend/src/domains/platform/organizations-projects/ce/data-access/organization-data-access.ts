@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { ProjectType, TableName } from "@app/db/schemas";
+import { toCount } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
 import { TOrganization, TOrganizationDataAccess } from "../services/dependencies";
@@ -57,7 +58,7 @@ export class OrganizationDataAccess implements TOrganizationDataAccess {
         })
         .count("* as count")
         .first()) as { count?: string | number } | undefined;
-      return Number(row?.count ?? 0);
+      return toCount(row?.count);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count workspaces" });
     }

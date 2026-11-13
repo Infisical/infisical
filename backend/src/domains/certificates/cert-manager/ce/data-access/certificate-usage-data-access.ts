@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { ProjectType, TableName } from "@app/db/schemas";
+import { toCount } from "@app/domains/lib/data-access";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { DatabaseError } from "@app/lib/errors";
 import { orgTreeIds } from "@app/lib/knex";
@@ -13,8 +14,6 @@ import {
   TOrgUnitCount,
   TPkiRootOrgUsage
 } from "../services/dependencies";
-
-const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
 // Reads tables we'll own once cert issuance moves in (see ../../AGENTS.md).
 export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
@@ -40,8 +39,10 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
 
   async countInternalCas(orgId?: string): Promise<number> {
     try {
-      const row = await this.internalCas(orgId).count(`${TableName.CertificateAuthority}.id as count`).first();
-      return toCount(row);
+      const row = (await this.internalCas(orgId).count(`${TableName.CertificateAuthority}.id as count`).first()) as
+        | { count?: string | number }
+        | undefined;
+      return toCount(row?.count);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count internal CAs for usage" });
     }
@@ -95,7 +96,7 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
         )
         .first()) as { total?: string | number; wildcard?: string | number } | undefined;
 
-      return { total: Number(row?.total ?? 0), wildcard: Number(row?.wildcard ?? 0) };
+      return { total: toCount(row?.total), wildcard: toCount(row?.wildcard) };
     } catch (error) {
       throw new DatabaseError({ error, name: "Count active certificate quota keys for org" });
     }
@@ -124,7 +125,7 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
         count: string | number;
       }[];
 
-      return rows.map((row) => ({ orgId: row.orgId, count: Number(row.count) }));
+      return rows.map((row) => ({ orgId: row.orgId, count: toCount(row.count) }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get internal CA breakdown for usage" });
     }
@@ -167,8 +168,8 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
 
       return rows.map((row) => ({
         orgId: row.orgId,
-        count: Number(row.total),
-        wildcard: Number(row.wildcard)
+        count: toCount(row.total),
+        wildcard: toCount(row.wildcard)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get active certificate breakdown for usage" });
@@ -234,13 +235,13 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
       certManagerOrgRows.forEach(({ rootOrgId }) => getRow(rootOrgId));
       caRows.forEach(({ rootOrgId, cas, internalCas }) => {
         const row = getRow(rootOrgId);
-        row.cas = Number(cas);
-        row.internalCas = Number(internalCas);
+        row.cas = toCount(cas);
+        row.internalCas = toCount(internalCas);
       });
       activeCertificateRows.forEach(({ rootOrgId, activeCertificates, wildcardCertificates }) => {
         const row = getRow(rootOrgId);
-        row.activeCertificates = Number(activeCertificates);
-        row.wildcardCertificates = Number(wildcardCertificates);
+        row.activeCertificates = toCount(activeCertificates);
+        row.wildcardCertificates = toCount(wildcardCertificates);
       });
 
       return [...usageByRootOrgId.values()];

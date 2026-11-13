@@ -3,9 +3,9 @@ import { randomBytes } from "node:crypto";
 import { Knex } from "knex";
 import { onTestFinished } from "vitest";
 
+import { setupIntegration } from "../testing/integration";
 import { sealKnexTransaction } from "./legacy-transaction";
 import { TStoreLocks } from "./store-locks";
-import { setupIntegration } from "./testing/integration";
 import { TransactionRunner } from "./transaction-runner";
 
 type TScratchStore = { insert(value: string): Promise<void>; pid(): Promise<number>; locks: TStoreLocks };
