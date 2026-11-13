@@ -684,6 +684,49 @@ Here are a few common patterns for filtering audit logs, grouped by product.
       --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
     ```
   </Accordion>
+  <Accordion title="Who approved a certificate renewal" id="certificate-renewals">
+    Find who requested, approved, or rejected a renewal that needed [approval](/documentation/platform/pki/applications/approvals#renewals).
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Certificate Manager** and open **Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `renew-certificate`, `automated-renew-certificate`, `approval-request-approve`, `approval-request-reject`
+          </Step>
+        </Steps>
+
+        Select a result to see its `event.metadata`.
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=renew-certificate,automated-renew-certificate,approval-request-approve,approval-request-reject"
+        ```
+      </Tab>
+    </Tabs>
+
+    Each event records one step of the renewal:
+
+    - `renew-certificate` or `automated-renew-certificate` with the status `pending_approval`: the actor, or automatic renewal, requested the renewal
+    - `approval-request-approve` and `approval-request-reject`: the actor approved or rejected the request, and `event.metadata.certificateId` is the certificate being renewed
+    - `renew-certificate` with `platform` as the actor: Infisical renewed the certificate after the approvers approved the request, and `event.metadata.approvalRequestId` holds the ID of the approval request
+
+    Through the API, add `eventMetadata` to return the decisions and the renewal for one approval request:
+
+    ```bash
+    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+      -H "Authorization: Bearer <your-access-token>" \
+      --data-urlencode "projectId=<project-id>" \
+      --data-urlencode "eventType=approval-request-approve,approval-request-reject,renew-certificate" \
+      --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
+    ```
+  </Accordion>
 </AccordionGroup>
 
 ### Key Management Service (KMS)

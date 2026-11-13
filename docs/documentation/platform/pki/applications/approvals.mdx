@@ -43,14 +43,20 @@ When a certificate request is made through an enrollment method:
 
 ### Renewals
 
-If an approval policy covers the certificate's profile, a [renewal](/documentation/platform/pki/applications/certificate-renewal) waits for approval in these cases:
+If an issuance policy covers the certificate's profile, the policy's **Renewals Requiring Approval** setting decides which [renewals](/documentation/platform/pki/applications/certificate-renewal) wait for approval:
 
-- The certificate was imported or discovered, including when it renews automatically
-- The renewal changes the certificate, such as its common name, SANs, validity, or custom extensions, or uses a CSR
+- **When the renewal changes the certificate** (the default): a renewal waits if it changes the certificate's common name, SANs, validity, or custom extensions, if it uses a CSR, or if the certificate was imported or discovered
+- **Every renewal**: every renewal waits, including [automatic renewals](/documentation/platform/pki/applications/enrollment-methods/api#server-driven-auto-renewal) of certificates that Infisical issued
 
-If you renew a certificate that Infisical issued and don't change it, the renewal doesn't need approval. The machine identity bypass applies to renewals the same way it applies to issuance. Automatic renewals don't run as a machine identity, so the bypass doesn't apply to them.
+The machine identity bypass applies to renewals the same way it applies to issuance. Automatic renewals don't run as a machine identity, so the bypass doesn't apply to them.
 
-While a renewal is waiting for approval, you can't submit another renewal that needs approval for the same certificate. If an approver rejects the renewal of an imported or discovered certificate, automatic renewal stops for that certificate. Renew it manually to request approval again. Automatic renewal continues on the new certificate once that renewal is approved.
+#### Pending, rejected, and expired renewals
+
+- While a renewal is waiting for approval, you can't submit another renewal that needs approval for the same certificate, and automatic renewal doesn't request another one
+- If an approver rejects the renewal of an imported or discovered certificate, or any renewal under **Every renewal**, automatic renewal stops for that certificate until you renew it manually and that renewal is approved
+- If an approval request for an automatic renewal expires, automatic renewal requests approval again the next time it runs
+
+If nobody approves a renewal before the certificate expires, Infisical can't renew the certificate. To give approvers time, set automatic renewal to start well before the certificate expires.
 
 ### Revocation
 
@@ -76,6 +82,7 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
     | **Policy Type** | **Issuance** or **Revocation** (you can't change it after you create the policy) |
     | **Certificate Profiles** | Which profiles require approval |
     | **Bypass approval for machine identities** | Allow automated systems to skip approval (issuance policies only) |
+    | **Renewals Requiring Approval** | Which [renewals](#renewals) wait for approval: **When the renewal changes the certificate** or **Every renewal** (issuance policies only) |
   </Step>
   <Step title="Configure approval steps">
     Each step defines who can approve and how many approvals are required:
