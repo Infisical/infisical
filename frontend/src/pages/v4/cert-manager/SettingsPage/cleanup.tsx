@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -43,7 +43,7 @@ const draftOf = (config: TCertificateCleanupConfig | null | undefined): Draft =>
 const Title = () => (
   <Inline gap={8} align="center">
     Certificate cleanup
-    <DocumentationLinkBadge href={DOCS_URL} />
+    <DocumentationLink href={DOCS_URL} subject="certificate cleanup" />
   </Inline>
 );
 

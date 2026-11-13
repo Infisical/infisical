@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
@@ -429,12 +429,19 @@ export const EmailDomainsSection = () => {
     <>
       <Card
         variant="framed"
-        title="Email domains"
+        title={
+          <Inline gap={8} wrap={false}>
+            Email domains
+            <DocumentationLink
+              href="https://infisical.com/docs/documentation/platform/email-domain"
+              subject="email domains"
+            />
+          </Inline>
+        }
         description="Verified domains for your IdP."
         flush={hasEmailDomainVerification && canRead}
         action={
           <Inline gap={8} wrap={false}>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/email-domain" />
             {hasEmailDomainVerification && canRead && (
               <ListToolbar band search={search} onSearch={setSearch} placeholder="Search domains" />
             )}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
@@ -16,6 +17,7 @@ import { AppConnectionsTab } from "./app-connections";
 import { DocsIntegrationsTab } from "./docs-integrations";
 import { NativeIntegrationsTab } from "./native-integrations";
 import { NATIVE_INTEGRATIONS_TAB, SECRET_SYNCS_TAB } from "./native-model";
+import { SYNC_DOCS } from "./secret-syncs/model";
 import { SecretSyncsTab } from "./secret-syncs/secret-syncs-tab";
 
 const route = v4Path("/organizations/$orgId/projects/secret-management/$projectId/integrations/");
@@ -91,6 +93,11 @@ export const IntegrationsPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Integrations"
+          badges={
+            activeTab === SECRET_SYNCS_TAB ? (
+              <DocumentationLink href={SYNC_DOCS} subject="secret syncs" />
+            ) : undefined
+          }
           tabs={
             <Tabs
               label="Integration sections"

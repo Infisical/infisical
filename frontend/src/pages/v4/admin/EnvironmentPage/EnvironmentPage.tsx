@@ -8,7 +8,7 @@ import {
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Code } from "@infisical/cipher/ui/code";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -171,7 +171,7 @@ export const EnvironmentPage = () => {
     <Stack gap={24}>
       <PageHeader
         title="Environment variables"
-        badges={<DocumentationLinkBadge href={DOCS} />}
+        badges={<DocumentationLink href={DOCS} subject="environment variables" />}
         description="Saved overrides can take up to five minutes to reach every container."
       />
       {overrides ? (

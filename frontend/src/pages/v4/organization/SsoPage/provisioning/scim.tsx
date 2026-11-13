@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
@@ -183,7 +183,10 @@ const ScimTokenDialog = ({
               <DialogTitle>
                 <Inline gap={8} align="center">
                   Manage SCIM credentials
-                  <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/scim/overview" />
+                  <DocumentationLink
+                    href="https://infisical.com/docs/documentation/platform/scim/overview"
+                    subject="SCIM"
+                  />
                 </Inline>
               </DialogTitle>
               <DialogDescription>

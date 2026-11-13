@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -55,7 +55,10 @@ const ConfigForm = ({
       title={
         <Inline gap={8} align="center">
           Scanning configuration
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/configuration" />
+          <DocumentationLink
+            href="https://infisical.com/docs/documentation/platform/secret-scanning/configuration"
+            subject="scanning configuration"
+          />
         </Inline>
       }
       dirty={isDirty}

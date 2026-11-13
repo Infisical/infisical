@@ -14,7 +14,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
 import { Combobox } from "@infisical/cipher/ui/combobox";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -370,10 +370,10 @@ const SessionLogSettingsCard = ({
         title={
           <Inline gap={8} align="center">
             Session logs
+            <DocumentationLink href={SESSION_LOGS_DOCS} subject="session logs" />
             <Badge tone={isRecording ? "ok" : "outline"}>{isRecording ? "On" : "Off"}</Badge>
           </Inline>
         }
-        action={<DocumentationLinkBadge href={SESSION_LOGS_DOCS} />}
         dirty={dirty}
         onDiscard={() => {
           setDraft(initial);

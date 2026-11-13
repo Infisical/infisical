@@ -12,7 +12,7 @@ import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -469,7 +469,7 @@ const StreamForm = ({
             <Inline gap={8} align="center" wrap={false}>
               <ProviderMedia provider={provider} size="lg" />
               {stream ? `Edit ${name} log stream` : `Add ${name} log stream`}
-              <DocumentationLinkBadge href={PROVIDERS_DOCS} />
+              <DocumentationLink href={PROVIDERS_DOCS} subject="log streams" />
             </Inline>
           </SheetTitle>
         </SheetHeader>

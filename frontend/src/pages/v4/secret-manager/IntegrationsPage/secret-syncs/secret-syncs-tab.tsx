@@ -3,7 +3,6 @@ import type { FieldValues } from "react-hook-form";
 import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -38,7 +37,6 @@ import {
   destinationNameOf,
   destinationTextOf,
   sourcePathOf,
-  SYNC_DOCS,
   SYNC_STATE,
   syncHref,
   syncsHref,
@@ -371,16 +369,13 @@ export const SecretSyncsTab = ({
           />
         }
         actions={
-          <Inline gap={8} align="center" wrap={false}>
-            <DocumentationLinkBadge href={SYNC_DOCS} />
-            <Button
-              icon="plus"
-              disabledReason={canCreate ? undefined : RESTRICTED}
-              onClick={() => setCreating({})}
-            >
-              Add sync
-            </Button>
-          </Inline>
+          <Button
+            icon="plus"
+            disabledReason={canCreate ? undefined : RESTRICTED}
+            onClick={() => setCreating({})}
+          >
+            Add sync
+          </Button>
         }
       />
       <DataTable

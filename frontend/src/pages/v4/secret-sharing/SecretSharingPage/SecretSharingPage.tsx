@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
@@ -82,7 +82,10 @@ export const SecretSharingPage = () => {
         <PageHeader
           title="Secret sharing"
           badges={
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-sharing" />
+            <DocumentationLink
+              href="https://infisical.com/docs/documentation/platform/secret-sharing"
+              subject="secret sharing"
+            />
           }
           actions={active === SecretSharingTab.Settings ? undefined : action}
           tabs={

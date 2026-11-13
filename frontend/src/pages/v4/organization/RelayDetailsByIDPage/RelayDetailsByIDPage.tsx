@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -188,7 +188,10 @@ const RelayDeployCard = ({ relay }: { relay: TRelayWithAuthMethod }) => {
       title={
         <Inline gap={8} wrap={false}>
           Deployment
-          <DocumentationLinkBadge href="https://infisical.com/docs/cli/overview" />
+          <DocumentationLink
+            href="https://infisical.com/docs/cli/overview"
+            subject="relay deployment"
+          />
         </Inline>
       }
       action={

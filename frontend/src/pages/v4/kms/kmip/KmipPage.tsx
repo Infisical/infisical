@@ -11,7 +11,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -172,7 +172,7 @@ export const KmipPage = () => {
         <PageHeader
           title="KMIP"
           description="Connect KMIP-compatible devices and applications to this project's keys."
-          badges={<DocumentationLinkBadge href={KMIP_CLIENT_DOCS} />}
+          badges={<DocumentationLink href={KMIP_CLIENT_DOCS} subject="KMIP" />}
           actions={
             canRead ? (
               <Button

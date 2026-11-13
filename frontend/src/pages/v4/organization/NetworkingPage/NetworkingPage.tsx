@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Tabs } from "@infisical/cipher/ui/tabs";
@@ -106,7 +106,12 @@ export const NetworkingPage = () => {
       <PageHeader
         title="Networking"
         description="Gateways and relays connect Infisical to your private infrastructure."
-        badges={<DocumentationLinkBadge href={docs[isRelays ? "relays" : gatewayView]} />}
+        badges={
+          <DocumentationLink
+            href={docs[isRelays ? "relays" : gatewayView]}
+            subject={isRelays ? "relays" : "gateways"}
+          />
+        }
         actions={create}
         tabs={
           <Tabs

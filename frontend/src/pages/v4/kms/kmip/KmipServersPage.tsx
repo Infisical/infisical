@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -128,7 +128,7 @@ export const KmipServersPage = () => {
         <PageHeader
           title="KMIP servers"
           description="Proxy KMIP requests from your devices and applications to Infisical KMS."
-          badges={<DocumentationLinkBadge href={KMIP_SERVER_DOCS} />}
+          badges={<DocumentationLink href={KMIP_SERVER_DOCS} subject="KMIP servers" />}
           actions={
             <Button
               variant="accent"

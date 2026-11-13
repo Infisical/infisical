@@ -1,4 +1,4 @@
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Tabs } from "@infisical/cipher/ui/tabs";
@@ -31,7 +31,10 @@ export const SsoPage = () => {
           title="SSO & provisioning"
           description="Configure how members sign in and how their accounts are provisioned."
           badges={
-            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
+            <DocumentationLink
+              href="https://infisical.com/docs/integrations/user-authentication"
+              subject="SSO and provisioning"
+            />
           }
           tabs={
             <Tabs
