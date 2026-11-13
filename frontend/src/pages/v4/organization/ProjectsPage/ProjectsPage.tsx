@@ -1,5 +1,7 @@
+import { hueScope } from "@infisical/cipher/lib/hue";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Card, CardLink } from "@infisical/cipher/ui/card";
+import { Halftone } from "@infisical/cipher/ui/halftone";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Item } from "@infisical/cipher/ui/item";
 import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -97,11 +99,13 @@ export const ProjectsPage = () => {
               <Card
                 variant="framed"
                 key={product.type}
+                {...hueScope(product.hue)}
                 className={blocked.has(product.type) ? styles.blocked : undefined}
                 footerPlacement="frame"
+                backdrop={<Halftone />}
                 title={
                   <Inline gap={8} align="center">
-                    <Icon name={product.icon} size={18} />
+                    <Icon name={product.icon} size={18} className={styles.productIcon} />
                     <CardLink
                       disabled={blocked.has(product.type)}
                       link={{

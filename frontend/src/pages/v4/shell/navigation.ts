@@ -1,3 +1,4 @@
+import { hueScope } from "@infisical/cipher/lib/hue";
 import type { IconName } from "@infisical/cipher/ui/icon";
 
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -32,7 +33,8 @@ export const products = [
     keywords: ["sm", "secrets", "secret manager"],
     label: "Secrets Management",
     icon: "key",
-    blurb: "Store, sync, and rotate secrets across environments."
+    blurb: "Store, sync, and rotate secrets across environments.",
+    hue: 113.8
   },
   {
     type: ProjectType.CertificateManager,
@@ -40,7 +42,8 @@ export const products = [
     keywords: ["cert", "certs", "certificates", "pki", "tls"],
     label: "Certificate Manager",
     icon: "cert",
-    blurb: "Issue and renew certificates for TLS and code signing."
+    blurb: "Issue and renew certificates for TLS and code signing.",
+    hue: 56
   },
   {
     type: ProjectType.KMS,
@@ -48,7 +51,8 @@ export const products = [
     keywords: ["key management", "keys", "encryption"],
     label: "KMS",
     icon: "lock",
-    blurb: "Manage keys to encrypt, decrypt, and sign data."
+    blurb: "Manage keys to encrypt, decrypt, and sign data.",
+    hue: 172
   },
   {
     type: ProjectType.SecretScanning,
@@ -56,7 +60,8 @@ export const products = [
     keywords: ["scanning", "leaks", "findings"],
     label: "Secret Scanning",
     icon: "search",
-    blurb: "Find leaked secrets in repositories and other sources."
+    blurb: "Find leaked secrets in repositories and other sources.",
+    hue: 305
   },
   {
     type: ProjectType.PAM,
@@ -64,7 +69,8 @@ export const products = [
     keywords: ["pam", "privileged access"],
     label: "Privileged Access Manager",
     icon: "terminal",
-    blurb: "Broker and record access to databases and servers."
+    blurb: "Broker and record access to databases and servers.",
+    hue: 18
   },
   {
     type: ProjectType.AgentVault,
@@ -72,7 +78,8 @@ export const products = [
     keywords: ["ai", "agents"],
     label: "Agent Vault",
     icon: "agent",
-    blurb: "Give AI agents scoped access to secrets and services."
+    blurb: "Give AI agents scoped access to secrets and services.",
+    hue: 152
   }
 ] as const satisfies readonly {
   type: ProjectType;
@@ -80,6 +87,7 @@ export const products = [
   label: string;
   icon: IconName;
   blurb: string;
+  hue: number;
   keywords: readonly string[];
 }[];
 
@@ -87,6 +95,9 @@ export type ShellProduct = (typeof products)[number];
 
 export const productOf = (type: ProjectType) =>
   products.find((product) => product.type === type) ?? products[0];
+
+export const hueScopeOf = (product: ShellProduct | undefined) =>
+  product ? hueScope(product.hue, "pop") : hueScope(250);
 
 export const productHome = (product: ShellProduct) => {
   if (product.type === ProjectType.CertificateManager) return "/cert-manager/overview";

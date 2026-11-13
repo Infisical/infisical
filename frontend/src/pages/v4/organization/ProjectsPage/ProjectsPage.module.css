@@ -1,3 +1,6 @@
+.productIcon {
+  color: var(--v4-hue-icon);
+}
 .blocked.blocked,
 .blocked.blocked * {
   color: var(--v4-faint);
