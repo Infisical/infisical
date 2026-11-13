@@ -10,9 +10,13 @@ const escapeValue = (value: string): string => {
   return value;
 };
 
+const ESCAPE_SEQUENCE_RE = new RE2(/\\([\\"nr])/g);
+const ESCAPE_SEQUENCES: Record<string, string> = { "\\": "\\", '"': '"', n: "\n", r: "\r" };
+
 const unescapeValue = (raw: string): string => {
   if (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) {
-    return raw.slice(1, -1).replace(/\\r/g, "\r").replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    // One pass, so the "n" after an escaped backslash ("\\n" in the file) is not also read as a newline
+    return raw.slice(1, -1).replace(ESCAPE_SEQUENCE_RE, (_, ch: string) => ESCAPE_SEQUENCES[ch]);
   }
   return raw;
 };
