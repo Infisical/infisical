@@ -256,5 +256,5 @@ export const AgentVaultSessionLogDefaultStorageUpgradeIntent = {
   featureKey: "agent_vault_managed_storage",
   title: "Unlock Agent Vault Session Logs",
   description: "Record what your agents do, with nothing to set up.",
-  isEnterpriseFeature: true
+  isEnterpriseFeature: false
 } satisfies CapabilityUpgradeIntent;

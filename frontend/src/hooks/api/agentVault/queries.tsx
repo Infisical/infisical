@@ -29,6 +29,7 @@ import {
   TAgentVaultSessionLogChunkCache
 } from "./sessionLogDecrypt";
 import {
+  TAgentVaultAccess,
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultBundleSkill,
@@ -88,6 +89,8 @@ export const getSessionLogStorageError = (error: unknown) =>
 // Every key carries the org and the project. By-id routes take the project from the row, so without the project in
 // the key a switch to another project would serve the previous one's data from cache.
 export const agentVaultKeys = {
+  // Org-wide: the plan and grandfathering belong to the org, not a project.
+  access: (orgId: string) => ["agent-vault", orgId, "access"] as const,
   oauthAuthorization: (orgId: string, authorizationId: string) =>
     ["agent-vault", orgId, "oauth-authorizations", authorizationId] as const,
   all: (orgId: string, projectId: string) => ["agent-vault", orgId, projectId] as const,
@@ -571,6 +574,20 @@ export const fetchAgentVaultProxyCa = async (proxyId: string) => {
     `/api/v1/agent-vault/proxies/${proxyId}/ca`
   );
   return data.ca;
+};
+
+export const useGetAgentVaultAccess = () => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.access(currentOrg.id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAgentVaultAccess>(
+        "/api/v1/agent-vault/settings/access"
+      );
+      return data;
+    }
+  });
 };
 
 export const useGetAgentVaultSessionLogSettings = (projectId: string, enabled = true) => {

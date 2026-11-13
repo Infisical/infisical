@@ -17,6 +17,12 @@ const TRIAL_PRODUCTS = {
     billingProduct: BillingProduct.Pam,
     projectType: ProjectType.PAM,
     plans: [BillingPlan.Pro]
+  },
+  // Not a trial: Agent Vault Pro has no trial, so the billing page offers buying it straight away.
+  "agent-vault": {
+    billingProduct: BillingProduct.AgentVault,
+    projectType: ProjectType.AgentVault,
+    plans: [BillingPlan.Pro]
   }
 } as const;
 

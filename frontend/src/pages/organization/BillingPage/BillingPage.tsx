@@ -6,6 +6,7 @@ import {
   SELF_HOSTED_LICENSE_COPY
 } from "@app/components/license/self-hosted-license";
 import {
+  AgentVaultUpgradeIntent,
   BillingProduct,
   getSafeUpgradeReturnPath,
   PamUpgradeIntent,
@@ -52,7 +53,8 @@ const ORG_PAGE_SIZE = 10;
 
 const PRICING_TRIAL_INTENTS: Record<string, UpgradeIntent> = {
   [BillingProduct.SecretsManagement]: SecretsManagementUpgradeIntent,
-  [BillingProduct.Pam]: PamUpgradeIntent
+  [BillingProduct.Pam]: PamUpgradeIntent,
+  [BillingProduct.AgentVault]: AgentVaultUpgradeIntent
 };
 
 type BillingFlow = { type: "sheet"; prodId: string };

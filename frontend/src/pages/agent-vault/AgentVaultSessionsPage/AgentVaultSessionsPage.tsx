@@ -83,6 +83,7 @@ import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
+import { useAgentVaultPlanGate } from "@app/hooks/useAgentVaultPlanGate";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
 
@@ -178,7 +179,9 @@ export const AgentVaultSessionsPage = () => {
   // off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
-  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
+  const { withPlan, upgradeGate } = useAgentVaultPlanGate();
+  const openCreateDialog = withPlan("agent-vault.start-session", () => setIsCreateDialogOpen(true));
+  useAgentVaultCreateIntent(openCreateDialog, hasReachableBundles);
 
   let emptyTitle: string;
   let emptyDescription: string;
@@ -303,11 +306,7 @@ export const AgentVaultSessionsPage = () => {
               expires.
             </CardDescription>
             <CardAction>
-              <Button
-                variant="av"
-                isDisabled={!hasReachableBundles}
-                onClick={() => setIsCreateDialogOpen(true)}
-              >
+              <Button variant="av" isDisabled={!hasReachableBundles} onClick={openCreateDialog}>
                 <PlusIcon />
                 Create Session
               </Button>
@@ -594,6 +593,7 @@ export const AgentVaultSessionsPage = () => {
         onOpenChange={setIsUpgradeOpen}
         storageType={sessionLogSettings?.storage.type}
       />
+      {upgradeGate}
     </div>
   );
 };

@@ -1028,3 +1028,11 @@ export type TUpdateAgentVaultSkillDTO = TCreateAgentVaultSkillDTO & {
   /** The version the files were edited from. The server refuses the save when a newer one was published since. */
   baseVersion?: number;
 };
+
+export type TAgentVaultAccess = {
+  /** False when the org's plan doesn't include Agent Vault: starting sessions and adding proxies are refused. */
+  allowed: boolean;
+  state: "self-hosted" | "plan" | "open" | "grandfathered" | "none";
+  /** True for orgs that used Agent Vault before billing launched and haven't added a card yet. */
+  showCardModal: boolean;
+};
