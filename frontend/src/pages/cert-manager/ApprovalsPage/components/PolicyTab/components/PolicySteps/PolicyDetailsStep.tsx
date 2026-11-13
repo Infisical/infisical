@@ -11,7 +11,10 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   Input,
+  RadioGroup,
+  RadioGroupItem,
   Select,
   SelectContent,
   SelectItem,
@@ -29,6 +32,7 @@ import {
 } from "@app/hooks/api/pkiApplications";
 import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
+import { RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
 
 type ProfileOption = {
@@ -260,28 +264,61 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
       />
 
       {!isRevocationPolicy && (
-        <Controller
-          control={control}
-          name="bypassForMachineIdentities"
-          render={({ field: { value, onChange } }) => (
-            <Field orientation="horizontal" className="mt-2">
-              <Checkbox
-                id="bypassForMachineIdentities"
-                variant="project"
-                isChecked={value}
-                onCheckedChange={onChange}
-              />
-              <FieldContent>
-                <FieldLabel htmlFor="bypassForMachineIdentities" className="cursor-pointer">
-                  Bypass approval for machine identities
-                </FieldLabel>
-                <FieldDescription>
-                  When enabled, machine identities can issue certificates without requiring approval
-                </FieldDescription>
-              </FieldContent>
-            </Field>
-          )}
-        />
+        <>
+          <Controller
+            control={control}
+            name="renewalApproval"
+            render={({ field: { value, onChange } }) => (
+              <Field>
+                <FieldLabel>Renewals Requiring Approval</FieldLabel>
+                <RadioGroup
+                  value={value}
+                  onValueChange={onChange}
+                  aria-label="Renewals requiring approval"
+                >
+                  {RENEWAL_APPROVAL_OPTIONS.map((option) => (
+                    <FieldLabel
+                      key={option.value}
+                      htmlFor={`renewal-approval-${option.value}`}
+                      variant="project"
+                    >
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>{option.title}</FieldTitle>
+                          <FieldDescription>{option.description}</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem id={`renewal-approval-${option.value}`} value={option.value} />
+                      </Field>
+                    </FieldLabel>
+                  ))}
+                </RadioGroup>
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="bypassForMachineIdentities"
+            render={({ field: { value, onChange } }) => (
+              <Field orientation="horizontal" className="mt-2">
+                <Checkbox
+                  id="bypassForMachineIdentities"
+                  variant="project"
+                  isChecked={value}
+                  onCheckedChange={onChange}
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor="bypassForMachineIdentities" className="cursor-pointer">
+                    Bypass approval for machine identities
+                  </FieldLabel>
+                  <FieldDescription>
+                    When enabled, machine identities can issue certificates without requiring approval
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+            )}
+          />
+        </>
       )}
     </div>
   );
