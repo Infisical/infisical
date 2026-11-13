@@ -2,17 +2,20 @@ import { describe, expect, test, vi } from "vitest";
 
 import { authPaswordServiceFactory } from "./auth-password-service";
 import { ResetPasswordV2Type } from "./auth-password-type";
+import { AuthMethod } from "./auth-type";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SALT_ROUNDS: 10 }) }));
+vi.mock("@app/lib/crypto/cryptography", () => ({ crypto: { hashing: () => ({ compareHash: async () => false }) } }));
 vi.mock("@app/lib/validator/breached-password", () => ({ isPasswordBreached: vi.fn().mockResolvedValue(true) }));
 
 const setup = () => {
   const keyStore = { setItemWithExpiryNX: vi.fn() };
   const tokenService = { validateTokenForUser: vi.fn() };
+  const user = { isAccepted: true, isEmailVerified: true, authMethods: [AuthMethod.EMAIL], hashedPassword: "hash" };
   const service = authPaswordServiceFactory({
     keyStore,
     tokenService: tokenService as never,
-    userDAL: {} as never,
+    userDAL: { findById: vi.fn().mockResolvedValue(user) } as never,
     authDAL: {} as never,
     smtpService: {} as never,
     totpConfigDAL: {} as never
@@ -34,6 +37,19 @@ describe("breached password", () => {
       })
     ).rejects.toThrow("known data breach");
     expect(keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
+  });
+
+  test("is checked only after the current password is verified", async () => {
+    const { service } = setup();
+
+    await expect(
+      service.resetPasswordV2({
+        type: ResetPasswordV2Type.LoggedInReset,
+        userId: "user-id",
+        oldPassword: "not the current password",
+        newPassword: "a breached password"
+      })
+    ).rejects.toThrow("Incorrect current password.");
   });
 
   test("is rejected before the setup token is validated", async () => {

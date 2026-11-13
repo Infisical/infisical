@@ -7,8 +7,7 @@ import { logger } from "../logger";
 const PWNED_PASSWORDS_RANGE_URL = "https://api.pwnedpasswords.com/range";
 const REQUEST_TIMEOUT_MS = 3000;
 
-// Have I Been Pwned range search. Only the first five hex characters of the SHA-1 (the range API's
-// key) leave the process; the suffix is compared here.
+// Only the first five hex characters of the SHA-1 are sent; the suffix is compared here.
 export const isPasswordBreached = async (password: string): Promise<boolean> => {
   const appCfg = getConfig();
   if (appCfg.DISABLE_BREACHED_PASSWORD_CHECK) return false;
@@ -19,9 +18,10 @@ export const isPasswordBreached = async (password: string): Promise<boolean> => 
 
   try {
     const { data } = await request.get<string>(`${PWNED_PASSWORDS_RANGE_URL}/${prefix}`, {
-      timeout: REQUEST_TIMEOUT_MS,
+      // axios's timeout stops counting once headers arrive; this bounds the whole request.
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       responseType: "text",
-      // One attempt: the shared client's backoff would keep a user waiting well past the timeout.
+      // No retries: the shared client's backoff would outlast the deadline.
       "axios-retry": { retries: 0 },
       headers: { "Add-Padding": "true" }
     });
@@ -35,7 +35,7 @@ export const isPasswordBreached = async (password: string): Promise<boolean> => 
         return candidate === suffix && count !== "0";
       });
   } catch (error) {
-    // Fail open: an unreachable third party must not block a password change.
+    // Fail open: a failed lookup must not block a password change.
     logger.warn(error, "isPasswordBreached: Have I Been Pwned lookup failed, skipping breach check");
     return false;
   }

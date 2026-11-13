@@ -24,6 +24,14 @@ type TAuthPasswordServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
 
+const assertPasswordNotBreached = async (password: string) => {
+  if (await isPasswordBreached(password)) {
+    throw new BadRequestError({
+      message: "This password has appeared in a known data breach. Choose a different password."
+    });
+  }
+};
+
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
 export const authPaswordServiceFactory = ({
   userDAL,
@@ -41,17 +49,12 @@ export const authPaswordServiceFactory = ({
   }: TResetPasswordV2DTO) => {
     const cfg = getConfig();
 
-    // Ahead of the recovery token claim, so a rejected password can be retried with the same link.
-    if (await isPasswordBreached(newPassword)) {
-      throw new BadRequestError({
-        message: "This password has appeared in a known data breach. Choose a different password."
-      });
-    }
-
     if (type === ResetPasswordV2Type.Recovery) {
       if (!recoveryTokenJti || !recoveryTokenExpiresAt) {
         throw new UnauthorizedError({ message: "Invalid recovery token" });
       }
+      // Before the claim, so the same link can be retried.
+      await assertPasswordNotBreached(newPassword);
       // Marker TTL tracks the token's own remaining lifetime so non-default JWT_SIGNUP_LIFETIME
       // configs can't outlast the replay marker and reopen the reuse window.
       const ttlSeconds = Math.max(1, recoveryTokenExpiresAt - Math.floor(Date.now() / 1000));
@@ -91,6 +94,8 @@ export const authPaswordServiceFactory = ({
       if (!isValid) {
         throw new BadRequestError({ message: "Incorrect current password." });
       }
+
+      await assertPasswordNotBreached(newPassword);
     }
 
     const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);
@@ -135,12 +140,8 @@ export const authPaswordServiceFactory = ({
   };
 
   const setupPassword = async ({ password, token }: TSetupPasswordViaBackupKeyDTO, actor: OrgServiceActor) => {
-    // Ahead of token validation, which consumes the token.
-    if (await isPasswordBreached(password)) {
-      throw new BadRequestError({
-        message: "This password has appeared in a known data breach. Choose a different password."
-      });
-    }
+    // Before token validation, which consumes the token.
+    await assertPasswordNotBreached(password);
 
     try {
       await tokenService.validateTokenForUser({

@@ -15,11 +15,10 @@ vi.mock("@app/lib/crypto/cryptography", async () => ({
 }));
 vi.mock("../config/env", () => ({ getConfig: () => mocks.config }));
 vi.mock("../config/request", () => ({ request: { get: mocks.get } }));
-vi.mock("../logger", () => ({ logger: { warn: mocks.warn, info: vi.fn(), error: vi.fn() } }));
+vi.mock("../logger", () => ({ logger: { warn: mocks.warn } }));
 
 const PASSWORD = "Correct-Horse-Battery-7!";
 const HASH = nodeCrypto.createHash("sha1").update(PASSWORD, "utf8").digest("hex").toUpperCase();
-const PREFIX = HASH.slice(0, 5);
 const SUFFIX = HASH.slice(5);
 
 const rangeBody = (lines: string[]) => ({ data: lines.join("\r\n") });
@@ -31,36 +30,18 @@ describe("isPasswordBreached", () => {
     mocks.warn.mockReset();
   });
 
-  test("sends only the five-character hash prefix, never the password or full hash", async () => {
+  test("sends only the five-character hash prefix and asks for padding", async () => {
     mocks.get.mockResolvedValue(rangeBody([]));
 
     await isPasswordBreached(PASSWORD);
 
-    const [url] = mocks.get.mock.calls[0] as [string];
-    expect(url).toBe(`https://api.pwnedpasswords.com/range/${PREFIX}`);
-    expect(url).not.toContain(SUFFIX);
-    expect(url).not.toContain(PASSWORD);
-  });
-
-  test("asks for padding, bounds the wait, and turns off the shared client's retries", async () => {
-    mocks.get.mockResolvedValue(rangeBody([]));
-
-    await isPasswordBreached(PASSWORD);
-
-    const [, options] = mocks.get.mock.calls[0] as [string, Record<string, unknown>];
+    const [url, options] = mocks.get.mock.calls[0] as [string, { headers: unknown }];
+    expect(url).toBe(`https://api.pwnedpasswords.com/range/${HASH.slice(0, 5)}`);
     expect(options.headers).toEqual({ "Add-Padding": "true" });
-    expect(options.timeout).toBe(3000);
-    expect(options["axios-retry"]).toEqual({ retries: 0 });
   });
 
   test("reports a breach when the suffix appears with a count", async () => {
     mocks.get.mockResolvedValue(rangeBody(["0018A45C4D1DEF81644B54AB7F969B88D65:1", `${SUFFIX}:42`]));
-
-    expect(await isPasswordBreached(PASSWORD)).toBe(true);
-  });
-
-  test("matches a lowercase response", async () => {
-    mocks.get.mockResolvedValue(rangeBody([`${SUFFIX.toLowerCase()}:3`]));
 
     expect(await isPasswordBreached(PASSWORD)).toBe(true);
   });

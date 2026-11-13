@@ -78,14 +78,14 @@ Example values:
   When a user changes their password, resets a forgotten password, or adds a
   password to an account that doesn't have one, Infisical checks the new password
   against [a public list of passwords exposed in data breaches](https://haveibeenpwned.com/Passwords)
-  and rejects a match. Infisical sends only the first five characters of the
-  password's SHA-1 hash to `api.pwnedpasswords.com`, so the password itself never
-  leaves your instance. Set this to `true` to turn off the check.
+  and rejects the password if it's on the list. Infisical sends only the first five
+  characters of the password's SHA-1 hash to `api.pwnedpasswords.com`, so the
+  password never leaves your instance. Set this to `true` to turn off this check on
+  the server.
 
-  If Infisical can't reach `api.pwnedpasswords.com` within three seconds,
-  Infisical accepts the password, and the password length and complexity
-  requirements still apply. If you run Infisical without outbound internet access,
-  set this to `true` so password changes don't wait for that timeout.
+  If Infisical can't reach `api.pwnedpasswords.com` within three seconds, it accepts
+  the password. If you run Infisical without outbound internet access, set this to
+  `true` so password changes don't wait for the timeout.
 </ParamField>
 
 <ParamField
