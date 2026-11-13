@@ -28,6 +28,7 @@ import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approva
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
+import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
   TCertRevocationPolicy,
   TCertRevocationRequestData
@@ -65,7 +66,7 @@ import {
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateApprovalRequestType, TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -169,6 +170,7 @@ type TCertificateServiceFactoryDep = {
     | "findByIdForUpdate"
     | "primaryNode"
     | "findPendingRevocationApprovalRequest"
+    | "findPendingApprovalRequestIds"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
@@ -207,7 +209,7 @@ type TCertificateServiceFactoryDep = {
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
   approvalPolicyService: Pick<
     TApprovalPolicyServiceFactory,
-    "matchPolicy" | "createRequestFromPolicy" | "notifyApprovedActionFailed"
+    "matchPolicy" | "createRequestFromPolicy" | "cancelPendingRequests" | "notifyApprovedActionFailed"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -783,11 +785,78 @@ export const certificateServiceFactory = ({
     }
   };
 
+  const $cancelPendingCertificateRequests = async ({
+    type,
+    cert,
+    projectId,
+    revocationApprovalRequestId,
+    reason
+  }: {
+    type: TCertificateApprovalRequestType;
+    cert: TRevocableCertificate;
+    projectId: string;
+    revocationApprovalRequestId?: string;
+    reason: string;
+  }) => {
+    const requestIds = await certificateDAL.findPendingApprovalRequestIds(type, { certificateId: cert.id, projectId });
+    const cancelled = await approvalPolicyService.cancelPendingRequests(type, requestIds);
+
+    for (const request of cancelled) {
+      // eslint-disable-next-line no-await-in-loop
+      await auditLogService.createAuditLog({
+        projectId,
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        event: {
+          type: EventType.APPROVAL_REQUEST_CANCEL,
+          metadata: {
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            ...getApprovalRequestSubjectMetadata(request),
+            certificateId: cert.id,
+            revocationApprovalRequestId,
+            reason
+          }
+        }
+      });
+    }
+  };
+
+  // Approving another revocation of a certificate that is already revoked does nothing, so close those
+  // requests rather than leave approvers a decision with no effect.
+  const $cancelPendingRevocations = async ({
+    cert,
+    projectId,
+    revocationApprovalRequestId
+  }: {
+    cert: TRevocableCertificate;
+    projectId: string;
+    revocationApprovalRequestId?: string;
+  }) => {
+    const revokedUnder = revocationApprovalRequestId ? ` under approval request ${revocationApprovalRequestId}` : "";
+    try {
+      await $cancelPendingCertificateRequests({
+        type: ApprovalPolicyType.CertRevocation,
+        cert,
+        projectId,
+        revocationApprovalRequestId,
+        reason: `Certificate '${getCertificateDisplayName(cert)}' was revoked${revokedUnder}, so this other request to revoke it was cancelled.`
+      });
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to cancel the pending revocation requests of a revoked certificate [certificateId=${cert.id}]`
+      );
+    }
+  };
+
   type TRevocationArgs = {
     cert: TRevocableCertificate;
     ca: TRevocationCa;
     revocationReason: CrlReason;
     orgId: string;
+    revocationApprovalRequestId?: string;
   };
 
   const $revokeAtUpstreamCa = async ({ cert, ca, revocationReason }: Omit<TRevocationArgs, "orgId">) => {
@@ -806,7 +875,13 @@ export const certificateServiceFactory = ({
     }
   };
 
-  const $completeRevocation = async ({ cert, ca, revocationReason, orgId }: TRevocationArgs) => {
+  const $completeRevocation = async ({
+    cert,
+    ca,
+    revocationReason,
+    orgId,
+    revocationApprovalRequestId
+  }: TRevocationArgs) => {
     const revokedAt = new Date();
     const revokedCertId = cert.id;
     const revokedCertApplicationId = cert.applicationId ?? null;
@@ -827,6 +902,8 @@ export const certificateServiceFactory = ({
         await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
     });
+
+    await $cancelPendingRevocations({ cert, projectId: ca.projectId, revocationApprovalRequestId });
 
     if (!cert.deletedAt) {
       await certificateAlertEventEmitter.notify({
@@ -1137,7 +1214,8 @@ export const certificateServiceFactory = ({
         cert,
         ca,
         revocationReason,
-        orgId: approvalRequest.organizationId
+        orgId: approvalRequest.organizationId,
+        revocationApprovalRequestId: approvalRequest.id
       });
       return { kind: "revoked", cert, crlWarning };
     } catch (error) {
@@ -1224,19 +1302,41 @@ export const certificateServiceFactory = ({
     }
   };
 
+  // A renewal approved after the revocation would fail at issuance anyway, so close it now rather than leave
+  // approvers a request they can't usefully approve.
+  const $cancelPendingRenewals = (approvalRequest: TApprovalRequest, cert: TRevocableCertificate) =>
+    $cancelPendingCertificateRequests({
+      type: ApprovalPolicyType.CertRequest,
+      cert,
+      projectId: approvalRequest.projectId,
+      revocationApprovalRequestId: approvalRequest.id,
+      reason: `Certificate '${getCertificateDisplayName(cert)}' was revoked under approval request ${approvalRequest.id}, so its pending renewal was cancelled.`
+    });
+
   // Runs as the approval's post-approval routine after the approval has committed, so a failure here can't undo
   // the approval and the requester never sees the error. It records its outcome in the audit log instead and
   // never throws.
   const revokeApprovedCertificate = async (approvalRequest: TApprovalRequest) => {
     const requestData = approvalRequest.requestData.requestData as TCertRevocationRequestData;
     const outcome = await $revokeForApproval(approvalRequest, requestData);
+    const logContext = `[certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`;
 
     try {
       await $recordApprovedRevocation(approvalRequest, requestData, outcome);
     } catch (error) {
       logger.error(
         error,
-        `Failed to record the outcome of an approved revocation [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
+        `Failed to record the outcome of an approved revocation [outcome=${outcome.kind}] ${logContext}`
+      );
+    }
+
+    if (outcome.kind !== "revoked") return;
+    try {
+      await $cancelPendingRenewals(approvalRequest, outcome.cert);
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to cancel the pending renewals of a certificate revoked after approval ${logContext}`
       );
     }
   };

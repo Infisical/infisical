@@ -59,7 +59,7 @@ If a revocation policy covers a certificate's profile, revoking the certificate 
 - If the request gets the required approvals at every step, Infisical revokes the certificate with the reason the requester chose
 - If an approver rejects the request, or it's cancelled or expires, the certificate isn't revoked
 
-A certificate can have only one revocation request pending at a time.
+A certificate can have only one revocation request pending at a time. Whether Infisical revokes a certificate right away or after approval, it cancels any revocation request still pending for that certificate. If Infisical revoked the certificate after approval, it also cancels the certificate's pending renewal requests.
 
 If a revocation policy covers the certificate's profile, Application Admins and Operators can request a revocation, and machine identities can't skip the approval. If no revocation policy covers the profile, only Application Admins can revoke the certificate, and Infisical revokes it right away.
 
@@ -107,7 +107,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 | **Open** | Pending approval |
 | **Approved** | All steps completed, certificate issued or revoked |
 | **Rejected** | An approver rejected the request |
-| **Cancelled** | Requester cancelled the request |
+| **Cancelled** | The requester cancelled the request, or Infisical cancelled it because the certificate was revoked |
 | **Expired** | Request exceeded max TTL |
 
 ### Approve a request
