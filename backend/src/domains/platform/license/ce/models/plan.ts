@@ -80,6 +80,7 @@ export type TPlanFeatures = {
   agentVaultByoS3: boolean;
   agentVaultManagedStorage: boolean;
   agentVaultSessionLogRetentionDays: number | null;
+  agentVaultHooks: boolean;
   secretSyncLimit: number | null;
   maxPamAccounts: number | null;
 
@@ -157,6 +158,7 @@ export enum PlanFeature {
   SecretsBrokering = "secretsBrokering",
   AgentVaultByoS3 = "agentVaultByoS3",
   AgentVaultManagedStorage = "agentVaultManagedStorage",
+  AgentVaultHooks = "agentVaultHooks",
   PkiEst = "pkiEst",
   PkiScep = "pkiScep",
   PkiPqc = "pkiPqc",
@@ -247,6 +249,7 @@ export class Plan {
     [PlanFeature.SecretsBrokering]: "Secrets Brokering",
     [PlanFeature.AgentVaultByoS3]: "Agent Vault Bring-your-own Storage",
     [PlanFeature.AgentVaultManagedStorage]: "Agent Vault Managed Storage",
+    [PlanFeature.AgentVaultHooks]: "Agent Vault Hooks",
     [PlanFeature.PkiEst]: "EST Enrollment",
     [PlanFeature.PkiScep]: "SCEP Enrollment",
     [PlanFeature.PkiPqc]: "Post-quantum Certificates",

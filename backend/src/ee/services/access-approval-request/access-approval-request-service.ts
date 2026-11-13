@@ -116,7 +116,9 @@ export const secretAccessApprovalRequestServiceFactory = ({
     return new Set(groups.map((group) => group.groupId));
   };
 
-  const $loadRequestRows = async (filter: { projectId: string; policyId?: string; requesterId?: string }) => {
+  type TRequestListFilter = { projectId: string; policyId?: string; requesterId?: string; envSlug?: string };
+
+  const $loadRequestRows = async (filter: TRequestListFilter) => {
     const requests = await secretAccessApprovalRequestDAL.findSecretAccessRequests(filter);
     if (!requests.length) return [];
 
@@ -152,7 +154,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
     });
   };
 
-  const $listRequestItems = async (filter: { projectId: string; policyId?: string; requesterId?: string }) => {
+  const $listRequestItems = async (filter: TRequestListFilter) => {
     const rows = await $loadRequestRows(filter);
     const environments = rows.some((row) => !row.policy)
       ? await projectEnvDAL.find({ projectId: filter.projectId })
@@ -209,28 +211,12 @@ export const secretAccessApprovalRequestServiceFactory = ({
       ProjectPermissionSub.ApprovalRequests
     );
 
-    let requests = await $listRequestItems({ projectId: project.id });
+    if (!canReadAllApprovalRequests && authorUserId && authorUserId !== actorId) return { requests: [] };
 
-    if (!canReadAllApprovalRequests) {
-      requests = requests.filter((request) => request.requestedByUserId === actorId);
-    }
-
-    if (authorUserId) {
-      requests = requests.filter((request) => request.requestedByUserId === authorUserId);
-    }
-
-    if (envSlug) {
-      requests = requests.filter((request) => request.environment === envSlug);
-    }
-
-    requests = requests.map((request) => {
-      try {
-        const { envSlug: requestEnvSlug } = verifyRequestedPermissions({ permissions: request.permissions });
-        request.environmentName = requestEnvSlug;
-      } catch {
-        // Leave environmentName as-is if permissions are malformed
-      }
-      return request;
+    const requests = await $listRequestItems({
+      projectId: project.id,
+      requesterId: canReadAllApprovalRequests ? authorUserId : actorId,
+      envSlug
     });
 
     return { requests };

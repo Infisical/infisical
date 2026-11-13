@@ -145,6 +145,8 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   // Cloud turns it on in withCloudPlanDefaults; self-hosted needs a license that includes it.
   agentVaultManagedStorage: false,
   agentVaultSessionLogRetentionDays: 30,
+  // On for every plan. Kept as a flag so hooks can move to a paid tier without a migration.
+  agentVaultHooks: true,
   secretSyncLimit: null,
   maxPamAccounts: null,
   // PKI / Cert Manager

@@ -62,6 +62,7 @@ export const testFeatures = (): TInstanceFeatures => ({
   // Cloud turns it on in withCloudPlanDefaults; self-hosted needs a license that includes it.
   agentVaultManagedStorage: false,
   agentVaultSessionLogRetentionDays: 30,
+  agentVaultHooks: true,
   secretSyncLimit: null,
   maxPamAccounts: null,
   pkiAcme: true,

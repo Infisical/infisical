@@ -245,9 +245,13 @@ const buildService = ({
     folderDAL: {
       findSecretPathByFolderIds: vi
         .fn()
-        .mockResolvedValue([{ environmentSlug: "dev", environmentName: "Development", path: "/app" }])
+        .mockResolvedValue([{ environmentSlug: "dev", environmentName: "Development", path: "/app" }]),
+      lockFoldersForUpdate: vi.fn().mockResolvedValue([])
     },
-    secretChangePolicyService: { findSecretChangePolicyById: vi.fn().mockResolvedValue(policy) }
+    secretChangePolicyService: {
+      findSecretChangePolicyById: vi.fn().mockResolvedValue(policy),
+      getSecretApprovalPolicy: vi.fn().mockResolvedValue(policy)
+    }
   };
   const service = secretChangeRequestServiceFactory(
     deps as unknown as Parameters<typeof secretChangeRequestServiceFactory>[0]
@@ -1049,6 +1053,43 @@ describe("secretChangeRequest updateApprovalStatus", () => {
     expect(queueChangeRequestWebhook).toHaveBeenCalledWith(
       expect.objectContaining({ action: ChangeRequestWebhookAction.Reopened })
     );
+    expect(deps.folderDAL.lockFoldersForUpdate).toHaveBeenCalledWith([SECRET_CHANGE_REQUEST.folderId], OWN_TX);
+    expect(deps.secretChangePolicyService.getSecretApprovalPolicy).toHaveBeenCalledWith(
+      "project-1",
+      "dev",
+      "/app",
+      OWN_TX
+    );
+  });
+
+  test.each([
+    ["another policy now covers the folder's path", { ...POLICY, id: "policy-2" }],
+    ["no policy covers the folder's path any more", undefined]
+  ])("refuses to reopen when %s", async (_, currentPolicy) => {
+    const { service, deps } = buildService();
+    const closed = { ...APPROVAL_REQUEST, status: ApprovalRequestStatus.Closed };
+    deps.approvalRequestDAL.findById.mockResolvedValue(closed);
+    deps.approvalRequestDAL.findByIdForUpdate.mockResolvedValue(closed);
+    deps.folderDAL.findSecretPathByFolderIds.mockResolvedValue([
+      { environmentSlug: "dev", environmentName: "Development", path: "/service" }
+    ]);
+    deps.secretChangePolicyService.getSecretApprovalPolicy.mockResolvedValueOnce(currentPolicy);
+
+    await expect(setStatus(service, { status: RequestState.Open })).rejects.toMatchObject({
+      name: "ReopenChangeRequestPolicyChanged",
+      message: `This change request cannot be reopened because its folder is now at path "/service", which the change policy "${POLICY.name}" no longer covers. Create a new change request instead.`
+    });
+    expect(deps.approvalRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(queueChangeRequestWebhook).not.toHaveBeenCalled();
+  });
+
+  test("closes a request without checking the folder's policy", async () => {
+    const { service, deps } = buildService();
+
+    await setStatus(service);
+
+    expect(deps.folderDAL.lockFoldersForUpdate).not.toHaveBeenCalled();
+    expect(deps.secretChangePolicyService.getSecretApprovalPolicy).not.toHaveBeenCalled();
   });
 
   test("refuses when the policy is deleted while the reopen waits on its lock", async () => {

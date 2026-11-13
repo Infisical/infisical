@@ -323,6 +323,7 @@ export type TSecretChangeRequestServiceFactoryDep = {
     | "updateById"
     | "findByProjectId"
     | "countByProjectId"
+    | "findFolderIdsWithOpenRequests"
     | "insertV2Bridge"
     | "insertApprovalSecretV2Tags"
     | "updateV2ById"
@@ -330,11 +331,14 @@ export type TSecretChangeRequestServiceFactoryDep = {
     | "findCommitsBySecretChangeIds"
   >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
-  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "findSecretChangePolicyById">;
+  secretChangePolicyService: Pick<
+    TSecretChangePolicyServiceFactory,
+    "findSecretChangePolicyById" | "getSecretApprovalPolicy"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "lockFoldersForUpdate">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

@@ -119,6 +119,7 @@ type Props = {
 
   reminder?: Reminder;
   onClose?: () => void;
+  onSaved?: (isEmpty: boolean) => void;
 };
 
 export const SecretReminderForm = ({
@@ -127,7 +128,8 @@ export const SecretReminderForm = ({
   environment,
   secretPath,
   reminder,
-  onClose
+  onClose,
+  onSaved
 }: Props) => {
   const queryClient = useQueryClient();
   const { projectId, currentProject } = useProject();
@@ -263,6 +265,7 @@ export const SecretReminderForm = ({
     });
 
     reset();
+    onSaved?.(false);
     onClose?.();
   };
 
@@ -270,6 +273,7 @@ export const SecretReminderForm = ({
     await deleteReminder({ reminderId: reminder?.id || "", secretId });
     invalidateQueries();
     reset();
+    onSaved?.(true);
     onClose?.();
 
     createNotification({

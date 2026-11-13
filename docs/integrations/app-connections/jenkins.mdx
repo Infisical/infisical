@@ -1,0 +1,88 @@
+---
+title: "Jenkins connection"
+sidebarTitle: "Jenkins"
+description: "Learn how to configure a Jenkins connection for Infisical."
+---
+
+import GenerateApiToken from "/snippets/app-connections/jenkins/generate-api-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/jenkins/form-fields.mdx";
+
+A Jenkins connection authenticates Infisical to Jenkins with a user's [API token](https://www.jenkins.io/doc/book/system-administration/authenticating-scripted-clients/), so Infisical can list your folders and manage the credentials that your pipelines read.
+
+<Note>
+    This guide only authenticates Infisical with Jenkins. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A Jenkins user with the following permissions:
+  - Overall/Read
+  - Credentials/View, Credentials/Create, Credentials/Update, and Credentials/Delete, either across Jenkins or on each folder you plan to sync to
+  - Job/Read on each folder you plan to sync to and on every folder that contains it
+- If your Jenkins instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
+
+## Step 1: Generate a Jenkins API token
+
+Infisical needs an API token for the Jenkins user that has the permissions in the [prerequisites](#prerequisites).
+
+<GenerateApiToken />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the Jenkins [Create](/api-reference/endpoints/app-connections/jenkins/create) endpoint. If the instance isn't reachable from the internet, include the ID of a Gateway that can reach it as `gatewayId`, or the ID of a [Gateway pool](/documentation/platform/gateways/gateway-pools) as `gatewayPoolId`.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Jenkins**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Jenkins**.
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Management project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Jenkins**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Jenkins**.
+        </Step>
+    </Steps>
+</View>
+
+When you submit the form, Infisical checks that Jenkins accepts the username and token and that the user has the Overall/Read permission.
+
+<Check>
+    Your Jenkins app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Jenkins app connection is configured, you can use it to set up the following integration:
+
+<Card title="Jenkins sync" icon="refresh-cw" href="/integrations/secret-syncs/jenkins">
+    Sync secrets from Infisical to Jenkins credentials.
+</Card>

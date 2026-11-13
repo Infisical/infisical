@@ -10,6 +10,7 @@ export type TResolveServiceRow = {
   id: string;
   name: string;
   description: string | null;
+  accessBundleId: string;
   accessBundleName: string;
   type: string;
   hostPattern: string | null;
@@ -21,6 +22,8 @@ export type TResolveServiceRow = {
   allowedPathPrefixes: string[] | null;
   allowedTools: string[] | null;
   memberProvidedFields: string[] | null;
+  hookUrl: string | null;
+  encryptedHookSecret: Buffer | null;
   position: number;
 };
 
@@ -108,6 +111,9 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           db.ref("allowedPathPrefixes").withSchema(TableName.AgentVaultService),
           db.ref("allowedTools").withSchema(TableName.AgentVaultService),
           db.ref("memberProvidedFields").withSchema(TableName.AgentVaultService),
+          db.ref("hookUrl").withSchema(TableName.AgentVaultService),
+          db.ref("encryptedHookSecret").withSchema(TableName.AgentVaultService),
+          db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
           // Resolve only reaches live bundles, so the current name is always the truthful one here.
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
