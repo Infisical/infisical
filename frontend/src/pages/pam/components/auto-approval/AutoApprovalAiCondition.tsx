@@ -99,7 +99,9 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
       <Alert variant="warning" className="py-1.5">
         <TriangleAlert />
         <AlertDescription className="text-xs">
-          The AI reads the request&apos;s reason and inputs, which the requester controls.
+          The requester writes the reason and the request form fields, and can try to give the AI
+          instructions in them. Keep the is assigned to the requester and hasn&apos;t been used
+          before checks in this rule.
         </AlertDescription>
       </Alert>
     </div>

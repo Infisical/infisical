@@ -28,14 +28,13 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import {
-  aiQueryKeys,
   TAnthropicModel,
   useGetOrgAiConfig,
   useListAnthropicModels,
   useListOrgAnthropicConnections,
   useUpdateOrgAiConfig
 } from "@app/hooks/api/ai";
-import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
+import { appConnectionKeys, TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useOrgConnectionCreation } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
@@ -105,7 +104,9 @@ export const OrgAiModelSection = () => {
       setCreated({ id: connection.id, name: connection.name, projectId: null });
       setValue("connectionId", connection.id, { shouldDirty: true });
       setValue("model", "", { shouldDirty: true });
-      queryClient.invalidateQueries({ queryKey: aiQueryKeys.orgAnthropicConnections() });
+      queryClient.invalidateQueries({
+        queryKey: appConnectionKeys.listAvailable(AppConnection.Anthropic)
+      });
     }
   );
 

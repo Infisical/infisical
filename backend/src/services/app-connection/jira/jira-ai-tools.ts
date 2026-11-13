@@ -1,4 +1,3 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -9,6 +8,7 @@ import {
   getJiraErrorMessage,
   getJiraIssue,
   isJiraNotFoundError,
+  JIRA_ISSUE_KEY_REGEX,
   listJiraIssueApprovals,
   searchJiraIssues
 } from "./jira-connection-fns";
@@ -17,7 +17,6 @@ import { TJiraConnection, TJiraIssue, TJiraUser } from "./jira-connection-types"
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_SEARCH_RESULTS = 10;
 const MAX_USERS = 5;
-const ISSUE_KEY_REGEX = new RE2("^[A-Z][A-Z0-9_]+-[1-9][0-9]*$");
 
 const TICKET_FIELDS = [
   "summary",
@@ -39,7 +38,7 @@ const IssueKeySchema = z
   .trim()
   .max(64)
   .transform((key) => key.toUpperCase())
-  .refine((key) => ISSUE_KEY_REGEX.test(key), "Expected a Jira issue key like PAY-123");
+  .refine((key) => JIRA_ISSUE_KEY_REGEX.test(key), "Expected a Jira issue key like PAY-123");
 
 type TAdfNode = { type?: string; text?: string; content?: TAdfNode[] };
 
@@ -62,7 +61,13 @@ export const getJiraDescriptionText = (description: unknown) => {
 };
 
 const toPerson = (user?: TJiraUser | null) =>
-  user ? { displayName: user.displayName ?? null, email: user.emailAddress ?? null } : null;
+  user
+    ? {
+        accountId: user.accountId ?? user.key ?? null,
+        displayName: user.displayName ?? null,
+        email: user.emailAddress ?? null
+      }
+    : null;
 
 const toToolError = (error: unknown, key?: string) => {
   if (key && isJiraNotFoundError(error)) {
@@ -116,6 +121,11 @@ export const JIRA_AI_TOOLS = {
         approvals = await listJiraIssueApprovals(conn, key, deps);
       } catch (error) {
         if (error instanceof BadRequestError) throw error;
+        if (isJiraNotFoundError(error)) {
+          throw new BadRequestError({
+            message: `${key} isn't a Jira Service Management request, doesn't exist, or the Jira connection can't see it`
+          });
+        }
         throw toToolError(error, key);
       }
       const result = approvals.map((approval) => ({
@@ -143,6 +153,7 @@ export const JIRA_AI_TOOLS = {
         throw toToolError(error);
       }
       const result = users.slice(0, MAX_USERS).map((user) => ({
+        accountId: user.accountId ?? user.key ?? null,
         displayName: user.displayName ?? null,
         email: user.emailAddress ?? null,
         active: user.active ?? null

@@ -68,10 +68,9 @@ describe("JIRA_AI_TOOLS", () => {
       key: "INC-1",
       summary: "DB outage",
       status: "In Progress",
-      assignee: { displayName: "Dev", email: "dev@acme.com" },
+      assignee: { accountId: "abc", displayName: "Dev", email: "dev@acme.com" },
       description: "Primary is down"
     });
-    expect(JSON.stringify(result)).not.toContain("abc");
   });
 
   test("get_ticket explains a missing ticket", async () => {

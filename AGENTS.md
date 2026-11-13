@@ -263,7 +263,8 @@ One model per organization (an Anthropic connection plus a model ID on `organiza
 Settings > General) serves every AI feature, through `backend/src/services/ai/`. An app connection becomes usable
 as AI context by adding read-only tools to `APP_CONNECTION_AI_TOOLS` (`services/app-connection/app-connection-ai-tools.ts`);
 Jira is the first. Requester text and tool results are untrusted: they stay out of the system prompt, and the
-model must answer through the forced `submit_decision` tool or the result does not approve.
+model is asked to answer through `submit_decision` (`tool_choice` stays `auto`, since thinking models reject a
+forced tool), and a reply without it does not approve.
 
 ### Object Storage
 

@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { AppConnection } from "../appConnections/enums";
+import { appConnectionKeys } from "../appConnections/queries";
 import { TAvailableAppConnection } from "../appConnections/types";
 import { TAnthropicModel, TOrgAiConfig } from "./types";
 
@@ -9,8 +11,7 @@ export const aiQueryKeys = {
   all: ["ai"] as const,
   orgConfig: () => [...aiQueryKeys.all, "org-config"] as const,
   anthropicModels: (connectionId: string) =>
-    [...aiQueryKeys.all, "anthropic-models", connectionId] as const,
-  orgAnthropicConnections: () => [...aiQueryKeys.all, "org-anthropic-connections"] as const
+    [...aiQueryKeys.all, "anthropic-models", connectionId] as const
 };
 
 export const useGetOrgAiConfig = (options?: { enabled?: boolean }) =>
@@ -40,11 +41,12 @@ export const useListAnthropicModels = (connectionId: string) =>
 
 export const useListOrgAnthropicConnections = () =>
   useQuery({
-    queryKey: aiQueryKeys.orgAnthropicConnections(),
+    queryKey: appConnectionKeys.listAvailable(AppConnection.Anthropic),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ appConnections: TAvailableAppConnection[] }>(
         "/api/v1/app-connections/anthropic/available"
       );
-      return data.appConnections.filter((connection) => !connection.projectId);
-    }
+      return data.appConnections;
+    },
+    select: (connections) => connections.filter((connection) => !connection.projectId)
   });

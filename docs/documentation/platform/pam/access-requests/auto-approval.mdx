@@ -128,9 +128,9 @@ To set up the model, you need permission to edit organization settings:
   </Step>
 </Steps>
 
-The AI reads the requester's reason, the request details, and the linked records. With a Jira connection in **Additional Context**, it can also look up tickets, but it can't change anything in Jira. A rule can have one AI check, and Infisical runs it only after the rule's other checks pass.
+The AI reads the requester's reason, the request details, and the linked records. With a Jira connection in **Additional Context**, it can also read a ticket, read a ticket's Jira Service Management approvals, find users by email, and search tickets with JQL (up to 10 results), but it can't change anything in Jira. A rule can have one AI check, and Infisical runs it only after the rule's other checks pass.
 
-The AI check passes only if the model approves. If the model declines, errors, or doesn't answer within 90 seconds, the check fails and the request waits for the approvers.
+The AI check passes only if the model approves. If the model declines or errors, the check fails like any other check. Infisical allows 30 seconds for all of a request's AI checks together: a check that hasn't decided by then fails, and AI checks in later rules aren't run.
 
 <Warning>
   The requester writes the reason and the linked tickets, so they can try to give the AI instructions. Keep the **is assigned to the requester** and **hasn't been used before** checks in every rule with an AI check.

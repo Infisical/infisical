@@ -48,7 +48,8 @@ import {
 } from "./auto-approval-types";
 
 const RESOLVE_TIMEOUT_MS = 20_000;
-const AI_EVALUATION_BUDGET_MS = 60_000;
+// Leaves room for the record lookups so the request stays under common 60s proxy timeouts
+const AI_EVALUATION_BUDGET_MS = 30_000;
 const AI_MIN_REMAINING_MS = 5_000;
 
 const UNUSED_CONSTRAINT = { label: AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL, value: AutoApprovalConstraintValue.None };
@@ -166,14 +167,12 @@ export const autoApprovalServiceFactory = ({
       });
     }
 
-    const contextNameById = new Map<string, string>();
     for await (const connectionId of contextConnectionIds) {
-      const connection = await appConnectionService.validateAppConnectionUsageById(
+      await appConnectionService.validateAppConnectionUsageById(
         AI_CONTEXT_APPS,
         { connectionId, projectId },
         actor as OrgServiceActor
       );
-      contextNameById.set(connectionId, connection.name);
     }
 
     const appByConnectionId = new Map<string, { app: string; name: string }>();
@@ -619,7 +618,8 @@ export const autoApprovalServiceFactory = ({
 
     const deterministic = evaluateAutoApprovalRules(stored.rules, resolved, ctx);
     const aiResults = new Map<string, TAiConditionResult>();
-    let isApproved = false;
+    // A rule without AI that already passes decides the request, so the model isn't called for nothing
+    let isApproved = deterministic.rules.some((rule) => rule.passed && !rule.conditions.some(isAiCondition));
     for await (const rule of stored.rules) {
       const aiConditions = rule.conditions.filter(isAiCondition);
       const evaluatedRule = deterministic.rules.find((candidate) => candidate.id === rule.id);
@@ -631,7 +631,7 @@ export const autoApprovalServiceFactory = ({
         aiConditions.forEach((condition) =>
           aiResults.set(condition.id, {
             passed: false,
-            reason: "Not reviewed because an earlier rule approved the request",
+            reason: "Not reviewed because another rule approved the request",
             ai: null
           })
         );

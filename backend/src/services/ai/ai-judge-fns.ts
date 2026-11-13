@@ -34,6 +34,8 @@ const DECISION_TOOL = {
       approve: { type: "boolean", description: "true only if the request clearly meets the instructions" },
       reason: {
         type: "string",
+        minLength: 1,
+        maxLength: 1000,
         description: "One or two sentences a human reviewer can check, naming the facts you relied on"
       }
     },

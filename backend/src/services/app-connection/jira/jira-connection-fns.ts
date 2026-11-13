@@ -1,4 +1,5 @@
 import { AxiosError, AxiosRequestConfig, isAxiosError } from "axios";
+import RE2 from "re2";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -18,6 +19,7 @@ import { JiraConnectionMethod } from "./jira-connection-enums";
 import { TJiraApproval, TJiraConnectionConfig, TJiraIssue, TJiraNamedOption, TJiraUser } from "./jira-connection-types";
 
 export const JIRA_REQUEST_TIMEOUT_MS = 15_000;
+export const JIRA_ISSUE_KEY_REGEX = new RE2("^[A-Z][A-Z0-9_]+-[1-9][0-9]*$");
 const JIRA_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const JIRA_PAGE_SIZE = 50;
 const JIRA_MAX_PAGES = 10;
@@ -443,7 +445,9 @@ export const searchJiraIssues = async (
       { path: "/rest/api/3/search/jql", params: { jql, maxResults, fields: fields.join(",") } },
       deps
     );
-    return { issues: data?.issues ?? [], hasMore: Boolean(data?.nextPageToken) && data?.isLast !== true };
+    if (!Array.isArray(data?.issues))
+      throw new BadRequestError({ message: "Jira returned an unexpected search response" });
+    return { issues: data.issues, hasMore: Boolean(data.nextPageToken) && data.isLast !== true };
   }
 
   const data = await jiraRequest<{ issues?: TJiraIssue[]; total?: number }>(
@@ -451,8 +455,9 @@ export const searchJiraIssues = async (
     { path: "/rest/api/2/search", params: { jql, maxResults, fields: fields.join(",") } },
     deps
   );
-  const issues = data?.issues ?? [];
-  return { issues, hasMore: (data?.total ?? 0) > issues.length };
+  if (!Array.isArray(data?.issues))
+    throw new BadRequestError({ message: "Jira returned an unexpected search response" });
+  return { issues: data.issues, hasMore: (data.total ?? 0) > data.issues.length };
 };
 
 // Jira Service Management approvals, which only an approver can decide, unlike an issue's status
