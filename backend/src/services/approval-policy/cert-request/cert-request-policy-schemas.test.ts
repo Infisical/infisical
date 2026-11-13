@@ -4,7 +4,8 @@ import { ApprovalPolicyScope, CertRequestRenewalApproval } from "../approval-pol
 import {
   CertRequestPolicySchema,
   CreateCertRequestPolicySchema,
-  parseCertRequestRenewalApproval
+  parseCertRequestRenewalApproval,
+  UpdateCertRequestPolicySchema
 } from "./cert-request-policy-schemas";
 
 describe("cert-request policy renewal approval setting", () => {
@@ -34,5 +35,16 @@ describe("cert-request policy renewal approval setting", () => {
       version: 1,
       constraints: { renewalApproval: CertRequestRenewalApproval.OnChange }
     });
+  });
+
+  it.each([{}, undefined])("keeps the stored setting when an update sends constraints %j", (constraints) => {
+    expect(UpdateCertRequestPolicySchema.parse({ constraints }).constraints).toBeUndefined();
+  });
+
+  it("changes the setting when an update names it", () => {
+    expect(
+      UpdateCertRequestPolicySchema.parse({ constraints: { renewalApproval: CertRequestRenewalApproval.Always } })
+        .constraints
+    ).toEqual({ renewalApproval: CertRequestRenewalApproval.Always });
   });
 });
