@@ -1,4 +1,5 @@
 import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
@@ -48,7 +49,7 @@ export const secretApprovalRequestKeys = {
   ]
 };
 
-const fetchSecretApprovalRequestList = async ({
+export const fetchSecretApprovalRequestList = async ({
   projectId,
   environment,
   committer,
@@ -120,11 +121,13 @@ export const useGetSecretApprovalRequests = ({
     refetchInterval: options?.refetchInterval ?? 30_000
   });
 
-const fetchSecretApprovalRequestDetails = async ({
-  id
-}: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) => {
+const fetchSecretApprovalRequestDetails = async (
+  { id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">,
+  signal?: AbortSignal
+) => {
   const { data } = await apiRequest.get<{ approval: TSecretApprovalRequest }>(
-    `/api/v1/secret-approval-requests/${id}`
+    `/api/v1/secret-approval-requests/${id}`,
+    { signal }
   );
 
   return data.approval;
@@ -150,6 +153,43 @@ export const useGetSecretApprovalRequestDetails = ({
     enabled: Boolean(id) && (options?.enabled ?? true)
   });
 
+const DETAILS_LIST_CONCURRENCY = 6;
+let activeDetailsListFetches = 0;
+const queuedDetailsListFetches: (() => void)[] = [];
+
+const detailsFetchCancelledError = () =>
+  new DOMException("The change request detail fetch was cancelled", "AbortError");
+
+const fetchSecretApprovalRequestDetailsQueued = async (id: string, signal: AbortSignal) => {
+  if (signal.aborted) throw detailsFetchCancelledError();
+  if (activeDetailsListFetches < DETAILS_LIST_CONCURRENCY) {
+    activeDetailsListFetches += 1;
+  } else {
+    await new Promise<void>((resolve, reject) => {
+      queuedDetailsListFetches.push(resolve);
+      signal.addEventListener(
+        "abort",
+        () => {
+          const index = queuedDetailsListFetches.indexOf(resolve);
+          if (index === -1) return;
+          queuedDetailsListFetches.splice(index, 1);
+          reject(detailsFetchCancelledError());
+        },
+        { once: true }
+      );
+    });
+  }
+  try {
+    return await fetchSecretApprovalRequestDetails({ id }, signal);
+  } finally {
+    const next = queuedDetailsListFetches.shift();
+    if (next) next();
+    else activeDetailsListFetches -= 1;
+  }
+};
+
+const isRateLimited = (error: unknown) => isAxiosError(error) && error.response?.status === 429;
+
 export const useGetSecretApprovalRequestDetailsList = ({
   ids,
   enabled = true
@@ -160,8 +200,19 @@ export const useGetSecretApprovalRequestDetailsList = ({
   useQueries({
     queries: ids.map((id) => ({
       queryKey: secretApprovalRequestKeys.detail({ id }),
-      queryFn: () => fetchSecretApprovalRequestDetails({ id }),
-      enabled
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        fetchSecretApprovalRequestDetailsQueued(id, signal),
+      enabled,
+      retry: (failureCount: number, error: unknown) =>
+        failureCount < (isRateLimited(error) ? 3 : 1),
+      retryDelay: (failureCount: number, error: unknown) => {
+        const retryAfter = Number(
+          isAxiosError(error) ? error.response?.headers["retry-after"] : undefined
+        );
+        if (isRateLimited(error))
+          return Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 60_000;
+        return Math.min(1000 * 2 ** failureCount, 30_000);
+      }
     }))
   });
 

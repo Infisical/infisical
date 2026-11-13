@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
@@ -84,7 +84,10 @@ import {
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import {
+  fetchSecretApprovalRequestList,
+  secretApprovalRequestKeys
+} from "@app/hooks/api/secretApprovalRequest/queries";
 import {
   SecretApprovalRequestOrderBy,
   TBulkChangeRequestResult,
@@ -105,7 +108,7 @@ enum ChangeRequestOrderBy {
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
 
-const MAX_BULK_SELECTION = 25;
+const MAX_BULK_SELECTION = 100;
 
 type Props = {
   onConfigurePolicies: () => void;
@@ -132,6 +135,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   );
   const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
   const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
+  const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
+  const [allMatchingSelectedFor, setAllMatchingSelectedFor] = useState<string | null>(null);
+  const selectionVersion = useRef(0);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -152,21 +158,21 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
     setUserTablePreference("changeRequestsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const {
-    data,
-    isPending: isApprovalRequestLoading,
-    refetch
-  } = useGetSecretApprovalRequests({
+  const listFilters = {
     projectId,
     status: statusFilter,
     environment: envFilter,
     committer: committerFilter,
     search: debouncedSearchFilter,
-    limit,
-    offset,
     orderBy: sort?.column as SecretApprovalRequestOrderBy | undefined,
     orderDirection: sort?.direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
-  });
+  };
+
+  const {
+    data,
+    isPending: isApprovalRequestLoading,
+    refetch
+  } = useGetSecretApprovalRequests({ ...listFilters, limit, offset });
 
   const totalApprovalCount = data?.totalCount ?? 0;
   const secretApprovalRequests = data?.approvals ?? [];
@@ -222,12 +228,19 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const isPageIndeterminate =
     !isPageSelected && secretApprovalRequests.some(({ id }) => selectedRequests[id]);
 
+  const markSelectionEdited = () => {
+    selectionVersion.current += 1;
+    setAllMatchingSelectedFor(null);
+  };
+
   const clearSelection = () => {
+    markSelectionEdited();
     setSelectedRequests({});
     setFailedRequestErrors({});
   };
 
   const toggleRequestSelection = (request: TSecretApprovalRequest) => {
+    markSelectionEdited();
     if (selectedRequests[request.id]) {
       setSelectedRequests(({ [request.id]: _, ...rest }) => rest);
       setFailedRequestErrors(({ [request.id]: _, ...rest }) => rest);
@@ -244,6 +257,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   };
 
   const togglePageSelection = () => {
+    markSelectionEdited();
     if (isPageSelected || isPageIndeterminate) {
       const pageIds = new Set(secretApprovalRequests.map(({ id }) => id));
       setSelectedRequests((prev) =>
@@ -263,6 +277,52 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
       ...prev,
       ...Object.fromEntries(unselected.slice(0, available).map((request) => [request.id, request]))
     }));
+  };
+
+  const listFiltersKey = JSON.stringify(listFilters);
+  const getMatchingSelectionKey = (count: number) => `${listFiltersKey}|${count}`;
+  const canSelectAllMatching =
+    isOpenTab &&
+    isPageSelected &&
+    totalApprovalCount > secretApprovalRequests.length &&
+    selectedCount < MAX_BULK_SELECTION &&
+    allMatchingSelectedFor !== getMatchingSelectionKey(totalApprovalCount);
+
+  const selectAllMatching = async () => {
+    const version = selectionVersion.current;
+    setIsSelectingAllMatching(true);
+    try {
+      const { approvals, totalCount } = await fetchSecretApprovalRequestList({
+        ...listFilters,
+        limit: MAX_BULK_SELECTION,
+        offset: 0
+      });
+      if (version !== selectionVersion.current) return;
+      setAllMatchingSelectedFor(getMatchingSelectionKey(totalCount));
+      setSelectedRequests((prev) => {
+        const unselected = approvals.filter(({ id }) => !prev[id]);
+        const available = Math.max(0, MAX_BULK_SELECTION - Object.keys(prev).length);
+        return {
+          ...prev,
+          ...Object.fromEntries(
+            unselected.slice(0, available).map((request) => [request.id, request])
+          )
+        };
+      });
+      if (totalCount > MAX_BULK_SELECTION) {
+        createNotification({
+          type: "info",
+          text: `You can select up to ${MAX_BULK_SELECTION} change requests at once, so the selection stopped at ${MAX_BULK_SELECTION} of ${totalCount} matching`
+        });
+      }
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Could not load the matching change requests. Try again."
+      });
+    } finally {
+      setIsSelectingAllMatching(false);
+    }
   };
 
   const handleBulkComplete = (results: TBulkChangeRequestResult[]) => {
@@ -750,7 +810,24 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         </CardContent>
       </Card>
       <SelectedActionBar selectedCount={selectedCount} onClearSelection={clearSelection}>
-        <Button variant="project" size="xs" onClick={() => setIsBulkReviewOpen(true)}>
+        {canSelectAllMatching && (
+          <Button
+            variant="ghost"
+            size="xs"
+            isPending={isSelectingAllMatching}
+            onClick={selectAllMatching}
+          >
+            {totalApprovalCount > MAX_BULK_SELECTION
+              ? `Select Up to ${MAX_BULK_SELECTION}`
+              : `Select All ${totalApprovalCount}`}
+          </Button>
+        )}
+        <Button
+          variant="project"
+          size="xs"
+          isDisabled={isSelectingAllMatching}
+          onClick={() => setIsBulkReviewOpen(true)}
+        >
           <GitMergeIcon />
           Review & Merge
         </Button>
