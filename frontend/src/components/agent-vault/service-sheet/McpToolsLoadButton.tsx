@@ -34,7 +34,7 @@ import { useOAuthAuthorize } from "./useOAuthAuthorize";
 const NOT_SAVED = "Used once to read the tool list. Infisical doesn't save it.";
 
 type Props = {
-  accessBundleId: string;
+  projectId: string;
   service?: TAgentVaultService | null;
   label: string;
   isLoading: boolean;
@@ -50,7 +50,7 @@ type Props = {
  * admin's own, entered in a dialog. It goes only to the list call and is never saved.
  */
 export const McpToolsLoadButton = ({
-  accessBundleId,
+  projectId,
   service,
   label,
   isLoading,
@@ -113,10 +113,10 @@ export const McpToolsLoadButton = ({
   // comes back as registrationRequired, which a member's sign-in can't offer.
   const signInParams = (): TCreateAgentVaultOauthAuthorizationDTO => {
     if (service && isSavedClientKept && !isSecretNeededAgain) {
-      return { accessBundleId, serverUrl: trimmedUrl, serviceId: service.id, personal: true };
+      return { projectId, serverUrl: trimmedUrl, serviceId: service.id, personal: true };
     }
     return {
-      accessBundleId,
+      projectId,
       serverUrl: trimmedUrl,
       ...(typedClientId ? { clientId: typedClientId, clientSecret: clientSecret || undefined } : {})
     };

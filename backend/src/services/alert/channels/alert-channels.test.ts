@@ -1,6 +1,10 @@
 import { validateHeaderValue } from "node:http";
 
+import { render } from "@react-email/components";
+import React from "react";
+
 import { safeRequest } from "@app/lib/validator";
+import { AlertNotificationTemplate } from "@app/services/smtp/emails/AlertNotificationTemplate";
 
 import {
   AlertChannelType,
@@ -75,6 +79,73 @@ const baseCtx = () => ({
   deps: {
     smtpService: { sendMail: async () => undefined }
   }
+});
+
+const CERT_A_URL = "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-a";
+
+const payloadWithFirstItemUrl = (): TAlertPayload => {
+  const payload = samplePayload();
+  payload.items[0].url = CERT_A_URL;
+  return payload;
+};
+
+const captureEmailSubstitutions = async (payload: TAlertPayload) => {
+  let substitutions: object | undefined;
+  await sendEmailNotification({
+    ...baseCtx(),
+    payload,
+    config: {},
+    recipient: { email: "user@example.com" },
+    deps: {
+      smtpService: {
+        sendMail: async (opts: { substitutions: object }) => {
+          substitutions = opts.substitutions;
+        }
+      }
+    }
+  });
+  return substitutions;
+};
+
+describe("item links", () => {
+  test("email links an item's title only when the item has a url, and keeps the overview button", async () => {
+    const html = await render(
+      React.createElement(AlertNotificationTemplate, {
+        ...(await captureEmailSubstitutions(payloadWithFirstItemUrl())),
+        siteUrl: "https://app.infisical.com"
+      } as React.ComponentProps<typeof AlertNotificationTemplate>)
+    );
+    expect(html).toContain(`href="${CERT_A_URL}"`);
+    expect(html).toContain(">api.prod.example.com</a>");
+    expect(html).not.toContain(">web.example.com</a>");
+    expect(html).toContain('href="https://app.infisical.com/inventory"');
+  });
+
+  test("slack links an item's name only when the item has a url, and keeps the overview button", () => {
+    const blocks = buildSlackPayload(payloadWithFirstItemUrl()).attachments?.[0].blocks ?? [];
+    const names = blocks.flatMap((block) =>
+      block.type === "section" && "fields" in block && block.fields ? [block.fields[0].text] : []
+    );
+    expect(names).toEqual([`*Name:*\n<${CERT_A_URL}|api.prod.example.com>`, "*Name:*\nweb.example.com"]);
+    expect(JSON.stringify(blocks.find((block) => block.type === "actions"))).toContain(
+      '"url":"https://app.infisical.com/inventory"'
+    );
+  });
+
+  test("slack still escapes a linked name", () => {
+    const payload = payloadWithFirstItemUrl();
+    payload.items[0].title = "<!channel> a&b";
+    const fields = buildSlackPayload(payload).attachments?.[0].blocks.find(
+      (block) => block.type === "section" && "fields" in block
+    );
+    expect(JSON.stringify(fields)).toContain(`<${CERT_A_URL}|&lt;!channel&gt; a&amp;b>`);
+  });
+
+  test("webhook includes the url on the items that have one", () => {
+    const { items } = buildWebhookPayload(payloadWithFirstItemUrl()).data;
+    expect(items[0].url).toBe(CERT_A_URL);
+    expect(items[1]).not.toHaveProperty("url");
+  });
 });
 
 describe("alert channel registry", () => {

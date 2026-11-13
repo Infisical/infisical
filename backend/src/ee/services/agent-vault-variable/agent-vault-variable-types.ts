@@ -27,6 +27,5 @@ export type TAgentVaultVariableUsedByService = {
   name: string;
   type: AgentVaultServiceType;
   hostPattern: string | null;
-  accessBundleId: string;
-  accessBundleName: string;
+  accessBundles: { id: string; name: string }[];
 };

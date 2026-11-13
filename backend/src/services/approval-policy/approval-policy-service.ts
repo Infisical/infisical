@@ -1077,6 +1077,7 @@ export const approvalPolicyServiceFactory = ({
     requesterName,
     requesterEmail,
     skipApproverNotification,
+    deferApproverNotification,
     autoApprovalEvidence,
     tx
   }: TCreateRequestFromPolicyDTO) => {
@@ -1109,16 +1110,20 @@ export const approvalPolicyServiceFactory = ({
         : (request, trx) => $emitEvent({ event: ApprovalNotificationEvent.Requested, request }, trx)
     );
 
-    if (!skipApproverNotification) {
+    const notifyApprovers = async () => {
+      if (skipApproverNotification) return;
       await $notify({
         event: ApprovalNotificationEvent.Requested,
         request: requestWithSteps,
         approvers: requestWithSteps.steps[0]?.approvers ?? []
       });
-    }
+    };
+
+    if (!deferApproverNotification) await notifyApprovers();
 
     return {
-      request: requestWithSteps
+      request: requestWithSteps,
+      notifyApprovers
     };
   };
 

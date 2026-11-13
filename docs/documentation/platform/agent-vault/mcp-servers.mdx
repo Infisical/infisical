@@ -3,7 +3,7 @@ title: "MCP servers"
 description: "Remote MCP servers that an AI agent can use during a session without holding their credentials."
 ---
 
-An MCP service lets an agent use a remote [MCP server](https://modelcontextprotocol.io/), such as Linear's or Notion's, during a [session](/documentation/platform/agent-vault/sessions). It's one of the two types of [service](/documentation/platform/agent-vault/services) you can add to an access bundle. The other type, an HTTP service, covers a web API that the agent calls directly.
+An MCP service lets an agent use a remote [MCP server](https://modelcontextprotocol.io/), such as Linear's or Notion's, during a [session](/documentation/platform/agent-vault/sessions). It's one of three [service types](/documentation/platform/agent-vault/services#service-types) you can add to an access bundle. The other two are HTTP services, for web APIs that the agent calls directly, and database and SSH services.
 
 You add the MCP server to your agent with its real URL and no credentials. When the agent connects to the server, the [proxy](/documentation/platform/agent-vault/proxies) attaches the service's credential, so the agent can call the server's tools without ever holding the credential.
 
@@ -18,7 +18,7 @@ You add the MCP server to your agent with its real URL and no credentials. When 
 
 <Steps>
   <Step>
-    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**. In the **Services** list, select **Create New Service**.
   </Step>
   <Step>
     On the **Choose a template** panel, pick a template under **MCP Servers**, or select **Custom MCP Server** to connect any other remote MCP server.
@@ -258,7 +258,7 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
 
     **The service rejected your credential:** The server rejected the token you set for a [member-provided](#leave-the-credential-to-each-member) service. [Update your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service.
 
-    **Reconnect your account:** The service is [member provided](#leave-the-credential-to-each-member), and the provider no longer accepts your login, or the server asked for scopes your connection doesn't grant. On the access bundle page, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project admin to update the service's OAuth app.
+    **Reconnect your account:** The service is [member provided](#leave-the-credential-to-each-member), and the provider no longer accepts your login, or the server asked for scopes your connection doesn't grant. On the **Services** page, or on the page of the access bundle that the error names, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project admin to update the service's OAuth app.
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:

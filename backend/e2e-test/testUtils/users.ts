@@ -24,12 +24,15 @@ export const deleteUsers = async (userIds: string[]) => {
 };
 
 // Org memberships are written as accepted, the state a member who joined is in. Anything that
-// resolves members (alert recipients, for one) skips a membership that is still invited.
+// resolves members (alert recipients, for one) skips a membership that is still invited. `status` and
+// `isActive` are for specs about members who have not joined or were deactivated.
 export const addUserMembership = async (dto: {
   userId: string;
   orgId: string;
   projectId?: string;
   role: OrgMembershipRole | ProjectMembershipRole;
+  status?: OrgMembershipStatus;
+  isActive?: boolean;
 }) => {
   const [membership] = await testDb(TableName.Membership)
     .insert({
@@ -37,7 +40,8 @@ export const addUserMembership = async (dto: {
       scopeOrgId: dto.orgId,
       scopeProjectId: dto.projectId ?? null,
       actorUserId: dto.userId,
-      ...(dto.projectId ? {} : { status: OrgMembershipStatus.Accepted })
+      isActive: dto.isActive ?? true,
+      ...(dto.projectId ? {} : { status: dto.status ?? OrgMembershipStatus.Accepted })
     })
     .returning("id");
 

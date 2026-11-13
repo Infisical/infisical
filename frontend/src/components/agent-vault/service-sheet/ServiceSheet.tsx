@@ -287,7 +287,8 @@ const PrefillTypeField = ({
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  accessBundleId: string;
+  // Set when the sheet is opened from an access bundle, so a new service goes into it.
+  accessBundleId?: string;
   service?: TAgentVaultService | null;
   prefillHost?: string;
   // The path of the logged request, which helps tell an MCP server from an HTTP API.
@@ -711,7 +712,7 @@ export const ServiceSheet = ({
     isMembersNoticeConfirmed.current = false;
     try {
       if (service) {
-        await updateService.mutateAsync(buildUpdateServiceRequest(accessBundleId, service, data));
+        await updateService.mutateAsync(buildUpdateServiceRequest(service, data));
       } else {
         await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
       }
@@ -727,6 +728,15 @@ export const ServiceSheet = ({
       const serverResponse = axios.isAxiosError(error)
         ? (error.response?.data as TApiErrors | undefined)
         : undefined;
+
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        (serverResponse.details as { field?: string } | undefined)?.field === "name"
+      ) {
+        setError("name", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Details));
+        return;
+      }
 
       if (
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
@@ -1066,7 +1076,7 @@ export const ServiceSheet = ({
                   {current.step === ServiceStep.Credential && isMcp && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <McpCredentialFields
-                        accessBundleId={accessBundleId}
+                        projectId={projectId}
                         service={service}
                         openItem={openItem}
                         onOpenChange={setOpenItem}
@@ -1100,7 +1110,7 @@ export const ServiceSheet = ({
                   )}
                   {current.step === ServiceStep.Tools && (
                     <McpToolsFields
-                      accessBundleId={accessBundleId}
+                      projectId={projectId}
                       service={service}
                       loaded={loadedTools}
                       onLoaded={setLoadedTools}

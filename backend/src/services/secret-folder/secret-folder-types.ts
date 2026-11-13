@@ -70,6 +70,10 @@ export type TFolderMoveBlockingType =
   | "secret_import"
   | "secret_approval_policy";
 
+export type TFolderChangeAction = "delete" | "rename";
+
+export type TFolderRenameScope = "source" | "destination";
+
 export type TFolderMoveEligibility = {
   canMove: boolean;
   folderName: string;

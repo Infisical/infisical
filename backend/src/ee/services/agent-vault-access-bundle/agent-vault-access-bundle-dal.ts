@@ -121,7 +121,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         .first()) as { count: string } | undefined;
       const totalCount = parseInt(countResult?.count || "0", 10);
 
-      const serviceCounts = conn(TableName.AgentVaultService)
+      const serviceCounts = conn(TableName.AgentVaultAccessBundleService)
         .select("accessBundleId")
         .count("* as count")
         .groupBy("accessBundleId")
@@ -155,9 +155,14 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const rows = (await conn(TableName.AgentVaultAccessBundle)
         .whereIn(`${TableName.AgentVaultAccessBundle}.id`, pageIds)
         .leftJoin(
-          TableName.AgentVaultService,
-          `${TableName.AgentVaultService}.accessBundleId`,
+          TableName.AgentVaultAccessBundleService,
+          `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
           `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .leftJoin(
+          TableName.AgentVaultService,
+          `${TableName.AgentVaultService}.id`,
+          `${TableName.AgentVaultAccessBundleService}.serviceId`
         )
         .leftJoin(memberCounts, function joinMemberCount() {
           this.on(db.raw(`mc."scopeResourceId" = ??.id::text`, [TableName.AgentVaultAccessBundle]));
