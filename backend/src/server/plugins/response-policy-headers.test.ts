@@ -4,6 +4,10 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { responsePolicyHeaders } from "./response-policy-headers";
 
 const ROUTE_POLICY = "default-src 'none'; style-src 'unsafe-inline'";
+const API_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+const DEVICE_POLICY =
+  "accelerometer=(), bluetooth=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), " +
+  "magnetometer=(), microphone=(), midi=(), serial=(), usb=(), xr-spatial-tracking=()";
 
 const app = Fastify();
 
@@ -17,9 +21,9 @@ beforeAll(async () => {
 afterAll(() => app.close());
 
 describe("responsePolicyHeaders", () => {
-  test("sends default-src 'none' on non-HTML responses", async () => {
+  test("sends a deny-all policy on non-HTML responses", async () => {
     const res = await app.inject({ url: "/json" });
-    expect(res.headers["content-security-policy"]).toContain("default-src 'none'");
+    expect(res.headers["content-security-policy"]).toBe(API_POLICY);
   });
 
   test("sends only frame-ancestors, base-uri and object-src on HTML responses", async () => {
@@ -34,7 +38,7 @@ describe("responsePolicyHeaders", () => {
 
   test("turns off device features on every response", async () => {
     const [page, json] = await Promise.all([app.inject({ url: "/page" }), app.inject({ url: "/json" })]);
-    expect(page.headers["permissions-policy"]).toContain("camera=()");
-    expect(json.headers["permissions-policy"]).toContain("camera=()");
+    expect(page.headers["permissions-policy"]).toBe(DEVICE_POLICY);
+    expect(json.headers["permissions-policy"]).toBe(DEVICE_POLICY);
   });
 });
