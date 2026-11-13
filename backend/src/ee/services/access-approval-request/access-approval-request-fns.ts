@@ -226,3 +226,13 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
     requestedPermissions
   };
 };
+
+// The folder lookup skips empty segments, so "/a//b" or "/a/b/" reads "/a/b" but can match a broader policy than
+// "/a/b" does.
+export const isRequestableSecretPath = (secretPath: string) =>
+  secretPath === "/" ||
+  (secretPath.startsWith("/") &&
+    secretPath
+      .slice(1)
+      .split("/")
+      .every((segment) => segment.length > 0 && segment === segment.trim() && segment !== "." && segment !== ".."));
