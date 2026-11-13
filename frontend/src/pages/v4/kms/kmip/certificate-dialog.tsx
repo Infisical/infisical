@@ -104,7 +104,7 @@ export const KmipCertificateDialog = ({
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    icon="eye"
+                    icon={revealed ? "eye-off" : "eye"}
                     iconOnly
                     aria-pressed={revealed}
                     onClick={() => setRevealed((current) => !current)}

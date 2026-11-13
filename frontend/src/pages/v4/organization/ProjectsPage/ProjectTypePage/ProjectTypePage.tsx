@@ -263,7 +263,7 @@ const FavoriteButton = ({
         onToggle();
       }}
     >
-      <Icon icon={StarIcon} fill={isFavorite ? "currentColor" : "none"} />
+      <Icon icon={StarIcon} filled={isFavorite} />
     </Button>
   </Tooltip>
 );
