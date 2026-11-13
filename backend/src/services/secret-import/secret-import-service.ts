@@ -249,6 +249,7 @@ export const secretImportServiceFactory = ({
     }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      await folderDAL.lockFoldersForUpdate([folder.id], tx);
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
       const doc = await secretImportDAL.create(
         {
@@ -386,7 +387,8 @@ export const secretImportServiceFactory = ({
     }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
-      const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
+      await folderDAL.lockFoldersForUpdate([folder.id], tx);
+      const secImp = await secretImportDAL.findOne({ folderId: folder.id, id }, tx);
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
 
       let finalPosition = data.position;
@@ -512,6 +514,7 @@ export const secretImportServiceFactory = ({
       });
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      await folderDAL.lockFoldersForUpdate([folder.id], tx);
       const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
       if (!doc) throw new NotFoundError({ message: `Secret import with folder ID '${id}' not found` });
       if (doc.isReplication) {
