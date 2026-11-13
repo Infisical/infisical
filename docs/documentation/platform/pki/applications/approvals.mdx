@@ -53,8 +53,9 @@ The machine identity bypass applies to renewals the same way it applies to issua
 #### Pending, rejected, and expired renewals
 
 - While a renewal is waiting for approval, you can't submit another renewal that needs approval for the same certificate, and automatic renewal doesn't request another one
-- If an approver rejects the renewal of an imported or discovered certificate, or any renewal under **Every renewal**, automatic renewal stops for that certificate until you renew it manually and that renewal is approved
+- If an approver rejects an automatic renewal, or any renewal of an imported or discovered certificate, automatic renewal stops for that certificate until you renew it manually and that renewal is approved
 - If an approval request for an automatic renewal expires, automatic renewal requests approval again the next time it runs
+- If a renewal is approved but then fails, for example because the CA is disabled, Infisical tells the requester and the approvers why. Fix the problem, then renew the certificate manually
 
 If nobody approves a renewal before the certificate expires, Infisical can't renew the certificate. To give approvers time, set automatic renewal to start well before the certificate expires.
 
@@ -135,7 +136,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
   </Step>
 </Steps>
 
-Once the request gets every required approval, Infisical issues the certificate, or revokes the certificate if the request is for a revocation. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason.
+Once the request gets every required approval, Infisical issues the certificate, or revokes the certificate if the request is for a revocation. If issuance fails at that point, for example because the CA is disabled, the certificate request moves to **Failed** and Infisical records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) with the reason. Infisical also sends the requester and the request's approvers an in-app notification with the reason and a link to the request.
 
 If revocation fails at that point, for example because the CA can't be reached, Infisical records a [`cert-revocation-failed` audit log event](/documentation/platform/audit-logs#certificate-revocations) with the reason. When the CA itself returned the error, the reason names the CA, and it says when the certificate is still active. Infisical also sends the requester and the request's approvers an in-app notification with the reason and a link to the request. After you fix the problem, revoke the certificate again. If a revocation policy still covers the certificate's profile, Infisical creates a new approval request instead of revoking the certificate right away.
 

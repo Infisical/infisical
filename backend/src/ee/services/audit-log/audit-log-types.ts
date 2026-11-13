@@ -3734,6 +3734,7 @@ interface CertificateIssuanceFailedEvent {
     commonName?: string;
     applicationId?: string;
     applicationName?: string;
+    approvalRequestId?: string;
     errorName: string;
     error: string;
   };

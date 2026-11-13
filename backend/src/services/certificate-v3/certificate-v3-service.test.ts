@@ -3085,25 +3085,25 @@ describe("CertificateV3Service", () => {
           source: CertificateSource.Imported
         });
 
-        await service.recordRejectedRenewal("cert-123", CertRequestRenewalApproval.OnChange);
+        await service.recordRejectedRenewal("cert-123", { raisedByAutoRenewal: false });
 
         expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
           renewalError: expect.stringContaining("was rejected")
         });
       });
 
-      it("keeps automatic renewal of an issued certificate when an edit is rejected", async () => {
+      it("keeps automatic renewal of an issued certificate when a renewal someone asked for is rejected", async () => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
 
-        await service.recordRejectedRenewal("cert-123", CertRequestRenewalApproval.OnChange);
+        await service.recordRejectedRenewal("cert-123", { raisedByAutoRenewal: false });
 
         expect(mockCertificateDAL.updateById).not.toHaveBeenCalled();
       });
 
-      it("stops automatic renewal of an issued certificate when a policy that holds every renewal rejects one", async () => {
+      it("stops automatic renewal of an issued certificate when an automatic renewal is rejected", async () => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
 
-        await service.recordRejectedRenewal("cert-123", CertRequestRenewalApproval.Always);
+        await service.recordRejectedRenewal("cert-123", { raisedByAutoRenewal: true });
 
         expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
           renewalError: expect.stringContaining("was rejected")

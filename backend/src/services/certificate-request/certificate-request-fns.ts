@@ -138,7 +138,8 @@ export const recordCertificateRequestFailure = async (
         caId: certificateRequest.caId,
         commonName,
         originalCertificateId,
-        applicationId: certificateRequest.applicationId
+        applicationId: certificateRequest.applicationId,
+        approvalRequestId: certificateRequest.approvalRequestId
       }
     });
   } catch (auditError) {

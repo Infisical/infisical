@@ -695,7 +695,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
           </Step>
           <Step>
             Select **Search audit logs** and add:
-            - `event`: `renew-certificate`, `automated-renew-certificate`, `approval-request-approve`, `approval-request-reject`
+            - `event`: `renew-certificate`, `automated-renew-certificate`, `approval-request-approve`, `approval-request-reject`, `certificate-issuance-failed`
           </Step>
         </Steps>
 
@@ -706,7 +706,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
           --data-urlencode "projectId=<project-id>" \
-          --data-urlencode "eventType=renew-certificate,automated-renew-certificate,approval-request-approve,approval-request-reject"
+          --data-urlencode "eventType=renew-certificate,automated-renew-certificate,approval-request-approve,approval-request-reject,certificate-issuance-failed"
         ```
       </Tab>
     </Tabs>
@@ -714,16 +714,17 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     Each event records one step of the renewal:
 
     - `renew-certificate` or `automated-renew-certificate` with the status `pending_approval`: the actor, or automatic renewal, requested the renewal
-    - `approval-request-approve` and `approval-request-reject`: the actor approved or rejected the request, and `event.metadata.certificateId` is the certificate being renewed
+    - `approval-request-approve` and `approval-request-reject` with the `policyType` `cert-request`: the actor approved or rejected the request, and `event.metadata.certificateId` is the certificate being renewed
     - `renew-certificate` with `platform` as the actor: Infisical renewed the certificate after the approvers approved the request, and `event.metadata.approvalRequestId` holds the ID of the approval request
+    - `certificate-issuance-failed` with `platform` as the actor and the operation `renew`: the approved renewal failed, `event.metadata.error` holds the reason, and `event.metadata.approvalRequestId` holds the ID of the approval request
 
-    Through the API, add `eventMetadata` to return the decisions and the renewal for one approval request:
+    Through the API, add `eventMetadata` to return the decisions and the outcome for one approval request:
 
     ```bash
     curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
       -H "Authorization: Bearer <your-access-token>" \
       --data-urlencode "projectId=<project-id>" \
-      --data-urlencode "eventType=approval-request-approve,approval-request-reject,renew-certificate" \
+      --data-urlencode "eventType=approval-request-approve,approval-request-reject,renew-certificate,certificate-issuance-failed" \
       --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
     ```
   </Accordion>

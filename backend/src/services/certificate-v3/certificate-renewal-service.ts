@@ -215,9 +215,11 @@ type TCertificateRenewalServiceFactoryDep = {
 const MAX_RENEWAL_CHAIN_HOPS = 10;
 
 // An imported or discovered certificate was never reviewed by Infisical, so every renewal of it is held.
+const isSourcedOutsideInfisical = (certificate: TCertificates) =>
+  Boolean(certificate.source) && certificate.source !== CertificateSource.Issued;
+
 const isEveryRenewalHeldForApproval = (certificate: TCertificates, renewalApproval: CertRequestRenewalApproval) =>
-  renewalApproval === CertRequestRenewalApproval.Always ||
-  (Boolean(certificate.source) && certificate.source !== CertificateSource.Issued);
+  renewalApproval === CertRequestRenewalApproval.Always || isSourcedOutsideInfisical(certificate);
 
 class RenewalBlockedError extends BadRequestError {
   readonly renewalError: string;
@@ -1287,9 +1289,12 @@ export const certificateRenewalServiceFactory = ({
     );
   };
 
-  const recordRejectedRenewal = async (certificateId: string, renewalApproval: CertRequestRenewalApproval) => {
+  const recordRejectedRenewal = async (
+    certificateId: string,
+    { raisedByAutoRenewal }: { raisedByAutoRenewal: boolean }
+  ) => {
     const certificate = await certificateDAL.findById(certificateId);
-    if (!certificate || !isEveryRenewalHeldForApproval(certificate, renewalApproval)) return;
+    if (!certificate || !(raisedByAutoRenewal || isSourcedOutsideInfisical(certificate))) return;
 
     await certificateDAL.updateById(certificateId, {
       renewalError: "A renewal of this certificate was rejected. Renew it manually to request approval again."

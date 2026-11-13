@@ -37,3 +37,9 @@ export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[
 export const sanitizeSqlLikeString = (value: string): string => {
   return String(value).replace(new RE2("[%_\\\\]", "g"), "\\$&");
 };
+
+// Upstream messages rarely end in a period, so one is added before another sentence follows.
+export const asSentence = (text: string) => {
+  const trimmed = text.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+};

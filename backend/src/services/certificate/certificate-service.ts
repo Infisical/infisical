@@ -21,6 +21,7 @@ import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { asSentence } from "@app/lib/fn/string";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
@@ -211,12 +212,6 @@ type TCertificateServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-};
-
-// Upstream CA messages rarely end in a period, so one is added before another sentence follows.
-const asSentence = (text: string) => {
-  const trimmed = text.trim();
-  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
