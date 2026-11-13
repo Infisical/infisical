@@ -140,7 +140,7 @@ export const TierDropdown = ({
         {inherited.onManage && (
           <DropdownMenuItem onClick={inherited.onManage}>
             <CornerLeftUpIcon />
-            Manage environment permissions
+            Manage Environment Permissions
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

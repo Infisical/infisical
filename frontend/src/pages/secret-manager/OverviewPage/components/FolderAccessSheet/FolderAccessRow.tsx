@@ -318,7 +318,7 @@ export const FolderAccessRow = ({
             title={`Applies to ${access.secretPath} and all of its subfolders`}
           >
             <FolderTreeIcon />
-            <span className="hidden sm:inline">Full environment</span>
+            <span className="hidden sm:inline">Full Environment</span>
           </Badge>
         )}
         <DropdownMenu
