@@ -91,7 +91,7 @@ Paths below are relative to that folder unless they start with `backend/`.
 - **Severity:** Low
 - **Where:** List, Client ID copy button. `OauthApplicationsPage.tsx:128`
 - **What is wrong:** Each row renders `label="Copy client ID"`, so a screen reader user browsing buttons hears "Copy client ID" three times with no app name. The row actions already avoid this ("Edit for Backstage portal").
-- **Fix:** `label={`Copy client ID for ${client.name}`}`.
+- **Fix:** ``label={`Copy client ID for ${client.name}`}``.
 
 ### 12. Search matches the name only
 
@@ -119,7 +119,7 @@ Paths below are relative to that folder unless they start with `backend/`.
 - **Severity:** Low
 - **Where:** `OauthApplicationsPage.tsx:188-202`, `route.tsx:10`
 - **What is wrong:** `FilterBar` is given `fields={[]}`, `value={[]}` and a no-op `onChange` only to host the search input, and the route validates a `selectedTab` search param that the page never reads. Both suggest behavior that doesn't exist and make the next reader look for it.
-- **Fix:** Render the search `Input` directly (or use the toolbar slot Cipher provides for a lone search), and drop `validateSearch` from the route.
+- **Fix:** Render the search `Input` directly, and drop `validateSearch` from the route.
 
 ## What the page does well
 
