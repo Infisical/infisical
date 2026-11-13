@@ -174,15 +174,16 @@ describe("approving a certificate request", () => {
 
     // A's transaction records the first approval and holds the request's row lock until B's approval is
     // waiting on it. B then records the second approval and completes the request, all before A reads the
-    // request back after its own commit.
+    // request back after its own commit. The timeout sits above waitUntilBlockedBy's 5s, so a B that never blocks
+    // fails the test with that wait's error after B has finished, not with Vitest's.
     test("runs the post-approval routine and tells the requester once, for the approval that completed it", async () => {
       const { serviceWith, routineRuns, delivered } = buildService();
-      let approvalB: Promise<unknown> | undefined;
 
       const dalForA: TApprovalRequestDALFactory = {
         ...approvalRequestDAL,
         transaction: async <T>(cb: (tx: Knex) => Promise<T>) => {
-          const result = await approvalRequestDAL.transaction(async (tx) => {
+          let approvalB: Promise<unknown> = Promise.resolve();
+          const approvalA = approvalRequestDAL.transaction(async (tx) => {
             const committed = await cb(tx);
             const { rows } = await tx.raw("select pg_backend_pid() as pid");
             approvalB = serviceWith(approvalRequestDAL).approveRequest(
@@ -191,11 +192,15 @@ describe("approving a certificate request", () => {
               ctx.approverB,
               ApprovalPolicyType.CertRequest
             );
-            await waitUntilBlockedBy(rows[0].pid as number);
+            // B can only finish before it blocks by failing, so stop waiting then rather than time out.
+            await Promise.race([waitUntilBlockedBy(rows[0].pid as number), approvalB.catch(() => undefined)]);
             return committed;
           });
+          // B is awaited however A's transaction ends, so it never runs on into afterEach, and its error comes
+          // first because a failed B is what ended A's wait.
+          await Promise.allSettled([approvalA]);
           await approvalB;
-          return result;
+          return approvalA;
         }
       };
 
@@ -205,6 +210,6 @@ describe("approving a certificate request", () => {
       expect(stored.status).toBe(ApprovalRequestStatus.Approved);
       expect(routineRuns.map((run) => ctx.approverName(run.actorId))).toEqual(["approver B"]);
       expect(approvedNoticesTo(delivered, ctx.requesterId)).toBe(1);
-    });
+    }, 15_000);
   });
 });
