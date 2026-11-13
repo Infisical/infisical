@@ -399,8 +399,7 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
                     dbInstance.raw("?? || '/' || ??", ["request_search_folder_paths.path", "child.name"])
                   )
                   .from({ child: TableName.SecretFolder })
-                  .join("request_search_folder_paths", "child.parentId", "request_search_folder_paths.id")
-                  .where("child.isReserved", false);
+                  .join("request_search_folder_paths", "child.parentId", "request_search_folder_paths.id");
               });
           })
           .where((qb) => {

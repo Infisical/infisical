@@ -4,10 +4,12 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -114,6 +116,26 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 
 		// Assert
 		require.Equal(t, []uuid.UUID{requests["/services/orders/checkout-api"]}, found)
+	})
+
+	t.Run("should find a replication's request by the path of the folder it replicates into", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p, _ := requestsByFolder(t, "/services/**")
+		secretmanager.CreateFolder(t, p.proj, "dev", "/services/orders")
+		secretmanager.CreateSecret(t, p.proj, "prod", "API_KEY", "value")
+		secretmanager.CreateImport(t, p.proj, "dev", secretmanager.Location{Env: "prod", Path: "/"},
+			secretmanager.IntoPath("/services/orders"), secretmanager.Replicated())
+		// One worker serves every tenant's replication jobs, so a run can queue behind others.
+		wait.Until(t, "the replication to open a change request", func() bool { return openRequestCount(t, p.proj) == 1 },
+			wait.Timeout(60*time.Second))
+
+		// Action
+		found := search(t, p, "/services/orders")
+
+		// Assert
+		require.Equal(t, []uuid.UUID{onlyOpenRequest(t, p.proj)}, found)
 	})
 
 	t.Run("should refuse a search longer than 255 characters", func(t *testing.T) {
