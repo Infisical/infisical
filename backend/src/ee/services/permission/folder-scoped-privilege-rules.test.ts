@@ -448,6 +448,100 @@ describe("recursive folder grants", () => {
   });
 });
 
+describe("recursive and exact folder grants together", () => {
+  const roles = Object.values(SecretFolderRole);
+  const bases = [
+    ["no-access", noAccessRoles],
+    ["member", memberRoles]
+  ] as const;
+  const toArray = <T>(value: T | T[]): T[] => (Array.isArray(value) ? value : [value]);
+  // Folder create and edit are left out: whether an exact grant keeps them under a recursive grant is its own rule.
+  const isFolderCreateOrEdit = (subjectName: string, action: string) =>
+    subjectName === ProjectPermissionSub.SecretFolders &&
+    (action === ProjectPermissionActions.Create || action === ProjectPermissionActions.Edit);
+  const probes = FOLDER_SCOPED_DENY_RULES.flatMap((rule) =>
+    toArray(rule.subject as string | string[]).flatMap((subjectName) =>
+      toArray(rule.action as string | string[])
+        .filter((action) => !isFolderCreateOrEdit(subjectName, action))
+        .map((action) => ({ subjectName, action }))
+    )
+  );
+  const capabilitiesAt = (ability: ReturnType<typeof abilityFor>, environment: string, secretPath: string) =>
+    Object.fromEntries(
+      probes.map(({ subjectName, action }) => [
+        `${subjectName}:${action}`,
+        ability.can(action as never, subject(subjectName, { environment, secretPath }) as never)
+      ])
+    );
+  const exactAt = (role: SecretFolderRole, secretPath: string) =>
+    privilege({ id: `exact-${secretPath}`, role, secretPath });
+  const secretsAt = (secretPath: string) => subject(ProjectPermissionSub.Secrets, { environment: "dev", secretPath });
+  const foldersAt = (secretPath: string) =>
+    subject(ProjectPermissionSub.SecretFolders, { environment: "dev", secretPath });
+
+  describe.each(bases)("on a %s base role", (_, baseRoles) => {
+    test.each(roles.flatMap((recursiveRole) => roles.map((exactRole) => [recursiveRole, exactRole] as const)))(
+      "recursive %s with exact %s: the exact role decides its folder and the recursive role every other folder",
+      (recursiveRole, exactRole) => {
+        const ability = abilityFor(baseRoles, [recursiveRoot(recursiveRole), exactAt(exactRole, "/a/b")]);
+        const onlyExact = abilityFor(baseRoles, [exactAt(exactRole, "/a/b")]);
+        const onlyRecursive = abilityFor(baseRoles, [recursiveRoot(recursiveRole)]);
+
+        expect(capabilitiesAt(ability, "dev", "/a/b")).toEqual(capabilitiesAt(onlyExact, "dev", "/a/b"));
+        ["/", "/a", "/a/b/c", "/x"].forEach((secretPath) => {
+          expect(capabilitiesAt(ability, "dev", secretPath)).toEqual(capabilitiesAt(onlyRecursive, "dev", secretPath));
+        });
+      }
+    );
+
+    test.each(roles)("a recursive %s grant replaces the base role everywhere in its environment", (recursiveRole) => {
+      const ability = abilityFor(baseRoles, [recursiveRoot(recursiveRole)]);
+      const onNoAccess = abilityFor(noAccessRoles, [recursiveRoot(recursiveRole)]);
+
+      ["/", "/a", "/a/b/c"].forEach((secretPath) => {
+        expect(capabilitiesAt(ability, "dev", secretPath)).toEqual(capabilitiesAt(onNoAccess, "dev", secretPath));
+      });
+    });
+
+    test.each(roles)("a recursive %s grant leaves other environments on the base role", (recursiveRole) => {
+      const ability = abilityFor(baseRoles, [recursiveRoot(recursiveRole), exactAt(SecretFolderRole.List, "/a")]);
+      const baseOnly = abilityFor(baseRoles);
+
+      ["/", "/a", "/a/b"].forEach((secretPath) => {
+        expect(capabilitiesAt(ability, "staging", secretPath)).toEqual(capabilitiesAt(baseOnly, "staging", secretPath));
+      });
+    });
+  });
+
+  test("exact grants give more than the recursive grant at one folder and less at another", () => {
+    const ability = abilityFor(memberRoles, [
+      recursiveRoot(SecretFolderRole.Read),
+      exactAt(SecretFolderRole.FullAccess, "/payments"),
+      exactAt(SecretFolderRole.List, "/billing")
+    ]);
+
+    expect(ability.can(ProjectPermissionSecretActions.Delete, secretsAt("/payments"))).toBe(true);
+    expect(ability.can(ProjectPermissionSecretFolderActions.ManageAccess, foldersAt("/payments"))).toBe(true);
+    expect(ability.can(ProjectPermissionSecretActions.ReadValue, secretsAt("/billing"))).toBe(false);
+    expect(ability.can(ProjectPermissionSecretActions.DescribeSecret, secretsAt("/billing"))).toBe(true);
+    ["/", "/payments/deep", "/billing/deep", "/other"].forEach((secretPath) => {
+      expect(ability.can(ProjectPermissionSecretActions.ReadValue, secretsAt(secretPath))).toBe(true);
+      expect(ability.can(ProjectPermissionSecretActions.Delete, secretsAt(secretPath))).toBe(false);
+      expect(ability.can(ProjectPermissionSecretFolderActions.ManageAccess, foldersAt(secretPath))).toBe(false);
+    });
+  });
+
+  test.each(roles)("an exact %s grant on the root reaches the root folder only", (role) => {
+    const ability = abilityFor(noAccessRoles, [privilege({ role, secretPath: "/" })]);
+    const baseOnly = abilityFor(noAccessRoles);
+
+    expect(ability.can(ProjectPermissionSecretActions.DescribeSecret, secretsAt("/"))).toBe(true);
+    ["/a", "/a/b"].forEach((secretPath) => {
+      expect(capabilitiesAt(ability, "dev", secretPath)).toEqual(capabilitiesAt(baseOnly, "dev", secretPath));
+    });
+  });
+});
+
 describe("filterOverriddenFolderScopedDenyRules", () => {
   const denyActionsFor = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], sub: string) =>
     rules
