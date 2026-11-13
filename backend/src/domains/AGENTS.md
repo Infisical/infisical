@@ -198,7 +198,8 @@ Calling another domain is a last resort. Before adding one:
 
 Domains don't share a transaction by default. A shared one keeps one domain's row locks held while another
 works, and with a pool of ~10 connections you get deadlocks Postgres can't see. A cross-domain use case is a
-sequence of short, repeatable calls; the one exception is in "Sharing a transaction" below.
+sequence of short, repeatable calls; the exceptions are in "Sharing a transaction" and "KMS Core joins
+transactions" below.
 
 ```ts
 async createSecret(input: TCreateSecretInput) {
@@ -246,6 +247,29 @@ transaction never sees its own rows.
 - Prove it with an integration test that runs concurrent writers at limit minus one and fails without the lock.
 
 If something truly has to be atomic across two domains, the boundary is wrong. Move the data into one domain.
+
+### KMS Core joins transactions
+
+KMS Core is the one domain any caller may bring into its transaction, and the rules in "Across domains" that it breaks
+(no network call inside a transaction, no advisory lock held across a caller's transaction) are deliberate here. It is
+the platform every product encrypts through, so writing ciphertext and creating the key it needs have to commit or
+roll back together: a project created with its first secrets, a secret change and its commit, a project deleted with
+its keys. Fetching keys before the transaction instead leaves orphan keys or projects when the transaction fails, and
+cannot see a project the transaction has just created.
+
+- `dataKeyService.within(tx)` returns `TDataKeyTransaction` (cipher pairs, first use included, the project's KMS key
+  id, the certificate key id, `deleteProjectKeys`); `kmsKeyService.within(tx)` returns `TKmsKeyTransaction` (encrypt,
+  decrypt, `getKmsById`). Root key, rotation and external KMS management never join.
+- First use creates the org or project key under KMS Core's frozen advisory locks, held until the caller commits.
+  Keep the transaction short and take locks in KMS Core's order (root key, org, project).
+- For a project whose key is in an external KMS (AWS, GCP), the provider call runs inside the caller's transaction,
+  as it did before KMS Core was a domain. This is not a precedent for other network calls inside a transaction.
+- A joined call never reads or writes KMS Core's Redis cache, so a rollback cannot leave a cache entry naming a key
+  that does not exist.
+- An error from a joined call leaves the caller's transaction unusable: let it roll back.
+- Outside a transaction, call the service directly.
+
+See `platform/kms-core/AGENTS.md` for how the domain does this inside.
 
 ## Errors
 
