@@ -72,7 +72,7 @@ import { userDALFactory } from "@app/services/user/user-dal";
 const planWith = (features: Partial<TPlanFeatures>) => Plan.restore({ ...testFeatures(), ...features });
 
 const countAgentVaultSeats = (orgId: string) => {
-  const organizationsProjectsService = new OrganizationsProjectsModule({ db: testDb }).service;
+  const { organizationsProjectsService } = new OrganizationsProjectsModule({ db: testDb });
   const { usageCounters } = new AgentVaultModule({ organizationsProjectsService });
   return usageCounter(usageCounters, Meter.AgentVaultIdentities).count(orgId);
 };

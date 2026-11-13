@@ -15,11 +15,11 @@ export type TOrganizationsProjectsDeps = {
 };
 
 export class OrganizationsProjectsModule {
-  readonly service: TOrganizationsProjectsService;
+  readonly organizationsProjectsService: TOrganizationsProjectsService;
 
   constructor({ db }: TOrganizationsProjectsDeps) {
     const replica = () => db.replicaNode();
-    this.service = new OrganizationsProjectsService(
+    this.organizationsProjectsService = new OrganizationsProjectsService(
       new OrganizationDataAccess(replica),
       new BillableActorDataAccess(replica),
       new TransactionRunner<TOrganizationsProjectsStore>(db, (trx, locks) => ({

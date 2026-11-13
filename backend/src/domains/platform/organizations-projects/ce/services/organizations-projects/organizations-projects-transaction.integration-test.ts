@@ -6,13 +6,13 @@ import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
-import { OrganizationsProjectsModule } from "../module";
+import { OrganizationsProjectsModule } from "../../module";
 
-// The limit checks project and identity create run on the caller's transaction (see ../../AGENTS.md).
+// The limit checks project and identity create run on the caller's transaction (see ../../../AGENTS.md).
 describe("OrganizationsProjectsService.within", () => {
   const h = setupIntegration();
 
-  const build = () => new OrganizationsProjectsModule({ db: h.db }).service;
+  const build = () => new OrganizationsProjectsModule({ db: h.db }).organizationsProjectsService;
 
   const orgTree = async () => {
     const root = await h.factories.organization();

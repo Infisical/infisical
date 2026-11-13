@@ -12,7 +12,7 @@ describe("CertManagerModule usage counters", () => {
   const h = setupIntegration();
 
   const build = () => {
-    const organizationsProjectsService = new OrganizationsProjectsModule({ db: h.db }).service;
+    const { organizationsProjectsService } = new OrganizationsProjectsModule({ db: h.db });
     return { module: new CertManagerModule({ db: h.db, organizationsProjectsService }) };
   };
 
@@ -93,8 +93,8 @@ describe("CertManagerModule usage counters", () => {
 
     // Action
     const [inTree, elsewhere] = await Promise.all([
-      built.module.service.isCertificateQuotaKeyActive(pki.root.id, "held.test"),
-      built.module.service.isCertificateQuotaKeyActive(other.root.id, "held.test")
+      built.module.certManagerService.isCertificateQuotaKeyActive(pki.root.id, "held.test"),
+      built.module.certManagerService.isCertificateQuotaKeyActive(other.root.id, "held.test")
     ]);
 
     // Assert
@@ -110,7 +110,7 @@ describe("CertManagerModule usage counters", () => {
     const built = build();
 
     // Action
-    const rows = await built.module.service.getActiveCertificateOrgBreakdown(pki.root.id);
+    const rows = await built.module.certManagerService.getActiveCertificateOrgBreakdown(pki.root.id);
 
     // Assert
     expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(2);

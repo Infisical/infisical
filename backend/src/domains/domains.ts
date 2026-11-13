@@ -34,7 +34,7 @@ export type TDomainDeps = {
 // a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
-  const organizationsProjectsService = organizationsProjects.service;
+  const { organizationsProjectsService } = organizationsProjects;
   const secrets = new SecretsModule({ organizationsProjectsService });
   const pam = new PamModule({ organizationsProjectsService });
   const agentVault = new AgentVaultModule({ organizationsProjectsService });

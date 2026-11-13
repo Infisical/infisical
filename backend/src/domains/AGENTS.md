@@ -53,13 +53,42 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | Data access | One per model. Owns every table storing that model, returns models not rows. A table belongs to exactly one data access class; other domains go through the owner's service. Shared query fragments are private methods |
 | Store | All of a domain's data access, bound to one connection or transaction |
 | Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
-| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type). Never wraps a service method |
+| Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsProjectsModule.organizationsProjectsService`, `LicenseModule.licenseService`). Never wraps a service method |
 | Router | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.
 | Helpers | Plain functions |
 
 Children: if there are a few and they're always read with the parent, the parent holds them (`Secret` holds
 its tags). If there are many and they're read separately, the child is its own entity holding the parent id
 (`SecretVersion.secretId`).
+
+### Rich models, not anemic ones
+
+Legacy code keeps data in a bare type (`TSecret`, `TFeatureSet`) and the rules about it in services and
+`*-fns.ts` files, so every caller re-implements them and some get them wrong (the old `plan.identityLimit`
+reads each had to remember `enforceIdentityLimit` and that 0 means uncapped). Migrating moves those rules onto
+the model. The model is the only code that reads its own fields to make a decision.
+
+Signs a model is anemic, and what to do instead:
+
+| Smell | Instead |
+| --- | --- |
+| A service or helper branches on a model's field (`if (plan.slug === "enterprise" && plan.enforceIdentityLimit)`) | A method on the model that answers the question (`plan.exceeds(PlanLimit.Identities, used, 1)`) |
+| A public getter or field for every column | Getters only for data with no rule attached (`plan.slug`, `meter.key`) |
+| A setter, or `update(partial)` | One method per change, named for the intent, that checks the rules (`membership.deactivate()`) |
+| The service validates input before `create()` | `create()` validates and throws `RuleViolationError` |
+| `x-fns.ts` functions taking the record as their first argument | Methods on the model; what's left (needs the store or another domain) goes to `services/helpers/` |
+| The same check repeated in several services | One model method; services call it and don't re-check |
+
+Where a rule goes:
+
+1. It needs only the entity's own fields: a model method.
+2. It needs other rows of this domain (a count, a sibling): the service loads them through the store, then asks
+   the model (`SeatUsage.fromBillableActors(counts).assertAvailable(plan, via)`).
+3. It needs another domain's value: the service reads it before `run` and passes it to the model.
+
+Not everything is a model. A read-only shape with no rules (a count, a breakdown row, `TOrganization` in
+`organizations-projects`) stays a plain type in `services/dependencies.ts`. Make it a model the first time a
+rule about it shows up.
 
 ### State and lifecycle
 
@@ -74,6 +103,23 @@ its tags). If there are many and they're read separately, the child is its own e
   gets its own method returning a handle that `routes/index.ts` stops on shutdown (`LicenseModule.startBackgroundSync`).
 - State never touches the DB. If it must follow a DB change, update it in `tx.afterCommit(...)` so a
   rollback can't leave them out of sync.
+
+### Data access
+
+- Take a connection source, not a handle: `constructor(private readonly knex: () => Knex)`. The module passes
+  `() => db.replicaNode()` for the instance the service reads through outside a transaction, and the store
+  builder passes `() => trx` (`OrganizationsProjectsModule`). `replicaNode()` picks a replica per call, which is
+  why it's a function.
+- Reads outside `run` go to a replica and can lag. A read that must see a write just made, or that guards a
+  write, goes through `run` (or `within(tx)`) so it runs on the primary.
+- Wrap each query in `try/catch` and rethrow `DatabaseError` from `@app/lib/errors` with a `name` saying what
+  failed. It's the one class from that file a domain uses.
+- Use `TableName` and the row types from `@app/db/schemas`, and helpers from `@app/lib/knex` (`orgTreeIds`).
+  Don't port `ormify`: write the queries the type declares, nothing generic.
+- Return models (`Model.restore(row)`), `null` for a missing row, and plain shapes only for counts and read-only
+  rows (see Rich models).
+- A key store cache is data access too: a `<Thing>Cache` class over `TDomainKeyStore` (`lib/key-store.ts`)
+  holding its key names and TTLs as file-local constants (`PlanCache`).
 
 ## Transactions
 
@@ -250,6 +296,8 @@ in-memory store and lets EE plug in without `ce/` importing it.
   checks permissions waits for the permissions domain; don't wrap `permissionService` in an adapter or add a second
   construction phase to get at it. Pure helpers from `@app/lib` (`@app/lib/ip`, the crypto primitives) are fine;
   `@app/lib/request-context` is not, since domains also run from queues and crons.
+- Enums and types from a legacy `*-types.ts` (`CertStatus`) may be imported until their owner migrates, then
+  they move with it. Never from `@app/ee/**` into `ce/`.
 - A domain may read a table no domain owns yet only as a declared exception in its `AGENTS.md`, like
   `organizations-projects`. Prefer adding the read there over a second domain reading the same table.
 - Lint (`.oxlintrc.json`, `no-restricted-imports`) enforces all this: one override per layer folder (`models/`,
@@ -292,6 +340,20 @@ sets the pattern from the rules above, and its PR names it here.
 
 ## Migrating a legacy module
 
+Where each legacy piece lands:
+
+| Legacy | Becomes |
+| --- | --- |
+| `xServiceFactory({ deps })` returning an object of arrow functions | `class XService implements TXService` in `services/x/service.ts`, deps as constructor parameter properties. Split it by use case group if callers use halves (see Service) |
+| `x-dal.ts` (`ormify` plus custom queries, optional `tx?: Knex` on each method) | One `<Entity>DataAccess` per model in `data-access/`, typed in `services/dependencies.ts`. The `tx` parameter goes: the store from `run` supplies the connection |
+| `x-types.ts` | DTOs become the service's input types (in its `service.ts`), the entity shape becomes the model's `T<Model>Record`, enums go to the model that owns the concept |
+| `x-fns.ts` | Rules about one entity become model methods; the rest go to `services/helpers/` taking `store` |
+| `x-queue.ts` | Workers and crons registered in the module's `start()`, each calling a service method. Queue and job names stay |
+| `keyStore` reads and writes in the service | A `<Thing>Cache` in `data-access/` |
+| `BadRequestError` / `NotFoundError` / `ConflictError` | `RuleViolationError` / `EntityNotFoundError` (see Errors) |
+| `permissionService` | Blocked until the permissions domain exists (see Dependency direction) |
+| Wiring in `server/routes/index.ts` | `new` in the module, the module built in `domains.ts` |
+
 1. Check its dependencies. Every legacy service or DAL it calls must already be a domain, or be one this module
    will own (see Dependency direction). Otherwise migrate that first, or stop.
 2. Place it: `<product-area>/<domain>/`, or `platform/` if other domains depend on it, named for the capability.
@@ -299,7 +361,9 @@ sets the pattern from the rules above, and its PR names it here.
 3. Keep the contract: URLs, methods, status codes, response shapes, error messages, audit event types and
    metadata, queue and key names (old pods share them during a rolling deploy), and table names (migrations stay
    in `src/db/migrations`, row types in `@app/db/schemas`). Any change, including a 500 becoming a 404, is listed in
-   the PR for the author to accept (`backend/CODE_QUALITY.md`), never made silently.
+   the PR for the author to accept (`backend/CODE_QUALITY.md`), never made silently. Move first, fix later:
+   keep the legacy behavior in the move, including how failures degrade (what threw, what served a fallback,
+   which database a read hit), and put a deliberate behavior change in its own commit the PR names.
 4. Move rules out of the service into the model, queries into data access, and `BadRequestError` /
    `NotFoundError` into domain errors. A plan check reads the plan before `run` and refuses with
    `plan.assert(PlanFeature.X)`; never gate a read or a delete.
@@ -310,12 +374,41 @@ sets the pattern from the rules above, and its PR names it here.
    specs for SQL and locks, a `Fake<Name>Service` if anything else calls it, and a blackbox plan in `tests/` for
    every API change.
 7. Add the domain's `AGENTS.md` (what it owns, declared exceptions) and link it from the list at the top of this file.
+8. Fix every path that named the old files: `vitest.e2e.config.mts` aliases, `.github/workflows/*` that `sed`
+   a source file, `backend-go/tests/infra/builder.go` (it patches the compiled file inside the published
+   image), docs, and test failure messages. `git grep` the old file names before calling it done.
+9. Run `make reviewable-api`, `npm run test:unit -- src/domains`, `npm run test:integration`, and the e2e specs
+   for the routes you touched (`make test-api-e2e SPEC=<pattern>`).
+
+## Class conventions
+
+- Every model, service, data access class, client and cache is a `class`. Legacy factory functions returning
+  objects of closures don't come over.
+- `class X implements TX`, with `TX` a `type` (not an `interface`) in method syntax (`getPlan(orgId: string): Promise<Plan>;`),
+  so a fake can implement the same type. Models have no type of their own: callers use the class.
+- Dependencies are constructor parameter properties, `private readonly`. Public state is a `readonly` field
+  (`LicenseModule.licenseService`). Nothing is reassigned after construction except state its owner mutates.
+- Methods are methods, not arrow-function properties. Test fakes may use arrow properties so a test can
+  override one (`FakeOrganizationsProjectsService`).
+- A helper only one class uses is a `private` method; a pure function only one file uses is a file-local
+  `const`. Shared helpers are exported plain functions in `services/helpers/`.
+- Static constructors, never `new` from outside the class: `create(record)` (validates), `restore(record)`
+  (trusts stored data), `from<Source>(...)` to build from another shape (`SeatUsage.fromBillableActors`,
+  `Meter.fromKey`), and `static async create(deps)` for a module that must read before it can answer.
+- A fixed set of named things is an `enum` (`PlanFeature`, `PlanLimit`) or, when each member carries data,
+  static readonly instances on the class (`Meter.SecretIdentities`). Key, lock and queue names are file-local
+  `const` maps (`PlanKeys`, `CountLocks`), not exported.
 
 ## Naming
 
 | Kind | Pattern | Example |
 | --- | --- | --- |
 | Folder | kebab-case noun | `static-secrets` |
+| Model | `models/<entity>.ts`, class `<Entity>`, record `T<Entity>Record` | `instance-entitlements.ts`, `InstanceEntitlements`, `TInstanceEntitlementsRecord` |
+| Data access | `data-access/<entity>-data-access.ts`, `class <Entity>DataAccess implements T<Entity>DataAccess` | `OrganizationDataAccess` |
+| Cache | `data-access/<thing>-cache.ts`, `class <Thing>Cache implements T<Thing>Cache` | `PlanCache` |
+| Client | `clients/<system>/client.ts`, `class <System>Client`; its error mapping in `errors.ts` beside it | `LicenseServerClient` |
+| Test doubles | `testing/fake-<name>.ts` → `Fake<Name>`, `testing/in-memory-<name>.ts` → `InMemory<Name>`, rows for integration tests in `testing/<thing>-fixture.ts`, a module on fakes in `testing/build-<domain>.ts` → `build<Domain>()` | `FakeLicenseService`, `build-license.ts` |
 | Module | `<Domain>Module` in `ce/module.ts`, `<Domain>EeModule` in `ee/module.ts` | `StaticSecretsModule` |
 | Service | `class <Name>Service implements T<Name>Service`: both the class and its type end in `Service`. That holds for every class in `services/<name>/service.ts`, including one that queue jobs or a cron call and an EE class implementing a CE type. Name it for what it does, not how it is triggered (`UsageReportService`, not `UsageReportWorkerService`) | `LicenseService`, `UsageReportService`, `LicensePolicyService` |
 | Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |

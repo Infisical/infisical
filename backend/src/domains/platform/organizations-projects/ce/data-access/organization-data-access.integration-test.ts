@@ -8,7 +8,7 @@ import { OrganizationsProjectsModule } from "../module";
 describe("OrganizationsProjectsService organizations for License", () => {
   const h = setupIntegration();
 
-  const build = () => ({ organizations: new OrganizationsProjectsModule({ db: h.db }).service });
+  const build = () => ({ organizations: new OrganizationsProjectsModule({ db: h.db }).organizationsProjectsService });
 
   const orgTree = async () => {
     const root = await h.factories.organization();

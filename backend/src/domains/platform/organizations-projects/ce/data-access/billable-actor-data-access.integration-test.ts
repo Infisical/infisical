@@ -11,7 +11,7 @@ describe("OrganizationsProjectsService billable actor counts", () => {
 
   const build = () => ({ module: new OrganizationsProjectsModule({ db: h.db }) });
   const countSeats = async (module: OrganizationsProjectsModule, orgId: string | null) => {
-    const { users, identities } = await module.service.countBillableOrgActors(orgId);
+    const { users, identities } = await module.organizationsProjectsService.countBillableOrgActors(orgId);
     return users + identities;
   };
 
@@ -21,7 +21,7 @@ describe("OrganizationsProjectsService billable actor counts", () => {
     const { module } = build();
 
     // Action
-    const { users } = await module.service.countBillableOrgActors(rootOrgId);
+    const { users } = await module.organizationsProjectsService.countBillableOrgActors(rootOrgId);
 
     // Assert
     expect(users).toBe(5);
@@ -72,9 +72,9 @@ describe("OrganizationsProjectsService billable actor counts", () => {
 
     // Action
     const [secretManager, pam, otherOrg] = await Promise.all([
-      module.service.countProjectIdentitiesByKind(ProjectType.SecretManager, rootOrgId),
-      module.service.countProjectIdentitiesByKind(ProjectType.PAM, rootOrgId),
-      module.service.countProjectIdentities(ProjectType.SecretManager, randomUUID())
+      module.organizationsProjectsService.countProjectIdentitiesByKind(ProjectType.SecretManager, rootOrgId),
+      module.organizationsProjectsService.countProjectIdentitiesByKind(ProjectType.PAM, rootOrgId),
+      module.organizationsProjectsService.countProjectIdentities(ProjectType.SecretManager, randomUUID())
     ]);
 
     // Assert
@@ -89,7 +89,7 @@ describe("OrganizationsProjectsService billable actor counts", () => {
     const { module } = build();
 
     // Action
-    const rows = await module.service.getBillableIdentityOwnershipBreakdown(rootOrgId);
+    const rows = await module.organizationsProjectsService.getBillableIdentityOwnershipBreakdown(rootOrgId);
 
     // Assert
     expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(4);
@@ -103,8 +103,8 @@ describe("OrganizationsProjectsService billable actor counts", () => {
 
     // Action
     const roots = await Promise.all([
-      module.service.resolveRootOrgId(subOrgId),
-      module.service.resolveRootOrgId(rootOrgId)
+      module.organizationsProjectsService.resolveRootOrgId(subOrgId),
+      module.organizationsProjectsService.resolveRootOrgId(rootOrgId)
     ]);
 
     // Assert

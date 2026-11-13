@@ -14,14 +14,14 @@ export type TCertManagerDeps = {
 };
 
 export class CertManagerModule {
-  readonly service: TCertManagerService;
+  readonly certManagerService: TCertManagerService;
 
   // These count the whole org tree, so report once at the root.
   readonly usageCounters: TUsageCounter[];
 
   constructor({ db, organizationsProjectsService }: TCertManagerDeps) {
     const certificateUsageDataAccess = new CertificateUsageDataAccess(db);
-    this.service = new CertManagerService(certificateUsageDataAccess, organizationsProjectsService);
+    this.certManagerService = new CertManagerService(certificateUsageDataAccess, organizationsProjectsService);
 
     this.usageCounters = [
       { meter: Meter.InternalCas, count: (orgId) => certificateUsageDataAccess.countInternalCas(orgId ?? undefined) },

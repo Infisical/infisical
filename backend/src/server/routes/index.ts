@@ -918,8 +918,8 @@ export const registerRoutes = async (
     licenseService,
     usageMeteringService,
     licenseBilling: domains.licenseBilling,
-    organizationsProjectsService: domains.organizationsProjects.service,
-    certManagerService: domains.certManager.service,
+    organizationsProjectsService: domains.organizationsProjects.organizationsProjectsService,
+    certManagerService: domains.certManager.certManagerService,
     breakdownDAL: licenseV2BreakdownDAL
   });
 
@@ -1443,7 +1443,7 @@ export const registerRoutes = async (
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    certManagerService: domains.certManager.service,
+    certManagerService: domains.certManager.certManagerService,
     cronJob,
     telemetryService
   });
@@ -2486,7 +2486,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
-    organizationsProjectsService: domains.organizationsProjects.service,
+    organizationsProjectsService: domains.organizationsProjects.organizationsProjectsService,
     projectQueue: projectQueueService,
     secretValueTrackingService,
     userDAL,
@@ -2786,7 +2786,7 @@ export const registerRoutes = async (
     identityProjectDAL,
     licenseService,
     usageMeteringService,
-    organizationsProjectsService: domains.organizationsProjects.service,
+    organizationsProjectsService: domains.organizationsProjects.organizationsProjectsService,
     identityMetadataDAL,
     keyStore,
     orgDAL,
@@ -3973,7 +3973,7 @@ export const registerRoutes = async (
   });
 
   const certificateService = certificateServiceFactory({
-    certManagerService: domains.certManager.service,
+    certManagerService: domains.certManager.certManagerService,
     keyStore,
     certificateDAL,
     certificateRequestDAL,
@@ -4070,7 +4070,7 @@ export const registerRoutes = async (
 
   const certificateApprovalService = certificateApprovalServiceFactory({
     licenseService,
-    certManagerService: domains.certManager.service,
+    certManagerService: domains.certManager.certManagerService,
     keyStore,
     certificateRequestDAL,
     certificateProfileDAL,
@@ -4319,7 +4319,7 @@ export const registerRoutes = async (
 
   const certificateV3Service = certificateV3ServiceFactory({
     caKeySourceService,
-    certManagerService: domains.certManager.service,
+    certManagerService: domains.certManager.certManagerService,
     pkiApplicationDAL,
     keyStore,
     certificateDAL,
@@ -4431,7 +4431,7 @@ export const registerRoutes = async (
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
     pkiApplicationDAL,
-    certManagerService: domains.certManager.service,
+    certManagerService: domains.certManager.certManagerService,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -4470,7 +4470,7 @@ export const registerRoutes = async (
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
     licenseService,
-    certManagerService: domains.certManager.service,
+    certManagerService: domains.certManager.certManagerService,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
