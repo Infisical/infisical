@@ -59,12 +59,14 @@ const buildKmsCore = async ({
   readKnex,
   envConfig,
   isHsmEntitled,
+  keyStore,
   skipRotationState
 }: {
   db: TDbClient;
   readKnex: () => Knex;
   envConfig: TKmsCoreEnvConfig;
   isHsmEntitled: () => boolean;
+  keyStore?: TDomainKeyStore;
   skipRotationState?: boolean;
 }) => {
   const kmsCoreEe = await KmsCoreEeModule.create({ db, readKnex, hsmConfig: envConfig, isHsmEntitled });
@@ -74,6 +76,7 @@ const buildKmsCore = async ({
     env: kmsCoreEnv(envConfig),
     originalEnv: skipRotationState ? undefined : getOriginalConfig(),
     hooks: kmsCoreEe.hooks,
+    keyStore,
     skipRotationState
   });
   return { kmsCoreEe, kmsCore };
@@ -136,7 +139,8 @@ export const createDomains = async (deps: TDomainDeps) => {
     db: deps.db,
     readKnex: () => deps.db.replicaNode(),
     envConfig: deps.envConfig,
-    isHsmEntitled: () => license.licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)
+    isHsmEntitled: () => license.licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm),
+    keyStore: deps.keyStore
   });
   kmsCore.start(deps.cronJob);
 

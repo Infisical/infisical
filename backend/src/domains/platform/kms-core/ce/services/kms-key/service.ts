@@ -1,6 +1,6 @@
 import { ProjectType } from "@app/db/schemas";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
-import { TTransactionRunner } from "@app/domains/lib/transactions";
+import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -159,7 +159,13 @@ export type TKmsKeyService = {
   getExternalKmsByName(orgId: string, name: string): Promise<TExternalKmsDetails>;
   listExternalKms(orgId: string): Promise<TExternalKmsSummary[]>;
   fetchGcpKeys(input: { credential: unknown; gcpRegion: string }): Promise<{ keys: string[] }>;
+
+  within(tx: TTransaction): TKmsKeyTransaction;
 };
+
+// The calls a caller can make inside its own transaction. The encryptor and decryptor they return stay usable after
+// it ends. Any error leaves the caller's transaction unusable: roll it back.
+export type TKmsKeyTransaction = Pick<TKmsKeyService, "encryptWithKmsKey" | "decryptWithKmsKey" | "getKmsById">;
 
 // Org-level keys (no project) may share a name, as the unique index allows.
 const assertNameFree = async (
@@ -182,8 +188,23 @@ export class KmsKeyService implements TKmsKeyService {
     private readonly stores: TKmsCoreStores,
     private readonly rootKey: RootKey,
     private readonly externalKms: TExternalKmsHook | undefined,
-    private readonly dataKeyService: TDataKeyService
+    private readonly dataKeyService: TDataKeyService,
+    // Set for a service bound to a caller's transaction.
+    private readonly isJoined = false
   ) {}
+
+  within(tx: TTransaction): TKmsKeyTransaction {
+    const runner = this.transactionRunner.within(tx);
+    const joined = <T>(work: (service: KmsKeyService) => Promise<T>) =>
+      runner.run(({ stores }) =>
+        work(new KmsKeyService(runner, stores, this.rootKey, this.externalKms, this.dataKeyService, true))
+      );
+    return {
+      encryptWithKmsKey: (input) => joined((service) => service.encryptWithKmsKey(input)),
+      decryptWithKmsKey: (input) => joined((service) => service.decryptWithKmsKey(input)),
+      getKmsById: (kmsId) => joined((service) => service.getKmsById(kmsId))
+    };
+  }
 
   async generateKmsKey({
     orgId,
@@ -347,7 +368,7 @@ export class KmsKeyService implements TKmsKeyService {
 
   async decryptWithKmsKey({ kmsId }: { kmsId: string }) {
     const key = await requireKey(this.stores.kmsKeyStore, kmsId);
-    return keyDecryptor(this.stores, this.rootKey, this.externalKms, key);
+    return keyDecryptor(this.stores, this.rootKey, this.externalKms, key, { loadArchivedNow: this.isJoined });
   }
 
   async getPublicKey({ kmsId }: { kmsId: string }, options?: TReadOptions) {

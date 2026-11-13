@@ -64,13 +64,20 @@ export const keyEncryptor = async (
   return async ({ plainText }) => ({ cipherTextBlob: await provider.encrypt(ref, orgCipher, plainText) });
 };
 
+// `loadArchivedNow` is for stores bound to a caller's transaction, which a decryptor called later cannot use.
 export const keyDecryptor = async (
   stores: TKeyCipherStores,
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
-  key: KmsKey
+  key: KmsKey,
+  { loadArchivedNow = false }: { loadArchivedNow?: boolean } = {}
 ): Promise<TAsyncDecryptor> => {
   const ref = key.externalRef();
+  if (!ref && loadArchivedNow) {
+    const internalKmsId = key.toJSON().internal?.id;
+    const archived = internalKmsId ? await stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId) : [];
+    return key.decryptor(rootKey, () => Promise.resolve(archived));
+  }
   if (!ref) return internalDecryptor(stores, rootKey, key);
   const provider = requireExternalKms(externalKms);
   const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId);

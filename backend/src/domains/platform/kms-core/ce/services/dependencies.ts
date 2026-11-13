@@ -2,6 +2,7 @@ import { ProjectType } from "@app/db/schemas";
 import { OrderByDirection } from "@app/lib/types";
 
 import { TCipherPair } from "../models/data-key";
+import { EncryptedDataKey } from "../models/encrypted-data-key";
 import { TExternalKeyRef } from "../models/external-key-config";
 import { KekHistoryEntry } from "../models/kek-history-entry";
 import { KmsKey, TKmsKeyRecord } from "../models/kms-key";
@@ -119,6 +120,19 @@ export type TProjectKeyStore = {
   save(key: ProjectKey): Promise<void>;
   // Includes projects scheduled for deletion.
   referencesKey(kmsKeyId: string): Promise<boolean>;
+};
+
+// A project's wrapped data key in Redis, so the hot path skips the project row. Holds only what the database holds
+// (the data key encrypted by its KMS key), never plaintext. Never consulted inside a transaction: an entry written
+// from a transaction that rolls back would name a key that does not exist.
+export type TProjectDataKeyCache = {
+  // Null on a miss, on a partial entry (a pod of the previous release caches a project before its first use), and when
+  // Redis fails.
+  get(projectId: string): Promise<EncryptedDataKey | null>;
+  // Best effort: a failed write only costs the next reader a database read.
+  set(projectId: string, key: EncryptedDataKey): Promise<void>;
+  // Retries, then throws: the entry may still be there.
+  evict(projectId: string): Promise<void>;
 };
 
 // What run hands a service as `stores`: every store bound to one transaction, plus the frozen locks.

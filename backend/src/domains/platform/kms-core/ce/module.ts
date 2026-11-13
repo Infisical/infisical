@@ -1,12 +1,14 @@
 import type { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
+import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { CronJobName, type TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import type { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 
 import { buildKmsCoreStoreAccess } from "./data-access/kms-core-stores";
+import { ProjectDataKeyCache } from "./data-access/project-data-key-cache";
 import { RootKey } from "./models/root-key";
 import { DataKeyService, TDataKeyService } from "./services/data-key/service";
 import { TKmsCoreHooks, TKmsCoreStores } from "./services/dependencies";
@@ -23,6 +25,7 @@ export { WrappedKeyPayload } from "./models/wrapped-key";
 export { KmsDataKey, KmsType } from "./services/data-key/service";
 export type {
   TDataKeyService,
+  TDataKeyTransaction,
   TEncryptWithKmsDataKeyDTO,
   TUpdateProjectSecretManagerKmsKeyDTO
 } from "./services/data-key/service";
@@ -46,6 +49,7 @@ export type {
   TImportKeyMaterialDTO,
   TKmsKeyAttributes,
   TKmsKeyService,
+  TKmsKeyTransaction,
   TListKmsKeysDTO,
   TSignWithKmsDTO,
   TVerifyWithKmsDTO
@@ -59,8 +63,9 @@ export type {
   TRotationHistoryEntry
 } from "./services/root-key/service";
 
-// Every KMS Core service in one object, for consumers that still take a single dependency.
-export type TKmsCoreDomain = TRootKeyService & TKmsKeyService & TDataKeyService;
+// Every KMS Core service in one object, for consumers that still take a single dependency. Joining a transaction
+// goes through the service that owns the call (dataKeyService.within, kmsKeyService.within).
+export type TKmsCoreDomain = TRootKeyService & Omit<TKmsKeyService, "within"> & Omit<TDataKeyService, "within">;
 
 export type TKmsCoreStoreAccess = {
   transactionRunner: TTransactionRunner<TKmsCoreStores>;
@@ -81,6 +86,8 @@ export type TKmsCoreDeps = (
   env: TKmsCoreEnv;
   originalEnv?: TLegacyKeySnapshot;
   hooks: TKmsCoreHooks;
+  // Redis, for the project data-key cache. Left out where there is no Redis (migrations, most tests).
+  keyStore?: TDomainKeyStore;
   isFipsEnabled?: () => boolean;
   /**
    * For callers inside a database migration: loads only the root key, with no promotion, labels or legacy snapshot,
@@ -89,19 +96,19 @@ export type TKmsCoreDeps = (
   skipRotationState?: boolean;
 };
 
-const bindAll = <T extends object>(service: T): T => {
+const bindAll = <T extends object>(service: T): Omit<T, "within"> => {
   const bound = {} as Record<string, unknown>;
   let proto = Object.getPrototypeOf(service) as object | null;
   while (proto && proto !== Object.prototype) {
     Object.getOwnPropertyNames(proto).forEach((name) => {
       const member = (service as Record<string, unknown>)[name];
-      if (name !== "constructor" && typeof member === "function" && !(name in bound)) {
+      if (name !== "constructor" && name !== "within" && typeof member === "function" && !(name in bound)) {
         bound[name] = (member as (...args: unknown[]) => unknown).bind(service);
       }
     });
     proto = Object.getPrototypeOf(proto) as object | null;
   }
-  return bound as T;
+  return bound as Omit<T, "within">;
 };
 
 // The root key, internal KMS keys, org and project keys, HSM and external keys (through hooks), and root key
@@ -143,7 +150,8 @@ export class KmsCoreModule {
     });
 
     const rootKeyService = new RootKeyService(transactionRunner, rootKey, deps.env, isFipsEnabled, rootKeyWrapper);
-    const dataKeyService = new DataKeyService(transactionRunner, stores, rootKey, externalKms);
+    const cache = deps.keyStore ? new ProjectDataKeyCache(deps.keyStore) : undefined;
+    const dataKeyService = new DataKeyService(transactionRunner, stores, rootKey, externalKms, cache);
     const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms, dataKeyService);
     return new KmsCoreModule(rootKeyService, kmsKeyService, dataKeyService);
   }

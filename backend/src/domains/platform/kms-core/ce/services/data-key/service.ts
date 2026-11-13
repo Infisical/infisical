@@ -1,5 +1,6 @@
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
-import { TTransactionRunner } from "@app/domains/lib/transactions";
+import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
+import { logger } from "@app/lib/logger";
 
 import { DataKey, TCipherPair } from "../../models/data-key";
 import { EncryptedDataKey } from "../../models/encrypted-data-key";
@@ -9,12 +10,9 @@ import { ProjectKey } from "../../models/project-key";
 import { ProjectKeyBackup } from "../../models/project-key-backup";
 import { RootKey } from "../../models/root-key";
 import { WrappedKeyPayload } from "../../models/wrapped-key";
-import { TExternalKmsHook, TKmsCoreStores } from "../dependencies";
+import { TExternalKmsHook, TKmsCoreStores, TProjectDataKeyCache } from "../dependencies";
 import { openDataKey, requireKey, sealDataKey } from "../helpers/key-cipher";
 import { ReadFrom, TReadOptions } from "../helpers/read-options";
-import { CertificateKeyTaken } from "./certificate-key-taken";
-
-export { CertificateKeyTaken } from "./certificate-key-taken";
 
 export enum KmsDataKey {
   Organization,
@@ -44,6 +42,19 @@ export type TDataKeyService = {
   updateProjectSecretManagerKmsKey(input: TUpdateProjectSecretManagerKmsKeyDTO): Promise<TKmsKeyDetails>;
   getProjectKeyBackup(projectId: string): Promise<{ secretManager: string }>;
   loadProjectKeyBackup(projectId: string, backup: string): Promise<{ secretManagerKmsKey: TKmsKeyDetails }>;
+  deleteProjectKeys(input: { orgId: string; kmsKeyIds: string[] }): Promise<void>;
+  within(tx: TTransaction): TDataKeyTransaction;
+};
+
+/**
+ * The calls a caller can make inside its own transaction, which see its uncommitted rows. First use takes the frozen
+ * org and project locks, held until the caller commits, and an external key's provider is called inside it. Any
+ * error leaves the caller's transaction unusable: roll it back.
+ */
+export type TDataKeyTransaction = {
+  createCipherPairWithDataKey(context: TEncryptWithKmsDataKeyDTO): Promise<TCipherPair>;
+  getProjectSecretManagerKmsKeyId(projectId: string): Promise<string>;
+  getProjectCertificateKmsKeyId(projectId: string): Promise<string>;
   deleteProjectKeys(input: { orgId: string; kmsKeyIds: string[] }): Promise<void>;
 };
 
@@ -77,22 +88,40 @@ const assertClaimed = (claimed: boolean, what: string) => {
 
 /**
  * The KMS key and data key an org or project gets on first use, the project certificate key, the switch between
- * internal and external keys, and backups. Every first-use creation runs in its own short transaction under the
- * frozen locks and writes a column only while it is empty; the provider call for an external key runs before it.
+ * internal and external keys, and backups. Every first-use creation runs under the frozen locks and writes a column
+ * only while it is empty.
  */
 export class DataKeyService implements TDataKeyService {
+  // `cache` is left out for a service bound to a caller's transaction, and for migrations.
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
     private readonly stores: TKmsCoreStores,
     private readonly rootKey: RootKey,
-    private readonly externalKms: TExternalKmsHook | undefined
+    private readonly externalKms: TExternalKmsHook | undefined,
+    private readonly cache?: TProjectDataKeyCache
   ) {}
+
+  // Every read and write goes through the caller's transaction, through a service built on its stores and without
+  // the cache.
+  within(tx: TTransaction): TDataKeyTransaction {
+    const runner = this.transactionRunner.within(tx);
+    const joined = <T>(work: (service: DataKeyService) => Promise<T>) =>
+      runner.run(({ stores }) => work(new DataKeyService(runner, stores, this.rootKey, this.externalKms)));
+    return {
+      createCipherPairWithDataKey: (context) => joined((service) => service.createCipherPairWithDataKey(context)),
+      getProjectSecretManagerKmsKeyId: (projectId) =>
+        joined((service) => service.getProjectSecretManagerKmsKeyId(projectId)),
+      getProjectCertificateKmsKeyId: (projectId) =>
+        joined((service) => service.getProjectCertificateKmsKeyId(projectId)),
+      deleteProjectKeys: (input) => joined((service) => service.deleteProjectKeys(input))
+    };
+  }
 
   // A caller that has just committed the org or project passes ReadFrom.Primary: a replica may not have it yet.
   async createCipherPairWithDataKey(context: TEncryptWithKmsDataKeyDTO, options?: TReadOptions): Promise<TCipherPair> {
     const dataKey =
       context.type === KmsDataKey.SecretManager
-        ? (await this.resolveProjectKey(context.projectId, options)).dataKey
+        ? await this.projectDataKey(context.projectId, options)
         : await this.orgDataKey(context.orgId, options);
     return dataKey.toCipherPair();
   }
@@ -108,17 +137,16 @@ export class DataKeyService implements TDataKeyService {
     const projectKey = await this.findProjectKey(projectId, options);
     if (projectKey.certificateKmsKeyId) return projectKey.certificateKmsKeyId;
 
+    // The losing key is deleted rather than rolled back: inside a caller's transaction there is nothing to roll back.
     const key = KmsKey.createReserved({ orgId: projectKey.orgId, rootKey: this.rootKey });
-    try {
-      return await this.transactionRunner.run(async ({ stores }) => {
-        await stores.kmsKeyStore.insert(key);
-        projectKey.assignCertificateKey(key.id);
-        if (!(await stores.projectKeyStore.claimCertificateKey(projectKey))) throw new CertificateKeyTaken();
-        return key.id;
-      });
-    } catch (error) {
-      if (!(error instanceof CertificateKeyTaken)) throw error;
-    }
+    const claimed = await this.transactionRunner.run(async ({ stores }) => {
+      await stores.kmsKeyStore.insert(key);
+      projectKey.assignCertificateKey(key.id);
+      if (await stores.projectKeyStore.claimCertificateKey(projectKey)) return true;
+      await stores.kmsKeyStore.delete(key.id);
+      return false;
+    });
+    if (claimed) return key.id;
 
     const winner = await this.findProjectKey(projectId, PRIMARY);
     if (!winner.certificateKmsKeyId) throw projectNotFound(projectId);
@@ -180,7 +208,8 @@ export class DataKeyService implements TDataKeyService {
     const { projectKey, dataKey } = await this.openProjectDataKey(keyed, currentKey);
     const sealed = await sealDataKey(this.stores, this.rootKey, this.externalKms, target, dataKey);
 
-    return this.transactionRunner.run(async ({ stores }) => {
+    return this.transactionRunner.run(async ({ stores, tx }) => {
+      this.evictAfterCommit(tx, projectId);
       if (isNewKey) await stores.kmsKeyStore.insert(target);
       const expectedKmsKeyId = projectKey.switchTo(target.id, sealed);
       if (!(await stores.projectKeyStore.switchKey(projectKey, expectedKmsKeyId))) {
@@ -222,7 +251,10 @@ export class DataKeyService implements TDataKeyService {
       EncryptedDataKey.restore({ kmsKeyId: newKey.id, encryptedDataKey: sealed, orgId: newKey.orgId })
     );
 
-    await this.transactionRunner.run(async ({ stores }) => {
+    // A cached entry would keep serving the replaced data key: refuse the restore if it cannot be cleared first.
+    if (this.cache) await this.cache.evict(projectId);
+    await this.transactionRunner.run(async ({ stores, tx }) => {
+      this.evictAfterCommit(tx, projectId);
       await stores.kmsKeyStore.insert(newKey);
       await stores.projectKeyStore.save(projectKey);
     });
@@ -245,6 +277,38 @@ export class DataKeyService implements TDataKeyService {
         if (!referenced) await stores.kmsKeyStore.delete(kmsKeyId);
       });
     }
+  }
+
+  private evictAfterCommit(tx: TTransaction, projectId: string) {
+    const { cache } = this;
+    if (cache) tx.afterCommit(() => cache.evict(projectId));
+  }
+
+  // The cache holds the encrypted data key read from the primary. An entry that no longer opens (a switch whose
+  // eviction failed, a key deleted since) is replaced from the primary, once.
+  private async projectDataKey(projectId: string, options?: TReadOptions): Promise<DataKey> {
+    const { cache } = this;
+    if (!cache || options?.readFrom === ReadFrom.Primary) {
+      const resolved = await this.resolveProjectKey(projectId, options);
+      return resolved.dataKey;
+    }
+
+    const cached = await cache.get(projectId);
+    if (cached) {
+      try {
+        const kmsKey = await this.readKey(cached.kmsKeyId);
+        return await this.open(kmsKey, cached.encryptedDataKey);
+      } catch (err) {
+        logger.warn(
+          { err, projectId },
+          `KMS: cached project data key did not open, reading it again [projectId=${projectId}]`
+        );
+      }
+    }
+
+    const { projectKey, dataKey } = await this.resolveProjectKey(projectId, PRIMARY);
+    await cache.set(projectId, projectKey.material());
+    return dataKey;
   }
 
   // Reads on the primary go through a short run, so the connection is back before any provider call.

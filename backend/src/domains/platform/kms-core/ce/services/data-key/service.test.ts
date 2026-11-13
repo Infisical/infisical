@@ -1,3 +1,7 @@
+import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
+
+import { ProjectDataKeyCache, projectDataKeyCacheKey } from "../../data-access/project-data-key-cache";
+import { EncryptedDataKey } from "../../models/encrypted-data-key";
 import { KmsKey } from "../../models/kms-key";
 import { ProjectKey } from "../../models/project-key";
 import { RootKey } from "../../models/root-key";
@@ -6,6 +10,10 @@ import { TInMemoryProjectRow } from "../../testing/in-memory-platform-rows";
 import { TExternalKmsHook, TKmsCoreStores, TProjectKeyStore } from "../dependencies";
 import { ReadFrom } from "../helpers/read-options";
 import { DataKeyService, KmsDataKey, KmsType } from "./service";
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}));
 
 const EXTERNAL_PREFIX = Buffer.from("external:");
 
@@ -26,6 +34,32 @@ const build = (externalKms?: TExternalKmsHook) => {
   const rootKey = RootKey.generate();
   const service = new DataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms);
   return { mem, rootKey, service };
+};
+
+const buildCached = (externalKms?: TExternalKmsHook) => {
+  const mem = new InMemoryKmsCoreStores();
+  mem.platformRows.addProject("project-1", "org-1");
+  const rootKey = RootKey.generate();
+  const keyStore = new InMemoryKeyStore();
+  const cache = new ProjectDataKeyCache(keyStore);
+  const service = new DataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms, cache);
+  return { mem, rootKey, keyStore, cache, service };
+};
+
+const cachedEntry = async (keyStore: InMemoryKeyStore, projectId = "project-1") => {
+  const raw = await keyStore.getItem(projectDataKeyCacheKey(projectId));
+  return raw ? (JSON.parse(raw) as Record<string, string | null>) : null;
+};
+
+const externalKeyIn = async (mem: InMemoryKmsCoreStores) => {
+  const external = KmsKey.createExternal({
+    orgId: "org-1",
+    name: "external",
+    provider: "aws",
+    encryptedProviderInputs: Buffer.from("inputs")
+  });
+  await mem.kmsKeyStore.insert(external);
+  return external;
 };
 
 // A replica that has not caught up with a project committed a moment ago.
@@ -573,5 +607,268 @@ describe("DataKeyService.deleteProjectKeys", () => {
 
     // Assert
     expect(await mem.kmsKeyStore.findById(external.id)).not.toBeNull();
+  });
+});
+
+describe("DataKeyService project data key cache", () => {
+  test("should serve a second cipher pair from the cache without reading the project or using the primary", async () => {
+    // Setup
+    const { mem, service } = buildCached();
+    const first = await projectCipher(service);
+    const find = vi.spyOn(mem.projectKeyStore, "find");
+    const run = vi.spyOn(mem.transactionRunner, "run");
+
+    // Action
+    const second = await projectCipher(service);
+
+    // Assert
+    expect(find).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+    expect(second.decryptor({ cipherTextBlob: seal(first, "v") }).toString()).toBe("v");
+  });
+
+  test("should fill a miss from the primary and write the project's current entry", async () => {
+    // Setup
+    const { mem, keyStore, service } = buildCached();
+    const run = vi.spyOn(mem.transactionRunner, "run");
+
+    // Action
+    await projectCipher(service);
+
+    // Assert
+    expect(run).toHaveBeenCalled();
+    const project = mem.platformRows.projects.get("project-1");
+    expect(await cachedEntry(keyStore)).toEqual({
+      kmsSecretManagerKeyId: project?.kmsSecretManagerKeyId,
+      kmsSecretManagerEncryptedDataKey: project?.kmsSecretManagerEncryptedDataKey?.toString("base64"),
+      orgId: "org-1"
+    });
+  });
+
+  test("should overwrite a partial entry written by a pod of the previous release", async () => {
+    // Setup
+    const { mem, keyStore, service } = buildCached();
+    await keyStore.setItemWithExpiry(
+      projectDataKeyCacheKey("project-1"),
+      300,
+      JSON.stringify({ kmsSecretManagerKeyId: null, kmsSecretManagerEncryptedDataKey: null, orgId: "org-1" })
+    );
+
+    // Action
+    await projectCipher(service);
+
+    // Assert
+    const project = mem.platformRows.projects.get("project-1");
+    expect(await cachedEntry(keyStore)).toMatchObject({ kmsSecretManagerKeyId: project?.kmsSecretManagerKeyId });
+  });
+
+  test("should replace an entry naming a deleted KMS key with one primary read and rewrite it", async () => {
+    // Setup
+    const { mem, keyStore, cache, service } = buildCached();
+    const blob = seal(await projectCipher(service), "kept");
+    const current = (await mem.projectKeyStore.find("project-1")) as ProjectKey;
+    await cache.set(
+      "project-1",
+      EncryptedDataKey.restore({
+        kmsKeyId: "a-key-that-was-deleted",
+        encryptedDataKey: current.material().encryptedDataKey,
+        orgId: "org-1"
+      })
+    );
+    const find = vi.spyOn(mem.projectKeyStore, "find");
+
+    // Action
+    const healed = await projectCipher(service);
+
+    // Assert
+    expect(find).toHaveBeenCalledTimes(1);
+    expect(healed.decryptor({ cipherTextBlob: blob }).toString()).toBe("kept");
+    expect(await cachedEntry(keyStore)).toMatchObject({ kmsSecretManagerKeyId: current.currentKmsKeyId });
+  });
+
+  test("should replace an entry whose ciphertext does not open under its KMS key", async () => {
+    // Setup
+    const { mem, keyStore, cache, service } = buildCached();
+    const blob = seal(await projectCipher(service), "kept");
+    const current = (await mem.projectKeyStore.find("project-1")) as ProjectKey;
+    await cache.set(
+      "project-1",
+      EncryptedDataKey.restore({
+        kmsKeyId: current.currentKmsKeyId as string,
+        encryptedDataKey: Buffer.alloc(64, 9),
+        orgId: "org-1"
+      })
+    );
+
+    // Action
+    const healed = await projectCipher(service);
+
+    // Assert
+    expect(healed.decryptor({ cipherTextBlob: blob }).toString()).toBe("kept");
+    expect(await cachedEntry(keyStore)).toMatchObject({
+      kmsSecretManagerEncryptedDataKey: current.material().encryptedDataKey.toString("base64")
+    });
+  });
+
+  test("should neither read nor write the cache for a read from the primary", async () => {
+    // Setup
+    const { cache, keyStore, service } = buildCached();
+    const get = vi.spyOn(cache, "get");
+    const set = vi.spyOn(cache, "set");
+
+    // Action
+    await service.createCipherPairWithDataKey(
+      { type: KmsDataKey.SecretManager, projectId: "project-1" },
+      { readFrom: ReadFrom.Primary }
+    );
+
+    // Assert
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+    expect(await cachedEntry(keyStore)).toBeNull();
+  });
+
+  test("should not use the cache for an org data key", async () => {
+    // Setup
+    const { cache, service } = buildCached();
+    const get = vi.spyOn(cache, "get");
+    const set = vi.spyOn(cache, "set");
+
+    // Action
+    await service.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: "org-1" });
+
+    // Assert
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  test("should evict after a switch to an external key has committed", async () => {
+    // Setup
+    const { mem, keyStore, cache, service } = buildCached(fakeExternalKms());
+    await service.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: "org-1" });
+    const blob = seal(await projectCipher(service), "kept");
+    const external = await externalKeyIn(mem);
+    const keyIdAtEviction: Array<string | null | undefined> = [];
+    const evict = vi.spyOn(cache, "evict").mockImplementation(async (projectId) => {
+      keyIdAtEviction.push(mem.platformRows.projects.get(projectId)?.kmsSecretManagerKeyId);
+      await keyStore.deleteItem(projectDataKeyCacheKey(projectId));
+    });
+
+    // Action
+    await service.updateProjectSecretManagerKmsKey({
+      projectId: "project-1",
+      kms: { type: KmsType.External, kmsId: external.id }
+    });
+
+    // Assert
+    expect(evict).toHaveBeenCalledExactlyOnceWith("project-1");
+    expect(keyIdAtEviction).toEqual([external.id]);
+    expect(await cachedEntry(keyStore)).toBeNull();
+    expect((await projectCipher(service)).decryptor({ cipherTextBlob: blob }).toString()).toBe("kept");
+    expect(await cachedEntry(keyStore)).toMatchObject({ kmsSecretManagerKeyId: external.id });
+  });
+
+  test("should not evict when the switch did not commit", async () => {
+    // Setup
+    const { mem, cache, service } = buildCached(fakeExternalKms());
+    await service.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: "org-1" });
+    await projectCipher(service);
+    const external = await externalKeyIn(mem);
+    vi.spyOn(mem.projectKeyStore, "switchKey").mockResolvedValueOnce(false);
+    const evict = vi.spyOn(cache, "evict");
+
+    // Action
+    const result = service.updateProjectSecretManagerKmsKey({
+      projectId: "project-1",
+      kms: { type: KmsType.External, kmsId: external.id }
+    });
+
+    // Assert
+    await expect(result).rejects.toThrow("left unchanged. Retry the change.");
+    expect(evict).not.toHaveBeenCalled();
+  });
+
+  test("should evict before a backup restore writes and again after it commits", async () => {
+    // Setup
+    const { mem, keyStore, cache, service } = buildCached();
+    const blob = seal(await projectCipher(service), "backed up");
+    const { secretManager } = await service.getProjectKeyBackup("project-1");
+    const before = await service.getProjectSecretManagerKmsKeyId("project-1");
+    const keyIdAtEviction: Array<string | null | undefined> = [];
+    const evict = vi.spyOn(cache, "evict").mockImplementation(async (projectId) => {
+      keyIdAtEviction.push(mem.platformRows.projects.get(projectId)?.kmsSecretManagerKeyId);
+      await keyStore.deleteItem(projectDataKeyCacheKey(projectId));
+    });
+
+    // Action
+    const { secretManagerKmsKey } = await service.loadProjectKeyBackup("project-1", secretManager);
+
+    // Assert
+    expect(evict).toHaveBeenCalledTimes(2);
+    expect(keyIdAtEviction).toEqual([before, secretManagerKmsKey.id]);
+    expect((await projectCipher(service)).decryptor({ cipherTextBlob: blob }).toString()).toBe("backed up");
+  });
+
+  test("should refuse a backup restore and leave the project unchanged when the eviction fails", async () => {
+    // Setup
+    const { mem, cache, service } = buildCached();
+    await projectCipher(service);
+    const { secretManager } = await service.getProjectKeyBackup("project-1");
+    const before = await service.getProjectSecretManagerKmsKeyId("project-1");
+    const keysBefore = await keysOf(mem, "org-1");
+    vi.spyOn(cache, "evict").mockRejectedValue(new Error("Failed to clear the project's cached KMS key."));
+
+    // Action
+    const result = service.loadProjectKeyBackup("project-1", secretManager);
+
+    // Assert
+    await expect(result).rejects.toThrow("Failed to clear the project's cached KMS key.");
+    expect(await service.getProjectSecretManagerKmsKeyId("project-1")).toBe(before);
+    expect(await keysOf(mem, "org-1")).toHaveLength(keysBefore.length);
+  });
+
+  test("should never touch the cache for a call joined to a caller's transaction", async () => {
+    // Setup
+    const { mem, keyStore, cache, service } = buildCached();
+    const get = vi.spyOn(cache, "get");
+    const set = vi.spyOn(cache, "set");
+    const evict = vi.spyOn(cache, "evict");
+
+    // Action
+    await mem.transactionRunner.run(async ({ tx }) => {
+      const joined = service.within(tx);
+      await joined.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId: "project-1" });
+      await joined.getProjectSecretManagerKmsKeyId("project-1");
+      await joined.getProjectCertificateKmsKeyId("project-1");
+    });
+
+    // Assert
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+    expect(evict).not.toHaveBeenCalled();
+    expect(await cachedEntry(keyStore)).toBeNull();
+  });
+});
+
+describe("DataKeyService.within", () => {
+  test("should return the winner's certificate key and delete the reserved key it inserted when its claim is lost", async () => {
+    // Setup
+    const { mem, service } = build();
+    const winner = KmsKey.createReserved({ orgId: "org-1", rootKey: RootKey.generate() });
+    await mem.kmsKeyStore.insert(winner);
+    vi.spyOn(mem.projectKeyStore, "claimCertificateKey").mockImplementationOnce(async () => {
+      setProjectRow(mem, "project-1", { kmsCertificateKeyId: winner.id });
+      return false;
+    });
+
+    // Action
+    const id = await mem.transactionRunner.run(({ tx }) =>
+      service.within(tx).getProjectCertificateKmsKeyId("project-1")
+    );
+
+    // Assert
+    expect(id).toBe(winner.id);
+    const keys = await keysOf(mem, "org-1");
+    expect(keys.map((key) => key.id)).toEqual([winner.id]);
   });
 });
