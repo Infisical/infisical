@@ -367,3 +367,15 @@ decides what an already-built thing does.
   how to get it. A hidden feature teaches a customer nothing and looks like it does not
   exist. The modal is the frontend half of the same rule the backend follows: the block
   lands on the attempt to create or edit, never on viewing what is already there.
+
+### The exception: Agent Vault brokering
+
+Agent Vault refuses `resolveSession` and `refreshCredential` (`agent-vault-proxy-service.ts`) when the org's plan
+doesn't include Agent Vault and the org isn't grandfathered, on purpose. Those calls hand a credential to a running
+proxy, and each request the proxy then brokers is the usage Infisical bills for. "Existing objects keep working"
+would mean a lapsed org's proxies broker for free indefinitely, since a session can be minted with no expiry.
+Nothing is deleted or hidden: bundles, services, sessions, proxies and session logs stay readable and editable,
+and brokering resumes on its own once the org pays. The check lives in one place
+(`AgentVaultAccessService.assertCanBroker`, `src/domains/agent-vault/agent-vault/`). Do not copy this to another
+feature.
+

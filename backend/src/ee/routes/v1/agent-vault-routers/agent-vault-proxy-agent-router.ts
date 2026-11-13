@@ -26,7 +26,8 @@ import {
   agentVaultCredentialRefreshLimit,
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
-  agentVaultSessionLogChunkLimit
+  agentVaultSessionLogChunkLimit,
+  agentVaultUsageLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -121,6 +122,32 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         tokenVersion: req.auth.token.tokenVersion,
         servedCaCertificate: req.body.servedCaCertificate
       });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/usage",
+    config: { rateLimit: agentVaultUsageLimit },
+    schema: {
+      hide: true,
+      operationId: "reportAgentVaultProxyUsage",
+      description: "Report how many requests a proxy brokered since its last report",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      body: z.object({
+        reportId: z.string().uuid(),
+        endedAt: z.coerce.date(),
+        brokered: z.number().int().min(0).max(1_000_000)
+      }),
+      response: { 204: z.string().length(0) }
+    },
+    onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
+    handler: async (req, res) => {
+      if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
+        throw new UnauthorizedError({ message: "A proxy token is required" });
+      }
+      server.services.agentVaultUsageService.recordProxyUsage({ orgId: req.permission.orgId, ...req.body });
+      return res.status(204).send("");
     }
   });
 

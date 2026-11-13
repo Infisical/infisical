@@ -9,7 +9,6 @@ import {
   ResourceType,
   TMemberships
 } from "@app/db/schemas";
-import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -56,7 +55,6 @@ type TAgentVaultMembershipServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  usageMeteringService: TUsageMeteringService;
 } & TClearPersonalValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
@@ -136,7 +134,6 @@ export const agentVaultMembershipServiceFactory = ({
   userAliasDAL,
   orgDAL,
   permissionService,
-  usageMeteringService,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL
@@ -524,7 +521,6 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.created.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities);
     return { members: written.created, skipped: written.skipped };
   };
 
@@ -713,7 +709,6 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.removed.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities);
     return { members: written.removed, skipped: written.skipped };
   };
   return {

@@ -98,21 +98,6 @@ func TestUsageReport_Send(t *testing.T) {
 		expectSnapshot(t, root, "secret_identities", 2)
 	})
 
-	t.Run("should report an agent vault identity when an identity joins an agent vault project", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		root := fixture.LicenseServer(t, tn, tn.OrgID)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("agent-vault"))
-
-		// Action
-		proj.NewMachineIdentity(t)
-
-		// Assert
-		expectSnapshot(t, root, "agent_vault_identities", 2)
-	})
-
 	t.Run("should report nothing for an org on the free plan", func(t *testing.T) {
 		t.Parallel()
 

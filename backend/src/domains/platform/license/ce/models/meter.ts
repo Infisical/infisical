@@ -21,8 +21,6 @@ export class Meter<K extends string = string> {
 
   static readonly PamIdentities = new Meter("pam_identities", "org");
 
-  static readonly AgentVaultIdentities = new Meter("agent_vault_identities", "org");
-
   // Billed to the root org, like the PKI meters.
   static readonly AgentVaultBrokeredRequests = new Meter("agent_vault_brokered_requests", "org-tree", "events");
 
@@ -38,7 +36,6 @@ export class Meter<K extends string = string> {
       Meter.UserIdentities,
       Meter.SecretIdentities,
       Meter.PamIdentities,
-      Meter.AgentVaultIdentities,
       Meter.AgentVaultBrokeredRequests,
       Meter.InternalCas,
       Meter.ActiveCerts,

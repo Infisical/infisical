@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -22,7 +23,7 @@ const ctx = {
   actorAuthMethod: null
 } as unknown as TMintSessionDTO["ctx"];
 
-const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
+const buildService = ({ hooksOnPlan, agentVault = null }: { hooksOnPlan: boolean; agentVault?: boolean | null }) => {
   const insertForSession = vi.fn(async ({ services }: { services: TAgentVaultInlineServiceInsert[] }) =>
     services.map((row) => ({
       ...row,
@@ -35,6 +36,13 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
   const transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ raw: vi.fn() }));
   const licenseService = {
     getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
+  };
+  const agentVaultAccessService = {
+    getAccess: vi.fn(async () => ({
+      assertAllowed: () => {
+        if (agentVault === false) throw new RuleViolationError({ name: "AgentVaultNotOnPlan", message: "not on plan" });
+      }
+    }))
   };
   const kmsService = {
     wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")),
@@ -63,7 +71,8 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
       })
     },
     kmsService,
-    licenseService
+    licenseService,
+    agentVaultAccessService
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
   return { service, transaction, insertForSession, licenseService };
 };
@@ -84,6 +93,15 @@ const mint = (service: ReturnType<typeof buildService>["service"]) =>
     actorEmail: "ana@acme.com",
     label: null
   });
+
+describe("mintSession, Agent Vault plan", () => {
+  test("is refused before any transaction when the org's plan doesn't include Agent Vault", async () => {
+    const { service, transaction } = buildService({ hooksOnPlan: true, agentVault: false });
+
+    await expect(mint(service)).rejects.toMatchObject({ name: "AgentVaultNotOnPlan" });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+});
 
 describe("mintSession, inline services with a hook", () => {
   test("is refused before any transaction with hooks off the plan", async () => {

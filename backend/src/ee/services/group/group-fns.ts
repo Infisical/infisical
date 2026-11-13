@@ -317,7 +317,6 @@ export const addUsersToGroupByUserIds = async ({
     // These users may now be in a secret-manager or PAM project through this group.
     usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(group.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -398,7 +397,6 @@ export const addIdentitiesToGroup = async ({
     // These identities may now be in a secret-manager or PAM project through this group.
     usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(group.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -654,7 +652,6 @@ export const removeUsersFromGroupByUserIds = async ({
     // These users may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(group.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities);
     return {
       users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending),
       sendPamCancellations,
@@ -822,7 +819,6 @@ export const removeIdentitiesFromGroup = async ({
     // These identities may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
     usageMeteringService.emit(group.orgId, Meter.PamIdentities);
-    usageMeteringService.emit(group.orgId, Meter.AgentVaultIdentities);
     return { identities: identityIdsArray.map((identityId) => ({ id: identityId })), sendPamCancellations };
   });
 };

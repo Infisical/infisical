@@ -62,7 +62,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   time), never to a project created since, and is a 400 when the org has none. The fallback is undocumented, logged
   at info for each use, and goes after 2027-01-04 together with the column.
 - Org admins enter a project they aren't in through Join as Admin, which is audited and emails the project's
-  admins. Nothing joins them silently, and that route is where the `agent_vault_identities` meter moves for them.
+  admins. Nothing joins them silently.
 - Every removal outside Agent Vault's own members route (leaving, the generic project membership routes, a group's
   removal, org exit) clears personal values through `applicationMembershipCleanupService`, which deletes the
   actor's grants and then runs `clearPersonalValuesInProjects`: it looks up the projects where these actors saved a
@@ -84,8 +84,25 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   Deliberate: the product brokers credentials, it is not an egress firewall, and under service-hosts the
   quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
   product owner; service-hosts is documented as the hardening step.
-- Wherever code branches on `ProjectType.PAM` for metering or roles, check whether Agent Vault needs the same:
-  `AgentVaultIdentities` metering emits, the admin-or-member predefined roles filter, `AuditLogStreamProduct`.
+- Wherever code branches on `ProjectType.PAM` for roles, check whether Agent Vault needs the same: the
+  admin-or-member predefined roles filter, `AuditLogStreamProduct`. Agent Vault has no identity meter; it bills
+  per brokered request (see Billing).
+
+## Billing
+
+Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the access rule, grandfathering and usage.
+
+- **Gate only where a credential can leave Infisical, plus the setup that leads there**: `mintSession`,
+  `createProxy` and `rotateProxyToken` (`agentVaultAccessService.getAccess(...).assertAllowed()`), and the proxy's
+  per-poll `resolveSession` and `refreshCredential` (`assertCanBroker`, after the session check so a refusal says
+  nothing about a token that isn't the caller's). Bootstrap and heartbeat stay open so a lapsed org's proxy keeps
+  running and resumes by itself. Everything else, reads, deletes and revokes included, never checks the plan. This
+  is the one written exception to the license rule in `backend/CODE_QUALITY.md`.
+- **The refusal is a `RuleViolationError` named `AgentVaultNotOnPlan`.** The CLI and the UI key on that name, so
+  keep it.
+- **Usage arrives from the proxy, never from session stats**: `POST /api/v1/agent-vault/proxy/usage` (proxy token)
+  with `{ reportId, endedAt, brokered }`. It isn't plan-gated, so the last minute of a lapsing org is still
+  reported. A resent report keeps its `reportId` and `endedAt`, which the License Server dedupes on.
 
 ## Grants and reachability
 

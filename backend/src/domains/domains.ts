@@ -2,7 +2,7 @@ import { TDbClient } from "@app/db";
 import { TEnvConfig } from "@app/lib/config/env";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 
-import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
+import { AgentVaultModule } from "./agent-vault/agent-vault/ee/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
@@ -36,7 +36,6 @@ export const createDomains = async (deps: TDomainDeps) => {
   const { organizationsProjectsService } = organizationsProjects;
   const secrets = new SecretsModule({ organizationsProjectsService });
   const pam = new PamModule({ organizationsProjectsService });
-  const agentVault = new AgentVaultModule({ organizationsProjectsService });
   const certManager = new CertManagerModule({ db: deps.db, organizationsProjectsService });
 
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
@@ -49,16 +48,19 @@ export const createDomains = async (deps: TDomainDeps) => {
     licensePolicyService: licenseEe.licensePolicyService,
     licenseServer: licenseEe.licenseServerClient,
     organizationsProjectsService,
-    usageCounters: [
-      ...secrets.usageCounters,
-      ...pam.usageCounters,
-      ...agentVault.usageCounters,
-      ...certManager.usageCounters
-    ]
+    usageCounters: [...secrets.usageCounters, ...pam.usageCounters, ...certManager.usageCounters]
   });
 
   // Subscriptions are managed on the EE client itself; License never calls its billing methods.
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
 
-  return { license, licenseBilling, organizationsProjects, certManager };
+  const agentVault = new AgentVaultModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    licenseService: license.licenseService,
+    usageMeteringService: license.usageMeteringService,
+    organizationsProjectsService
+  });
+
+  return { license, licenseBilling, organizationsProjects, certManager, agentVault };
 };

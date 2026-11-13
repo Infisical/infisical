@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AgentVaultAccessState } from "@app/domains/agent-vault/agent-vault/ce/module";
 import {
   AgentVaultSessionLogCorsProbeResponseSchema,
   AgentVaultSessionLogHealthResponseSchema,
@@ -20,6 +21,28 @@ import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fn
 import { AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvider) => {
+  // Org-wide: the plan and grandfathering belong to the organization, not a project.
+  server.route({
+    method: "GET",
+    url: "/access",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getAgentVaultAccess",
+      description: "Whether the organization's plan lets it start sessions and add proxies",
+      tags: [ApiDocsTags.AgentVaultSettings],
+      response: {
+        200: z.object({
+          allowed: z.boolean(),
+          state: z.nativeEnum(AgentVaultAccessState),
+          showCardModal: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => (await server.services.agentVaultAccessService.getAccess(req.permission.orgId)).toJSON()
+  });
+
   server.route({
     method: "GET",
     url: "/session-logs",

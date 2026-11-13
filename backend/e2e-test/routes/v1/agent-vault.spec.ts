@@ -55,11 +55,8 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { Meter, Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
+import { Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
-import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -71,11 +68,11 @@ import { userDALFactory } from "@app/services/user/user-dal";
 
 const planWith = (features: Partial<TPlanFeatures>) => Plan.restore({ ...testFeatures(), ...features });
 
-const countAgentVaultSeats = (orgId: string) => {
-  const { organizationsProjectsService } = new OrganizationsProjectsModule({ db: testDb });
-  const { usageCounters } = new AgentVaultModule({ organizationsProjectsService });
-  return usageCounter(usageCounters, Meter.AgentVaultIdentities).count(orgId);
-};
+// These specs exercise resolve itself; the Agent Vault plan gate has its own unit tests.
+const allowAgentVault = {
+  assertCanBroker: async () => {},
+  getAccess: async () => ({ assertAllowed: () => {} })
+} as never;
 
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -7965,6 +7962,7 @@ describe("Agent Vault V1 Router", async () => {
     ) =>
       agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -8103,6 +8101,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -8364,6 +8363,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -10413,6 +10413,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultAccessService: allowAgentVault,
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -10520,6 +10521,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultAccessService: allowAgentVault,
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -10758,7 +10760,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a revoke reaches only this bundle's grant for this actor, and grants are not seats", async () => {
+    test("a revoke reaches only this bundle's grant for this actor", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle("scoped-member-ids");
       const identity = await createOrgIdentity(`av-seats-${Date.now()}`);
@@ -10766,8 +10768,6 @@ describe("Agent Vault V1 Router", async () => {
         (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id], role: "member" }))
           .statusCode
       ).toBe(200);
-
-      const seatsBefore = await countAgentVaultSeats(seedData1.organization.id);
 
       const projectMembership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
@@ -10806,10 +10806,6 @@ describe("Agent Vault V1 Router", async () => {
         members: [],
         skipped: [{ type: "machineIdentity", id: identity.id }]
       });
-
-      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(
-        seatsBefore
-      );
 
       await deleteOrgIdentity(identity.id);
     });
