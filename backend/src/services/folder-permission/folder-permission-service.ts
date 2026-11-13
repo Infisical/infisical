@@ -5,6 +5,7 @@ import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/m
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
+import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -88,22 +89,30 @@ export const folderPermissionServiceFactory = ({
   licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
-  const assertFolderRbacLicensed = async (orgId: string) => {
+  // self-hosted instances get folder access on the root folder (environment roles) without a license;
+  // Infisical Cloud and every other folder need the plan feature
+  const assertFolderRbacLicensed = async (orgId: string, folder?: TResolvedFolder) => {
+    const { isCloud } = getConfig();
+    if (!isCloud && folder?.path === "/") return;
+
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.has(PlanFeature.SecretsFolderRbac)) {
-      throw new BadRequestError({
-        message: "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."
-      });
-    }
+    if (plan.has(PlanFeature.SecretsFolderRbac)) return;
+
+    throw new BadRequestError({
+      message:
+        !isCloud && folder
+          ? `Failed to access folder access controls on '${folder.path}' in environment with slug '${folder.environmentSlug}' due to plan restriction. Without a license, folder access can only be managed on the root folder '/'. Upgrade your Infisical plan to manage access on other folders.`
+          : "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."
+    });
   };
 
   const createFolderGrant = async (dto: TCreateFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
     assertFullAccessIsPermanent(dto.role, Boolean(dto.type?.isTemporary));
 
-    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
+    await assertFolderRbacLicensed(dto.permission.orgId, folder);
     assertManageFolderAccess(callerPermission, folder);
     if (dto.isPermissionRecursive) {
       assertRecursiveFolderIsRoot(folder);
@@ -151,9 +160,9 @@ export const folderPermissionServiceFactory = ({
 
   const updateFolderGrant = async (dto: TUpdateFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
-    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
+    await assertFolderRbacLicensed(dto.permission.orgId, folder);
     assertManageFolderAccess(callerPermission, folder);
     if (dto.isPermissionRecursive) assertRecursiveFolderIsRoot(folder);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
@@ -195,9 +204,9 @@ export const folderPermissionServiceFactory = ({
 
   const deleteFolderGrant = async (dto: TDeleteFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
-    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
+    await assertFolderRbacLicensed(dto.permission.orgId, folder);
     assertManageFolderAccess(callerPermission, folder);
     // no membership check on revoke: removing access from an actor that already left the project
     // must keep working
@@ -296,9 +305,9 @@ export const folderPermissionServiceFactory = ({
   ) => {
     const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
     const { orgId } = dto.permission;
-    await assertFolderRbacLicensed(orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
+    await assertFolderRbacLicensed(orgId, folder);
     assertManageFolderAccess(callerPermission, folder);
 
     const page = { limit, offset, search };

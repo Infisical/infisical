@@ -153,6 +153,7 @@ import {
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   getUserTablePreference,
@@ -1797,7 +1798,8 @@ const OverviewPageContent = () => {
       });
     };
 
-    if (!subscription?.secretsFolderRbac) {
+    const isSelfHostedRootFolder = secretPath === "/" && !isInfisicalCloud();
+    if (!subscription?.secretsFolderRbac && !isSelfHostedRootFolder) {
       openUpgradeGate({
         intent: FolderAccessControlsUpgradeIntent
       });
