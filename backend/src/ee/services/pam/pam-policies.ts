@@ -182,6 +182,11 @@ export const policyAppliesTo = (policy: PamPolicyType, accountType: PamAccountTy
   return appliesTo === "all" || appliesTo.includes(accountType);
 };
 
+export const defaultTemplatePolicies = (accountType: PamAccountType): Record<string, unknown> | undefined =>
+  policyAppliesTo(PamPolicyType.OutputMasking, accountType)
+    ? { [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.AccountCredentials], patterns: "" } }
+    : undefined;
+
 export const getApplicablePolicies = (accountType: PamAccountType) =>
   (Object.entries(PAM_POLICY_DEFINITIONS) as [PamPolicyType, TPamPolicyDefinition][])
     .filter(([key]) => policyAppliesTo(key, accountType))
