@@ -88,6 +88,19 @@ func TestSecretApprovalRequest_Search(t *testing.T) {
 		}, found)
 	})
 
+	t.Run("should match an underscore in the path searched only as an underscore", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p, requests := requestsByFolder(t, "/apps/pay_api", "/apps/payXapi")
+
+		// Action
+		found := search(t, p, "/apps/pay_")
+
+		// Assert
+		require.Equal(t, []uuid.UUID{requests["/apps/pay_api"]}, found)
+	})
+
 	t.Run("should find nothing when no request is under the path searched", func(t *testing.T) {
 		t.Parallel()
 
