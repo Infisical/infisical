@@ -3427,9 +3427,9 @@ interface CertRevocationFailed {
   type: EventType.CERT_REVOCATION_FAILED;
   metadata: {
     certId: string;
-    cn?: string;
-    serialNumber?: string;
-    applicationId?: string | null;
+    cn: string;
+    serialNumber: string;
+    applicationId: string;
     applicationName?: string | null;
     revocationReason: CrlReason;
     approvalRequestId: string;

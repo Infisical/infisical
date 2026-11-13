@@ -721,7 +721,7 @@ describe("certificate revocation behind an approval policy", () => {
       ]);
     });
 
-    it("records the failure instead of throwing when the certificate can't be read", async () => {
+    it("identifies the certificate in the failure event when it can't be read", async () => {
       const ctx = buildRevocationService();
       ctx.certificateDAL.findById.mockRejectedValue(new Error("connection terminated"));
 
@@ -731,7 +731,35 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.auditEvents()).toEqual([
         expect.objectContaining({
           type: EventType.CERT_REVOCATION_FAILED,
-          metadata: expect.objectContaining({ approvalRequestId: "approval-request-1" }) as unknown
+          metadata: expect.objectContaining({
+            certId: "cert-1",
+            cn: applicationCertificate.commonName,
+            serialNumber: applicationCertificate.serialNumber,
+            applicationId: "app-1",
+            applicationName: "web",
+            approvalRequestId: "approval-request-1"
+          }) as unknown
+        })
+      ]);
+    });
+
+    it("identifies the certificate in the failure event when it no longer exists", async () => {
+      const ctx = buildRevocationService();
+      ctx.certificateDAL.findById.mockResolvedValue(undefined);
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.auditEvents()).toEqual([
+        expect.objectContaining({
+          type: EventType.CERT_REVOCATION_FAILED,
+          metadata: expect.objectContaining({
+            certId: "cert-1",
+            cn: applicationCertificate.commonName,
+            serialNumber: applicationCertificate.serialNumber,
+            applicationId: "app-1",
+            applicationName: "web",
+            error: `Certificate '${applicationCertificate.commonName}' no longer exists.`
+          }) as unknown
         })
       ]);
     });
