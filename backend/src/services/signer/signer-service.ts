@@ -23,7 +23,7 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -36,7 +36,6 @@ import {
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ExecutionError, isLockHeldByAnotherOwner, ResourceLockedError } from "@app/lib/red-lock";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -94,6 +93,7 @@ import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
+import { acquireSignerCertificateLock } from "./signer-certificate-lock";
 import { TSignerDALFactory } from "./signer-dal";
 import {
   CertKeySource,
@@ -138,7 +138,6 @@ import { TSigningOperationDALFactory } from "./signing-operation-dal";
 
 const MAX_DATA_BYTES = 128;
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
-const SIGNER_CERTIFICATE_LOCK_TTL_MS = 10 * 60 * 1000;
 const AUTO_RENEWAL_RETRY_BACKOFF_MS = 7 * 24 * 60 * 60 * 1000;
 
 const IMPORTABLE_HSM_KEY_ALGORITHMS: readonly string[] = [
@@ -1869,20 +1868,9 @@ export const signerServiceFactory = ({
     };
   };
 
-  const $acquireSignerCertificateLock = (signerId: string) =>
-    keyStore
-      .acquireLock([KeyStorePrefixes.SignerCertificateLock(signerId)], SIGNER_CERTIFICATE_LOCK_TTL_MS, {
-        retryCount: 0
-      })
-      .catch(async (err: unknown) => {
-        if (err instanceof ResourceLockedError) return null;
-        if (err instanceof ExecutionError && (await isLockHeldByAnotherOwner(err))) return null;
-        throw err;
-      });
-
   const reissueCertificate = async (dto: TReissueCertificateDTO) => {
     const signer = await $authorizeReissue(dto);
-    const reissueLock = await $acquireSignerCertificateLock(signer.id);
+    const reissueLock = await acquireSignerCertificateLock(keyStore, signer.id);
     if (!reissueLock) {
       throw new BadRequestError({ message: signerCertificateLockHeldMessage(signer.name) });
     }
@@ -1937,7 +1925,7 @@ export const signerServiceFactory = ({
 
   const renewCertificate = async (dto: TRenewCertificateDTO) => {
     const signer = await $authorizeReissue(dto);
-    const renewLock = await $acquireSignerCertificateLock(signer.id);
+    const renewLock = await acquireSignerCertificateLock(keyStore, signer.id);
     if (!renewLock) {
       throw new BadRequestError({
         message: signerCertificateLockHeldMessage(signer.name)
@@ -1967,7 +1955,7 @@ export const signerServiceFactory = ({
       ResourcePermissionSub.Signer
     );
 
-    const revokeLock = await $acquireSignerCertificateLock(signer.id);
+    const revokeLock = await acquireSignerCertificateLock(keyStore, signer.id);
     if (!revokeLock) {
       throw new BadRequestError({
         message: signerCertificateLockHeldMessage(signer.name)
@@ -2791,7 +2779,7 @@ export const signerServiceFactory = ({
   };
 
   const autoRenewCertificate = async (signerId: string) => {
-    const autoRenewLock = await $acquireSignerCertificateLock(signerId);
+    const autoRenewLock = await acquireSignerCertificateLock(keyStore, signerId);
     if (!autoRenewLock) {
       logger.info(`signer auto-renewal: signer [signerId=${signerId}] is being renewed or revoked, skipping`);
       return;
