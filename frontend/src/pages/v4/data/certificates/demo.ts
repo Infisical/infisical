@@ -295,6 +295,53 @@ const store = createFixtureStore<TCertificate[]>([
     tlsServer,
     CertKeyAlgorithm.ML_DSA_65,
     { applicationName: "platform-core", renewBeforeDays: 10 }
+  ),
+  certificate(
+    "4c0e7b2a-9d16-4f83-b5a1-6e2d8c3f7a90",
+    "auth.acme.dev",
+    ["auth.acme.dev", "login.acme.dev"],
+    "D2:4B:7A:19:E6:03:8C:5F",
+    364,
+    1,
+    tlsServer,
+    CertKeyAlgorithm.RSA_2048,
+    {
+      applicationName: "identity",
+      renewBeforeDays: 14,
+      renewalError: "The certificate authority rejected the renewal request."
+    }
+  ),
+  certificate(
+    "b18d5e3c-2a7f-4c09-9e64-3f1a0b8d6c25",
+    "mqtt.iot.acme.dev",
+    ["mqtt.iot.acme.dev"],
+    "6A:E1:0F:C8:93:5D:27:B4",
+    362,
+    3,
+    mtlsClient,
+    CertKeyAlgorithm.RSA_2048,
+    { source: CertSource.Imported }
+  ),
+  certificate(
+    "f7a2c49e-0b5d-4e18-a3c6-8d9e1f2b0a74",
+    "metrics.platform-core.internal",
+    ["metrics.platform-core.internal"],
+    "39:7C:D5:02:AE:61:F8:1B",
+    122,
+    58,
+    mtlsClient,
+    CertKeyAlgorithm.ECDSA_P256,
+    { applicationName: "platform-core", renewBeforeDays: 30 }
+  ),
+  certificate(
+    "0d9b6e15-7c3a-4a42-8f0e-5b2c7d1a9e63",
+    "sso.acme.dev",
+    ["sso.acme.dev"],
+    "E5:08:9B:4C:71:2A:D6:3F",
+    294,
+    71,
+    tlsServer,
+    CertKeyAlgorithm.RSA_3072
   )
 ]);
 
