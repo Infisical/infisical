@@ -3,28 +3,36 @@ import { BracesIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useProject } from "@app/context";
+import {
+  ProjectPermissionAgentVaultVariableActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useProject
+} from "@app/context";
 import { AgentVaultVariableScope } from "@app/hooks/api/agentVault";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { VariablesCard } from "./components/VariablesCard";
 
-// Global variables are an admin's alone, so a member sees only their personal ones, without tabs. Nobody can see
-// anyone else's personal variables, admins included.
+// Without Read on global variables, a member sees only their personal ones, without tabs. Nobody can see anyone else's
+// personal variables, admins included.
 export const AgentVaultVariablesPage = () => {
   const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canReadGlobalVariables = permission.can(
+    ProjectPermissionAgentVaultVariableActions.Read,
+    ProjectPermissionSub.AgentVaultVariables
+  );
 
   const selectedTab = useSearch({
     strict: false,
     select: (el) => (el as { selectedTab?: string })?.selectedTab
   });
   const tab =
-    isAdmin && selectedTab !== AgentVaultVariableScope.Personal
+    canReadGlobalVariables && selectedTab !== AgentVaultVariableScope.Personal
       ? AgentVaultVariableScope.Global
       : AgentVaultVariableScope.Personal;
 
@@ -50,7 +58,7 @@ export const AgentVaultVariablesPage = () => {
             : "Store values once and reference them from services in any access bundle."
         }
       />
-      {isAdmin ? (
+      {canReadGlobalVariables ? (
         <Tabs value={tab} onValueChange={updateTab}>
           <TabsList variant="av" aria-label="Agent Vault variable lists">
             <TabsTrigger value={AgentVaultVariableScope.Global}>Global Variables</TabsTrigger>

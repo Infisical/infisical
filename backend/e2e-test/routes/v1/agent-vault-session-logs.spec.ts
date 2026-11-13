@@ -12,7 +12,8 @@ import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/s
 import { seedData1 } from "@app/db/seed-data";
 import {
   AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
-  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
+  AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
 import {
   encodeHistoryCursor,
@@ -1264,6 +1265,40 @@ describe("Agent Vault session logs", async () => {
         expect(own.statusCode, own.payload).toBe(200);
         expect(own.json().chunks).toHaveLength(1);
         expect(typeof own.json().sessionLogs.sessionKey).toBe("string");
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("an external storage failure tells a member to ask an admin, and tells an admin the cause", async () => {
+      await configure();
+      const member = await createMemberIdentity(`session-logs-cause-${Date.now()}`);
+      try {
+        const bundle = await createAccessBundle(`session-logs-cause-${Date.now()}`);
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+          machineIdentityIds: [member.id]
+        });
+        expect(granted.statusCode).toBe(200);
+        const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h"
+        });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const ownSession = minted.json().session as { id: string };
+        fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
+
+        const asMember = await member.as("GET", `/api/v1/agent-vault/sessions/${ownSession.id}/logs`);
+        expect(asMember.statusCode).toBe(400);
+        expect(asMember.json()).toMatchObject({
+          error: "AgentVaultSessionLogStorageUnavailable",
+          message: AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE
+        });
+
+        const asAdmin = await readFails(ownSession.id);
+        expect(asAdmin.statusCode).toBe(400);
+        expect(asAdmin.body.message).toBe(
+          `Couldn't use the AWS connection '${connectionName}' for session logs: AWS refused to assume the role`
+        );
       } finally {
         await member.cleanup();
       }

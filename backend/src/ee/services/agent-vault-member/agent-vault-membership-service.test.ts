@@ -1,7 +1,9 @@
+import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { agentVaultProjectAdminPermissions } from "@app/ee/services/permission/default-roles";
 import { ActorType } from "@app/services/auth/auth-type";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 
@@ -62,7 +64,12 @@ const buildService = ({
 } = {}) => {
   const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+    permissionService: {
+      getProjectPermission: vi.fn().mockResolvedValue({
+        permission: createMongoAbility(agentVaultProjectAdminPermissions),
+        hasRole: () => true
+      })
+    },
     identityDAL: {
       // Honours a projectId filter, because the ownership check pushes it into the query rather than
       // comparing in JS: a mock that ignored it would report every identity as Agent Vault's own.

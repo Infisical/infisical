@@ -33,7 +33,14 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useProject
+} from "@app/context";
 import { isInfisicalSessionEndpointRequest } from "@app/helpers/agentVaultSessionLogs";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
@@ -51,7 +58,6 @@ import {
   TAgentVaultSession,
   TAgentVaultSessionLogGapReason
 } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
 import {
@@ -112,13 +118,27 @@ type Props = {
 export const SessionLogsPanel = ({ session }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { permission } = useProjectPermission();
+  const canReadSessionLogSettings = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Settings
+  );
+  const canEditSessionLogSettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
-  // Only admins can read the settings; they need the storage type to show the right upgrade.
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
+  // The storage type in the settings picks the right upgrade, for those who can read them.
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
+    projectId,
+    canReadSessionLogSettings
+  );
   const { accessBundle } = session;
-  const canAddService = isAdmin && Boolean(accessBundle?.id);
+  const canAddService =
+    permission.can(
+      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      ProjectPermissionSub.AgentVaultAccessBundles
+    ) && Boolean(accessBundle?.id);
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);
@@ -433,7 +453,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </EmptyHeader>
         <div className="flex gap-2">
           {retryButton}
-          {isAdmin && !isDefaultStorage && (
+          {canEditSessionLogSettings && !isDefaultStorage && (
             <Button variant="av" asChild>
               <Link
                 to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
@@ -449,8 +469,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
     );
   }
 
-  // Off and off-plan hide recorded logs, for ended sessions too. Upgrading shows them again, so every admin is offered
-  // it; only a running session is offered Settings, since turning logs on can't record one that ended.
+  // Off and off-plan hide recorded logs, for ended sessions too. Upgrading shows them again, so everyone who can change
+  // the session log settings is offered it; only a running session is offered Settings, since turning logs on can't
+  // record one that ended.
   if (!isPending && !isPlaceholderData && !isLoadError && disabledReason) {
     if (disabledReason === "not-on-plan") {
       return (
@@ -458,12 +479,12 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <EmptyHeader>
             <EmptyTitle>Session logs aren&apos;t on your plan</EmptyTitle>
             <EmptyDescription>
-              {isAdmin
+              {canEditSessionLogSettings
                 ? "Upgrade to see recorded logs and record what your agents reach."
                 : "Ask a project admin about upgrading."}
             </EmptyDescription>
           </EmptyHeader>
-          {isAdmin && (
+          {canEditSessionLogSettings && (
             <Button variant="av" onClick={() => setIsUpgradeOpen(true)}>
               Upgrade
             </Button>
@@ -477,7 +498,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
       );
     }
 
-    const offDescription = isAdmin
+    const offDescription = canEditSessionLogSettings
       ? "Turn them on in Settings to record what your agents do."
       : "Ask a project admin to turn them on.";
 
@@ -487,7 +508,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <EmptyTitle>Session logs are off</EmptyTitle>
           <EmptyDescription>{offDescription}</EmptyDescription>
         </EmptyHeader>
-        {isAdmin && isActive && (
+        {canEditSessionLogSettings && isActive && (
           <Button variant="av" asChild>
             <Link
               to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
@@ -603,12 +624,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   bucket&apos;s CORS rule may not allow this origin, or this network may block the
                   bucket.
                 </p>
-                {!isAdmin && <p>Ask a project admin to check the bucket&apos;s CORS rule.</p>}
+                {!canEditSessionLogSettings && (
+                  <p>Ask a project admin to check the bucket&apos;s CORS rule.</p>
+                )}
               </div>
             )}
             <AlertAction className="flex gap-2">
               {retryButton}
-              {isAdmin && !isDefaultStorage && (
+              {canEditSessionLogSettings && !isDefaultStorage && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
                     to="/organizations/$orgId/projects/agent-vault/$projectId/settings"

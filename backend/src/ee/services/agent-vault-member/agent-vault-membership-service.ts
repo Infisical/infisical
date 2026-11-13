@@ -117,6 +117,26 @@ type TAgentVaultMemberWriteResult<TMember> = Promise<{
   skipped: TAgentVaultNamedActor[];
 }>;
 
+type TMemberChange = "add" | "edit" | "remove";
+
+const MEMBER_CHANGE_ACTIONS = {
+  add: {
+    user: ProjectPermissionMemberActions.Create,
+    group: ProjectPermissionGroupActions.Create,
+    identity: ProjectPermissionIdentityActions.Create
+  },
+  edit: {
+    user: ProjectPermissionMemberActions.Edit,
+    group: ProjectPermissionGroupActions.Edit,
+    identity: ProjectPermissionIdentityActions.Edit
+  },
+  remove: {
+    user: ProjectPermissionMemberActions.Delete,
+    group: ProjectPermissionGroupActions.Delete,
+    identity: ProjectPermissionIdentityActions.Delete
+  }
+} as const;
+
 const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member];
 
 const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
@@ -151,9 +171,14 @@ export const agentVaultMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.AgentVault
     });
 
-  const checkProductAdmin = async (projectId: string, ctx: TGenericPermission) => {
-    const { hasRole } = await getActorPermission(projectId, ctx);
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+  // Product membership covers users, groups and machine identities alike, so changing it takes the action on all three.
+  const checkCanChangeMembers = async (projectId: string, ctx: TGenericPermission, change: TMemberChange) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+    const allowed =
+      permission.can(MEMBER_CHANGE_ACTIONS[change].user, ProjectPermissionSub.Member) &&
+      permission.can(MEMBER_CHANGE_ACTIONS[change].group, ProjectPermissionSub.Groups) &&
+      permission.can(MEMBER_CHANGE_ACTIONS[change].identity, ProjectPermissionSub.Identity);
+    if (!allowed) {
       throw new ForbiddenRequestError({ message: "Only Agent Vault admins can perform this action" });
     }
   };
@@ -215,10 +240,8 @@ export const agentVaultMembershipServiceFactory = ({
     offset,
     ctx
   }: TListAgentVaultMembersDTO) => {
-    await checkProductAdmin(projectId, ctx);
+    await checkCanChangeMembers(projectId, ctx, "add");
 
-    // checkProductAdmin reads hasRole, which does not intersect a delegated token's scopes. The CASL
-    // check below is what narrows an OAuth token holding less than the admin it acts for.
     const { permission } = await getActorPermission(projectId, ctx);
     const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
     const readable = asked.filter((type) => canReadActorType(permission, type));
@@ -456,7 +479,7 @@ export const agentVaultMembershipServiceFactory = ({
     usernames = [],
     ...ids
   }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    await checkProductAdmin(projectId, ctx);
+    await checkCanChangeMembers(projectId, ctx, "add");
     assertValidRole(role);
 
     // A username is matched the same way as an email, by the user's username and then their SSO aliases.
@@ -534,7 +557,7 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TUpdateAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    await checkProductAdmin(projectId, ctx);
+    await checkCanChangeMembers(projectId, ctx, "edit");
     assertValidRole(role);
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
@@ -626,7 +649,7 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultAuditedActor> => {
-    await checkProductAdmin(projectId, ctx);
+    await checkCanChangeMembers(projectId, ctx, "remove");
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
 

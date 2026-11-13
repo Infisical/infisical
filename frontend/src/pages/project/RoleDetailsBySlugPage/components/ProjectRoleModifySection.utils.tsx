@@ -17,6 +17,7 @@ import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
@@ -304,7 +305,11 @@ const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.Read]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Create]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional()
+  [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.ReadAny]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional()
 });
 
 const AgentVaultProxyPolicyActionSchema = z.object({
@@ -321,6 +326,14 @@ const AgentVaultSkillPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSkillActions.Create]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSkillActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSkillActions.Delete]: z.boolean().optional()
+});
+
+const AgentVaultVariablePolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultVariableActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.ReadValue]: z.boolean().optional()
 });
 
 const ProjectFolderGrantPolicyActionSchema = z.object({
@@ -871,6 +884,8 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AgentVaultSkills]: AgentVaultSkillPolicyActionSchema.array().default(
         []
       ),
+      [ProjectPermissionSub.AgentVaultVariables]:
+        AgentVaultVariablePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -2575,6 +2590,26 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Revoke",
         value: ProjectPermissionAgentVaultSessionActions.Revoke,
         description: "Revoke a session"
+      },
+      {
+        label: "Read Any",
+        value: ProjectPermissionAgentVaultSessionActions.ReadAny,
+        description: "View everyone's sessions and their session logs"
+      },
+      {
+        label: "Edit Any",
+        value: ProjectPermissionAgentVaultSessionActions.EditAny,
+        description: "Change the label of anyone's session"
+      },
+      {
+        label: "Revoke Any",
+        value: ProjectPermissionAgentVaultSessionActions.RevokeAny,
+        description: "Revoke anyone's session"
+      },
+      {
+        label: "Create With Inline Services",
+        value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        description: "Send services with a session instead of only naming an access bundle"
       }
     ]
   },
@@ -2637,6 +2672,37 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove",
         value: ProjectPermissionAgentVaultSkillActions.Delete,
         description: "Delete skills"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentVaultVariables]: {
+    title: "Variables",
+    description: "Manage the global variables services can use",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultVariableActions.Read,
+        description: "View global variables and the services that use them"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultVariableActions.Create,
+        description: "Add global variables"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultVariableActions.Edit,
+        description: "Change a global variable's key or value"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultVariableActions.Delete,
+        description: "Delete global variables"
+      },
+      {
+        label: "Read Value",
+        value: ProjectPermissionAgentVaultVariableActions.ReadValue,
+        description: "Reveal a global variable's value"
       }
     ]
   },
@@ -3565,7 +3631,8 @@ const AgentVaultPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.AgentVaultAccessBundles]: enabled,
   [ProjectPermissionSub.AgentVaultSessions]: enabled,
   [ProjectPermissionSub.AgentVaultProxies]: enabled,
-  [ProjectPermissionSub.AgentVaultSkills]: enabled
+  [ProjectPermissionSub.AgentVaultSkills]: enabled,
+  [ProjectPermissionSub.AgentVaultVariables]: enabled
 });
 
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
