@@ -81,7 +81,6 @@ export type TAgentVaultInlineServiceSummary = {
       substitutions: TAgentVaultInlineSubstitutionSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
-      allowedTools: string[] | null;
       credential: TAgentVaultInlineBearerCredentialSummary;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })

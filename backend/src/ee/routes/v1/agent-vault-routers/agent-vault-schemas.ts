@@ -992,7 +992,8 @@ const serviceResponseTypeFields = {
     type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
     serverUrl: z.string().describe(AGENT_VAULT.SERVICE.serverUrlRead),
     transport: z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transportRead),
-    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.mcpHostPatternRead)
+    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.mcpHostPatternRead),
+    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools)
   },
   [AgentVaultServiceType.Postgres]: {
     type: z.literal(AgentVaultServiceType.Postgres).describe(AGENT_VAULT.SERVICE.type),
@@ -1058,7 +1059,6 @@ const inlineServiceResponseTypeExtras = {
       .describe(AGENT_VAULT.SESSION.inlineSubstitutionsRead)
   },
   [AgentVaultServiceType.Mcp]: {
-    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
     credential: inlineBearerCredentialSummarySchema,
     customHeaders: inlineCustomHeadersResponseSchema
   },
@@ -1237,7 +1237,6 @@ const serviceResponseTypeExtras = <TOptional extends boolean>(optionalReferences
   [AgentVaultServiceType.Mcp]: {
     credential: credentialSummarySchemas[AgentVaultServiceType.Mcp],
     customHeaders: customHeadersResponseSchema,
-    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
     variableReferences: variableReferencesField(AgentVaultServiceType.Mcp, optionalReferences)
   },
   [AgentVaultServiceType.Postgres]: {

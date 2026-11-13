@@ -360,13 +360,7 @@ export const toInlineServiceSummary = (
       };
     case AgentVaultServiceType.Mcp:
       if (!isCredentialOfType(credential, [AgentVaultCredentialType.Bearer])) throw unsupportedCredential();
-      return {
-        ...base,
-        ...typeFields,
-        allowedTools: row.allowedTools ?? null,
-        credential,
-        customHeaders: row.customHeaders as TInlineCustomHeader[]
-      };
+      return { ...base, ...typeFields, credential, customHeaders: row.customHeaders as TInlineCustomHeader[] };
     case AgentVaultServiceType.Ssh:
       if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
         throw unsupportedCredential();
