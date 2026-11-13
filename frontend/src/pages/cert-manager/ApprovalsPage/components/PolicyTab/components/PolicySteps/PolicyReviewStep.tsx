@@ -7,6 +7,7 @@ import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
 
+import { RENEWAL_APPROVAL_OPTIONS } from "../policyConstraints";
 import { TPolicyForm } from "../PolicySchema";
 
 const ReviewField = ({ label, value }: { label: string; value: string | number }) => (
@@ -24,8 +25,15 @@ export const PolicyReviewStep = () => {
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const { name, policyType, conditions, maxRequestTtl, bypassForMachineIdentities, steps } =
-    watch();
+  const {
+    name,
+    policyType,
+    conditions,
+    maxRequestTtl,
+    renewalApproval,
+    bypassForMachineIdentities,
+    steps
+  } = watch();
   const isRevocationPolicy = policyType === ApprovalPolicyType.CertRevocation;
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
@@ -59,6 +67,15 @@ export const PolicyReviewStep = () => {
               conditions[0].profileNames.length ? conditions[0].profileNames.join(", ") : "Not set"
             }
           />
+          {!isRevocationPolicy && (
+            <ReviewField
+              label="Renewals Requiring Approval"
+              value={
+                RENEWAL_APPROVAL_OPTIONS.find((option) => option.value === renewalApproval)
+                  ?.title ?? "Not set"
+              }
+            />
+          )}
           {!isRevocationPolicy && (
             <ReviewField
               label="Machine Identity Bypass"

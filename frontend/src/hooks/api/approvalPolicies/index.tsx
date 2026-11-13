@@ -13,6 +13,7 @@ export {
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   type CertRequestPolicyConditions,
+  CertRequestRenewalApproval,
   type CodeSigningPolicyConstraints,
   EnforcementLevel,
   type PamAccessPolicyConditions,
