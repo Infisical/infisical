@@ -581,8 +581,8 @@ const BulkReviewChangeRequestsSheetContent = ({
                   disabled={isSubmitting}
                 />
               </Field>
-              <div className="flex items-center gap-3">
-                <p className="flex-1 text-sm text-muted">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <p className="flex-1 text-sm whitespace-nowrap text-muted">
                   {decidedCount} of {requests.length} reviewed
                 </p>
                 <Button variant="ghost" size="sm" isDisabled={isSubmitting} onClick={onClose}>
