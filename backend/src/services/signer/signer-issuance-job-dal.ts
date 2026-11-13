@@ -58,6 +58,7 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
       await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
         .whereIn("id", jobIds)
         .andWhere({ status: SignerIssuanceJobStatus.Pending })
+        .whereNull("certificateId")
         .update({
           status: SignerIssuanceJobStatus.Failed,
           failureReason: reason.slice(0, 1000),

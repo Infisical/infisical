@@ -27,12 +27,18 @@ type Props = {
   signer: TSigner;
 };
 
-const OrderIdDetail = ({ label, orderId }: { label: string; orderId: string }) => (
+const CopyableDetail = ({ label, value }: { label: string; value: string | null | undefined }) => (
   <Detail>
     <DetailLabel>{label}</DetailLabel>
     <DetailValue className="flex items-start gap-2 font-mono">
-      <span className="break-all">{orderId}</span>
-      <CopyButton className="shrink-0" value={orderId} ariaLabel={`Copy ${label}`} />
+      {value ? (
+        <>
+          <span className="break-all">{value}</span>
+          <CopyButton className="shrink-0" value={value} ariaLabel={`Copy ${label}`} />
+        </>
+      ) : (
+        <NotSet />
+      )}
     </DetailValue>
   </Detail>
 );
@@ -57,23 +63,7 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
                 {signer.certificateCommonName ?? signer.commonName ?? <NotSet />}
               </DetailValue>
             </Detail>
-            <Detail>
-              <DetailLabel>Serial Number</DetailLabel>
-              <DetailValue className="flex items-start gap-2 font-mono">
-                {signer.certificateSerialNumber ? (
-                  <>
-                    <span className="break-all">{signer.certificateSerialNumber}</span>
-                    <CopyButton
-                      className="shrink-0"
-                      value={signer.certificateSerialNumber}
-                      ariaLabel="Copy serial number"
-                    />
-                  </>
-                ) : (
-                  <NotSet />
-                )}
-              </DetailValue>
-            </Detail>
+            <CopyableDetail label="Serial Number" value={signer.certificateSerialNumber} />
             <Detail>
               <DetailLabel>Expires</DetailLabel>
               <DetailValue>
@@ -96,21 +86,11 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
               </DetailValue>
             </Detail>
             {signer.certificateHsmKeyLabel && (
-              <Detail>
-                <DetailLabel>HSM Key Label</DetailLabel>
-                <DetailValue className="flex items-start gap-2 font-mono">
-                  <span className="break-all">{signer.certificateHsmKeyLabel}</span>
-                  <CopyButton
-                    className="shrink-0"
-                    value={signer.certificateHsmKeyLabel}
-                    ariaLabel="Copy HSM key label"
-                  />
-                </DetailValue>
-              </Detail>
+              <CopyableDetail label="HSM Key Label" value={signer.certificateHsmKeyLabel} />
             )}
-            {orderId && <OrderIdDetail label="DigiCert Order ID" orderId={orderId} />}
+            {orderId && <CopyableDetail label="DigiCert Order ID" value={orderId} />}
             {nextOrderId && (
-              <OrderIdDetail label="Next DigiCert Order ID" orderId={String(nextOrderId)} />
+              <CopyableDetail label="Next DigiCert Order ID" value={String(nextOrderId)} />
             )}
           </DetailGroup>
         ) : (

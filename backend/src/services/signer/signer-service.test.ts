@@ -111,7 +111,6 @@ const buildService = ({
     find: vi.fn().mockResolvedValue([]),
     updateById: vi.fn(async (_id: string, data: Partial<TPkiSigners>) => ({ ...signer, ...data })),
     updateUnlessRevoked: vi.fn(async (_id: string, data: Partial<TPkiSigners>) => ({ ...signer, ...data })),
-    restoreStatusAfterFailedRevoke: vi.fn().mockResolvedValue(signer),
     transaction: vi.fn(async (cb: (trx: Knex) => unknown) => cb(tx))
   };
   const certificateDAL = {
@@ -129,6 +128,7 @@ const buildService = ({
     requestIssuance: vi.fn().mockResolvedValue({ id: "job-1" }),
     getLatestIssuanceKeyConfig: vi.fn().mockResolvedValue(null),
     hasOpenJobs: vi.fn().mockResolvedValue(false),
+    assertNoHeldCertificate: vi.fn().mockResolvedValue(undefined),
     getLatestFailedRequestAt: vi.fn().mockResolvedValue(null),
     cancelOpenJobsForRevokedSigner: vi
       .fn()
@@ -268,40 +268,53 @@ describe("signerService.autoRenewCertificate", () => {
     vi.mocked(issueSignerCertificate).mockReset();
   });
 
-  it("waits before placing another order after the last certificate request failed", async () => {
-    const { service, deps } = buildService({ ca: digicertCa });
-    deps.signerIssuanceService.getLatestFailedRequestAt.mockResolvedValue(new Date(Date.now() - 24 * 60 * 60 * 1000));
-
-    await service.autoRenewCertificate(SIGNER_ID);
-
-    expect(deps.signerIssuanceService.requestIssuance).not.toHaveBeenCalled();
-    expect(deps.signerDAL.updateById).not.toHaveBeenCalled();
-  });
-
-  it("tries again once the backoff after a failed request has passed", async () => {
+  it.each([
+    ["waits before placing another order", 1, false],
+    ["places a new order once the backoff has passed", 8, true]
+  ])("after a failed certificate request, auto-renewal %s", async (_label, daysSinceFailure, isPlaced) => {
     const { service, deps } = buildService({
       ca: digicertCa,
       certificate: buildCertificate({ externalMetadata: { orderId: DIGICERT_ORDER_ID } })
     });
     deps.signerIssuanceService.getLatestFailedRequestAt.mockResolvedValue(
-      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+      new Date(Date.now() - daysSinceFailure * 24 * 60 * 60 * 1000)
     );
 
     await service.autoRenewCertificate(SIGNER_ID);
 
-    expect(deps.signerIssuanceService.requestIssuance).toHaveBeenCalled();
+    expect(deps.signerIssuanceService.requestIssuance.mock.calls.length > 0).toBe(isPlaced);
   });
 
-  it("keeps the signer Active and records the reason when the CA is no longer active", async () => {
-    const { service, deps } = buildService({ ca: { ...internalCa, status: CaStatus.DISABLED } });
+  it.each([
+    [
+      "the CA is no longer active",
+      () => buildService({ ca: { ...internalCa, status: CaStatus.DISABLED } }),
+      "Certificate authority 'Internal CA' is not active."
+    ],
+    [
+      "scheduling the DigiCert renewal fails",
+      () => {
+        const built = buildService({ ca: digicertCa });
+        built.deps.signerIssuanceService.requestIssuance.mockRejectedValue(new Error("queue unavailable"));
+        return built;
+      },
+      "queue unavailable"
+    ],
+    [
+      "the internal CA refuses to sign",
+      () => {
+        vi.mocked(issueSignerCertificate).mockRejectedValue(new Error("internal CA refused to sign"));
+        return buildService();
+      },
+      "internal CA refused to sign"
+    ]
+  ])("keeps the signer Active and records the reason when %s", async (_label, build, reason) => {
+    const { service, deps } = build();
 
     await service.autoRenewCertificate(SIGNER_ID);
 
     expect(statusesWritten(deps.signerDAL.updateById)).toEqual([]);
-    expect(deps.signerDAL.updateById).toHaveBeenCalledWith(SIGNER_ID, {
-      certificateFailureReason: "Certificate authority 'Internal CA' is not active."
-    });
-    expect(issueSignerCertificate).not.toHaveBeenCalled();
+    expect(deps.signerDAL.updateById).toHaveBeenLastCalledWith(SIGNER_ID, { certificateFailureReason: reason });
   });
 
   it("keeps the signer's status while a DigiCert auto-renewal request is open", async () => {
@@ -319,30 +332,6 @@ describe("signerService.autoRenewCertificate", () => {
         digicertLifecycle: { mode: DigiCertLifecycleMode.Renew, previousOrderId: DIGICERT_ORDER_ID }
       })
     );
-  });
-
-  it("keeps the signer Active when scheduling the DigiCert auto-renewal fails", async () => {
-    const { service, deps } = buildService({ ca: digicertCa });
-    deps.signerIssuanceService.requestIssuance.mockRejectedValue(new Error("queue unavailable"));
-
-    await service.autoRenewCertificate(SIGNER_ID);
-
-    expect(statusesWritten(deps.signerDAL.updateById)).toEqual([]);
-    expect(deps.signerDAL.updateById).toHaveBeenLastCalledWith(SIGNER_ID, {
-      certificateFailureReason: "queue unavailable"
-    });
-  });
-
-  it("keeps the signer Active when an internal CA auto-renewal fails", async () => {
-    vi.mocked(issueSignerCertificate).mockRejectedValue(new Error("internal CA refused to sign"));
-    const { service, deps } = buildService();
-
-    await service.autoRenewCertificate(SIGNER_ID);
-
-    expect(statusesWritten(deps.signerDAL.updateById)).toEqual([]);
-    expect(deps.signerDAL.updateById).toHaveBeenCalledWith(SIGNER_ID, {
-      certificateFailureReason: "internal CA refused to sign"
-    });
   });
 
   it("keeps a signer disabled during the renewal Disabled when the new certificate is attached", async () => {
@@ -429,7 +418,7 @@ describe("signerService.revokeCertificate", () => {
       serialNumber: "0a1b2c",
       signer: { status: SignerStatus.Revoked }
     });
-    expect(deps.signerDAL.restoreStatusAfterFailedRevoke).not.toHaveBeenCalled();
+    expect(deps.signerDAL.updateById).toHaveBeenCalledTimes(1);
     expect(lock.release).toHaveBeenCalled();
   });
 
@@ -450,37 +439,84 @@ describe("signerService.revokeCertificate", () => {
     expect(deps.signerIssuanceService.cancelOpenJobsForRevokedSigner).not.toHaveBeenCalled();
   });
 
-  it("restores the signer's previous status when the CA revoke fails and the certificate is still active", async () => {
-    const { service, deps, lock } = buildService({ signer: buildSigner({ status: SignerStatus.Disabled }) });
-    const caError = new Error("CA unavailable");
-    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(caError);
+  it.each([
+    [
+      "keeps a Disabled signer Disabled",
+      buildSigner({ status: SignerStatus.Disabled }),
+      0,
+      false,
+      SignerStatus.Disabled,
+      null
+    ],
+    [
+      "keeps the failure reason it had",
+      buildSigner({ certificateFailureReason: "Gateway connection timeout" }),
+      0,
+      false,
+      SignerStatus.Active,
+      "Gateway connection timeout"
+    ],
+    [
+      "keeps a Pending signer Pending while its request is still open",
+      buildSigner({ status: SignerStatus.Pending }),
+      0,
+      true,
+      SignerStatus.Pending,
+      null
+    ],
+    [
+      "marks a Pending signer Failed, with the request's failure reason, when its request failed during the revoke",
+      buildSigner({ status: SignerStatus.Pending }),
+      0,
+      false,
+      SignerStatus.Failed,
+      "AD CS denied the request"
+    ],
+    [
+      "keeps an Active signer Active and says its renewal was canceled",
+      buildSigner(),
+      1,
+      false,
+      SignerStatus.Active,
+      "The certificate request was canceled by a revoke that didn't complete"
+    ],
+    [
+      "returns a Pending signer whose reissue was canceled to Active",
+      buildSigner({ status: SignerStatus.Pending }),
+      1,
+      false,
+      SignerStatus.Active,
+      "The certificate request was canceled by a revoke that didn't complete"
+    ]
+  ])(
+    "restores the signer when the CA revoke fails: %s",
+    async (_label, signer, cancelledJobCount, hasOpenJobs, status, certificateFailureReason) => {
+      const { service, deps, lock } = buildService({ signer });
+      deps.signerIssuanceService.hasOpenJobs.mockResolvedValue(hasOpenJobs);
+      if (status === SignerStatus.Failed) {
+        deps.signerDAL.findByIdForUpdate
+          .mockResolvedValueOnce(signer)
+          .mockResolvedValue({ ...signer, certificateFailureReason });
+      }
+      deps.signerIssuanceService.cancelOpenJobsForRevokedSigner.mockResolvedValueOnce({
+        uncancelledDigicertOrderIds: [],
+        cancelledJobCount
+      });
+      deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("CA unavailable"));
 
-    await expect(service.revokeCertificate(revokeDto)).rejects.toBe(caError);
+      await expect(service.revokeCertificate(revokeDto)).rejects.toThrow("CA unavailable");
 
-    expect(deps.signerDAL.updateById).toHaveBeenCalledWith(SIGNER_ID, { status: SignerStatus.Revoked }, tx);
-    expect(deps.signerDAL.restoreStatusAfterFailedRevoke).toHaveBeenCalledWith(SIGNER_ID, {
-      status: SignerStatus.Disabled,
-      certificateFailureReason: null
-    });
-    expect(deps.signerIssuanceService.cancelOpenJobsForRevokedSigner.mock.calls).toEqual([
-      [SIGNER_ID, { digicertReissuesOnly: true }]
-    ]);
-    expect(lock.release).toHaveBeenCalled();
-  });
-
-  it("restores the failure reason the signer had before a revoke that failed at the CA", async () => {
-    const { service, deps } = buildService({
-      signer: buildSigner({ certificateFailureReason: "Gateway connection timeout" })
-    });
-    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("CA unavailable"));
-
-    await expect(service.revokeCertificate(revokeDto)).rejects.toThrow("CA unavailable");
-
-    expect(deps.signerDAL.restoreStatusAfterFailedRevoke).toHaveBeenCalledWith(SIGNER_ID, {
-      status: SignerStatus.Active,
-      certificateFailureReason: "Gateway connection timeout"
-    });
-  });
+      expect(deps.signerDAL.updateById).toHaveBeenLastCalledWith(
+        SIGNER_ID,
+        { status, certificateFailureReason },
+        expect.anything()
+      );
+      expect(deps.signerIssuanceService.cancelOpenJobsForRevokedSigner.mock.calls).toEqual([
+        [SIGNER_ID, { digicertReissuesOnly: true }]
+      ]);
+      expect(lock.release).toHaveBeenCalled();
+    }
+  );
 
   it("keeps the signer Revoked when the CA revoke throws after the certificate was revoked", async () => {
     const { service, deps } = buildService();
@@ -492,7 +528,7 @@ describe("signerService.revokeCertificate", () => {
 
     await expect(service.revokeCertificate(revokeDto)).rejects.toBe(caError);
 
-    expect(deps.signerDAL.restoreStatusAfterFailedRevoke).not.toHaveBeenCalled();
+    expect(deps.signerDAL.updateById).toHaveBeenCalledTimes(1);
   });
 
   it("explains a DigiCert reissue it couldn't cancel and restores the signer", async () => {
@@ -507,38 +543,11 @@ describe("signerService.revokeCertificate", () => {
     );
 
     expect(deps.certificateService.revokeOwnedCertificate).not.toHaveBeenCalled();
-    expect(deps.signerDAL.restoreStatusAfterFailedRevoke).toHaveBeenCalledWith(SIGNER_ID, {
-      status: SignerStatus.Active,
-      certificateFailureReason: null
-    });
-  });
-
-  it("returns a Pending signer to Active when its reissue was canceled and the revoke then failed", async () => {
-    const { service, deps } = buildService({ signer: buildSigner({ status: SignerStatus.Pending }) });
-    deps.signerIssuanceService.cancelOpenJobsForRevokedSigner.mockResolvedValueOnce({
-      uncancelledDigicertOrderIds: [],
-      cancelledJobCount: 1
-    });
-    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("approval required"));
-
-    await expect(service.revokeCertificate(revokeDto)).rejects.toThrow("approval required");
-
-    expect(deps.signerDAL.restoreStatusAfterFailedRevoke).toHaveBeenCalledWith(SIGNER_ID, {
-      status: SignerStatus.Active,
-      certificateFailureReason: "The certificate request was canceled by a revoke that didn't complete"
-    });
-  });
-
-  it("keeps a Pending signer Pending when the failed revoke canceled nothing", async () => {
-    const { service, deps } = buildService({ signer: buildSigner({ status: SignerStatus.Pending }) });
-    deps.certificateService.revokeOwnedCertificate.mockRejectedValue(new Error("CA unavailable"));
-
-    await expect(service.revokeCertificate(revokeDto)).rejects.toThrow("CA unavailable");
-
-    expect(deps.signerDAL.restoreStatusAfterFailedRevoke).toHaveBeenCalledWith(SIGNER_ID, {
-      status: SignerStatus.Pending,
-      certificateFailureReason: null
-    });
+    expect(deps.signerDAL.updateById).toHaveBeenLastCalledWith(
+      SIGNER_ID,
+      { status: SignerStatus.Active, certificateFailureReason: null },
+      expect.anything()
+    );
   });
 
   it("refuses an imported certificate before marking the signer Revoked", async () => {

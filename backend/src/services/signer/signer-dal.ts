@@ -233,12 +233,6 @@ export const signerDALFactory = (db: TDbClient) => {
     return (await (tx || db)(TableName.PkiSigners).where({ id }).first()) as TPkiSigners;
   };
 
-  const restoreStatusAfterFailedRevoke = async (
-    id: string,
-    previous: { status: SignerStatus; certificateFailureReason: string | null },
-    tx?: Knex
-  ) => orm.updateById(id, previous, tx);
-
   const findOneInOrgByCurrentHsmPublicKey = async (
     projectId: string,
     hsmPublicKeySpki: Buffer,
@@ -265,7 +259,6 @@ export const signerDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     updateUnlessRevoked,
-    restoreStatusAfterFailedRevoke,
     findByIdWithCertificate,
     findByStatusWithCertificate,
     findByProjectId,

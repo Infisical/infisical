@@ -93,7 +93,7 @@ import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
-import { acquireSignerCertificateLock } from "./signer-certificate-lock";
+import { withSignerCertificateLock } from "./signer-certificate-lock";
 import { TSignerDALFactory } from "./signer-dal";
 import {
   CertKeySource,
@@ -210,6 +210,7 @@ type TSignerServiceFactoryDep = {
     | "runPendingJobNow"
     | "cancelOpenJobs"
     | "hasOpenJobs"
+    | "assertNoHeldCertificate"
     | "cancelOpenJobsForRevokedSigner"
     | "revokeUnattachedCertificate"
     | "getLatestFailedRequestAt"
@@ -1690,7 +1691,10 @@ export const signerServiceFactory = ({
     return { signer: updatedSigner, caName: ca.name, hsmConnectorName: imported.hsmConnectorName };
   };
 
-  const $authorizeReissue = async (dto: TRenewCertificateDTO) => {
+  const $authorizeSignerAction = async (
+    dto: TRenewCertificateDTO,
+    action: ResourcePermissionSignerActions.ReissueCertificate | ResourcePermissionSignerActions.RevokeCertificate
+  ) => {
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
@@ -1702,12 +1706,17 @@ export const signerServiceFactory = ({
       dto.actorAuthMethod,
       dto.actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ReissueCertificate,
-      ResourcePermissionSub.Signer
-    );
+    ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.Signer);
     return signer;
   };
+
+  const $getOpenRequestState = (signerId: string) =>
+    signerDAL.transaction(async (tx) => {
+      await signerIssuanceService.assertNoHeldCertificate(signerId, tx);
+      const hasOpenJobs = await signerIssuanceService.hasOpenJobs(signerId, tx);
+      const lockedSigner = await signerDAL.findByIdForUpdate(signerId, tx);
+      return { hasOpenJobs, isPending: lockedSigner?.status === SignerStatus.Pending };
+    });
 
   const $resolveReissueExternalCaConfig = async ({
     signer,
@@ -1869,36 +1878,29 @@ export const signerServiceFactory = ({
   };
 
   const reissueCertificate = async (dto: TReissueCertificateDTO) => {
-    const signer = await $authorizeReissue(dto);
-    const reissueLock = await acquireSignerCertificateLock(keyStore, signer.id);
-    if (!reissueLock) {
-      throw new BadRequestError({ message: signerCertificateLockHeldMessage(signer.name) });
-    }
-    try {
-      const isRenewalInProgress = await signerDAL.transaction(async (tx) => {
-        const hasOpenJobs = await signerIssuanceService.hasOpenJobs(signer.id, tx);
-        const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
-        return hasOpenJobs && lockedSigner?.status !== SignerStatus.Pending;
-      });
-      if (isRenewalInProgress) {
-        throw new BadRequestError({
-          message: certificateRequestInProgressMessage(signer.name)
-        });
+    const signer = await $authorizeSignerAction(dto, ResourcePermissionSignerActions.ReissueCertificate);
+    return withSignerCertificateLock(
+      keyStore,
+      signer.id,
+      () => {
+        throw new BadRequestError({ message: signerCertificateLockHeldMessage(signer.name) });
+      },
+      async () => {
+        const { hasOpenJobs, isPending } = await $getOpenRequestState(signer.id);
+        if (hasOpenJobs && !isPending) {
+          throw new BadRequestError({
+            message: certificateRequestInProgressMessage(signer.name)
+          });
+        }
+        const { signer: reissuedSigner } = await $reissueCertificate(signer, dto, { isRenewal: false });
+        return reissuedSigner;
       }
-      const { signer: reissuedSigner } = await $reissueCertificate(signer, dto, { isRenewal: false });
-      return reissuedSigner;
-    } finally {
-      await reissueLock.release().catch(() => {});
-    }
+    );
   };
 
   const $renewCertificate = async (signer: TPkiSigners, dto: TRenewCertificateDTO) => {
-    const hasIssuanceInProgress = await signerDAL.transaction(async (tx) => {
-      const hasOpenJobs = await signerIssuanceService.hasOpenJobs(signer.id, tx);
-      const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
-      return hasOpenJobs || lockedSigner?.status === SignerStatus.Pending;
-    });
-    if (hasIssuanceInProgress) {
+    const { hasOpenJobs, isPending } = await $getOpenRequestState(signer.id);
+    if (hasOpenJobs || isPending) {
       throw new BadRequestError({
         message: certificateRequestInProgressMessage(signer.name)
       });
@@ -1924,121 +1926,107 @@ export const signerServiceFactory = ({
   };
 
   const renewCertificate = async (dto: TRenewCertificateDTO) => {
-    const signer = await $authorizeReissue(dto);
-    const renewLock = await acquireSignerCertificateLock(keyStore, signer.id);
-    if (!renewLock) {
-      throw new BadRequestError({
-        message: signerCertificateLockHeldMessage(signer.name)
-      });
-    }
-    try {
-      return await $renewCertificate(signer, dto);
-    } finally {
-      await renewLock.release().catch(() => {});
-    }
+    const signer = await $authorizeSignerAction(dto, ResourcePermissionSignerActions.ReissueCertificate);
+    return withSignerCertificateLock(
+      keyStore,
+      signer.id,
+      () => {
+        throw new BadRequestError({ message: signerCertificateLockHeldMessage(signer.name) });
+      },
+      () => $renewCertificate(signer, dto)
+    );
   };
 
   const revokeCertificate = async (dto: TRevokeSignerCertificateDTO) => {
-    const signer = await signerDAL.findById(dto.signerId);
-    if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+    const signer = await $authorizeSignerAction(dto, ResourcePermissionSignerActions.RevokeCertificate);
 
-    const { permission } = await $loadSignerResourcePermission(
+    return withSignerCertificateLock(
+      keyStore,
       signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.RevokeCertificate,
-      ResourcePermissionSub.Signer
-    );
-
-    const revokeLock = await acquireSignerCertificateLock(keyStore, signer.id);
-    if (!revokeLock) {
-      throw new BadRequestError({
-        message: signerCertificateLockHeldMessage(signer.name)
-      });
-    }
-
-    try {
-      const { certificateId, previousStatus, previousFailureReason } = await signerDAL.transaction(async (tx) => {
-        const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
-        if (!lockedSigner?.certificateId) {
-          throw new BadRequestError({ message: `Signer '${signer.name}' doesn't have a certificate to revoke.` });
-        }
-        const currentCert = await certificateDAL.findById(lockedSigner.certificateId, tx);
-        if (currentCert?.status === CertStatus.REVOKED) {
-          throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
-        }
-        if (!currentCert?.caId) {
-          throw new BadRequestError({
-            message: `Signer '${signer.name}' uses an imported certificate, so it can't be revoked here. Revoke it with the certificate authority that issued it.`
-          });
-        }
-        const [signerSharingCertificate] = await signerDAL.find(
-          { certificateId: lockedSigner.certificateId, $notEqual: { id: signer.id } },
-          { tx, limit: 1 }
-        );
-        if (signerSharingCertificate) {
-          throw new BadRequestError({
-            message: `Signer '${signer.name}' shares its certificate with signer '${signerSharingCertificate.name}', so revoking it would stop both. Delete signer '${signerSharingCertificate.name}' first, then revoke.`
-          });
-        }
-        await signerDAL.updateById(signer.id, { status: SignerStatus.Revoked }, tx);
-        return {
-          certificateId: lockedSigner.certificateId,
-          previousStatus: lockedSigner.status,
-          previousFailureReason: lockedSigner.certificateFailureReason ?? null
-        };
-      });
-
-      let revoked: Awaited<ReturnType<typeof certificateService.revokeOwnedCertificate>>;
-      let cancelledReissueCount = 0;
-      try {
-        const { uncancelledDigicertOrderIds, cancelledJobCount } =
-          await signerIssuanceService.cancelOpenJobsForRevokedSigner(signer.id, { digicertReissuesOnly: true });
-        cancelledReissueCount = cancelledJobCount;
-        if (uncancelledDigicertOrderIds.length) {
-          throw new BadRequestError({
-            message: `DigiCert can't revoke this certificate while a reissue is pending on order #${uncancelledDigicertOrderIds[0]}. Cancel the reissue in CertCentral, then revoke again.`
-          });
-        }
-        revoked = await certificateService.revokeOwnedCertificate({
-          certificateId,
-          revocationReason: dto.revocationReason,
-          orgId: dto.actorOrgId
-        });
-      } catch (err) {
-        const cert = await signerDAL.transaction((tx) => certificateDAL.findById(certificateId, tx));
-        if (cert?.status !== CertStatus.REVOKED) {
-          const isStrandedPendingRequest = previousStatus === SignerStatus.Pending && cancelledReissueCount > 0;
-          await signerDAL.restoreStatusAfterFailedRevoke(
-            signer.id,
-            isStrandedPendingRequest
-              ? {
-                  status: SignerStatus.Active,
-                  certificateFailureReason: "The certificate request was canceled by a revoke that didn't complete"
-                }
-              : { status: previousStatus as SignerStatus, certificateFailureReason: previousFailureReason }
+      () => {
+        throw new BadRequestError({ message: signerCertificateLockHeldMessage(signer.name) });
+      },
+      async () => {
+        const { certificateId, previousStatus } = await signerDAL.transaction(async (tx) => {
+          const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
+          if (!lockedSigner?.certificateId) {
+            throw new BadRequestError({ message: `Signer '${signer.name}' doesn't have a certificate to revoke.` });
+          }
+          const currentCert = await certificateDAL.findById(lockedSigner.certificateId, tx);
+          if (currentCert?.status === CertStatus.REVOKED) {
+            throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+          }
+          if (!currentCert?.caId) {
+            throw new BadRequestError({
+              message: `Signer '${signer.name}' uses an imported certificate, so it can't be revoked here. Revoke it with the certificate authority that issued it.`
+            });
+          }
+          const [signerSharingCertificate] = await signerDAL.find(
+            { certificateId: lockedSigner.certificateId, $notEqual: { id: signer.id } },
+            { tx, limit: 1 }
           );
+          if (signerSharingCertificate) {
+            throw new BadRequestError({
+              message: `Signer '${signer.name}' shares its certificate with signer '${signerSharingCertificate.name}', so revoking it would stop both. Delete signer '${signerSharingCertificate.name}' first, then revoke.`
+            });
+          }
+          await signerDAL.updateById(signer.id, { status: SignerStatus.Revoked }, tx);
+          return {
+            certificateId: lockedSigner.certificateId,
+            previousStatus: lockedSigner.status
+          };
+        });
+
+        let revoked: Awaited<ReturnType<typeof certificateService.revokeOwnedCertificate>>;
+        let cancelledReissueCount = 0;
+        try {
+          const { uncancelledDigicertOrderIds, cancelledJobCount } =
+            await signerIssuanceService.cancelOpenJobsForRevokedSigner(signer.id, { digicertReissuesOnly: true });
+          cancelledReissueCount = cancelledJobCount;
+          if (uncancelledDigicertOrderIds.length) {
+            throw new BadRequestError({
+              message: `DigiCert can't revoke this certificate while a reissue is pending on order #${uncancelledDigicertOrderIds[0]}. Cancel the reissue in CertCentral, then revoke again.`
+            });
+          }
+          revoked = await certificateService.revokeOwnedCertificate({
+            certificateId,
+            revocationReason: dto.revocationReason,
+            orgId: dto.actorOrgId
+          });
+        } catch (err) {
+          const cert = await signerDAL.transaction((tx) => certificateDAL.findById(certificateId, tx));
+          if (cert?.status !== CertStatus.REVOKED) {
+            await signerDAL.transaction(async (tx) => {
+              const hasOpenJobs = await signerIssuanceService.hasOpenJobs(signer.id, tx);
+              const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
+              let status = previousStatus;
+              if (previousStatus === SignerStatus.Pending && !hasOpenJobs) {
+                status = cancelledReissueCount > 0 ? SignerStatus.Active : SignerStatus.Failed;
+              }
+              const restoredState: Pick<TPkiSigners, "status" | "certificateFailureReason"> = {
+                status,
+                certificateFailureReason:
+                  cancelledReissueCount > 0
+                    ? "The certificate request was canceled by a revoke that didn't complete"
+                    : (lockedSigner?.certificateFailureReason ?? null)
+              };
+              await signerDAL.updateById(signer.id, restoredState, tx);
+            });
+          }
+          throw err;
         }
-        throw err;
+
+        await signerIssuanceService.cancelOpenJobsForRevokedSigner(signer.id);
+
+        return {
+          signer: { ...signer, certificateId, status: SignerStatus.Revoked },
+          certificateId,
+          serialNumber: revoked.cert.serialNumber,
+          commonName: revoked.cert.commonName,
+          crlWarning: revoked.crlWarning
+        };
       }
-
-      await signerIssuanceService.cancelOpenJobsForRevokedSigner(signer.id);
-
-      return {
-        signer: { ...signer, certificateId, status: SignerStatus.Revoked },
-        certificateId,
-        serialNumber: revoked.cert.serialNumber,
-        commonName: revoked.cert.commonName,
-        crlWarning: revoked.crlWarning
-      };
-    } finally {
-      await revokeLock.release().catch(() => {});
-    }
+    );
   };
 
   const exportCertificate = async (dto: TExportCertificateDTO) => {
@@ -2607,7 +2595,7 @@ export const signerServiceFactory = ({
     certificateId: string,
     tx?: Parameters<TSignerDALFactory["updateById"]>[2]
   ) => {
-    return signerDAL.updateUnlessRevoked(
+    return signerDAL.updateById(
       signerId,
       { certificateId, status: SignerStatus.Active, certificateFailureReason: null },
       tx
@@ -2619,7 +2607,7 @@ export const signerServiceFactory = ({
     reason?: string,
     tx?: Parameters<TSignerDALFactory["updateById"]>[2]
   ) => {
-    return signerDAL.updateUnlessRevoked(
+    return signerDAL.updateById(
       signerId,
       { status: SignerStatus.Failed, certificateFailureReason: reason ? reason.slice(0, 1000) : null },
       tx
@@ -2778,18 +2766,15 @@ export const signerServiceFactory = ({
     }
   };
 
-  const autoRenewCertificate = async (signerId: string) => {
-    const autoRenewLock = await acquireSignerCertificateLock(keyStore, signerId);
-    if (!autoRenewLock) {
-      logger.info(`signer auto-renewal: signer [signerId=${signerId}] is being renewed or revoked, skipping`);
-      return;
-    }
-    try {
-      await $autoRenewCertificate(signerId);
-    } finally {
-      await autoRenewLock.release().catch(() => {});
-    }
-  };
+  const autoRenewCertificate = (signerId: string) =>
+    withSignerCertificateLock(
+      keyStore,
+      signerId,
+      () => {
+        logger.info(`signer auto-renewal: signer [signerId=${signerId}] is being renewed or revoked, skipping`);
+      },
+      () => $autoRenewCertificate(signerId)
+    );
 
   const getProjectIdForSigner = async (signerId: string): Promise<string> => {
     const signer = await signerDAL.findById(signerId);

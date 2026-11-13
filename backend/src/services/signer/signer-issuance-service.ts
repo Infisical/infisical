@@ -57,6 +57,13 @@ const DIGICERT_CLOSED_ORDER_OUTCOMES: Partial<Record<CodeSigningOrderStatus, str
 
 const REVOKED_SIGNER_JOB_CANCEL_REASON = "Cancelled because the signer was revoked.";
 
+enum UnattachedRevokeOutcome {
+  Revoked = "revoked",
+  Kept = "kept",
+  Refused = "refused",
+  Retryable = "retryable"
+}
+
 enum SignerRevokeState {
   NotRevoked = "not-revoked",
   RevokeInProgress = "revoke-in-progress",
@@ -107,6 +114,15 @@ type TDigiCertExternalOrderRef = {
     lifecycle?: { mode: DigiCertLifecycleMode; previousOrderId: number };
   };
 };
+
+const buildDigiCertOrderRef = (
+  orderId: number,
+  certificateId: number | null,
+  lifecycle: NonNullable<TDigiCertExternalOrderRef["digicert"]>["lifecycle"],
+  lastStatus: string = CodeSigningOrderStatus.Pending
+): TDigiCertExternalOrderRef => ({
+  digicert: { orderId, certificateId, lastStatus, lastCheckedAt: new Date().toISOString(), lifecycle }
+});
 
 export type TSignerIssuanceServiceFactory = ReturnType<typeof signerIssuanceServiceFactory>;
 
@@ -205,6 +221,16 @@ export const signerIssuanceServiceFactory = ({
     return decryptor({ cipherTextBlob: cipher });
   };
 
+  const assertNoHeldCertificate = async (signerId: string, tx: Knex) => {
+    const openJobs = await signerIssuanceJobDAL.findPendingForSignerForUpdate(signerId, tx);
+    if (openJobs.some((job) => job.certificateId)) {
+      throw new ConflictError({
+        message:
+          "A certificate issued while this signer was being revoked is still being processed. Try again in a few minutes."
+      });
+    }
+  };
+
   const requestIssuance = async (input: TRequestIssuanceInput): Promise<TPkiSignerCertificateIssuanceJobs> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(input.caId);
     if (!ca || ca.projectId !== input.projectId) {
@@ -289,6 +315,7 @@ export const signerIssuanceServiceFactory = ({
       const hsmCertKeyAlgorithm = hsmKeyAlgorithmToCertKeyAlgorithm(input.hsm.hsmKeyAlgorithm);
 
       const hsmJob = await signerIssuanceJobDAL.transaction(async (tx) => {
+        await assertNoHeldCertificate(input.signerId, tx);
         await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.", tx);
         return signerIssuanceJobDAL.create(
           {
@@ -333,6 +360,7 @@ export const signerIssuanceServiceFactory = ({
     const encryptedPrivateKey = await encryptForProject(input.projectId, Buffer.from(privateKeyPem));
 
     const job = await signerIssuanceJobDAL.transaction(async (tx) => {
+      await assertNoHeldCertificate(input.signerId, tx);
       await signerIssuanceJobDAL.cancelOpenForSigner(input.signerId, "Superseded by a newer issuance request.", tx);
       return signerIssuanceJobDAL.create(
         {
@@ -378,7 +406,7 @@ export const signerIssuanceServiceFactory = ({
 
     const windowMs = maxIssuanceWindowMs(snapshot.caType);
     const ageMs = now.getTime() - new Date(snapshot.createdAt).getTime();
-    if (ageMs > windowMs) {
+    if (ageMs > windowMs && !snapshot.certificateId) {
       const hours = Math.round(windowMs / (60 * 60 * 1000));
       await markJobFailed(
         snapshot,
@@ -404,6 +432,19 @@ export const signerIssuanceServiceFactory = ({
       logger.info(
         `signer issuance: claim missed for [jobId=${snapshot.id}] [signerId=${snapshot.signerId}] (concurrent claim or cancellation)`
       );
+      return;
+    }
+
+    if (job.certificateId) {
+      if (job.attempts > job.maxAttempts) {
+        await markJobFailed(
+          job,
+          `A certificate was issued for this signer but couldn't be attached or revoked after ${job.maxAttempts} attempts. Revoke it from the certificate authority.`
+        );
+        return;
+      }
+      const signer = await signerDAL.transaction((tx) => signerDAL.findById(job.signerId, tx));
+      if (signer) await attachIssuedCertToSigner(job, job.certificateId, signer.projectId);
       return;
     }
 
@@ -506,7 +547,7 @@ export const signerIssuanceServiceFactory = ({
     );
   };
 
-  const revokeUnattachedCertificate = async (certificateId: string, projectId: string) => {
+  const $tryRevokeUnattachedCertificate = async (certificateId: string, projectId: string) => {
     try {
       const project = await projectDAL.findOne({ id: projectId });
       await certificateService.revokeOwnedCertificate({
@@ -514,10 +555,47 @@ export const signerIssuanceServiceFactory = ({
         revocationReason: CrlReason.CESSATION_OF_OPERATION,
         orgId: project.orgId
       });
+      return { outcome: UnattachedRevokeOutcome.Revoked };
     } catch (err) {
+      const cert = await certificateDAL.findById(certificateId);
+      if (cert?.status === CertStatus.REVOKED) return { outcome: UnattachedRevokeOutcome.Revoked };
       logger.error(err, `signer issuance: failed to revoke unattached certificate [certificateId=${certificateId}]`);
+      return err instanceof BadRequestError
+        ? { outcome: UnattachedRevokeOutcome.Refused, refusal: err.message }
+        : { outcome: UnattachedRevokeOutcome.Retryable };
     }
   };
+
+  const revokeUnattachedCertificate = async (certificateId: string, projectId: string) =>
+    (await $tryRevokeUnattachedCertificate(certificateId, projectId)).outcome === UnattachedRevokeOutcome.Revoked;
+
+  const $revokeOrKeepUnattachedCertificate = async (
+    job: TPkiSignerCertificateIssuanceJobs,
+    certificateId: string,
+    projectId: string,
+    { isJobOpen }: { isJobOpen: boolean }
+  ) => {
+    const result = await $tryRevokeUnattachedCertificate(certificateId, projectId);
+    if (result.outcome !== UnattachedRevokeOutcome.Retryable) return result;
+    const keepData = { status: SignerIssuanceJobStatus.Pending, certificateId };
+    let [keptJob] = isJobOpen
+      ? await signerIssuanceJobDAL.update({ id: job.id, status: SignerIssuanceJobStatus.Pending }, keepData)
+      : [];
+    if (!keptJob) {
+      const keepOn = await $keepOnJobClosedByRevoke(job);
+      if (keepOn) [keptJob] = await signerIssuanceJobDAL.update(keepOn, keepData);
+    }
+    if (!keptJob) return result;
+    logger.warn(
+      `signer issuance: keeping the unattached certificate on its job to retry the revoke on the next poll [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
+    );
+    return { outcome: UnattachedRevokeOutcome.Kept };
+  };
+
+  const $keepOnJobClosedByRevoke = async (job: TPkiSignerCertificateIssuanceJobs) =>
+    (await $getSignerRevokeState(job.signerId)) === SignerRevokeState.Revoked
+      ? { id: job.id, status: SignerIssuanceJobStatus.Failed, failureReason: REVOKED_SIGNER_JOB_CANCEL_REASON }
+      : null;
 
   const $getSignerRevokeState = async (signerId: string) => {
     const signer = await signerDAL.transaction((tx) => signerDAL.findById(signerId, tx));
@@ -623,8 +701,15 @@ export const signerIssuanceServiceFactory = ({
       });
     } catch (txErr) {
       if (isRevokeInProgress) {
+        const [heldJob] = await signerIssuanceJobDAL.update(
+          { id: job.id, status: SignerIssuanceJobStatus.Pending },
+          { certificateId }
+        );
+        if (!heldJob) {
+          await $revokeOrKeepUnattachedCertificate(job, certificateId, projectId, { isJobOpen: false });
+        }
         logger.info(
-          `signer issuance: signer is being revoked, attaching on the next poll once the revoke settles [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
+          `signer issuance: signer is being revoked, keeping the issued certificate on its job until the revoke settles [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
         );
         return;
       }
@@ -634,12 +719,26 @@ export const signerIssuanceServiceFactory = ({
           ? "Failed to atomically record HSM coordinates and attach the certificate to the signer"
           : "Failed to attach the issued certificate to the signer"
       );
+      if (isRefusedForRevokedSigner) {
+        const { outcome, refusal } = await $revokeOrKeepUnattachedCertificate(job, certificateId, projectId, {
+          isJobOpen: true
+        });
+        if (outcome === UnattachedRevokeOutcome.Kept) return;
+        if (outcome !== UnattachedRevokeOutcome.Revoked) {
+          await markJobFailed(
+            job,
+            `The signer was revoked before its new certificate was issued, and revoking the new certificate failed${refusal ? `: ${refusal}` : "."}`
+          );
+          return;
+        }
+      }
       await markJobFailed(job, reason);
-      if (isRefusedForRevokedSigner) await revokeUnattachedCertificate(certificateId, projectId);
       return;
     }
     if (isSuperseded) {
-      if (isSupersededByRevokeOrDelete) await revokeUnattachedCertificate(certificateId, projectId);
+      if (isSupersededByRevokeOrDelete) {
+        await $revokeOrKeepUnattachedCertificate(job, certificateId, projectId, { isJobOpen: false });
+      }
       logger.info(
         `signer issuance: job was superseded before completion, certificate not attached [jobId=${job.id}] [signerId=${job.signerId}] [certificateId=${certificateId}]`
       );
@@ -758,22 +857,14 @@ export const signerIssuanceServiceFactory = ({
   };
 
   const $trackDigiCertOrder = async (
-    jobId: string,
+    jobFilter: { id: string; status: SignerIssuanceJobStatus; failureReason?: string },
     orderId: number,
     certificateId: number | null,
     lifecycle: NonNullable<TDigiCertExternalOrderRef["digicert"]>["lifecycle"]
   ) =>
-    signerIssuanceJobDAL.updateById(jobId, {
+    signerIssuanceJobDAL.update(jobFilter, {
       status: SignerIssuanceJobStatus.Pending,
-      externalOrderRef: {
-        digicert: {
-          orderId,
-          certificateId,
-          lastStatus: CodeSigningOrderStatus.Pending,
-          lastCheckedAt: new Date().toISOString(),
-          lifecycle
-        }
-      }
+      externalOrderRef: buildDigiCertOrderRef(orderId, certificateId, lifecycle)
     });
 
   const $closeUnplacedDigiCertJobForRevokedSigner = async (
@@ -782,13 +873,23 @@ export const signerIssuanceServiceFactory = ({
   ) => {
     if (lifecycle?.mode === DigiCertLifecycleMode.Reissue) {
       if (!(await $cancelDigiCertOrderForRevokedSigner(job, lifecycle.previousOrderId))) {
-        await $trackDigiCertOrder(job.id, lifecycle.previousOrderId, null, lifecycle);
+        await $trackDigiCertOrder(
+          { id: job.id, status: SignerIssuanceJobStatus.Pending },
+          lifecycle.previousOrderId,
+          null,
+          lifecycle
+        );
         return;
       }
     } else {
       const recovered = await digicertFns.findCodeSigningOrderByReference(job.caId, `infisical-signer-job-${job.id}`);
       if (recovered && !(await $cancelDigiCertOrderForRevokedSigner(job, recovered.orderId))) {
-        await $trackDigiCertOrder(job.id, recovered.orderId, recovered.certificateId, lifecycle);
+        await $trackDigiCertOrder(
+          { id: job.id, status: SignerIssuanceJobStatus.Pending },
+          recovered.orderId,
+          recovered.certificateId,
+          lifecycle
+        );
         return;
       }
     }
@@ -814,24 +915,16 @@ export const signerIssuanceServiceFactory = ({
     ) => {
       const [savedJob] = await signerIssuanceJobDAL.update(
         { id: job.id, status: SignerIssuanceJobStatus.Pending },
-        {
-          externalOrderRef: {
-            digicert: {
-              orderId,
-              certificateId,
-              lastStatus: CodeSigningOrderStatus.Pending,
-              lastCheckedAt: new Date().toISOString(),
-              lifecycle: placedLifecycle
-            }
-          }
-        }
+        { externalOrderRef: buildDigiCertOrderRef(orderId, certificateId, placedLifecycle) }
       );
       if (!savedJob) {
+        if (await $isDigiCertOrderOwnedByOpenJob(job, orderId)) return;
         logger.info(
           `signer issuance: job was closed while its DigiCert order was being placed, canceling the order [jobId=${job.id}] [signerId=${job.signerId}] [orderId=${orderId}]`
         );
         if (!(await $cancelDigiCertOrderForRevokedSigner(job, orderId))) {
-          await $trackDigiCertOrder(job.id, orderId, certificateId, placedLifecycle);
+          const keepOn = await $keepOnJobClosedByRevoke(job);
+          if (keepOn) await $trackDigiCertOrder(keepOn, orderId, certificateId, placedLifecycle);
         }
         return;
       }
@@ -921,15 +1014,7 @@ export const signerIssuanceServiceFactory = ({
 
     const info = await digicertFns.getCodeSigningOrderStatus(job.caId, existingOrderId);
     await signerIssuanceJobDAL.updateById(job.id, {
-      externalOrderRef: {
-        digicert: {
-          orderId: existingOrderId,
-          certificateId: info.certificateId,
-          lastStatus: info.status,
-          lastCheckedAt: new Date().toISOString(),
-          lifecycle
-        }
-      }
+      externalOrderRef: buildDigiCertOrderRef(existingOrderId, info.certificateId, lifecycle, info.status)
     });
 
     if (info.status !== CodeSigningOrderStatus.Issued && !DIGICERT_CLOSED_ORDER_OUTCOMES[info.status]) {
@@ -1057,6 +1142,7 @@ export const signerIssuanceServiceFactory = ({
 
   const cancelOpenJobs = async (signerId: string, orderId: number, tx: Knex) => {
     const openJobs = await signerIssuanceJobDAL.findPendingForSignerForUpdate(signerId, tx);
+    await assertNoHeldCertificate(signerId, tx);
     const now = Date.now();
     const reissueInProgress = openJobs.some((job) => {
       const digicert = (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
@@ -1083,6 +1169,16 @@ export const signerIssuanceServiceFactory = ({
     await processJob(job.id);
   };
 
+  const $isDigiCertOrderOwnedByOpenJob = async (job: TPkiSignerCertificateIssuanceJobs, orderId: number) => {
+    const openJobs = await signerIssuanceJobDAL.transaction((tx) =>
+      signerIssuanceJobDAL.find({ signerId: job.signerId, status: SignerIssuanceJobStatus.Pending }, { tx })
+    );
+    return openJobs.some((openJob) => {
+      const digicert = (openJob.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
+      return openJob.id !== job.id && (digicert?.orderId ?? digicert?.lifecycle?.previousOrderId) === orderId;
+    });
+  };
+
   const cancelOpenJobsForRevokedSigner = async (
     signerId: string,
     { digicertReissuesOnly = false }: { digicertReissuesOnly?: boolean } = {}
@@ -1090,15 +1186,30 @@ export const signerIssuanceServiceFactory = ({
     const openJobs = await signerIssuanceJobDAL.transaction((tx) =>
       signerIssuanceJobDAL.find({ signerId, status: SignerIssuanceJobStatus.Pending }, { tx })
     );
+    const signer = openJobs.some((job) => job.certificateId)
+      ? await signerDAL.transaction((tx) => signerDAL.findById(signerId, tx))
+      : null;
     const jobIdsToCancel: string[] = [];
     const uncancelledDigicertOrderIds: number[] = [];
     for (const job of openJobs) {
       const digicert = (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
       const digicertOrderId = digicert?.orderId;
-      if (digicertReissuesOnly && digicert?.lifecycle?.mode !== DigiCertLifecycleMode.Reissue) continue;
-      if (job.caType !== CaType.DIGICERT || !digicertOrderId) {
+      if (digicertReissuesOnly && (digicert?.lifecycle?.mode !== DigiCertLifecycleMode.Reissue || job.certificateId)) {
+        continue;
+      }
+      if (job.certificateId) {
+        if (signer && (await revokeUnattachedCertificate(job.certificateId, signer.projectId))) {
+          await signerIssuanceJobDAL.update(
+            { id: job.id, status: SignerIssuanceJobStatus.Pending },
+            { status: SignerIssuanceJobStatus.Failed, failureReason: REVOKED_SIGNER_JOB_CANCEL_REASON }
+          );
+        }
+      } else if (job.caType === CaType.DIGICERT && !digicertOrderId && job.lastAttemptAt) {
+        logger.info(
+          `signer issuance: DigiCert placement outcome unknown, keeping its job open so the poller recovers and cancels any order [jobId=${job.id}] [signerId=${signerId}]`
+        );
+      } else if (job.caType !== CaType.DIGICERT || !digicertOrderId) {
         jobIdsToCancel.push(job.id);
-        // eslint-disable-next-line no-await-in-loop
       } else if (await $cancelDigiCertOrderForRevokedSigner(job, digicertOrderId)) {
         jobIdsToCancel.push(job.id);
       } else {
@@ -1121,6 +1232,7 @@ export const signerIssuanceServiceFactory = ({
     cancelOpenJobs,
     cancelOpenJobsForRevokedSigner,
     hasOpenJobs,
+    assertNoHeldCertificate,
     revokeUnattachedCertificate,
     getLatestIssuanceKeyConfig,
     getLatestFailedRequestAt,

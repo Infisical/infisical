@@ -414,7 +414,6 @@ export const SignerDetailPage = () => {
       <EditSignerModal isOpen={isEditOpen} onOpenChange={setIsEditOpen} signer={signer} />
       <RevokeSignerCertificateDialog
         signer={signer}
-        isDigicertSigner={isDigicertSigner}
         isOpen={isRevokeOpen}
         onOpenChange={setIsRevokeOpen}
       />

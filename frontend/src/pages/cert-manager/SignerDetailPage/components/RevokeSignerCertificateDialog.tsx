@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { CaType } from "@app/hooks/api/ca/enums";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
 import {
@@ -30,17 +31,11 @@ const REVOCATION_REASONS = crlReasons.filter(({ value }) => value !== CrlReason.
 
 type Props = {
   signer: TSigner;
-  isDigicertSigner: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
 
-export const RevokeSignerCertificateDialog = ({
-  signer,
-  isDigicertSigner,
-  isOpen,
-  onOpenChange
-}: Props) => {
+export const RevokeSignerCertificateDialog = ({ signer, isOpen, onOpenChange }: Props) => {
   const reasonId = useId();
   const openDigicertOrderId = getNextDigicertOrderId(signer);
   const [revocationReason, setRevocationReason] = useState<CrlReason>(CrlReason.UNSPECIFIED);
@@ -71,7 +66,7 @@ export const RevokeSignerCertificateDialog = ({
                   : "This also cancels the pending certificate request."}
               </span>
             )}
-            {isDigicertSigner && (
+            {signer.caType === CaType.DIGICERT && (
               <span className="mt-2 block font-medium text-warning">
                 If your CertCentral account requires approval for revocations, the certificate stays
                 valid until an administrator approves the request in CertCentral. Revoke again after
