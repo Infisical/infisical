@@ -103,12 +103,11 @@ export const assertCanEditCertificate = (dto: TAssertCanEditCertificateDTO) =>
     projectAction: ProjectPermissionCertificateActions.Edit
   });
 
-export const assertCanRevokeCertificate = async ({
-  certificate,
-  ...dto
-}: Omit<TAssertCanEditCertificateDTO, "certificate"> & {
+type TAssertCanRevokeCertificateDTO = Omit<TAssertCanEditCertificateDTO, "certificate"> & {
   certificate: TCertificateSubjectFields & { friendlyName?: string | null; status?: string | null };
-}) => {
+};
+
+export const assertCanRevokeCertificate = async ({ certificate, ...dto }: TAssertCanRevokeCertificateDTO) => {
   await assertCertificatePermission({
     ...dto,
     certificate,
@@ -119,6 +118,41 @@ export const assertCanRevokeCertificate = async ({
       status: certificate.status ?? undefined
     }
   });
+};
+
+// An actor who can't revoke directly may still request a revocation, so the caller must refuse them
+// unless a revocation approval policy covers the certificate.
+export const assertCanRevokeOrRequestRevocation = async (
+  dto: TAssertCanRevokeCertificateDTO
+): Promise<{ canRevokeDirectly: boolean }> => {
+  const { certificate } = dto;
+  if (!certificate.applicationId) {
+    await assertCanRevokeCertificate(dto);
+    return { canRevokeDirectly: true };
+  }
+
+  const { permission } = await dto.permissionService.getResourcePermission({
+    actor: dto.actor,
+    actorId: dto.actorId,
+    projectId: certificate.projectId,
+    resourceType: ResourceType.CertificateApplication,
+    resourceId: certificate.applicationId,
+    actorAuthMethod: dto.actorAuthMethod,
+    actorOrgId: dto.actorOrgId
+  });
+
+  const canRevokeDirectly = permission.can(
+    ResourcePermissionCertificateActions.Delete,
+    ResourcePermissionSub.Certificates
+  );
+  if (!canRevokeDirectly) {
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionCertificateActions.RequestRevocation,
+      ResourcePermissionSub.Certificates
+    );
+  }
+
+  return { canRevokeDirectly };
 };
 
 export const assertCanEditCertificateResult = ({

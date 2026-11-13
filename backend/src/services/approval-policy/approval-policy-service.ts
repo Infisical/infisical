@@ -25,6 +25,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
@@ -191,6 +192,7 @@ export const approvalPolicyServiceFactory = ({
     actorId?: string;
     comment?: string;
     bypassReason?: string;
+    failureReason?: string;
   }) =>
     dispatchApprovalNotification(
       { ...args, approvers: args.approvers ?? [], resource: $resource(args.request.type as ApprovalPolicyType) },
@@ -661,6 +663,13 @@ export const approvalPolicyServiceFactory = ({
     const resolved = await $resolveScope(scope, inputScopeId, policyType);
     const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = resolved;
 
+    // $resolveScope enforces a type's scope only for domain scopes it resolves through the resource, so a
+    // type pinned to a built-in scope (an Application) is checked here.
+    const requiredScope = resources[policyType]?.scopeType;
+    if (requiredScope && !resources[policyType]?.resolveScope && dbScopeType !== requiredScope) {
+      throw new BadRequestError({ message: `${policyType} policies must use the ${requiredScope} scope` });
+    }
+
     await $assertCanManagePolicy(
       projectId,
       dbScopeType,
@@ -670,8 +679,9 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
-    // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
-    if (policyType === ApprovalPolicyType.CertRequest) {
+    // Certificate issuance and revocation only: code signing follows pkiCodeSigning and PAM has its own
+    // product entitlement.
+    if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertRevocation) {
       const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({
@@ -2803,6 +2813,25 @@ export const approvalPolicyServiceFactory = ({
     bypassReason?: string;
   }) => (await $resource(args.request.type as ApprovalPolicyType).buildAuditEvent?.(args)) ?? null;
 
+  // For a caller whose post-approval routine failed after the approval committed. Nothing waits on it,
+  // so it logs instead of throwing.
+  const notifyApprovedActionFailed = async (request: TApprovalRequests, failureReason: string) => {
+    try {
+      const steps = await approvalRequestDAL.findStepsByRequestId(request.id);
+      await $notify({
+        event: ApprovalNotificationEvent.ApprovedActionFailed,
+        request,
+        approvers: steps.flatMap((step) => step.approvers),
+        failureReason
+      });
+    } catch (err) {
+      logger.error(
+        err,
+        `Failed to notify that an approved action failed [requestId=${request.id}] [type=${request.type}]`
+      );
+    }
+  };
+
   const buildTelemetryEvent = async (args: {
     action: ApprovalAuditAction;
     request: TApprovalRequests;
@@ -2839,6 +2868,7 @@ export const approvalPolicyServiceFactory = ({
     approveRequest,
     rejectRequest,
     cancelRequest,
+    notifyApprovedActionFailed,
     listGrants,
     getGrantById,
     revokeGrant,

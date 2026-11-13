@@ -9,7 +9,9 @@ import {
   getCertificateDeletedBySummary,
   getCertificateDeletionWarning,
   getCertificateDisplayStatus,
-  isRemovedFromSyncDestination
+  getPendingRevocationState,
+  isRemovedFromSyncDestination,
+  PENDING_REVOCATION_REASON
 } from "./CertificatesTable.utils";
 
 // Each rule is "<action>" on certificates, or "<action>:<subject>".
@@ -88,6 +90,7 @@ describe("getApplicationCertificateAccess", () => {
       canRenew: true,
       canEdit: true,
       canDelete: true,
+      canRevoke: true,
       canManagePkiSyncs: true
     });
   });
@@ -99,8 +102,108 @@ describe("getApplicationCertificateAccess", () => {
       canRenew: false,
       canEdit: false,
       canDelete: false,
+      canRevoke: false,
       canManagePkiSyncs: false
     });
+  });
+
+  describe("revoke", () => {
+    const operator = abilityAllowing("read", "list", "create", "edit", "request-revocation");
+
+    it("lets an operator request a revocation when a revocation policy covers the certificate", () => {
+      const access = getApplicationCertificateAccess({
+        applicationName,
+        permission: operator,
+        isRevocationApprovalRequired: true
+      });
+
+      expect(access.canRevoke).toBe(true);
+      expect(access.canDelete).toBe(false);
+      expect(access.revokeBlockedReason).toBeUndefined();
+    });
+
+    it("blocks an operator when no revocation policy covers the certificate", () => {
+      const access = getApplicationCertificateAccess({
+        applicationName,
+        permission: operator,
+        isRevocationApprovalRequired: false
+      });
+
+      expect(access.canRevoke).toBe(false);
+      expect(access.revokeBlockedReason).toBe(
+        "You need the Admin role on payments to revoke this certificate."
+      );
+    });
+
+    it("blocks a member who can't request a revocation, even when a policy covers the certificate", () => {
+      const access = getApplicationCertificateAccess({
+        applicationName,
+        permission: abilityAllowing("read", "list"),
+        isRevocationApprovalRequired: true
+      });
+
+      expect(access.canRevoke).toBe(false);
+      expect(access.revokeBlockedReason).toBe(
+        "You need the Operator or Admin role on payments to revoke this certificate."
+      );
+    });
+
+    it("lets an admin revoke whether or not a policy covers the certificate", () => {
+      [true, false].forEach((isRevocationApprovalRequired) => {
+        const access = getApplicationCertificateAccess({
+          applicationName,
+          permission: abilityAllowing("read", "list", "delete"),
+          isRevocationApprovalRequired
+        });
+
+        expect(access.canRevoke).toBe(true);
+        expect(access.revokeBlockedReason).toBeUndefined();
+      });
+    });
+  });
+});
+
+describe("getPendingRevocationState", () => {
+  it("blocks Revoke while a revocation policy covers the certificate", () => {
+    expect(
+      getPendingRevocationState({
+        hasPendingRequest: true,
+        isRevoked: false,
+        isRevocationApprovalRequired: true
+      })
+    ).toEqual({ isPending: true, revokeBlockedReason: PENDING_REVOCATION_REASON });
+  });
+
+  it("shows the request but lets Revoke through once no policy covers the certificate", () => {
+    expect(
+      getPendingRevocationState({
+        hasPendingRequest: true,
+        isRevoked: false,
+        isRevocationApprovalRequired: false
+      })
+    ).toEqual({ isPending: true, revokeBlockedReason: undefined });
+  });
+
+  it("ignores a request left on a certificate that is already revoked", () => {
+    [true, false].forEach((isRevocationApprovalRequired) => {
+      expect(
+        getPendingRevocationState({
+          hasPendingRequest: true,
+          isRevoked: true,
+          isRevocationApprovalRequired
+        })
+      ).toEqual({ isPending: false, revokeBlockedReason: undefined });
+    });
+  });
+
+  it("does nothing without a pending request", () => {
+    expect(
+      getPendingRevocationState({
+        hasPendingRequest: false,
+        isRevoked: false,
+        isRevocationApprovalRequired: true
+      })
+    ).toEqual({ isPending: false, revokeBlockedReason: undefined });
   });
 });
 

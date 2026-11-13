@@ -1,13 +1,15 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { approvalRequestQuery } from "../approvalRequests/queries";
 import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { pkiSyncKeys } from "../pkiSyncs/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
+  CertificateRevocationStatus,
   TCancelCertificateRequestResponse,
   TCertificate,
   TDeleteCertDTO,
@@ -26,6 +28,24 @@ import {
   TUpdateCertificateDTO,
   TUpdateRenewalConfigDTO
 } from "./types";
+
+export const invalidateRevokedCertificate = (queryClient: QueryClient, certificateId: string) => {
+  queryClient.invalidateQueries({
+    queryKey: certKeys.getCertificateById(certificateId)
+  });
+  queryClient.invalidateQueries({
+    queryKey: certificateProfileKeys.lists()
+  });
+  queryClient.invalidateQueries({
+    queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
+  });
+  queryClient.invalidateQueries({
+    queryKey: projectKeys.allProjectCertificates()
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["cert-dashboard-stats"]
+  });
+};
 
 export const useDeleteCert = () => {
   const queryClient = useQueryClient();
@@ -71,22 +91,12 @@ export const useRevokeCert = () => {
       );
       return data;
     },
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({
-        queryKey: certKeys.getCertificateById(id)
-      });
-      queryClient.invalidateQueries({
-        queryKey: certificateProfileKeys.lists()
-      });
-      queryClient.invalidateQueries({
-        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.allProjectCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["cert-dashboard-stats"]
-      });
+    onSuccess: ({ status }, { id }) => {
+      if (status === CertificateRevocationStatus.PendingApproval) {
+        queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+      } else {
+        invalidateRevokedCertificate(queryClient, id);
+      }
     }
   });
 };

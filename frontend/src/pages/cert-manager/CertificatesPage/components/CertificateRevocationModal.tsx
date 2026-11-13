@@ -27,6 +27,7 @@ import { useProject } from "@app/context";
 import { useRevokeCert } from "@app/hooks/api";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
+import { CertificateRevocationStatus } from "@app/hooks/api/certificates/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -45,6 +46,11 @@ const schema = z.object({
 
 export type FormData = z.infer<typeof schema>;
 
+type TRevokeCertificatePopUpData = {
+  certificateId: string;
+  isRevocationApprovalRequired?: boolean;
+};
+
 type Props = {
   popUp: UsePopUpState<["revokeCertificate"]>;
   handlePopUpToggle: (
@@ -57,6 +63,8 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
   const revocationReasonId = useId();
   const { currentProject } = useProject();
   const { mutateAsync: revokeCertificate } = useRevokeCert();
+  const popUpData = popUp.revokeCertificate.data as TRevokeCertificatePopUpData | undefined;
+  const isRevocationApprovalRequired = Boolean(popUpData?.isRevocationApprovalRequired);
 
   const {
     control,
@@ -68,22 +76,28 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
   });
 
   const onFormSubmit = async ({ revocationReason }: FormData) => {
-    if (!currentProject?.slug) return;
+    if (!currentProject?.slug || !popUpData) return;
 
-    const { certificateId } = popUp.revokeCertificate.data as { certificateId: string };
-
-    const { crlWarning } = await revokeCertificate({
-      id: certificateId,
+    const response = await revokeCertificate({
+      id: popUpData.certificateId,
       revocationReason
     });
 
     reset();
     handlePopUpToggle("revokeCertificate", false);
 
-    if (crlWarning) {
+    if (response.status === CertificateRevocationStatus.PendingApproval) {
+      createNotification({
+        text: "Revocation request submitted. The certificate isn't revoked until the request is approved.",
+        type: "success"
+      });
+      return;
+    }
+
+    if (response.crlWarning) {
       createNotification({
         title: "Certificate revoked, CRL not regenerated",
-        text: crlWarning,
+        text: response.crlWarning,
         type: "warning"
       });
       return;
@@ -106,7 +120,11 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
       <DialogContent isPending={isSubmitting}>
         <DialogHeader>
           <DialogTitle>Revoke Certificate</DialogTitle>
-          <DialogDescription>Mark this certificate as revoked.</DialogDescription>
+          <DialogDescription>
+            {isRevocationApprovalRequired
+              ? "Submitting creates an approval request. The certificate isn't revoked until it's approved."
+              : "Mark this certificate as revoked."}
+          </DialogDescription>
         </DialogHeader>
         <form className="flex min-h-0 flex-1 flex-col gap-6" onSubmit={handleSubmit(onFormSubmit)}>
           <DialogBody>
@@ -154,7 +172,7 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
               </Button>
             </DialogClose>
             <Button variant="danger" type="submit" isPending={isSubmitting}>
-              Revoke
+              {isRevocationApprovalRequired ? "Request Revocation" : "Revoke"}
             </Button>
           </DialogFooter>
         </form>

@@ -35,6 +35,7 @@ export type TApplicationCertificateAccess = {
   canRenew: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canRevoke: boolean;
   canManagePkiSyncs: boolean;
   renewBlockedReason?: string;
   editBlockedReason?: string;
@@ -46,13 +47,16 @@ export type TApplicationCertificateAccess = {
 
 // The backend checks only the application role for a certificate that belongs to an application,
 // and gives a project admin who is not a member read access alone, so project permissions must not
-// unlock these actions.
+// unlock these actions. Without Delete, revoking only opens an approval request, which the backend
+// refuses unless a revocation policy covers the certificate's profile.
 export const getApplicationCertificateAccess = ({
   applicationName,
-  permission
+  permission,
+  isRevocationApprovalRequired = false
 }: {
   applicationName: string;
   permission?: TApplicationAbility;
+  isRevocationApprovalRequired?: boolean;
 }): TApplicationCertificateAccess => {
   const can = (
     action: PkiApplicationResourceActions,
@@ -61,13 +65,16 @@ export const getApplicationCertificateAccess = ({
   const canEdit = can(PkiApplicationResourceActions.Edit);
   const canDelete = can(PkiApplicationResourceActions.Delete);
   const canRenew = can(PkiApplicationResourceActions.Create) && canEdit;
+  const canRevoke =
+    canDelete ||
+    (isRevocationApprovalRequired && can(PkiApplicationResourceActions.RequestRevocation));
   const canManagePkiSyncs = can(
     PkiApplicationResourceActions.Edit,
     PkiApplicationResourceSub.PkiSyncs
   );
 
   // Until the ability loads the actions stay disabled without blaming a role.
-  if (!permission) return { canRenew, canEdit, canDelete, canManagePkiSyncs };
+  if (!permission) return { canRenew, canEdit, canDelete, canRevoke, canManagePkiSyncs };
 
   const operatorOrAdmin = `You need the Operator or Admin role on ${applicationName}`;
   const admin = `You need the Admin role on ${applicationName}`;
@@ -76,6 +83,7 @@ export const getApplicationCertificateAccess = ({
     canRenew,
     canEdit,
     canDelete,
+    canRevoke,
     canManagePkiSyncs,
     renewBlockedReason: canRenew ? undefined : `${operatorOrAdmin} to renew this certificate.`,
     editBlockedReason: canEdit
@@ -84,11 +92,37 @@ export const getApplicationCertificateAccess = ({
     editMetadataBlockedReason: canEdit
       ? undefined
       : `${operatorOrAdmin} to edit this certificate's metadata.`,
-    revokeBlockedReason: canDelete ? undefined : `${admin} to revoke this certificate.`,
+    revokeBlockedReason: canRevoke
+      ? undefined
+      : `${isRevocationApprovalRequired ? operatorOrAdmin : admin} to revoke this certificate.`,
     deleteBlockedReason: canDelete ? undefined : `${admin} to delete this certificate.`,
     managePkiSyncsBlockedReason: canManagePkiSyncs
       ? undefined
       : `${admin} to manage PKI syncs for this certificate.`
+  };
+};
+
+export const PENDING_REVOCATION_REASON =
+  "A revocation of this certificate is already waiting for approval.";
+
+// With no revocation policy covering the certificate, revoking skips approval, so a pending request
+// is no reason to block it. A revoked certificate's request can no longer revoke anything (a DigiCert
+// sync can revoke one while its request is pending), so it is not shown at all.
+export const getPendingRevocationState = ({
+  hasPendingRequest,
+  isRevoked,
+  isRevocationApprovalRequired
+}: {
+  hasPendingRequest: boolean;
+  isRevoked: boolean;
+  isRevocationApprovalRequired: boolean;
+}) => {
+  const isPending = hasPendingRequest && !isRevoked;
+
+  return {
+    isPending,
+    revokeBlockedReason:
+      isPending && isRevocationApprovalRequired ? PENDING_REVOCATION_REASON : undefined
   };
 };
 

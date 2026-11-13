@@ -140,7 +140,7 @@ All user-facing "notify me when X happens" features share one module: `backend/s
 All "someone has to approve this before it happens" features share one module:
 `backend/src/services/approval-policy/`, which owns policies, requests, steps, grants, break-glass, and
 the generic `/v1/<policy-type>/approval-policies` endpoints. Current types: PAM access, certificate
-requests, code signing.
+requests, certificate revocation, code signing.
 
 A policy type plugs in through **one** extension point, a `TApprovalResource` (see its doc comment),
 constructed with its own dependencies and registered in the `approvalResources` map in
@@ -154,6 +154,16 @@ Secret change policies exist only on V3 projects, so older projects have no secr
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
+
+A new approval type's `postApprovalRoutine` must never throw, because it runs after the approval has committed. Throwing
+can't undo the approval, would fail the approver's request for an approval that went through, and never reaches the
+requester. `approveRequest` runs it once, for the approval that completes the request. When the approved
+action fails there, record the failure in the audit log and call
+`approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and every approver why
+(`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording. Certificate
+revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance
+(`cert-request-policy-factory.ts`) doesn't follow this pattern: its status updates, failure recording and telemetry
+run outside any guard, so it can still throw, and a failed issuance is audited but nobody is notified. Don't copy it.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a

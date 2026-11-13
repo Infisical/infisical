@@ -96,7 +96,17 @@ export const CertManagerNav = ({
     enabled: Boolean(projectId),
     select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
   });
-  const pendingRequestsCount = pendingCertRequestsCount + pendingSigningRequestsCount;
+  const { data: pendingRevocationRequestsCount = 0 } = useQuery({
+    ...approvalRequestQuery.list({
+      scope: ApprovalPolicyScope.Project,
+      scopeId: projectId,
+      policyType: ApprovalPolicyType.CertRevocation
+    }),
+    enabled: Boolean(projectId),
+    select: (requests) => requests.filter((r) => r.status === ApprovalRequestStatus.Pending).length
+  });
+  const pendingRequestsCount =
+    pendingCertRequestsCount + pendingRevocationRequestsCount + pendingSigningRequestsCount;
 
   const hasLegacyAlerts =
     Boolean(v2AlertsData?.alerts?.some((a) => !a.applicationId)) ||

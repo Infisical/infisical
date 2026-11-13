@@ -2537,7 +2537,10 @@ export const CERTIFICATES = {
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
     revokedAt: "The date and time when the certificate was revoked.",
-    serialNumberRes: "The serial number of the revoked certificate.",
+    serialNumberRes: "The serial number of the certificate.",
+    status:
+      "revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.",
+    approvalRequestId: "The ID of the approval request created for the revocation.",
     crlWarning: "Set when the certificate was revoked but the CRL could not be regenerated. Contains the reason."
   },
   DELETE: {

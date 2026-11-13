@@ -37,6 +37,11 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
+import {
+  ApprovalPolicyType,
+  useRevocationPolicyProfileNames
+} from "@app/hooks/api/approvalPolicies";
+import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -50,6 +55,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
+import { getCertManagerLink } from "../cert-manager-link";
 import { BlockedActionTooltip } from "../CertificatesPage/components/BlockedActionTooltip";
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
 import { CertificateDeletionSyncImpact } from "../CertificatesPage/components/CertificateDeletionSyncImpact";
@@ -67,6 +73,7 @@ import {
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
   getCertificateDeletionWarning,
+  getPendingRevocationState,
   isExpiringWithinOneDay,
   isManagedCertificate,
   RENEWAL_UNAVAILABLE_NO_PROFILE
@@ -112,6 +119,13 @@ const Page = () => {
   const { permission } = useProjectPermission();
   const { data: appPermissionData } = useGetPkiApplicationPermissions(
     certificate?.applicationId ?? ""
+  );
+  const { data: pendingRevocations } = usePendingCertificateRevocations(certificate?.applicationId);
+  const pendingRevocationRequestId = certificate
+    ? pendingRevocations?.get(certificate.id)
+    : undefined;
+  const { data: revocationPolicyProfileNames } = useRevocationPolicyProfileNames(
+    certificate?.applicationId
   );
 
   const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
@@ -243,10 +257,19 @@ const Page = () => {
         PkiApplicationResourceSub.Certificates
       ))
   );
+  const isRevocationApprovalRequired = Boolean(
+    certificate?.profileName && revocationPolicyProfileNames?.has(certificate.profileName)
+  );
+  const pendingRevocation = getPendingRevocationState({
+    hasPendingRequest: Boolean(pendingRevocationRequestId),
+    isRevoked,
+    isRevocationApprovalRequired
+  });
   const applicationAccess = certificate?.applicationId
     ? getApplicationCertificateAccess({
         applicationName: certificate.applicationName ?? "this application",
-        permission: appPermissionData?.permission
+        permission: appPermissionData?.permission,
+        isRevocationApprovalRequired
       })
     : undefined;
   const canEditCertificate = applicationAccess
@@ -258,9 +281,14 @@ const Page = () => {
     : Boolean(
         certSubject && permission.can(ProjectPermissionCertificateActions.Delete, certSubject)
       );
+  const canRevokeCertificate = applicationAccess
+    ? applicationAccess.canRevoke
+    : canDeleteCertificate;
   const canEditPkiSyncs = applicationAccess
     ? applicationAccess.canManagePkiSyncs
     : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
+  const revokeBlockedReason =
+    pendingRevocation.revokeBlockedReason ?? applicationAccess?.revokeBlockedReason;
 
   let certificateBackLink = (
     <Link
@@ -327,7 +355,28 @@ const Page = () => {
         <PageHeader
           backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
-          description="View certificate details"
+          description={
+            pendingRevocation.isPending && pendingRevocationRequestId ? (
+              <>
+                This certificate isn&apos;t revoked until its{" "}
+                <Link
+                  {...getCertManagerLink(
+                    currentProject,
+                    `approvals/${pendingRevocationRequestId}`,
+                    {
+                      policyType: ApprovalPolicyType.CertRevocation
+                    }
+                  )}
+                  className="text-foreground underline underline-offset-2 hover:text-project"
+                >
+                  revocation request
+                </Link>{" "}
+                is approved.
+              </>
+            ) : (
+              "View certificate details"
+            )
+          }
           title={displayName}
         >
           {isDeleted && !canOfferRevoke ? (
@@ -483,13 +532,16 @@ const Page = () => {
                     </BlockedActionTooltip>
                   )}
                 {canOfferRevoke && (
-                  <BlockedActionTooltip reason={applicationAccess?.revokeBlockedReason}>
+                  <BlockedActionTooltip reason={revokeBlockedReason}>
                     <DropdownMenuItem
-                      isDisabled={!canDeleteCertificate}
-                      isDisabledFocusable={Boolean(applicationAccess?.revokeBlockedReason)}
+                      isDisabled={
+                        !canRevokeCertificate || Boolean(pendingRevocation.revokeBlockedReason)
+                      }
+                      isDisabledFocusable={Boolean(revokeBlockedReason)}
                       onClick={() =>
                         handlePopUpOpen("revokeCertificate", {
-                          certificateId: certificate.id
+                          certificateId: certificate.id,
+                          isRevocationApprovalRequired
                         })
                       }
                     >

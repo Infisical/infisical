@@ -26,6 +26,7 @@ export enum PkiApplicationResourceActions {
   Delete = "delete",
   Create = "create",
   List = "list",
+  RequestRevocation = "request-revocation",
   ReadPrivateKey = "read-private-key",
   Import = "import",
   SyncCertificates = "sync-certificates",

@@ -1,8 +1,11 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
 import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  CertRequestPolicyConditions,
   TApprovalPolicy,
   TAutoApprovalCatalog,
   TAutoApprovalOption,
@@ -83,3 +86,24 @@ export const approvalPolicyQuery = {
       }
     })
 };
+
+// Mirrors the backend's revocation policy match: only active policies count, by profile slug.
+export const useRevocationPolicyProfileNames = (applicationId?: string | null) =>
+  useQuery({
+    ...approvalPolicyQuery.list({
+      policyType: ApprovalPolicyType.CertRevocation,
+      scope: ApprovalPolicyScope.PkiApplication,
+      scopeId: applicationId ?? ""
+    }),
+    enabled: Boolean(applicationId),
+    select: (policies) =>
+      new Set(
+        policies
+          .filter((policy) => policy.isActive)
+          .flatMap((policy) =>
+            (policy.conditions.conditions as CertRequestPolicyConditions).flatMap(
+              (condition) => condition.profileNames
+            )
+          )
+      )
+  });
