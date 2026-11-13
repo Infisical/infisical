@@ -73,6 +73,7 @@ const buildService = ({
     claimForAttempt: vi.fn().mockResolvedValue({ ...job, attempts: job.attempts + 1 }),
     completeIfPending: vi.fn().mockResolvedValue({ ...job, status: SignerIssuanceJobStatus.Completed }),
     update: vi.fn().mockResolvedValue([{ id: job.id }]),
+    updateById: vi.fn().mockResolvedValue(job),
     findPendingForSignerForUpdate: vi.fn().mockResolvedValue([job]),
     cancelOpenForSigner: vi.fn().mockResolvedValue(undefined),
     find: vi.fn().mockResolvedValue([job]),
@@ -101,7 +102,12 @@ const buildService = ({
   };
   const certificateService = { revokeOwnedCertificate: vi.fn().mockResolvedValue({ cert: {} }) };
   const awsPcaFns = { orderCertificate: vi.fn().mockResolvedValue({ certificateId: NEW_CERT_ID }) };
-  const digicertFns = { cancelReissue: vi.fn().mockResolvedValue(true) };
+  const digicertFns = {
+    cancelReissue: vi.fn().mockResolvedValue(true),
+    getCodeSigningOrderStatus: vi
+      .fn()
+      .mockResolvedValue({ status: "pending", rawStatus: "pending", certificateId: null })
+  };
   const deps = {
     signerIssuanceJobDAL,
     signerDAL,
@@ -370,6 +376,84 @@ describe("signerIssuanceService failing a job", () => {
     expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String));
   });
 
+  it.each([
+    ["revoked", SignerStatus.Revoked],
+    ["deleted", null]
+  ])("cancels the DigiCert order of a %s signer when it polls the job", async (_label, signerStatus) => {
+    const job = buildJob({
+      caType: CaType.DIGICERT,
+      externalOrderRef: {
+        digicert: { orderId: 9960, lifecycle: { mode: DigiCertLifecycleMode.Renew, previousOrderId: 9804 } }
+      }
+    });
+    const { service, deps } = buildService({ signerStatus: SignerStatus.Revoked, job });
+    if (signerStatus === null) deps.signerDAL.findById.mockResolvedValue(undefined);
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).toHaveBeenCalledWith({
+      caId: CA_ID,
+      orderId: 9960,
+      requestTimeoutMs: DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS
+    });
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith(
+      [JOB_ID],
+      "Cancelled because the signer was revoked."
+    );
+    expect(deps.certificateIssuanceQueue.digicertFns.getCodeSigningOrderStatus).toHaveBeenCalledWith(CA_ID, 9960);
+  });
+
+  it("keeps polling a revoked signer's DigiCert order when the cancel fails, so a late certificate is still revoked", async () => {
+    const job = buildJob({
+      caType: CaType.DIGICERT,
+      externalOrderRef: {
+        digicert: { orderId: 9960, lifecycle: { mode: DigiCertLifecycleMode.Renew, previousOrderId: 9804 } }
+      }
+    });
+    const { service, deps } = buildService({ signerStatus: SignerStatus.Revoked, job });
+    deps.certificateIssuanceQueue.digicertFns.cancelReissue.mockResolvedValue(false);
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).not.toHaveBeenCalled();
+    expect(deps.certificateIssuanceQueue.digicertFns.getCodeSigningOrderStatus).toHaveBeenCalledWith(CA_ID, 9960);
+  });
+
+  it("doesn't cancel an order DigiCert already issued for a revoked signer, so its certificate is revoked instead", async () => {
+    const job = buildJob({
+      caType: CaType.DIGICERT,
+      externalOrderRef: {
+        digicert: { orderId: 9960, lifecycle: { mode: DigiCertLifecycleMode.Renew, previousOrderId: 9804 } }
+      }
+    });
+    const { service, deps } = buildService({ signerStatus: SignerStatus.Revoked, job });
+    deps.certificateIssuanceQueue.digicertFns.getCodeSigningOrderStatus.mockResolvedValue({
+      status: "issued",
+      rawStatus: "issued",
+      certificateId: 109960
+    });
+
+    await service.processJob(JOB_ID);
+
+    expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).not.toHaveBeenCalled();
+  });
+
+  it("keeps a DigiCert job open while its order is still being placed, so the order can be canceled once placed", async () => {
+    const { service, deps } = buildService({
+      signerStatus: SignerStatus.Revoked,
+      job: buildJob({
+        caType: CaType.DIGICERT,
+        lastAttemptAt: new Date(),
+        externalOrderRef: { digicert: { lifecycle: { mode: DigiCertLifecycleMode.Renew, previousOrderId: 9804 } } }
+      })
+    });
+
+    await service.cancelOpenJobsForRevokedSigner(SIGNER_ID);
+
+    expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String));
+    expect(deps.certificateIssuanceQueue.digicertFns.cancelReissue).not.toHaveBeenCalled();
+  });
+
   it("keeps a DigiCert job open when DigiCert doesn't cancel its order, so a late certificate is still revoked", async () => {
     const { service, deps } = buildService({
       signerStatus: SignerStatus.Revoked,
@@ -383,7 +467,8 @@ describe("signerIssuanceService failing a job", () => {
     deps.certificateIssuanceQueue.digicertFns.cancelReissue.mockResolvedValue(false);
 
     await expect(service.cancelOpenJobsForRevokedSigner(SIGNER_ID)).resolves.toEqual({
-      uncancelledDigicertOrderIds: [9960]
+      uncancelledDigicertOrderIds: [9960],
+      cancelledJobCount: 0
     });
 
     expect(deps.signerIssuanceJobDAL.cancelPendingByIds).toHaveBeenCalledWith([], expect.any(String));

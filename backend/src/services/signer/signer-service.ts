@@ -1452,7 +1452,7 @@ export const signerServiceFactory = ({
       throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
     }
     if (signer.status === SignerStatus.Disabled) return signer;
-    return signerDAL.updateById(dto.signerId, { status: SignerStatus.Disabled });
+    return signerDAL.updateUnlessRevoked(dto.signerId, { status: SignerStatus.Disabled });
   };
 
   type TReissueExecutionContext = {
@@ -2007,10 +2007,11 @@ export const signerServiceFactory = ({
       });
 
       let revoked: Awaited<ReturnType<typeof certificateService.revokeOwnedCertificate>>;
+      let cancelledReissueCount = 0;
       try {
-        const { uncancelledDigicertOrderIds } = await signerIssuanceService.cancelOpenJobsForRevokedSigner(signer.id, {
-          digicertReissuesOnly: true
-        });
+        const { uncancelledDigicertOrderIds, cancelledJobCount } =
+          await signerIssuanceService.cancelOpenJobsForRevokedSigner(signer.id, { digicertReissuesOnly: true });
+        cancelledReissueCount = cancelledJobCount;
         if (uncancelledDigicertOrderIds.length) {
           throw new BadRequestError({
             message: `DigiCert can't revoke this certificate while a reissue is pending on order #${uncancelledDigicertOrderIds[0]}. Cancel the reissue in CertCentral, then revoke again.`
@@ -2024,10 +2025,16 @@ export const signerServiceFactory = ({
       } catch (err) {
         const cert = await signerDAL.transaction((tx) => certificateDAL.findById(certificateId, tx));
         if (cert?.status !== CertStatus.REVOKED) {
-          await signerDAL.restoreStatusAfterFailedRevoke(signer.id, {
-            status: previousStatus as SignerStatus,
-            certificateFailureReason: previousFailureReason
-          });
+          const isStrandedPendingRequest = previousStatus === SignerStatus.Pending && cancelledReissueCount > 0;
+          await signerDAL.restoreStatusAfterFailedRevoke(
+            signer.id,
+            isStrandedPendingRequest
+              ? {
+                  status: SignerStatus.Active,
+                  certificateFailureReason: "The certificate request was canceled by a revoke that didn't complete"
+                }
+              : { status: previousStatus as SignerStatus, certificateFailureReason: previousFailureReason }
+          );
         }
         throw err;
       }
