@@ -1,5 +1,7 @@
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
@@ -20,10 +22,12 @@ import {
   ApprovalRequestStatus
 } from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
+import { parseCertRequestRenewalApproval } from "./cert-request-policy-schemas";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findById">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateApprovalService: TCertificateApprovalService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "recordIssuanceFailure">;
@@ -36,6 +40,7 @@ type TCertRequestApprovalResourceDep = {
 
 export const certRequestApprovalResourceFactory = ({
   approvalPolicyDAL,
+  auditLogService,
   certificateApprovalService,
   certificateRequestDAL,
   certificateRequestService,
@@ -118,9 +123,10 @@ export const certRequestApprovalResourceFactory = ({
       approvalRequestId: request.id
     });
 
+    let renewed: Awaited<ReturnType<typeof certificateRenewalService.renewApprovedCertificate>> | undefined;
     try {
       if (renewal) {
-        await certificateRenewalService.renewApprovedCertificate({
+        renewed = await certificateRenewalService.renewApprovedCertificate({
           certificateRequestId: certReqId,
           organizationId: request.organizationId,
           renewal,
@@ -153,6 +159,42 @@ export const certRequestApprovalResourceFactory = ({
       return;
     }
 
+    if (renewal && renewed) {
+      // The approval has already committed, so a failed audit write must not surface to the approver.
+      try {
+        // An external-CA renewal still pending returns its order id in certificateId, not a certificate.
+        const isIssued = renewed.status === CertificateRequestStatus.ISSUED;
+        await auditLogService.createAuditLog({
+          projectId: request.projectId,
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.RENEW_CERTIFICATE,
+            metadata: {
+              originalCertificateId: renewed.originalCertificateId,
+              ...(isIssued && { newCertificateId: renewed.certificateId, serialNumber: renewed.serialNumber }),
+              certificateRequestId: renewed.certificateRequestId,
+              profileName: renewed.profileName,
+              commonName: renewed.commonName || "",
+              applicationId: renewed.applicationId,
+              applicationName: renewed.applicationName,
+              renewalKeySource: renewal.renewalKeySource,
+              externalConfiguration: renewal.externalConfiguration,
+              changedAttributes: renewed.changedAttributes ?? [],
+              status: renewed.status,
+              approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail
+            }
+          }
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to record an approved certificate renewal [certificateRequestId=${certReqId}] [approvalRequestId=${request.id}]`
+        );
+      }
+    }
+
     const requesterDistinctId = request.machineIdentityId
       ? `identity-${request.machineIdentityId}`
       : request.requesterId && request.requesterEmail;
@@ -173,7 +215,11 @@ export const certRequestApprovalResourceFactory = ({
       approvalRequestId: request.id
     });
     if (renewal && request.status === ApprovalRequestStatus.Rejected) {
-      await certificateRenewalService.recordRejectedRenewal(renewal.certificateId);
+      const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : undefined;
+      await certificateRenewalService.recordRejectedRenewal(
+        renewal.certificateId,
+        parseCertRequestRenewalApproval(policy ?? {})
+      );
     }
   }
 });

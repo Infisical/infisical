@@ -240,8 +240,13 @@ export const getApprovalRequestSubjectMetadata = (
   if (!requestData) return {};
 
   if (request.type === ApprovalPolicyType.CertRequest) {
-    const { certificateRequestId, certificateRequest, profileName } = requestData as TCertRequestRequestData;
-    return { certificateRequestId, commonName: certificateRequest?.commonName, profileName };
+    const { certificateRequestId, certificateRequest, profileName, renewal } = requestData as TCertRequestRequestData;
+    return {
+      certificateRequestId,
+      ...(renewal && { certificateId: renewal.certificateId }),
+      commonName: certificateRequest?.commonName,
+      profileName
+    };
   }
 
   if (request.type === ApprovalPolicyType.CertRevocation) {

@@ -11,7 +11,11 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
-import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  CertRequestRenewalApproval
+} from "@app/services/approval-policy/approval-policy-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr } from "@app/services/certificate-authority/certificate-authority-maps";
 import {
@@ -844,6 +848,15 @@ export const certificateDALFactory = (db: TDbClient) => {
                   void raisedByAutoRenewalQb
                     .whereNull(`${TableName.ApprovalRequests}.requesterId`)
                     .whereNull(`${TableName.ApprovalRequests}.machineIdentityId`);
+                })
+                .orWhereExists((alwaysHeldQb) => {
+                  void alwaysHeldQb
+                    .select(db.raw("1"))
+                    .from(TableName.ApprovalPolicies)
+                    .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.ApprovalRequests}"."policyId"`)
+                    .whereRaw(`"${TableName.ApprovalPolicies}"."constraints"->'constraints'->>'renewalApproval' = ?`, [
+                      CertRequestRenewalApproval.Always
+                    ]);
                 });
             })
             .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.CertRequest)
