@@ -1,229 +1,132 @@
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isAxiosError } from "axios";
+
+import { BadRequestError } from "@app/lib/errors";
 import { safeRequest } from "@app/lib/validator";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import {
-  getConvexErrorMessage,
-  resolveConvexDeploymentDestination
-} from "@app/services/app-connection/convex/convex-connection-fns";
-import { TConvexConnection } from "@app/services/app-connection/convex/convex-connection-types";
-import { normalizeConvexDeploymentUrl } from "@app/services/app-connection/convex/convex-url";
+  getConvexDeploymentHeaders,
+  getConvexDeploymentUrl,
+  getConvexErrorMessage
+} from "@app/services/app-connection/convex";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
-import { TPreSaveTransformDestinationConfigFn, TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
+import { CONVEX_ENV_VAR_NAME_RULE, isValidConvexEnvVarName } from "./convex-sync-schemas";
 import { TConvexEnvVarChange, TConvexSyncWithCredentials } from "./convex-sync-types";
 
-const CONVEX_RESERVED_PREFIX = "CONVEX_";
-const CONVEX_ENV_VAR_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+type TConvexDeploymentApi = { apiUrl: string; headers: Record<string, string> };
 
-const isConvexReservedKey = (key: string) => key.startsWith(CONVEX_RESERVED_PREFIX);
+const toSyncError = (error: unknown, message: string) => {
+  // A refused private address or a deployment Infisical cannot reach is a configuration problem a retry will not fix
+  if (error instanceof BadRequestError) {
+    return new SecretSyncError({ message: error.message, shouldRetry: false });
+  }
 
-const throwConvexSyncError = (error: unknown, fallback: string): never => {
-  if (error instanceof SecretSyncError) throw error;
+  const status = isAxiosError(error) ? error.response?.status : undefined;
 
-  throw new SecretSyncError({
-    error,
-    message: `${fallback}: ${getConvexErrorMessage(error)}`
+  // Convex answers what it will never accept (a bad name or value, the variable limit, an unknown deployment) with a
+  // 4xx, so retrying only delays the failure
+  return new SecretSyncError({
+    message: `${message}: ${getConvexErrorMessage(error)}`,
+    shouldRetry: !(status && [400, 401, 403, 404].includes(status))
   });
 };
 
-const getDeploymentApiUrl = (deploymentUrl: string) => {
+const getConvexDeploymentApi = async ({
+  connection,
+  destinationConfig: { deploymentName }
+}: TConvexSyncWithCredentials): Promise<TConvexDeploymentApi> => {
   try {
-    return `${normalizeConvexDeploymentUrl(deploymentUrl)}/api/v1`;
-  } catch {
-    throw new SecretSyncError({
-      message: "Invalid Convex deployment URL.",
-      shouldRetry: false
-    });
-  }
-};
+    const deploymentUrl = await getConvexDeploymentUrl(connection, deploymentName);
 
-const getDeploymentAuthHeaders = (accessToken: string) => ({
-  Authorization: `Convex ${accessToken}`,
-  Accept: "application/json",
-  "Content-Type": "application/json"
-});
-
-const parseEnvironmentVariables = (data: unknown): Record<string, string> => {
-  if (!data || typeof data !== "object") return {};
-
-  const payload = data as { environmentVariables?: unknown };
-  const raw = payload.environmentVariables ?? data;
-
-  const entries: Record<string, string> = {};
-
-  if (Array.isArray(raw)) {
-    for (const item of raw) {
-      if (item && typeof item === "object") {
-        const candidate = item as { name?: unknown; value?: unknown };
-        if (typeof candidate.name === "string" && typeof candidate.value === "string") {
-          entries[candidate.name] = candidate.value;
-        }
-      }
-    }
-    return entries;
-  }
-
-  if (!raw || typeof raw !== "object") return {};
-
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value === "string") {
-      entries[key] = value;
-    }
-  }
-  return entries;
-};
-
-const listConvexEnvironmentVariables = async (
-  secretSync: TConvexSyncWithCredentials
-): Promise<Record<string, string>> => {
-  const {
-    destinationConfig: { deploymentUrl },
-    connection: {
-      credentials: { accessToken }
-    }
-  } = secretSync;
-
-  try {
-    const apiUrl = getDeploymentApiUrl(deploymentUrl);
-    const { data } = await safeRequest.get<unknown>(`${apiUrl}/list_environment_variables`, {
-      headers: getDeploymentAuthHeaders(accessToken)
-    });
-    return parseEnvironmentVariables(data);
+    return {
+      apiUrl: `${deploymentUrl}/api/v1`,
+      headers: getConvexDeploymentHeaders(connection.credentials.accessToken)
+    };
   } catch (error) {
-    return throwConvexSyncError(error, "Failed to list environment variables from Convex");
+    throw toSyncError(error, `Failed to find Convex deployment '${deploymentName}'`);
   }
 };
 
-const updateConvexEnvironmentVariables = async (
-  secretSync: TConvexSyncWithCredentials,
-  changes: TConvexEnvVarChange[]
-) => {
-  if (changes.length === 0) return;
-
-  const {
-    destinationConfig: { deploymentUrl },
-    connection: {
-      credentials: { accessToken }
-    }
-  } = secretSync;
-
+const listConvexEnvVars = async ({ apiUrl, headers }: TConvexDeploymentApi) => {
   try {
-    const apiUrl = getDeploymentApiUrl(deploymentUrl);
-    await safeRequest.post(
-      `${apiUrl}/update_environment_variables`,
-      { changes },
-      { headers: getDeploymentAuthHeaders(accessToken) }
+    const { data } = await safeRequest.get<{ environmentVariables: Record<string, string> }>(
+      `${apiUrl}/list_environment_variables`,
+      { headers }
     );
+
+    return data.environmentVariables;
   } catch (error) {
-    throwConvexSyncError(error, "Failed to update environment variables in Convex");
+    throw toSyncError(error, "Failed to list Convex environment variables");
   }
 };
 
-const collectInvalidSecretKeys = (secretMap: TSecretMap) =>
-  Object.keys(secretMap).filter((key) => !isConvexReservedKey(key) && !CONVEX_ENV_VAR_NAME_PATTERN.test(key));
+// Convex applies the whole batch in one transaction, so a run either writes every change or none
+const updateConvexEnvVars = async ({ apiUrl, headers }: TConvexDeploymentApi, changes: TConvexEnvVarChange[]) => {
+  if (!changes.length) return;
 
-export const convexPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
-  { destinationConfig, connectionId },
-  { appConnectionDAL, kmsService }
-) => {
-  if (!destinationConfig) return destinationConfig;
-
-  const appConnection = await appConnectionDAL.findById(connectionId);
-  if (!appConnection) {
-    throw new NotFoundError({
-      message: `Could not find connection with ID '${connectionId}'`
-    });
+  try {
+    await safeRequest.post(`${apiUrl}/update_environment_variables`, { changes }, { headers });
+  } catch (error) {
+    throw toSyncError(error, "Failed to update Convex environment variables");
   }
-
-  if (appConnection.app !== AppConnection.Convex) {
-    throw new BadRequestError({
-      message: `Connection with ID '${connectionId}' is not a Convex connection`
-    });
-  }
-
-  const credentials = (await decryptAppConnectionCredentials({
-    orgId: appConnection.orgId,
-    encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService,
-    projectId: appConnection.projectId
-  })) as TConvexConnection["credentials"];
-
-  const resolved = await resolveConvexDeploymentDestination({ credentials }, destinationConfig);
-
-  return {
-    ...destinationConfig,
-    ...resolved
-  };
 };
 
 export const ConvexSyncFns = {
-  syncSecrets: async (secretSync: TConvexSyncWithCredentials, payload: TSecretSyncPayload) => {
+  async getSecrets(secretSync: TConvexSyncWithCredentials): Promise<TSecretMap> {
+    const envVars = await listConvexEnvVars(await getConvexDeploymentApi(secretSync));
+
+    return Object.fromEntries(Object.entries(envVars).map(([key, value]) => [key, { value }]));
+  },
+
+  async syncSecrets(secretSync: TConvexSyncWithCredentials, payload: TSecretSyncPayload) {
     const secretMap = payload.flatten();
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
 
-    const invalidKeys = collectInvalidSecretKeys(secretMap);
-    if (invalidKeys.length > 0) {
+    // Rejected up front so the message names every offending key, instead of Convex refusing the batch on the first
+    const invalidKeys = Object.keys(secretMap).filter((key) => !isValidConvexEnvVarName(key));
+    if (invalidKeys.length) {
       throw new SecretSyncError({
-        message: `The following secret names are not valid Convex environment variables: ${invalidKeys.join(", ")}. Convex names must start with a letter or underscore and contain only letters, digits, and underscores.`,
-        shouldRetry: false
+        secretKey: invalidKeys[0],
+        shouldRetry: false,
+        message: `${invalidKeys.length} secret ${
+          invalidKeys.length === 1 ? "key is" : "keys are"
+        } not a valid Convex environment variable name: ${invalidKeys.join(", ")}. ${CONVEX_ENV_VAR_NAME_RULE}`
       });
     }
 
-    const changes: TConvexEnvVarChange[] = [];
-    const secretMapKeys = new Set(Object.keys(secretMap));
+    const deploymentApi = await getConvexDeploymentApi(secretSync);
+    const envVars = await listConvexEnvVars(deploymentApi);
 
-    for (const [key, secret] of Object.entries(secretMap)) {
-      if (!isConvexReservedKey(key) && secret.value !== "") {
-        changes.push({ name: key, value: secret.value });
-      }
-    }
+    const changes: TConvexEnvVarChange[] = Object.entries(secretMap)
+      .filter(([name, { value }]) => !Object.hasOwn(envVars, name) || envVars[name] !== value)
+      .map(([name, { value }]) => ({ name, value }));
 
     if (!disableSecretDeletion) {
-      const existing = await listConvexEnvironmentVariables(secretSync);
-      for (const key of Object.keys(existing)) {
-        const shouldDelete =
-          !isConvexReservedKey(key) &&
-          matchesSchema(key, environment?.slug || "", keySchema) &&
-          !secretMapKeys.has(key);
-        if (shouldDelete) {
-          changes.push({ name: key, value: null });
+      for (const name of Object.keys(envVars)) {
+        if (!Object.hasOwn(secretMap, name) && matchesSchema(name, environment?.slug || "", keySchema)) {
+          changes.push({ name, value: null });
         }
       }
     }
 
-    await updateConvexEnvironmentVariables(secretSync, changes);
+    await updateConvexEnvVars(deploymentApi, changes);
   },
 
-  getSecrets: async (secretSync: TConvexSyncWithCredentials): Promise<TSecretMap> => {
-    const existing = await listConvexEnvironmentVariables(secretSync);
-    const entries: TSecretMap = {};
-
-    for (const [key, value] of Object.entries(existing)) {
-      if (!isConvexReservedKey(key) && value !== "") {
-        entries[key] = { value };
-      }
-    }
-
-    return entries;
-  },
-
-  removeSecrets: async (secretSync: TConvexSyncWithCredentials, payload: TSecretSyncPayload) => {
+  async removeSecrets(secretSync: TConvexSyncWithCredentials, payload: TSecretSyncPayload) {
     const secretMap = payload.flatten();
-    const existing = await listConvexEnvironmentVariables(secretSync);
-    const changes: TConvexEnvVarChange[] = [];
+    const deploymentApi = await getConvexDeploymentApi(secretSync);
+    const envVars = await listConvexEnvVars(deploymentApi);
 
-    for (const key of Object.keys(secretMap)) {
-      if (!isConvexReservedKey(key) && key in existing) {
-        changes.push({ name: key, value: null });
-      }
-    }
-
-    await updateConvexEnvironmentVariables(secretSync, changes);
+    await updateConvexEnvVars(
+      deploymentApi,
+      Object.keys(secretMap)
+        .filter((name) => Object.hasOwn(envVars, name))
+        .map((name) => ({ name, value: null }))
+    );
   }
 };

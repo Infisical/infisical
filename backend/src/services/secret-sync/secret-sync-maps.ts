@@ -220,7 +220,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.CloudflarePages]: ["variableType"],
   [SecretSync.CloudflareWorkers]: ["variableType"],
   [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
-  [SecretSync.Convex]: ["deploymentName"],
+  [SecretSync.Convex]: [],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],
   [SecretSync.Portainer]: [],

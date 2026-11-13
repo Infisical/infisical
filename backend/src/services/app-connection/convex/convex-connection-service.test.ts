@@ -35,13 +35,7 @@ describe("convexConnectionService", () => {
   });
 
   it("returns deployments from Convex", async () => {
-    const deployments = [
-      {
-        name: "playful-otter-123",
-        deploymentUrl: "https://playful-otter-123.convex.cloud",
-        deploymentType: "prod"
-      }
-    ];
+    const deployments = [{ name: "playful-otter-123", deploymentType: "prod" }];
     listConvexDeployments.mockResolvedValue(deployments);
 
     await expect(service.listDeployments(CONNECTION_ID, actor)).resolves.toEqual(deployments);

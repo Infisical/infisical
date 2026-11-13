@@ -22,7 +22,10 @@ export type TConvexConnectionConfig = DiscriminativePick<TConvexConnectionInput,
 };
 
 export type TConvexDeployment = {
-  deploymentUrl: string;
   name: string;
   deploymentType: string;
+};
+
+export type TConvexApiDeployment = TConvexDeployment & {
+  deploymentUrl?: string;
 };

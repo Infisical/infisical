@@ -3163,15 +3163,6 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
-  CONVEX: {
-    LIST_DEPLOYMENTS: {
-      connectionId: "The ID of the Convex Connection to list deployments from.",
-      deploymentUrl: "The URL of the Convex deployment.",
-      name: "The name of the Convex deployment.",
-      deploymentType:
-        "The type of the Convex deployment, as reported by Convex. Falls back to custom when none is reported."
-    }
-  },
   KEEPER: {
     LIST_SHARED_FOLDERS: {
       connectionId: "The ID of the Keeper Connection to list shared folders from.",
@@ -3806,10 +3797,6 @@ export const SecretSyncs = {
       variableType:
         "The type of environment variable to sync secrets as: secret_text (default) or plain_text. If a secret already exists in the environment as the other type, the sync fails and nothing is changed. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type."
     },
-    CONVEX: {
-      deploymentUrl: "The URL of the Convex deployment to sync secrets to.",
-      deploymentName: "The name of the Convex deployment to sync secrets to."
-    },
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
       variableType:
@@ -3820,6 +3807,9 @@ export const SecretSyncs = {
       storeName: "An optional display name for the Cloudflare Secrets Store.",
       scopes:
         "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
+    },
+    CONVEX: {
+      deploymentName: "The name of the Convex deployment to sync secrets to, such as happy-otter-123."
     },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
