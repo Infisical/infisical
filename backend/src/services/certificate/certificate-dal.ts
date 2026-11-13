@@ -844,8 +844,15 @@ export const certificateDALFactory = (db: TDbClient) => {
                     .whereNotNull(`${TableName.Certificate}.source`)
                     .whereNot(`${TableName.Certificate}.source`, CertificateSource.Issued);
                 })
-                .orWhere((raisedByAutoRenewalQb) => {
-                  void raisedByAutoRenewalQb
+                .orWhereRaw(
+                  `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'raisedByAutoRenewal' = 'true'`
+                )
+                // Requests raised before the flag existed: the daily job raised them with no requester.
+                .orWhere((legacyAutoRenewalQb) => {
+                  void legacyAutoRenewalQb
+                    .whereRaw(
+                      `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->'raisedByAutoRenewal' IS NULL`
+                    )
                     .whereNull(`${TableName.ApprovalRequests}.requesterId`)
                     .whereNull(`${TableName.ApprovalRequests}.machineIdentityId`);
                 })

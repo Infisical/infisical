@@ -35,6 +35,7 @@ const CERTIFICATE_TTL_DAYS = 10;
 
 type TApplicationContext = {
   authToken: string;
+  orgId: string;
   app: TPkiApplication;
   approverId: string;
   approverToken: string;
@@ -55,6 +56,7 @@ const setUpApplication = async (namePrefix: string): Promise<TApplicationContext
 
   return {
     authToken,
+    orgId,
     app,
     approverId,
     approverToken,
@@ -193,10 +195,12 @@ describe("Certificate renewal approval", async () => {
   describe("an issuance policy that requires approval for every renewal, renewed by hand", async () => {
     let ctx: TApplicationContext;
     let certificateId = "";
+    let deletedRequesterCertificateId = "";
 
     beforeAll(async () => {
       ctx = await setUpApplication("renewal-always-manual");
       certificateId = await issue(ctx);
+      deletedRequesterCertificateId = await issue(ctx);
 
       const policy = await createApplicationCertRequestPolicy({
         authToken: ctx.authToken,
@@ -256,6 +260,43 @@ describe("Certificate renewal approval", async () => {
           renewEvents.map((log) => log.event.metadata.approvalRequestId),
           "the renewal's audit event carries the approval request"
         ).toContain(approvalRequest.id);
+      },
+      TEST_TIMEOUT_MS
+    );
+
+    test(
+      "keeps automatic renewal when the person who asked for a rejected renewal was deleted first",
+      async () => {
+        const certificateId = deletedRequesterCertificateId;
+        const { userId: requesterId } = await createUser("renewal-requester");
+        await addUserMembership({ userId: requesterId, orgId: ctx.orgId, role: OrgMembershipRole.Member });
+        await addUserMembership({
+          userId: requesterId,
+          orgId: ctx.orgId,
+          projectId: ctx.app.projectId,
+          role: ProjectMembershipRole.Member
+        });
+        await addApplicationUser({
+          authToken: ctx.authToken,
+          app: ctx.app,
+          userId: requesterId,
+          role: ResourceMembershipRole.Admin
+        });
+        const requesterToken = await createUserAccessToken({ userId: requesterId, orgId: ctx.orgId });
+
+        const renewal = await renewCertificate({ authToken: requesterToken, certificateId });
+        expect(renewal.status, "the renewal waits for approval").toBe(CertificateRequestStatus.PENDING_APPROVAL);
+        const [approvalRequest] = await pendingRenewalApprovals(ctx, certificateId);
+
+        await deleteUsers([requesterId]);
+        const stored = await testDb(TableName.ApprovalRequests).where({ id: approvalRequest.id }).first();
+        expect(stored?.requesterId ?? null, "deleting the user cleared the request's requester").toBeNull();
+
+        const rejected = await rejectCertRequestApproval({ authToken: ctx.approverToken, requestId: approvalRequest.id });
+        expect(rejected.status).toBe(ApprovalRequestStatus.Rejected);
+
+        const certificate = await getCertificate({ authToken: ctx.authToken, certificateId });
+        expect(certificate.renewalError ?? null, "the rejection didn't stop automatic renewal").toBeNull();
       },
       TEST_TIMEOUT_MS
     );

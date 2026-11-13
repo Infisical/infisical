@@ -3127,7 +3127,9 @@ describe("CertificateV3Service", () => {
           expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
             expect.objectContaining({
               requesterUserId: "user-123",
-              requestData: expect.objectContaining({ renewal: expect.objectContaining({ certificateId: "cert-123" }) })
+              requestData: expect.objectContaining({
+                renewal: expect.objectContaining({ certificateId: "cert-123", raisedByAutoRenewal: false })
+              })
             })
           );
         });
@@ -3148,7 +3150,11 @@ describe("CertificateV3Service", () => {
           expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
           expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
           expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
-            expect.objectContaining({ requesterUserId: null, machineIdentityId: null })
+            expect.objectContaining({
+              requesterUserId: null,
+              machineIdentityId: null,
+              requestData: expect.objectContaining({ renewal: expect.objectContaining({ raisedByAutoRenewal: true }) })
+            })
           );
         });
 

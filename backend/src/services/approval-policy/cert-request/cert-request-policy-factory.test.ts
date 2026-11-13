@@ -177,17 +177,27 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
   });
 
   it.each([
-    ["automatic renewal", { requesterId: null, machineIdentityId: null }, true],
-    ["a user", { requesterId: "user-1", machineIdentityId: null }, false],
-    ["a machine identity", { requesterId: null, machineIdentityId: "identity-1" }, false]
-  ])("records a rejected renewal raised by %s", async (_by, requester, raisedByAutoRenewal) => {
+    ["automatic renewal", { requesterId: null, machineIdentityId: null }, { raisedByAutoRenewal: true }, true],
+    ["a user", { requesterId: "user-1", machineIdentityId: null }, { raisedByAutoRenewal: false }, false],
+    ["a user since deleted", { requesterId: null, machineIdentityId: null }, { raisedByAutoRenewal: false }, false],
+    [
+      "a machine identity",
+      { requesterId: null, machineIdentityId: "identity-1" },
+      { raisedByAutoRenewal: false },
+      false
+    ],
+    ["automatic renewal before the flag existed", { requesterId: null, machineIdentityId: null }, {}, true],
+    ["a user before the flag existed", { requesterId: "user-1", machineIdentityId: null }, {}, false]
+  ])("records a rejected renewal raised by %s", async (_by, requester, origin, raisedByAutoRenewal) => {
     const { deps, resource } = setup(() => Promise.resolve());
 
     await resource.postRejectionRoutine!({
       id: "approval-1",
       ...requester,
       status: ApprovalRequestStatus.Rejected,
-      requestData: { requestData: { certificateRequestId: "cert-req-1", renewal: { certificateId: "cert-1" } } }
+      requestData: {
+        requestData: { certificateRequestId: "cert-req-1", renewal: { certificateId: "cert-1", ...origin } }
+      }
     } as never);
 
     expect(deps.certificateRenewalService.recordRejectedRenewal).toHaveBeenCalledWith("cert-1", {

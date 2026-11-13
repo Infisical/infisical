@@ -1274,7 +1274,8 @@ export const certificateRenewalServiceFactory = ({
             ...requestedRenewal,
             attributes,
             caId,
-            ...(externalConfiguration && { externalConfiguration })
+            ...(externalConfiguration && { externalConfiguration }),
+            raisedByAutoRenewal: actorCtx.actor === ActorType.PLATFORM
           }
         },
         justification: `Certificate renewal request for ${certificateRequest.commonName || profile.slug}`,
