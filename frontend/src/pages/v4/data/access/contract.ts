@@ -9,11 +9,8 @@ import type {
   useRemoveUserFromGroup,
   useUpdateGroup
 } from "@app/hooks/api/groups/mutations";
-import type {
-  useGetGroupById,
-  useListGroupMembers,
-  useListGroupProjects
-} from "@app/hooks/api/groups/queries";
+import type { useGetGroupById, useListGroupMembers } from "@app/hooks/api/groups/queries";
+import type { TGroupProject } from "@app/hooks/api/groups/types";
 import type {
   useAddIdentityUniversalAuth,
   useClearIdentityUniversalAuthLockouts,
@@ -208,7 +205,7 @@ export type AccessAdapter = {
   useOrgGroups: QueryOf<typeof useSearchOrganizationGroups>;
   useGroup: QueryOf<typeof useGetGroupById>;
   useGroupMembers: QueryOf<typeof useListGroupMembers>;
-  useGroupProjects: QueryOf<typeof useListGroupProjects>;
+  useGroupProjects: (groupId: string) => V4QueryResult<TGroupProject[]>;
   useCreateGroup: MutationOf<typeof useCreateGroup>;
   useUpdateGroup: MutationOf<typeof useUpdateGroup>;
   useDeleteGroup: MutationOf<typeof useDeleteGroup>;

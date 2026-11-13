@@ -53,6 +53,7 @@ import type { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useV4Adapter } from "../../data/adapters";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -69,7 +70,7 @@ import {
   RemoveAuthMethodDialog,
   sortedMethods
 } from "./auth-methods";
-import { CopyButton, Dash, MetadataBadges, Value } from "./detail-parts";
+import { Dash, MetadataBadges } from "./detail-parts";
 import { lastUsedLabel } from "./identities";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -389,13 +390,11 @@ export const OrgIdentityDetail = () => {
                   ["Name", identity.name],
                   [
                     "ID",
-                    <Value key="id" mono>
-                      {identity.id}
-                      <CopyButton
-                        value={identity.id}
-                        label="Copy machine identity ID to clipboard"
-                      />
-                    </Value>
+                    <TruncatedValue
+                      key="id"
+                      value={identity.id}
+                      copyLabel="Copy machine identity ID to clipboard"
+                    />
                   ],
                   [
                     "Managed by",

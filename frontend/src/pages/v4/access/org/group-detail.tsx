@@ -58,6 +58,7 @@ import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { useV4Adapter } from "../../data/adapters";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -509,10 +510,11 @@ export const OrgGroupDetail = () => {
                   ["Name", group.name],
                   [
                     "ID",
-                    <Value key="id" mono>
-                      {group.id}
-                      <CopyButton value={group.id} label="Copy group ID to clipboard" />
-                    </Value>
+                    <TruncatedValue
+                      key="id"
+                      value={group.id}
+                      copyLabel="Copy group ID to clipboard"
+                    />
                   ],
                   [
                     "Slug",

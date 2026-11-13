@@ -186,6 +186,7 @@ const POLICIES: TAccessApprovalPolicy[] = POLICY_SEEDS.map((seed) => ({
   policyType: PolicyType.AccessPolicy,
   approversRequired: true,
   enforcementLevel: seed.enforcementLevel ?? EnforcementLevel.Hard,
+  createdAt: new Date("2026-10-12T10:00:00Z"),
   updatedAt: new Date("2026-10-12T10:00:00Z"),
   approvers: seed.approvers.map((approver) => ({
     ...approver,

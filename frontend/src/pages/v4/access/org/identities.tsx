@@ -356,10 +356,7 @@ export const OrgIdentitiesTab = () => {
           : `No ${scopeLabel} machine identities match your search`
     };
   else if (scope === "project") empty = { title: "No project machine identities found" };
-  const allCount =
-    counts?.organization === undefined && counts?.project === undefined
-      ? undefined
-      : (counts?.organization ?? 0) + (counts?.project ?? 0);
+  const allCount = (counts?.organization ?? 0) + (counts?.project ?? 0) || undefined;
 
   return (
     <Stack gap={32}>
@@ -392,8 +389,8 @@ export const OrgIdentitiesTab = () => {
                   setPage(1);
                 }}
                 tabs={[
-                  { value: "organization", label: "Org", count: counts?.organization },
-                  { value: "project", label: "Project", count: counts?.project },
+                  { value: "organization", label: "Org", count: allCount && counts?.organization },
+                  { value: "project", label: "Project", count: allCount && counts?.project },
                   { value: "all", label: "All", count: allCount }
                 ]}
               />

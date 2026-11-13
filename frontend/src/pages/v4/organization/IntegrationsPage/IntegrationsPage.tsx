@@ -22,6 +22,7 @@ import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnect
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { failed } from "../../access/toast";
+import { GhostEmpty } from "../../components/ghost-empty";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { projectBase } from "../../shell/navigation";
@@ -225,16 +226,23 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
           />
         }
         actions={
-          <Tabs
-            variant="segmented"
-            label="Connection scope"
-            value={scope}
-            onChange={setScope}
-            tabs={[
-              { value: "org", label: "Organization", count: orgRows.length },
-              { value: "all", label: "All", count: rows.length }
-            ]}
-          />
+          <>
+            <Tabs
+              variant="segmented"
+              label="Connection scope"
+              value={scope}
+              onChange={setScope}
+              tabs={[
+                {
+                  value: "org",
+                  label: "Organization",
+                  count: rows.length ? orgRows.length : undefined
+                },
+                { value: "all", label: "All", count: rows.length || undefined }
+              ]}
+            />
+            <NewConnection />
+          </>
         }
       />
       <DataTable
@@ -296,7 +304,7 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
               }
             />
           ) : (
-            <EmptyState size="sm" icon="apps" title="No app connections yet" />
+            <GhostEmpty layout="rows" icon="apps" title="No app connections yet" />
           )
         }
         persistentStatus={`${visible.length} of ${scoped.length} connections`}
@@ -354,7 +362,6 @@ export const IntegrationsPage = () => {
       <PageHeader
         title="Integrations"
         description="Connect external services once and use them across this organization."
-        actions={<NewConnection />}
         tabs={
           <Tabs
             label="Integration sections"
@@ -364,7 +371,6 @@ export const IntegrationsPage = () => {
               {
                 value: IntegrationsListPageTabs.AppConnections,
                 label: "App connections",
-                count: rows.filter((row) => !row.projectId).length,
                 content: null
               },
               { value: workflowTab, label: "Workflow integrations", content: null },

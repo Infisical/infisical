@@ -1,0 +1,36 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+.ghosts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--v4-space-16);
+  opacity: 0.8;
+  mask-image: linear-gradient(to bottom, var(--v4-ink) 0%, transparent 90%);
+}
+/* v4-check-ignore page-css-frame -- a placeholder outline that stays dashed wherever it renders */
+.ghost {
+  height: 132px;
+  /* v4-check-ignore line-on-edge -- a dashed, faded ghost disappears on line-soft in Dark */
+  border: var(--v4-size-control-border) dashed var(--v4-line);
+}
+.root[data-layout="rows"] .ghosts {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.root[data-layout="rows"] .ghost {
+  height: 48px;
+  border-width: 0 0 var(--v4-size-control-border);
+}
+.content {
+  position: absolute;
+  inset: 0;
+}
+.content .title {
+  font-family: var(--v4-type-body-font-family);
+  font-size: var(--v4-type-body-font-size);
+  line-height: var(--v4-type-body-line-height);
+  font-weight: var(--v4-type-body-font-weight);
+  letter-spacing: var(--v4-type-body-letter-spacing);
+}

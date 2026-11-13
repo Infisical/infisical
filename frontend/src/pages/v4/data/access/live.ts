@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
+import { apiRequest } from "@app/config/request";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
 import {
@@ -12,11 +13,8 @@ import {
   useRemoveUserFromGroup,
   useUpdateGroup
 } from "@app/hooks/api/groups/mutations";
-import {
-  groupByIdQuery,
-  groupProjectsQuery,
-  useListGroupMembers
-} from "@app/hooks/api/groups/queries";
+import { groupByIdQuery, groupKeys, useListGroupMembers } from "@app/hooks/api/groups/queries";
+import { FilterReturnedProjects, type TGroupProject } from "@app/hooks/api/groups/types";
 import {
   useAddIdentityUniversalAuth,
   useClearIdentityUniversalAuthLockouts,
@@ -203,7 +201,27 @@ export const accessLive: AccessAdapter = {
   useOrgGroups: useSearchOrganizationGroups,
   useGroup: (groupId) => useQuery(groupByIdQuery(useOrgId(), groupId)),
   useGroupMembers: useListGroupMembers,
-  useGroupProjects: (dto) => useQuery(groupProjectsQuery(useOrgId(), dto)),
+  useGroupProjects: (groupId) =>
+    useQuery({
+      queryKey: [...groupKeys.forGroupProjects(groupId), "assigned"],
+      enabled: Boolean(groupId),
+      queryFn: async () => {
+        const fetchPage = async (offset: number) => {
+          const { data } = await apiRequest.get<{ projects: TGroupProject[]; totalCount: number }>(
+            `/api/v1/groups/${groupId}/projects`,
+            {
+              params: { offset, limit: 100, filter: FilterReturnedProjects.ASSIGNED_PROJECTS }
+            }
+          );
+          return data;
+        };
+        const first = await fetchPage(0);
+        const offsets = [];
+        for (let offset = 100; offset < first.totalCount; offset += 100) offsets.push(offset);
+        const rest = await Promise.all(offsets.map(fetchPage));
+        return [first, ...rest].flatMap((page) => page.projects);
+      }
+    }),
   useCreateGroup,
   useUpdateGroup,
   useDeleteGroup,
