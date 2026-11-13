@@ -39,7 +39,6 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 
-import { FilterReturnedProjects } from "@app/hooks/api/groups/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -290,13 +289,7 @@ const useMembershipRows = (subject: MembershipSubject, subjectId: string) => {
     subject === "user" ? subjectId : ""
   );
   const identities = access.useIdentityProjectMemberships(subject === "identity" ? subjectId : "");
-  const groups = access.useGroupProjects({
-    id: subject === "group" ? subjectId : "",
-    offset: 0,
-    limit: 100,
-    search: "",
-    filter: FilterReturnedProjects.ASSIGNED_PROJECTS
-  });
+  const groups = access.useGroupProjects(subject === "group" ? subjectId : "");
   const rows = useMemo((): ProjectMembershipRow[] => {
     if (subject === "user")
       return (users.data?.memberships ?? []).map((entry) => ({
@@ -312,7 +305,7 @@ const useMembershipRows = (subject: MembershipSubject, subjectId: string) => {
         roles: entry.roles,
         createdAt: entry.createdAt
       }));
-    return (groups.data?.projects ?? []).map((entry) => ({
+    return (groups.data ?? []).map((entry) => ({
       id: entry.id,
       project: { id: entry.id, name: entry.name, type: entry.type as ProjectType },
       roles: [],
