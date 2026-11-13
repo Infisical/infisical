@@ -1,5 +1,6 @@
 import { hueScope } from "@infisical/cipher/lib/hue";
 import { CipherLink, type CipherLinkProps } from "@infisical/cipher/lib/link";
+import { cn } from "@infisical/cipher/lib/utils";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Card, CardLink } from "@infisical/cipher/ui/card";
 import { Halftone } from "@infisical/cipher/ui/halftone";
@@ -131,16 +132,13 @@ export const ProjectsPage = () => {
               <Card
                 key={product.type}
                 {...hueScope(product.hue)}
-                className={blocked.has(product.type) ? styles.blocked : undefined}
-                backdrop={<Halftone seed={product.type} />}
+                className={cn(styles.productCard, blocked.has(product.type) && styles.blocked)}
                 title={
                   <Inline gap={8} align="center">
-                    <Icon
-                      name={product.icon}
-                      size={18}
-                      motion="draw"
-                      className={styles.productIcon}
-                    />
+                    <span className={styles.halftoneCorner}>
+                      <Halftone seed={product.type} reach={160} depth={1} />
+                    </span>
+                    <Icon name={product.icon} size={18} className={styles.productIcon} />
                     <CardLink disabled={blocked.has(product.type)} link={link}>
                       {product.label}
                     </CardLink>

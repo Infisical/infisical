@@ -1,3 +1,20 @@
+.productCard {
+  isolation: isolate;
+}
+.productCard > :global([data-slot="card-header"]) {
+  position: relative;
+}
+.halftoneCorner {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: -1;
+  width: calc(20 * var(--cipher-size-halftone-cell));
+  pointer-events: none;
+}
+.productCard:is(:hover, :focus-within) > :global([data-slot="card-footer"]) {
+  border-top-color: var(--cipher-line);
+}
 .productIcon {
   transition: color var(--cipher-duration-slow) var(--cipher-ease-fade);
 }
