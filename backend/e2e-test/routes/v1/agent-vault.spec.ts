@@ -7562,6 +7562,60 @@ describe("Agent Vault V1 Router", async () => {
       expect(listed.payload).not.toContain("mcp-inline-token");
     });
 
+    test("an inline MCP server's tool list is read back, listed for the agent, and sent to the proxy", async () => {
+      const mcp = {
+        type: "mcp",
+        serverUrl: "https://mcp.example.com/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "mcp-inline-token" }
+      };
+      const mint = await inject("POST", sessionsUrl, {
+        ttl: "1h",
+        services: [
+          { ...mcp, name: "limited-mcp", allowedTools: ["search", "read_file"] },
+          { ...mcp, name: "open-mcp", serverUrl: "https://mcp2.example.com/mcp" }
+        ]
+      });
+      expect(mint.statusCode).toBe(200);
+      const { session } = mint.json() as {
+        session: { id: string; token: string; services: (TInlineSummary & { allowedTools: string[] | null })[] };
+      };
+      expect(session.services.map((service) => service.allowedTools)).toEqual([["search", "read_file"], null]);
+      expect((await inject("GET", `${sessionsUrl}/${session.id}`)).json().session.services).toEqual(session.services);
+
+      const listed = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/agent-vault/session/services",
+        headers: { authorization: `Bearer ${session.token}` }
+      });
+      expect(listed.statusCode).toBe(200);
+      expect(listed.json().services).toMatchObject([
+        { name: "limited-mcp", allowedTools: ["read_file", "search"] },
+        { name: "open-mcp", allowedTools: null }
+      ]);
+
+      const resolve = await createResolver(`inline-mcp-tools-${Date.now()}`);
+      const resolved = await resolve(session.token);
+      expect(resolved.statusCode).toBe(200);
+      expect(
+        (resolved.json().services as { name: string; allowedTools: string[] | null }[]).map(
+          ({ name, allowedTools }) => ({ name, allowedTools })
+        )
+      ).toEqual([
+        { name: "limited-mcp", allowedTools: ["search", "read_file"] },
+        { name: "open-mcp", allowedTools: null }
+      ]);
+    });
+
+    test("an inline HTTP service can't take a tool list", async () => {
+      const res = await inject("POST", sessionsUrl, {
+        ttl: "1h",
+        services: [{ ...openai, allowedTools: ["search"] }]
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/^Service 'openai': /);
+    });
+
     test("a session needs an access bundle or inline services", async () => {
       const res = await inject("POST", sessionsUrl, { ttl: "1h" });
       expect(res.statusCode).toBe(400);

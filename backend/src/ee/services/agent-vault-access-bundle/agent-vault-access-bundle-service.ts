@@ -570,7 +570,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
               AgentVaultVariableReferenceField.CustomHeader
             ])
           ),
-          allowedTools: service.allowedTools ?? null,
           credential,
           customHeaders: customHeaderSummaries
         };

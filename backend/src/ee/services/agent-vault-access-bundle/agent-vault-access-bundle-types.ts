@@ -134,7 +134,6 @@ export type TAgentVaultServiceSummary = {
       variableReferences: TAgentVaultVariableReferenceSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
-      allowedTools: string[] | null;
       credential: TAgentVaultBearerCredentialSummary | TAgentVaultOauthCredentialSummary;
       customHeaders: TAgentVaultCustomHeaderSummary[];
       variableReferences: Exclude<

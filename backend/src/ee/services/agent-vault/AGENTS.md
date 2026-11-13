@@ -304,8 +304,8 @@ mint, on session reads and in the mint audit event); the code and the Sessions p
 tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
 child table with a project's services so the two can't drift, and only `agent-vault-session-inline-service-dal.ts`
 reads or writes them. They belong to that session alone: nothing edits them, no bundle or other session reads them, and
-only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields, OAuth and tool lists
-off them in the database too.
+only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields and OAuth off them in
+the database too.
 
 - **Admin only, at mint and on every resolve.** Whoever starts the session decides which hosts it reaches and with
   which credentials, an admin's call for a bundle's services too. It also keeps `service-hosts` meaningful: a proxy lets
@@ -321,8 +321,6 @@ off them in the database too.
 - **No member-provided fields and no OAuth.** Every value arrives with the mint, and an OAuth service needs a sign-in in
   the UI and a refresh that writes the service row. The schema accepts both, hidden, so `prepareInlineServices` refuses
   them by name, as a bundle service's create refuses fields its type doesn't take.
-- **No tool filtering.** An inline MCP server takes no `allowedTools`, and resolve sends it `allowedTools: null`, so
-  the proxy lets the agent call every tool on it, as it does for a bundle service with no list set.
 - **The name is optional.** An unnamed service goes by its first host (`inlineServiceDisplayName`), worked out on the
   server only: resolve (so the proxy's messages and session logs), the audit log and the session responses all send
   that name, so `name` is never null on the wire and the frontend shows it as is. Mint refuses a name, given or

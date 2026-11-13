@@ -186,8 +186,8 @@ const STORED_TYPES = [
     allowedMethods: null,
     allowedPathPrefixes: null,
     credential: BEARER,
-    fields: ["serverUrl", "transport", "hostPattern"],
-    bundleFields: ["allowedTools", "customHeaders"],
+    fields: ["serverUrl", "transport", "hostPattern", "allowedTools"],
+    bundleFields: ["customHeaders"],
     inlineFields: ["customHeaders"]
   },
   {

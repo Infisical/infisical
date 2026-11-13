@@ -74,6 +74,7 @@ export type TPreparedInlineService = {
   hostPattern: string | null;
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
+  allowedTools: string[] | null;
   credentialConfig: TInlineCredentialConfig;
   customHeaders: TInlineCustomHeader[];
   substitutions: TInlineSubstitution[];
@@ -163,12 +164,6 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     tls: input.tls,
     allowedTools: input.allowedTools
   });
-  if (input.allowedTools?.length) {
-    throw new BadRequestError({
-      message:
-        "Services sent with a session can't limit an MCP server's tools, so leave out allowedTools. Add the MCP server to an access bundle to limit its tools."
-    });
-  }
 
   const { credential } = input;
   if (credential.type === AgentVaultCredentialType.OAuth) {
@@ -222,6 +217,7 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     hostPattern,
     allowedMethods: input.allowedMethods ?? null,
     allowedPathPrefixes: input.allowedPathPrefixes ?? null,
+    allowedTools: input.allowedTools ?? null,
     credentialConfig,
     customHeaders: customHeaders.map((header) => ({ name: header.name, prefix: header.prefix ?? "" })),
     substitutions: substitutions.map((substitution) => ({
@@ -446,8 +442,7 @@ export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): T
     transport: getServiceTransport(row.config),
     allowedMethods: row.allowedMethods ?? null,
     allowedPathPrefixes: row.allowedPathPrefixes ?? null,
-    // An inline MCP server can't be limited to some of its tools, so the proxy filters none.
-    allowedTools: null,
+    allowedTools: row.allowedTools ?? null,
     credential,
     customHeaderNames: customHeaders.map((header) => header.name),
     substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
@@ -521,8 +516,7 @@ export const toResolvedInlineService = (
     native: toResolvedNativeTarget(row.type, row.config),
     allowedMethods: row.allowedMethods ?? null,
     allowedPathPrefixes: row.allowedPathPrefixes ?? null,
-    // An inline MCP server can't be limited to some of its tools, so the proxy filters none.
-    allowedTools: null,
+    allowedTools: row.allowedTools ?? null,
     credential,
     customHeaders: customHeaders.map((header, index) => ({ ...header, value: secrets!.customHeaders[index] })),
     substitutions: substitutions.map((substitution, index) => ({

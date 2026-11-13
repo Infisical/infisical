@@ -358,6 +358,7 @@ export type TAgentVaultServiceTypeFields =
       serverUrl: string;
       transport: AgentVaultMcpTransport;
       hostPattern: string;
+      allowedTools: string[] | null;
     }
   | {
       type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
@@ -381,6 +382,7 @@ export const toServiceTypeFields = (row: {
   hostPattern?: string | null;
   allowedMethods?: string[] | null;
   allowedPathPrefixes?: string[] | null;
+  allowedTools?: string[] | null;
 }): TAgentVaultServiceTypeFields => {
   // The type check constraint allows only these types, and the host pattern check sets a host pattern on every http
   // and mcp service.
@@ -396,7 +398,7 @@ export const toServiceTypeFields = (row: {
       };
     case AgentVaultServiceType.Mcp: {
       const { serverUrl, transport } = row.config as z.infer<typeof AgentVaultMcpServiceConfigSchema>;
-      return { type, serverUrl, transport, hostPattern };
+      return { type, serverUrl, transport, hostPattern, allowedTools: row.allowedTools ?? null };
     }
     case AgentVaultServiceType.Postgres:
     case AgentVaultServiceType.Mysql: {
