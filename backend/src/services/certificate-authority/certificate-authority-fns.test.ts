@@ -600,7 +600,7 @@ describe("rebuildCaCrl", () => {
           cipherTextBlob: plainText
         })),
         decryptWithKmsKey: vi.fn(),
-        generateKmsKey: vi.fn()
+        getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1")
       },
       certificateDAL: {
         find: vi.fn(async () => [
