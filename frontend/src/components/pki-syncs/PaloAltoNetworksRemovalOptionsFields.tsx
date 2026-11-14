@@ -1,9 +1,8 @@
-import { Field, FieldDescription, FieldLabel, FilterableSelect } from "@app/components/v3";
+import { useId } from "react";
+
+import { Combobox, Field, FieldDescription, FieldLabel } from "@app/components/v3";
 import { getPaloAltoNetworksProfileLabel } from "@app/helpers/pkiSyncs";
-import {
-  TPaloAltoNetworksCertificate,
-  usePaloAltoNetworksConnectionListCertificates
-} from "@app/hooks/api/appConnections/palo-alto-networks";
+import { usePaloAltoNetworksConnectionListCertificates } from "@app/hooks/api/appConnections/palo-alto-networks";
 import { TPkiSyncRemovalOptions, useListPkiSyncCertificates } from "@app/hooks/api/pkiSyncs";
 import { TPaloAltoNetworksSslTlsProfilePkiSync } from "@app/hooks/api/pkiSyncs/types";
 
@@ -22,6 +21,7 @@ export const PaloAltoNetworksRemovalOptionsFields = ({
   value,
   onChange
 }: Props) => {
+  const id = useId();
   const { data: certificates = [], isPending } = usePaloAltoNetworksConnectionListCertificates(
     connectionId,
     destinationConfig.template
@@ -42,22 +42,20 @@ export const PaloAltoNetworksRemovalOptionsFields = ({
 
   return (
     <Field>
-      <FieldLabel>Replacement Certificate</FieldLabel>
-      <FilterableSelect
-        isClearable
+      <FieldLabel htmlFor={id}>Replacement Certificate</FieldLabel>
+      <Combobox
+        id={id}
         isLoading={isPending || isSyncCertificatesPending}
         options={options}
         value={selected ?? null}
-        onChange={(option) =>
+        onValueChange={(option) =>
           onChange({
             ...value,
-            replacementCertificateName: (option as TPaloAltoNetworksCertificate | null)?.name
+            replacementCertificateName: option?.name
           })
         }
-        getOptionLabel={(option) =>
-          getPaloAltoNetworksProfileLabel(option as TPaloAltoNetworksCertificate)
-        }
-        getOptionValue={(option) => (option as TPaloAltoNetworksCertificate).name}
+        getOptionLabel={(option) => getPaloAltoNetworksProfileLabel(option)}
+        getOptionValue={(option) => option.name}
         placeholder="Select a certificate on the device"
       />
       <FieldDescription>

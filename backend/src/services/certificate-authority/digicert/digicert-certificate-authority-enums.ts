@@ -5,7 +5,8 @@ export enum DigiCertOrderStatus {
   Revoked = "revoked",
   Canceled = "canceled",
   Rejected = "rejected",
-  Expired = "expired"
+  Expired = "expired",
+  ReissuePending = "reissue_pending"
 }
 
 export const DIGICERT_FINAL_ISSUED_STATUSES = [DigiCertOrderStatus.Issued] as const;
@@ -30,3 +31,5 @@ export enum CodeSigningOrderStatus {
   Expired = "expired",
   Revoked = "revoked"
 }
+
+export const DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS = 199;

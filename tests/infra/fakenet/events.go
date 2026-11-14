@@ -29,8 +29,32 @@ type EventRecord struct {
 // another caller.
 type Emitter struct {
 	log  *eventLog
+	txt  *txtRecords
 	host string
 	key  string
+}
+
+// SetTXT answers DNS TXT queries for name with values, for a fake that is a DNS
+// provider: a record created through its API is then served the way the provider's
+// nameservers would serve it. No values removes the name.
+func (e Emitter) SetTXT(name string, values ...string) {
+	if e.txt == nil {
+		return
+	}
+	if len(values) == 0 {
+		e.txt.remove(name)
+		return
+	}
+	e.txt.set(name, values)
+}
+
+// LookupTXT returns the TXT values fakenet's DNS answers for name, for a fake that
+// checks a record another fake published (a CA validating DNS-01).
+func (e Emitter) LookupTXT(name string) []string {
+	if e.txt == nil {
+		return nil
+	}
+	return e.txt.lookup(name)
 }
 
 func (e Emitter) Publish(ev Event) {
@@ -101,7 +125,9 @@ func (l *eventLog) current() uint64 {
 // serveEvents streams events as SSE: history first, then live.
 //
 // One stream per test binary, filtered by credential prefix, so a binary never
-// receives the traffic of packages running beside it.
+// receives the traffic of packages running beside it. Hosts named in the request come
+// through unfiltered since their scopes are product ids (like org ids) that can't
+// carry the prefix; the client drops the ones no test tracks.
 func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -109,6 +135,10 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	prefix := r.URL.Query().Get("prefix")
+	wholeHosts := map[string]bool{}
+	for _, h := range r.URL.Query()["host"] {
+		wholeHosts[h] = true
+	}
 
 	var after uint64
 	resuming := false
@@ -132,7 +162,7 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 		resuming = false
 		for _, rec := range records {
 			after = rec.Seq
-			if !strings.HasPrefix(rec.Scope, prefix) {
+			if !strings.HasPrefix(rec.Scope, prefix) && !wholeHosts[rec.Host] {
 				continue
 			}
 			body, _ := json.Marshal(rec)

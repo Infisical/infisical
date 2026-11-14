@@ -1,5 +1,6 @@
 export type { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
 export {
+  AgentVaultSessionLogDefaultStorageUpgradeIntent,
   AgentVaultSessionLogsUpgradeIntent,
   AuditLogStreamsUpgradeIntent,
   AuditLogsUpgradeIntent,
@@ -47,6 +48,7 @@ export {
   EnterprisePamAccountsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
   EnvironmentLimitUpgradeIntent,
+  CrossSignedCertificatesUpgradeIntent,
   ExternalCertificateAuthoritiesUpgradeIntent,
   FolderAccessControlsUpgradeIntent,
   getSafeUpgradeReturnPath,
@@ -61,7 +63,6 @@ export {
   SecretApprovalPoliciesUpgradeIntent,
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
-  SecretsBrokeringUpgradeIntent,
   SecretScanningUpgradeIntent,
   SecretsManagementUpgradeIntent,
   UpgradeFeature

@@ -98,7 +98,6 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   const [_open, _setOpen] = React.useState(() => {
     const cookie = document.cookie
       .split("; ")
@@ -611,8 +610,7 @@ function SidebarCollapsibleGroup({
         expandedHeader
       )}
       <div
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...(!isCollapsed && !open ? { inert: "" as any } : {})}
+        inert={!isCollapsed && !open}
         className={cn(
           "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
           isCollapsed || open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"

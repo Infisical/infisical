@@ -82,6 +82,7 @@ export enum AppConnection {
   LiteLLM = "litellm",
   Fireworks = "fireworks",
   KempLoadMaster = "kemp-loadmaster",
+  Imperva = "imperva",
   MicrosoftIntune = "microsoft-intune",
   NutanixPrismCentral = "nutanix-prism-central",
   PowerDns = "powerdns",
@@ -90,7 +91,11 @@ export enum AppConnection {
   Stripe = "stripe",
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
-  S3Compatible = "s3-compatible"
+  ServiceNow = "servicenow",
+  S3Compatible = "s3-compatible",
+  Jira = "jira",
+  ClickHouse = "clickhouse",
+  Jenkins = "jenkins"
 }
 
 export enum AWSRegion {

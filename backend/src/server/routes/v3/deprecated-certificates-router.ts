@@ -7,12 +7,12 @@ import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  csrSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
@@ -23,6 +23,7 @@ import {
   CertificateRenewalKeySource,
   TCertificateIssuedResponse
 } from "@app/services/certificate-v3/certificate-v3-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
@@ -219,7 +220,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           profileId: z.string().uuid(),
-          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters"),
+          csr: csrSchema,
           ttl: z
             .string()
             .trim()
@@ -503,6 +504,12 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         certificateId: req.params.certificateId,
         removeRootsFromChain: req.body?.removeRootsFromChain
       });
+
+      if (data.status === CertificateRequestStatus.PENDING_APPROVAL) {
+        throw new BadRequestError({
+          message: `Certificate renewal was submitted for approval (certificate request ${data.certificateRequestId}) and will be issued once approved. Use the v1 API endpoints to follow it.`
+        });
+      }
 
       if (data.status !== CertificateRequestStatus.ISSUED) {
         throw new BadRequestError({

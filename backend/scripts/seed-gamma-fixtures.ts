@@ -348,7 +348,7 @@ const main = async () => {
   console.log(`  E2E_SCIM_TOKEN      = ${jwt}`);
   console.log(`  E2E_SAML_CONFIG_ID  = ${samlConfigId}`);
   console.log("");
-  console.log("Next steps (see e2e/CLAUDE.md):");
+  console.log("Next steps (see e2e/AGENTS.md):");
   console.log("  1. Confirm plan.scim and plan.samlSSO are enabled for this org.");
   console.log("  2. Deploy the mock IdP Worker with the SAML_IDP_PRIVATE_KEY and SAML_IDP_ADMIN_TOKEN");
   console.log("     secrets set via `wrangler secret put`, and an IDP_SESSIONS KV namespace created.");

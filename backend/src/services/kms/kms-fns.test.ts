@@ -1,10 +1,10 @@
-import { generateKeyPairSync } from "crypto";
+import { createHash, generateKeyPairSync } from "crypto";
 import { describe, expect, it } from "vitest";
 
 import { AsymmetricKeyAlgorithm } from "@app/lib/crypto/sign";
 import { BadRequestError } from "@app/lib/errors";
 
-import { validateClassicalKeyMaterial } from "./kms-fns";
+import { buildWrappedKeyPayload, openWrappedKey, validateClassicalKeyMaterial } from "./kms-fns";
 
 const pkcs8Pem = (key: { export: (o: { format: "pem"; type: "pkcs8" }) => string | Buffer }) =>
   Buffer.from(key.export({ format: "pem", type: "pkcs8" }));
@@ -41,5 +41,29 @@ describe("validateClassicalKeyMaterial", () => {
 
   it("ignores algorithms it has no shape for", () => {
     expect(() => validateClassicalKeyMaterial(ed25519, AsymmetricKeyAlgorithm.ML_DSA_44)).not.toThrow();
+  });
+});
+
+describe("wrapped keys", () => {
+  const key = Buffer.alloc(32, 7);
+
+  // An Agent Vault session can have no expiry, so keys wrapped before this helper existed must keep opening.
+  it("opens a key in the layout Agent Vault session keys were always stored in", () => {
+    const sessionId = "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11";
+    const storedBefore = Buffer.concat([createHash("sha256").update(`${sessionId}|v1`).digest(), key]);
+
+    expect(buildWrappedKeyPayload(`${sessionId}|v1`, key).equals(storedBefore)).toBe(true);
+    expect(openWrappedKey({ label: `${sessionId}|v1`, payload: storedBefore, keyBytes: 32 })?.equals(key)).toBe(true);
+  });
+
+  it("refuses a key wrapped for another label", () => {
+    const payload = buildWrappedKeyPayload("session-a|v1", key);
+    expect(openWrappedKey({ label: "session-b|v1", payload, keyBytes: 32 })).toBeNull();
+  });
+
+  it("refuses a payload of the wrong size", () => {
+    expect(openWrappedKey({ label: "session-a|v1", payload: key, keyBytes: 32 })).toBeNull();
+    const payload = buildWrappedKeyPayload("session-a|v1", key);
+    expect(openWrappedKey({ label: "session-a|v1", payload, keyBytes: 16 })).toBeNull();
   });
 });

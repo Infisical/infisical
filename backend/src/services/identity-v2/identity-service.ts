@@ -9,8 +9,13 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
@@ -32,22 +37,21 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
 
 import { ActorType } from "../auth/auth-type";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
-import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { assertProductWillRetainAdmin, filterRolesNeedingPrivilegeBoundary } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityV2DALFactory } from "./identity-dal";
 import { filterIdentitiesByProjectPermission, TProjectPermissionAbility } from "./identity-fns";
 import { TIdentityMembershipV2DALFactory } from "./identity-membership-dal";
@@ -68,7 +72,8 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -80,7 +85,6 @@ type TScopedIdentityV2ServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
@@ -91,6 +95,7 @@ export const identityV2ServiceFactory = ({
   identityMembershipV2DAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL,
@@ -99,7 +104,6 @@ export const identityV2ServiceFactory = ({
   projectDAL,
   orgDAL,
   roleDAL,
-  usageMeteringService,
   alertService
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
@@ -125,11 +129,9 @@ export const identityV2ServiceFactory = ({
     await factory.onCreateIdentityGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    const identityLimit = getEnforcedIdentityLimit(plan);
-    if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
-      if (identitiesUsed >= identityLimit) {
-        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+    if (plan.isLimited(PlanLimit.Identities)) {
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
+      if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
         });
@@ -201,7 +203,7 @@ export const identityV2ServiceFactory = ({
 
       const customInputRoles = data.roles.filter((el) => isCustomProjectRole(el.role));
       const hasCustomRole = customInputRoles.length > 0;
-      if (hasCustomRole && !plan?.rbac) {
+      if (hasCustomRole && !plan?.has(PlanFeature.Rbac)) {
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -316,15 +318,15 @@ export const identityV2ServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.updateSubscriptionOrgMemberCount(dto.permission.orgId);
+    await usageMeteringService.syncSeats(dto.permission.orgId);
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
-    usageMeteringService.emit(dto.permission.orgId, IdentitiesMeter.key);
+    usageMeteringService.emit(dto.permission.orgId, Meter.Identities);
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(dto.permission.orgId, Meter.PamIdentities);
+      usageMeteringService.emit(dto.permission.orgId, Meter.AgentVaultIdentities);
     }
 
     return { identity };
@@ -345,6 +347,10 @@ export const identityV2ServiceFactory = ({
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
     await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
+
+    if (data.name !== undefined && data.name !== existingIdentity.name && containsLogUnsafeCharacters(data.name)) {
+      throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
+    }
 
     const identity = await identityDAL.transaction(async (tx) => {
       // Compared against undefined: `hasDeleteProtection: false` is a real update, and a truthiness check
@@ -441,13 +447,13 @@ export const identityV2ServiceFactory = ({
     });
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
 
-    await licenseService.updateSubscriptionOrgMemberCount(scopeData.orgId);
+    await usageMeteringService.syncSeats(scopeData.orgId);
 
     // Deleting the identity cascades its org + project + group memberships, so all meters change.
-    usageMeteringService.emit(scopeData.orgId, IdentitiesMeter.key);
-    usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.Identities);
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities);
 
     return { identity: deletedIdentity };
   };

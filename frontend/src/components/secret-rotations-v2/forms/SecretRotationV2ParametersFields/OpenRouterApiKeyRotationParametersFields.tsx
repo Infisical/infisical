@@ -1,14 +1,13 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldFeedback,
-  FilterableSelect,
   Input,
   Label,
   Select,
@@ -18,10 +17,7 @@ import {
   SelectValue,
   Toggle
 } from "@app/components/v3";
-import {
-  TOpenRouterWorkspace,
-  useListOpenRouterConnectionWorkspaces
-} from "@app/hooks/api/appConnections/open-router";
+import { useListOpenRouterConnectionWorkspaces } from "@app/hooks/api/appConnections/open-router";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { OpenRouterLimitReset } from "@app/hooks/api/secretRotationsV2/types/open-router-api-key-rotation";
 
@@ -66,9 +62,8 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
             >
               Workspace <span className="font-normal text-muted">(optional)</span>
             </FieldLabelWithTooltip>
-            <FilterableSelect
-              inputId="openrouter-workspace"
-              isClearable
+            <Combobox
+              id="openrouter-workspace"
               isLoading={isWorkspacesPending && Boolean(connectionId)}
               isDisabled={!connectionId || isUpdate}
               value={
@@ -76,13 +71,12 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
                 (value ? { id: value, name: value, slug: value } : null)
               }
               onBlur={onBlur}
-              onChange={(option) => {
-                onChange((option as SingleValue<TOpenRouterWorkspace>)?.id || undefined);
-              }}
+              onValueChange={(option) => onChange(option?.id || undefined)}
               options={workspaces}
               placeholder="Select a workspace..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               isError={Boolean(error)}
             />
             {(isUpdate || error?.message) && (

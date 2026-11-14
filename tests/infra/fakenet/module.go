@@ -80,7 +80,10 @@ func ResolveImage(ctx context.Context, repoRoot string, log infra.Logger) (Image
 	}
 
 	tests := filepath.Join(repoRoot, "tests")
-	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", filepath.Join(dir, "fakenet"), "./cmd/fakenet")
+	// -buildvcs=false: the stamped VCS state flips whenever a tracked file is edited,
+	// which would change the binary, rebuild fakenet and replace it under the packages
+	// still running.
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", filepath.Join(dir, "fakenet"), "./cmd/fakenet")
 	build.Dir = tests
 	build.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+goarch, "CGO_ENABLED=0")
 	if out, bErr := build.CombinedOutput(); bErr != nil {
@@ -88,7 +91,11 @@ func ResolveImage(ctx context.Context, repoRoot string, log infra.Logger) (Image
 	}
 
 	iid := filepath.Join(dir, "iid")
-	dockerBuild := exec.CommandContext(ctx, "docker", "build",
+	// --provenance=false: with the containerd image store the image id covers the
+	// provenance attestation, which carries build timestamps, so an identical binary
+	// would get a new id on every build and each test binary would replace the
+	// running fakenet under the others.
+	dockerBuild := exec.CommandContext(ctx, "docker", "build", "--provenance=false",
 		"-f", filepath.Join(tests, "cmd", "fakenet", "Dockerfile"),
 		"-t", localTag, "--iidfile", iid, dir)
 	dockerBuild.Stdout = os.Stderr

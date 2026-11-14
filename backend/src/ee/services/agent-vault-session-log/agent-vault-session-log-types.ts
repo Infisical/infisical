@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { OrgServiceActor, TGenericPermission } from "@app/lib/types";
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import type {
   AgentVaultSessionLogChunkCreateSchema,
@@ -31,10 +30,3 @@ export type TTailSessionLogsDTO = TAgentVaultSessionScoped & {
 export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped & {
   actor: OrgServiceActor;
 } & z.infer<typeof AgentVaultSessionLogSettingsUpdateSchema>;
-
-export type TResolvedSessionLogStorageConfig = {
-  appConnectionId: string;
-  bucket: string;
-  region: AWSRegion;
-  keyPrefix: string | null;
-};

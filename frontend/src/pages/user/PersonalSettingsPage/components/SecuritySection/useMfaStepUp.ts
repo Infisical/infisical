@@ -40,7 +40,7 @@ export const useMfaStepUp = () => {
   const [isBusy, setIsBusy] = useState(false);
 
   const popupRef = useRef<Window | null>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval>>();
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const isPollingRef = useRef(false);
 
   const cleanup = useCallback(() => {

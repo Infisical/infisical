@@ -2,7 +2,12 @@ import { ReactNode } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { splitVariableReferences } from "@app/helpers/agentVaultVariables";
-import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultVariableReferenceField,
+  isNativeServiceType,
+  TAgentVaultMemberProvidedField
+} from "@app/hooks/api/agentVault";
 
 import { TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 import { useMissingVariableKeys } from "./ServiceVariablesContext";
@@ -12,9 +17,18 @@ const MASK = "•".repeat(8);
 
 // A reference holds no secret, so it is spelled out. Literal text is masked at a fixed length, which
 // says nothing about the secret's own.
-const PreviewValue = ({ value, placeholder }: { value?: string; placeholder: string }) => {
+const PreviewValue = ({
+  value,
+  placeholder,
+  isMemberProvided
+}: {
+  value?: string;
+  placeholder: string;
+  isMemberProvided?: boolean;
+}) => {
   const missingKeys = useMissingVariableKeys();
 
+  if (isMemberProvided) return <span className="text-muted">&lt;member value&gt;</span>;
   if (!value) return <span className="text-muted">{placeholder}</span>;
   if (value === UNCHANGED_SECRET) return <span>{MASK}</span>;
 
@@ -39,10 +53,33 @@ const PreviewValue = ({ value, placeholder }: { value?: string; placeholder: str
 
 export const SendsPreview = () => {
   const { control } = useFormContext<TServiceForm>();
-  const [credentialType, headerName, headerPrefix, username, secret, customHeaders] = useWatch({
+  const [
+    credentialType,
+    headerName,
+    headerPrefix,
+    username,
+    secret,
+    memberProvidedFields,
+    customHeaders,
+    serviceType
+  ] = useWatch({
     control,
-    name: ["credentialType", "headerName", "headerPrefix", "username", "secret", "customHeaders"]
+    name: [
+      "credentialType",
+      "headerName",
+      "headerPrefix",
+      "username",
+      "secret",
+      "memberProvidedFields",
+      "customHeaders",
+      "serviceType"
+    ]
   });
+  // A database or SSH login sends no HTTP header.
+  if (isNativeServiceType(serviceType)) return null;
+
+  const isMemberProvided = (field: TAgentVaultMemberProvidedField) =>
+    memberProvidedFields.includes(field);
 
   const lines: { id: string; content: ReactNode }[] = [];
 
@@ -52,7 +89,22 @@ export const SendsPreview = () => {
       content: (
         <>
           {headerName || "Authorization"}: {headerPrefix ? `${headerPrefix} ` : ""}
-          <PreviewValue value={secret} placeholder="<token>" />
+          <PreviewValue
+            value={secret}
+            placeholder="<token>"
+            isMemberProvided={isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)}
+          />
+        </>
+      )
+    });
+  }
+
+  if (credentialType === AgentVaultCredentialType.OAuth) {
+    lines.push({
+      id: "credential",
+      content: (
+        <>
+          Authorization: Bearer <span className="text-muted">&lt;access token&gt;</span>
         </>
       )
     });
@@ -64,8 +116,18 @@ export const SendsPreview = () => {
       content: (
         <>
           Authorization: Basic base64(
-          <PreviewValue value={username} placeholder="<username>" />:
-          <PreviewValue value={secret} placeholder="<password>" />)
+          <PreviewValue
+            value={username}
+            placeholder="<username>"
+            isMemberProvided={isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername)}
+          />
+          :
+          <PreviewValue
+            value={secret}
+            placeholder="<password>"
+            isMemberProvided={isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)}
+          />
+          )
         </>
       )
     });

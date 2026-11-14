@@ -4,7 +4,9 @@ import {
   doesPasswordMeetRequirement,
   PASSWORD_POLICY,
   PasswordPolicyConfigSchema,
-  PasswordPolicySchema
+  PasswordPolicySchema,
+  PKCS12_PASSWORD_POLICY,
+  Pkcs12PasswordSchema
 } from "./password-policy";
 
 describe("PasswordPolicySchema", () => {
@@ -86,5 +88,36 @@ describe("PasswordPolicySchema", () => {
     const serializedPolicy: unknown = JSON.parse(JSON.stringify(PASSWORD_POLICY));
 
     expect(PasswordPolicyConfigSchema.parse(serializedPolicy)).toEqual(PASSWORD_POLICY);
+  });
+});
+
+describe("Pkcs12PasswordSchema", () => {
+  test.each(["Horse-Battery-7", "Keystore#Pass9x", "密码安全密码安全密码安全-7"])(
+    "accepts a strong password: %s",
+    (password) => {
+      expect(Pkcs12PasswordSchema.safeParse(password).success).toBe(true);
+    }
+  );
+
+  test.each([
+    ["too short", "Short-7"],
+    ["no number", "Horse-Battery-Staple"],
+    ["no special character", "HorseBattery7Staple"],
+    ["no letter", "1234567890123!"],
+    ["whitespace is not a special character", "Horse Battery 7"],
+    ["repeated characters", "Horse-Batttttery-7"]
+  ])("rejects a password with %s", (_, password) => {
+    expect(Pkcs12PasswordSchema.safeParse(password).success).toBe(false);
+  });
+
+  test("is stricter than the user password policy", () => {
+    expect(PasswordPolicySchema.safeParse("HorseBattery7Staple").success).toBe(true);
+    expect(Pkcs12PasswordSchema.safeParse("HorseBattery7Staple").success).toBe(false);
+  });
+
+  test("exports a serializable policy contract", () => {
+    const serializedPolicy: unknown = JSON.parse(JSON.stringify(PKCS12_PASSWORD_POLICY));
+
+    expect(PasswordPolicyConfigSchema.parse(serializedPolicy)).toEqual(PKCS12_PASSWORD_POLICY);
   });
 });

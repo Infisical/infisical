@@ -1,14 +1,14 @@
 ---
 title: "Variables"
-description: "Values you store once and use in any service in Agent Vault."
+description: "Values you store once and use in any service in an Agent Vault project."
 ---
 
-A variable is a value that you can use in any [service](/documentation/platform/agent-vault/services) in Agent Vault, whichever [access bundle](/documentation/platform/agent-vault/access-bundles) the service is in. You define the variable once and give it a key, such as `GITHUB_TOKEN`. Then, any service can use the variable by referencing the key within double braces: `{{GITHUB_TOKEN}}`.
+A global variable is a value that you can use in any [service](/documentation/platform/agent-vault/services) in an [Agent Vault project](/documentation/platform/agent-vault/projects), whichever [access bundle](/documentation/platform/agent-vault/access-bundles) the service is in. You define the variable once and give it a key, such as `GITHUB_TOKEN`. Then, any service can use the variable by referencing the key within double braces: `{{GITHUB_TOKEN}}`.
 
 When an agent sends a request, the [proxy](/documentation/platform/agent-vault/proxies) replaces each reference with the variable's value.
 
 <Info>
-  Only [Agent Vault admins](/documentation/platform/agent-vault/access-control#product-membership) can view and update variables. If you're a member, **Variables** doesn't appear in the Agent Vault sidebar.
+  Only [admins of the project](/documentation/platform/agent-vault/access-control#product-membership) can view and update global variables.
 </Info>
 
 ## Add a variable
@@ -17,18 +17,18 @@ To add a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables**.
+    In your Agent Vault project, go to **Variables** and select the **Global Variables** tab.
 
     <Frame>
-      <img src="/images/platform/agent-vault/variables-empty.png" alt="The Variables page with no variables and an Add Variable button" />
+      <img src="/images/platform/agent-vault/variables-global.png" alt="The Global Variables tab of the Variables page, listing ten variables with hidden values and the service that uses each one" />
     </Frame>
 
   </Step>
   <Step>
-    Select **Add Variable**.
+    Select **Add Global Variable**.
 
     <Frame>
-      <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Variable dialog with GITHUB_TOKEN as the key and a hidden value" />
+      <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Global Variable dialog with OPENAI_API_KEY as the key and a hidden value" />
     </Frame>
 
   </Step>
@@ -36,44 +36,40 @@ To add a variable:
     Enter a **Key** and a **Value**. To view the value later, select the eye icon next to it. Each time someone views or copies a value, Infisical adds an event to the audit log.
 
     <Note>
-    A key can be up to 64 characters long. It must start with a letter and use only uppercase letters, numbers, and underscores. No two variables can have the same key.
+    A key can be up to 64 characters long. It must start with a letter and use only uppercase letters, numbers, and underscores. No two global variables can have the same key.
     </Note>
 
   </Step>
   <Step>
-    Select **Add Variable**. The variable appears in the list on the **Variables** page.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/variables.png" alt="The Variables page listing seven variables with hidden values. The Used By column shows access bundle badges, such as code-review, on-call, and release-notes for GITHUB_TOKEN, with a tooltip listing the github service in code-review. SLACK_BOT_TOKEN shows three badges and +1 for one more access bundle. SENTRY_AUTH_TOKEN shows Unused." />
-    </Frame>
+    Select **Add Global Variable**. The variable appears in the list on the **Global Variables** tab.
 
   </Step>
 </Steps>
 
 <Note>
-Agent Vault can hold up to 500 variables.
+Each Agent Vault project can hold up to 500 global variables.
 </Note>
 
 ## Use a variable in a service
 
-You can use a variable in the following fields when [configuring a service](/documentation/platform/agent-vault/services#add-a-service):
+You can use a variable in the following fields when [configuring a service](/documentation/platform/agent-vault/services):
 
-- **Token** in a [Bearer](/documentation/platform/agent-vault/services#bearer) credential
-- **Username** and **Password** in a [Basic](/documentation/platform/agent-vault/services#basic) credential
-- **Value** in a [custom header](/documentation/platform/agent-vault/services#custom-headers)
-- **With** in a [substitution](/documentation/platform/agent-vault/services#substitutions)
+- **Token** in a [Bearer](/documentation/platform/agent-vault/http-apis#bearer) credential, or in an MCP server's [Bearer token](/documentation/platform/agent-vault/mcp-servers#bearer-token)
+- **Username** and **Password** in a [Basic](/documentation/platform/agent-vault/http-apis#basic) credential
+- **Value** in a custom header, for an [HTTP API](/documentation/platform/agent-vault/http-apis#custom-headers) or an [MCP server](/documentation/platform/agent-vault/mcp-servers#custom-headers)
+- **With** in a [substitution](/documentation/platform/agent-vault/http-apis#substitutions)
 
 To use a variable:
 
 <Steps>
   <Step>
-    [Add a service](/documentation/platform/agent-vault/services#add-a-service), or open an existing service's actions menu and select **Edit**. Then go to the **Credential** step.
+    [Add a service](/documentation/platform/agent-vault/services), or open an existing service's actions menu and select **Edit**. Then go to the **Credential** step.
   </Step>
   <Step>
     In a field that accepts variables, type `{{`. A list of your variables appears.
 
     <Frame>
-      <img src="/images/platform/agent-vault/service-variable-picker.png" alt="The Credential step of a GitHub service, with a partly typed reference in the Token field and a list showing GITHUB_TOKEN and Create GITHUB_" />
+      <img src="/images/platform/agent-vault/service-variable-picker.png" alt="The Credential step of a GitHub service, with {{GITH typed in the Password field and a list showing GITHUB_TOKEN and Create GITH" />
     </Frame>
 
   </Step>
@@ -81,11 +77,11 @@ To use a variable:
     Select a variable from the list. Infisical inserts the reference, such as `{{GITHUB_TOKEN}}`.
 
     <Tip>
-    You can also create a variable without leaving the service. Type its key, then select **Create** at the end of the list. The **Add Variable** dialog opens with the key filled in, so you only need to enter a **Value**.
+    You can also create a variable without leaving the service. Type its key, then select **Create** at the end of the list. The **Add Global Variable** dialog opens with the key filled in, so you only need to enter a **Value**.
     </Tip>
 
     <Frame>
-      <img src="/images/platform/agent-vault/service-variable-reference.png" alt="The Credential step of a GitHub service with a GITHUB_TOKEN reference as the Token, and the Sends preview showing the reference after Authorization: Bearer" />
+      <img src="/images/platform/agent-vault/service-variable-reference.png" alt="The Credential step of a GitHub service with a GITHUB_TOKEN reference as the Password, and the Sends preview showing the reference in the Authorization: Basic header" />
     </Frame>
 
     A reference can fill a whole field or part of one. For example, if a custom header's **Value** is `org-{{ORG_ID}}`, the proxy sends `org-` followed by the value of `ORG_ID`.
@@ -98,10 +94,14 @@ To check which services are using a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables**.
+    In your Agent Vault project, go to **Variables**.
   </Step>
   <Step>
-    In the variable's **Used By** column, hover over an access bundle to see which of the access bundle's services use the variable.
+    The variable's **Used By** column lists the services that use the variable. Hover over a service to see which access bundles it's in.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/variables.png" alt="The Variables page with the pointer over the slack badge of SLACK_BOT_TOKEN, and a tooltip listing the on-call, release, and support access bundles" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -111,7 +111,7 @@ To update a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables**.
+    In your Agent Vault project, go to **Variables**.
   </Step>
   <Step>
     Open the variable's actions menu and select **Edit**.
@@ -134,7 +134,7 @@ To delete a variable:
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Variables**.
+    In your Agent Vault project, go to **Variables**.
   </Step>
   <Step>
     Open the variable's actions menu and select **Delete**.
@@ -147,3 +147,23 @@ To delete a variable:
 <Note>
 If any service still uses the variable, the dialog lists those services, and you can't delete the variable until you [remove the reference](#use-a-variable-in-a-service) from each one.
 </Note>
+
+<Frame>
+  <img src="/images/platform/agent-vault/variable-delete-blocked.png" alt="The Delete GITHUB_TOKEN dialog, listing the github services in code-review and release-notes that use the variable, with Delete Variable disabled" />
+</Frame>
+
+## Personal variables
+
+A personal variable works like a global variable, with two differences: only your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) can use it, and only you can read it. Use one when several services ask you for the same value, such as a personal GitHub token that services in two access bundles require.
+
+To see your personal variables, go to **Variables** in your Agent Vault project. If you're an admin, select the **Personal Variables** tab.
+
+<Frame>
+  <img src="/images/platform/agent-vault/variables-personal.png" alt="The Personal Variables tab, listing the personal variables GITHUB_PAT and SLACK_USER_TOKEN" />
+</Frame>
+
+You add, update, and delete personal variables the same way as [global variables](#add-a-variable), with these limits:
+
+- You can keep up to 100 personal variables in each project, and your personal variables in one project aren't available in another
+- A personal variable's key only has to be unique among your own personal variables (it can match a global variable's key, or another member's)
+- If your personal values for a service use a variable, you can't delete the variable until you remove it from the service

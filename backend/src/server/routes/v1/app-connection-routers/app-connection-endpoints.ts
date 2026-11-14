@@ -69,7 +69,9 @@ export const buildAppConnectionRouteContext = ({
     [AppConnection.MySql]: "MySql",
     [AppConnection.OracleDB]: "OracleDb",
     [AppConnection.MongoDB]: "MongoDb",
-    [AppConnection.TravisCI]: "TravisCI"
+    [AppConnection.TravisCI]: "TravisCI",
+    [AppConnection.ServiceNow]: "ServiceNow",
+    [AppConnection.ClickHouse]: "ClickHouse"
   };
   const appNameForOpId =
     operationIdPrefix +
@@ -161,7 +163,9 @@ export const buildListAvailableAppConnectionsRoute = (
               name: z.string(),
               id: z.string().uuid(),
               projectId: z.string().nullish(),
-              orgId: z.string()
+              orgId: z.string(),
+              gatewayId: z.string().uuid().nullish(),
+              gatewayPoolId: z.string().uuid().nullish()
             })
             .array()
         })

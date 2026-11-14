@@ -16,10 +16,10 @@ import {
   TKempRequestFn
 } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-fns";
 import { TKempLoadMasterConnection } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { buildCertificateBundle, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { buildCertificateBundle, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
 import {
@@ -397,8 +397,9 @@ export const kempLoadMasterPkiSyncFactory = ({
       let oldCertificateIdToRemove: string | undefined;
 
       if (typeof certificateId === "string") {
-        const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
-        const existingSyncRecord = syncRecordsByCertId.get(syncRecordLookupId);
+        const existingSyncRecord =
+          syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+          (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
         if (certificate?.renewedFromCertificateId && preserveItemOnRenewal && existingSyncRecord?.externalIdentifier) {
           targetIdentifier = existingSyncRecord.externalIdentifier;

@@ -101,7 +101,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   }, [assignPrivilegesConditions, identityMembershipDetails?.identity?.id]);
 
   const handlePrivilegeDelete = async () => {
-    const { id } = popUp?.deletePrivilege?.data as { id: string };
+    const { id } = popUp.deletePrivilege.data as { id: string };
     await deletePrivilege({
       privilegeId: id,
       projectId,

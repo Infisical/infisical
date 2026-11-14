@@ -15,8 +15,7 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { isAgentVaultProjectPath } from "@app/helpers/project";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import {
@@ -54,17 +53,18 @@ const CapabilityUpgradeDialog = ({
   productPlans?: ProductPlanSummary[];
 }) => {
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
   const route = useRouterState({ select: (state) => state.matches.at(-1)?.routeId ?? "unknown" });
   const { pathname } = useLocation();
   const isAgentVault =
     intent.productName === "Agent Vault" ||
-    (intent.featureKey.startsWith("audit_log") &&
-      getOrgScopedProductFromPath(pathname) === ProjectType.AgentVault);
+    (intent.featureKey.startsWith("audit_log") && isAgentVaultProjectPath(pathname));
   const eventPropertiesRef = useRef<{
     paywallKey: string;
     paywallText: string;
     route: string;
     isEnterpriseFeature: boolean;
+    plan: string;
   } | null>(null);
 
   useEffect(() => {
@@ -77,12 +77,12 @@ const CapabilityUpgradeDialog = ({
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: intent.isEnterpriseFeature
+      isEnterpriseFeature: intent.isEnterpriseFeature,
+      plan: subscription.slug ?? "free"
     };
     eventPropertiesRef.current = eventProperties;
     analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, eventProperties);
     // Capture the opening intent once, even when the triggering popup data changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;

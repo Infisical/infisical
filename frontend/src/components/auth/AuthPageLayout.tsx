@@ -19,6 +19,7 @@ type Props = {
   children: ReactNode;
   contentClassName?: string;
   headerAction?: ReactNode;
+  onDocumentationClick?: () => void;
   showFooter?: boolean;
   variant?: "focused" | "split";
 };
@@ -30,6 +31,7 @@ export const AuthPageLayout = ({
   children,
   contentClassName,
   headerAction,
+  onDocumentationClick,
   showFooter = true,
   variant = "split"
 }: Props) => {
@@ -82,7 +84,12 @@ export const AuthPageLayout = ({
           <AuthPageBackground />
           <div className="relative z-10 flex h-16 items-center justify-end px-8 xl:px-12">
             <Button asChild variant="outline" size="sm">
-              <a href="https://infisical.com/docs" target="_blank" rel="noopener noreferrer">
+              <a
+                href="https://infisical.com/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onDocumentationClick}
+              >
                 <BookOpen />
                 Documentation
               </a>

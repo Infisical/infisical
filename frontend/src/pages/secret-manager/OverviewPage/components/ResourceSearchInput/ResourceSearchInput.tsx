@@ -42,9 +42,14 @@ export const ResourceSearchInput = ({
 
   // local input state so typing doesn't re-render the whole table
   const [inputValue, setInputValue] = useState(externalValue);
-  const [debouncedInputValue] = useDebounce(inputValue);
+  const [debouncedInputValue, setDebouncedInputValue] = useDebounce(inputValue);
   const previousExternalValue = useRef(externalValue);
   const lastEmittedValue = useRef(externalValue);
+  // keeps a new onChange identity from re-running the sync effect with a stale debounced value
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     const transition = getResourceSearchStateTransition({
@@ -60,15 +65,17 @@ export const ResourceSearchInput = ({
       previousExternalValue.current = transition.value;
       lastEmittedValue.current = transition.value;
       setInputValue(transition.value);
+      setDebouncedInputValue(transition.value);
       return;
     }
 
     lastEmittedValue.current = transition.value;
-    onChange(transition.value);
-  }, [debouncedInputValue, externalValue, onChange]);
+    onChangeRef.current(transition.value);
+  }, [debouncedInputValue, externalValue, setDebouncedInputValue]);
 
   const handleClear = () => {
     setInputValue("");
+    setDebouncedInputValue("");
     lastEmittedValue.current = "";
     onChange("");
   };

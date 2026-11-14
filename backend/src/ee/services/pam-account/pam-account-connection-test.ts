@@ -1,6 +1,5 @@
 import ConnectionString from "mongodb-connection-string-url";
 
-import { PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
   generateAwsIamSessionCredentials,
@@ -8,6 +7,7 @@ import {
 } from "../pam-session/aws-iam/aws-iam-federation";
 import { AZURE_SCOPES, getAzureAccessToken } from "../pam-session/azure/azure-federation";
 import { mintGcpAccessToken } from "../pam-session/gcp/gcp-federation";
+import { PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   extractGatewayTarget,
   isCredentialConfigured,
@@ -129,6 +129,7 @@ export type TestConnectionRequest =
 
 const SQL_DIALECTS = {
   [PamAccountType.Postgres]: "postgres",
+  [PamAccountType.CockroachDB]: "postgres",
   [PamAccountType.MySQL]: "mysql",
   [PamAccountType.MsSQL]: "mssql",
   [PamAccountType.OracleDB]: "oracle"
@@ -175,6 +176,7 @@ export const buildGatewayConnectionTest = async (
 
   switch (accountType) {
     case PamAccountType.Postgres:
+    case PamAccountType.CockroachDB:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
     case PamAccountType.OracleDB: {
@@ -469,12 +471,13 @@ export const CLOUD_CONNECTION_VALIDATORS: Partial<Record<PamAccountType, CloudCo
       scope: AZURE_SCOPES.arm
     });
   },
-  [PamAccountType.GcpServiceAccount]: async ({ connectionDetails, credentials }) => {
+  [PamAccountType.GcpServiceAccount]: async ({ connectionDetails, credentials, orgId }) => {
     if (!credentials) return;
     await mintGcpAccessToken({
       serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
       authMethod: credentials.authMethod as string,
-      serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined
+      serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
+      orgId
     });
   }
 };

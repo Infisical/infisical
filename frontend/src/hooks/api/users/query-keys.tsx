@@ -1,17 +1,24 @@
 export const userKeys = {
   getUser: ["user"] as const,
   getMyDuplicateAccount: ["user-duplicate-account"] as const,
+  myDeletionEligibility: ["user-deletion-eligibility"] as const,
   getPrivateKey: ["user"] as const,
   userAction: ["user-action"] as const,
   userProjectFavorites: (orgId: string) => [{ orgId }, "user-project-favorites"] as const,
   getOrgMembership: (orgId: string, orgMembershipId: string) =>
     [{ orgId, orgMembershipId }, "org-membership"] as const,
   allOrgMembershipProjectMemberships: (orgId: string) => [orgId, "all-user-memberships"] as const,
-  forOrgMembershipProjectMemberships: (orgId: string, orgMembershipId: string) =>
-    [...userKeys.allOrgMembershipProjectMemberships(orgId), { orgMembershipId }] as const,
+  forOrgMembershipProjectMemberships: (
+    orgId: string,
+    orgMembershipId: string,
+    params: object = {}
+  ) =>
+    [...userKeys.allOrgMembershipProjectMemberships(orgId), { orgMembershipId }, params] as const,
   getOrgMembershipProjectMemberships: (orgId: string, username: string) =>
     [{ orgId, username }, "org-membership-project-memberships"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
+  getOrgUserAccess: (orgId: string) => [{ orgId }, "user", "access"] as const,
+  allOrgUserAccess: [{}, "user", "access"] as const,
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,

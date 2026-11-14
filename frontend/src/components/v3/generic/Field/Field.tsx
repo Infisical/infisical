@@ -114,7 +114,7 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
 
 const fieldLabelVariants = cva(
   cn(
-    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50 [--control-variant-color:var(--color-primary)] [--control-variant-border-color:var(--color-border)]",
+    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50 [--control-variant-color:var(--color-project)] [--control-variant-border-color:var(--color-border)]",
     "has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-md",
     "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-transparent has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
     "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",

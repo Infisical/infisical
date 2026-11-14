@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { usePopUp } from "@app/hooks";
@@ -62,6 +63,7 @@ export const AccountRecoveryResetPage = () => {
 
   return (
     <AuthPageLayout variant="focused" contentClassName="max-w-2xl">
+      <PageTitle title="Account Recovery" />
       {step === Steps.ConfirmEmail && (
         <ConfirmEmailStep
           onComplete={(verifyToken, userEncryptionVersion, hasEmailAuth) => {

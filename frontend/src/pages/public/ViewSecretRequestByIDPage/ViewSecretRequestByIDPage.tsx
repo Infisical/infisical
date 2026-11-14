@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
@@ -8,6 +7,7 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Card,
   CardContent,
@@ -167,9 +167,12 @@ export const ViewSecretRequestByIDPage = () => {
 
   if (isPending) {
     return (
-      <div className="h-screen w-screen bg-page">
-        <PageLoader lottieClassName="w-34" />
-      </div>
+      <>
+        <title>Secret Request</title>
+        <div className="h-screen w-screen bg-page">
+          <PageLoader lottieClassName="w-34" />
+        </div>
+      </>
     );
   }
 
@@ -214,10 +217,8 @@ export const ViewSecretRequestByIDPage = () => {
   if (hasCustomBranding) {
     return (
       <>
-        <Helmet>
-          <title>Secret Request</title>
-          <meta property="og:image" content="/images/message.png" />
-        </Helmet>
+        <title>Secret Request</title>
+        <meta property="og:image" content="/images/message.png" />
         <div
           className="flex min-h-screen flex-col items-center justify-center overflow-auto px-4 py-10 scheme-dark"
           style={backgroundStyle}
@@ -252,10 +253,8 @@ export const ViewSecretRequestByIDPage = () => {
   return (
     <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
       <AuthPageBackground />
-      <Helmet>
-        <title>Secret Request | Infisical</title>
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <PageTitle title="Secret Request" />
+      <meta property="og:image" content="/images/message.png" />
       <AuthPageHeader />
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         <Card className="w-full max-w-xl">

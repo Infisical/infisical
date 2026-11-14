@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useSearch } from "@tanstack/react-router";
 import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, TerminalIcon } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   CardContent,
@@ -50,10 +50,8 @@ export const CliRedirectPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <Helmet>
-        <title>Infisical CLI | Login Successful!</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="CLI Login Successful" />
+      <link rel="icon" href="/infisical.ico" />
       {cliToken ? (
         <AuthPagePanel className="text-center">
           <CardHeader className="mb-6 items-center gap-2 text-center">
@@ -74,6 +72,8 @@ export const CliRedirectPage = () => {
             </p>
             <InputGroup>
               <SecretInput
+                aria-label="CLI login token"
+                readOnly
                 variant="plain"
                 value={cliToken as string}
                 isVisible={isTokenVisible}

@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
+import axios from "axios";
 
 import { TtlFormLabel } from "@app/components/features";
-import { FilterableSelect } from "@app/components/v2";
 import {
   Checkbox,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
@@ -13,7 +14,14 @@ import {
   Input
 } from "@app/components/v3";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
+import {
+  PkiApplicationResourceActions,
+  PkiApplicationResourceSub,
+  useAttachPkiApplicationProfiles,
+  useGetPkiApplicationPermissions,
+  useListPkiApplicationProfiles
+} from "@app/hooks/api/pkiApplications";
+import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
 import { TPolicyForm } from "../PolicySchema";
 
@@ -27,11 +35,73 @@ type Props = {
 };
 
 export const PolicyDetailsStep = ({ applicationId }: Props) => {
-  const { control } = useFormContext<TPolicyForm>();
+  const { control, getValues, setValue } = useFormContext<TPolicyForm>();
 
-  const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({});
-  const { data: appProfiles = [], isPending: isAppProfilesLoading } = useListPkiApplicationProfiles(
-    applicationId ?? ""
+  const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({
+    enabled: !applicationId
+  });
+  const {
+    data: appProfiles = [],
+    isPending: isAppProfilesLoading,
+    refetch: refetchAppProfiles
+  } = useListPkiApplicationProfiles(applicationId ?? "");
+  const { data: appPermission } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const canManageAppProfiles = appPermission?.permission.can(
+    PkiApplicationResourceActions.ManageProfiles,
+    PkiApplicationResourceSub.Application
+  );
+  const attach = useAttachPkiApplicationProfiles();
+  const [attachedProfileId, setAttachedProfileId] = useState<string>();
+  const creationLabel = applicationId ? "Create and Attach Profile" : "Create New Profile";
+  const profileCreation = useProfileCreation<ProfileOption>(
+    async (profile) => {
+      let { slug } = profile;
+      if (applicationId) {
+        if (!canManageAppProfiles) {
+          throw new Error(
+            "The profile was created, but you no longer have permission to attach it to this application."
+          );
+        }
+        if (attachedProfileId !== profile.id) {
+          try {
+            await attach.mutateAsync({ applicationId, profileIds: [profile.id] });
+          } catch (error) {
+            let message =
+              "The profile was created, but attachment failed. Retry to attach it to this application.";
+            if (axios.isAxiosError<{ message?: unknown }>(error)) {
+              if (!error.response) {
+                message =
+                  "The profile was created, but no response was received for the attachment request. Check your connection to Infisical, then retry.";
+              } else if (typeof error.response.data?.message === "string") {
+                const apiMessage = error.response.data.message.trim();
+                if (apiMessage) {
+                  message = `The profile was created, but attachment failed: ${apiMessage}`;
+                }
+              }
+            }
+            throw new Error(message);
+          }
+          setAttachedProfileId(profile.id);
+        }
+        const result = await refetchAppProfiles();
+        const listedProfile = result.data?.find((option) => option.profileId === profile.id);
+        if (result.isError || !listedProfile) {
+          throw new Error(
+            "The profile was attached, but the available profiles could not be refreshed. Retry to load and select it."
+          );
+        }
+        slug = listedProfile.profileSlug;
+      }
+      setValue(
+        "conditions.0.profileNames",
+        [...new Set([...getValues("conditions.0.profileNames"), slug])],
+        {
+          shouldDirty: true,
+          shouldValidate: true
+        }
+      );
+    },
+    { mode: applicationId ? "create-and-attach" : "create-only" }
   );
 
   const profileOptions: ProfileOption[] = useMemo(() => {
@@ -111,19 +181,31 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
               Certificate Profiles <span className="text-danger">*</span>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                inputId="policy-profile-names"
-                isMulti
+              <Combobox
+                ref={profileField.ref}
+                id="policy-profile-names"
+                onBlur={profileField.onBlur}
+                multiple
+                isError={Boolean(error)}
                 isLoading={applicationId ? isAppProfilesLoading : isProfilesLoading}
                 options={profileOptions}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
                 value={profileField.value.map((slug) => ({ label: slug, value: slug }))}
-                onChange={(selected) => {
-                  const selectedOptions = selected as ProfileOption[];
-                  profileField.onChange(selectedOptions.map((opt) => opt.value));
+                onValueChange={(selected) => {
+                  profileField.onChange(selected.map((opt) => opt.value));
                 }}
                 placeholder="Select certificate profiles..."
-                noOptionsMessage={() => "No profiles found"}
-                maxMenuHeight={150}
+                emptyMessage="No profiles found"
+                creation={
+                  (!applicationId || canManageAppProfiles) && profileCreation
+                    ? {
+                        ...profileCreation,
+                        emptyLabel: creationLabel,
+                        formatLabel: () => creationLabel
+                      }
+                    : undefined
+                }
               />
               <FieldDescription isOpen={!error}>
                 Policy applies to certificates issued from these selected profiles

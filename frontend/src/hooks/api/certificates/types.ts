@@ -1,4 +1,5 @@
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
 
 import {
@@ -59,6 +60,7 @@ export type TCertificate = {
   renewedByCertificateId?: string;
   renewalError?: string;
   hasPrivateKey?: boolean;
+  canRenewFromCsr?: boolean;
   keyAlgorithm?: string | null;
   signatureAlgorithm?: string | null;
   subject?: TCertificateSubject;
@@ -81,6 +83,10 @@ export type TCertificate = {
     [key: string]: unknown;
   } | null;
   metadata?: Array<{ key: string; value: string }>;
+  deletedAt?: string | null;
+  deletedByActorType?: ActorType | null;
+  deletedByActorId?: string | null;
+  deletedByActorName?: string | null;
 };
 
 export type TCertificateByIdResponse = {
@@ -96,6 +102,13 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
+export type TRevokeCertResponse = {
+  message: string;
+  serialNumber: string;
+  revokedAt: string;
+  crlWarning?: string;
+};
+
 export type TImportPkcs12EntriesDTO = {
   entries: TPkcs12Entry[];
   applicationId?: string;
@@ -109,7 +122,7 @@ export type TImportPkcs12EntriesResult = {
 };
 
 export type TCertificateExternalMetadata =
-  | { type: CaType.DIGICERT; orderId: number }
+  | { type: CaType.DIGICERT; orderId: number; certificateId?: number }
   | { type: CaType.GODADDY; certificateId: string }
   | { type: CaType.AWS_ACM_PUBLIC_CA; arn: string; region: string; validationMethod: string };
 
@@ -117,6 +130,7 @@ export type TImportCertificateDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+  csr?: string;
 
   pkiCollectionId?: string;
   friendlyName?: string;
@@ -166,9 +180,13 @@ export type TRenewCertificateDTO = {
   renewalKeySource?: CertificateRenewalKeySource;
   csr?: string;
   attributes?: TRenewCertificateAttributes;
+  externalConfiguration?: {
+    reissue?: boolean;
+  };
 };
 
 export type TRenewCertificateResponse = {
+  status: CertificateRequestStatus;
   certificate: string;
   issuingCaCertificate: string;
   certificateChain: string;
@@ -388,6 +406,7 @@ export type TIssuerModifiedField = {
 
 export type TCertificateRenewalPreview = {
   hasOriginatingRequest: boolean;
+  hasOriginatingCsr: boolean;
   request: {
     commonName?: string;
     organization?: string;

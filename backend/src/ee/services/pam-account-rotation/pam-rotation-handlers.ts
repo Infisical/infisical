@@ -7,10 +7,10 @@ import {
   SQL_CONNECTION_ALTER_LOGIN_STATEMENT
 } from "@app/services/app-connection/shared/sql";
 
-import { PamAccountType, PamPostgresAuthMethod } from "../pam/pam-enums";
 import { ORACLE_MAX_PASSWORD_LENGTH, ORACLE_MIN_GATEWAY_VERSION } from "../pam-account/pam-account-connection-test";
 import { TWindowsAdConnectionDetails, TWindowsConnectionDetails } from "../pam-account/pam-account-schemas";
 import { DEFAULT_WINRM_PORT, ldapBindCheckViaGateway, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
+import { PamAccountType, PamPostgresAuthMethod } from "../pam/pam-enums";
 import {
   PAM_ROTATION_APP_MAP,
   redactRotationError,
@@ -396,6 +396,7 @@ const windowsRotationHandler: TPamRotationHandler = {
 // Full Record over the rotatable types so a missing handler entry is a compile error.
 export const PAM_ROTATION_FACTORY_MAP: Record<TRotatableType, TPamRotationHandler> = {
   [PamAccountType.Postgres]: sqlRotationHandler,
+  [PamAccountType.CockroachDB]: sqlRotationHandler,
   [PamAccountType.MySQL]: sqlRotationHandler,
   [PamAccountType.MsSQL]: sqlRotationHandler,
   [PamAccountType.OracleDB]: sqlRotationHandler,

@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { NotificationContainer } from "@app/components/notifications";
-import { TooltipProvider } from "@app/components/v2";
+import { TooltipProvider } from "@app/components/v3";
 import {
   RootCommandMenu,
   type RootCommandMenuShell
@@ -51,7 +51,7 @@ const RootPage = () => {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <ThemeProvider pathname={pathname}>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={700} skipDelayDuration={300}>
         <Outlet />
         <RootCommandMenuMount />
         <NotificationContainer />

@@ -21,6 +21,7 @@ import {
   TGetProjectSecretsAllEnvDTO,
   TGetProjectSecretsDTO,
   TGetProjectSecretsKey,
+  TGetExpandedSecretValueDTO,
   TGetSecretAccessListDTO,
   TGetSecretReferencesDTO,
   TGetSecretReferenceTreeDTO,
@@ -68,6 +69,7 @@ export const secretKeys = {
       { projectId, environment, secretPath, secretKey, includeAllEntities }
     ] as const,
   getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto],
+  getExpandedSecretValue: (dto: TGetExpandedSecretValueDTO) => ["expanded-secret-value", dto],
   getSecretReferences: (dto: TGetSecretReferencesDTO) => ["secret-references", dto]
 };
 
@@ -227,7 +229,7 @@ export const useGetProjectSecretsAllEnv = ({
       enabled: Boolean(projectId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
-          const { message, requestId } = error.response?.data as {
+          const { message, requestId } = (error.response?.data ?? {}) as {
             message: string;
             requestId: string;
           };
@@ -380,6 +382,27 @@ const fetchSecretReferenceTree = async ({
   );
   return data;
 };
+
+export const useGetExpandedSecretValue = (dto: TGetExpandedSecretValueDTO) =>
+  useQuery({
+    queryKey: secretKeys.getExpandedSecretValue(dto),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        secret: { secretValue: string; secretValueHidden: boolean };
+      }>(`/api/v4/secrets/${encodeURIComponent(dto.secretKey)}`, {
+        params: {
+          projectId: dto.projectId,
+          environment: dto.environment,
+          secretPath: dto.secretPath,
+          expandSecretReferences: true,
+          includeImports: true
+        }
+      });
+      return data.secret;
+    },
+    staleTime: 1000 * 60,
+    retry: false
+  });
 
 export const useGetSecretReferenceTree = (dto: TGetSecretReferenceTreeDTO) =>
   useQuery({

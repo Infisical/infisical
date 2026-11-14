@@ -95,7 +95,6 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
         baseEventProps
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   useEffect(() => {

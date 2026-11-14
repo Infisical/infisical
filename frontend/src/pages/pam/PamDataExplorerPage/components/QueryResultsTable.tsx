@@ -95,6 +95,16 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
     );
   }
 
+  if (result.rows.length === 0 && result.isTruncated) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-muted">
+          The first row is too large to display. Select fewer or smaller columns.
+        </p>
+      </div>
+    );
+  }
+
   if (result.rows.length === 0) {
     const cmdUpper = result.command.toUpperCase();
     const count = result.rowCount ?? 0;

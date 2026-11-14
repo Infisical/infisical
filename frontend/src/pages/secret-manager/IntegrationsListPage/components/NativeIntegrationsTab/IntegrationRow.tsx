@@ -9,7 +9,6 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
@@ -18,6 +17,7 @@ import {
   Badge,
   IconButton,
   ProviderIcon,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
@@ -50,7 +50,6 @@ export const IntegrationRow = ({
   onManualSyncIntegration,
   cloudIntegration
 }: IProps) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
@@ -72,28 +71,28 @@ export const IntegrationRow = ({
 
   return (
     <TableRow
-      onClick={() =>
-        navigate({
-          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",
-          params: {
-            orgId: currentOrg.id,
-            integrationId: integration.id,
-            projectId: currentProject.id
-          }
-        })
-      }
+      linked
       className={twMerge(isSynced === false && "bg-danger/5 hover:bg-danger/10")}
       key={`integration-${id}`}
     >
       <TableCell>
-        <div className="flex items-center gap-2">
-          <ProviderIcon
-            alt={`${cloudIntegration?.name} integration`}
-            icon={cloudIntegration?.image}
-            className="h-5 w-5"
-          />
-          <span className="hidden lg:inline">{cloudIntegration?.name}</span>
-        </div>
+        <RowLink
+          to="/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId"
+          params={{
+            orgId: currentOrg.id,
+            integrationId: integration.id,
+            projectId: currentProject.id
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <ProviderIcon
+              alt={`${cloudIntegration?.name} integration`}
+              icon={cloudIntegration?.image}
+              className="h-5 w-5"
+            />
+            <span className="hidden lg:inline">{cloudIntegration?.name}</span>
+          </div>
+        </RowLink>
       </TableCell>
       <TableCell isTruncatable className="min-w-32">
         {secretPath && (
@@ -170,7 +169,7 @@ export const IntegrationRow = ({
           </Tooltip>
         )}
       </TableCell>
-      <TableCell onClick={(e) => e.stopPropagation()}>
+      <TableCell data-row-interactive>
         <div className="flex gap-2 whitespace-nowrap">
           <Tooltip hoverable delayDuration={50}>
             <TooltipTrigger asChild>

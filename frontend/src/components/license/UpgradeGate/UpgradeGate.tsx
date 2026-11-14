@@ -32,16 +32,16 @@ import {
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
-  BillingV2Cadence,
-  BillingV2CatalogProduct,
-  BillingV2Plan,
-  useGetBillingV2Catalog,
-  useGetBillingV2Overview,
-  useStartBillingV2Trial
+  BillingCadence,
+  BillingCatalogProduct,
+  BillingCatalogPlan,
+  useGetBillingCatalog,
+  useGetBillingOverview,
+  useStartBillingTrial
 } from "@app/hooks/api";
 import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
-import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
+import { ProductIcon } from "@app/pages/organization/BillingPage/components/shared";
 
 import { getSelfHostedLicenseState, SELF_HOSTED_LICENSE_COPY } from "../self-hosted-license";
 import {
@@ -50,10 +50,13 @@ import {
 } from "./capability-upgrade-intents";
 import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
 import {
-  focusUpgradeContinuation,
-  PlanFeature,
-  ProductUpgradeDialog
-} from "./ProductUpgradeDialog";
+  annualSavingsPercent,
+  getEffectiveCadence,
+  getPlanFeatures,
+  getPlanPrice,
+  planSupportsCadence
+} from "./plan-catalog";
+import { focusUpgradeContinuation, ProductUpgradeDialog } from "./ProductUpgradeDialog";
 import { ProductUpgradeSuccessDialog } from "./ProductUpgradeSuccessDialog";
 import {
   BillingPlan,
@@ -69,171 +72,15 @@ type Props = {
   paywallKey: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  initialTier?: string;
+  initialCadence?: BillingCadence;
 };
 
-type CapabilityProps = Omit<Props, "intent"> & {
+type CapabilityProps = Omit<Props, "intent" | "initialTier" | "initialCadence"> & {
   intent: CapabilityUpgradeIntent;
   onOpenAutoFocus?: (event: Event) => void;
   onCloseAutoFocus?: (event: Event) => void;
   alternative?: CapabilityUpgradeAlternative;
-};
-
-type PlanPrice = {
-  amount: number;
-  unit: string;
-  compactUnit: string;
-  isMonthlyEquivalent: boolean;
-};
-
-const PLAN_FEATURE_DESCRIPTIONS: Record<string, string> = {
-  environments: "Organize secrets across development stages and deployment targets.",
-  integrations: "Connect Infisical with infrastructure, cloud, and developer tools.",
-  "audit log retention": "Keep organization activity history available for longer.",
-  "honey tokens": "Detect unauthorized access with decoy secrets.",
-  "secret versioning": "Track and restore previous versions of secrets.",
-  "point-in-time recovery": "Restore secrets to an earlier state after unwanted changes.",
-  rbac: "Control access with custom roles and granular permissions.",
-  "dynamic secrets": "Issue short-lived credentials on demand.",
-  "temporary access": "Grant time-bound access without permanent permissions.",
-  gateways: "Connect Infisical securely to private infrastructure.",
-  "sso/mfa enforcement": "Require centralized sign-in and stronger authentication.",
-  scim: "Provision and deprovision users from your identity provider.",
-  kmip: "Manage cryptographic keys through KMIP-compatible systems.",
-  "audit log streaming": "Send audit activity to external monitoring systems.",
-  "sub-organizations": "Separate teams or environments under one organization.",
-  "certificate authorities": "Connect or operate certificate authorities from one control plane.",
-  "internal certificate authorities":
-    "Operate Infisical-managed root and intermediate authorities.",
-  certificates: "Issue, renew, and centrally manage certificates.",
-  "wildcard certificates": "Issue certificates that secure multiple subdomains.",
-  "subject alternative names": "Secure additional hostnames and identities on one certificate.",
-  "certificate enrollment": "Enroll workloads and devices through standard certificate protocols.",
-  "certificate syncs": "Deliver certificates automatically to infrastructure and cloud providers.",
-  "certificate discovery": "Find and inventory certificates across your infrastructure.",
-  "code signing": "Protect software releases with centrally managed signing keys.",
-  "approval policies": "Require review before sensitive certificate operations proceed.",
-  "post-quantum cryptography": "Issue certificates with post-quantum key algorithms.",
-  "pam accounts": "Manage privileged accounts and their credentials centrally.",
-  "enterprise pam accounts":
-    "Connect enterprise account types such as Windows and Active Directory.",
-  "slack notifications": "Notify teams when privileged access is requested or changed."
-};
-
-const PAM_FEATURE_DESCRIPTIONS: Record<string, string> = {
-  "privileged accounts": "Manage privileged accounts and their credentials centrally.",
-  "access requests": "Request access to privileged accounts before starting a session.",
-  "approval workflows": "Require approval before privileged access is granted.",
-  "cli-based resource access": "Connect to privileged resources from the Infisical CLI.",
-  "ssh certificate authentication": "Authenticate SSH sessions with short-lived certificates.",
-  "privileged credential rotation":
-    "Rotate privileged credentials without distributing them to users.",
-  "command blocking": "Block restricted commands during privileged sessions.",
-  "automated privileged account discovery": "Find privileged accounts across your infrastructure.",
-  "enterprise resources (windows, rdp)":
-    "Connect to Windows servers and other enterprise resources.",
-  "audit logs": "Track privileged access requests and session activity.",
-  "session recording": "Record privileged sessions for review and investigation.",
-  "session-log masking": "Mask sensitive information in session logs.",
-  "log & session recording retention":
-    "Keep audit logs and session recordings available for review.",
-  "siem audit-log streaming": "Send audit activity to your security monitoring systems.",
-  ldap: "Connect your directory for centralized identity management."
-};
-
-const getPlanFeatureDescription = (label: string, productKey: string) => {
-  const key = label.trim().toLowerCase();
-  return (
-    (productKey === "pam" ? PAM_FEATURE_DESCRIPTIONS[key] : undefined) ??
-    PLAN_FEATURE_DESCRIPTIONS[key]
-  );
-};
-
-const planSupportsCadence = (plan: BillingV2Plan, cadence: BillingV2Cadence) => {
-  const basePrice = plan.base?.[cadence] ?? 0;
-  return basePrice > 0 || plan.dims.some((dimension) => dimension[cadence] > 0);
-};
-
-const getPlanPrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): PlanPrice => {
-  const basePrice = plan.base?.[cadence] ?? 0;
-  if (basePrice > 0) {
-    return {
-      amount: cadence === "annual" ? basePrice / 12 : basePrice,
-      unit: "/ month",
-      compactUnit: "/mo",
-      isMonthlyEquivalent: true
-    };
-  }
-
-  const dimension = plan.dims.find((candidate) => candidate[cadence] > 0);
-  if (!dimension) {
-    return { amount: 0, unit: "", compactUnit: "", isMonthlyEquivalent: false };
-  }
-
-  const isMetered =
-    cadence === "annual" ? dimension.meteredAnnual === true : dimension.meteredMonthly === true;
-  const isMonthlyEquivalent = cadence === "monthly" || !isMetered;
-  const period = isMonthlyEquivalent ? "month" : "year";
-  const noun = dimension.key === "pam_identities" ? "PAM identity" : dimension.noun;
-
-  return {
-    amount: cadence === "annual" && !isMetered ? dimension.annual / 12 : dimension[cadence],
-    unit: `/ ${noun} / ${period}`,
-    compactUnit: `/${noun}/${period === "month" ? "mo" : "yr"}`,
-    isMonthlyEquivalent
-  };
-};
-
-const annualSavingsPercent = (plan: BillingV2Plan) => {
-  const monthly = getPlanPrice(plan, "monthly");
-  const annual = getPlanPrice(plan, "annual");
-  if (
-    monthly.amount <= 0 ||
-    annual.amount <= 0 ||
-    !monthly.isMonthlyEquivalent ||
-    !annual.isMonthlyEquivalent
-  ) {
-    return 0;
-  }
-
-  return Math.max(Math.round((1 - annual.amount / monthly.amount) * 100), 0);
-};
-
-const getEffectiveCadence = (plan: BillingV2Plan, cadence: BillingV2Cadence): BillingV2Cadence => {
-  if (planSupportsCadence(plan, cadence)) {
-    return cadence;
-  }
-  if (planSupportsCadence(plan, "annual")) {
-    return "annual";
-  }
-  return "monthly";
-};
-
-const getPlanFeatures = (product: BillingV2CatalogProduct, plan: BillingV2Plan): PlanFeature[] => {
-  const comparedFeatures = (product.compare ?? []).flatMap<PlanFeature>((row) => {
-    const value = row.cells[plan.tier];
-    if (value === false || value === undefined || value === 0) {
-      return [];
-    }
-    if (value === true) {
-      return [{ label: row.label, description: getPlanFeatureDescription(row.label, product.id) }];
-    }
-    return [
-      {
-        label: row.label,
-        value: typeof value === "number" ? value.toLocaleString("en-US") : String(value),
-        description: getPlanFeatureDescription(row.label, product.id)
-      }
-    ];
-  });
-
-  if (comparedFeatures.length > 0) {
-    return comparedFeatures;
-  }
-
-  return (product.includes ?? []).map((label) => ({
-    label,
-    description: getPlanFeatureDescription(label, product.id)
-  }));
 };
 
 const formatProductName = (productKey: string) =>
@@ -243,7 +90,7 @@ const formatProductName = (productKey: string) =>
     .join(" ");
 
 type ProductUpgradeHeaderProps = {
-  product?: BillingV2CatalogProduct;
+  product?: BillingCatalogProduct;
   productName: string;
   description: string;
 };
@@ -262,11 +109,18 @@ const ProductUpgradeHeader = ({ product, productName, description }: ProductUpgr
   </DialogHeader>
 );
 
-const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props) => {
-  const [selectedTier, setSelectedTier] = useState<string>();
-  const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
-  const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
-  const refreshedReturn = useRef<string>();
+const ProductUpgradeGate = ({
+  intent,
+  paywallKey,
+  isOpen,
+  onOpenChange,
+  initialTier,
+  initialCadence = "annual"
+}: Props) => {
+  const [selectedTier, setSelectedTier] = useState(initialTier);
+  const [cadence, setCadence] = useState<BillingCadence>(initialCadence);
+  const [startedTrial, setStartedTrial] = useState<BillingCatalogPlan | null>(null);
+  const refreshedReturn = useRef<string>(undefined);
   const hasTrackedView = useRef(false);
   const queryClient = useQueryClient();
   const { currentOrg, isSubOrganization } = useOrganization();
@@ -286,12 +140,12 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   const returnSearch = new URLSearchParams(window.location.search);
   const returnedFromBilling =
     returnSearch.get("card") === "setup_success" || returnSearch.get("checkout") === "success";
-  const overview = useGetBillingV2Overview(billingOrgId, {
+  const overview = useGetBillingOverview(billingOrgId, {
     enabled: canLoadBilling,
     ...(returnedFromBilling ? { staleTime: 0 } : {})
   });
-  const catalog = useGetBillingV2Catalog(billingOrgId, { enabled: canLoadBilling });
-  const startTrial = useStartBillingV2Trial();
+  const catalog = useGetBillingCatalog(billingOrgId, { enabled: canLoadBilling });
+  const startTrial = useStartBillingTrial();
   const product = catalog.data?.find((candidate) => candidate.id === intent.productKey);
   const productName = product?.name ?? formatProductName(intent.productKey);
   const checkingBillingReturn =
@@ -370,14 +224,17 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
   });
 
+  const orgPlan = subscription.slug ?? "free";
+
   const trackPaywallView = useCallback(() => {
     analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, {
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
+      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise,
+      plan: orgPlan
     });
-  }, [currentOrg.id, paywallKey, intent.description, intent.planKey, route, requiredTier]);
+  }, [currentOrg.id, paywallKey, intent.description, intent.planKey, route, requiredTier, orgPlan]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -406,17 +263,18 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
+      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise,
+      plan: orgPlan
     });
   };
 
   useEffect(() => {
     if (!isOpen) {
-      setSelectedTier(undefined);
-      setCadence("annual");
+      setSelectedTier(initialTier);
+      setCadence(initialCadence);
       setStartedTrial(null);
     }
-  }, [intent.planKey, isOpen]);
+  }, [intent.planKey, isOpen, initialTier, initialCadence]);
 
   if (!isOpen) {
     return null;
@@ -436,10 +294,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -471,10 +328,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -534,10 +390,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
         }}
       >
         <DialogContent
-          overlayClassName="z-[70]"
           key="loading"
           showCloseButton={false}
-          className="z-[70] w-auto gap-0 border-0 bg-transparent p-0 shadow-none"
+          className="w-auto gap-0 border-0 bg-transparent p-0 shadow-none"
           aria-describedby={undefined}
         >
           <DialogTitle className="sr-only">Loading {productName} plans</DialogTitle>
@@ -552,7 +407,6 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={(event) => {
             const action = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(
               "[data-upgrade-cta]:not(:disabled)"
@@ -562,7 +416,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             action.focus({ preventScroll: true });
           }}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}
@@ -627,10 +481,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={dismissBillingReturn}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <DialogHeader>
             <DialogTitle>Check Billing Status</DialogTitle>
@@ -676,10 +529,9 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     return (
       <Dialog open onOpenChange={onOpenChange}>
         <DialogContent
-          overlayClassName="z-[70]"
           onOpenAutoFocus={focusUpgradeContinuation}
           showCloseButton={false}
-          className="z-[70] sm:max-w-xl"
+          className="sm:max-w-xl"
         >
           <ProductUpgradeHeader
             product={product}

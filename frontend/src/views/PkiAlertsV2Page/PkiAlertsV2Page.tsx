@@ -1,21 +1,30 @@
 import { useState } from "react";
-import { faSearch } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { SearchIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Input,
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  ConfirmationAlertDialog,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
-  Skeleton,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { ConfirmationAlertDialog } from "@app/components/v3";
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows
+} from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useDeletePkiAlertV2, useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 
@@ -71,124 +80,88 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
 
   const totalPages = Math.ceil((alertsData?.total || 0) / perPage);
 
-  const renderTableContent = () => {
-    if (isLoading) {
-      return Array.from({ length: 5 }, (_, index) => (
-        <Tr key={`skeleton-${index}`}>
-          <Td>
-            <Skeleton className="h-4 w-32" />
-          </Td>
-          <Td>
-            <Skeleton className="h-4 w-24" />
-          </Td>
-          <Td>
-            <Skeleton className="h-4 w-16" />
-          </Td>
-          <Td>
-            <Skeleton className="h-4 w-16" />
-          </Td>
-          <Td>
-            <Skeleton className="h-4 w-20" />
-          </Td>
-          <Td className="text-right">
-            <Skeleton className="ml-auto h-4 w-24" />
-          </Td>
-        </Tr>
-      ));
-    }
-
-    if (alertsData?.alerts?.length) {
-      return alertsData.alerts.map((alert) => (
-        <PkiAlertV2Row
-          key={alert.id}
-          alert={alert}
-          onView={() => setViewModal({ isOpen: true, alertId: alert.id })}
-          onDelete={() =>
-            setDeleteModal({
-              isOpen: true,
-              alertId: alert.id,
-              name: alert.name
-            })
-          }
-        />
-      ));
-    }
-
-    return (
-      <Tr>
-        <Td colSpan={6} className="py-8 text-center text-muted-cool">
-          {search ? "No alerts found matching your search." : "No PKI alerts configured yet."}
-        </Td>
-      </Tr>
-    );
-  };
-
   return (
-    <div className={hideContainer ? "" : "container mx-auto p-6"}>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-border-control bg-surface-base px-4 py-3">
-        <div className="flex items-center justify-between border-b border-border-emphasis pb-2">
-          <div className="flex items-center gap-x-2">
-            <h3 className="text-lg font-normal text-foreground">Certificate Alerts</h3>
-            <span className="rounded bg-surface-active px-2 py-0.5 text-xs tracking-wide text-foreground-secondary uppercase">
-              Legacy
-            </span>
-          </div>
-          <p className="text-xs text-label-secondary">
+    <div className={hideContainer ? "" : "mx-auto max-w-8xl"}>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Certificate Alerts <Badge variant="neutral">Legacy</Badge>
+          </CardTitle>
+          <CardDescription>
             Legacy alerts can only be viewed or deleted. Create new alerts in an application&apos;s
             Settings tab, or under Settings &gt; Alerts for all of Certificate Manager.
-          </p>
-        </div>
-
-        <div className="mb-4 flex items-center">
-          <div className="relative w-full">
-            <FontAwesomeIcon
-              icon={faSearch}
-              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-muted-cool"
-            />
-            <Input
+          </CardDescription>
+          <InputGroup>
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Search alerts"
               placeholder="Search alerts..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10"
+              onChange={(event) => setSearch(event.target.value)}
             />
-          </div>
-        </div>
-
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Event Type</Th>
-                <Th>Status</Th>
-                <Th>Alert Before</Th>
-                <Th>Last Run</Th>
-                <Th className="text-right">Actions</Th>
-              </Tr>
-            </THead>
-            <TBody>{renderTableContent()}</TBody>
-          </Table>
-        </TableContainer>
-
+          </InputGroup>
+        </CardHeader>
+        <CardContent>
+          {!isLoading && !alertsData?.alerts?.length ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>
+                  {search
+                    ? "No alerts found matching your search."
+                    : "No PKI alerts configured yet."}
+                </EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Event Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Alert Before</TableHead>
+                  <TableHead>Last Run</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableSkeletonRows columns={6} rows={5} />
+                ) : (
+                  alertsData?.alerts.map((alert) => (
+                    <PkiAlertV2Row
+                      key={alert.id}
+                      alert={alert}
+                      onView={() => setViewModal({ isOpen: true, alertId: alert.id })}
+                      onDelete={() =>
+                        setDeleteModal({ isOpen: true, alertId: alert.id, name: alert.name })
+                      }
+                    />
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
         {totalPages > 1 && (
-          <div className="mt-4 flex justify-center">
+          <CardFooter>
             <Pagination
-              count={totalPages}
+              count={alertsData?.total || 0}
               page={page}
               onChangePage={setPage}
               perPage={perPage}
               onChangePerPage={setPerPage}
             />
-          </div>
+          </CardFooter>
         )}
-      </div>
-
+      </Card>
       <ViewPkiAlertV2Modal
         isOpen={viewModal.isOpen}
         onOpenChange={(isOpen) => setViewModal({ isOpen, alertId: undefined })}
         alertId={viewModal.alertId}
       />
-
       <ConfirmationAlertDialog
         isOpen={deleteModal.isOpen}
         description="This action is irreversible."

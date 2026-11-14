@@ -19,7 +19,8 @@ export const CertificateAuthoritySecretSchema = z.object({
   hsmConnectorId: z.string().uuid().nullable().optional(),
   appConnectionId: z.string().uuid().nullable().optional(),
   externalKeyId: z.string().nullable().optional(),
-  publicKeySpki: zodBuffer.nullable().optional()
+  publicKeySpki: zodBuffer.nullable().optional(),
+  hsmKeyId: z.string().nullable().optional()
 });
 
 export type TCertificateAuthoritySecret = z.infer<typeof CertificateAuthoritySecretSchema>;

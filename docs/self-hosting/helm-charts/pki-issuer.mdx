@@ -1,12 +1,12 @@
 ---
-title: "PKI issuer (cert-manager)"
+title: "PKI issuer Helm chart (cert-manager)"
 sidebarTitle: "PKI issuer"
 description: "Deploy the Infisical PKI Issuer for cert-manager on Kubernetes using the official Helm chart."
 ---
 
-The Infisical PKI Issuer is a [cert-manager](https://cert-manager.io/) external issuer that enables automated X.509 certificate issuance and renewal through Infisical PKI. It supports both namespace-scoped (`Issuer`) and cluster-scoped (`ClusterIssuer`) resources.
+The Infisical PKI Issuer is a [cert-manager](https://cert-manager.io/) external issuer that enables automated X.509 certificate issuance and renewal through Infisical Certificate Management. It supports both namespace-scoped (`Issuer`) and cluster-scoped (`ClusterIssuer`) resources.
 
-For more information on Infisical PKI, see the [PKI documentation](/documentation/platform/pki).
+For more information on Infisical Certificate Management, see the [Certificate Management documentation](/documentation/platform/pki).
 
 ## Installation
 
@@ -57,11 +57,22 @@ helm uninstall infisical-pki-issuer --namespace infisical-pki
 | `controllerManager.manager.resources.limits.cpu` | `500m` | CPU limit. |
 | `controllerManager.manager.resources.limits.memory` | `128Mi` | Memory limit. |
 | `controllerManager.serviceAccount.annotations` | `{}` | Service account annotations. |
+| `controllerManager.nodeSelector` | `{}` | [Node labels](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) a node must have for the controller pod to run on it. |
+| `controllerManager.tolerations` | `[]` | [Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) that let the controller pod run on tainted nodes. |
+| `controllerManager.affinity` | `{}` | [Node affinity, pod affinity, and pod anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity) rules. |
+| `controllerManager.topologySpreadConstraints` | `[]` | [Topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/) for spreading controller pods across nodes or zones. |
+| `controllerManager.priorityClassName` | `""` | Name of an existing [`PriorityClass`](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass) to assign to the controller pod. |
+
+The `nodeSelector`, `tolerations`, `affinity`, `topologySpreadConstraints`, and `priorityClassName` values require chart version 1.1.0 or later.
+
+To select the controller pods in a topology spread constraint or pod anti-affinity rule, use the labels `control-plane: controller-manager` and `app.kubernetes.io/instance: <release name>`.
 
 ## Default Helm values
 
 ```yaml
 controllerManager:
+  # Node affinity, pod affinity, and pod anti-affinity rules.
+  affinity: {}
   manager:
     args:
     - --metrics-bind-address=:8443
@@ -82,11 +93,19 @@ controllerManager:
       requests:
         cpu: 10m
         memory: 64Mi
+  # Labels a node must have for the pod to be scheduled on it.
+  nodeSelector: {}
   podSecurityContext:
     runAsNonRoot: true
+  # Name of an existing PriorityClass to assign to the pod.
+  priorityClassName: ""
   replicas: 1
   serviceAccount:
     annotations: {}
+  # Tolerations that let the pod be scheduled on tainted nodes.
+  tolerations: []
+  # Rules for spreading pods across topology domains such as nodes or zones.
+  topologySpreadConstraints: []
 controllerMetrics:
   ports:
   - name: https

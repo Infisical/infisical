@@ -25,6 +25,8 @@ import {
   InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { AGENT_VAULT_NO_CONTROL_CHARS_RE } from "@app/helpers/agentVaultControlChars";
 import {
   normalizeVariableKey,
   toVariableReference,
@@ -35,6 +37,7 @@ import {
 } from "@app/helpers/agentVaultVariables";
 import { useDebounce } from "@app/hooks";
 import {
+  AgentVaultVariableScope,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultVariable,
   useUpdateAgentVaultVariable
@@ -46,12 +49,13 @@ import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 // from the key's other errors. The API's duplicate is flagged with it too.
 const TAKEN_KEY_ERROR_TYPE = "custom";
 
-// eslint-disable-next-line no-control-regex
-const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
-
 // A stored value never comes back, so on edit its field starts empty and empty keeps it. Taken keys are read
 // when the form validates, as the lookup of the typed key answers after it was typed.
-const buildSchema = (getTakenKeys: () => ReadonlySet<string>, isValueRequired: boolean) =>
+const buildSchema = (
+  getTakenKeys: () => ReadonlySet<string>,
+  isValueRequired: boolean,
+  isPersonal: boolean
+) =>
   z.object({
     key: z
       .string()
@@ -60,7 +64,11 @@ const buildSchema = (getTakenKeys: () => ReadonlySet<string>, isValueRequired: b
       .regex(VARIABLE_KEY_RE, VARIABLE_KEY_MESSAGE)
       .refine(
         (key) => !getTakenKeys().has(key),
-        (key) => ({ message: `A variable named '${key}' already exists.` })
+        (key) => ({
+          message: isPersonal
+            ? `You already have a variable named '${key}'.`
+            : `A variable named '${key}' already exists.`
+        })
       ),
     value: z
       .string()
@@ -69,7 +77,7 @@ const buildSchema = (getTakenKeys: () => ReadonlySet<string>, isValueRequired: b
         `A value can be at most ${VARIABLE_VALUE_MAX_LENGTH} characters.`
       )
       .regex(
-        NO_CONTROL_CHARS_RE,
+        AGENT_VAULT_NO_CONTROL_CHARS_RE,
         "A value can't contain line breaks or other control characters. Check for a stray newline if you pasted it."
       )
       .refine((value) => !isValueRequired || value.length > 0, "Required")
@@ -86,6 +94,8 @@ type Props = {
   initialKey?: string;
   onCreated?: (variable: TAgentVaultVariable) => void;
   onCloseAutoFocus?: (event: Event) => void;
+  /** Personal for one of the caller's own variables, which only their personal values use. */
+  scope?: AgentVaultVariableScope;
 };
 
 // Mounted with the dialog's content, which unmounts while the dialog is closed, so every open starts from a fresh
@@ -95,16 +105,22 @@ const VariableForm = ({
   onOpenChange,
   variable,
   initialKey,
-  onCreated
+  onCreated,
+  scope = AgentVaultVariableScope.Global
 }: Omit<Props, "onCloseAutoFocus">) => {
-  const createVariable = useCreateAgentVaultVariable();
-  const updateVariable = useUpdateAgentVaultVariable();
+  const { projectId } = useProject();
+  const isPersonal = scope === AgentVaultVariableScope.Personal;
+  const createVariable = useCreateAgentVaultVariable(projectId);
+  const updateVariable = useUpdateAgentVaultVariable(projectId);
   const isUpdate = Boolean(variable);
   const usedByCount = variable?.usedByServices.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
 
   const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
-  const schema = useMemo(() => buildSchema(() => takenKeysRef.current, !variable), [variable]);
+  const schema = useMemo(
+    () => buildSchema(() => takenKeysRef.current, !variable, isPersonal),
+    [variable, isPersonal]
+  );
 
   const {
     control,
@@ -133,8 +149,9 @@ const VariableForm = ({
     key !== variable?.key
       ? key
       : null;
-  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], {
-    isCached: false
+  const { existing } = useAgentVaultVariableKeyStatus(projectId, lookupKey ? [lookupKey] : [], {
+    isCached: false,
+    scope
   });
   takenKeysRef.current = existing;
   // Re-checked when the answer flags the key, and when a key that was flagged is changed, so the message comes
@@ -177,6 +194,7 @@ const VariableForm = ({
         createNotification({ text: `Variable "${data.key}" updated`, type: "success" });
       } else {
         const created = await createVariable.mutateAsync({
+          scope,
           key: data.key,
           value: data.value
         });
@@ -191,7 +209,7 @@ const VariableForm = ({
         : undefined;
       if (
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
-        serverResponse.message.endsWith("already exists.")
+        (serverResponse.details as { field?: string } | undefined)?.field === "key"
       ) {
         setError("key", { type: TAKEN_KEY_ERROR_TYPE, message: serverResponse.message });
       }
@@ -201,9 +219,13 @@ const VariableForm = ({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{isUpdate ? "Edit Variable" : "Add Variable"}</DialogTitle>
+        <DialogTitle>
+          {isUpdate ? "Edit" : "Add"} {isPersonal ? "Personal" : "Global"} Variable
+        </DialogTitle>
         <DialogDescription>
-          Store a value once and use it from any service in any access bundle.
+          {isPersonal
+            ? "Store a value once and reuse it for any service that asks you for a value. Only you can read it."
+            : "Store a value once and use it from any service in any access bundle. Only admins can manage it and see its value."}
         </DialogDescription>
       </DialogHeader>
 
@@ -234,7 +256,7 @@ const VariableForm = ({
                     </>
                   ) : (
                     <>
-                      Services use it as{" "}
+                      {isPersonal ? "Your personal values use" : "Services use"} it as{" "}
                       <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
                     </>
                   )}
@@ -288,7 +310,7 @@ const VariableForm = ({
             isPending={isSubmitting}
             isDisabled={isUpdate && !isDirty}
           >
-            {isUpdate ? "Save" : "Add Variable"}
+            {isUpdate ? "Save" : `Add ${isPersonal ? "Personal" : "Global"} Variable`}
           </Button>
         </DialogFooter>
       </form>

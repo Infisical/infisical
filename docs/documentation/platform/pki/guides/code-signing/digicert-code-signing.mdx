@@ -27,18 +27,71 @@ DigiCert's code-signing workflow includes an out-of-band approval step that the 
 
 A **Pending** signer is checked on a schedule. To poll DigiCert immediately, use **Check issuance now** from the signer's actions menu. Hovering the **Pending** status on the signer's detail page shows the DigiCert **order number** so you can open that order in DigiCert to approve it or resend the approval email.
 
-### Reuse an existing order
+### Use an existing order
 
-Each DigiCert order consumes a subscription slot on your CertCentral account. If a code-signing order already exists in this CA's organization, a Signer can issue into that order instead of spending another slot. This includes orders placed directly in DigiCert, not just ones Infisical created.
+Each DigiCert order consumes a subscription slot on your CertCentral account. If a code-signing order already exists in this CA's organization and product, a Signer can use that order instead of placing a new one. This works for orders placed directly in DigiCert too. The Common Name and Validity come from the order.
 
-Reuse is scoped to the CA's configured organization and product, so only orders from that organization and product can be selected. The Common Name and Validity come from the chosen order rather than from the Signer.
+When you pick an order, the **Use existing key** toggle decides what happens to its certificate:
+
+- On: the Signer uses the order's issued certificate and its existing private key, and nothing is reissued
+- Off: DigiCert reissues the certificate in the order and revokes the previous certificate
+
+#### Use existing key
+
+Use this option to bring certificates you already have into Infisical. The certificate stays valid wherever else it's in use.
+
+The certificate and its key need to meet these requirements:
+
+- The order's certificate is issued and hasn't expired
+- The certificate's private key is in the slot of one of your [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors)
+- The key is RSA-3072, RSA-4096, ECDSA P-256, or ECDSA P-384
+
+If the key doesn't match the certificate, the request fails and nothing changes.
 
 <Tabs>
   <Tab title="Infisical UI">
-    In the Create Signer wizard's **Certificate** step, open **Reuse an existing order** and pick one of the listed issued orders. The Common Name and Validity fields are hidden because they're inherited from the order. Leave the field empty to place a new order.
+    <Steps>
+      <Step>
+        In the Create Signer wizard's **Certificate** step, select the order in **Existing order**.
+      </Step>
+      <Step>
+        In the **Signing Key** step, select the **HSM Connector**, turn on **Use existing key**, and enter the label of the certificate's private key in **Key label**. If more than one key in the slot has that label, select the key in **Key ID**.
+      </Step>
+    </Steps>
+
+    To switch an existing signer to the certificate, follow the same steps in **Edit Signer**.
   </Tab>
   <Tab title="API">
-    Set `externalConfiguration.reissueFromExternalOrderId` to the order id on [Create Signer](/api-reference/endpoints/code-signing/signers/create) or [Reissue](/api-reference/endpoints/code-signing/signers/reissue-certificate).
+    To create a signer that uses the certificate, call [the endpoint that creates a signer](/api-reference/endpoints/code-signing/signers/create) with `externalConfiguration.importFromExternalOrderId` set to the order ID and `certificate.hsmKeyLabel` set to the key's label. If more than one private key in the slot has that label, also set `certificate.hsmKeyId` to the key's hex-encoded `CKA_ID`:
+
+    ```json
+    {
+      "certificate": {
+        "keySource": "hsm",
+        "hsmConnectorId": "<hsm-connector-id>",
+        "hsmKeyLabel": "<key-label>",
+        "hsmKeyId": "<optional-hex-key-id>"
+      },
+      "externalConfiguration": {
+        "importFromExternalOrderId": "<order-id>"
+      }
+    }
+    ```
+
+    To switch an existing signer to the certificate, call [the endpoint that imports a certificate into a signer](/api-reference/endpoints/code-signing/signers/import-certificate) with the order ID in `externalOrderId` and the same `certificate` fields, without `keySource`.
+  </Tab>
+</Tabs>
+
+To renew the certificate with the same HSM key before it expires, set **Renew before**.
+
+#### Reissue the certificate
+
+<Tabs>
+  <Tab title="Infisical UI">
+    In the Create Signer wizard's **Certificate** step, select the order in **Existing order**. In the **Signing Key** step, leave **Use existing key** off. Leave **Existing order** empty to place a new order.
+  </Tab>
+  <Tab title="API">
+    Set `externalConfiguration.reissueFromExternalOrderId` to the order ID on [Create Signer](/api-reference/endpoints/code-signing/signers/create) or [Reissue](/api-reference/endpoints/code-signing/signers/reissue-certificate).
   </Tab>
 </Tabs>
 
@@ -50,9 +103,11 @@ Reuse is scoped to the CA's configured organization and product, so only orders 
 
 Editing a signer's Common Name, validity, key source, key algorithm, or CA triggers a fresh issuance. The signer returns to **Pending** until the new certificate issues, and DigiCert revokes the previous certificate within 72 hours.
 
+If you switch the signer to an order's [issued certificate](#use-existing-key), nothing is issued and the signer uses that certificate right away.
+
 ## Reissue and renewal
 
-- **Reissue** (changing the key source, key algorithm, or pointing at an existing order) hits DigiCert's reissue endpoint, which keeps the same order and its validity and replaces the certificate.
+- **Reissue** (changing the key source, key algorithm, or reissuing into an existing order) hits DigiCert's reissue endpoint, which keeps the same order and its validity and replaces the certificate.
 - **Auto-renewal** (when **Renew before** is set) places a new order linked to the prior one so DigiCert tracks certificate history. If DigiCert reports the prior order as not eligible for renewal, Infisical falls back to a fresh, unlinked order.
 
 ## Deleting a signer

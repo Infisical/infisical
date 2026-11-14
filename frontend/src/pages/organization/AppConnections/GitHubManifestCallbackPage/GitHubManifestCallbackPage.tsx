@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -97,5 +98,10 @@ export const GitHubManifestCallbackPage = () => {
     navigateBack(true);
   }, []);
 
-  return <PageLoader text="Creating your GitHub App, please wait..." />;
+  return (
+    <>
+      <PageTitle title="Creating GitHub App" />
+      <PageLoader text="Creating your GitHub App, please wait..." />
+    </>
+  );
 };

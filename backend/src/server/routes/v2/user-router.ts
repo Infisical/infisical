@@ -2,14 +2,25 @@ import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { z } from "zod";
 
 import { AuthTokenSessionsSchema } from "@app/db/schemas";
+import { USERS } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
-import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
+import {
+  ensureFactorEnrollmentStepUpMfa,
+  ensureStepUpMfa,
+  getStepUpSessionId,
+  MfaStepUpResource
+} from "../mfa-step-up-fns";
 import { SanitizedUserSchema } from "../sanitizedSchemas";
+
+const DeletionEligibilityOrgSchema = z.object({
+  id: z.string().describe(USERS.GET_DELETION_ELIGIBILITY.organization.id),
+  name: z.string().describe(USERS.GET_DELETION_ELIGIBILITY.organization.name)
+});
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -77,7 +88,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   // Enroll a factor: proves possession of the factor in-request and persists it.
   // Reachable pre-MFA (requireOrg:false) so the enforced-MFA onboarding flow can set
-  // up a factor at login. It NEVER mints recovery codes: those are issued only after
+  // up a factor at login; an account that already has one must prove it first.
+  // It NEVER mints recovery codes: those are issued only after
   // the org-required MFA is actually completed (on the first successful verifyMfaToken,
   // or via POST /me/mfa/activate from a full authenticated session). This keeps a
   // password-only, pre-MFA session from bootstrapping recovery codes.
@@ -122,6 +134,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
+      await ensureFactorEnrollmentStepUpMfa(server, {
+        userId: req.permission.id,
+        tokenVersionId: getStepUpSessionId(req),
+        enrollingMethod: req.body.method
+      });
+
       if (req.body.method === MfaMethod.TOTP) {
         await server.services.totp.verifyUserTotpConfig({
           userId: req.permission.id,
@@ -544,6 +562,36 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/me/deletion-eligibility",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getMyDeletionEligibility",
+      response: {
+        200: z.object({
+          deletionEligibility: z.object({
+            canDelete: z.boolean().describe(USERS.GET_DELETION_ELIGIBILITY.canDelete),
+            isOnlyServerAdmin: z.boolean().describe(USERS.GET_DELETION_ELIGIBILITY.isOnlyServerAdmin),
+            lastMemberOrganizations: DeletionEligibilityOrgSchema.array().describe(
+              USERS.GET_DELETION_ELIGIBILITY.lastMemberOrganizations
+            ),
+            lastAdminOrganizations: DeletionEligibilityOrgSchema.array().describe(
+              USERS.GET_DELETION_ELIGIBILITY.lastAdminOrganizations
+            )
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const deletionEligibility = await server.services.user.getMyDeletionEligibility(req.permission.id);
+      return { deletionEligibility };
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/me",
     config: {
@@ -551,6 +599,15 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "deleteUser",
+      querystring: z.object({
+        lastMemberOrganizationIds: z
+          .string()
+          .max(3800)
+          .transform((value) => [...new Set(value.split(",").map((id) => id.trim()))])
+          .pipe(z.array(z.string().uuid()).max(100))
+          .optional()
+          .describe(USERS.DELETE.lastMemberOrganizationIds)
+      }),
       response: {
         200: z.object({
           user: SanitizedUserSchema
@@ -559,7 +616,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const user = await server.services.user.deleteUser(req.permission.id);
+      const user = await server.services.user.deleteUser(req.permission.id, {
+        actorAuthMethod: req.permission.authMethod,
+        lastMemberOrganizationIds: req.query.lastMemberOrganizationIds
+      });
       return { user };
     }
   });

@@ -12,8 +12,8 @@ import {
   AlertDialogTitle,
   Button
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
-import { useDeleteAgentVaultVariable } from "@app/hooks/api/agentVault";
+import { useOrganization, useProject } from "@app/context";
+import { AgentVaultVariableScope, useDeleteAgentVaultVariable } from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 type Props = {
@@ -22,8 +22,10 @@ type Props = {
 };
 
 export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const deleteVariable = useDeleteAgentVaultVariable();
+  const deleteVariable = useDeleteAgentVaultVariable(projectId);
+  const isPersonal = variable?.scope === AgentVaultVariableScope.Personal;
   const usedByServices = variable?.usedByServices ?? [];
   const isInUse = usedByServices.length > 0;
 
@@ -44,9 +46,13 @@ export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete &quot;{variable?.key}&quot;</AlertDialogTitle>
           <AlertDialogDescription>
-            {isInUse
+            {isInUse && isPersonal
+              ? `${usedByServices.length === 1 ? "Your personal values for a service use" : `Your personal values for ${usedByServices.length} services use`} this variable. Remove it from ${usedByServices.length === 1 ? "the service" : "those services"} before you delete it.`
+              : null}
+            {isInUse && !isPersonal
               ? `${usedByServices.length === 1 ? "A service uses" : `${usedByServices.length} services use`} this variable. Remove the reference from ${usedByServices.length === 1 ? "it" : "them"} before you delete it.`
-              : "Its value is deleted with it. This cannot be undone."}
+              : null}
+            {!isInUse && "Its value is deleted with it. This cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -54,16 +60,27 @@ export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
           <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-container/50 p-3">
             {usedByServices.map((service) => (
               <li key={service.id} className="flex items-center gap-2">
-                <ServiceIcon hostPattern={service.hostPattern} />
+                <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm">{service.name}</span>
-                  <Link
-                    to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                    params={{ orgId: currentOrg.id, accessBundleId: service.accessBundleId }}
-                    className="truncate text-xs text-muted underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    {service.accessBundleName}
-                  </Link>
+                  {service.accessBundles?.length ? (
+                    <span className="truncate text-xs text-muted">
+                      {service.accessBundles.map((bundle, index) => (
+                        <span key={bundle.id}>
+                          {index > 0 && ", "}
+                          <Link
+                            to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                            params={{ orgId: currentOrg.id, projectId, accessBundleId: bundle.id }}
+                            className="underline-offset-4 hover:text-foreground hover:underline"
+                          >
+                            {bundle.name}
+                          </Link>
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="truncate text-xs text-muted">Not in an access bundle</span>
+                  )}
                 </div>
               </li>
             ))}

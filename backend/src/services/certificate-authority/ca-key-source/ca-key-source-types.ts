@@ -16,7 +16,7 @@ export type TExternalCaKeyInput = {
 
 export type TExternalCaKeyReference = Pick<
   TCertificateAuthoritySecret,
-  "hsmConnectorId" | "appConnectionId" | "externalKeyId" | "publicKeySpki"
+  "hsmConnectorId" | "appConnectionId" | "externalKeyId" | "hsmKeyId" | "publicKeySpki"
 >;
 
 export type TCaKeyDetails = {

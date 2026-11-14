@@ -12,7 +12,8 @@ import {
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
-import { PkiDiscoveryTypeLabels, TPkiDiscovery } from "@app/hooks/api";
+import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
+import { TPkiDiscovery } from "@app/hooks/api";
 import { getDiscoveryStatusBadge } from "@app/pages/cert-manager/pki-discovery-utils";
 
 type Props = {
@@ -35,7 +36,7 @@ export const DiscoveryDetailsSection = ({ discovery }: Props) => {
           <Detail>
             <DetailLabel>Type</DetailLabel>
             <DetailValue>
-              {PkiDiscoveryTypeLabels[discovery.discoveryType] || discovery.discoveryType}
+              {PKI_DISCOVERY_TYPE_MAP[discovery.discoveryType]?.name ?? discovery.discoveryType}
             </DetailValue>
           </Detail>
           {discovery.description && (

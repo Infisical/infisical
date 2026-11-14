@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import {
   faArrowUpRightFromSquare,
@@ -13,6 +12,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import z from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -232,9 +232,7 @@ export const AwsSecretManagerConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up AWS Secrets Manager Integration</title>
-      </Helmet>
+      <PageTitle title="Set Up AWS Secrets Manager Integration" />
       <form onSubmit={handleSubmit(handleButtonClick)}>
         <Card className="w-full max-w-lg">
           <CardHeader>
@@ -682,9 +680,7 @@ export const AwsSecretManagerConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up AWS Secrets Manager Integration</title>
-      </Helmet>
+      <PageTitle title="Set Up AWS Secrets Manager Integration" />
       {isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading ? (
         <img
           src="/images/loading/loading.gif"

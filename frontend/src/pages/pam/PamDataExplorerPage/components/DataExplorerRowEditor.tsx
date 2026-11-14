@@ -82,7 +82,6 @@ export const DataExplorerRowEditor = ({
             return (
               <div key={col.name}>
                 <div className="mb-1 flex items-center gap-2">
-                  {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
                   <label
                     htmlFor={`row-editor-${col.name}`}
                     className="text-xs font-medium text-foreground"

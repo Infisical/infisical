@@ -1,13 +1,15 @@
 import * as React from "react";
 
 import { cn } from "../../utils";
+import { rowLinkContainerClassName } from "../RowLink";
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+function Card({ className, linked, ...props }: React.ComponentProps<"div"> & { linked?: boolean }) {
   return (
     <div
       data-slot="card"
       className={cn(
         "flex h-fit flex-col gap-5 rounded-card border border-border bg-card p-5 text-foreground shadow-xs",
+        linked && rowLinkContainerClassName,
         className
       )}
       {...props}

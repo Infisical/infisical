@@ -9,11 +9,10 @@ const arnRegex = new RE2(
   /^arn:aws(?:-us-gov)?:(iam|sts)::\d{12}:(user\/[a-zA-Z0-9_.@+*/-]+|role\/[a-zA-Z0-9_.@+*/-]+|assumed-role\/[a-zA-Z0-9_.@+*/-]+|\*)$/
 );
 
-export const validateAccountIds = z
+const accountIdsFormat = z
   .string()
   .trim()
   .max(4096)
-  .default("")
   // Custom validation to ensure each part is a 12-digit number
   .refine(
     (data) => {
@@ -37,11 +36,14 @@ export const validateAccountIds = z
       .join(", ");
   });
 
-export const validatePrincipalArns = z
+export const validateAccountIds = accountIdsFormat.default("");
+// Omitted on update means "keep the stored value", so this must not carry a default.
+export const validateAccountIdsForUpdate = accountIdsFormat.optional();
+
+const principalArnsFormat = z
   .string()
   .trim()
   .max(4096)
-  .default("")
   // Custom validation for ARN format
   .refine(
     (data) => {
@@ -69,3 +71,7 @@ export const validatePrincipalArns = z
       .map((arn) => arn.trim())
       .join(", ")
   );
+
+export const validatePrincipalArns = principalArnsFormat.default("");
+// Omitted on update means "keep the stored value", so this must not carry a default.
+export const validatePrincipalArnsForUpdate = principalArnsFormat.optional();

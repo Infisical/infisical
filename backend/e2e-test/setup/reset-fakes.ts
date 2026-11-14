@@ -1,7 +1,7 @@
 import { auditLogStreamOutboxTuning } from "e2e-test/fakes/audit-log-stream-outbox-constants";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { fakeIamUserSecret } from "e2e-test/fakes/aws-iam-user-secret-rotation-fns";
-import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
+import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
 import { fakeS3Bucket } from "e2e-test/fakes/s3";
 
 // The fakes are module singletons shared with the server booted in this same process, and the
@@ -15,9 +15,9 @@ import { fakeS3Bucket } from "e2e-test/fakes/s3";
 //
 // A spec still resets between its own tests; that is its own beforeEach, not this hook.
 beforeAll(() => {
-  fakeParameterStore.reset();
   fakeAwsConnection.reset();
   fakeS3Bucket.reset();
+  fakeDefaultStorage.reset();
   fakeIamUserSecret.reset();
   auditLogStreamOutboxTuning.reset();
 });

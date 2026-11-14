@@ -1,12 +1,13 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
 import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "@app/ee/services/secret-sync/chef/chef-sync-fns";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import {
   AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -17,7 +18,11 @@ import {
   AwsSecretsManagerSyncFns
 } from "@app/services/secret-sync/aws-secrets-manager";
 import { DATABRICKS_SYNC_LIST_OPTION, databricksSyncFactory } from "@app/services/secret-sync/databricks";
-import { GITHUB_SYNC_LIST_OPTION, GithubSyncFns } from "@app/services/secret-sync/github";
+import {
+  GITHUB_SYNC_LIST_OPTION,
+  gitHubPreSaveTransformDestinationConfig,
+  GithubSyncFns
+} from "@app/services/secret-sync/github";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
@@ -35,6 +40,7 @@ import {
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TOidcIssuerServiceFactory } from "../oidc-issuer/oidc-issuer-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
@@ -73,6 +79,7 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { JENKINS_SYNC_LIST_OPTION, JenkinsSyncFns } from "./jenkins";
 import { KEEPER_SYNC_LIST_OPTION, KeeperSyncFns } from "./keeper";
 import { LARAVEL_FORGE_SYNC_LIST_OPTION, LaravelForgeSyncFns } from "./laravel-forge";
 import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
@@ -151,7 +158,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION,
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
   [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
-  [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION
+  [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION,
+  [SecretSync.Jenkins]: JENKINS_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -165,7 +173,8 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
   [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
   [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
-  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig
+  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig,
+  [SecretSync.GitHub]: gitHubPreSaveTransformDestinationConfig
 };
 
 export const preSaveTransformSyncOptions = async (
@@ -194,6 +203,7 @@ type TSyncSecretDeps = {
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 // Strip schema from secret keys
@@ -284,7 +294,15 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { kmsService, appConnectionDAL, gitHubAppDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayV2Service,
+      gatewayPoolService,
+      oidcIssuerService,
+      keyStore
+    }: TSyncSecretDeps & { keyStore: Pick<TKeyStoreFactory, "acquireLock"> }
   ): Promise<TSyncSecretsResult | void> => {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -303,12 +321,14 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }).syncSecrets(secretSync, payload);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          oidcIssuerService
         }).syncSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({
@@ -318,7 +338,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).syncSecrets(secretSync, payload);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.syncSecrets(secretSync, payload);
@@ -354,7 +376,7 @@ export const SecretSyncFns = {
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
-        return CloudflareWorkersSyncFns.syncSecrets(secretSync, payload);
+        return CloudflareWorkersSyncFns.syncSecrets(secretSync, payload, { keyStore });
       case SecretSync.CloudflareSecretsStore:
         return CloudflareSecretsStoreSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Zabbix:
@@ -371,6 +393,8 @@ export const SecretSyncFns = {
         return RundeckSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Portainer:
         return PortainerSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Jenkins:
+        return JenkinsSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -419,7 +443,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayV2Service, gatewayPoolService, oidcIssuerService }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -443,13 +467,15 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }).getSecrets(secretSync);
         break;
       case SecretSync.AzureAppConfiguration:
         secretMap = await azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          oidcIssuerService
         }).getSecrets(secretSync);
         break;
       case SecretSync.AzureDevOps:
@@ -461,7 +487,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).getSecrets(secretSync);
       case SecretSync.Humanitec:
         secretMap = await HumanitecSyncFns.getSecrets(secretSync);
@@ -538,6 +566,9 @@ export const SecretSyncFns = {
       case SecretSync.Portainer:
         secretMap = await PortainerSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
         break;
+      case SecretSync.Jenkins:
+        secretMap = await JenkinsSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
         break;
@@ -611,7 +642,14 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { kmsService, appConnectionDAL, gitHubAppDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayV2Service,
+      gatewayPoolService,
+      oidcIssuerService
+    }: TSyncSecretDeps
   ): Promise<void> => {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -630,12 +668,14 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }).removeSecrets(secretSync, payload);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          oidcIssuerService
         }).removeSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({
@@ -645,7 +685,9 @@ export const SecretSyncFns = {
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
         }).removeSecrets(secretSync, payload);
       case SecretSync.Humanitec:
         return HumanitecSyncFns.removeSecrets(secretSync, payload);
@@ -698,6 +740,8 @@ export const SecretSyncFns = {
         return RundeckSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Portainer:
         return PortainerSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Jenkins:
+        return JenkinsSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -775,14 +819,14 @@ export const parseSyncErrorMessage = (err: unknown): string => {
 };
 
 export const enterpriseSyncCheck = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: TLicenseService,
   secretSync: SecretSync,
   orgId: string,
   errorMessage: string
 ) => {
   if (SECRET_SYNC_PLAN_MAP[secretSync] === SecretSyncPlanType.Enterprise) {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.enterpriseSecretSyncs)
+    if (!plan.has(PlanFeature.EnterpriseSecretSyncs))
       throw new BadRequestError({
         message: errorMessage
       });

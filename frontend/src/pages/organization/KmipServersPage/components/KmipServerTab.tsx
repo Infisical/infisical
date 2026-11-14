@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 import {
   CopyIcon,
@@ -37,6 +36,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -73,8 +73,6 @@ export const KmipServerTab = withPermission(
       "deleteKmipServer",
       "createKmipServer"
     ] as const);
-
-    const navigate = useNavigate();
 
     const deleteKmipServerById = useDeleteKmipServerById();
 
@@ -178,18 +176,17 @@ export const KmipServerTab = withPermission(
                     </TableRow>
                   ))}
                 {filteredKmipServers?.map((el) => (
-                  <TableRow
-                    key={el.id}
-                    onClick={() => {
-                      navigate({
-                        to: "/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
-                        params: { orgId, kmipServerId: el.id }
-                      });
-                    }}
-                  >
-                    <TableCell isTruncatable>{el.name}</TableCell>
+                  <TableRow key={el.id} linked>
+                    <TableCell isTruncatable>
+                      <RowLink
+                        to="/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId"
+                        params={{ orgId, kmipServerId: el.id }}
+                      >
+                        {el.name}
+                      </RowLink>
+                    </TableCell>
                     <TableCell>{formatRelative(new Date(el.createdAt), new Date())}</TableCell>
-                    <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+                    <TableCell variant="action">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton aria-label="KMIP server options" variant="ghost" size="sm">

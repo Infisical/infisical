@@ -29,7 +29,7 @@ export interface DiffPanesProps {
 }
 
 const EmptyPane = ({ message }: { message: string }) => (
-  <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner xl:w-1/2">
+  <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner @2xl:w-1/2">
     <span className="text-sm text-muted">{message}</span>
   </div>
 );
@@ -64,37 +64,39 @@ export const DiffPanes = ({
   };
 
   return (
-    <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
-      {showPrevious ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-danger/35 bg-danger/5 p-4 xl:w-1/2">
-          <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">Previous {resourceLabel}</span>
-            <Badge variant="danger">
-              <CircleXIcon /> Previous
-            </Badge>
-          </div>
-          {renderFields("previous")}
-        </div>
-      ) : (
-        <EmptyPane message={previousEmptyMessage} />
-      )}
-
-      {showNext ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-success/35 bg-success/5 p-4 xl:w-1/2">
-          <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">New {resourceLabel}</span>
-            <div className="flex items-center gap-2">
-              {newPaneBadge}
-              <Badge variant="success">
-                <CircleCheckIcon /> New
+    <div className="@container">
+      <div className="flex flex-col gap-4 @2xl:flex-row">
+        {showPrevious ? (
+          <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-danger/35 bg-danger/5 p-4 @2xl:w-1/2">
+            <div className="mb-4 flex flex-row justify-between">
+              <span className="text-md font-medium">Previous {resourceLabel}</span>
+              <Badge variant="danger">
+                <CircleXIcon /> Previous
               </Badge>
             </div>
+            {renderFields("previous")}
           </div>
-          {renderFields("next")}
-        </div>
-      ) : (
-        <EmptyPane message={nextEmptyMessage} />
-      )}
+        ) : (
+          <EmptyPane message={previousEmptyMessage} />
+        )}
+
+        {showNext ? (
+          <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-success/35 bg-success/5 p-4 @2xl:w-1/2">
+            <div className="mb-4 flex flex-row justify-between">
+              <span className="text-md font-medium">New {resourceLabel}</span>
+              <div className="flex items-center gap-2">
+                {newPaneBadge}
+                <Badge variant="success">
+                  <CircleCheckIcon /> New
+                </Badge>
+              </div>
+            </div>
+            {renderFields("next")}
+          </div>
+        ) : (
+          <EmptyPane message={nextEmptyMessage} />
+        )}
+      </div>
     </div>
   );
 };

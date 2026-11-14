@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,6 +5,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -34,6 +34,7 @@ import {
   CaCertDetailsSection,
   CaCertificatesSection,
   CaCrlsSection,
+  CaCrossSignedCertSection,
   CaDetailsSection,
   CaGenerateRootCertModal,
   CaIssuerUrlSection,
@@ -185,6 +186,7 @@ const Page = () => {
                       caName={data.name}
                       handlePopUpOpen={handlePopUpOpen}
                     />
+                    <CaCrossSignedCertSection caId={data.id} />
                     <CaIssuerUrlSection caId={data.id} />
                     <CaCrlsSection caId={data.id} />
                     <CaRevocationSection caId={data.id} />
@@ -215,10 +217,8 @@ const Page = () => {
 export const CertAuthDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Certificate Authority</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Certificate Authority" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

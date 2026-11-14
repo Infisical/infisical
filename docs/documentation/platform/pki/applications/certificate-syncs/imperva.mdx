@@ -1,0 +1,169 @@
+---
+title: "Sync certificates to Imperva"
+sidebarTitle: "Imperva"
+description: "Deploy certificates to websites protected by Imperva Cloud WAF."
+---
+
+Deploy certificates as custom certificates on Imperva Cloud WAF websites, so the WAF presents your own certificate to visitors instead of an Imperva-generated one.
+
+<Info>
+  Certificate Syncs are configured per Application. Configure the Imperva destination first, then select which certificates to sync.
+</Info>
+
+Imperva stores one custom certificate per website for each key type, so a sync targets a single website and holds a single certificate. A renewal replaces the certificate already on that website.
+
+<Warning>
+  An Imperva sync accepts a certificate order filter naming one order. A certificate profile filter, a metadata filter, or an order filter naming more than one order is rejected when you save the sync.
+</Warning>
+
+## Prerequisites
+
+- An [Application](/documentation/platform/pki/applications/overview) holding the certificate you want to sync
+- An [Imperva Connection](/integrations/app-connections/imperva) whose API key has the **Manage SSL Certificates** permission
+- A website already protected by Imperva Cloud WAF
+- A certificate whose subject alternative names cover every managed domain on that website
+- An RSA certificate with a key smaller than 4096 bits, or an ECDSA P-256 certificate, since Imperva rejects RSA 4096 and every other ECDSA curve
+
+## Create an Imperva sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. In your Application, go to the **Certificate Syncs** tab and select **Add Sync**.
+
+        2. Select the **Imperva** option.
+
+        3. Configure the **Destination**:
+            - **Imperva Connection**: the connection to authenticate with
+            - **Website**: the website that receives the certificate, chosen from the websites in the Imperva account
+
+        4. Configure the **Sync Options**:
+            - **Remove certificates from destination**: remove the custom certificate from the website once this sync stops holding it
+            - **Include root CA in certificate chain**: leave this off, since Imperva recommends uploading trusted certificates without the root
+            - **Auto-sync on change**: sync certificates automatically when they change
+
+        5. Configure the **Details**:
+            - **Name**: the name of your sync, slug-friendly
+            - **Description**: an optional description
+
+        6. Select the certificate to sync.
+
+        7. Review and select **Create Sync**.
+    </Tab>
+    <Tab title="API">
+        To create an Imperva Certificate Sync, make an API request to the [Create Imperva PKI Sync](/api-reference/endpoints/pki/syncs/imperva/create) endpoint.
+
+        ### Sample request
+
+        <Note>
+          Pass `filters` to describe the certificate this sync holds. The matching certificate in the Application is
+          attached automatically, as it is issued. Omit it and the sync starts empty, and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
+        </Note>
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/imperva \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-imperva-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example certificate sync",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "destination": "imperva",
+            "isAutoSyncEnabled": true,
+            "filters": {
+                "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+            },
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "includeRootCa": false
+            },
+            "destinationConfig": {
+                "siteId": "12345",
+                "siteName": "app.example.com"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "name": "my-imperva-cert-sync",
+            "description": "an example certificate sync",
+            "destination": "imperva",
+            "isAutoSyncEnabled": true,
+            "destinationConfig": {
+                "siteId": "12345",
+                "siteName": "app.example.com"
+            },
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "includeRootCa": false
+            },
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "createdAt": "2026-09-15T00:00:00.000Z",
+            "updatedAt": "2026-09-15T00:00:00.000Z"
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## How it works
+
+Infisical uploads the certificate and its private key to the website as a custom certificate:
+
+- The leaf certificate and its intermediate CA certificates are sent as one chain, giving visitors a complete trust path
+- The key type is read from the certificate, and Imperva stores it in the matching RSA or ECDSA slot
+- A renewal overwrites the certificate in that slot, and the website keeps serving without a binding step
+
+## Removing certificates
+
+When certificate removal is enabled and the certificate is no longer active in Infisical, Infisical deletes the custom certificate from the website. Imperva then serves whichever other certificate covers the requested domain, usually the Imperva-generated one.
+
+## Manual certificate sync
+
+You can manually trigger certificate synchronization to Imperva using the sync certificates functionality. This is useful for:
+
+- Initial setup when you have an existing certificate to deploy
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/imperva/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+## FAQ
+
+<AccordionGroup>
+<Accordion title="Can I sync more than one certificate to a website?">
+  No. Imperva holds one custom certificate per website for each key type, so a sync deploys a single certificate. A filter naming more than one certificate order is rejected when you save the sync. To cover several domains with one certificate, use a certificate whose subject alternative names include them.
+</Accordion>
+
+<Accordion title="Why was the certificate rejected, or reported as not covering every managed domain?">
+  Imperva compares the certificate's subject alternative names against the domains configured on the website. A certificate that covers none of them is rejected outright. The sync then fails with Imperva's own message. A certificate that covers some but not all is accepted. Imperva reports a site mismatch, keeps serving the previous certificate, and Infisical surfaces the mismatch on the sync. Reissue the certificate with every managed domain, then sync again.
+</Accordion>
+
+<Accordion title="Can I import certificates from Imperva back into Infisical?">
+  No. Private keys can't be read back out of Imperva, so the sync only pushes certificates.
+</Accordion>
+
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
+    Deploy certificates to Citrix NetScaler appliances.
+  </Card>
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

@@ -15,6 +15,9 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 import { actorContext } from "./agent-vault-router-fns";
 
+// Reads return no logs while session logs are off, or while the plan doesn't include the storage in use. Unlike most
+// paid features, which read from Infisical's database, each read here is a billed S3 request for whoever owns the
+// bucket, so reading needs the same plan as recording.
 export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -24,7 +27,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       hide: false,
       operationId: "listAgentVaultSessionLogs",
       description:
-        "Lists a session's logs newest first, as encrypted chunks of [records](/documentation/platform/agent-vault/session-logs#what-gets-recorded). To decrypt them, follow [Reading session logs through the API](/documentation/platform/agent-vault/session-logs#reading-session-logs-through-the-api). To follow new logs as they arrive, use [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail). If Infisical can't read the bucket, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
+        "Lists a session's logs newest first, as encrypted chunks of [records](/documentation/platform/agent-vault/session-logs#what-gets-recorded). To decrypt them, follow [Reading session logs through the API](/documentation/platform/agent-vault/session-logs#reading-session-logs-through-the-api). To follow new logs as they arrive, use [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail). If Infisical can't read session logs, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultSessionLogHistoryQuerySchema,
@@ -32,9 +35,13 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
+        actorContext(req),
+        req.params.sessionId
+      );
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.listSessionLogs({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
         cursor: req.query.cursor,
@@ -52,7 +59,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       hide: false,
       operationId: "tailAgentVaultSessionLogs",
       description:
-        "Lists chunks added since your last call. Call it every few seconds with the previous `nextCursor`. Any call can return a chunk you already have, so skip any whose `chunkId` and `proxyId` you've read. The chunks decrypt the same way as the ones from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). If the AWS connection for session logs can't be used, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
+        "Lists chunks added since your last call. Call it every few seconds with the previous `nextCursor`. Any call can return a chunk you already have, so skip any whose `chunkId` and `proxyId` you've read. The chunks decrypt the same way as the ones from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). If Infisical can't read session logs, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultSessionLogTailQuerySchema,
@@ -60,9 +67,13 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
+        actorContext(req),
+        req.params.sessionId
+      );
       addNoCacheHeaders(reply);
       return server.services.agentVaultSessionLog.tailSessionLogs({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
         cursor: req.query.cursor

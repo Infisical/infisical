@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -96,9 +96,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize AWS Parameter Integration</title>
-      </Helmet>
+      <PageTitle title="Authorize AWS Parameter Store Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

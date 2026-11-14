@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3";
 import { ConfirmationAlertDialog } from "@app/components/v3/platform";
@@ -168,10 +168,8 @@ const Page = () => {
 export const CertificateProfileDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Certificate Profile</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Certificate Profile" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

@@ -1,0 +1,41 @@
+---
+title: "Microsoft SQL Server credential rotation for PAM"
+sidebarTitle: "Microsoft SQL Server"
+description: "Rotate the passwords of Microsoft SQL Server accounts."
+---
+
+This page covers what's specific to rotating the password of a [Microsoft SQL Server account](/documentation/platform/pam/accounts/mssql). To turn on rotation and set a rotation account, see [Credential rotation](/documentation/platform/pam/credential-rotation/overview).
+
+Infisical can only rotate accounts that use SQL Server authentication. If an account uses Windows authentication, its password belongs to a Windows or Active Directory account, so Infisical can't rotate it as a SQL Server account. To rotate that password, add the same user to PAM as a [Windows](/documentation/platform/pam/credential-rotation/windows) or Windows AD account and rotate it there.
+
+<Note>
+  Infisical doesn't update the SQL Server account when the Windows or Windows AD account rotates. After each rotation, enter the new password on the SQL Server account, or its sessions fail.
+</Note>
+
+## Rotation account
+
+The rotation account needs permission to change the target login's password:
+
+- **The account itself:** A login can change its own password, so it needs no extra privileges
+- **A different account:** The rotation account needs the `ALTER ANY LOGIN` permission
+
+For example, to create a rotation login and a login for it to rotate:
+
+```sql
+-- the login that Infisical signs in as to rotate passwords
+CREATE LOGIN infisical_rotator WITH PASSWORD = '<temporary-password>';
+GRANT ALTER ANY LOGIN TO infisical_rotator;
+
+-- the login whose password Infisical rotates
+CREATE LOGIN app_login WITH PASSWORD = '<temporary-password>';
+```
+
+Add both logins to Infisical PAM as Microsoft SQL Server accounts with the same host and port, then select `infisical_rotator` as the rotation account on the `app_login` account's **Rotation** tab.
+
+## How the password is changed
+
+Infisical signs in as the rotation account, using the account's connection details and SSL settings, and runs:
+
+```sql
+ALTER LOGIN "<target-login>" WITH PASSWORD = '<generated-password>';
+```

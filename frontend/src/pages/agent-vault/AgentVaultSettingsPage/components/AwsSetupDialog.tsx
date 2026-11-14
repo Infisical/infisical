@@ -20,11 +20,11 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { agentVaultKeys, useGetAgentVaultSessionLogCorsProbe } from "@app/hooks/api/agentVault";
 
 const iamPolicyFor = (bucket: string, keyPrefix: string) => {
-  const objects = `arn:aws:s3:::${bucket || "<bucket>"}/${keyPrefix ? `${keyPrefix}/` : ""}*`;
+  const folder = keyPrefix ? `${keyPrefix}/` : "";
   return JSON.stringify(
     {
       Version: "2012-10-17",
@@ -32,12 +32,13 @@ const iamPolicyFor = (bucket: string, keyPrefix: string) => {
         {
           Effect: "Allow",
           Action: ["s3:PutObject", "s3:GetObject"],
-          Resource: objects
+          Resource: `arn:aws:s3:::${bucket || "<bucket>"}/${folder}*`
         },
         {
           Effect: "Allow",
           Action: ["s3:ListBucket"],
-          Resource: `arn:aws:s3:::${bucket || "<bucket>"}`
+          Resource: `arn:aws:s3:::${bucket || "<bucket>"}`,
+          ...(folder && { Condition: { StringLike: { "s3:prefix": [`${folder}*`] } } })
         }
       ]
     },
@@ -97,9 +98,13 @@ export const AwsSetupDialog = ({
   keyPrefix,
   isUnsaved = false
 }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
-  const { data: savedReadCheck } = useGetAgentVaultSessionLogCorsProbe(isOpen && !isUnsaved);
+  const { data: savedReadCheck } = useGetAgentVaultSessionLogCorsProbe(
+    projectId,
+    isOpen && !isUnsaved
+  );
   // The check reads the saved bucket, so it says nothing about a bucket that is only typed in.
   const readCheck = isUnsaved ? null : savedReadCheck;
   const readAccess = readCheck?.status;
@@ -118,7 +123,7 @@ export const AwsSetupDialog = ({
     // Re-checked on close, so the page's warning clears once the rule or policy is attached.
     if (!next) {
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id, projectId)
       });
     }
     onOpenChange(next);

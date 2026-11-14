@@ -6,9 +6,9 @@ import { HEALTH_CHECK_COMMAND_VARIABLE_DESCRIPTIONS } from "@app/helpers/pkiSync
 import { PkiSync, PkiSyncStatus, useTestPkiSyncHealthCheck } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { notifyUnhandledHostCommandError } from "./hostCommandErrors";
 import { HostCommandField } from "./HostCommandField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const COMMAND_PLACEHOLDERS: Partial<Record<PkiSync, string>> = {
   [PkiSync.LinuxServer]: "test -w {{certificateDirectory}} && systemctl is-active nginx",

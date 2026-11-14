@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import {
+  IdentitiesSchema,
+  IdentityOrgMembershipsSchema,
+  OrgMembershipRole,
+  OrgRolesSchema,
+  ProjectType
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { logger } from "@app/lib/logger";
@@ -8,6 +14,7 @@ import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-r
 import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
 import { identityCreationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -46,7 +53,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: z.string().trim().describe(IDENTITIES.CREATE.name),
+        name: auditSafeText(z.string().trim().max(255)).describe(IDENTITIES.CREATE.name),
         organizationId: z.string().trim().describe(IDENTITIES.CREATE.organizationId),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role),
         hasDeleteProtection: z.boolean().default(false).describe(IDENTITIES.CREATE.hasDeleteProtection),
@@ -125,7 +132,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(IDENTITIES.UPDATE.identityId)
       }),
       body: z.object({
-        name: z.string().trim().optional().describe(IDENTITIES.UPDATE.name),
+        name: z.string().trim().max(255).optional().describe(IDENTITIES.UPDATE.name),
         role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role),
         hasDeleteProtection: z.boolean().optional().describe(IDENTITIES.UPDATE.hasDeleteProtection),
         metadata: z
@@ -477,10 +484,24 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string().describe(IDENTITIES.GET_BY_ID.identityId)
+        identityId: z.string().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.identityId)
+      }),
+      querystring: z.object({
+        limit: z.coerce.number().int().min(1).max(100).optional().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.limit),
+        offset: z.coerce.number().int().min(0).default(0).describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.offset),
+        search: z.string().trim().max(255).optional().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.search),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.orderDirection),
+        excludeProjectType: z
+          .nativeEnum(ProjectType)
+          .optional()
+          .describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.excludeProjectType)
       }),
       response: {
         200: z.object({
+          totalCount: z.number().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.totalCount),
           identityMemberships: z.array(
             z.object({
               id: z.string(),
@@ -511,15 +532,14 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identityMemberships = await server.services.identityV1.listProjectIdentitiesByIdentityId({
+      return server.services.identityV1.listProjectIdentitiesByIdentityId({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        ...req.query
       });
-
-      return { identityMemberships };
     }
   });
 
