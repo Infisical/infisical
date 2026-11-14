@@ -84,6 +84,7 @@ import {
 } from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
 import { usePamProductUsers } from "../../components/usePamProductUsers";
+import { ApprovalRequestDetailSheet } from "../../PamApprovalRequestsPage/components/ApprovalRequestDetailSheet";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };
@@ -151,6 +152,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   );
   const revokeMutation = useRevokePamAccessRequest();
   const [requestToRevoke, setRequestToRevoke] = useState<TPamAccessRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TPamAccessRequest | null>(null);
 
   const confirmRevoke = async () => {
     if (!requestToRevoke) return;
@@ -662,8 +664,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <TableBody>
                   {folderRequests.map((request) => {
                     const status = getRequestStatusInfo(request);
+                    const isApproved = request.status === PamAccessRequestStatus.Approved;
                     return (
-                      <TableRow key={request.id}>
+                      <TableRow
+                        key={request.id}
+                        className={isApproved ? "cursor-pointer" : undefined}
+                        onClick={isApproved ? () => setSelectedRequest(request) : undefined}
+                      >
                         <TableCell className="h-[50px]">
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{request.requesterName}</span>
@@ -766,6 +773,12 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
+      <ApprovalRequestDetailSheet
+        request={selectedRequest}
+        isOpen={!!selectedRequest}
+        onOpenChange={(open) => !open && setSelectedRequest(null)}
+        canRevokeGrants={canRevoke}
+      />
       <ConfirmationAlertDialog
         isOpen={!!requestToRevoke}
         onOpenChange={(open) => {

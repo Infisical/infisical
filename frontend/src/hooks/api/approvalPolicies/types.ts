@@ -65,6 +65,9 @@ export type CodeSigningPolicyConstraints = {
 // Conditions on the requester's own account in a service carry this subject and no input
 export const AUTO_APPROVAL_REQUESTER_SUBJECT = "requester";
 
+export const AUTO_APPROVAL_AI_SUBJECT = "ai";
+export const AUTO_APPROVAL_AI_CONSTRAINT = "approves";
+
 export enum AutoApprovalConstraintValue {
   None = "none",
   One = "one",
@@ -74,10 +77,12 @@ export enum AutoApprovalConstraintValue {
 export type TAutoApprovalInput = { connectionId: string; subject: string };
 
 export type TAutoApprovalCondition = {
-  connectionId: string;
+  connectionId: string | null;
   subject: string;
   constraint: string;
   values: string[];
+  prompt?: string | null;
+  contextConnectionIds?: string[];
 };
 
 export type TAutoApprovalConfig = {
@@ -87,7 +92,15 @@ export type TAutoApprovalConfig = {
 
 export type TAutoApprovalConfigResponse = {
   inputs: (TAutoApprovalInput & { id: string })[];
-  rules: { id: string; name: string; conditions: (TAutoApprovalCondition & { id: string })[] }[];
+  rules: {
+    id: string;
+    name: string;
+    conditions: (TAutoApprovalCondition & {
+      id: string;
+      prompt: string | null;
+      contextConnectionIds: string[];
+    })[];
+  }[];
 };
 
 export type TAutoApprovalCatalogConstraint = {
@@ -124,6 +137,20 @@ export type TAutoApprovalInputDetails = {
 
 export type TAutoApprovalInputValue = { connectionId: string; subject: string; value: string };
 
+export type TAutoApprovalAiOutcome = {
+  model: string;
+  approve: boolean;
+  reason: string;
+  error: string | null;
+  toolCalls: {
+    tool: string;
+    connectionName: string | null;
+    input: unknown;
+    summary: string | null;
+    error: string | null;
+  }[];
+};
+
 export type TAutoApprovalOutcome = {
   approvedAt: string | null;
   approvedByRuleId: string | null;
@@ -132,13 +159,31 @@ export type TAutoApprovalOutcome = {
     id: string;
     name: string;
     passed: boolean;
-    conditions: { id: string; description: string; passed: boolean; reason: string | null }[];
+    conditions: {
+      id: string;
+      description: string;
+      passed: boolean;
+      reason: string | null;
+      ai?: TAutoApprovalAiOutcome | null;
+    }[];
   }[];
+};
+
+export type TAutoApprovalAiContextConnection = {
+  id: string;
+  name: string;
+  app: string;
+  tools: { name: string; description: string }[];
 };
 
 export type TAutoApprovalCatalog = {
   // Apps a connection can be created for to use in rules
   apps: AppConnection[];
+  ai: {
+    model: string | null;
+    contextApps: AppConnection[];
+    contextConnections: TAutoApprovalAiContextConnection[];
+  };
   connections: TAutoApprovalCatalogConnection[];
 };
 

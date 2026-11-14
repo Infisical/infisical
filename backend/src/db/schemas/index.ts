@@ -33,6 +33,7 @@ export * from "./alerts";
 export * from "./app-connection-credential-rotations";
 export * from "./app-connections";
 export * from "./approval-policies";
+export * from "./approval-policy-auto-approval-condition-contexts";
 export * from "./approval-policy-auto-approval-conditions";
 export * from "./approval-policy-auto-approval-inputs";
 export * from "./approval-policy-auto-approval-rules";

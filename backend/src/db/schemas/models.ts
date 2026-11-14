@@ -338,6 +338,7 @@ export enum TableName {
   ApprovalPolicyAutoApprovalInputs = "approval_policy_auto_approval_inputs",
   ApprovalPolicyAutoApprovalRules = "approval_policy_auto_approval_rules",
   ApprovalPolicyAutoApprovalConditions = "approval_policy_auto_approval_conditions",
+  ApprovalPolicyAutoApprovalConditionContexts = "approval_policy_auto_approval_condition_contexts",
   ApprovalPolicySecretEnvironment = "approval_policy_secret_environments",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",

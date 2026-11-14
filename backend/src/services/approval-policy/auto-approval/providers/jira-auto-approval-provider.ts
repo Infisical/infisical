@@ -1,5 +1,3 @@
-import RE2 from "re2";
-
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -8,6 +6,7 @@ import {
   getJiraErrorMessage,
   getJiraIssue,
   isJiraNotFoundError,
+  JIRA_ISSUE_KEY_REGEX,
   listJiraIssueApprovals,
   listJiraIssueTypes,
   listJiraProjects,
@@ -51,7 +50,6 @@ export type TJiraTicketFacts = {
 };
 
 const JIRA_TICKET_FIELDS = ["status", "project", "issuetype", "labels", "assignee"];
-const JIRA_ISSUE_KEY_REGEX = new RE2("^[A-Z][A-Z0-9_]+-[1-9][0-9]*$");
 const MAX_TICKET_INPUT_LENGTH = 2048;
 const MAX_STORED_LABELS = 100;
 const MAX_OPTIONS = 100;

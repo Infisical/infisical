@@ -313,8 +313,10 @@ export const RequestAccessSheet = ({
             text = "Access granted. The approvers you skipped have been notified.";
           } else if (request?.autoApprovedAt) {
             text = `Access approved by the auto-approval rule "${approvingRule?.name ?? "auto-approval"}"`;
-          } else if (outcome && firstFailure) {
-            text = `${text}. It wasn't auto-approved: ${firstFailure}`;
+          } else if (outcome && closestRule) {
+            text = firstFailure
+              ? `${text}. It wasn't auto-approved: ${firstFailure}`
+              : `${text}. It wasn't auto-approved`;
             type = "info";
           }
 

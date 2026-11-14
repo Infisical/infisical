@@ -6,6 +6,8 @@ import {
   TResolvedAutoApprovalSubject
 } from "./auto-approval-fns";
 import {
+  AUTO_APPROVAL_AI_CONSTRAINT,
+  AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AutoApprovalConstraintValue,
@@ -47,7 +49,9 @@ const condition = (id: string, constraint: string, values: string[], inputId: st
   connectionId: "connection-1",
   subject: inputId ? "submitted-ticket" : AUTO_APPROVAL_REQUESTER_SUBJECT,
   constraint,
-  values
+  values,
+  prompt: null,
+  contextConnectionIds: []
 });
 
 const resolved = (status: string, error: string | null = null) =>
@@ -200,7 +204,9 @@ describe("toAutoApprovalOutcome", () => {
           id: "rule-1",
           name: "Approved ticket",
           passed: true,
-          conditions: [{ id: "c-1", description: "Jira ticket has status Approved", passed: true, reason: null }]
+          conditions: [
+            { id: "c-1", description: "Jira ticket has status Approved", passed: true, reason: null, ai: null }
+          ]
         }
       ]
     });
@@ -253,5 +259,113 @@ describe("getClosestFailedRule", () => {
 
   test("is null when no rule failed", () => {
     expect(getClosestFailedRule({ rules: [] })).toBeNull();
+  });
+});
+
+describe("AI conditions", () => {
+  const aiCondition = {
+    id: "c-ai",
+    inputId: null,
+    connectionId: null,
+    subject: AUTO_APPROVAL_AI_SUBJECT,
+    constraint: AUTO_APPROVAL_AI_CONSTRAINT,
+    values: [],
+    prompt: "Approve if the reason cites an open incident",
+    contextConnectionIds: ["jira-1"]
+  };
+  const rules: TStoredAutoApproval["rules"] = [
+    { id: "rule-1", name: "Incident access", conditions: [condition("c-1", "status", ["Scheduled"]), aiCondition] }
+  ];
+  const aiResult = {
+    approve: true,
+    reason: "INC-1 is open and assigned to the requester",
+    model: "claude-test",
+    error: null,
+    toolCalls: [
+      {
+        tool: "jira_get_ticket",
+        connectionId: "jira-1",
+        connectionName: "jira-cloud",
+        input: { key: "INC-1" },
+        summary: "Read INC-1 (Open, assigned to Dev)",
+        error: null,
+        result: { key: "INC-1", description: "secret details" }
+      }
+    ]
+  };
+
+  test("fails an AI condition the AI didn't review", () => {
+    const result = evaluateAutoApprovalRules(rules, resolved("Scheduled"), ctx);
+    expect(result.approvedByRuleId).toBeNull();
+    expect(result.rules[0].conditions[1]).toMatchObject({
+      passed: false,
+      reason: "The AI didn't review this request",
+      description: "AI approves the request"
+    });
+  });
+
+  test("approves when the AI approves and the other conditions pass", () => {
+    const result = evaluateAutoApprovalRules(
+      rules,
+      resolved("Scheduled"),
+      ctx,
+      new Map([["c-ai", { passed: true, reason: null, ai: aiResult }]])
+    );
+    expect(result.approvedByRuleId).toBe("rule-1");
+    expect(result.rules[0].conditions[1].ai).toEqual(aiResult);
+  });
+
+  test("returns the AI's steps without what the tools returned", () => {
+    const evidence = {
+      version: 1,
+      evaluatedAt: new Date().toISOString(),
+      inputs: [],
+      subjects: [],
+      ...evaluateAutoApprovalRules(
+        rules,
+        resolved("Scheduled"),
+        ctx,
+        new Map([["c-ai", { passed: true, reason: null, ai: aiResult }]])
+      )
+    };
+    const outcome = toAutoApprovalOutcome({ autoApprovedAt: new Date(), autoApprovalEvidence: evidence });
+    const ai = outcome?.rules[0].conditions[1].ai;
+    expect(ai?.reason).toBe(aiResult.reason);
+    expect(ai?.toolCalls).toEqual([
+      {
+        tool: "jira_get_ticket",
+        connectionName: "jira-cloud",
+        input: { key: "INC-1" },
+        summary: "Read INC-1 (Open, assigned to Dev)",
+        error: null
+      }
+    ]);
+    expect(JSON.stringify(outcome)).not.toContain("secret details");
+    expect(outcome?.rules[0].conditions[0].ai).toBeNull();
+  });
+
+  test("hides the AI's reasoning and lookups from the requester", () => {
+    const declined = { ...aiResult, approve: false, reason: "INC-1 is closed" };
+    const evidence = {
+      version: 1,
+      evaluatedAt: new Date().toISOString(),
+      inputs: [],
+      subjects: [],
+      ...evaluateAutoApprovalRules(
+        rules,
+        resolved("Scheduled"),
+        ctx,
+        new Map([["c-ai", { passed: false, reason: "INC-1 is closed", ai: declined }]])
+      )
+    };
+
+    const outcome = toAutoApprovalOutcome({ autoApprovalEvidence: evidence }, { hideAi: true });
+
+    expect(outcome?.rules[0].conditions[1]).toMatchObject({ reason: null, ai: null });
+    expect(JSON.stringify(outcome)).not.toContain("INC-1 is closed");
+    expect(getClosestFailedRule(evidence)?.reason).toBeNull();
+    expect(toAutoApprovalOutcome({ autoApprovalEvidence: evidence })?.rules[0].conditions[1].reason).toBe(
+      "INC-1 is closed"
+    );
   });
 });

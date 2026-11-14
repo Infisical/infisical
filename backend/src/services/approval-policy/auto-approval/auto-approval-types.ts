@@ -1,9 +1,15 @@
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TAiJudgeResult, TAiRequestContext } from "@app/services/ai/ai-types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 // Conditions on the requester's own account in a service carry this subject and no input
 export const AUTO_APPROVAL_REQUESTER_SUBJECT = "requester";
+
+export const AUTO_APPROVAL_AI_SUBJECT = "ai";
+export const AUTO_APPROVAL_AI_SUBJECT_LABEL = "AI";
+export const AUTO_APPROVAL_AI_CONSTRAINT = "approves";
+export const AUTO_APPROVAL_AI_CONSTRAINT_LABEL = "approves the request";
 
 export enum AutoApprovalConstraintValue {
   None = "none",
@@ -27,6 +33,7 @@ export type TAutoApprovalContext = {
   requester: {
     email: string | null;
   };
+  request?: Omit<TAiRequestContext, "inputs">;
 };
 
 export type TAutoApprovalTestResult = { pass: boolean; reason?: string };
@@ -78,10 +85,12 @@ export type TAutoApprovalProvider<TConn = unknown> = {
 export type TAutoApprovalInputConfig = { connectionId: string; subject: string };
 
 export type TAutoApprovalConditionConfig = {
-  connectionId: string;
+  connectionId?: string | null;
   subject: string;
   constraint: string;
   values: string[];
+  prompt?: string | null;
+  contextConnectionIds?: string[];
 };
 
 export type TAutoApprovalRuleConfig = { name: string; conditions: TAutoApprovalConditionConfig[] };
@@ -96,13 +105,28 @@ export type TStoredAutoApproval = {
   rules: {
     id: string;
     name: string;
-    conditions: (TAutoApprovalConditionConfig & { id: string; inputId: string | null })[];
+    conditions: (Omit<TAutoApprovalConditionConfig, "connectionId"> & {
+      id: string;
+      inputId: string | null;
+      connectionId: string | null;
+      prompt: string | null;
+      contextConnectionIds: string[];
+    })[];
   }[];
 };
 
 export type TAutoApprovalPolicyResponse = {
   inputs: (TAutoApprovalInputConfig & { id: string })[];
-  rules: { id: string; name: string; conditions: (TAutoApprovalConditionConfig & { id: string })[] }[];
+  rules: {
+    id: string;
+    name: string;
+    conditions: (Omit<TAutoApprovalConditionConfig, "connectionId"> & {
+      id: string;
+      connectionId: string | null;
+      prompt: string | null;
+      contextConnectionIds: string[];
+    })[];
+  }[];
 };
 
 export type TAutoApprovalInputValue = { connectionId: string; subject: string; value: string };
@@ -137,14 +161,29 @@ export type TAutoApprovalEvidence = {
     passed: boolean;
     conditions: {
       id: string;
-      connectionId: string;
+      connectionId: string | null;
       subject: string;
       constraint: string;
       values: string[];
       description: string;
       passed: boolean;
       reason: string | null;
+      ai?: TAiJudgeResult | null;
     }[];
+  }[];
+};
+
+export type TAutoApprovalAiOutcome = {
+  model: string;
+  approve: boolean;
+  reason: string;
+  error: string | null;
+  toolCalls: {
+    tool: string;
+    connectionName: string | null;
+    input: unknown;
+    summary: string | null;
+    error: string | null;
   }[];
 };
 
@@ -156,6 +195,12 @@ export type TAutoApprovalOutcome = {
     id: string;
     name: string;
     passed: boolean;
-    conditions: { id: string; description: string; passed: boolean; reason: string | null }[];
+    conditions: {
+      id: string;
+      description: string;
+      passed: boolean;
+      reason: string | null;
+      ai: TAutoApprovalAiOutcome | null;
+    }[];
   }[];
 };

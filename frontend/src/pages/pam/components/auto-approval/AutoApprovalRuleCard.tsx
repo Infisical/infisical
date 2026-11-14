@@ -1,5 +1,5 @@
-import { Fragment, useId } from "react";
-import { Pencil, Plus, ShieldAlert, X } from "lucide-react";
+import { Fragment, ReactNode, useId } from "react";
+import { Pencil, Plus, ShieldAlert, Sparkles, X } from "lucide-react";
 
 import {
   Alert,
@@ -19,11 +19,15 @@ import { cn } from "@app/components/v3/utils";
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
+  AUTO_APPROVAL_AI_CONSTRAINT,
+  AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
+  TAutoApprovalCatalog,
   TAutoApprovalCatalogConnection
 } from "@app/hooks/api/approvalPolicies";
 
+import { AutoApprovalAiCondition } from "./AutoApprovalAiCondition";
 import {
   ASSIGNED_TO_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_LIMITS,
@@ -33,6 +37,7 @@ import {
   getRuleError,
   getSubjectDisplayLabel,
   getSubjectsMissingCheck,
+  isAiCondition,
   newKey,
   TAutoApprovalDraft,
   TDraftCondition,
@@ -54,6 +59,7 @@ type Props = {
   rule: TDraftRule;
   inputs: TAutoApprovalDraft["inputs"];
   catalog: TAutoApprovalCatalogConnection[];
+  ai: TAutoApprovalCatalog["ai"];
   policyType: ApprovalPolicyType;
   scope: ApprovalPolicyScope;
   scopeId: string;
@@ -101,6 +107,7 @@ const ConditionRow = ({
   rule,
   inputs,
   catalog,
+  ai,
   policyType,
   scope,
   scopeId,
@@ -113,6 +120,7 @@ const ConditionRow = ({
   rule: TDraftRule;
   inputs: TAutoApprovalDraft["inputs"];
   catalog: TAutoApprovalCatalogConnection[];
+  ai: TAutoApprovalCatalog["ai"];
   policyType: ApprovalPolicyType;
   scope: ApprovalPolicyScope;
   scopeId: string;
@@ -120,6 +128,53 @@ const ConditionRow = ({
   onChange: (condition: TDraftCondition) => void;
   onRemove: () => void;
 }) => {
+  const error = showErrors ? getConditionError(condition, catalog) : null;
+
+  const renderRow = (header: ReactNode, editor: ReactNode) => (
+    <div className="relative flex flex-col gap-1 py-1.5 pr-1.5 pl-2.5">
+      {showConnector && (
+        <span className="absolute top-0 left-4 -translate-y-1/2 bg-card px-1 text-[10px] leading-none font-medium tracking-wider text-muted uppercase">
+          and
+        </span>
+      )}
+      <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
+        {header}
+        <IconButton
+          variant="ghost"
+          size="xs"
+          aria-label="Remove condition"
+          className="ml-auto text-muted hover:text-danger"
+          onClick={onRemove}
+        >
+          <X className="size-4" />
+        </IconButton>
+      </div>
+      {editor}
+      {error && <p className="px-1.5 text-xs text-danger">{error}</p>}
+    </div>
+  );
+
+  if (isAiCondition(condition)) {
+    return renderRow(
+      <>
+        <Badge variant="neutral">
+          <Sparkles className="size-3.5 text-muted" />
+          AI
+        </Badge>
+        <span className="text-sm text-foreground">approves the request</span>
+        <span className="text-xs text-muted">
+          {ai.model ? `using ${ai.model}` : "No AI model set up in Organization Settings"}
+        </span>
+      </>,
+      <AutoApprovalAiCondition
+        condition={condition}
+        ai={ai}
+        isError={Boolean(error)}
+        onChange={onChange}
+      />
+    );
+  }
+
   const { connection, subject } = findSubject(catalog, condition.connectionId, condition.subject);
   const subjectLabel = getSubjectDisplayLabel(
     inputs,
@@ -130,7 +185,6 @@ const ConditionRow = ({
   const constraint = subject?.constraints.find(
     (candidate) => candidate.id === condition.constraint
   );
-  const error = showErrors ? getConditionError(condition, catalog) : null;
 
   // Other conditions on the same subject narrow this one's options, like statuses for a picked project
   const siblings = Object.fromEntries(
@@ -145,50 +199,33 @@ const ConditionRow = ({
       .map((other) => [other.constraint, other.values])
   );
 
-  return (
-    <div className="relative flex flex-col gap-1 py-1.5 pr-1.5 pl-2.5">
-      {showConnector && (
-        <span className="absolute top-0 left-4 -translate-y-1/2 bg-card px-1 text-[10px] leading-none font-medium tracking-wider text-muted uppercase">
-          and
-        </span>
+  return renderRow(
+    <>
+      <Badge variant="neutral">
+        {connection && <ConnectionIcon app={connection.app} className="size-3.5" />}
+        {subjectLabel ?? "Unavailable record"}
+      </Badge>
+      <span className="text-sm text-foreground">{constraint?.label ?? condition.constraint}</span>
+      {constraint?.value === AutoApprovalConstraintValue.Many && (
+        <span className="text-xs text-muted">one of</span>
       )}
-      <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
-        <Badge variant="neutral">
-          {connection && <ConnectionIcon app={connection.app} className="size-3.5" />}
-          {subjectLabel ?? "Unavailable record"}
-        </Badge>
-        <span className="text-sm text-foreground">{constraint?.label ?? condition.constraint}</span>
-        {constraint?.value === AutoApprovalConstraintValue.Many && (
-          <span className="text-xs text-muted">one of</span>
-        )}
-        <IconButton
-          variant="ghost"
-          size="xs"
-          aria-label="Remove condition"
-          className="ml-auto text-muted hover:text-danger"
-          onClick={onRemove}
-        >
-          <X className="size-4" />
-        </IconButton>
+    </>,
+    constraint && constraint.value !== AutoApprovalConstraintValue.None && (
+      <div className="pb-1">
+        <AutoApprovalValuePicker
+          policyType={policyType}
+          scope={scope}
+          scopeId={scopeId}
+          connectionId={condition.connectionId}
+          subject={condition.subject}
+          constraint={constraint}
+          values={condition.values}
+          siblings={siblings}
+          onChange={(values) => onChange({ ...condition, values })}
+          isError={Boolean(error)}
+        />
       </div>
-      {constraint && constraint.value !== AutoApprovalConstraintValue.None && (
-        <div className="pb-1">
-          <AutoApprovalValuePicker
-            policyType={policyType}
-            scope={scope}
-            scopeId={scopeId}
-            connectionId={condition.connectionId}
-            subject={condition.subject}
-            constraint={constraint}
-            values={condition.values}
-            siblings={siblings}
-            onChange={(values) => onChange({ ...condition, values })}
-            isError={Boolean(error)}
-          />
-        </div>
-      )}
-      {error && <p className="px-1.5 text-xs text-danger">{error}</p>}
-    </div>
+    )
   );
 };
 
@@ -196,6 +233,7 @@ export const AutoApprovalRuleCard = ({
   rule,
   inputs,
   catalog,
+  ai,
   policyType,
   scope,
   scopeId,
@@ -253,12 +291,14 @@ export const AutoApprovalRuleCard = ({
     }))
     .filter((group) => group.constraints.length > 0);
 
+  const canAddAi = !rule.conditions.some(isAiCondition);
+
   let addConditionBlocker: string | undefined;
-  if (choices.length === 0) {
-    addConditionBlocker = "Add a field under Request Form Fields first.";
-  } else if (rule.conditions.length >= AUTO_APPROVAL_LIMITS.conditions) {
+  if (rule.conditions.length >= AUTO_APPROVAL_LIMITS.conditions) {
     addConditionBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions.`;
-  } else if (menuGroups.length === 0) {
+  } else if (choices.length === 0 && !canAddAi) {
+    addConditionBlocker = "Add a field under Request Form Fields first.";
+  } else if (menuGroups.length === 0 && !canAddAi) {
     addConditionBlocker = "Every available check is already in this rule.";
   }
 
@@ -325,6 +365,7 @@ export const AutoApprovalRuleCard = ({
                   rule={rule}
                   inputs={inputs}
                   catalog={catalog}
+                  ai={ai}
                   policyType={policyType}
                   scope={scope}
                   scopeId={scopeId}
@@ -415,6 +456,40 @@ export const AutoApprovalRuleCard = ({
                     ))}
                   </Fragment>
                 ))}
+                {canAddAi && (
+                  <>
+                    {menuGroups.length > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel>AI</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      isDisabled={!ai.model}
+                      onClick={() =>
+                        onChange({
+                          ...rule,
+                          conditions: [
+                            ...rule.conditions,
+                            {
+                              key: newKey(),
+                              connectionId: "",
+                              subject: AUTO_APPROVAL_AI_SUBJECT,
+                              constraint: AUTO_APPROVAL_AI_CONSTRAINT,
+                              values: [],
+                              prompt: "",
+                              contextConnectionIds: []
+                            }
+                          ]
+                        })
+                      }
+                    >
+                      <Sparkles className="text-info" />
+                      AI approves the request
+                    </DropdownMenuItem>
+                    {!ai.model && (
+                      <p className="max-w-64 px-2 pb-1.5 text-xs text-muted">
+                        Set up an AI model under Organization Settings &gt; General first.
+                      </p>
+                    )}
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </DisabledReason>

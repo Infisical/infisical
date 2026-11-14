@@ -482,6 +482,7 @@ export const FolderDetailSheet = ({
       metadata={metadata}
       tabs={tabs}
       isDirty={isFormDirty}
+      isWide
     />
   );
 };
