@@ -31,7 +31,7 @@ import {
 } from "@app/hooks/api/alerts/types";
 import { toChannelInput } from "@app/hooks/api/alerts/utils";
 
-import { saved } from "../../access/toast";
+import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { ChannelsStep } from "./alert-channels";
 import { FiltersStep } from "./alert-filters";
@@ -273,27 +273,31 @@ export const AlertWizard = ({
     const channels = data.channels.map(toChannelInput);
     const condition = toCondition(data);
     if (alert) {
-      await updateAlert.mutateAsync({
-        alertId: alert.id,
-        name: data.name,
-        description: data.description || null,
-        enabled: data.enabled,
-        condition,
-        channels
-      });
+      await updateAlert
+        .mutateAsync({
+          alertId: alert.id,
+          name: data.name,
+          description: data.description || null,
+          enabled: data.enabled,
+          condition,
+          channels
+        })
+        .catch(readableFailure("Could not update the alert."));
       saved(`Alert "${data.name}" updated`);
     } else {
-      await createAlert.mutateAsync({
-        name: data.name,
-        description: data.description || undefined,
-        resourceType: getAlertResourceType(data.eventType),
-        resourceId: null,
-        eventType: toApiEventType(data.eventType),
-        condition,
-        enabled: data.enabled,
-        projectId,
-        channels
-      });
+      await createAlert
+        .mutateAsync({
+          name: data.name,
+          description: data.description || undefined,
+          resourceType: getAlertResourceType(data.eventType),
+          resourceId: null,
+          eventType: toApiEventType(data.eventType),
+          condition,
+          enabled: data.enabled,
+          projectId,
+          channels
+        })
+        .catch(readableFailure("Could not create the alert."));
       saved(`Alert "${data.name}" created`);
     }
     completed.current = true;
@@ -337,7 +341,8 @@ export const AlertWizard = ({
             heading: "Notification channels",
             description: "Add at least one destination for this alert.",
             validate: async () => {
-              if (!form.getValues("channels").length) return "Add at least one channel.";
+              if (!form.getValues("channels").length)
+                return { message: "Add at least one channel." };
               return (await form.trigger("channels")) || false;
             },
             content: (

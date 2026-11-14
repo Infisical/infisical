@@ -14,7 +14,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 
-import { errorMessage } from "../../access/toast";
+import { readableFailure } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { AppLogo } from "./AppLogo";
 
@@ -55,6 +55,9 @@ const credentialFields: Partial<Record<AppConnection, Record<string, CredentialF
   }
 };
 
+const asNoun = (label: string) =>
+  /^[A-Z]{2}/.test(label) ? label : label.charAt(0).toLowerCase() + label.slice(1);
+
 const popular = [AppConnection.AWS, AppConnection.GitHub, AppConnection.Vercel, AppConnection.GCP];
 
 export const NewConnection = () => {
@@ -67,19 +70,18 @@ export const NewConnection = () => {
   const [description, setDescription] = useState("");
   const [method, setMethod] = useState("");
   const [credentials, setCredentials] = useState<Record<string, string>>({});
-  const [nameError, setNameError] = useState<string>();
-  const [appError, setAppError] = useState(false);
   const option = options.find((entry) => entry.app === app);
   const appName = app ? APP_CONNECTION_MAP[app].name : undefined;
   const chosen = option?.methods.includes(method) ? method : option?.methods[0];
   const fields = app && chosen ? credentialFields[app]?.[chosen] : undefined;
   const appIds = options.map((entry) => entry.app);
+  const available = new Set(appIds);
   const matches = appIds.filter((id) =>
     `${APP_CONNECTION_MAP[id].name} ${APP_CONNECTION_MAP[id].category}`
       .toLowerCase()
       .includes(query.trim().toLowerCase())
   );
-  const appRow = (id: AppConnection) => (
+  const appRow = (id: AppConnection, next: () => void) => (
     <ListRow
       key={id}
       value={id}
@@ -90,10 +92,10 @@ export const NewConnection = () => {
       current={app === id}
       onClick={() => {
         setApp(id);
-        setAppError(false);
         setMethod(options.find((entry) => entry.app === id)?.methods[0] ?? "");
         setCredentials({});
         if (!name) setName(`${id}-connection`);
+        next();
       }}
     />
   );
@@ -104,8 +106,6 @@ export const NewConnection = () => {
     setDescription("");
     setMethod("");
     setCredentials({});
-    setNameError(undefined);
-    setAppError(false);
   };
   return (
     <MultiStep
@@ -130,9 +130,7 @@ export const NewConnection = () => {
             method: chosen as TAppConnection["method"],
             credentials: credentials as TAppConnection["credentials"]
           } as TCreateAppConnectionDTO)
-          .catch((error: unknown) => {
-            throw new Error(errorMessage(error));
-          });
+          .catch(readableFailure(`Could not connect ${APP_CONNECTION_MAP[app].name}.`));
         reset();
       }}
       steps={[
@@ -140,22 +138,18 @@ export const NewConnection = () => {
           title: "App",
           heading: "Pick an app",
           summary: appName,
-          validate: () => {
-            if (app) return true;
-            setAppError(true);
-            return "Pick an app to continue.";
-          },
-          content: (
+          validate: () => (app ? true : { message: "Pick an app to continue." }),
+          render: ({ next }) => (
             <Stack gap={12}>
               <Input
                 icon="search"
                 placeholder="Search apps, such as AWS or Vault"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                aria-invalid={appError || undefined}
               />
               <List
                 label="Apps"
+                variant="bare"
                 size="sm"
                 empty={
                   <EmptyState
@@ -172,13 +166,13 @@ export const NewConnection = () => {
                 }
               >
                 {query.trim()
-                  ? matches.map(appRow)
+                  ? matches.map((id) => appRow(id, next))
                   : [
                       <ListSection key="popular" label="Popular">
-                        {popular.filter((id) => appIds.includes(id)).map(appRow)}
+                        {popular.filter((id) => available.has(id)).map((id) => appRow(id, next))}
                       </ListSection>,
                       <ListSection key="all" label="All apps">
-                        {appIds.filter((id) => !popular.includes(id)).map(appRow)}
+                        {appIds.filter((id) => !popular.includes(id)).map((id) => appRow(id, next))}
                       </ListSection>
                     ]}
               </List>
@@ -192,22 +186,28 @@ export const NewConnection = () => {
           summary: name || undefined,
           validate: () => {
             const value = name.trim();
-            let error: string | undefined;
-            if (!value) error = "Enter a name.";
+            let nameError: string | undefined;
+            if (!value) nameError = "Enter a name.";
             else if (!/^[a-z0-9-]+$/.test(value))
-              error = "Use lowercase letters, numbers and dashes.";
-            setNameError(error);
-            if (error) return false;
-            if (!fields) return "Pick a method that uses credentials.";
-            const missing = fields.find((field) => !credentials[field.key]?.trim());
-            return missing ? `Enter the ${missing.label.toLowerCase()}.` : true;
+              nameError = "Use lowercase letters, numbers and dashes.";
+            return {
+              fields: {
+                name: nameError,
+                method: fields ? undefined : "Pick a method that uses credentials.",
+                ...Object.fromEntries(
+                  (fields ?? [])
+                    .filter((field) => !credentials[field.key]?.trim())
+                    .map((field) => [field.key, `Enter the ${asNoun(field.label)}.`])
+                )
+              }
+            };
           },
           content: (
             <Stack gap={16}>
               <Field
                 label="Name"
+                name="name"
                 description="Lowercase letters, numbers and dashes."
-                error={nameError}
                 wide
               >
                 <Input value={name} onChange={(event) => setName(event.target.value)} />
@@ -220,7 +220,7 @@ export const NewConnection = () => {
                 />
               </Field>
               {option && (
-                <Field label="Method" wide>
+                <Field label="Method" name="method" wide>
                   <Select
                     label="Method"
                     options={option.methods.map((value) => ({
@@ -236,7 +236,7 @@ export const NewConnection = () => {
                 </Field>
               )}
               {fields?.map((field) => (
-                <Field key={`${chosen}-${field.key}`} label={field.label} wide>
+                <Field key={`${chosen}-${field.key}`} label={field.label} name={field.key} wide>
                   <Input
                     mono
                     type={field.secret ? "password" : "text"}

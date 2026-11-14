@@ -7,10 +7,9 @@ import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
-import { DataList } from "@infisical/cipher/ui/list";
+import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
-import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -30,7 +29,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useDebounced } from "../../access/org/use-debounced";
-import { failed, toast } from "../../access/toast";
+import { readableFailure, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { startConnectionRedirect } from "../../data/integrations/connection-redirect";
 import { orgHref } from "../../links";
@@ -359,8 +358,8 @@ export const AddDataSourceSheet = ({
         }}
         completeLabel="Add data source"
         onComplete={async () => {
-          try {
-            await create.mutateAsync({
+          await create
+            .mutateAsync({
               type: draft.type,
               projectId,
               name: draft.name.trim(),
@@ -370,11 +369,8 @@ export const AddDataSourceSheet = ({
               isHistoricalScanEnabled: draft.isHistoricalScanEnabled,
               isScanNewCommitsEnabled: draft.isScanNewCommitsEnabled,
               isDiscoveryEnabled: draft.isDiscoveryEnabled && discovery
-            } as TCreateSecretScanningDataSourceDTO);
-          } catch (error) {
-            failed("Failed to add data source", error);
-            throw error;
-          }
+            } as TCreateSecretScanningDataSourceDTO)
+            .catch(readableFailure("Could not add the data source."));
           toast({ tone: "ok", title: `Added ${platform} data source ${draft.name.trim()}` });
           completed.current = true;
         }}
@@ -382,41 +378,42 @@ export const AddDataSourceSheet = ({
           {
             title: "Platform",
             summary: platform,
-            content: optionsPending ? (
-              <Loader label="Loading platforms" />
-            ) : (
-              <RadioGroup
-                aria-label="Platform"
-                value={draft.type}
-                onValueChange={(value) => {
-                  const type = value as SecretScanningDataSource;
-                  if (type === draft.type) return;
-                  const defaults = initialDraft(type);
-                  change({
-                    type,
-                    connection: undefined,
-                    workspaceSlug: defaults.workspaceSlug,
-                    group: undefined,
-                    isHistoricalScanEnabled: defaults.isHistoricalScanEnabled,
-                    isScanNewCommitsEnabled: defaults.isScanNewCommitsEnabled,
-                    isDiscoveryEnabled: defaults.isDiscoveryEnabled
-                  });
-                }}
-              >
-                {options?.map(({ type }) => {
-                  const { name, image } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
-                  return (
-                    <RadioGroupCard
-                      key={type}
-                      value={type}
-                      title={name}
-                      description={`Scan ${RESOURCE_DESCRIPTION_HELPER[type].pluralNoun} on ${name}.`}
-                      media={<ProviderIcon icon={image} alt="" size="sm" />}
-                    />
-                  );
-                })}
-              </RadioGroup>
-            )
+            render: ({ next }) =>
+              optionsPending ? (
+                <Loader label="Loading platforms" />
+              ) : (
+                <List label="Platform" variant="bare" size="sm">
+                  {options?.map(({ type }) => {
+                    const { name, image } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
+                    return (
+                      <ListRow
+                        key={type}
+                        value={type}
+                        label={name}
+                        title={name}
+                        description={`Scan ${RESOURCE_DESCRIPTION_HELPER[type].pluralNoun} on ${name}.`}
+                        media={<ProviderIcon icon={image} alt="" size="sm" />}
+                        current={draft.type === type}
+                        onClick={() => {
+                          if (type !== draft.type) {
+                            const defaults = initialDraft(type);
+                            change({
+                              type,
+                              connection: undefined,
+                              workspaceSlug: defaults.workspaceSlug,
+                              group: undefined,
+                              isHistoricalScanEnabled: defaults.isHistoricalScanEnabled,
+                              isScanNewCommitsEnabled: defaults.isScanNewCommitsEnabled,
+                              isDiscoveryEnabled: defaults.isDiscoveryEnabled
+                            });
+                          }
+                          next();
+                        }}
+                      />
+                    );
+                  })}
+                </List>
+              )
           },
           {
             title: "Connection",
