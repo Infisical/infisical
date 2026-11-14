@@ -20,6 +20,7 @@ import {
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { generatePassword } from "../shared/utils";
+import { clearAixAdminChangeFlag, ensureAixPasswordFlagsWritable, isAixHost } from "./aix-password-flags";
 import {
   escapeForPattern,
   lineAt,
@@ -56,6 +57,9 @@ enum SuVerifyStep {
 }
 
 const SUDO_PROMPT = new RE2("\\[sudo\\]", "i");
+// sudo's default prompt varies by platform (AIX Toolbox sudo prints a bare "Password:"), so every
+// sudo call sets it explicitly to the form SUDO_PROMPT recognizes.
+const SUDO = "sudo -p '[sudo] password for %p: '";
 const ANY_PASSWORD_PROMPT = new RE2("password", "i");
 const NEW_PASSWORD_PROMPT = new RE2("new\\s+password", "i");
 const CONFIRM_PASSWORD_PROMPT = new RE2("retype|re-?enter|again|new\\s+password", "i");
@@ -66,6 +70,9 @@ const MANAGED_PASSWORD_CHANGE_FAILED = new RE2(
 );
 const SELF_PASSWORD_CHANGE_FAILED = new RE2("\\berror\\b|\\bfail(?:ed|ure|s)?\\b|\\bunchanged\\b", "i");
 const SU_LOGIN_FAILED = new RE2("\\bauthentication\\s+failure\\b|\\bincorrect\\s+password\\b|\\bsu:", "i");
+
+const SUDO_PASSWORD_REQUIRED_MESSAGE =
+  "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user.";
 
 const passwdOverflowMessage = (t: string) =>
   `Password change failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${t}`;
@@ -110,11 +117,7 @@ export const runManagedPasswordChange = (
         const sudoPrompt = SUDO_PROMPT.exec(ctx.unmatched);
         if (sudoPrompt) {
           if (!appConnectionPassword) {
-            ctx.safeReject(
-              new Error(
-                "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user."
-              )
-            );
+            ctx.safeReject(new Error(SUDO_PASSWORD_REQUIRED_MESSAGE));
             return false;
           }
           ctx.consume(sudoPrompt);
@@ -182,11 +185,69 @@ const changeManagedPassword = async (
   useSudo: boolean = false,
   appConnectionPassword?: string
 ): Promise<void> => {
-  const command = useSudo ? `LC_ALL=C sudo passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
+  const command = useSudo ? `LC_ALL=C ${SUDO} passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
   const stream = await execCommandWithPty(client, command);
 
   return runManagedPasswordChange(stream, newPassword, appConnectionPassword);
 };
+
+export type TAdminCommandResult = { output: string; exitCode: number | null };
+
+export const runAdminCommand = async (
+  stream: TInteractiveShellStream,
+  appConnectionPassword?: string
+): Promise<TAdminCommandResult> => {
+  let exitCode: number | null = null;
+  let output = "";
+  let sudoAnswered = false;
+
+  stream.on("exit", (code) => {
+    exitCode = code;
+  });
+
+  await runExpectSession({
+    stream,
+    secrets: [appConnectionPassword],
+
+    advance: (ctx) => {
+      const sudoPrompt = SUDO_PROMPT.exec(ctx.unmatched);
+      if (!sudoPrompt) return false;
+
+      if (!appConnectionPassword) {
+        ctx.safeReject(new Error(SUDO_PASSWORD_REQUIRED_MESSAGE));
+        return false;
+      }
+      if (sudoAnswered) {
+        ctx.safeReject(new Error("sudo rejected the app connection password."));
+        return false;
+      }
+
+      ctx.consume(sudoPrompt);
+      ctx.write(`${appConnectionPassword}\n`);
+      sudoAnswered = true;
+      return true;
+    },
+
+    resolveOnClose: (ctx) => {
+      output = ctx.transcript.read();
+      return { resolve: true };
+    },
+
+    overflowMessage: (t) =>
+      `Command failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without finishing. Output: ${t}`,
+    timeoutMessage: (t) => `Command timed out. Output: ${t}`
+  });
+
+  return { output, exitCode };
+};
+
+const createAdminCommandRunner =
+  (client: Client, useSudo: boolean, appConnectionPassword?: string) =>
+  async (command: string): Promise<TAdminCommandResult> =>
+    runAdminCommand(
+      await execCommandWithPty(client, `LC_ALL=C ${useSudo ? `${SUDO} ` : ""}${command}`),
+      appConnectionPassword
+    );
 
 export const runSelfPasswordChange = (
   stream: TInteractiveShellStream,
@@ -508,7 +569,18 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
             conn.method === SshConnectionMethod.Password
               ? (conn.credentials as { password: string }).password
               : undefined;
+          const aixFlagContext = (await isAixHost(client))
+            ? {
+                targetUsername: username,
+                useSudo: shouldUseSudo,
+                runCommand: createAdminCommandRunner(client, shouldUseSudo, appConnectionPassword)
+              }
+            : undefined;
+          if (aixFlagContext) await ensureAixPasswordFlagsWritable(aixFlagContext);
+
           await changeManagedPassword(client, username, newPassword, shouldUseSudo, appConnectionPassword);
+
+          if (aixFlagContext) await clearAixAdminChangeFlag(aixFlagContext);
         }
       } finally {
         client.destroy();

@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -15,7 +17,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -52,7 +53,7 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateGroup();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateGroup();
 
-  const { control, handleSubmit, reset } = useForm<TGroupFormData>({
+  const { control, handleSubmit, reset, setValue, getFieldState } = useForm<TGroupFormData>({
     resolver: zodResolver(GroupFormSchema)
   });
 
@@ -144,6 +145,14 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
                   placeholder="Engineering"
                   isError={Boolean(error)}
                   {...field}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    const slugState = getFieldState("slug");
+                    if (!isCreateMode || slugState.isDirty) return;
+                    setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                      shouldValidate: Boolean(slugState.error)
+                    });
+                  }}
                   autoComplete="off"
                   name="org-group-name"
                 />
@@ -168,16 +177,19 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="role">Role</FieldLabel>
-                <FilterableSelect
-                  inputId="role"
+                <Combobox
+                  id="role"
                   options={roles}
                   placeholder="Select role..."
-                  onChange={onChange}
-                  value={value}
+                  searchAriaLabel="Search roles"
+                  isClearable={false}
+                  onValueChange={onChange}
+                  value={roles?.find((role) => role.slug === value?.slug) ?? value}
                   isError={Boolean(error)}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
-                  components={{ Option: RoleOption }}
+                  renderOption={(option) => <RoleOptionContent role={option} />}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>

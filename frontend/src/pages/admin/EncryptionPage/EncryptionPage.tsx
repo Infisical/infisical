@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 
 import { EncryptionKeyRotationSection, EncryptionPageForm } from "./components";
@@ -10,9 +10,7 @@ export const EncryptionPage = () => {
 
   return (
     <div className="h-full text-foreground">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Admin" })}</title>
-      </Helmet>
+      <PageTitle title={t("page-titles.encryption")} />
       <div className="mx-auto flex flex-col justify-between">
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader

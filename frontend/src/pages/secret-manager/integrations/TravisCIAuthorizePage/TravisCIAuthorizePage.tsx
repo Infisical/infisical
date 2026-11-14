@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -56,6 +57,7 @@ export const TravisCIAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Authorize Travis CI Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Travis CI Integration</CardTitle>

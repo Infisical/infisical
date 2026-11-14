@@ -88,7 +88,8 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL, keyStore }: 
       agentVault: {
         accessBundlesCount,
         servicesCount,
-        proxiesCount
+        proxiesCount,
+        projectsCount: projectCounts[ProjectType.AgentVault] || 0
       }
     };
   };

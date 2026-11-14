@@ -1,9 +1,8 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -218,17 +217,12 @@ const Page = () => {
 };
 
 export const GroupDetailsByIDPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const projectsHidden = hidesProjects(currentProject.type);
   return (
     <>
-      <Helmet>
-        <title>
-          {t("common.head-title", { title: projectsHidden ? "Group" : "Project Group" })}
-        </title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={projectsHidden ? "Group" : "Project Group"} />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Groups}

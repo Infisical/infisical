@@ -1,4 +1,4 @@
-import { ComponentProps, forwardRef } from "react";
+import { ComponentProps, forwardRef, type JSX } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { copyToClipboard } from "@app/helpers/clipboard";

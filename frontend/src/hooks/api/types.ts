@@ -44,7 +44,8 @@ export enum ApiErrorTypes {
   UnauthorizedError = "UnauthorizedError",
   ForbiddenError = "PermissionDenied",
   CustomForbiddenError = "ForbiddenError",
-  RateLimitError = "RateLimitExceeded"
+  RateLimitError = "RateLimitExceeded",
+  NotFoundError = "NotFound"
 }
 
 export type TApiErrors =
@@ -78,6 +79,7 @@ export type TApiErrors =
       statusCode: 400;
       message: string;
       error: ApiErrorTypes.BadRequestError;
+      details?: unknown;
     }
   | {
       reqId: string;

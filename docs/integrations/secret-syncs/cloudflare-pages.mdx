@@ -42,6 +42,15 @@ description: "Learn how to configure a Cloudflare Pages Sync for Infisical."
       - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
       - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
       - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+      - **Variable type**: How Cloudflare stores each synced secret
+        - **Secret**: Encrypted, so you can't read the value in the Cloudflare dashboard
+        - **Text**: Plain text that you can read in the Cloudflare dashboard
+
+    If a secret already exists in the environment as the other type, the sync fails with an error that names it, and nothing in Cloudflare changes. To sync it, delete the variable in Cloudflare or change the sync's variable type. Syncs created before the variable type option existed skip those secrets rather than failing.
+
+    <Tip>
+      To sync both secrets and text variables to one environment, create one sync of each type from different folders. Each sync only deletes variables of its own type. When you create the second sync, Infisical warns that the destination is already in use. If your organization blocks duplicate destinations, you can't create the second sync.
+    </Tip>
 
     6. Configure the **Details** of your Cloudflare Pages Sync, then click **Next**.
     ![Configure Details](/images/secret-syncs/cloudflare-pages/cloudflare-pages-sync-details.png)

@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -185,6 +186,7 @@ export const BitbucketConfigurePage = () => {
   if (isBitbucketWorkspacesLoading || isBitbucketReposLoading)
     return (
       <div className="flex h-full w-full items-center justify-center p-24">
+        <PageTitle title="Set Up Bitbucket Integration" />
         <Spinner />
       </div>
     );
@@ -196,6 +198,7 @@ export const BitbucketConfigurePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
+      <PageTitle title="Set Up Bitbucket Integration" />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>

@@ -118,6 +118,12 @@ import {
   TValidateCircleCIConnectionCredentialsSchema
 } from "./circleci";
 import {
+  TClickHouseConnection,
+  TClickHouseConnectionConfig,
+  TClickHouseConnectionInput,
+  TValidateClickHouseConnectionCredentialsSchema
+} from "./clickhouse";
+import {
   TCloud66Connection,
   TCloud66ConnectionConfig,
   TCloud66ConnectionInput,
@@ -273,6 +279,24 @@ import {
   THumanitecConnectionInput,
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
+import {
+  TImpervaConnection,
+  TImpervaConnectionConfig,
+  TImpervaConnectionInput,
+  TValidateImpervaConnectionCredentialsSchema
+} from "./imperva";
+import {
+  TJenkinsConnection,
+  TJenkinsConnectionConfig,
+  TJenkinsConnectionInput,
+  TValidateJenkinsConnectionCredentialsSchema
+} from "./jenkins";
+import {
+  TJiraConnection,
+  TJiraConnectionConfig,
+  TJiraConnectionInput,
+  TValidateJiraConnectionCredentialsSchema
+} from "./jira";
 import {
   TKeeperConnection,
   TKeeperConnectionConfig,
@@ -442,6 +466,12 @@ import {
   TSalesforceConnectionInput,
   TValidateSalesforceConnectionCredentialsSchema
 } from "./salesforce";
+import {
+  TServiceNowConnection,
+  TServiceNowConnectionConfig,
+  TServiceNowConnectionInput,
+  TValidateServiceNowConnectionCredentialsSchema
+} from "./servicenow";
 import {
   TSmbConnection,
   TSmbConnectionConfig,
@@ -614,6 +644,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TNetScalerConnection
   | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
+  | TImpervaConnection
   | TAnthropicConnection
   | TOvhConnection
   | TDevinConnection
@@ -628,6 +659,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TConvexConnection
   | TRundeckConnection
   | TPortainerConnection
+  | TJenkinsConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
@@ -639,7 +671,10 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TServiceNowConnection
   | TS3CompatibleConnection
+  | TJiraConnection
+  | TClickHouseConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -717,6 +752,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNetScalerConnectionInput
   | TPaloAltoNetworksConnectionInput
   | TKempLoadMasterConnectionInput
+  | TImpervaConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
   | TDevinConnectionInput
@@ -731,6 +767,7 @@ export type TAppConnectionInput = { id: string } & (
   | TConvexConnectionInput
   | TRundeckConnectionInput
   | TPortainerConnectionInput
+  | TJenkinsConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
@@ -742,7 +779,10 @@ export type TAppConnectionInput = { id: string } & (
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
+  | TServiceNowConnectionInput
   | TS3CompatibleConnectionInput
+  | TJiraConnectionInput
+  | TClickHouseConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -854,6 +894,7 @@ export type TAppConnectionConfig =
   | TNetScalerConnectionConfig
   | TPaloAltoNetworksConnectionConfig
   | TKempLoadMasterConnectionConfig
+  | TImpervaConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
   | TDevinConnectionConfig
@@ -868,6 +909,7 @@ export type TAppConnectionConfig =
   | TConvexConnectionConfig
   | TRundeckConnectionConfig
   | TPortainerConnectionConfig
+  | TJenkinsConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
@@ -879,7 +921,10 @@ export type TAppConnectionConfig =
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
   | THpeIloConnectionConfig
-  | TS3CompatibleConnectionConfig;
+  | TServiceNowConnectionConfig
+  | TS3CompatibleConnectionConfig
+  | TJiraConnectionConfig
+  | TClickHouseConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -948,6 +993,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateNetScalerConnectionCredentialsSchema
   | TValidatePaloAltoNetworksConnectionCredentialsSchema
   | TValidateKempLoadMasterConnectionCredentialsSchema
+  | TValidateImpervaConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
   | TValidateDevinConnectionCredentialsSchema
@@ -962,6 +1008,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateConvexConnectionCredentialsSchema
   | TValidateRundeckConnectionCredentialsSchema
   | TValidatePortainerConnectionCredentialsSchema
+  | TValidateJenkinsConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
@@ -973,7 +1020,10 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema
-  | TValidateS3CompatibleConnectionCredentialsSchema;
+  | TValidateServiceNowConnectionCredentialsSchema
+  | TValidateS3CompatibleConnectionCredentialsSchema
+  | TValidateJiraConnectionCredentialsSchema
+  | TValidateClickHouseConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

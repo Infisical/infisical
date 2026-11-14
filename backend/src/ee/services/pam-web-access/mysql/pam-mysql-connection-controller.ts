@@ -1,3 +1,4 @@
+import type { Connection as CoreConnection, FieldPacket } from "mysql2";
 import mysql from "mysql2/promise";
 
 import { logger } from "@app/lib/logger";
@@ -9,10 +10,64 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { DATA_EXPLORER_MAX_RESULT_BYTES, estimateRowBytes } from "../pam-web-access-fns";
 import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
 import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
 
 const MAX_ROWS = 1000;
+
+type TStatementResult =
+  | { rows: Record<string, unknown>[]; fields: FieldPacket[]; isTruncated: boolean }
+  | { header: mysql.ResultSetHeader };
+
+// Streams rather than buffering the whole result, so rows past the size limit are dropped as they arrive
+const streamStatement = (conn: mysql.Connection, sql: string) =>
+  new Promise<TStatementResult>((resolve, reject) => {
+    // The promise wrapper does not type its underlying connection, which is the only one that can stream
+    const { connection } = conn as unknown as { connection: CoreConnection };
+    const rows: Record<string, unknown>[] = [];
+    let currentFields: FieldPacket[] | undefined;
+    let resultFields: FieldPacket[] | undefined;
+    let header: mysql.ResultSetHeader | undefined;
+    let bytes = 0;
+    let isTruncated = false;
+
+    connection
+      .query(sql)
+      // mysql2 emits fields as undefined before an OK packet (INSERT, UPDATE, SET...)
+      .on("fields", (next?: FieldPacket[]) => {
+        currentFields = next;
+        if (next && !resultFields) resultFields = next;
+      })
+      .on("result", (result: Record<string, unknown> | mysql.ResultSetHeader) => {
+        if (!currentFields) {
+          header = result as mysql.ResultSetHeader;
+          return;
+        }
+        // A CALL can return several result sets; only the first is shown
+        if (currentFields !== resultFields || isTruncated) return;
+        if (rows.length === MAX_ROWS) {
+          isTruncated = true;
+          return;
+        }
+        // Converted before measuring so the size counted is the size sent
+        const row: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(result)) {
+          row[k] = Buffer.isBuffer(v) ? `\\x${v.toString("hex")}` : v;
+        }
+        bytes += estimateRowBytes(row);
+        if (bytes > DATA_EXPLORER_MAX_RESULT_BYTES) {
+          isTruncated = true;
+          return;
+        }
+        rows.push(row);
+      })
+      .on("error", reject)
+      .on("end", () => {
+        if (!resultFields && header) resolve({ header });
+        else resolve({ rows, fields: resultFields ?? [], isTruncated });
+      });
+  });
 
 export const createMysqlConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
@@ -194,17 +249,16 @@ export const createMysqlConnectionController = async (params: ControllerParams):
                 // eslint-disable-next-line no-await-in-loop
                 await conn.query(`SET SESSION sql_select_limit = ${MAX_ROWS + 1}`);
                 // eslint-disable-next-line no-await-in-loop
-                const [result, fields] = await queryWithTimeout(() => conn.query(stmtSql));
+                const result = await queryWithTimeout(() => streamStatement(conn, stmtSql));
 
-                if (Array.isArray(result)) {
-                  const rows = result as mysql.RowDataPacket[];
-                  lastIsTruncated = rows.length > MAX_ROWS;
-                  lastRows = lastIsTruncated ? rows.slice(0, MAX_ROWS) : rows;
-                  lastFields = (fields ?? []).map((f) => ({ name: f.name }));
-                  lastRowCount = rows.length;
+                if ("rows" in result) {
+                  lastIsTruncated = result.isTruncated;
+                  lastRows = result.rows;
+                  lastFields = result.fields.map((f) => ({ name: f.name }));
+                  lastRowCount = result.rows.length;
                   lastCommand = "SELECT";
                 } else {
-                  const header = result as mysql.ResultSetHeader;
+                  const { header } = result;
                   lastRowCount = header.affectedRows;
                   lastCommand = extractCommand(stmtSql);
                   lastRows = [];
@@ -216,20 +270,12 @@ export const createMysqlConnectionController = async (params: ControllerParams):
               // eslint-disable-next-line no-await-in-loop
               await queryTransactionState();
 
-              const safeRows = lastRows.map((row) => {
-                const out: Record<string, unknown> = {};
-                for (const [k, v] of Object.entries(row)) {
-                  out[k] = Buffer.isBuffer(v) ? `\\x${v.toString("hex")}` : v;
-                }
-                return out;
-              });
-
               const executionTimeMs = Math.round(performance.now() - startTime);
               sendResponse({
                 type: DataExplorerServerMessageType.QueryResult,
                 id: message.id,
                 connectionId,
-                rows: safeRows,
+                rows: lastRows,
                 fields: lastFields,
                 rowCount: lastRowCount,
                 isTruncated: lastIsTruncated,

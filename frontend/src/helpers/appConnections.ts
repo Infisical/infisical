@@ -60,6 +60,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
+import { ClickHouseConnectionMethod } from "@app/hooks/api/appConnections/types/clickhouse-connection";
 import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
@@ -74,6 +75,9 @@ import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/god
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
+import { ImpervaConnectionMethod } from "@app/hooks/api/appConnections/types/imperva-connection";
+import { JenkinsConnectionMethod } from "@app/hooks/api/appConnections/types/jenkins-connection";
+import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-connection";
 import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
@@ -96,6 +100,7 @@ import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/rend
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
 import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
+import { ServiceNowConnectionMethod } from "@app/hooks/api/appConnections/types/servicenow-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SpaceliftConnectionMethod } from "@app/hooks/api/appConnections/types/spacelift-connection";
@@ -418,6 +423,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "DATABASE",
     description: "Connect to a MongoDB database."
   },
+  [AppConnection.ClickHouse]: {
+    name: "ClickHouse",
+    image: "ClickHouse.png",
+    category: "DATABASE",
+    description: "Connect to a ClickHouse database."
+  },
   [AppConnection.LaravelForge]: {
     name: "Laravel Forge",
     image: "Laravel Forge.png",
@@ -536,6 +547,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Connect to a Palo Alto Networks firewall or Panorama."
   },
+  [AppConnection.Imperva]: {
+    name: "Imperva",
+    image: "Imperva.png",
+    category: "NETWORKING",
+    description: "Manage websites protected by Imperva Cloud WAF."
+  },
   [AppConnection.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -567,7 +584,7 @@ export const APP_CONNECTION_MAP: Record<
     description: "GraphQL API and data access for Hasura Cloud."
   },
   [AppConnection.OVH]: {
-    name: "OVH Cloud",
+    name: "OVHcloud",
     image: "OVH.png",
     category: "CLOUD",
     description: "Account and service access for OVHcloud."
@@ -682,12 +699,31 @@ export const APP_CONNECTION_MAP: Record<
     category: "PLATFORM",
     description: "Organization secret access for Daytona sandboxes."
   },
+  [AppConnection.ServiceNow]: {
+    name: "ServiceNow",
+    image: "ServiceNow.png",
+    category: "PLATFORM",
+    description: "Route access requests through ServiceNow approvals.",
+    enterprise: true
+  },
   [AppConnection.S3Compatible]: {
     name: "S3-Compatible Storage",
     image: "S3 Compatible.svg",
     aliases: ["aws s3", "cloudflare r2", "google cloud storage", "gcs", "oracle", "oci"],
     category: "STORAGE",
     description: "Connect to AWS S3, Cloudflare R2, Google Cloud Storage or OCI Object Storage."
+  },
+  [AppConnection.Jira]: {
+    name: "Jira",
+    image: "Jira.svg",
+    category: "PRODUCTIVITY",
+    description: "Atlassian Jira Cloud and Data Center."
+  },
+  [AppConnection.Jenkins]: {
+    name: "Jenkins",
+    image: "Jenkins.png",
+    category: "CI/CD",
+    description: "Credentials and folder access for Jenkins."
   }
 };
 
@@ -759,6 +795,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "GitHub App", icon: GithubIcon };
     case GitHubConnectionMethod.Pat:
     case OnaConnectionMethod.PersonalAccessToken:
+    case JiraConnectionMethod.PersonalAccessToken:
       return { name: "Personal Access Token", icon: KeyRoundIcon };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -799,6 +836,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
+    case JiraConnectionMethod.ApiToken:
+    case JenkinsConnectionMethod.ApiToken:
       return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
@@ -810,6 +849,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case ClickHouseConnectionMethod.UsernameAndPassword:
     case UltraDNSConnectionMethod.UsernamePassword:
       return { name: "Username & Password", icon: LockIcon };
     case SnowflakeConnectionMethod.UsernameAndToken:
@@ -867,6 +907,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureClientSecretsConnectionMethod.Certificate:
     case AzureKeyVaultConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      return { name: "Managed Identity", icon: IdCardIcon };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:
       return { name: "API Key & Secret", icon: KeyRoundIcon };
@@ -894,11 +936,15 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
     case HpeIloConnectionMethod.BasicAuth:
+    case ServiceNowConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:
+    case ImpervaConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
+    case OVHConnectionMethod.Token:
+      return { name: "Token", icon: KeyRoundIcon };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

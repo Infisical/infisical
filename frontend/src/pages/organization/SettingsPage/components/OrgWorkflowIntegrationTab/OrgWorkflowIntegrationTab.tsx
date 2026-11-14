@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
 import axios from "axios";
 import { Info, MoreHorizontal, Plus, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
@@ -6,14 +5,6 @@ import { Info, MoreHorizontal, Plus, RotateCcw, ShieldCheck, Trash2 } from "luci
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -22,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,7 +23,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
-  Input,
   Skeleton,
   Table,
   TableBody,
@@ -81,7 +72,6 @@ export const OrgWorkflowIntegrationTab = withPermission(
       "integrationDetails",
       "removeIntegration"
     ] as const);
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
     const { currentOrg } = useOrganization();
     const { data: workflowIntegrations, isPending: isWorkflowIntegrationsLoading } =
@@ -123,7 +113,6 @@ export const OrgWorkflowIntegrationTab = withPermission(
       }
 
       handlePopUpClose("removeIntegration");
-      setDeleteConfirmation("");
       createNotification({
         text: `Deleted integration "${slug}"`,
         type: "success"
@@ -348,55 +337,15 @@ export const OrgWorkflowIntegrationTab = withPermission(
           id={popUp.integrationDetails?.data?.id}
           onOpenChange={(state) => handlePopUpToggle("integrationDetails", state)}
         />
-        <AlertDialog
-          open={popUp.removeIntegration.isOpen}
-          onOpenChange={(isOpen) => {
-            handlePopUpToggle("removeIntegration", isOpen);
-            if (!isOpen) setDeleteConfirmation("");
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogMedia>
-                <Trash2 />
-              </AlertDialogMedia>
-              <AlertDialogTitle>
-                Delete integration &quot;{removeIntegrationData?.slug}&quot;?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Projects using this integration will stop sending notifications to it. This cannot
-                be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="w-full">
-              <p className="mb-2 text-sm text-muted">
-                Type {removeIntegrationData?.slug ?? ""} to confirm.
-              </p>
-              <Input
-                value={deleteConfirmation}
-                onChange={(e) => setDeleteConfirmation(e.target.value)}
-                placeholder={removeIntegrationData?.slug ?? ""}
-                aria-label="Confirm integration alias"
-              />
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleRemoveIntegration}
-                isPending={isDeletingIntegration}
-                isDisabled={
-                  isDeletingIntegration ||
-                  !removeIntegrationData?.slug ||
-                  deleteConfirmation !== removeIntegrationData.slug
-                }
-              >
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmationAlertDialog
+          isOpen={popUp.removeIntegration.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
+          title={`Delete integration "${removeIntegrationData?.slug ?? ""}"?`}
+          description="Projects using this integration will stop sending notifications to it. This cannot be undone."
+          confirmKey={removeIntegrationData?.slug ?? ""}
+          isPending={isDeletingIntegration}
+          onConfirm={handleRemoveIntegration}
+        />
       </Card>
     );
   },

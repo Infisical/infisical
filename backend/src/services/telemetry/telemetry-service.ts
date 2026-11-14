@@ -1,10 +1,9 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { InstanceType, PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -37,7 +36,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.PkiSyncExecuted,
   PostHogEventTypes.CertificateRequestCreated,
   PostHogEventTypes.CmekEncrypt,
-  PostHogEventTypes.CmekDecrypt
+  PostHogEventTypes.CmekDecrypt,
+  PostHogEventTypes.AgentVaultSessionLogChunkAccepted,
+  PostHogEventTypes.SecretScanningScanCompleted
 ];
 
 // Properties that should be used as additional grouping dimensions during aggregation.
@@ -47,7 +48,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
   [PostHogEventTypes.PkiSyncExecuted]: ["projectId", "destination"],
   [PostHogEventTypes.CertificateRequestCreated]: ["projectId"],
-  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"]
+  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"],
+  [PostHogEventTypes.AgentVaultSessionLogChunkAccepted]: ["storageType"],
+  [PostHogEventTypes.SecretScanningScanCompleted]: ["type", "scanType"]
 };
 
 // Bucket configuration
@@ -82,7 +85,7 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan" | "getOrgSeatUsage">;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
@@ -203,7 +206,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     lastName?: string,
     hubspotUtk?: string
   ) => {
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     if (
       appCfg.isProductionMode &&
       instanceType === InstanceType.Cloud &&
@@ -260,7 +263,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.name = orgName;
     }
 
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     properties.is_cloud = instanceType === InstanceType.Cloud;
     properties.instance_type = instanceType;
     properties.deployment_type = getDeploymentType(instanceType, appCfg);
@@ -281,12 +284,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const [plan, seatUsage] = await Promise.all([
-        licenseService.getPlan(orgId),
-        licenseService.getOrgSeatUsage(orgId)
-      ]);
+      const [plan, seatUsage] = await Promise.all([licenseService.getPlan(orgId), licenseService.getSeatUsage(orgId)]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
+      properties.has_secret_scanning = plan.has(PlanFeature.SecretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
@@ -366,7 +367,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // posthog-node implements `groupIdentify` as a regular capture of a
       // `$groupidentify` event keyed by the supplied `distinctId`. For an
       // anonymous-share viewer of an org-scoped share, that `distinctId`
-      // is the synthesised `anonymous-<shareId>` value, so calling
+      // is the synthesised `anonymous-<share hash>` value, so calling
       // groupIdentify here would create exactly the per-share person
       // record we are trying to suppress — defeating the
       // `$process_person_profile: false` flag we set on the explicit
@@ -402,7 +403,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // When `anonymous` is set, we still record the event but instruct
       // PostHog not to create or update a person record for the synthesised
       // distinctId. This prevents per-request distinctIds (e.g. the
-      // `anonymous-<shareId>` keys used by unauthenticated public secret
+      // `anonymous-<share hash>` keys used by unauthenticated public secret
       // shares) from inflating the person count while preserving event
       // counts, funnels, and breakdowns.
       const instanceId = await getInstanceId();

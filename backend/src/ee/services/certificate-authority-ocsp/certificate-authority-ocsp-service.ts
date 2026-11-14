@@ -9,13 +9,13 @@ import {
   TOcspCertStatusLabel,
   TOcspStatusLabel
 } from "@app/lib/telemetry/metrics";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaSigner } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";

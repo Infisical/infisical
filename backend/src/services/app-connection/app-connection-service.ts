@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -11,7 +12,6 @@ import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/ga
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
@@ -29,6 +29,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
+  addAppConnectionFederatedCredential,
   decryptAppConnection,
   decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
@@ -44,6 +45,7 @@ import {
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -90,6 +92,7 @@ import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
+import { ValidateClickHouseConnectionCredentialsSchema } from "./clickhouse";
 import { ValidateCloud66ConnectionCredentialsSchema } from "./cloud-66";
 import { cloud66ConnectionService } from "./cloud-66/cloud-66-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -122,9 +125,9 @@ import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
-import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
+import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
@@ -137,6 +140,11 @@ import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHpeIloConnectionCredentialsSchema } from "./hpe-ilo";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateImpervaConnectionCredentialsSchema } from "./imperva";
+import { impervaConnectionService } from "./imperva/imperva-connection-service";
+import { ValidateJenkinsConnectionCredentialsSchema } from "./jenkins";
+import { jenkinsConnectionService } from "./jenkins/jenkins-connection-service";
+import { ValidateJiraConnectionCredentialsSchema } from "./jira";
 import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
 import { keeperConnectionService } from "./keeper/keeper-connection-service";
 import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
@@ -191,6 +199,7 @@ import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
 import { ValidateS3CompatibleConnectionCredentialsSchema } from "./s3-compatible";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
+import { ValidateServiceNowConnectionCredentialsSchema } from "./servicenow";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
 import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
@@ -210,9 +219,9 @@ import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
 import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
 import { ValidateUltraDNSConnectionCredentialsSchema } from "./ultradns/ultradns-connection-schema";
 import { ultraDNSConnectionService } from "./ultradns/ultradns-connection-service";
+import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
-import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
@@ -225,7 +234,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -241,6 +250,7 @@ export type TAppConnectionServiceFactoryDep = {
     TKeyStoreFactory,
     "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry" | "acquireLock"
   >;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -313,6 +323,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
   [AppConnection.PaloAltoNetworks]: ValidatePaloAltoNetworksConnectionCredentialsSchema,
   [AppConnection.KempLoadMaster]: ValidateKempLoadMasterConnectionCredentialsSchema,
+  [AppConnection.Imperva]: ValidateImpervaConnectionCredentialsSchema,
   [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
   [AppConnection.OVH]: ValidateOvhConnectionCredentialsSchema,
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
@@ -327,6 +338,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
   [AppConnection.Portainer]: ValidatePortainerConnectionCredentialsSchema,
+  [AppConnection.Jenkins]: ValidateJenkinsConnectionCredentialsSchema,
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
@@ -337,7 +349,10 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
-  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema
+  [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
+  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
+  [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
+  [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -353,7 +368,8 @@ export const appConnectionServiceFactory = ({
   appConnectionCredentialRotationService,
   identityUaDAL,
   gitHubAppDAL,
-  keyStore
+  keyStore,
+  oidcIssuerService
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -412,11 +428,13 @@ export const appConnectionServiceFactory = ({
       );
     }
 
-    return Promise.all(
+    const decryptedAppConnections = await Promise.all(
       appConnections
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
         .map((appConnection) => decryptAppConnection(appConnection, kmsService))
     );
+
+    return decryptedAppConnections.map(addAppConnectionFederatedCredential);
   };
 
   const findAppConnectionById = async (
@@ -464,7 +482,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
-    return decryptAppConnection(appConnection, kmsService);
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsService));
   };
 
   const findAppConnectionByName = async (
@@ -515,7 +533,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with name ${connectionName} is not for App "${app}"` });
 
-    return decryptAppConnection(appConnection, kmsService);
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsService));
   };
 
   // In project scope, an org-managed GitHub App can only be referenced by actors who can also
@@ -600,7 +618,7 @@ export const appConnectionServiceFactory = ({
 
     if (gatewayId) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -655,7 +673,7 @@ export const appConnectionServiceFactory = ({
           projectType: project?.type
         } as TAppConnectionConfig,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, oidcIssuerService, actorId: actor.id }
       );
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -748,12 +766,12 @@ export const appConnectionServiceFactory = ({
         connection = await createConnection(validatedCredentials);
       }
 
-      return {
+      return addAppConnectionFederatedCredential({
         ...connection,
         credentialsHash: crypto.nativeCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
         credentials: validatedCredentials,
         configuration
-      } as TAppConnection;
+      } as TAppConnection);
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
@@ -842,6 +860,14 @@ export const appConnectionServiceFactory = ({
       );
 
       if (gatewayId) {
+        const plan = await licenseService.getPlan(actor.orgId);
+        if (!plan.has(PlanFeature.Gateway)) {
+          throw new BadRequestError({
+            message:
+              "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
+          });
+        }
+
         const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
         if (!gatewayV2) {
           throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
@@ -942,6 +968,7 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             projectId: appConnection.projectId,
+            connection: { id: appConnection.id, name: appConnection.name },
             version: appConnection.version,
             credentials: credentialsToValidate,
             method,
@@ -949,7 +976,7 @@ export const appConnectionServiceFactory = ({
             projectType: updateProject?.type
           } as TAppConnectionConfig,
           gatewayV2Service,
-          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, oidcIssuerService, actorId: actor.id }
         );
 
       // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -1132,7 +1159,7 @@ export const appConnectionServiceFactory = ({
         return connection;
       });
 
-      return await decryptAppConnection(updatedConnection, kmsService);
+      return addAppConnectionFederatedCredential(await decryptAppConnection(updatedConnection, kmsService));
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
@@ -1203,15 +1230,23 @@ export const appConnectionServiceFactory = ({
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
 
-      return await decryptAppConnection(deletedAppConnection, kmsService);
+      return addAppConnectionFederatedCredential(await decryptAppConnection(deletedAppConnection, kmsService));
     } catch (err) {
       if (
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
+        const { constraint } = err.error as { constraint?: string };
         if (
-          (err.error as { constraint?: string }).constraint === "certificate_authority_secret_appconnectionid_foreign"
+          constraint === "approval_policy_auto_approval_inputs_connectionid_foreign" ||
+          constraint === "approval_policy_auto_approval_conditions_connectionid_foreign"
         ) {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because one or more approval policies use it in their auto-approval rules. Remove it from those rules first."
+          });
+        }
+        if (constraint === "certificate_authority_secret_appconnectionid_foreign") {
           throw new BadRequestError({
             message:
               "Cannot delete this App Connection because a certificate authority signs with an AWS KMS key reached through it. Delete that certificate authority first."
@@ -1459,9 +1494,16 @@ export const appConnectionServiceFactory = ({
     }),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
-    databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    databricks: databricksConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsService,
+      gatewayV2Service,
+      gatewayPoolService
+    ),
     aws: awsConnectionService(connectAppConnectionById),
     kempLoadMaster: kempLoadMasterConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    imperva: impervaConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     humanitec: humanitecConnectionService(connectAppConnectionById),
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
@@ -1500,6 +1542,7 @@ export const appConnectionServiceFactory = ({
     supabase: supabaseConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
     portainer: portainerConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    jenkins: jenkinsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),

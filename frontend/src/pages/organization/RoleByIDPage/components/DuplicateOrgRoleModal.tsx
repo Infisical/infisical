@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -54,10 +55,13 @@ const Content = ({ role, onClose }: ContentProps) => {
   const {
     control,
     handleSubmit,
+    setValue,
+    getFieldState,
     formState: { isSubmitting }
   } = useForm<FormData>({
     defaultValues: {
-      name: `${role.name} Duplicate`
+      name: `${role.name} Duplicate`,
+      slug: slugify(`${role.name} Duplicate`, { lowercase: true })
     },
     resolver: zodResolver(schema)
   });
@@ -116,6 +120,14 @@ const Content = ({ role, onClose }: ContentProps) => {
                   placeholder="Billing Team"
                   isError={Boolean(error)}
                   {...field}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    const slugState = getFieldState("slug");
+                    if (slugState.isDirty) return;
+                    setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                      shouldValidate: Boolean(slugState.error)
+                    });
+                  }}
                   autoComplete="off"
                   name="org-role-name"
                 />

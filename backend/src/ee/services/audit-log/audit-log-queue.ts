@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { v7 as uuidv7 } from "uuid";
 
 import type { TAuditLogs } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -14,10 +15,10 @@ import {
   auditLogEnqueuedCounter,
   auditLogPersistDurationHistogram
 } from "@app/lib/telemetry/metrics";
+import { sanitizeLogPayload, sanitizeLogText } from "@app/lib/validator/log-safe-text";
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { getAuditLogEventClass, isAlwaysRecordedEventClass } from "./audit-log-event-classes";
 import { getAuditLogExpiresAt, hasAuditLogRetention } from "./audit-log-retention-fns";
@@ -29,7 +30,7 @@ type TAuditLogQueueServiceFactoryDep = {
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForLogs">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
@@ -226,14 +227,15 @@ export const auditLogQueueServiceFactory = async ({
       }
 
       const createdAt = new Date(entry.createdAt);
+      // `enriched` feeds both the insert and the stream outbox, so cleaning here covers both.
       return {
         id: entry.id,
         actor: entry.actor.type,
-        actorMetadata: normalizeJsonPayload(entry.actor.metadata),
-        ipAddress: normalizeEmptyValue(entry.ipAddress, isClickHouseBatchEnabled),
+        actorMetadata: sanitizeLogPayload(normalizeJsonPayload(entry.actor.metadata)),
+        ipAddress: normalizeEmptyValue(sanitizeLogText(entry.ipAddress), isClickHouseBatchEnabled),
         eventType: entry.event.type,
-        eventMetadata: normalizeJsonPayload(entry.event.metadata),
-        userAgent: normalizeEmptyValue(entry.userAgent, isClickHouseBatchEnabled),
+        eventMetadata: sanitizeLogPayload(normalizeJsonPayload(entry.event.metadata)),
+        userAgent: normalizeEmptyValue(sanitizeLogText(entry.userAgent), isClickHouseBatchEnabled),
         userAgentType: normalizeEmptyValue(entry.userAgentType, isClickHouseBatchEnabled),
         projectId: normalizeEmptyValue(entry.projectId, isClickHouseBatchEnabled),
         orgId: entry.orgId,
@@ -241,7 +243,7 @@ export const auditLogQueueServiceFactory = async ({
         createdAt,
         updatedAt: createdAt,
         // project name is only stored for non-ClickHouse insertion
-        ...(!isClickHouseBatchEnabled ? { projectName: entry.projectName } : {})
+        ...(!isClickHouseBatchEnabled ? { projectName: sanitizeLogText(entry.projectName) } : {})
       };
     };
 

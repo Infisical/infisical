@@ -1,7 +1,11 @@
+import RE2 from "re2";
+
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TDaytonaConnection } from "@app/services/app-connection/daytona";
+import { getJenkinsInstanceUrl } from "@app/services/app-connection/jenkins/jenkins-connection-fns";
+import { TJenkinsConnection } from "@app/services/app-connection/jenkins/jenkins-connection-types";
 import { getPortainerInstanceUrl } from "@app/services/app-connection/portainer/portainer-connection-fns";
 import { TPortainerConnection } from "@app/services/app-connection/portainer/portainer-connection-types";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
@@ -37,6 +41,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Supabase]: "Supabase",
   [SecretSync.Rundeck]: "Rundeck",
   [SecretSync.Portainer]: "Portainer",
+  [SecretSync.Jenkins]: "Jenkins",
   [SecretSync.Zabbix]: "Zabbix",
   [SecretSync.Railway]: "Railway",
   [SecretSync.Checkly]: "Checkly",
@@ -50,7 +55,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.CircleCI]: "CircleCI",
   [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM",
   [SecretSync.ExternalInfisical]: "Infisical",
-  [SecretSync.OVH]: "OVH",
+  [SecretSync.OVH]: "OVHcloud",
   [SecretSync.Devin]: "Devin",
   [SecretSync.Ona]: "Ona",
   [SecretSync.TravisCI]: "Travis CI",
@@ -92,6 +97,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
   [SecretSync.Portainer]: AppConnection.Portainer,
+  [SecretSync.Jenkins]: AppConnection.Jenkins,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
@@ -147,6 +153,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Supabase]: SecretSyncPlanType.Regular,
   [SecretSync.Rundeck]: SecretSyncPlanType.Regular,
   [SecretSync.Portainer]: SecretSyncPlanType.Regular,
+  [SecretSync.Jenkins]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
   [SecretSync.Railway]: SecretSyncPlanType.Regular,
   [SecretSync.Checkly]: SecretSyncPlanType.Regular,
@@ -205,12 +212,15 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
     "groupId",
     "projectId"
   ],
-  [SecretSync.CloudflarePages]: [],
-  [SecretSync.CloudflareWorkers]: [],
+  // Syncs of any variable type write to the same variables, so blocking duplicate destinations has to
+  // cover them all or one project could overwrite another project's variables.
+  [SecretSync.CloudflarePages]: ["variableType"],
+  [SecretSync.CloudflareWorkers]: ["variableType"],
   [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],
   [SecretSync.Portainer]: [],
+  [SecretSync.Jenkins]: [],
   [SecretSync.Zabbix]: ["hostName", "macroType"],
   [SecretSync.Railway]: ["projectName", "environmentName", "serviceName"],
   [SecretSync.Checkly]: ["groupName", "accountName"],
@@ -268,6 +278,35 @@ const portainerDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSy
     getPortainerInstanceKey(newConn as TPortainerConnection)
   );
 };
+
+// Folder names are local to a Jenkins instance, so the same scope on two instances is two destinations. The
+// same address behind two gateways is two instances too, while `https://host` and `https://host:443` are one.
+const getJenkinsInstanceKey = (connection: TJenkinsConnection) => {
+  const url = new URL(getJenkinsInstanceUrl(connection));
+  const route = connection.gatewayPoolId ?? connection.gatewayId ?? "direct";
+
+  return `${url.origin}${url.pathname.replace(new RE2("/+$"), "")}@${route}`;
+};
+
+const jenkinsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId) return true;
+
+  if (existingSync.connectionId === newSync.connectionId) {
+    return true;
+  }
+
+  if (!existingSync.connectionId) return false;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  return (
+    getJenkinsInstanceKey(existingConn as TJenkinsConnection) === getJenkinsInstanceKey(newConn as TJenkinsConnection)
+  );
+};
+
 const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
   if (!newSync.connectionId) return true;
 
@@ -385,6 +424,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,
   [SecretSync.Portainer]: portainerDuplicateCheck,
+  [SecretSync.Jenkins]: jenkinsDuplicateCheck,
   [SecretSync.Zabbix]: defaultDuplicateCheck,
   [SecretSync.Railway]: defaultDuplicateCheck,
   [SecretSync.Checkly]: defaultDuplicateCheck,

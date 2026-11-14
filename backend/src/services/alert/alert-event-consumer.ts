@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
+import { runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
   IEventConsumer,
@@ -50,9 +51,9 @@ export const alertEventConsumerFactory = ({
     );
 
   const $handleEvent = async (event: TEvent, findAlerts: TAlertLookup): Promise<TEventConsumerResult> => {
-    const id = String(event.id);
+    const { id } = event;
 
-    const payload = AlertEventPayloadSchema.safeParse(event.payload);
+    const payload = AlertEventPayloadSchema.safeParse(event.data);
     if (!payload.success) {
       return {
         id,
@@ -62,17 +63,17 @@ export const alertEventConsumerFactory = ({
     }
     const { orgId, projectId, resourceType, resourceId, targetIds } = payload.data;
 
-    if (!$isDeclaredEvent(event.eventType, resourceType)) {
+    if (!$isDeclaredEvent(event.type, resourceType)) {
       return {
         id,
         status: EventResultStatus.Failed,
-        error: `No alert provider for resource type '${resourceType}' declares '${event.eventType}' as an event-triggered alert`
+        error: `No alert provider for resource type '${resourceType}' declares '${event.type}' as an event-triggered alert`
       };
     }
 
-    const sourcedEvents = alertProviderRegistry.findEventsBySource({ resourceType, eventKey: event.eventType });
+    const sourcedEvents = alertProviderRegistry.findEventsBySource({ resourceType, eventKey: event.type });
     const lookups = [
-      { resourceType, resourceId, eventType: event.eventType },
+      { resourceType, resourceId, eventType: event.type },
       ...sourcedEvents.map((sourced) => ({
         resourceType: sourced.resourceType,
         resourceId: null,
@@ -93,9 +94,9 @@ export const alertEventConsumerFactory = ({
       const outcome = await alertEngine.runAlertForEvent(alert, {
         eventId: id,
         eventType: alert.eventType,
-        occurredAt: event.occurredAt,
+        occurredAt: new Date(event.time),
         targetIds,
-        payload: (event.payload ?? {}) as Record<string, unknown>
+        payload: (event.data ?? {}) as Record<string, unknown>
       });
       recordAlertDispatchOutcomeMetric({ resourceType: alert.resourceType, outcome });
 
@@ -128,27 +129,14 @@ export const alertEventConsumerFactory = ({
       return lookup;
     };
 
-    const results: TEventConsumerResult[] = [];
-
-    for (const event of events) {
-      try {
-        // eslint-disable-next-line no-await-in-loop -- ordering is the point
-        results.push(await $handleEvent(event, findAlerts));
-      } catch (error) {
-        results.push({
-          id: String(event.id),
-          status: EventResultStatus.Retry,
-          error: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
-    }
+    const results = await runEventsSerially(events, (event) => $handleEvent(event, findAlerts));
 
     return results;
   };
 
   return {
     name: ALERT_EVENT_CONSUMER,
-    payloadSchema: AlertEventPayloadSchema,
+    dataSchema: AlertEventPayloadSchema,
     subscribesTo,
     handle
   };

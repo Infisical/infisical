@@ -15,6 +15,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { useDebounce } from "@app/hooks";
 
+import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from ".";
 import { Button } from "../Button";
 import {
   Dialog,
@@ -29,7 +30,6 @@ import { Field, FieldError, FieldLabel } from "../Field";
 import { Input } from "../Input";
 import { InputGroup, InputGroupAddon } from "../InputGroup";
 import { TextArea } from "../TextArea";
-import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from ".";
 
 const ENVIRONMENTS = [
   { id: "development", name: "Development" },

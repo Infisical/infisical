@@ -7,9 +7,10 @@ import { z } from "zod";
 
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   DialogBody,
   DialogFooter,
   Field,
@@ -17,7 +18,6 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Label,
@@ -179,14 +179,17 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Field>
               <FieldLabel>{`${popUp?.identity?.data ? "Update " : ""}Role`}</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   placeholder="Select role..."
+                  searchAriaLabel="Search roles"
                   options={roles}
-                  onChange={onChange}
-                  value={value}
+                  isClearable={false}
+                  onValueChange={onChange}
+                  value={roles?.find((role) => role.slug === value?.slug) ?? value}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
-                  components={{ Option: RoleOption }}
+                  renderOption={(option) => <RoleOptionContent role={option} />}
                   isError={Boolean(error)}
                 />
               </FieldContent>

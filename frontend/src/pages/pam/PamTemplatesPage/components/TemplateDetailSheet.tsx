@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type JSX, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -42,9 +42,9 @@ import {
 } from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
+  getRotationIntervalOptions,
   isRotatablePamAccountType,
   maxGeneratedPasswordLength,
-  PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
   pamAccountTypeSupportsSessionLogMasking,
   PamPolicyType,
@@ -410,6 +410,10 @@ const SettingsTab = ({
   )?.app;
   const rotationEnabled = watch("settings.rotationEnabled");
   const heartbeatEnabled = watch("settings.heartbeatEnabled");
+  const savedSettings = (template.settings ?? {}) as {
+    rotation?: { intervalSeconds?: number | null };
+    heartbeat?: { intervalSeconds?: number | null };
+  };
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const supportsSessionLogMasking = pamAccountTypeSupportsSessionLogMasking(template.type);
@@ -417,8 +421,13 @@ const SettingsTab = ({
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
+  // These only change how an approval is reached, so they follow Require Approval
+  const approvalDependentPolicies = [
+    PamPolicyType.AllowAutoApproval,
+    PamPolicyType.AllowBreakGlass
+  ];
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
-    (p) => POLICY_EDITORS[p.key] && (p.key !== PamPolicyType.AllowBreakGlass || requiresApproval)
+    (p) => POLICY_EDITORS[p.key] && (!approvalDependentPolicies.includes(p.key) || requiresApproval)
   );
 
   const onSubmit = (data: SettingsForm) => {
@@ -521,6 +530,7 @@ const SettingsTab = ({
           }
           createNotification({ type: "error", text: "Failed to update template" });
         },
+        // oxlint-disable-next-line react/no-unstable-nested-components -- a callback that builds a toast, not a component
         onSuccess: async (result) => {
           createNotification({ type: "success", text: "Template updated" });
           const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
@@ -577,7 +587,7 @@ const SettingsTab = ({
                   if (value === null || value === undefined) delete next[p.key];
                   else next[p.key] = value;
                   if (p.key === PamPolicyType.RequiresApproval && value !== true) {
-                    delete next[PamPolicyType.AllowBreakGlass];
+                    approvalDependentPolicies.forEach((key) => delete next[key]);
                   }
                   setValue("policies", next, { shouldDirty: true });
                 }}
@@ -731,11 +741,13 @@ const SettingsTab = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
-                            <SelectItem key={option.seconds} value={String(option.seconds)}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
+                          {getRotationIntervalOptions(savedSettings.rotation?.intervalSeconds).map(
+                            (option) => (
+                              <SelectItem key={option.seconds} value={String(option.seconds)}>
+                                {option.label}
+                              </SelectItem>
+                            )
+                          )}
                         </SelectContent>
                       </Select>
                       <FieldDescription>
@@ -790,11 +802,13 @@ const SettingsTab = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper">
-                        {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
-                          <SelectItem key={option.seconds} value={String(option.seconds)}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
+                        {getRotationIntervalOptions(savedSettings.heartbeat?.intervalSeconds).map(
+                          (option) => (
+                            <SelectItem key={option.seconds} value={String(option.seconds)}>
+                              {option.label}
+                            </SelectItem>
+                          )
+                        )}
                       </SelectContent>
                     </Select>
                     <FieldDescription>

@@ -1,17 +1,33 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
   useCreatePkiCollection,
   useGetPkiCollectionById,
   useUpdatePkiCollection
 } from "@app/hooks/api";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -22,14 +38,16 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
+  onComplete?: (collection: { id: string; name: string }) => void | Promise<void>;
   popUp: UsePopUpState<["pkiCollection"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["pkiCollection"]>, state?: boolean) => void;
 };
 
-export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const PkiCollectionModal = ({ popUp, handlePopUpToggle, onComplete }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const formId = useId();
   const projectId = currentProject?.id || "";
 
   const { data: pkiCollection } = useGetPkiCollectionById(
@@ -43,7 +61,7 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
@@ -60,7 +78,7 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
         description: ""
       });
     }
-  }, [pkiCollection]);
+  }, [pkiCollection, popUp.pkiCollection.isOpen, reset]);
 
   const onFormSubmit = async ({ name, description }: FormData) => {
     if (!projectId) return;
@@ -75,17 +93,21 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       // create
       const { id: collectionId } = await createPkiCollection({
+        projectId,
         name,
         description
       });
 
-      navigate({
-        to: "/organizations/$orgId/cert-manager/pki-collections/$collectionId",
-        params: {
-          orgId: currentOrg.id,
-          collectionId
-        }
-      });
+      if (onComplete) {
+        await onComplete({ id: collectionId, name });
+      } else
+        navigate({
+          to: "/organizations/$orgId/cert-manager/pki-collections/$collectionId",
+          params: {
+            orgId: currentOrg.id,
+            collectionId
+          }
+        });
     }
 
     handlePopUpToggle("pkiCollection", false);
@@ -98,69 +120,92 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
   };
 
-  return (
-    <Modal
-      isOpen={popUp?.pkiCollection?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("pkiCollection", isOpen);
+  const { requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty,
+      onDiscard: () => {
         reset();
-      }}
-    >
-      <ModalContent title={`${pkiCollection ? "Edit" : "Create"} Certificate Collection`}>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            defaultValue=""
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input
-                  {...field}
-                  placeholder="My Certificate Collection"
-                  autoComplete="off"
-                  name="pki-collection-name"
+        handlePopUpToggle("pkiCollection", false);
+      }
+    });
+
+  return (
+    <>
+      <Dialog
+        open={popUp?.pkiCollection?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) requestDiscard();
+        }}
+      >
+        <DialogContent isPending={isSubmitting}>
+          <DialogHeader>
+            <DialogTitle>{`${pkiCollection ? "Edit" : "Create"} Certificate Collection`}</DialogTitle>
+            <DialogDescription>Configure the certificate collection.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={handleSubmit(onFormSubmit)}
+            className="flex min-h-0 flex-1 flex-col gap-6"
+          >
+            <DialogBody className="flex flex-col gap-4">
+              <fieldset disabled={isSubmitting} className="flex min-w-0 flex-col gap-4">
+                <Controller
+                  control={control}
+                  defaultValue=""
+                  name="name"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor={`${formId}-name`}>
+                        Name <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Input
+                        isError={Boolean(error)}
+                        id={`${formId}-name`}
+                        {...field}
+                        placeholder="My Certificate Collection"
+                        autoComplete="off"
+                        name="pki-collection-name"
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
                 />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue=""
-            name="description"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
-                <Input
-                  {...field}
-                  placeholder="A collection to house certificates for ACME device"
+                <Controller
+                  control={control}
+                  defaultValue=""
+                  name="description"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor={`${formId}-description`}>Description</FieldLabel>
+                      <Input
+                        isError={Boolean(error)}
+                        id={`${formId}-description`}
+                        {...field}
+                        placeholder="A collection to house certificates for ACME device"
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
                 />
-              </FormControl>
-            )}
-          />
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              {pkiCollection ? "Update" : "Create"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("pkiCollection", false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </ModalContent>
-    </Modal>
+              </fieldset>
+            </DialogBody>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button variant="project" type="submit" isPending={isSubmitting}>
+                {pkiCollection ? "Update" : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes will be lost."
+      />
+    </>
   );
 };

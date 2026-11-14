@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useContext, useRef, useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { MouseEvent, useCallback, useContext, useRef, useState } from "react";
+import { Link, useParams } from "@tanstack/react-router";
 import { Handle, NodeProps, Position } from "@xyflow/react";
 import { CircleHelpIcon, FolderIcon, KeyIcon, LayersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -29,7 +29,6 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   const [isPathTruncated, setIsPathTruncated] = useState(false);
   const [isEnvTruncated, setIsEnvTruncated] = useState(false);
 
-  const navigate = useNavigate();
   const routeParams = useParams({ strict: false });
   const { currentProject } = useProject();
   const onClose = useContext(SecretReferenceCloseContext);
@@ -48,32 +47,12 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
     }
   }, []);
 
-  const handleNavigate = useCallback(() => {
-    if (isRoot) return;
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return;
+    }
     onClose?.();
-    navigate({
-      to: ROUTE_PATHS.SecretManager.OverviewPage.path,
-      params: {
-        orgId: routeParams.orgId as string,
-        projectId: crossProjectId || currentProject?.id || ""
-      },
-      search: {
-        secretPath,
-        search: secretKey,
-        environments: [environment]
-      }
-    });
-  }, [
-    navigate,
-    routeParams.orgId,
-    currentProject,
-    crossProjectId,
-    environment,
-    secretPath,
-    secretKey,
-    isRoot,
-    onClose
-  ]);
+  };
 
   const envBadge = (
     <Badge
@@ -179,14 +158,24 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
             <TooltipContent>This is the secret whose dependencies are being viewed</TooltipContent>
           </Tooltip>
         ) : (
-          <button
-            type="button"
+          <Link
+            to={ROUTE_PATHS.SecretManager.OverviewPage.path}
+            params={{
+              orgId: routeParams.orgId as string,
+              projectId: crossProjectId || currentProject?.id || ""
+            }}
+            search={{
+              secretPath,
+              search: secretKey,
+              environments: [environment]
+            }}
             className={nodeClassName}
-            onClick={handleNavigate}
+            draggable={false}
+            onClick={handleClick}
             aria-label={`Open ${secretKey} in ${capitalizedEnv} at ${secretPath}`}
           >
             {nodeContent}
-          </button>
+          </Link>
         )}
       </div>
       <Handle

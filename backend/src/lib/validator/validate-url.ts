@@ -1,6 +1,5 @@
-import dns from "node:dns/promises";
-
 import { isIP } from "net";
+import dns from "node:dns/promises";
 import RE2 from "re2";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";

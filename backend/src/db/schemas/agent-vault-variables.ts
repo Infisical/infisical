@@ -16,7 +16,9 @@ export const AgentVaultVariablesSchema = z.object({
   encryptedValue: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date(),
-  projectId: z.string()
+  projectId: z.string(),
+  userId: z.string().uuid().nullable().optional(),
+  identityId: z.string().uuid().nullable().optional()
 });
 
 export type TAgentVaultVariables = z.infer<typeof AgentVaultVariablesSchema>;

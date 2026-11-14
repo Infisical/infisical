@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DocumentationLinkBadge,
@@ -20,7 +19,6 @@ import { PkiDocsUrls } from "../pki-docs-urls";
 import { PkiAlertsSection, PkiCollectionSection } from "./components";
 
 export const AlertingPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const [selectedTab, setSelectedTab] = useState("rule-based");
   const [tabsOrientation, setTabsOrientation] = useState<"horizontal" | "vertical">(() =>
@@ -45,9 +43,7 @@ export const AlertingPage = () => {
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Alerting" })}</title>
-      </Helmet>
+      <PageTitle title="Alerting" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

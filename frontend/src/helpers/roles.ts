@@ -37,7 +37,7 @@ export const AGENT_VAULT_PRODUCT_ROLE_OPTIONS = [
   {
     value: ProjectMembershipRole.Admin,
     label: "Admin",
-    description: "Full administrative access over Agent Vault"
+    description: "Full administrative access over this project"
   },
   {
     value: ProjectMembershipRole.Member,

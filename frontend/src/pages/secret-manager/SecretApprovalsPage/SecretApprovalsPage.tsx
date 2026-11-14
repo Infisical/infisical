@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { Badge, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
@@ -83,11 +83,9 @@ export const SecretApprovalsPage = () => {
 
   return (
     <div>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("approval.title") })}</title>
-        <meta property="og:title" content={String(t("approval.og-title"))} />
-        <meta name="og:description" content={String(t("approval.og-description"))} />
-      </Helmet>
+      <PageTitle title={t("page-titles.secret-approvals")} />
+      <meta property="og:title" content={String(t("approval.og-title"))} />
+      <meta name="og:description" content={String(t("approval.og-description"))} />
       <div className="mx-auto flex h-full w-full max-w-8xl flex-col bg-page text-foreground-inverse">
         <PageHeader
           scope={ProjectType.SecretManager}

@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { components, MultiValueGenericProps, OptionProps } from "react-select";
-import { CheckIcon, HardDriveIcon, UserIcon } from "lucide-react";
+import { HardDriveIcon, UserIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,8 +16,7 @@ import {
   DialogTitle,
   Field,
   FieldError,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useDebounce, useScopeVariant } from "@app/hooks";
 import {
@@ -58,33 +57,28 @@ const getTypeLabel = (type: AddMemberType) =>
 
 // Dropdown row: type icon + name/username with the email inline (muted). Both texts get min-w-0 +
 // truncate so a long name or email is ellipsized rather than wrapping or pushing the checkmark off.
-const MemberOptionRow = ({ isSelected, ...props }: OptionProps<MemberOption>) => {
-  const { type, label, email } = props.data;
+const MemberOptionRow = ({ option }: { option: MemberOption }) => {
+  const { type, label, email } = option;
   const Icon = getOptionIcon(type);
 
   return (
-    <components.Option isSelected={isSelected} {...props}>
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <span className="min-w-0 truncate">{label}</span>
-        {email && email !== label && <span className="min-w-0 truncate text-muted">{email}</span>}
-        {isSelected && <CheckIcon className="ml-auto size-4 shrink-0" />}
-      </div>
-    </components.Option>
+    <div className="flex items-center gap-2">
+      <Icon className="size-4 shrink-0 text-muted" />
+      <span className="min-w-0 truncate">{label}</span>
+      {email && email !== label && <span className="min-w-0 truncate text-muted">{email}</span>}
+    </div>
   );
 };
 
 // Selected chip/badge: type icon + label (the remove button is left to the shared component).
-const MemberMultiValueLabel = ({ children, ...props }: MultiValueGenericProps<MemberOption>) => {
-  const Icon = getOptionIcon(props.data.type);
+const MemberMultiValueLabel = ({ option }: { option: MemberOption }) => {
+  const Icon = getOptionIcon(option.type);
 
   return (
-    <components.MultiValueLabel {...props}>
-      <div className="flex items-center gap-1">
-        <Icon className="size-3 shrink-0 text-muted" />
-        <span className="truncate">{children}</span>
-      </div>
-    </components.MultiValueLabel>
+    <span className="flex items-center gap-1">
+      <Icon className="size-3 shrink-0 text-muted" />
+      <span className="truncate">{option.label}</span>
+    </span>
   );
 };
 
@@ -256,29 +250,27 @@ export const AddGroupMembersModal = ({
                 <FieldLabel htmlFor="add-group-members">
                   {isOidcManageGroupMembershipsEnabled ? "Machine Identities" : "Members"}
                 </FieldLabel>
-                <FilterableSelect
-                  inputId="add-group-members"
-                  isMulti
+                <Combobox
+                  id="add-group-members"
+                  multiple
                   placeholder={
                     isOidcManageGroupMembershipsEnabled
                       ? "Search and select machine identities..."
                       : "Search and select users or machine identities..."
                   }
+                  searchAriaLabel="Search members"
                   value={value}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={memberOptions}
-                  groupBy="type"
-                  getGroupHeaderLabel={getTypeLabel}
+                  getOptionGroup={(option) => getTypeLabel(option.type)}
                   getOptionValue={(option) => `${option.type}:${option.id}`}
                   getOptionLabel={(option) => option.label}
-                  filterOption={() => true}
-                  onInputChange={(val, meta) => {
-                    if (meta.action === "input-change") setSearch(val);
-                  }}
+                  onSearchChange={setSearch}
                   isLoading={isUsersFetching || isIdentitiesFetching}
-                  components={{ Option: MemberOptionRow, MultiValueLabel: MemberMultiValueLabel }}
+                  renderOption={(option) => <MemberOptionRow option={option} />}
+                  renderValue={(option) => <MemberMultiValueLabel option={option} />}
                   isError={Boolean(error)}
-                  noOptionsMessage={noOptionsMessage}
+                  emptyMessage={noOptionsMessage}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>

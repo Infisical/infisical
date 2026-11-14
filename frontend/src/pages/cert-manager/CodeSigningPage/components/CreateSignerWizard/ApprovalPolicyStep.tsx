@@ -2,6 +2,7 @@ import { ClockIcon, PlusIcon, ShieldIcon, XIcon } from "lucide-react";
 
 import {
   Button,
+  Combobox,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -12,7 +13,6 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -120,7 +120,6 @@ export const ApprovalPolicyStep = ({
           const takenGroups = new Set(s.approverGroupIds);
           const isTaken = (o: ApproverOption) =>
             o.kind === "user" ? takenUsers.has(o.value) : takenGroups.has(o.value);
-          const optionsForStep = approverOptions.filter((o) => !isTaken(o));
           const valueForStep = approverOptions.filter(isTaken);
 
           return (
@@ -150,18 +149,17 @@ export const ApprovalPolicyStep = ({
 
               <div className="grid grid-cols-[1fr_140px] gap-3">
                 <Field>
-                  <FieldLabel>Approvers</FieldLabel>
+                  <FieldLabel htmlFor={`create-signer-approvers-${s.key}`}>Approvers</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect<ApproverOption>
-                      isMulti
-                      options={optionsForStep}
-                      groupBy="kind"
-                      getGroupHeaderLabel={(g) => (g === "group" ? "Groups" : "Users")}
-                      getOptionValue={(o) => approverOptionKey(o as ApproverOption)}
-                      isOptionSelected={(o) => isTaken(o as ApproverOption)}
+                    <Combobox
+                      id={`create-signer-approvers-${s.key}`}
+                      multiple
+                      options={approverOptions}
+                      getOptionGroup={(option) => (option.kind === "group" ? "Groups" : "Users")}
+                      getOptionValue={approverOptionKey}
+                      getOptionLabel={(option) => option.label}
                       value={valueForStep}
-                      onChange={(selected) => {
-                        const picks = (selected as ApproverOption[] | null) ?? [];
+                      onValueChange={(picks) => {
                         patchStep(s.key, {
                           approverUserIds: picks
                             .filter((p) => p.kind === "user")
@@ -172,7 +170,7 @@ export const ApprovalPolicyStep = ({
                         });
                       }}
                       placeholder="Pick approvers from members..."
-                      noOptionsMessage={() => "Add member users in the previous step first."}
+                      emptyMessage="Add member users in the previous step first."
                     />
                     <FieldDescription>Approvers must already be members.</FieldDescription>
                   </FieldContent>

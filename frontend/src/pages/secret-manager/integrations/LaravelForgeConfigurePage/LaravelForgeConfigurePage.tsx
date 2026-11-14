@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -90,6 +91,7 @@ export const LaravelForgeConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Set Up Laravel Forge Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Laravel Forge Integration</CardTitle>
@@ -176,6 +178,9 @@ export const LaravelForgeConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Laravel Forge Integration" />
+      <div />
+    </>
   );
 };

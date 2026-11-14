@@ -31,9 +31,9 @@ import {
   AwsConnectionAssumeRoleCredentialsSchema
 } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";

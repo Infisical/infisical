@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { Helmet } from "react-helmet";
 import { format } from "date-fns";
 import { FileTextIcon } from "lucide-react";
 
@@ -7,6 +6,7 @@ import {
   SecretAccessInsightsUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -51,7 +51,7 @@ import {
 const SENT_REPORT_STATUSES = [AuditReportStatus.Completed, AuditReportStatus.Partial];
 const IN_FLIGHT_REPORT_STATUSES = [AuditReportStatus.Pending, AuditReportStatus.Processing];
 
-export const SecretInsightsPage = withPermission(
+const SecretInsightsPageContent = withPermission(
   () => {
     const { currentOrg } = useOrganization();
     const { config } = useServerConfig();
@@ -134,10 +134,7 @@ export const SecretInsightsPage = withPermission(
 
     return (
       <>
-        <Helmet>
-          <title>Secret Insights | Infisical</title>
-          <link rel="icon" href="/infisical.ico" />
-        </Helmet>
+        <link rel="icon" href="/infisical.ico" />
         <div>
           <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
             <PageHeader
@@ -248,4 +245,11 @@ export const SecretInsightsPage = withPermission(
     action: OrgPermissionSecretsManagementInsightsActions.Read,
     subject: OrgPermissionSubjects.SecretsManagementInsights
   }
+);
+
+export const SecretInsightsPage = () => (
+  <>
+    <PageTitle title="Secret Insights" />
+    <SecretInsightsPageContent />
+  </>
 );

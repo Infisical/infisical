@@ -2,6 +2,7 @@ export const VARIABLE_KEY_MAX_LENGTH = 64;
 export const VARIABLE_VALUE_MAX_LENGTH = 8192;
 export const MAX_REFERENCES_PER_FIELD = 3;
 export const MAX_VARIABLES = 500;
+export const MAX_PERSONAL_VARIABLES = 100;
 
 export const VARIABLE_KEY_RE = /^[A-Z][A-Z0-9_]*$/;
 
@@ -76,7 +77,8 @@ export const findVariableReferenceAtCaret = (text: string, caret: number) => {
  */
 export const variableReferenceError = (
   text: string,
-  missingKeys?: ReadonlySet<string>
+  missingKeys?: ReadonlySet<string>,
+  { isPersonal = false }: { isPersonal?: boolean } = {}
 ): string | null => {
   const refs = findVariableReferences(text);
 
@@ -91,7 +93,9 @@ export const variableReferenceError = (
 
   const missing = refs.find((ref) => missingKeys?.has(ref));
   if (missing) {
-    return `Agent Vault has no variable named '${missing}'. Add it under Variables, or correct the name.`;
+    return isPersonal
+      ? `You have no personal variable named '${missing}'. Add it as a personal variable, or correct the name.`
+      : `There's no global variable named '${missing}'. Add it under Variables, or correct the name.`;
   }
 
   return null;

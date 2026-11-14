@@ -8,12 +8,7 @@ import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import {
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm,
-  CertStatus,
-  mapSanTypeToX509Type
-} from "@app/services/certificate/certificate-types";
+import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -23,6 +18,12 @@ import {
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { detectSanType } from "@app/services/certificate-common/certificate-issuance-utils";
+import {
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm,
+  CertStatus,
+  mapSanTypeToX509Type
+} from "@app/services/certificate/certificate-types";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
@@ -45,7 +46,8 @@ export enum CertificateRenewalMode {
   SelfSigned = "self-signed",
   InternalCa = "internal-ca",
   KeyPreserving = "key-preserving",
-  ExternalCa = "external-ca"
+  ExternalCa = "external-ca",
+  AwaitingApproval = "awaiting-approval"
 }
 
 export const certificateSpanToTtl = (notBefore: Date, notAfter: Date): string => {
@@ -241,7 +243,10 @@ export const isCertificateContentEdit = ({
   return suppliedAttributeKeys(attributes).length > 0;
 };
 
-export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
+export const assertCsrRenewalAttributes = (
+  attributes?: TRenewalAttributes,
+  { isStoredCsr = false }: { isStoredCsr?: boolean } = {}
+) => {
   if (!attributes) return;
 
   const rejected = suppliedAttributeKeys(attributes)
@@ -253,7 +258,9 @@ export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
       (key) => RENEWAL_ATTRIBUTES[key].label
     );
     throw new BadRequestError({
-      message: `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
+      message: isStoredCsr
+        ? `Reusing this key pair renews from the signing request Infisical holds for it, which sets ${rejected.join(", ")}. To change them, renew with a new CSR or a new key pair. Only ${settable.join(", ")} can be set when reusing the key pair.`
+        : `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
 };
@@ -309,6 +316,7 @@ type TOriginatingRenewalRequest = {
   keyAlgorithm: string | null;
   signatureAlgorithm: string | null;
   customExtensions: unknown;
+  csr?: string | null;
 };
 
 type TRenewalCertificateFacts = {
@@ -453,6 +461,23 @@ export const buildCsrRenewalCertificateRequest = ({
   };
 };
 
+// Where the CSR is silent, a CSR renewal keeps what the certificate already has, as every other renewal
+// does, so an unchanged renewal passes the policy the certificate passed. The signature algorithm always
+// comes from the certificate: the CSR's own signature only proves possession of its key and says nothing
+// about how the CA signs, so an ECDSA CSR for a certificate an RSA CA signed must not ask for ECDSA.
+export const keepCertificateFactsInCsrRenewal = (
+  csrRequest: TCertificateRequest,
+  certificate: Pick<TCertificateRequest, "signatureAlgorithm" | "keyUsages" | "extendedKeyUsages" | "basicConstraints">
+): TCertificateRequest => ({
+  ...csrRequest,
+  signatureAlgorithm: certificate.signatureAlgorithm ?? csrRequest.signatureAlgorithm,
+  keyUsages: csrRequest.keyUsages?.length ? csrRequest.keyUsages : certificate.keyUsages,
+  extendedKeyUsages: csrRequest.extendedKeyUsages?.length
+    ? csrRequest.extendedKeyUsages
+    : certificate.extendedKeyUsages,
+  basicConstraints: csrRequest.basicConstraints ?? certificate.basicConstraints
+});
+
 export const buildRenewalAuditChanges = (
   replayedRequest: TCertificateRequest,
   issuedRequest: TCertificateRequest
@@ -462,6 +487,27 @@ export const buildRenewalAuditChanges = (
     from: RENEWAL_ATTRIBUTES[field].issued(replayedRequest),
     to: RENEWAL_ATTRIBUTES[field].issued(issuedRequest)
   })).filter(({ from, to }) => from !== to);
+
+export const haveDifferentSubjectAlternativeNames = (
+  replayedRequest: TCertificateRequest,
+  issuedRequest: TCertificateRequest
+) => {
+  const typedAltNames = (request: TCertificateRequest) =>
+    (request.subjectAlternativeNames ?? []).map((san) => `${san.type}:${san.value}`).join(",");
+  return typedAltNames(replayedRequest) !== typedAltNames(issuedRequest);
+};
+
+const requestedCustomExtensionKeys = (extensions: unknown) =>
+  readStoredCustomExtensions(extensions)
+    .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
+    .map((extension) => `${extension.oid}|${extension.critical ? "critical" : ""}|${extension.value}`)
+    .sort()
+    .join(",");
+
+export const haveDifferentCustomExtensions = (
+  certificateExtensions: unknown,
+  renewalExtensions: TResolvedCustomExtension[] | undefined
+) => requestedCustomExtensionKeys(certificateExtensions) !== requestedCustomExtensionKeys(renewalExtensions ?? []);
 
 export type TIssuerModifiedField = {
   field: string;
@@ -555,7 +601,12 @@ export const buildRenewalPreview = (requested: TOriginatingRenewalRequest, certi
     });
   }
 
-  return { request, issuerModifiedFields, hasOriginatingRequest: requested.exists };
+  return {
+    request,
+    issuerModifiedFields,
+    hasOriginatingRequest: requested.exists,
+    hasOriginatingCsr: Boolean(requested.csr)
+  };
 };
 
 export const buildRenewalDistinguishedName = (certificateRequest: TCertificateRequest): string =>
@@ -569,7 +620,7 @@ export const buildRenewalDistinguishedName = (certificateRequest: TCertificateRe
     domainComponents: certificateRequest.domainComponents
   });
 
-const pemBodyToDer = (pem: string): Buffer =>
+const pemBodyToDer = (pem: string): Buffer<ArrayBuffer> =>
   Buffer.from(pem.replace(new RE2("-----(BEGIN|END)[^-]+-----", "g"), "").replace(new RE2("\\s", "g"), ""), "base64");
 
 export const importKeyPairFromPem = async ({
@@ -723,3 +774,49 @@ export const validateRenewalEligibility = (
     errors
   };
 };
+
+export const buildRenewalApprovalSnapshot = ({
+  certificateRequest,
+  renewalAltNames,
+  ttl,
+  effectiveSignatureAlgorithm,
+  effectiveKeyAlgorithm,
+  renewalBasicConstraints,
+  resolvedCustomExtensions
+}: {
+  certificateRequest: TCertificateRequest;
+  renewalAltNames: { type: CertSubjectAlternativeNameType; value: string }[];
+  ttl: string;
+  effectiveSignatureAlgorithm: CertSignatureAlgorithm;
+  effectiveKeyAlgorithm: CertKeyAlgorithm;
+  renewalBasicConstraints?: { isCA: boolean; pathLength?: number };
+  resolvedCustomExtensions?: TResolvedCustomExtension[];
+}): TCertRequestRequestData["certificateRequest"] => ({
+  commonName: certificateRequest.commonName,
+  organization: certificateRequest.organization,
+  organizationalUnit: certificateRequest.organizationalUnit,
+  country: certificateRequest.country,
+  state: certificateRequest.state,
+  locality: certificateRequest.locality,
+  domainComponents: certificateRequest.domainComponents,
+  keyUsages: certificateRequest.keyUsages,
+  extendedKeyUsages: certificateRequest.extendedKeyUsages,
+  altNames: renewalAltNames,
+  validity: { ttl },
+  signatureAlgorithm: effectiveSignatureAlgorithm,
+  keyAlgorithm: effectiveKeyAlgorithm,
+  basicConstraints: renewalBasicConstraints,
+  customExtensions: resolvedCustomExtensions
+});
+
+const canonicalJson = (value: unknown) =>
+  JSON.stringify(value, (_key, nested: unknown) =>
+    nested && typeof nested === "object" && !Array.isArray(nested)
+      ? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => a.localeCompare(b)))
+      : nested
+  );
+
+export const isSameRenewalApprovalSnapshot = (
+  reviewed: TCertRequestRequestData["certificateRequest"],
+  rebuilt: TCertRequestRequestData["certificateRequest"]
+) => canonicalJson(reviewed) === canonicalJson(rebuilt);

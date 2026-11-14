@@ -1,0 +1,126 @@
+// runInSandbox.ts
+import { InfisicalSDK } from "@infisical/sdk";
+import { Sandbox } from "e2b";
+
+const INFISICAL_URL = "https://app.infisical.com";
+const PROJECT_ID = "<project-id>";
+const ACCESS_BUNDLE = "<access-bundle-name>";
+const PROXY_ID = "<proxy-id>";
+const PROXY_ADDRESS = "<proxy-dns-name>:1080";
+const TEMPLATE = "base";
+const SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
+const SANDBOX_ENV: Record<string, string> = {};
+// Claude Code's skills folder. For Codex or OpenCode, use /home/user/.agents/skills.
+const SKILLS_DIR = "/home/user/.claude/skills";
+// The session's MCP servers, in the format of Claude Code's --mcp-config.
+const MCP_CONFIG_PATH = "/home/user/agent-vault-mcp.json";
+
+const CA_PATH = "/usr/local/share/ca-certificates/agent-vault-ca.crt";
+// Points the tools that don't read the system trust store at the proxy's CA.
+const CA_ENV = Object.fromEntries(
+  ["SSL_CERT_FILE", "NODE_EXTRA_CA_CERTS", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "DENO_CERT"].map(
+    (name) => [name, CA_PATH],
+  ),
+);
+
+const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+
+export async function runInSandbox(command: string): Promise<string> {
+  // The machine identity's credentials stay here and never enter the sandbox.
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
+  });
+
+  // Fetched on every run, because the CA changes when you rotate the proxy's token.
+  // The SDK has no method for the CA, so this request calls the API with the SDK's access token.
+  const caResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/proxies/${PROXY_ID}/ca`, {
+    headers: { Authorization: `Bearer ${infisical.auth().getAccessToken()}` },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!caResponse.ok) throw new Error(`Infisical returned ${caResponse.status}: ${await caResponse.text()}`);
+  const { ca } = await caResponse.json();
+
+  // One session per run. The ttl outlasts the sandbox's timeout, so the agent
+  // can't lose access mid-run.
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
+  });
+
+  let sandbox: Sandbox | undefined;
+  try {
+    sandbox = await Sandbox.create(TEMPLATE, {
+      timeoutMs: SANDBOX_TIMEOUT_MS,
+      envs: {
+        ...CA_ENV,
+        // Where the agent lists its services, through the proxy.
+        INFISICAL_AGENT_VAULT_URL: INFISICAL_URL,
+        ...SANDBOX_ENV,
+      },
+      network: {
+        // E2B sends hostnames to the proxy, instead of IP addresses, only for
+        // traffic that a domain entry in allowOut lets through.
+        allowOut: ["*"],
+        denyOut: ["0.0.0.0/0"],
+        egressProxy: {
+          address: PROXY_ADDRESS,
+          // The proxy ignores the username and reads the session token from the password.
+          username: "x-agent-vault",
+          password: session.token,
+          tls: { caCert: ca.certificate },
+        },
+      },
+    });
+    await sandbox.files.write("/tmp/agent-vault-ca.pem", ca.certificate);
+    await sandbox.commands.run(`install -m 644 /tmp/agent-vault-ca.pem ${CA_PATH} && update-ca-certificates`, {
+      user: "root",
+    });
+    // The session's skills, including the one that tells the agent how to work behind the proxy.
+    // The SDK has no method for them either, and the session token is the only credential this request takes.
+    const skillsResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/session/skills`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!skillsResponse.ok) throw new Error(`Infisical returned ${skillsResponse.status}: ${await skillsResponse.text()}`);
+    const { skills } = await skillsResponse.json();
+    for (const skill of skills) {
+      for (const file of skill.files) {
+        const path = `${SKILLS_DIR}/${skill.name}/${file.path}`;
+        await sandbox.files.write(path, new Blob([Buffer.from(file.contentBase64, "base64")]));
+        if (file.mode === "0755") await sandbox.commands.run(`chmod 755 ${shellQuote(path)}`);
+      }
+    }
+    // The session's MCP servers that are ready, for an agent that loads them only when it starts.
+    const servicesResponse = await fetch(`${INFISICAL_URL}/api/v1/agent-vault/session/services`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!servicesResponse.ok) throw new Error(`Infisical returned ${servicesResponse.status}: ${await servicesResponse.text()}`);
+    const { services } = await servicesResponse.json();
+    const mcpServers: Record<string, { type: string; url: string; headers?: Record<string, string> }> = {};
+    for (const service of services) {
+      const header: string | undefined = service.credential.header;
+      // Claude Code fills in ${VAR} from the sandbox's environment, so it skips a URL or header with a $.
+      if (service.type !== "mcp" || service.status !== "ready" || `${service.url}${header ?? ""}`.includes("$")) continue;
+      mcpServers[service.name] = {
+        type: service.transport === "sse" ? "sse" : "http",
+        url: service.url,
+        // A placeholder, so the agent doesn't try to sign in. The proxy replaces it.
+        ...(service.credential.addedByProxy && header ? { headers: { [header]: "Bearer agent-vault" } } : {}),
+      };
+    }
+    await sandbox.files.write(MCP_CONFIG_PATH, JSON.stringify({ mcpServers }));
+    const result = await sandbox.commands.run(command, { timeoutMs: SANDBOX_TIMEOUT_MS - 60_000 });
+    return result.stdout;
+  } finally {
+    // Revoke first, so the session ends even if killing the sandbox fails.
+    try {
+      await infisical.agentVault().sessions.revoke(session.id);
+    } finally {
+      await sandbox?.kill();
+    }
+  }
+}

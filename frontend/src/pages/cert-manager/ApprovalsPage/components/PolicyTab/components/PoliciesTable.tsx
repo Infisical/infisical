@@ -1,8 +1,16 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistance } from "date-fns";
-import { EllipsisVerticalIcon, FileQuestionIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  EllipsisVerticalIcon,
+  FileQuestionIcon,
+  PencilIcon,
+  Trash2Icon
+} from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +33,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { useToggle } from "@app/hooks";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
@@ -40,6 +49,58 @@ type Props = {
     data?: { policyId: string; policy?: TApprovalPolicy }
   ) => void;
   applicationId?: string;
+};
+
+const PolicyActionsMenu = ({
+  policy,
+  handlePopUpOpen
+}: {
+  policy: TApprovalPolicy;
+  handlePopUpOpen: Props["handlePopUpOpen"];
+}) => {
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(policy.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Approval policy ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <Tooltip hoverable delayDuration={50}>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <IconButton aria-label="More options" variant="ghost" size="xs">
+              <EllipsisVerticalIcon />
+            </IconButton>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>More options</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end" sideOffset={5}>
+        <DropdownMenuItem onClick={handleCopyId}>
+          {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+          Copy ID
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
+        >
+          <PencilIcon />
+          Edit Policy
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}>
+          <Trash2Icon />
+          Delete Policy
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 };
 
 export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
@@ -132,32 +193,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <Tooltip hoverable delayDuration={50}>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton aria-label="More options" variant="ghost" size="xs">
-                            <EllipsisVerticalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>More options</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent align="end" sideOffset={5}>
-                      <DropdownMenuItem
-                        onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
-                      >
-                        <PencilIcon />
-                        Edit Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
-                      >
-                        <Trash2Icon />
-                        Delete Policy
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <PolicyActionsMenu policy={policy} handlePopUpOpen={handlePopUpOpen} />
                 </TableCell>
               </TableRow>
             );

@@ -22,8 +22,8 @@ import {
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 import { F5BigIpProfileType } from "@app/hooks/api/pkiSyncs/types/f5-big-ip-sync";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const PROFILE_TYPE_OPTIONS: { value: F5BigIpProfileType; label: string }[] = [
   { value: F5BigIpProfileType.None, label: "None" },

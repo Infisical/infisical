@@ -5,14 +5,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   SheetFooter
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -91,11 +91,12 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
             <Field>
               <FieldLabel>Machine Identity</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   value={value}
-                  onChange={onChange}
+                  isClearable={false}
+                  onValueChange={onChange}
                   placeholder="Select machine identity..."
-                  // onInputChange={setSearchValue}
+                  searchAriaLabel="Search machine identities"
                   autoFocus
                   options={rootOrgIdentities}
                   getOptionValue={(option) => option.id}
@@ -115,14 +116,17 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
             <Field>
               <FieldLabel>Role</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   value={value}
-                  onChange={onChange}
+                  isClearable={false}
+                  onValueChange={onChange}
                   options={roles}
                   placeholder="Select role..."
+                  searchAriaLabel="Search roles"
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
-                  components={{ Option: RoleOption }}
+                  renderOption={(option) => <RoleOptionContent role={option} />}
                   isError={Boolean(error)}
                 />
               </FieldContent>

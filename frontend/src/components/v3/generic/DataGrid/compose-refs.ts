@@ -10,14 +10,12 @@ type PossibleRef<T> = React.Ref<T> | undefined;
  * Set a given ref to a given value
  * This utility takes care of different types of refs: callback refs and RefObject(s)
  */
-// eslint-disable-next-line consistent-return
 function setRef<T>(ref: PossibleRef<T>, value: T) {
   if (typeof ref === "function") {
     return ref(value);
   }
 
   if (ref !== null && ref !== undefined) {
-    // @ts-expect-error -- React 19 makes RefObject.current read-only, but this vendored Radix utility needs to write it
     // eslint-disable-next-line no-param-reassign
     ref.current = value;
   }
@@ -49,7 +47,6 @@ function composeRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
         for (let i = 0; i < cleanups.length; i++) {
           const cleanup = cleanups[i];
           if (typeof cleanup === "function") {
-            // @ts-expect-error -- cleanup type narrowing issue with React 19 ref callback return types
             cleanup();
           } else {
             setRef(refs[i], null);

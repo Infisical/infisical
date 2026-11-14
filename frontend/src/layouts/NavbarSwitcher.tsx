@@ -4,6 +4,16 @@ import { ChevronsUpDown } from "lucide-react";
 import { IconButton, Popover, PopoverContent, PopoverTrigger } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
+const NavbarBlock = ({ className, ...props }: React.ComponentProps<"div">) => (
+  <div
+    className={cn(
+      "flex h-full min-w-0 items-center gap-1 border-border-soft pr-2 pl-4 not-first:border-l",
+      className
+    )}
+    {...props}
+  />
+);
+
 const NavbarSwitcher = (props: React.ComponentProps<typeof Popover>) => <Popover {...props} />;
 
 type NavbarSwitcherTriggerProps = Omit<React.ComponentProps<"button">, "children"> & {
@@ -27,4 +37,4 @@ const NavbarSwitcherContent = ({ className, ...props }: NavbarSwitcherContentPro
   <PopoverContent align="start" className={cn("p-0", className)} {...props} />
 );
 
-export { NavbarSwitcher, NavbarSwitcherContent, NavbarSwitcherTrigger };
+export { NavbarBlock, NavbarSwitcher, NavbarSwitcherContent, NavbarSwitcherTrigger };

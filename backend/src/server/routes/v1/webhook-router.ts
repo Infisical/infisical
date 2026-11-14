@@ -213,7 +213,13 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       operationId: "deleteWebhook",
       params: z.object({
         webhookId: z.string().trim()
-      })
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          webhook: sanitizedWebhookSchema
+        })
+      }
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.deleteWebhook({

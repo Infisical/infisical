@@ -30,6 +30,7 @@ import {
 import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
 import { dashboardKeys, fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { fetchSecretReferences, secretKeys } from "@app/hooks/api/secrets/queries";
 
 import {
@@ -51,7 +52,6 @@ interface CommitFormProps {
   onReviewOpenChange?: (isOpen: boolean) => void;
 }
 
-/* eslint-disable react/no-unused-prop-types */
 type RenderResourceProps = {
   onDiscard: () => void;
   change: PendingChange;
@@ -61,7 +61,6 @@ type RenderResourceProps = {
   isLoadingOldValue?: boolean;
   isLoadingNewValue?: boolean;
 };
-/* eslint-enable react/no-unused-prop-types */
 
 const RenderSecretChanges = ({
   onDiscard,
@@ -472,7 +471,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   isReviewOpen: externalIsReviewOpen,
   onReviewOpenChange
 }) => {
-  const { isBatchMode, pendingChanges, totalChangesCount } = useBatchMode();
+  const { pendingChanges, totalChangesCount } = useBatchMode();
+  const isSingleChange = totalChangesCount === 1;
+  const saveLabel = isSingleChange ? "Save Change" : `Commit ${totalChangesCount} Changes`;
 
   const [internalIsModalOpen, setInternalIsModalOpen] = useState(false);
   const isModalOpen = externalIsReviewOpen ?? internalIsModalOpen;
@@ -537,10 +538,6 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     setLayoutContainer(document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]'));
   }, []);
 
-  if (!isBatchMode) {
-    return null;
-  }
-
   const handleCommit = async () => {
     if (isBusy) return;
     setIsSubmitting(true);
@@ -553,6 +550,8 @@ export const CommitForm: React.FC<CommitFormProps> = ({
       });
       setIsModalOpen(false);
       setCommitMessage("");
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
     } finally {
       setIsSubmitting(false);
     }
@@ -586,13 +585,13 @@ export const CommitForm: React.FC<CommitFormProps> = ({
           isPending={isBusy}
         >
           <SaveIcon />
-          Save and Commit
+          {saveLabel}
         </Button>
       </SelectedActionBar>
 
       {/* Review Sheet */}
       <Sheet open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <SheetContent className="w-full gap-y-0 sm:max-w-8xl">
+        <SheetContent className="w-full gap-y-0 sm:max-w-2xl md:max-w-8xl">
           <SheetHeader className="border-b">
             <SheetTitle className="flex items-center gap-2">
               Review Changes
@@ -602,7 +601,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </Badge>
             </SheetTitle>
             <SheetDescription>
-              Write a commit message and review the changes you&apos;re about to commit.
+              {isSingleChange
+                ? "Review the change you're about to save."
+                : "Write a commit message and review the changes you're about to commit."}
             </SheetDescription>
           </SheetHeader>
 
@@ -660,15 +661,18 @@ export const CommitForm: React.FC<CommitFormProps> = ({
 
           <SheetFooter className="border-t border-border">
             <div className="flex w-full flex-col gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium">Commit Message</label>
-                <Input
-                  value={commitMessage}
-                  onChange={(e) => setCommitMessage(e.target.value)}
-                  placeholder="Describe your changes..."
-                  autoFocus
-                />
-              </div>
+              {!isSingleChange && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Commit Message</label>
+                  <Input
+                    value={commitMessage}
+                    onChange={(e) => setCommitMessage(e.target.value)}
+                    placeholder="Describe your changes..."
+                    maxLength={255}
+                    autoFocus
+                  />
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setIsModalOpen(false)} isDisabled={isBusy}>
                   Cancel
@@ -680,7 +684,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                   isDisabled={isBusy}
                 >
                   <SaveIcon />
-                  {isBusy ? "Committing..." : "Save and Commit"}
+                  {saveLabel}
                 </Button>
               </div>
             </div>

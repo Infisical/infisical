@@ -15,7 +15,7 @@ export const ReferenceHighlights = ({
   overlayRef
 }: {
   value: string;
-  overlayRef: RefObject<HTMLDivElement>;
+  overlayRef: RefObject<HTMLDivElement | null>;
 }) => {
   const missingKeys = useMissingVariableKeys();
 

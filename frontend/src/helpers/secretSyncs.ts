@@ -4,9 +4,13 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { CloudflarePagesVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-pages-sync";
 import { CloudflareSecretsStoreScope } from "@app/hooks/api/secretSyncs/types/cloudflare-secrets-store-sync";
+import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
+import { GitHubSyncSecretType } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 export const SECRET_SYNC_MAP: Record<
@@ -35,7 +39,7 @@ export const SECRET_SYNC_MAP: Record<
     name: "GitHub",
     image: "GitHub.png",
     category: "CI/CD",
-    description: "Repository or organization-level secrets."
+    description: "Actions, Dependabot, or Codespaces secrets for a repository or organization."
   },
   [SecretSync.GCPSecretManager]: {
     name: "GCP Secret Manager",
@@ -260,7 +264,7 @@ export const SECRET_SYNC_MAP: Record<
     description: "Secrets in another Infisical instance."
   },
   [SecretSync.OVH]: {
-    name: "OVH Cloud",
+    name: "OVHcloud",
     image: "OVH.png",
     category: "CLOUD",
     description: "Secret vault on OVHcloud."
@@ -331,6 +335,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Keeper.png",
     category: "PASSWORD MANAGER",
     description: "Login records in a Keeper Password Manager shared folder."
+  },
+  [SecretSync.Jenkins]: {
+    name: "Jenkins",
+    image: "Jenkins.png",
+    category: "CI/CD",
+    description: "Secret text credentials in Jenkins global or folder stores."
   }
 };
 
@@ -393,7 +403,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Cloud66]: AppConnection.Cloud66,
   [SecretSync.Spacelift]: AppConnection.Spacelift,
   [SecretSync.Daytona]: AppConnection.Daytona,
-  [SecretSync.Keeper]: AppConnection.Keeper
+  [SecretSync.Keeper]: AppConnection.Keeper,
+  [SecretSync.Jenkins]: AppConnection.Jenkins
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
@@ -456,6 +467,31 @@ export const HUMANITEC_SYNC_SCOPES: Record<
   }
 };
 
+export const GITHUB_SYNC_SECRET_TYPES: Record<
+  GitHubSyncSecretType,
+  { name: string; description: string }
+> = {
+  [GitHubSyncSecretType.Actions]: {
+    name: "Actions",
+    description:
+      "Secrets available to GitHub Actions workflows. Supports organization, repository, and repository environment scopes."
+  },
+  [GitHubSyncSecretType.Dependabot]: {
+    name: "Dependabot",
+    description:
+      "Secrets available to Dependabot, such as private registry credentials. Supports organization and repository scopes."
+  },
+  [GitHubSyncSecretType.Codespaces]: {
+    name: "Codespaces",
+    description:
+      "Secrets available in GitHub Codespaces. Supports organization and repository scopes. Not available on GitHub Enterprise Server."
+  }
+};
+
+// Responses from before secretType existed omit it, and those syncs are Actions syncs
+export const getGitHubSyncSecretTypeName = (secretType?: GitHubSyncSecretType) =>
+  GITHUB_SYNC_SECRET_TYPES[secretType ?? GitHubSyncSecretType.Actions].name;
+
 export const GCP_SYNC_SCOPES: Record<GcpSyncScope, { name: string; description: string }> = {
   [GcpSyncScope.Global]: {
     name: "Global",
@@ -482,4 +518,23 @@ export const CLOUDFLARE_SECRETS_STORE_SCOPE_LABELS: Record<CloudflareSecretsStor
   [CloudflareSecretsStoreScope.Workers]: "Workers",
   [CloudflareSecretsStoreScope.AiGateway]: "AI Gateway",
   [CloudflareSecretsStoreScope.Containers]: "Containers"
+};
+
+export const CLOUDFLARE_PAGES_VARIABLE_TYPE_LABELS: Record<CloudflarePagesVariableType, string> = {
+  [CloudflarePagesVariableType.Secret]: "Secret",
+  [CloudflarePagesVariableType.Text]: "Text"
+};
+
+export const CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS: Record<
+  CloudflareWorkersVariableType,
+  string
+> = {
+  [CloudflareWorkersVariableType.Secret]: "Secret",
+  [CloudflareWorkersVariableType.Text]: "Text",
+  [CloudflareWorkersVariableType.Json]: "JSON"
+};
+
+export const JENKINS_SYNC_SCOPE_LABELS: Record<JenkinsSyncScope, string> = {
+  [JenkinsSyncScope.Global]: "Global",
+  [JenkinsSyncScope.Folder]: "Folder"
 };

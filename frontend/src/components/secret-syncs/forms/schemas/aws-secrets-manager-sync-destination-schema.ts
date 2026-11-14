@@ -6,7 +6,11 @@ import { AwsSecretsManagerSyncMappingBehavior } from "@app/hooks/api/secretSyncs
 
 export const AwsSecretsManagerSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
-    keyId: z.string().optional(),
+    keyId: z
+      .string()
+      .max(256, "KMS key must be 256 characters or fewer")
+      .regex(/^[a-zA-Z0-9:/_-]+$/, "KMS key can only contain letters, numbers, and : / _ -")
+      .optional(),
     tags: z
       .object({
         key: z

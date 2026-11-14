@@ -1,4 +1,5 @@
-/* eslint-disable no-await-in-loop, no-continue */
+/* eslint-disable no-await-in-loop */
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -7,13 +8,10 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
-import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -26,16 +24,17 @@ import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
+import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
-import { CaType } from "./certificate-authority-enums";
-import { getCaSigner } from "./certificate-authority-fns";
+import { CaCrlRegenerationTrigger, CaType } from "./certificate-authority-enums";
+import { rebuildCaCrl } from "./certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
-import { TInternalCertificateAuthorityDALFactory } from "./internal/internal-certificate-authority-dal";
 import { TOrderCertificateForSubscriberDTO } from "./internal/internal-certificate-authority-types";
 
 type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
@@ -55,17 +54,20 @@ type TCertificateAuthorityQueueFactoryDep = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "find">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
 
+const CA_CRL_REBUILD_BATCH_SIZE = 100;
+
 export const certificateAuthorityQueueFactory = ({
   certificateAuthorityCrlDAL,
   certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
@@ -81,10 +83,10 @@ export const certificateAuthorityQueueFactory = ({
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  internalCertificateAuthorityDAL,
   caKeySourceService,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  auditLogService
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -121,8 +123,7 @@ export const certificateAuthorityQueueFactory = ({
 
   const startCaCrlRebuildJob = () => {
     const appCfg = getConfig();
-    // Daily at midnight UTC; only CRLs expiring before next run are rebuilt
-    const cronPattern = appCfg.NODE_ENV === "development" ? "*/5 * * * *" : "0 0 * * *";
+    const cronPattern = appCfg.NODE_ENV === "development" ? "*/5 * * * *" : "0 * * * *";
 
     cronJob.register({
       name: CronJobName.CaCrlRotation,
@@ -130,89 +131,43 @@ export const certificateAuthorityQueueFactory = ({
       runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
-        logger.info(`${QueueJobs.CaCrlRotation}: starting CRL rebuild for all internal CAs`);
+        logger.info(`${QueueJobs.CaCrlRotation}: starting rebuild of CRLs due for renewal`);
 
-        const CRL_REBUILD_BATCH_SIZE = 100;
-        let offset = 0;
+        let afterId: string | undefined;
         let totalRebuilt = 0;
-
-        // Rebuild any CRL whose validity expires before the next daily run (~24h from now)
-        const nextRunAt = new Date();
-        nextRunAt.setDate(nextRunAt.getDate() + 1);
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
-          const internalCas = await internalCertificateAuthorityDAL.find({}, { offset, limit: CRL_REBUILD_BATCH_SIZE });
+          const dueCrls = await certificateAuthorityCrlDAL.findDueForRebuild({
+            afterId,
+            limit: CA_CRL_REBUILD_BATCH_SIZE
+          });
+          if (dueCrls.length === 0) break;
 
-          if (internalCas.length === 0) break;
-
-          for (const internalCa of internalCas) {
+          for (const dueCrl of dueCrls) {
             try {
-              const caCrls = await certificateAuthorityCrlDAL.find(
-                { caId: internalCa.caId },
-                { sort: [["updatedAt", "desc"]], limit: 1 }
-              );
-              if (caCrls.length === 0) continue;
-
-              // Skip if CRL was recently rebuilt and won't expire before next run
-              const crlExpiresAt = new Date(caCrls[0].updatedAt);
-              crlExpiresAt.setDate(crlExpiresAt.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
-              if (crlExpiresAt > nextRunAt) continue;
-
-              const ca = await certificateAuthorityDAL.findById(internalCa.caId);
-
-              const keyId = await getProjectKmsCertificateKeyId({
-                projectId: ca.projectId,
-                projectDAL,
-                kmsService
-              });
-
-              const { signer } = await getCaSigner({
-                caId: internalCa.caId,
+              await rebuildCaCrl({
+                caId: dueCrl.caId,
+                trigger: CaCrlRegenerationTrigger.Scheduled,
+                auditLogService,
                 certificateAuthorityDAL,
+                certificateAuthorityCrlDAL,
+                certificateAuthorityCertDAL,
                 certificateAuthoritySecretDAL,
                 projectDAL,
+                certificateDAL,
                 kmsService,
-                caKeySourceService
+                caKeySourceService,
+                keyStore
               });
-
-              const revokedCerts = await certificateDAL.find({
-                caId: internalCa.caId,
-                status: CertStatus.REVOKED
-              });
-
-              const thisUpdate = new Date();
-              const nextUpdate = new Date(thisUpdate);
-              nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
-
-              const crl = await signer.createCrl({
-                issuer: internalCa.dn,
-                thisUpdate,
-                nextUpdate,
-                entries: revokedCerts.map((revokedCert) => ({
-                  serialNumber: revokedCert.serialNumber,
-                  revocationDate: new Date(revokedCert.revokedAt as Date),
-                  reason: revokedCert.revocationReason as number
-                }))
-              });
-
-              const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: keyId });
-              const { cipherTextBlob: encryptedCrl } = await kmsEncryptor({
-                plainText: Buffer.from(new Uint8Array(crl.rawData))
-              });
-
-              await certificateAuthorityCrlDAL.updateEncryptedCrlAndBumpUpdatedAt(
-                { caId: internalCa.caId },
-                { encryptedCrl }
-              );
               totalRebuilt += 1;
             } catch (err) {
-              logger.error(err, `${QueueJobs.CaCrlRotation}: failed to rebuild CRL [caId=${internalCa.caId}]`);
+              logger.error(err, `${QueueJobs.CaCrlRotation}: failed to rebuild CRL [caId=${dueCrl.caId}]`);
             }
           }
 
-          if (internalCas.length < CRL_REBUILD_BATCH_SIZE) break;
-          offset += CRL_REBUILD_BATCH_SIZE;
+          if (dueCrls.length < CA_CRL_REBUILD_BATCH_SIZE) break;
+          afterId = dueCrls[dueCrls.length - 1].id;
         }
 
         logger.info(`${QueueJobs.CaCrlRotation}: CRL rebuild completed, rebuilt ${totalRebuilt} CRLs`);

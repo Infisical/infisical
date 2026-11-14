@@ -1,5 +1,11 @@
 import { useCallback } from "react";
-import { useQueries, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions
+} from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -16,11 +22,11 @@ import {
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
   TFolderMoveDestinationCheck,
-  TGetAccessibleSecretsDTO,
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretKeyExistsDTO,
   TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
@@ -31,7 +37,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { groupBy, unique } from "@app/lib/fn/array";
 
-import { SecretV3Raw } from "../types";
+import { SecretType, SecretV3Raw } from "../types";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -74,16 +80,16 @@ export const dashboardKeys = {
     ] as const,
   searchSecretsByMetadata: ({ projectId, ...params }: TSearchSecretsByMetadataDTO) =>
     [...dashboardKeys.all(), "secrets-by-metadata", projectId, params] as const,
-  getAccessibleSecrets: ({
+  getSecretKeyExists: ({
     projectId,
     secretPath,
-    environment,
-    filterByAction
-  }: TGetAccessibleSecretsDTO) =>
+    environments,
+    secretKey
+  }: TGetSecretKeyExistsDTO) =>
     [
-      ...dashboardKeys.all(),
-      "accessible-secrets",
-      { projectId, secretPath, environment, filterByAction }
+      ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
+      "secret-key-exists",
+      { environments, secretKey }
     ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
   getSecretValue: ({
@@ -125,26 +131,44 @@ export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?
   return data;
 };
 
+export const secretKeyExistsQueryOptions = (params: TGetSecretKeyExistsDTO) =>
+  queryOptions({
+    queryKey: dashboardKeys.getSecretKeyExists(params),
+    queryFn: async () => {
+      const { environments, ...rest } = params;
+      const { data } = await apiRequest.get<{ existingEnvironments: string[] }>(
+        "/api/v1/dashboard/secrets/key-exists",
+        { params: { ...rest, environments: encodeURIComponent(environments.join(",")) } }
+      );
+      return data.existingEnvironments;
+    },
+    staleTime: 60 * 1000,
+    retry: false
+  });
+
+export const useGetSecretKeyExistingEnvironments = (
+  params: TGetSecretKeyExistsDTO,
+  { enabled = true }: { enabled?: boolean } = {}
+) =>
+  useQuery({
+    ...secretKeyExistsQueryOptions(params),
+    enabled: enabled && Boolean(params.secretKey) && params.environments.length > 0
+  });
+
+const getEnabledTagSlugs = (tags: Record<string, boolean>) =>
+  Object.entries(tags)
+    .filter(([, enabled]) => enabled)
+    .map(([slug]) => slug);
+
+// The search endpoints take POST so the search term travels in the body: users paste secret values
+// into the search box, and URLs end up in proxy and access logs.
 export const fetchProjectSecretsOverview = async ({
-  environments,
   tags,
   ...params
 }: TGetDashboardProjectSecretsOverviewDTO) => {
-  const { data } = await apiRequest.get<DashboardProjectSecretsOverviewResponse>(
+  const { data } = await apiRequest.post<DashboardProjectSecretsOverviewResponse>(
     "/api/v1/dashboard/secrets-overview",
-    {
-      params: {
-        ...params,
-        environments: encodeURIComponent(environments.join(",")),
-        tags: encodeURIComponent(
-          Object.entries(tags ?? {})
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
-      }
-    }
+    { ...params, tags: getEnabledTagSlugs(tags ?? {}) }
   );
 
   return data;
@@ -154,40 +178,61 @@ export const fetchProjectSecretsDetails = async ({
   tags,
   ...params
 }: TGetDashboardProjectSecretsDetailsDTO) => {
-  const { data } = await apiRequest.get<DashboardProjectSecretsDetailsResponse>(
+  const { data } = await apiRequest.post<DashboardProjectSecretsDetailsResponse>(
     "/api/v1/dashboard/secrets-details",
-    {
-      params: {
-        ...params,
-        tags: encodeURIComponent(
-          Object.entries(tags)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
-      }
-    }
+    { ...params, tags: getEnabledTagSlugs(tags) }
   );
 
   return data;
 };
 
+// Keys travel in the querystring and Node rejects a request whose request line and headers exceed
+// 16KB, so a long key list is split across requests that each stay well under it. The joined keys
+// are encoded here and again by axios, so each key is measured in that double-encoded form.
+const SECRETS_BY_KEYS_MAX_ENCODED_LENGTH = 6_000;
+
+const chunkKeysByEncodedLength = (keys: string[]) => {
+  const chunks: string[][] = [];
+  let chunk: string[] = [];
+  let chunkLength = 0;
+
+  keys.forEach((key) => {
+    const keyLength = encodeURIComponent(encodeURIComponent(`${key},`)).length;
+    if (chunk.length && chunkLength + keyLength > SECRETS_BY_KEYS_MAX_ENCODED_LENGTH) {
+      chunks.push(chunk);
+      chunk = [];
+      chunkLength = 0;
+    }
+    chunk.push(key);
+    chunkLength += keyLength;
+  });
+
+  if (chunk.length) chunks.push(chunk);
+
+  return chunks;
+};
+
 export const fetchDashboardProjectSecretsByKeys = async ({
   keys,
   ...params
-}: TGetDashboardProjectSecretsByKeys) => {
-  const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
-    "/api/v1/dashboard/secrets-by-keys",
-    {
-      params: {
-        ...params,
-        keys: encodeURIComponent(keys.join(","))
-      }
-    }
+}: TGetDashboardProjectSecretsByKeys): Promise<DashboardProjectSecretsByKeys> => {
+  const responses = await Promise.all(
+    chunkKeysByEncodedLength(keys).map(async (keyChunk) => {
+      const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
+        "/api/v1/dashboard/secrets-by-keys",
+        {
+          params: {
+            ...params,
+            keys: encodeURIComponent(keyChunk.join(","))
+          }
+        }
+      );
+
+      return data;
+    })
   );
 
-  return data;
+  return { secrets: responses.flatMap(({ secrets }) => secrets) };
 };
 
 const mergePersonalRotationSecrets = (secrets: (SecretV3Raw | null)[]) => {
@@ -428,45 +473,15 @@ export const useGetProjectSecretsDetails = (
 };
 
 export const fetchProjectSecretsQuickSearch = async ({
-  environments,
   tags,
   ...params
 }: TGetDashboardProjectSecretsQuickSearchDTO) => {
-  const { data } = await apiRequest.get<TDashboardProjectSecretsQuickSearchResponse>(
+  const { data } = await apiRequest.post<TDashboardProjectSecretsQuickSearchResponse>(
     "/api/v1/dashboard/secrets-deep-search",
-    {
-      params: {
-        ...params,
-        environments: encodeURIComponent(environments.join(",")),
-        tags: encodeURIComponent(
-          Object.entries(tags)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
-      }
-    }
+    { ...params, tags: getEnabledTagSlugs(tags) }
   );
 
   return data;
-};
-
-const fetchAccessibleSecrets = async ({
-  projectId,
-  secretPath,
-  environment,
-  filterByAction,
-  recursive = false
-}: TGetAccessibleSecretsDTO) => {
-  const { data } = await apiRequest.get<{ secrets: SecretV3Raw[] }>(
-    "/api/v1/dashboard/accessible-secrets",
-    {
-      params: { projectId, secretPath, environment, filterByAction, recursive }
-    }
-  );
-
-  return data.secrets;
 };
 
 export const useGetProjectSecretsQuickSearch = (
@@ -545,34 +560,19 @@ export const useGetProjectSecretsQuickSearch = (
 };
 
 export const fetchSearchSecretsByMetadata = async ({
-  projectId,
   environments,
   secretPath,
-  operator,
-  filters,
-  tags
+  tags,
+  ...params
 }: TSearchSecretsByMetadataDTO) => {
-  // /secrets-by-metadata parses nested `filters[<n>][key|value|operator]` params (qs syntax) from the
-  // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
-  const params = new URLSearchParams();
-  params.append("projectId", projectId);
-  if (environments?.length) params.append("environments", environments.join(","));
-  if (secretPath) params.append("secretPath", secretPath);
-  params.append("operator", operator);
-  filters.forEach((filter, index) => {
-    params.append(`filters[${index}][key]`, filter.key);
-    params.append(`filters[${index}][value]`, filter.value);
-    params.append(`filters[${index}][operator]`, filter.operator);
-  });
-
-  // tags are sent as a comma-separated list of enabled slugs (same convention as the deep-search endpoint).
-  const enabledTags = Object.entries(tags)
-    .filter(([, enabled]) => enabled)
-    .map(([slug]) => slug);
-  if (enabledTags.length) params.append("tags", enabledTags.join(","));
-
-  const { data } = await apiRequest.get<TSearchSecretsByMetadataResponse>(
-    `/api/v1/dashboard/secrets-by-metadata?${params.toString()}`
+  const { data } = await apiRequest.post<TSearchSecretsByMetadataResponse>(
+    "/api/v1/dashboard/secrets-by-metadata",
+    {
+      ...params,
+      environments: environments?.length ? environments : undefined,
+      secretPath: secretPath || undefined,
+      tags: getEnabledTagSlugs(tags)
+    }
   );
 
   return data;
@@ -614,38 +614,6 @@ export const useSearchSecretsByMetadata = (
   });
 };
 
-export const useGetAccessibleSecrets = ({
-  projectId,
-  secretPath,
-  environment,
-  filterByAction,
-  options,
-  recursive = false
-}: TGetAccessibleSecretsDTO & {
-  options?: Omit<
-    UseQueryOptions<
-      SecretV3Raw[],
-      unknown,
-      SecretV3Raw[],
-      ReturnType<typeof dashboardKeys.getAccessibleSecrets>
-    >,
-    "queryKey" | "queryFn"
-  >;
-}) => {
-  return useQuery({
-    ...options,
-    queryKey: dashboardKeys.getAccessibleSecrets({
-      projectId,
-      secretPath,
-      environment,
-      filterByAction,
-      recursive
-    }),
-    queryFn: () =>
-      fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction, recursive })
-  });
-};
-
 export const fetchSecretValue = async (params: TGetSecretValueDTO) => {
   const { data } = await apiRequest.get<DashboardSecretValue>("/api/v1/dashboard/secret-value", {
     params
@@ -653,6 +621,96 @@ export const fetchSecretValue = async (params: TGetSecretValueDTO) => {
 
   return data;
 };
+
+type TPendingSecretValue = {
+  params: TGetSecretValueDTO;
+  resolve: (value: DashboardSecretValue) => void;
+  reject: (reason: unknown) => void;
+};
+
+// Every visible overview row asks for its own value, so revealing a page, searching or expanding an
+// import would send one request per row. Requests made in the same tick are grouped by folder and
+// sent as one secrets-by-keys call instead.
+const pendingSecretValues = new Map<string, TPendingSecretValue[]>();
+
+const fetchSecretValuesIndividually = (requests: TPendingSecretValue[]) => {
+  requests.forEach(({ params, resolve, reject }) => {
+    fetchSecretValue(params).then(resolve, reject);
+  });
+};
+
+const fetchSecretValueGroup = async (requests: TPendingSecretValue[]) => {
+  if (requests.length === 1) {
+    fetchSecretValuesIndividually(requests);
+    return;
+  }
+
+  const { projectId, environment, secretPath } = requests[0].params;
+  let secrets: SecretV3Raw[];
+  try {
+    ({ secrets } = await fetchDashboardProjectSecretsByKeys({
+      projectId,
+      environment,
+      secretPath,
+      keys: [...new Set(requests.map(({ params }) => params.secretKey))],
+      viewSecretValue: true,
+      hideUnreadableValues: true
+    }));
+  } catch (error) {
+    // unreadable values come back masked, so a refusal here is about the request as a whole; each
+    // value is fetched on its own so every row still gets its own result
+    if (error instanceof AxiosError && error.status === 403) {
+      fetchSecretValuesIndividually(requests);
+    } else {
+      requests.forEach(({ reject }) => reject(error));
+    }
+    return;
+  }
+
+  const secretsByTypeAndKey = new Map(
+    secrets.map((secret) => [`${secret.type}:${secret.secretKey}`, secret])
+  );
+  const unresolved: TPendingSecretValue[] = [];
+  requests.forEach((request) => {
+    const { secretKey, isOverride } = request.params;
+    const type = isOverride ? SecretType.Personal : SecretType.Shared;
+    const secret = secretsByTypeAndKey.get(`${type}:${secretKey}`);
+    const value = secret?.secretValue;
+    if (!secret || secret.secretValueHidden || value === undefined) {
+      unresolved.push(request);
+      return;
+    }
+
+    request.resolve(
+      isOverride ? { value: undefined, valueOverride: value } : { value, valueOverride: undefined }
+    );
+  });
+
+  // a value reached through an import of this folder (cross-project imports) only resolves
+  // through /secret-value
+  fetchSecretValuesIndividually(unresolved);
+};
+
+const fetchSecretValueBatched = (params: TGetSecretValueDTO) =>
+  new Promise<DashboardSecretValue>((resolve, reject) => {
+    if (!pendingSecretValues.size) {
+      setTimeout(() => {
+        const groups = [...pendingSecretValues.values()];
+        pendingSecretValues.clear();
+        groups.forEach((requests) => {
+          // anything unexpected must still settle every row, or it would stay loading forever
+          fetchSecretValueGroup(requests).catch((error) =>
+            requests.forEach((request) => request.reject(error))
+          );
+        });
+      });
+    }
+
+    const groupKey = JSON.stringify([params.projectId, params.environment, params.secretPath]);
+    const requests = pendingSecretValues.get(groupKey) ?? [];
+    requests.push({ params, resolve, reject });
+    pendingSecretValues.set(groupKey, requests);
+  });
 
 export const useGetSecretValue = (
   params: TGetSecretValueDTO,
@@ -668,8 +726,14 @@ export const useGetSecretValue = (
 ) => {
   return useQuery({
     queryKey: dashboardKeys.getSecretValue(params),
-    queryFn: async () => fetchSecretValue(params),
+    queryFn: async () => fetchSecretValueBatched(params),
     staleTime: 1000 * 60,
+    retry: (count, error) => {
+      // retrying a throttled request only extends the throttle
+      if (error instanceof AxiosError && error.status === 429) return false;
+
+      return count < 1;
+    },
     ...options
   });
 };

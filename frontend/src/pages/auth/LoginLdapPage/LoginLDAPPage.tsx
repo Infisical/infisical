@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
@@ -7,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { Button, CardContent, CardHeader, CardTitle, IconButton, Input } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -74,13 +74,11 @@ export const LoginLdapPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("login.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("login.og-title") ?? ""} />
-        <meta name="og:description" content={t("login.og-description") ?? ""} />
-      </Helmet>
+      <PageTitle title={t("login.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={t("login.og-title") ?? ""} />
+      <meta name="og:description" content={t("login.og-description") ?? ""} />
       <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
         <AuthPagePanel>
           <CardHeader className="mb-4 gap-4">

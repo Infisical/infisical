@@ -14,6 +14,9 @@ export const Route = createFileRoute(
           to: "/organizations/$orgId/projects/kms/kmip-servers" as const,
           params
         })
+      },
+      {
+        label: "KMIP Server"
       }
     ]
   })

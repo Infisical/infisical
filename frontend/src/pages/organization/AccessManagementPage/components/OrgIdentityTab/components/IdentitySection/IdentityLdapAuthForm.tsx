@@ -19,6 +19,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
@@ -26,7 +27,6 @@ import {
   FieldGroup,
   FieldLabel,
   FieldTitle,
-  FilterableSelect,
   IconButton,
   Input,
   RadioGroup,
@@ -292,9 +292,9 @@ export const IdentityLdapAuthForm = ({
   const urlValue = watch("url");
   const hasUrlChanged = Boolean(
     isUpdate &&
-      scope !== "template" &&
-      data?.url &&
-      normalizeUrl(urlValue) !== normalizeUrl(data.url)
+    scope !== "template" &&
+    data?.url &&
+    normalizeUrl(urlValue) !== normalizeUrl(data.url)
   );
 
   const configurationOptions = useMemo<ConfigurationOption[]>(
@@ -545,20 +545,19 @@ export const IdentityLdapAuthForm = ({
                 render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel htmlFor="ldap-configuration">Configuration</FieldLabel>
-                    <FilterableSelect<ConfigurationOption>
-                      inputId="ldap-configuration"
+                    <Combobox<ConfigurationOption>
+                      id="ldap-configuration"
                       value={selectedConfiguration}
                       options={configurationOptions}
-                      groupBy="group"
+                      getOptionGroup={(option) => option.group}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
+                      searchAriaLabel="Search configurations"
                       isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
-                      onChange={(option) => {
-                        const selectedOption = option as ConfigurationOption | null;
-                        if (!selectedOption) return;
-
+                      isClearable={false}
+                      onValueChange={(selectedOption) => {
                         if (selectedOption.value === "custom") {
                           onChange("custom");
                           setValue("templateId", "");

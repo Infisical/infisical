@@ -1,18 +1,18 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   SheetFooter,
   Skeleton,
@@ -85,6 +85,11 @@ type Props = {
   productLabel: string;
   canGrantPrivileges: boolean;
   onClose: () => void;
+  // Replaces onClose and the redirect to the identity page, for callers that keep the user in their
+  // own flow and close their overlay themselves.
+  onComplete?: (identity: TAssignableIdentity & { role: string }) => void;
+  // For a caller whose overlay must stay open while the form saves.
+  onPendingChange?: (pending: boolean) => void;
 };
 
 type TAssignableIdentity = { id: string; name: string };
@@ -95,6 +100,8 @@ const ProjectIdentityFormContent = ({
   productLabel,
   canGrantPrivileges,
   onClose,
+  onComplete,
+  onPendingChange,
   assignableIdentities
 }: Props & { assignableIdentities: TAssignableIdentity[] }) => {
   const navigate = useNavigate();
@@ -147,11 +154,16 @@ const ProjectIdentityFormContent = ({
 
   const mode = useWatch({ control, name: "mode" });
 
+  useEffect(() => {
+    onPendingChange?.(isSubmitting);
+    return () => onPendingChange?.(false);
+  }, [isSubmitting, onPendingChange]);
+
   const { mutateAsync: createProjectIdentity } = useCreateProjectIdentity();
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();
   const { mutateAsync: createMembership } = useCreateProjectIdentityMembership();
   const { mutateAsync: addPamProductIdentityMember } = useAddPamProductIdentityMember();
-  const { mutateAsync: addAgentVaultMembers } = useAddAgentVaultMembers();
+  const { mutateAsync: addAgentVaultMembers } = useAddAgentVaultMembers(projectId);
   const { mutateAsync: addUniversalAuth } = useAddIdentityUniversalAuth();
   const { mutateAsync: createAdditionalPrivilege } = useCreateIdentityProjectAdditionalPrivilege();
 
@@ -213,7 +225,9 @@ const ProjectIdentityFormContent = ({
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
       }
       if (isAgentVault) {
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(currentOrg.id) });
+        queryClient.invalidateQueries({
+          queryKey: agentVaultKeys.members(currentOrg.id, projectId)
+        });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;
@@ -253,6 +267,18 @@ const ProjectIdentityFormContent = ({
           } machine identity`,
           type: "success"
         });
+      }
+
+      if (onComplete) {
+        onComplete({
+          id: identityId,
+          name:
+            data.mode === CreateProjectIdentityMode.Create
+              ? data.name!.trim()
+              : data.identity!.name,
+          role: data.role.slug
+        });
+        return;
       }
 
       onClose();
@@ -334,10 +360,12 @@ const ProjectIdentityFormContent = ({
                 <Field>
                   <FieldLabel>Machine Identity</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
+                    <Combobox
                       value={value || null}
-                      onChange={(newValue) => onChange(newValue || undefined)}
+                      isClearable={false}
+                      onValueChange={onChange}
                       placeholder="Select machine identity..."
+                      searchAriaLabel="Search machine identities"
                       options={assignableIdentities}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => option.name}
@@ -357,14 +385,17 @@ const ProjectIdentityFormContent = ({
               <Field>
                 <FieldLabel>Role</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
                     value={value}
-                    onChange={onChange}
+                    isClearable={false}
+                    onValueChange={onChange}
                     options={roles}
                     placeholder="Select role..."
+                    searchAriaLabel="Search roles"
                     getOptionValue={(option) => option.slug}
+                    getOptionKeywords={(option) => [option.slug]}
                     getOptionLabel={(option) => option.name}
-                    components={{ Option: RoleOption }}
+                    renderOption={(option) => <RoleOptionContent role={option} />}
                     isError={Boolean(error)}
                   />
                 </FieldContent>

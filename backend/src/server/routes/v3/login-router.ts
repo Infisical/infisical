@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -76,9 +76,11 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         ipAddress: req.realIp,
         userId: req.auth.userId,
         userAuthMethod: req.auth.authMethod,
-        actorOrgId: req.auth.orgId,
+        actorRootOrgId: req.auth.rootOrgId,
+        issuingRootOrgId: req.auth.token.issuingRootOrgId,
         isMfaVerified: req.auth.isMfaVerified,
-        mfaMethod: req.auth.mfaMethod
+        mfaMethod: req.auth.mfaMethod,
+        idpMfaOrgId: req.auth.idpMfaOrgId
       });
 
       if (tokens.isMfaEnabled) {
@@ -162,7 +164,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const userAgent = req.headers["user-agent"];
-      if (!userAgent) throw new Error("user agent header is required");
+      if (!userAgent) throw new BadRequestError({ message: "User agent header is required" });
 
       const { tokens, user } = await server.services.login.login({
         email: req.body.email,
@@ -237,7 +239,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const userAgent = req.headers["user-agent"];
-      if (!userAgent) throw new Error("user agent header is required");
+      if (!userAgent) throw new BadRequestError({ message: "User agent header is required" });
 
       const { tokens, user } = await server.services.login.login({
         email: req.body.email,

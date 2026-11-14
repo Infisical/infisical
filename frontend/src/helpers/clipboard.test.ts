@@ -16,8 +16,10 @@ describe("copyToClipboard", () => {
     expect(writeText).toHaveBeenCalledWith("invitation-link");
   });
 
-  it("falls back to the legacy copy command when Clipboard API access fails", async () => {
-    const writeText = vi.fn().mockRejectedValue(new Error("Not allowed"));
+  it.each([
+    { clipboard: undefined },
+    { clipboard: { writeText: vi.fn().mockRejectedValue(new Error("Not allowed")) } }
+  ])("falls back to the legacy copy command: %j", async (navigator) => {
     const textArea = {
       value: "",
       setAttribute: vi.fn(),
@@ -26,7 +28,7 @@ describe("copyToClipboard", () => {
       style: { position: "", opacity: "" }
     };
     const execCommand = vi.fn().mockReturnValue(true);
-    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    vi.stubGlobal("navigator", navigator);
     vi.stubGlobal("document", {
       createElement: vi.fn().mockReturnValue(textArea),
       body: { appendChild: vi.fn() },

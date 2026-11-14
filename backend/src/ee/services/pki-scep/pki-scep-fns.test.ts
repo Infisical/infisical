@@ -47,7 +47,7 @@ describe("decodeAsn1ChallengePasswordValue", () => {
 
   test("accepts an ArrayBuffer as well as a Uint8Array", () => {
     const u8 = derString(UTF8_STRING_TAG, "buffer-pass");
-    const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+    const ab = new Uint8Array(u8).buffer;
     expect(decodeAsn1ChallengePasswordValue(ab)).toBe("buffer-pass");
   });
 
@@ -456,6 +456,19 @@ describe("evaluateScepRenewalAuthorization", () => {
         signerCertSubjectName: new x509.Name("CN=device-01")
       })
     ).toEqual({ authorized: true });
+  });
+
+  test("denies when the signer certificate was deleted", () => {
+    expect(
+      evaluateScepRenewalAuthorization({
+        isValidSigner: true,
+        storedSignerCert: { profileId: PROFILE_ID, deletedAt: new Date() },
+        profileId: PROFILE_ID,
+        csrForwardedToCa: false,
+        csrSubjectName: new x509.Name("CN=device-01"),
+        signerCertSubjectName: new x509.Name("CN=device-01")
+      })
+    ).toEqual({ authorized: false, reason: ScepRenewalDenyReason.SignerDeleted });
   });
 
   test("denies when the signer certificate belongs to another profile", () => {
