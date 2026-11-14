@@ -64,7 +64,15 @@ export const useLocalStorageState = <T>(
     (v: SetStateAction<T>): void => {
       try {
         const nextState =
-          typeof v === "function" ? (v as (prevState: T) => T)(JSON.parse(store || "null")) : v;
+          typeof v === "function"
+            ? (v as (prevState: T) => T)(
+                JSON.parse(
+                  (tabLocal && snapshot.current?.key === key
+                    ? snapshot.current.value
+                    : getLocalStorageItem(key)) || "null"
+                )
+              )
+            : v;
 
         if (nextState === undefined || nextState === null) {
           removeLocalStorageItem(key);
@@ -75,7 +83,7 @@ export const useLocalStorageState = <T>(
         console.warn(e);
       }
     },
-    [key, store]
+    [key, tabLocal]
   );
 
   useEffect(() => {
