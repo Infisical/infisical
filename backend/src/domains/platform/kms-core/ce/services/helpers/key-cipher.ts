@@ -1,4 +1,4 @@
-import { TReadOptions } from "@app/domains/lib/data-access";
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 
 import { DataKey, TCipherPair } from "../../models/data-key";
@@ -13,10 +13,15 @@ type TKeyCipherStores = Pick<TKmsCoreStores, "kmsKeyStore" | "kmsKeyVersionStore
 
 export const notFoundKey = (kmsId: string) => new EntityNotFoundError({ message: `KMS with ID '${kmsId}' not found` });
 
+// A key missing on the replica is read once more on the primary: one created a moment ago (a project's first
+// certificate key, a new CMEK) may not have replicated yet, and callers such as signer jobs treat a miss as final.
 export const requireKey = async (kmsKeyStore: TKmsKeyStore, kmsId: string, options?: TReadOptions): Promise<KmsKey> => {
-  const key = await kmsKeyStore.findById(kmsId, options);
-  if (!key) throw notFoundKey(kmsId);
-  return key;
+  const found = await kmsKeyStore.findById(kmsId, options);
+  if (found) return found;
+  if (options?.readFrom === ReadFrom.Primary) throw notFoundKey(kmsId);
+  const onPrimary = await kmsKeyStore.findById(kmsId, { readFrom: ReadFrom.Primary });
+  if (!onPrimary) throw notFoundKey(kmsId);
+  return onPrimary;
 };
 
 export const requireExternalKms = (externalKms: TExternalKmsHook | undefined): TExternalKmsHook => {
