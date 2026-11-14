@@ -120,4 +120,33 @@ describe("CloudflarePagesSyncFns", () => {
       expect.anything()
     );
   });
+
+  it("handles uninitialized deployment_configs for environment without throwing TypeError", async () => {
+    get.mockResolvedValue({
+      data: {
+        result: {
+          deployment_configs: {}
+        }
+      }
+    });
+
+    await CloudflarePagesSyncFns.syncSecrets(
+      syncWith(CloudflarePagesVariableType.Text),
+      payloadOf({ API_URL: "https://api.example.com" })
+    );
+
+    expect(patch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/pages\/projects\/my-site$/),
+      {
+        deployment_configs: {
+          production: {
+            env_vars: {
+              API_URL: { type: "plain_text", value: "https://api.example.com" }
+            }
+          }
+        }
+      },
+      expect.anything()
+    );
+  });
 });
