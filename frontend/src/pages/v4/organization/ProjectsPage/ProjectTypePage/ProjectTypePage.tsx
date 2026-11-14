@@ -36,6 +36,7 @@ import {
 } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
+import { Halftone } from "@infisical/cipher/ui/halftone";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -272,11 +273,13 @@ const FavoriteButton = ({
 const ProjectCard = ({
   orgId,
   project,
-  favorite
+  favorite,
+  isFavorite
 }: {
   orgId: string;
   project: Project;
   favorite: ReactNode;
+  isFavorite: boolean;
 }) => {
   const environmentCount = project.environments?.length ?? 0;
   return (
@@ -289,6 +292,13 @@ const ProjectCard = ({
         </CardLink>
       }
       action={favorite}
+      backdrop={
+        isFavorite ? (
+          <Halftone reach={280} depth={2} intensity={1.35} seed={project.type} />
+        ) : (
+          <Halftone reach={200} depth={1.4} seed={project.type} />
+        )
+      }
       footer={
         <Inline gap={16} justify="between">
           {project.type !== ProjectType.AgentVault && (
@@ -479,6 +489,7 @@ const MyProjects = ({
               orgId={orgId}
               project={project}
               favorite={favorite(project)}
+              isFavorite={isFavorite(project)}
             />
           ))}
         </Grid>

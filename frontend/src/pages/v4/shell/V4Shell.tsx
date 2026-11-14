@@ -23,6 +23,7 @@ import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
 import { resolveShellLocation, type ShellLocation } from "./location";
 import {
+  hueScopeOf,
   orgSections,
   products,
   productHome,
@@ -292,7 +293,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
         help={chrome.help}
         announcements={chrome.announcements}
       />
-      <AppInset>
+      <AppInset {...hueScopeOf(product)}>
         <PageGutter className={styles.content}>{content}</PageGutter>
       </AppInset>
       {chrome.dialog}
