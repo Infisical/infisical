@@ -5,7 +5,7 @@ import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 export const useOrgConnectionCreation = <TOption,>(
-  app: AppConnection,
+  app: AppConnection | undefined,
   onCreated: (connection: TAppConnection) => void
 ) => {
   const { permission } = useOrgPermission();

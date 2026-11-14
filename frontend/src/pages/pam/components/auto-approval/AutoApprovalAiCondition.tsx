@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, Combobox, TextArea } from "@app/components/v3";
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   approvalPolicyQuery,
   TAutoApprovalAiContextConnection,
@@ -43,9 +42,9 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
   );
   const hasUnavailable = selected.some((connection) => !connection.app);
 
-  // Jira is the only app with AI lookups so far; the picker offers to create one inline
+  // Inline creation opens one app's form, so it's offered only while a single app has AI lookups
   const creation = useOrgConnectionCreation<TAutoApprovalAiContextConnection>(
-    AppConnection.Jira,
+    ai.contextApps.length === 1 ? ai.contextApps[0] : undefined,
     (connection) => {
       setCreated((previous) => [
         ...previous,
