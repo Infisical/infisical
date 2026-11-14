@@ -62,7 +62,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   time), never to a project created since, and is a 400 when the org has none. The fallback is undocumented, logged
   at info for each use, and goes after 2027-01-04 together with the column.
 - Org admins enter a project they aren't in through Join as Admin, which is audited and emails the project's
-  admins. Nothing joins them silently, and that route is where the `agent_vault_identities` meter moves for them.
+  admins. Nothing joins them silently.
 - Every removal outside Agent Vault's own members route (leaving, the generic project membership routes, a group's
   removal, org exit) clears personal values through `applicationMembershipCleanupService`, which deletes the
   actor's grants and then runs `clearPersonalValuesInProjects`: it looks up the projects where these actors saved a
@@ -84,8 +84,26 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   Deliberate: the product brokers credentials, it is not an egress firewall, and under service-hosts the
   quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
   product owner; service-hosts is documented as the hardening step.
-- Wherever code branches on `ProjectType.PAM` for metering or roles, check whether Agent Vault needs the same:
-  `AgentVaultIdentities` metering emits, the admin-or-member predefined roles filter, `AuditLogStreamProduct`.
+- Wherever code branches on `ProjectType.PAM` for roles, check whether Agent Vault needs the same: the
+  admin-or-member predefined roles filter, `AuditLogStreamProduct`. Agent Vault has no identity meter; it bills
+  per brokered request (see Billing).
+
+## Billing
+
+Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, the access rule and usage.
+
+- **Gate only brokering**: the proxy's per-poll `resolveSession` and `refreshCredential` call
+  `agentVaultAccessService.assertCanBroker` (after the session check, so a refusal says nothing about a token that
+  isn't the caller's). On Infisical Cloud it refuses an org without Agent Vault on its plan once the org has used its
+  free requests for the month. Minting sessions, creating proxies, rotating tokens, bootstrap and heartbeat stay
+  open so the proxy keeps running and resumes by itself. Everything else, reads, deletes and revokes included, never
+  checks the plan. This is the one written exception to the license rule in `backend/CODE_QUALITY.md`.
+- **The refusal is a `RuleViolationError` named `AgentVaultFreeLimitReached`.** The CLI keys on that name, so
+  keep it.
+- **Usage arrives from the proxy, never from session stats**: `POST /api/v1/agent-vault/proxy/usage` (proxy token)
+  with `{ reportId, endedAt, brokered }`. It isn't gated, so the last minute before the limit is still counted and
+  reported. A resent report keeps its `reportId` and `endedAt`, which the free count and the License Server dedupe
+  on.
 
 ## Grants and reachability
 

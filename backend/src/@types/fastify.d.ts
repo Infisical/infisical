@@ -3,6 +3,7 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
+import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
@@ -403,6 +404,8 @@ declare module "fastify" {
     agentVaultVariable: TAgentVaultVariableServiceFactory;
     agentVaultPersonalValue: TAgentVaultPersonalValueServiceFactory;
     agentVaultProxy: TAgentVaultProxyServiceFactory;
+    agentVaultAccessService: TAgentVaultAccessService;
+    agentVaultUsageService: TAgentVaultUsageService;
     agentVaultSession: TAgentVaultSessionServiceFactory;
     agentVaultSkill: TAgentVaultSkillServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;

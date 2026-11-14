@@ -59,6 +59,8 @@ const CapabilityUpgradeDialog = ({
   const isAgentVault =
     intent.productName === "Agent Vault" ||
     (intent.featureKey.startsWith("audit_log") && isAgentVaultProjectPath(pathname));
+  // Agent Vault Pro is bought in Billing like any product; only its Enterprise features go through sales.
+  const isAgentVaultSalesLed = isAgentVault && intent.isEnterpriseFeature;
   const eventPropertiesRef = useRef<{
     paywallKey: string;
     paywallText: string;
@@ -98,7 +100,7 @@ const CapabilityUpgradeDialog = ({
       );
     }
 
-    if (isInstance || isAgentVault) {
+    if (isInstance || isAgentVaultSalesLed) {
       window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer");
       return;
     }
@@ -116,7 +118,7 @@ const CapabilityUpgradeDialog = ({
 
   let actionLabel = isSubOrganization ? "Continue to Root Billing" : "View Plans";
   if (isInstance) actionLabel = "Contact Sales";
-  else if (isAgentVault) actionLabel = "Contact Us";
+  else if (isAgentVaultSalesLed) actionLabel = "Contact Us";
   else if (!canReadBilling) actionLabel = "Close";
 
   let billingTitle = "Organization Subscription Required";
@@ -126,10 +128,10 @@ const CapabilityUpgradeDialog = ({
     billingTitle = "Instance License Required";
     billingDescription =
       "This feature is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment.";
-  } else if (isAgentVault) {
-    billingTitle = "Contact Us for Access";
+  } else if (isAgentVaultSalesLed) {
+    billingTitle = "Enterprise Plan Required";
     billingDescription =
-      "Agent Vault plans aren't available for purchase yet. Contact our team to enable this feature for your organization.";
+      "This is on the Agent Vault Enterprise plan. Contact our team to add it to your organization.";
   } else if (!canReadBilling) {
     billingTitle = "Billing Access Required";
     billingDescription =
@@ -155,8 +157,8 @@ const CapabilityUpgradeDialog = ({
   if (isInstance) {
     scopeDescription =
       "Licensed for your entire self-hosted deployment, independently of organization product plans.";
-  } else if (isAgentVault) {
-    scopeDescription = "Agent Vault access is arranged directly with our team.";
+  } else if (isAgentVaultSalesLed) {
+    scopeDescription = "Agent Vault Enterprise is arranged directly with our team.";
   } else if (isSubOrganization) {
     scopeDescription = "Managed by your root organization and shared with its sub-organizations.";
   } else if (isProduct) {
@@ -178,7 +180,7 @@ const CapabilityUpgradeDialog = ({
           variant="org"
           className="w-full"
           onClick={
-            !isInstance && !isAgentVault && !canReadBilling
+            !isInstance && !isAgentVaultSalesLed && !canReadBilling
               ? () => onOpenChange(false)
               : openUpgradeDestination
           }
@@ -219,7 +221,7 @@ const CapabilityUpgradeDialog = ({
           </section>
         </>
       )}
-      {!isInstance && !isAgentVault && visiblePlans.length > 0 && (
+      {!isInstance && !isAgentVaultSalesLed && visiblePlans.length > 0 && (
         <>
           <Separator />
           <section aria-label="Current product plans" className="flex flex-col gap-4">

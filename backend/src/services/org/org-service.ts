@@ -1394,7 +1394,6 @@ export const orgServiceFactory = ({
     // Removing an org member cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, Meter.SecretIdentities);
     usageMeteringService.emit(orgId, Meter.PamIdentities);
-    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMembership;
   };
 
@@ -1448,7 +1447,6 @@ export const orgServiceFactory = ({
     // Removing org members cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, Meter.SecretIdentities);
     usageMeteringService.emit(orgId, Meter.PamIdentities);
-    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
     return deletedMemberships;
   };
 

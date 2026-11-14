@@ -1,6 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -57,6 +58,14 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   ...overrides
 });
 
+const agentVaultAccess = (freeLimitReached = false) => ({
+  assertCanBroker: vi.fn(async () => {
+    if (freeLimitReached) {
+      throw new RuleViolationError({ name: "AgentVaultFreeLimitReached", message: "free limit reached" });
+    }
+  })
+});
+
 const sessionLogConfig = {
   id: "logs-config",
   projectId: PROJECT_ID,
@@ -78,6 +87,7 @@ const setup = (
     onlyOnPrimary = false,
     personalRows = [],
     session = {},
+    freeLimitReached = false,
     proxy = {
       projectId: PROJECT_ID,
       orgId: "org-1",
@@ -92,6 +102,7 @@ const setup = (
     label?: string | null;
     // The session was minted a moment ago and hasn't reached the replica.
     onlyOnPrimary?: boolean;
+    freeLimitReached?: boolean;
     personalRows?: { serviceId: string; field: string; encryptedValue: Buffer; oauthConfig: unknown }[];
     session?: Record<string, unknown>;
     proxy?: {
@@ -171,6 +182,7 @@ const setup = (
     },
     kmsService: { createCipherPairWithDataKey },
     licenseService: new FakeLicenseService(),
+    agentVaultAccessService: agentVaultAccess(freeLimitReached),
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
       refreshServiceToken: refreshServiceToken as never,
@@ -226,6 +238,36 @@ describe("credential refresh", () => {
       refreshed
     );
     expect(refreshServiceToken.mock.calls[0][0].destination).toEqual({ hostPattern: "mcp.linear.app" });
+  });
+});
+
+describe("an org past its free Agent Vault requests", () => {
+  test("resolve refuses with AgentVaultFreeLimitReached and hands out no credential", async () => {
+    const { service, refreshServiceToken, createCipherPairWithDataKey } = setup(async () => refreshed, undefined, [], {
+      freeLimitReached: true
+    });
+    const result = service.resolveSession({
+      proxyId: "proxy-1",
+      orgId: "org-1",
+      sessionToken: "token",
+      hasSessionLogKey: false
+    });
+    await expect(result).rejects.toMatchObject({ name: "AgentVaultFreeLimitReached" });
+    expect(refreshServiceToken).not.toHaveBeenCalled();
+    expect(createCipherPairWithDataKey).not.toHaveBeenCalled();
+  });
+
+  test("credential refresh refuses before refreshing", async () => {
+    const { service, refreshServiceToken } = setup(async () => refreshed, undefined, [], { freeLimitReached: true });
+    const result = service.refreshCredential({ ...refreshArgs, hostPattern: "mcp.linear.app" });
+    await expect(result).rejects.toMatchObject({ name: "AgentVaultFreeLimitReached" });
+    expect(refreshServiceToken).not.toHaveBeenCalled();
+  });
+
+  test("the heartbeat still answers, so the proxy keeps running", async () => {
+    const { service, recordHeartbeat } = setup(async () => refreshed, undefined, [], { freeLimitReached: true });
+    await service.heartbeat({ proxyId: "proxy-1", tokenVersion: 1 });
+    expect(recordHeartbeat).toHaveBeenCalled();
   });
 });
 
@@ -578,6 +620,7 @@ describe("resolve for a session on a user's behalf", () => {
           ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
       },
       licenseService: new FakeLicenseService(),
+      agentVaultAccessService: agentVaultAccess(),
       resourceAuthMethodService: {} as never,
       agentVaultOauthService: {
         refreshServiceToken: vi.fn() as never,

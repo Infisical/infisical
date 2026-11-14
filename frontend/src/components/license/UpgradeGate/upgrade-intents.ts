@@ -1,7 +1,8 @@
 export const BillingProduct = {
   SecretsManagement: "secrets_manager",
   CertificateManagement: "cert_management",
-  Pam: "pam"
+  Pam: "pam",
+  AgentVault: "agent_vault"
 } as const;
 
 export const BillingPlan = {
@@ -42,7 +43,8 @@ export const UpgradeFeature = {
   Pam: "pam",
   PamAccountLimit: "pam-account-limit",
   PamEnterpriseAlerting: "pam-enterprise-alerting",
-  EnterprisePamAccounts: "enterprise-pam-accounts"
+  EnterprisePamAccounts: "enterprise-pam-accounts",
+  AgentVault: "agent-vault"
 } as const;
 
 export type UpgradeIntent = {
@@ -331,6 +333,16 @@ export const PamUpgradeIntent = {
   title: "Open Privileged Access Management",
   description:
     "Privileged Access Management is included with the Pro plan. Review the plans or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const AgentVaultUpgradeIntent = {
+  featureKey: UpgradeFeature.AgentVault,
+  productKey: BillingProduct.AgentVault,
+  planKey: BillingPlan.Pro,
+  upgradeLabel: "Unlock Agent Vault",
+  title: "Add Agent Vault to Your Plan",
+  description:
+    "Agent Vault is on the Pro plan. The first 5,000 requests each month are free, then $1 per 10,000. Add a card to keep brokering past the free requests."
 } satisfies UpgradeIntent;
 
 export const PamAccountLimitUpgradeIntent = {

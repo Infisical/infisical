@@ -133,7 +133,6 @@ export const orgAccessReconcileConsumerFactory = ({
 
         usageMeteringService.emit(orgId, Meter.SecretIdentities);
         usageMeteringService.emit(orgId, Meter.PamIdentities);
-        usageMeteringService.emit(orgId, Meter.AgentVaultIdentities);
       }
     }
   };

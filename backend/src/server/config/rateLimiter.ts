@@ -162,6 +162,17 @@ export const agentVaultBootstrapLimit: RateLimitOptions = {
   }
 };
 
+// One report a minute per proxy, plus room for a backlog it resends after Infisical was unreachable.
+export const agentVaultUsageLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 120,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-usage:${actorId}` : req.realIp;
+  }
+};
+
 export const agentVaultHeartbeatLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
