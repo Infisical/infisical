@@ -1,0 +1,45 @@
+.root {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.chips {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--cipher-space-6);
+  min-width: 0;
+  padding-block: calc(2 * var(--cipher-size-focus-ring));
+  margin-block: calc(-2 * var(--cipher-size-focus-ring));
+  overflow: hidden;
+}
+.chips > *,
+.ruler > * {
+  flex-shrink: 0;
+}
+.ruler {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: flex;
+  width: 0;
+  gap: var(--cipher-space-6);
+  overflow: hidden;
+  visibility: hidden;
+}
+.env {
+  padding-inline-end: var(--cipher-space-6);
+  border-inline-end: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}
+.more {
+  font: inherit;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cipher-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -31,6 +31,7 @@ import type { Project } from "@app/hooks/api/projects/types";
 import { saved } from "../../../access/toast";
 import { AccessRestricted } from "../../../access/ui";
 import { useV4Adapter } from "../../../data/adapters";
+import { FolderChips } from "./folder-chips";
 import { GrantRevocationImpact } from "./grant-revocation-impact";
 import { type ShareSecretsEditData, ShareSecretsSheet } from "./share-secrets-sheet";
 
@@ -141,16 +142,7 @@ const columns: DataTableColumn<ProjectGroup>[] = [
     header: "Shared folders",
     grow: true,
     text: (group) => group.grants.map(folderLabel).join(", "),
-    render: (group) => (
-      <Inline gap={24}>
-        {group.grants.map((grant) => (
-          <Inline key={grant.id} gap={6} wrap={false}>
-            {grant.environmentName}
-            <code>{grant.secretPath}</code>
-          </Inline>
-        ))}
-      </Inline>
-    )
+    render: (group) => <FolderChips grants={group.grants} />
   },
   {
     id: "secrets",
