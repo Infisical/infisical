@@ -25,6 +25,7 @@ import {
   ApprovalRequestStatus,
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
+import { filterApproversByActiveMemberships } from "@app/services/approval-policy/approval-policy-fns";
 import { PolicyBypasser, TApprovalActor, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
 import {
   TApprovalRequestDALFactory,
@@ -85,7 +86,7 @@ type TPamAccessApprovalResourceDep = {
     TApprovalPolicyDALFactory,
     "findStepsByPolicyId" | "findByProjectId" | "findBypassersByPolicyId" | "findById"
   >;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create" | "updateById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findTemplatePoliciesForShare" | "find">;
@@ -1122,12 +1123,7 @@ export const pamAccessApprovalResourceFactory = ({
     if (!folderId || approvers.length === 0) return approvers;
 
     const memberships = await findActiveFolderMemberships(request.projectId, folderId);
-    const activeKeys = new Set([
-      ...memberships.filter((m) => m.actorUserId).map((m) => `${ApproverType.User}:${m.actorUserId}`),
-      ...memberships.filter((m) => m.actorGroupId).map((m) => `${ApproverType.Group}:${m.actorGroupId}`)
-    ]);
-
-    return approvers.filter((approver) => activeKeys.has(`${approver.type}:${approver.id}`));
+    return filterApproversByActiveMemberships(userGroupMembershipDAL, approvers, memberships);
   };
 
   const revokeGrantRow = async (grant: TApprovalRequestGrants, actorId: string, reason: string, tx?: Knex) => {
