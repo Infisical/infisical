@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { webcrypto } from "crypto";
 
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { GatewayTransportError, NotFoundError } from "@app/lib/errors";
 
 import { computeCertFingerprint, parseCertificateDer } from "./pki-discovery-fns";
@@ -147,4 +148,11 @@ test("parseCertificateDer reads subject and issuer fields without escaping", asy
     pathLength: 1
   });
   expect(parseCertificateDer(Buffer.from("not a certificate"))).toBeNull();
+});
+
+test("KMS Core domain errors keep their message", () => {
+  expect(toHostScanErrorMessage(new EntityNotFoundError({ message: "KMS key not found" }), "ctx")).toBe(
+    "KMS key not found"
+  );
+  expect(toHostScanErrorMessage(new RuleViolationError({ message: "Key is disabled" }), "ctx")).toBe("Key is disabled");
 });

@@ -63,8 +63,14 @@ const orgNotFound = (orgId: string) =>
 const projectNotFound = (projectId: string) =>
   new EntityNotFoundError({ message: `Project with ID '${projectId}' not found` });
 
+const onPrimary: TReadOptions = { readFrom: ReadFrom.Primary };
+
+// A row missing on the replica is read once more on the primary: an org or project created a moment ago may not have
+// replicated yet. Only a miss pays for the second read.
 const findOrgKey = async (stores: TKmsCoreStores, orgId: string, options?: TReadOptions): Promise<OrganizationKey> => {
-  const orgKey = await stores.organizationKeyStore.find(orgId, options);
+  const found = await stores.organizationKeyStore.find(orgId, options);
+  const orgKey =
+    found ?? (options?.readFrom === ReadFrom.Primary ? null : await stores.organizationKeyStore.find(orgId, onPrimary));
   if (!orgKey) throw orgNotFound(orgId);
   return orgKey;
 };
@@ -74,18 +80,23 @@ const findProjectKeyIn = async (
   projectId: string,
   options?: TReadOptions
 ): Promise<ProjectKey> => {
-  const projectKey = await stores.projectKeyStore.find(projectId, options);
+  const found = await stores.projectKeyStore.find(projectId, options);
+  const projectKey =
+    found ?? (options?.readFrom === ReadFrom.Primary ? null : await stores.projectKeyStore.find(projectId, onPrimary));
   if (!projectKey) throw projectNotFound(projectId);
   return projectKey;
 };
 
-// Only a writer that takes no lock (a pod of the previous release) can make a claim fail under the frozen locks.
-const assertClaimed = (claimed: boolean, what: string) => {
-  if (!claimed) {
+// A claim fails when another call set the column first: one joined to the same caller transaction (a session does not
+// wait on its own advisory lock) or a writer that takes no lock. The winner is visible on these stores either way, so
+// first use adopts it instead of failing.
+const claimedKeyId = (keyId: string | null, what: string): string => {
+  if (!keyId) {
     throw new StateConflictError({
       message: `The ${what} was set by another request while this one was running. Retry the request.`
     });
   }
+  return keyId;
 };
 
 /**
@@ -355,8 +366,12 @@ export class KmsDataKeyService implements TKmsDataKeyService {
       const kmsKey = KmsKey.createReserved({ orgId, rootKey: this.rootKey });
       await stores.kmsKeyStore.insert(kmsKey);
       orgKey.assignKmsKey(kmsKey.id);
-      assertClaimed(await stores.organizationKeyStore.claimKmsKey(orgKey), "organization's KMS key");
-      return { orgKey, kmsKey };
+      if (await stores.organizationKeyStore.claimKmsKey(orgKey)) return { orgKey, kmsKey };
+
+      await stores.kmsKeyStore.delete(kmsKey.id);
+      const winner = await findOrgKey(stores, orgId);
+      const winnerKeyId = claimedKeyId(winner.currentKmsKeyId, "organization's KMS key");
+      return { orgKey: winner, kmsKey: await requireKey(stores.kmsKeyStore, winnerKeyId) };
     });
   }
 
@@ -371,8 +386,11 @@ export class KmsDataKeyService implements TKmsDataKeyService {
       const fresh = await findOrgKey(stores, orgId);
       if (fresh.hasDataKey()) return fresh.material().encryptedDataKey;
       fresh.assignDataKey(sealed);
-      assertClaimed(await stores.organizationKeyStore.claimDataKey(fresh), "organization's data key");
-      return null;
+      if (await stores.organizationKeyStore.claimDataKey(fresh)) return null;
+
+      const winner = await findOrgKey(stores, orgId);
+      if (!winner.hasDataKey()) claimedKeyId(null, "organization's data key");
+      return winner.material().encryptedDataKey;
     });
     return existing ? this.open(kmsKey, existing) : dataKey;
   }
@@ -416,8 +434,12 @@ export class KmsDataKeyService implements TKmsDataKeyService {
       const kmsKey = KmsKey.createReserved({ orgId, rootKey: this.rootKey });
       await stores.kmsKeyStore.insert(kmsKey);
       fresh.assignKmsKey(kmsKey.id);
-      assertClaimed(await stores.projectKeyStore.claimKmsKey(fresh), "project's KMS key");
-      return { projectKey: fresh, kmsKey };
+      if (await stores.projectKeyStore.claimKmsKey(fresh)) return { projectKey: fresh, kmsKey };
+
+      await stores.kmsKeyStore.delete(kmsKey.id);
+      const winner = await findProjectKeyIn(stores, projectId);
+      const winnerKeyId = claimedKeyId(winner.currentKmsKeyId, "project's KMS key");
+      return { projectKey: winner, kmsKey: await requireKey(stores.kmsKeyStore, winnerKeyId) };
     });
   }
 
@@ -435,15 +457,20 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     const sealed = await sealDataKey(this.stores, this.rootKey, this.externalKms, kmsKey, dataKey);
     const outcome = await this.transactionRunner.run(async ({ stores }) => {
       await stores.locks.projectDataKey(projectId);
-      const fresh = await findProjectKeyIn(stores, projectId);
-      if (fresh.hasDataKey()) {
-        const { kmsKeyId } = fresh.material();
+      const adopt = async (current: ProjectKey) => {
+        const { kmsKeyId } = current.material();
         const wrappedBy = kmsKeyId === kmsKey.id ? kmsKey : await requireKey(stores.kmsKeyStore, kmsKeyId);
-        return { projectKey: fresh, wrappedBy, adopted: true };
-      }
+        return { projectKey: current, wrappedBy, adopted: true };
+      };
+      const fresh = await findProjectKeyIn(stores, projectId);
+      if (fresh.hasDataKey()) return adopt(fresh);
       fresh.assignDataKey(sealed);
-      assertClaimed(await stores.projectKeyStore.claimDataKey(fresh), "project's data key");
-      return { projectKey: fresh, wrappedBy: kmsKey, adopted: false };
+      if (await stores.projectKeyStore.claimDataKey(fresh))
+        return { projectKey: fresh, wrappedBy: kmsKey, adopted: false };
+
+      const winner = await findProjectKeyIn(stores, projectId);
+      if (!winner.hasDataKey()) claimedKeyId(null, "project's data key");
+      return adopt(winner);
     });
     if (!outcome.adopted) return { projectKey: outcome.projectKey, dataKey };
     return {

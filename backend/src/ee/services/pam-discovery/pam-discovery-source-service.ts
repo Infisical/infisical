@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 
+import { DomainError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -97,12 +98,13 @@ const IMPORT_ROTATION_CONCURRENCY = 5;
 
 export const MAX_ROTATIONS_PER_IMPORT = 50;
 
-const toResultMessage = (err: unknown, fallback: string, logMessage: string) => {
+export const toResultMessage = (err: unknown, fallback: string, logMessage: string) => {
   if (
     err instanceof BadRequestError ||
     err instanceof NotFoundError ||
     err instanceof ForbiddenRequestError ||
-    err instanceof ForbiddenError
+    err instanceof ForbiddenError ||
+    err instanceof DomainError
   ) {
     return err.message;
   }

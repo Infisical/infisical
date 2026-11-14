@@ -4,6 +4,7 @@ import net from "net";
 import pLimit from "p-limit";
 import { z } from "zod";
 
+import { DomainError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -130,7 +131,7 @@ export const toHostScanErrorMessage = (error: unknown, logContext: string): stri
     logger.warn(`${logContext} [error=${error.message}]`);
     return "Could not reach the gateway through its relay. Check that the gateway and its relay are running.";
   }
-  if (error instanceof BadRequestError || error instanceof NotFoundError) {
+  if (error instanceof BadRequestError || error instanceof NotFoundError || error instanceof DomainError) {
     logger.warn(`${logContext} [error=${error.message}]`);
     return error.message;
   }

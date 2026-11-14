@@ -7,7 +7,6 @@ import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
 import { createDomains } from "@app/domains/domains";
-import { InstanceFeature } from "@app/domains/platform/license/ce/module";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -230,7 +229,6 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
 import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
-import { crypto } from "@app/lib/crypto/cryptography";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
 import { Redlock } from "@app/lib/red-lock";
@@ -4753,9 +4751,6 @@ export const registerRoutes = async (
     folderDAL,
     projectEnvDAL
   });
-
-  // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
-  crypto.verifyFipsLicense(licenseService.getInstanceEntitlements().has(InstanceFeature.Fips));
 
   await superAdminService.initServerCfg();
 

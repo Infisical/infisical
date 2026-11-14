@@ -8,7 +8,7 @@ import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/t
 import { OrderByDirection } from "@app/lib/types";
 
 import { KeyMaterial } from "../../models/key-material";
-import { KmsKey, KmsKeyUsage, TKmsKeyDetails, TKmsKeyRecord } from "../../models/kms-key";
+import { KmsKey, KmsKeyUsage, TKmsKeyDetails } from "../../models/kms-key";
 import { RootKey } from "../../models/root-key";
 import { KmsDataKey, TKmsDataKeyService } from "../data-key/service";
 import {
@@ -108,8 +108,8 @@ export type TKmsKeyAttributes = {
 export type TUpdateKmsKeyAttributesDTO = TKmsKeyAttributes;
 
 export type TKmsKeyService = {
-  generateKmsKey(input: TGenerateKMSDTO): Promise<TKmsKeyRecord>;
-  importKeyMaterial(input: TImportKeyMaterialDTO): Promise<TKmsKeyRecord>;
+  generateKmsKey(input: TGenerateKMSDTO): Promise<TKmsKeyDetails>;
+  importKeyMaterial(input: TImportKeyMaterialDTO): Promise<TKmsKeyDetails>;
   rotateKmsKey(kmsId: string): Promise<{ id: string; version: number }>;
   getKmsById(kmsId: string): Promise<{ id: string; name: string; orgId: string; isExternal: boolean }>;
   findKeyById(kmsId: string): Promise<TKmsKeyDetails | undefined>;
@@ -420,11 +420,11 @@ export class KmsKeyService implements TKmsKeyService {
     return requireExternalKms(this.externalKms).fetchGcpKeys(input);
   }
 
-  // A duplicate name in a project fails on the unique index; callers translate that DatabaseError into their own
-  // message.
-  private async insertKey(key: KmsKey): Promise<TKmsKeyRecord> {
-    await this.stores.kmsKeyStore.insert(key);
-    return key.toJSON();
+  // The key row and its material commit together. A duplicate name in a project fails on the unique index; callers
+  // translate that DatabaseError into their own message. The result carries no material, wrapped or not.
+  private async insertKey(key: KmsKey): Promise<TKmsKeyDetails> {
+    await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.insert(key));
+    return key.details();
   }
 
   private async externalKeyCipher(kmsId: string) {

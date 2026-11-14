@@ -11,6 +11,7 @@ import {
   TSecretV2TagJunctionInsert,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { DomainError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -475,6 +476,8 @@ export const folderCommitServiceFactory = ({
     return decryptor;
   };
 
+  type TSecretManagerDecryptor = Awaited<ReturnType<typeof $getSecretManagerDecryptor>>;
+
   /**
    * Compares folder states between two commits and returns the differences
    */
@@ -482,11 +485,13 @@ export const folderCommitServiceFactory = ({
     currentCommitId,
     targetCommitId,
     defaultOperation = "create",
+    secretManagerDecryptor: providedDecryptor,
     tx
   }: {
     currentCommitId?: string;
     targetCommitId: string;
     defaultOperation?: "create" | "update" | "delete";
+    secretManagerDecryptor?: TSecretManagerDecryptor;
     tx?: Knex;
   }): Promise<ResourceChange[]> => {
     const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
@@ -668,7 +673,7 @@ export const folderCommitServiceFactory = ({
 
     const removeNoChangeUpdate: string[] = [];
 
-    const secretManagerDecryptor = await $getSecretManagerDecryptor(project.id, tx);
+    const secretManagerDecryptor = providedDecryptor ?? (await $getSecretManagerDecryptor(project.id, tx));
 
     await Promise.all(
       differences.map(async (change) => {
@@ -749,7 +754,7 @@ export const folderCommitServiceFactory = ({
 
       return await folderCommitChangesDAL.create(data, tx);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof DomainError) {
         throw error;
       }
       throw new DatabaseError({ error, name: "AddCommitChange" });
@@ -1018,7 +1023,7 @@ export const folderCommitServiceFactory = ({
       }
       return newCommit;
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof DomainError) {
         throw error;
       }
       throw new DatabaseError({ error, name: "CreateCommit" });
@@ -1984,6 +1989,7 @@ export const folderCommitServiceFactory = ({
     folderName,
     folderPath,
     step = 1,
+    secretManagerDecryptor,
     tx
   }: {
     changes: {
@@ -1997,6 +2003,7 @@ export const folderCommitServiceFactory = ({
     folderName?: string;
     folderPath?: string;
     step?: number;
+    secretManagerDecryptor?: TSecretManagerDecryptor;
     tx?: Knex;
   }) => {
     if (step > 20) {
@@ -2008,6 +2015,7 @@ export const folderCommitServiceFactory = ({
     }
     const diff = await compareFolderStates({
       targetCommitId: latestFolderCommit.id,
+      secretManagerDecryptor,
       tx
     });
     changes.push({
@@ -2026,6 +2034,7 @@ export const folderCommitServiceFactory = ({
             folderName: change.folderName,
             folderPath: `${folderPath}/${change.folderName}`,
             step: step + 1,
+            secretManagerDecryptor,
             tx
           });
         }
@@ -2088,6 +2097,8 @@ export const folderCommitServiceFactory = ({
 
     const folderDiffs = new Map<string, ResourceChange[]>();
 
+    const secretManagerDecryptor = await $getSecretManagerDecryptor(projectId, tx);
+
     // Process each folder to determine differences
     await Promise.all(
       Array.from(folderGroups.entries()).map(async ([folderId, commit]) => {
@@ -2101,12 +2112,14 @@ export const folderCommitServiceFactory = ({
           diff = await compareFolderStates({
             currentCommitId: commit.id,
             targetCommitId: previousCommit.id,
+            secretManagerDecryptor,
             tx
           });
         } else {
           diff = await compareFolderStates({
             targetCommitId: commit.id,
             defaultOperation: "delete",
+            secretManagerDecryptor,
             tx
           });
         }
@@ -2156,6 +2169,7 @@ export const folderCommitServiceFactory = ({
               folderId: change.id,
               folderName: change.folderName,
               folderPath: `${nestedFolderPath !== "/" ? nestedFolderPath : ""}/${change.folderName}`,
+              secretManagerDecryptor,
               tx
             });
           })
@@ -2222,6 +2236,8 @@ export const folderCommitServiceFactory = ({
 
       const folderDiffs = new Map<string, ResourceChange[]>();
 
+      const secretManagerDecryptor = await $getSecretManagerDecryptor(projectId, tx);
+
       // Process each folder to determine differences
       await Promise.all(
         Array.from(folderGroups.entries()).map(async ([folderId, { id }]) => {
@@ -2234,6 +2250,7 @@ export const folderCommitServiceFactory = ({
             const diff = await compareFolderStates({
               currentCommitId: id,
               targetCommitId: previousCommit.id,
+              secretManagerDecryptor,
               tx
             });
             if (diff?.length > 0) {

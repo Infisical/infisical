@@ -118,6 +118,30 @@ describe("KmsKeyService.generateKmsKey", () => {
     expect(await memory.stores.kmsKeyStore.findById(record.id)).not.toBeNull();
   });
 
+  test("should write a new key and its material in one transaction and return it without material", async () => {
+    // Setup
+    const { service, memory } = setup();
+    const run = vi.spyOn(memory.transactionRunner, "run");
+
+    // Action
+    const generated = await service.generateKmsKey(customerKey(orgId(), "p1", "atomic"));
+    const imported = await service.importKeyMaterial({
+      key: Buffer.alloc(32, 1),
+      algorithm: SymmetricKeyAlgorithm.AES_GCM_256,
+      name: "imported",
+      isReserved: false,
+      projectId: "p1",
+      orgId: generated.orgId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
+    });
+
+    // Assert
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(generated).not.toHaveProperty("internal");
+    expect(imported).not.toHaveProperty("internal");
+    expect(generated).toMatchObject({ isExternal: false, version: 1 });
+  });
+
   test("should leave a duplicate key name to the unique index and store nothing", async () => {
     // Setup
     const { service, memory } = setup();

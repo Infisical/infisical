@@ -1,5 +1,5 @@
 import { ReadFrom } from "@app/domains/lib/data-access";
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError, RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 
 import { KekHistoryEntry } from "../../models/kek-history-entry";
 import { RootKey } from "../../models/root-key";
@@ -11,6 +11,7 @@ import {
 } from "../../models/root-key-config";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { bootRootKeyService, fakeHsm, rootKeyTestEnv } from "../../testing/root-key-fixture";
+import { loadRootKey } from "./load-root-key";
 import { KmsRootKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -136,6 +137,33 @@ describe("KmsRootKeyService.updateEncryptionStrategy", () => {
     expect(active?.strategy).toBe(RootKeyEncryptionStrategy.HSM);
     expect(active?.kekLabel).toBeNull();
     expect(service.decryptWithRootKey()(blob).toString()).toBe("kept");
+  });
+
+  test("should re-wrap the same root key under the encryption key when switching from HSM to software", async () => {
+    // Setup
+    const hsm = fakeHsm({ entitled: true });
+    const { service, memory, rootKey } = await bootRootKeyService({ rootKeyWrapper: hsm });
+    const blob = service.encryptWithRootKey()(Buffer.from("kept"));
+    const before = await memory.rootKeyConfigStore.findById(KMS_ROOT_CONFIG_UUID);
+
+    // Action
+    await service.updateEncryptionStrategy(RootKeyEncryptionStrategy.Software);
+
+    // Assert
+    const active = await memory.rootKeyConfigStore.findById(KMS_ROOT_CONFIG_UUID);
+    const rebooted = await loadRootKey({
+      transactionRunner: memory.transactionRunner,
+      stores: memory.stores,
+      env: rootKeyTestEnv(),
+      isFipsEnabled: () => false,
+      rootKeyWrapper: undefined
+    });
+    expect(before?.strategy).toBe(RootKeyEncryptionStrategy.HSM);
+    expect(active?.strategy).toBe(RootKeyEncryptionStrategy.Software);
+    expect(active?.kekLabel).toMatch(/^[0-9a-f]{32}$/);
+    expect(service.decryptWithRootKey()(blob).toString()).toBe("kept");
+    expect(rebooted.equals(rootKey)).toBe(true);
+    expect(rebooted.decrypt(blob).toString()).toBe("kept");
   });
 
   test("should do nothing when the strategy is already the requested one", async () => {
@@ -276,6 +304,22 @@ describe("KmsRootKeyService.createRotation", () => {
 
     // Assert
     expect(Buffer.from(created.key, "base64")).toHaveLength(32);
+  });
+
+  test("should generate a distinct 32 character hex value each time off FIPS", async () => {
+    // Setup
+    const { service } = await bootRootKeyService();
+
+    // Action
+    const keys: string[] = [];
+    for (let i = 0; i < 20; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      keys.push((await service.createRotation({ replaceStaged: true })).key);
+    }
+
+    // Assert
+    expect(new Set(keys).size).toBe(20);
+    expect(keys.every((key) => /^[0-9a-f]{32}$/.test(key))).toBe(true);
   });
 
   test("should refuse a second rotation while one is staged, and keep the first", async () => {
@@ -525,6 +569,18 @@ describe("KmsRootKeyService.deleteExpiringKey", () => {
 
     // Assert
     await expect(result).rejects.toThrow("Another rotation has taken effect");
+    expect(await isRetained()).toBe(true);
+  });
+
+  test("should refuse a label that is not the key currently retained with a conflict", async () => {
+    // Setup
+    const { service, isRetained } = await buildCleanup({ stored: retainedRow() });
+
+    // Action
+    const result = service.deleteExpiringKey({ label: "b".repeat(32) });
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(StateConflictError);
     expect(await isRetained()).toBe(true);
   });
 

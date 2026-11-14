@@ -1,5 +1,5 @@
 import { ReadFrom } from "@app/domains/lib/data-access";
-import { RuleViolationError } from "@app/domains/lib/errors";
+import { ExternalSystemError, RuleViolationError } from "@app/domains/lib/errors";
 import { getLegacyDecryptionCandidates, resetLegacyKeyMaterial } from "@app/lib/crypto/legacy-key";
 
 import { RootKey } from "../../models/root-key";
@@ -27,6 +27,17 @@ const depsFor = (memory: InMemoryKmsCoreStores, overrides: Partial<TLoadRootKeyD
 
 const serviceFor = (memory: InMemoryKmsCoreStores, rootKey: RootKey, env = rootKeyTestEnv()) =>
   new KmsRootKeyService(memory.transactionRunner, memory.stores, rootKey, env, () => false, undefined);
+
+const FIPS_KEY = Buffer.alloc(32, 5).toString("base64");
+
+const fipsEnv = (rootEncryptionKey = FIPS_KEY) =>
+  rootKeyTestEnv({ ENCRYPTION_KEY: undefined, ROOT_ENCRYPTION_KEY: rootEncryptionKey });
+
+const fipsDepsFor = (memory: InMemoryKmsCoreStores, rootEncryptionKey = FIPS_KEY) =>
+  depsFor(memory, { env: fipsEnv(rootEncryptionKey), isFipsEnabled: () => true });
+
+const fipsServiceFor = (memory: InMemoryKmsCoreStores, rootKey: RootKey) =>
+  new KmsRootKeyService(memory.transactionRunner, memory.stores, rootKey, fipsEnv(), () => true, undefined);
 
 describe("loadRootKey", () => {
   afterEach(() => {
@@ -293,5 +304,108 @@ describe("loadRootKey", () => {
 
     // Assert
     expect(getLegacyDecryptionCandidates()[0].ENCRYPTION_KEY).toBe(ROOT_KEY_TEST_ENCRYPTION_KEY);
+  });
+
+  test("should mark the old KEK history entry superseded, not retired, on promotion", async () => {
+    // Setup
+    const memory = new InMemoryKmsCoreStores();
+    const rootKey = await loadRootKey(depsFor(memory));
+    const { key, label } = await serviceFor(memory, rootKey).createRotation({});
+
+    // Action
+    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: key }) }));
+
+    // Assert
+    const entries = (await memory.stores.kekHistoryStore.findPage({ offset: 0, limit: 10 })).map((entry) =>
+      entry.toJSON()
+    );
+    const old = entries.find((entry) => entry.kekLabel !== label);
+    const promoted = entries.find((entry) => entry.kekLabel === label);
+    expect(entries).toHaveLength(2);
+    expect(old?.supersededAt).toBeTruthy();
+    expect(old?.retiredAt).toBeNull();
+    expect(promoted?.supersededAt).toBeNull();
+  });
+
+  test("should retire the KEK history entry of the key a second promotion drops", async () => {
+    // Setup
+    const memory = new InMemoryKmsCoreStores();
+    const rootKey = await loadRootKey(depsFor(memory));
+    await loadRootKey(depsFor(memory));
+    const first = await serviceFor(memory, rootKey).createRotation({});
+    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: first.key }) }));
+    const second = await serviceFor(memory, rootKey, rootKeyTestEnv({ ENCRYPTION_KEY: first.key })).createRotation({});
+
+    // Action
+    await loadRootKey(depsFor(memory, { env: rootKeyTestEnv({ ENCRYPTION_KEY: second.key }) }));
+
+    // Assert
+    const entries = (await memory.stores.kekHistoryStore.findPage({ offset: 0, limit: 10 })).map((entry) =>
+      entry.toJSON()
+    );
+    const byLabel = (label: string) => entries.find((entry) => entry.kekLabel === label);
+    const original = entries.find((entry) => ![first.label, second.label].includes(entry.kekLabel));
+    expect(entries).toHaveLength(3);
+    expect(original?.retiredAt).toBeTruthy();
+    expect(entries.filter((entry) => entry.retiredAt)).toHaveLength(1);
+    expect(byLabel(first.label)?.retiredAt).toBeNull();
+    expect(byLabel(first.label)?.supersededAt).toBeTruthy();
+    expect(byLabel(second.label)?.supersededAt).toBeNull();
+  });
+});
+
+describe("loadRootKey under FIPS", () => {
+  afterEach(() => {
+    resetLegacyKeyMaterial();
+  });
+
+  test("should promote a staged rotation when a pod boots with the staged base64 key", async () => {
+    // Setup
+    const memory = new InMemoryKmsCoreStores();
+    const rootKey = await loadRootKey(fipsDepsFor(memory));
+    const { key, label } = await fipsServiceFor(memory, rootKey).createRotation({});
+
+    // Action
+    const rotated = await loadRootKey(fipsDepsFor(memory, key));
+
+    // Assert
+    const rows = await memory.stores.rootKeyConfigStore.findAll();
+    expect(rotated.equals(rootKey)).toBe(true);
+    expect(rows.find((row) => row.isActive)?.kekLabel).toBe(label);
+    expect(rows.filter((row) => row.isRetained)).toHaveLength(1);
+    expect(rows.filter((row) => row.isStaged)).toHaveLength(0);
+    expect((await memory.stores.kekHistoryStore.findCurrent())?.kekLabel).toBe(label);
+  });
+
+  test("should still boot a straggler on the old key inside the retention window", async () => {
+    // Setup
+    const memory = new InMemoryKmsCoreStores();
+    const rootKey = await loadRootKey(fipsDepsFor(memory));
+    const { key, label } = await fipsServiceFor(memory, rootKey).createRotation({});
+    await loadRootKey(fipsDepsFor(memory, key));
+
+    // Action
+    const straggler = await loadRootKey(fipsDepsFor(memory));
+
+    // Assert
+    const rows = await memory.stores.rootKeyConfigStore.findAll();
+    expect(straggler.equals(rootKey)).toBe(true);
+    expect(rows.find((row) => row.isRetained)?.lastResolvedAt).toBeTruthy();
+    expect(rows.find((row) => row.isActive)?.kekLabel).toBe(label);
+  });
+
+  test("should refuse an unknown key and name the known labels", async () => {
+    // Setup
+    const memory = new InMemoryKmsCoreStores();
+    await loadRootKey(fipsDepsFor(memory));
+    const knownLabel = (await memory.stores.kekHistoryStore.findCurrent())?.kekLabel as string;
+
+    // Action
+    const result = loadRootKey(fipsDepsFor(memory, Buffer.alloc(32, 9).toString("base64")));
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(ExternalSystemError);
+    await expect(result).rejects.toThrow("does not decrypt this database's root key");
+    await expect(result).rejects.toThrow(`encryption key label(s): ${knownLabel}`);
   });
 });

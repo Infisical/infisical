@@ -5,6 +5,7 @@ import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import { EntityNotFoundError } from "@app/domains/lib/errors";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
@@ -522,6 +523,21 @@ describe("folderCommitServiceFactory", () => {
       await expect(folderCommitService.addCommitChange(data)).rejects.toThrow(BadRequestError);
     });
 
+    it("should rethrow KMS Core domain errors unchanged", async () => {
+      // Arrange
+      const error = new EntityNotFoundError({ message: "KMS key not found" });
+      mockFolderCommitDAL.findById.mockRejectedValue(error);
+
+      // Act & Assert
+      await expect(
+        folderCommitService.addCommitChange({
+          folderCommitId: "commit-id",
+          changeType: CommitType.ADD,
+          secretVersionId: "secret-version-1"
+        })
+      ).rejects.toBe(error);
+    });
+
     it("should throw NotFoundError when commit does not exist", async () => {
       // Arrange
       mockFolderCommitDAL.findById.mockResolvedValue(null);
@@ -627,6 +643,47 @@ describe("folderCommitServiceFactory", () => {
       await expect(
         folderCommitService.deepRollbackFolder(targetCommitId, envId, actorId, actorType, projectId)
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("deepRollbackFolder decryptor fetch", () => {
+    it("fetches the decryptor once before the concurrent per-folder comparisons", async () => {
+      // Setup
+      const decryptor = vi.fn((arg: { cipherTextBlob: Buffer }) => arg.cipherTextBlob);
+      const events: string[] = [];
+      mockKmsService.createCipherPairWithDataKey.mockImplementation(async () => {
+        events.push("kms");
+        return { decryptor };
+      });
+      mockFolderCommitDAL.transaction.mockImplementation(async (callback) => callback({} as Knex));
+      mockFolderCommitDAL.findById.mockImplementation(async (id: string) => ({
+        id,
+        commitId: BigInt(id === "target" ? 1 : 10),
+        envId: "env-id"
+      }));
+      mockFolderTreeCheckpointDAL.findNearestCheckpoint.mockResolvedValue({ id: "cp", commitId: BigInt(0) });
+      mockFolderTreeCheckpointResourcesDAL.findByTreeCheckpointId.mockResolvedValue([
+        { folderId: "f1", commitId: BigInt(5), folderCommitId: "c1" },
+        { folderId: "f2", commitId: BigInt(6), folderCommitId: "c2" },
+        { folderId: "f3", commitId: BigInt(7), folderCommitId: "c3" }
+      ]);
+      mockFolderCommitDAL.findAllCommitsBetween.mockResolvedValue([]);
+      mockFolderCheckpointDAL.findNearestCheckpoint.mockResolvedValue({ id: "folder-cp", commitId: BigInt(0) });
+      mockFolderCommitDAL.findCommitsToRecreate.mockResolvedValue([]);
+      mockFolderCheckpointResourcesDAL.findByCheckpointId.mockResolvedValue([]);
+      (mockFolderCommitDAL as Record<string, unknown>).findPreviousCommitTo = vi.fn(async (folderId: string) => {
+        events.push(`prev-${folderId}`);
+        return { id: `prev-${folderId}` };
+      });
+      mockProjectDAL.findProjectByEnvId.mockResolvedValue({ id: "project-id" });
+      mockFolderDAL.findFoldersByRootAndIds.mockResolvedValue([]);
+
+      // Action
+      await folderCommitService.deepRollbackFolder("target", "env-id", "user-id", ActorType.USER, "project-id");
+
+      // Assert
+      expect(mockKmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+      expect(events.indexOf("kms")).toBeLessThan(events.indexOf("prev-f1"));
     });
   });
 

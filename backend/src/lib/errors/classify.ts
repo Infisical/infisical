@@ -13,6 +13,7 @@ import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgre
 import {
   BadRequestError,
   ClientClosedRequestError,
+  ConflictError,
   CryptographyError,
   DailyQuotaExceededError,
   DatabaseError,
@@ -76,7 +77,13 @@ export const classifyError = (err: unknown): ErrorType => {
     return "permission";
   if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
   if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return "not_found";
-  if (err instanceof BadRequestError || err instanceof RuleViolationError || err instanceof StateConflictError)
+  // The HTTP error handler turns StateConflictError into ConflictError before this runs.
+  if (
+    err instanceof BadRequestError ||
+    err instanceof ConflictError ||
+    err instanceof RuleViolationError ||
+    err instanceof StateConflictError
+  )
     return "validation";
   // A varchar(n) overflow is a rejected input, so it should not inflate the db-error rate.
   if (err instanceof DatabaseError)

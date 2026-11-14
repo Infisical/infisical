@@ -127,6 +127,32 @@ describe("KmsDataKeyService.within on Postgres", () => {
     expect(outside.decryptor({ cipherTextBlob: blob }).toString()).toBe("created with the project");
   });
 
+  // A session never waits on its own advisory lock, so two calls joined to one transaction reach first use together.
+  test("should give concurrent first-use calls joined to one transaction the same keys instead of a conflict", async () => {
+    // Setup
+    const tn = await h.newTenant();
+    const service = newService();
+    const keysBefore = await kmsKeyCount(tn.org.id);
+
+    // Action
+    const ciphers = await h.db.transaction(async (trx) => {
+      const joined = service.within(sealKnexTransaction(trx));
+      return Promise.all(
+        Array.from({ length: 4 }, () =>
+          joined.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId: tn.project.id })
+        )
+      );
+    });
+
+    // Assert
+    const blob = ciphers[0].encryptor({ plainText: Buffer.from("same key") }).cipherTextBlob;
+    ciphers.forEach((cipher) => expect(cipher.decryptor({ cipherTextBlob: blob }).toString()).toBe("same key"));
+    const project = await h.db(TableName.Project).where({ id: tn.project.id }).first();
+    expect(project?.kmsSecretManagerKeyId).toBeTruthy();
+    expect(project?.kmsSecretManagerEncryptedDataKey).toBeTruthy();
+    expect(await kmsKeyCount(tn.org.id)).toBe(keysBefore + 1);
+  });
+
   test("should give two caller transactions racing first use one project key and one data key", async () => {
     // Setup
     const tn = await h.newTenant();

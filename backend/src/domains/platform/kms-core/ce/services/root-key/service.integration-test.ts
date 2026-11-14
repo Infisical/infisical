@@ -26,17 +26,17 @@ describe("KmsRootKeyService on Postgres", () => {
     await h.db(TableName.KmsLegacyEncryptionKey).delete();
   };
 
-  const boot = async (overrides: Partial<TKmsCoreEnv> = {}) => {
+  const boot = async (overrides: Partial<TKmsCoreEnv> = {}, isFips = false) => {
     const access = buildKmsCoreStoreAccess(h.db, () => h.db);
     const env = rootKeyTestEnv(overrides);
-    const deps = { ...access, env, isFipsEnabled: () => false, rootKeyWrapper: undefined };
+    const deps = { ...access, env, isFipsEnabled: () => isFips, rootKeyWrapper: undefined };
     const rootKey = await loadRootKey(deps);
     const service = new KmsRootKeyService(
       access.transactionRunner,
       access.stores,
       rootKey,
       env,
-      () => false,
+      () => isFips,
       undefined
     );
     return { service, rootKey };
@@ -125,5 +125,23 @@ describe("KmsRootKeyService on Postgres", () => {
     expect(
       await h.db(TableName.KmsServerRootConfig).whereNull("activatedAt").whereNot("id", KMS_ROOT_CONFIG_UUID)
     ).toHaveLength(1);
+  });
+
+  test("should promote a staged base64 key under FIPS and still boot a straggler on the old key", async () => {
+    // Setup
+    await emptyRootKeyTables();
+    const fipsEnv = (key: string) => ({ ENCRYPTION_KEY: undefined, ROOT_ENCRYPTION_KEY: key });
+    const current = await boot(fipsEnv(Buffer.alloc(32, 5).toString("base64")), true);
+    const blob = current.service.encryptWithRootKey()(Buffer.from("survives fips rotation"));
+    const { key, label } = await current.service.createRotation({});
+
+    // Action
+    const rotated = await boot(fipsEnv(key), true);
+    const straggler = await boot(fipsEnv(Buffer.alloc(32, 5).toString("base64")), true);
+
+    // Assert
+    expect(rotated.service.decryptWithRootKey()(blob).toString()).toBe("survives fips rotation");
+    expect(straggler.service.decryptWithRootKey()(blob).toString()).toBe("survives fips rotation");
+    expect((await rotated.service.getRootKey()).active.label).toBe(label);
   });
 });

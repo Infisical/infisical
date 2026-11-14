@@ -3,6 +3,7 @@ import type { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
@@ -11,7 +12,7 @@ import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
-import { LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
+import { InstanceFeature, LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsProjectsModule } from "./platform/organizations-projects/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
@@ -132,6 +133,10 @@ export const createDomains = async (deps: TDomainDeps) => {
 
   // Subscriptions are managed on the EE client itself; License never calls its billing methods.
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
+
+  // Before KMS Core, which writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot
+  // before anything is wrapped with its FIPS-format key.
+  crypto.verifyFipsLicense(license.licenseService.getInstanceEntitlements().has(InstanceFeature.Fips));
 
   // KMS Core depends on no other domain. HSM and external keys plug in from its enterprise edition, which reads the
   // instance's HSM entitlement from License.

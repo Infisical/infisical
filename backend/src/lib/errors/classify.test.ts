@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 
 import { StateConflictError } from "@app/domains/lib/errors";
+import { toHttpError } from "@app/server/lib/domain-errors";
 
 import { classifyError } from "./classify";
 import {
@@ -25,6 +26,10 @@ describe("classifyError", () => {
 
   test("maps a domain state conflict to validation, a client-side refusal", () => {
     expect(classifyError(new StateConflictError({ message: "x" }))).toBe("validation");
+  });
+
+  test("maps a state conflict to validation after the HTTP boundary turned it into a ConflictError", () => {
+    expect(classifyError(toHttpError(new StateConflictError({ message: "x" })))).toBe("validation");
   });
 
   test("maps CASL ForbiddenError (thrown by permission checks) to permission, not unknown", () => {

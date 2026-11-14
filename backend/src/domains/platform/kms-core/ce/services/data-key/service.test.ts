@@ -168,17 +168,28 @@ describe("KmsDataKeyService.createCipherPairWithDataKey", () => {
     expect(seal(cipher, "v").length).toBeGreaterThan(0);
   });
 
-  test("should refuse a project the replica does not have yet when the caller did not ask for the primary", async () => {
+  test("should read a project the replica does not have yet from the primary when the caller did not ask for it", async () => {
     // Setup
     const { mem } = build();
     mem.platformRows.addProject("project-new", "org-1");
     const service = withLaggingReplica(mem, "project-new");
 
     // Action
-    const result = projectCipher(service, "project-new");
+    const cipher = await projectCipher(service, "project-new");
 
     // Assert
-    await expect(result).rejects.toThrow("Project with ID 'project-new' not found");
+    expect(cipher.decryptor({ cipherTextBlob: seal(cipher, "fresh") }).toString()).toBe("fresh");
+  });
+
+  test("should still refuse a project that exists nowhere", async () => {
+    // Setup
+    const { service } = build();
+
+    // Action
+    const result = projectCipher(service, "project-missing");
+
+    // Assert
+    await expect(result).rejects.toThrow("Project with ID 'project-missing' not found");
   });
 
   test("should read the project again from the primary when its key was removed after the first read", async () => {

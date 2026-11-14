@@ -1,3 +1,5 @@
+import { generateKeyPairSync } from "node:crypto";
+
 import { RuleViolationError } from "@app/domains/lib/errors";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -159,6 +161,49 @@ describe("KeyMaterial.import", () => {
     await expect(result).rejects.toThrow(
       "Key material does not match the declared algorithm. Expected an EC P-256 key."
     );
+  });
+});
+
+const pemFormat = {
+  privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  publicKeyEncoding: { type: "spki", format: "pem" }
+} as const;
+
+const generateRsaPem = (modulusLength: number) =>
+  generateKeyPairSync("rsa", { modulusLength, ...pemFormat }).privateKey;
+
+const generateEcPem = (namedCurve: string) => generateKeyPairSync("ec", { namedCurve, ...pemFormat }).privateKey;
+
+describe("KeyMaterial.import key shapes", () => {
+  test.each([
+    ["an RSA-2048 key declared RSA_4096", () => generateRsaPem(2048), "RSA_4096", "an RSA 4096-bit key"],
+    ["an RSA key declared ED25519", () => generateRsaPem(2048), "ED25519", "an Ed25519 key"],
+    ["a P-256 key declared P-384", () => generateEcPem("P-256"), "ECC_NIST_P384", "an EC P-384 key"],
+    ["a P-384 key declared P-521", () => generateEcPem("P-384"), "ECC_NIST_P521", "an EC P-521 key"]
+  ])("should refuse %s", async (_name, makePem, algorithm, label) => {
+    // Setup
+    const pem = Buffer.from(makePem());
+
+    // Action
+    const result = KeyMaterial.import(pem, KmsKeyUsage.SIGN_VERIFY, algorithm as AsymmetricKeyAlgorithm);
+
+    // Assert
+    await expect(result).rejects.toThrow(RuleViolationError);
+    await expect(result).rejects.toThrow(`Key material does not match the declared algorithm. Expected ${label}.`);
+  });
+
+  test.each([
+    ["P-256", "ECC_NIST_P256"],
+    ["P-384", "ECC_NIST_P384"]
+  ])("should accept a %s key declared at its own curve", async (curve, algorithm) => {
+    // Setup
+    const pem = Buffer.from(generateEcPem(curve));
+
+    // Action
+    const material = await KeyMaterial.import(pem, KmsKeyUsage.SIGN_VERIFY, algorithm as AsymmetricKeyAlgorithm);
+
+    // Assert
+    expect(material.exportBytes()).toEqual(pem);
   });
 });
 

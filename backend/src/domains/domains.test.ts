@@ -1,3 +1,5 @@
+import { crypto } from "@app/lib/crypto/cryptography";
+
 import { createDomains } from "./domains";
 import { Meter } from "./platform/license/ce/module";
 
@@ -9,20 +11,30 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("./platform/kms-core/ee/module", () => ({
   KmsCoreEeModule: { create: vi.fn(async () => ({ hooks: {} })) }
 }));
+const createKmsCore = vi.hoisted(() => vi.fn(async () => ({ start: vi.fn() })));
 vi.mock("./platform/kms-core/ce/module", () => ({
-  KmsCoreModule: { create: vi.fn(async () => ({ start: vi.fn() })) }
+  KmsCoreModule: { create: createKmsCore }
 }));
 
+const buildDeps = () =>
+  ({
+    db: {},
+    keyStore: {},
+    queueService: { queue: vi.fn(), start: vi.fn() },
+    cronJob: { register: vi.fn() },
+    envConfig: { isCloud: false, isProductionMode: false }
+  }) as unknown as Parameters<typeof createDomains>[0];
+
 describe("createDomains", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    createKmsCore.mockClear();
+  });
+
   test("should give License exactly one usage counter for every metered dimension", async () => {
     // Setup
-    const deps = {
-      db: {},
-      keyStore: {},
-      queueService: { queue: vi.fn(), start: vi.fn() },
-      cronJob: { register: vi.fn() },
-      envConfig: { isCloud: false, isProductionMode: false }
-    } as unknown as Parameters<typeof createDomains>[0];
+    vi.spyOn(crypto, "verifyFipsLicense").mockImplementation(() => undefined);
+    const deps = buildDeps();
 
     // Action
     const domains = await createDomains(deps);
@@ -33,5 +45,19 @@ describe("createDomains", () => {
         .map((meter) => meter.key)
         .sort()
     );
+  });
+
+  test("should refuse an unlicensed FIPS instance before KMS Core writes a root key", async () => {
+    // Setup
+    vi.spyOn(crypto, "verifyFipsLicense").mockImplementation(() => {
+      throw new Error("FIPS mode is enabled but your license does not include FIPS support.");
+    });
+
+    // Action
+    const result = createDomains(buildDeps());
+
+    // Assert
+    await expect(result).rejects.toThrow("FIPS mode is enabled");
+    expect(createKmsCore).not.toHaveBeenCalled();
   });
 });

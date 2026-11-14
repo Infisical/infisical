@@ -1,3 +1,4 @@
+import { EntityNotFoundError } from "@app/domains/lib/errors";
 import { KmsKeyUsage, ReadFrom, TKmsKeyService, TReadOptions } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -69,7 +70,7 @@ export const oidcIssuerServiceFactory = ({
           .then(publicKeyToJwk)
           .catch((err) => {
             // A concurrent rotation can delete the oldest key, which no longer signs
-            if (err instanceof NotFoundError) return null;
+            if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return null;
             throw err;
           })
       )

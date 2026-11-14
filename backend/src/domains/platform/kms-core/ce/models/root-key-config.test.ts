@@ -224,6 +224,17 @@ describe("RootKeyConfig.removalEligibleAt", () => {
     expect(eligibleAt).toEqual(new Date(daysAgo(2).getTime() + 30 * DAY_MS));
   });
 
+  test("should ignore a lastResolvedAt older than the supersede", () => {
+    // Setup
+    const row = retained({ supersededAt: daysAgo(10), lastResolvedAt: daysAgo(20) });
+
+    // Action
+    const eligibleAt = row.removalEligibleAt(30);
+
+    // Assert
+    expect(eligibleAt).toEqual(new Date(daysAgo(10).getTime() + 30 * DAY_MS));
+  });
+
   test("should be null for a row that was never superseded", () => {
     // Setup
     const row = active();
