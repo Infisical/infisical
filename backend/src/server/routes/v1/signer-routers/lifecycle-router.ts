@@ -8,7 +8,8 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeySource } from "@app/services/signer/signer-enums";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertKeySource, SIGNER_CERTIFICATE_REQUEST_STATUSES } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
@@ -17,8 +18,15 @@ import {
   SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
-  SignerKeyAlgorithm
+  SignerKeyAlgorithm,
+  SignerRevocationResponseSchema
 } from "./schemas";
+
+const ExternalOrderResponseSchema = z.object({
+  provider: z.string(),
+  orderId: z.number(),
+  status: z.string().nullable()
+});
 
 const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateCommonName: z.string().nullable().optional(),
@@ -28,17 +36,22 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateKeyAlgorithm: z.string().nullable().optional(),
   certificateKeySource: z.string().nullable().optional(),
   certificateHsmConnectorId: z.string().nullable().optional(),
+  certificateHsmKeyLabel: z.string().nullable().optional(),
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
+  caType: z.nativeEnum(CaType).nullable().optional(),
   approvalPolicyName: z.string().nullable().optional(),
-  externalOrder: z
+  externalOrder: ExternalOrderResponseSchema.nullable().optional(),
+  hasOpenCertificateRequest: z.boolean().optional(),
+  certificateRequest: z
     .object({
-      provider: z.string(),
-      orderId: z.number(),
-      status: z.string().nullable()
+      status: z.enum(SIGNER_CERTIFICATE_REQUEST_STATUSES),
+      failureReason: z.string().nullable(),
+      externalOrder: ExternalOrderResponseSchema.nullable()
     })
     .nullable()
-    .optional()
+    .optional(),
+  revocation: SignerRevocationResponseSchema
 });
 
 export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) => {
@@ -150,7 +163,8 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
               certificateCommonName: z.string().nullable().optional(),
               certificateSerialNumber: z.string().nullable().optional(),
               certificateNotAfter: z.date().nullable().optional(),
-              approvalPolicyName: z.string().nullable().optional()
+              approvalPolicyName: z.string().nullable().optional(),
+              hasOpenCertificateRequest: z.boolean()
             })
           ),
           totalCount: z.number()

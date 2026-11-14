@@ -25,7 +25,7 @@ DigiCert's code-signing workflow includes an out-of-band approval step that the 
   Code-signing certificates require an HSM-backed key. When you select a DigiCert code-signing CA, the Signer wizard locks the key source to **HSM** and you must pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors).
 </Note>
 
-A **Pending** signer is checked on a schedule. To poll DigiCert immediately, use **Check issuance now** from the signer's actions menu. Hovering the **Pending** status on the signer's detail page shows the DigiCert **order number** so you can open that order in DigiCert to approve it or resend the approval email.
+While a signer shows **Pending** or **Renewal in Progress**, its DigiCert order is checked on a schedule. To poll DigiCert immediately, use **Check Issuance Now** from the signer's **Options** menu. Hovering either badge on the signer's detail page shows the DigiCert **order number** so you can open that order in DigiCert to approve it or resend the approval email.
 
 ### Use an existing order
 
@@ -108,11 +108,17 @@ If you switch the signer to an order's [issued certificate](#use-existing-key), 
 ## Reissue and renewal
 
 - **Reissue** (changing the key source, key algorithm, or reissuing into an existing order) hits DigiCert's reissue endpoint, which keeps the same order and its validity and replaces the certificate.
+- **Reissue Certificate** on a revoked signer places a new order with a new key.
+- **Renew Certificate** (and auto-renewal) places a renewal order, or reissues the current order if your account has no unused code signing subscription, and DigiCert then revokes the current certificate within 72 hours
 - **Auto-renewal** (when **Renew before** is set) places a new order linked to the prior one so DigiCert tracks certificate history. If DigiCert reports the prior order as not eligible for renewal, Infisical falls back to a fresh, unlinked order.
 
 ## Deleting a signer
 
-Deleting a DigiCert code-signing signer revokes its DigiCert order, so the certificate can no longer be used to sign anywhere. Depending on your CertCentral account's revocation policy, DigiCert may queue the revocation for administrator approval.
+Deleting a DigiCert code-signing signer revokes the signer's certificate on DigiCert, so the certificate can no longer be used to sign anywhere.
+
+- Other certificates on the same order stay valid
+- If a renewal in progress placed a new DigiCert order, deleting the signer cancels that order first (if DigiCert won't cancel it, the delete fails and shows the order number)
+- Depending on your CertCentral account's revocation policy, DigiCert may queue the revocation for administrator approval
 
 ## Next steps
 

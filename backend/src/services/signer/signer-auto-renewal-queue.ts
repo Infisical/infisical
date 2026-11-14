@@ -4,14 +4,14 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TSignerDALFactory } from "./signer-dal";
-import { SignerStatus } from "./signer-enums";
+import { SignerAutoRenewalOutcome, SignerStatus } from "./signer-enums";
 import { TSignerServiceFactory } from "./signer-service";
 
 type TSignerAutoRenewalQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
   signerDAL: Pick<TSignerDALFactory, "findByStatusWithCertificate">;
-  signerService: Pick<TSignerServiceFactory, "autoRenewCertificate">;
+  signerService: Pick<TSignerServiceFactory, "autoRenewCertificate" | "syncPendingRevocations">;
 };
 
 export type TSignerAutoRenewalQueueFactory = ReturnType<typeof signerAutoRenewalQueueFactory>;
@@ -29,67 +29,33 @@ export const signerAutoRenewalQueueFactory = ({
 
     const now = Date.now();
     const candidates = await signerDAL.findByStatusWithCertificate(SignerStatus.Active);
-
-    let scanned = 0;
-    let needsRenewal = 0;
-    let renewed = 0;
-    let unrenewable = 0;
-    let failed = 0;
+    const counts: Record<SignerAutoRenewalOutcome, number> = {
+      [SignerAutoRenewalOutcome.Renewed]: 0,
+      [SignerAutoRenewalOutcome.Skipped]: 0,
+      [SignerAutoRenewalOutcome.Failed]: 0
+    };
+    let due = 0;
 
     for (const signer of candidates) {
-      scanned += 1;
-
-      if (!signer.certificateRenewBeforeDays || signer.certificateRenewBeforeDays < 1) continue;
-
-      if (!signer.caId) {
-        unrenewable += 1;
-        logger.warn(
-          { signerId: signer.id, signerName: signer.name },
-          `signer auto-renewal: skipping signer '${signer.name}' [signerId=${signer.id}] — no CA configured for renewal (likely migrated from an imported certificate)`
-        );
-        continue;
-      }
-
-      if (!signer.certificateNotAfter) {
-        needsRenewal += 1;
-        try {
-          await signerService.autoRenewCertificate(signer.id);
-          renewed += 1;
-        } catch (err) {
-          failed += 1;
-          logger.error(err, `signer auto-renewal: renewal failed for signer '${signer.name}' [signerId=${signer.id}]`);
-        }
-        continue;
-      }
-
-      const msUntilExpiry = new Date(signer.certificateNotAfter).getTime() - now;
-      const daysUntilExpiry = msUntilExpiry / MS_PER_DAY;
-      const isDue = daysUntilExpiry <= signer.certificateRenewBeforeDays;
+      const renewBeforeDays = signer.certificateRenewBeforeDays ?? 0;
+      const isDue =
+        renewBeforeDays >= 1 &&
+        (!signer.certificateNotAfter ||
+          new Date(signer.certificateNotAfter).getTime() - now <= renewBeforeDays * MS_PER_DAY);
       if (!isDue) continue;
 
-      needsRenewal += 1;
-      logger.info(
-        {
-          signerId: signer.id,
-          signerName: signer.name,
-          caId: signer.caId,
-          daysUntilExpiry: Math.round(daysUntilExpiry * 100) / 100
-        },
-        `signer auto-renewal: renewing '${signer.name}' [signerId=${signer.id}] [caId=${signer.caId}]`
-      );
-
+      due += 1;
       try {
-        await signerService.autoRenewCertificate(signer.id);
-        renewed += 1;
+        counts[await signerService.autoRenewCertificate(signer.id)] += 1;
       } catch (err) {
-        failed += 1;
+        counts[SignerAutoRenewalOutcome.Failed] += 1;
         logger.error(err, `signer auto-renewal: renewal failed for signer '${signer.name}' [signerId=${signer.id}]`);
       }
     }
 
     logger.info(
-      { scanned, needsRenewal, renewed, unrenewable, failed, elapsedMs: Date.now() - now },
-      `signer auto-renewal cron completed [scanned=${scanned}] [needsRenewal=${needsRenewal}] [renewed=${renewed}] [unrenewable=${unrenewable}] [failed=${failed}]`
+      { scanned: candidates.length, due, ...counts, elapsedMs: Date.now() - now },
+      `signer auto-renewal cron completed [scanned=${candidates.length}] [due=${due}] [renewed=${counts.renewed}] [skipped=${counts.skipped}] [failed=${counts.failed}]`
     );
   });
 
@@ -107,6 +73,12 @@ export const signerAutoRenewalQueueFactory = ({
           jobId: CronJobName.SignerDailyAutoRenewal
         });
       }
+    });
+    cronJob.register({
+      name: CronJobName.SignerPendingRevocationSync,
+      pattern: "*/15 * * * *",
+      runHashTtlS: 15 * 60,
+      handler: () => signerService.syncPendingRevocations()
     });
   };
 

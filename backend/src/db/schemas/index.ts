@@ -204,6 +204,7 @@ export * from "./pki-scep-dynamic-challenges";
 export * from "./pki-scep-enrollment-configs";
 export * from "./pki-scep-transactions";
 export * from "./pki-signer-certificate-issuance-jobs";
+export * from "./pki-signer-certificate-revocations";
 export * from "./pki-signers";
 export * from "./pki-signing-operations";
 export * from "./pki-subscribers";

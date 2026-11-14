@@ -2,10 +2,11 @@ import { z } from "zod";
 
 import { PkiSignersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CrlReason } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import {
@@ -14,8 +15,13 @@ import {
   SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
-  SignerKeyAlgorithm
+  SignerKeyAlgorithm,
+  SignerRevocationResponseSchema
 } from "./schemas";
+
+const PERMANENT_REVOCATION_REASONS = Object.values(CrlReason).filter(
+  (reason) => reason !== CrlReason.CERTIFICATE_HOLD
+) as [CrlReason, ...CrlReason[]];
 
 export const registerSignerCertificateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -26,7 +32,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "reissueSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
-      description: "Re-issue the signer's certificate (optionally from a different CA or with a different key source)",
+      description:
+        "Re-issue the signer's certificate, optionally from a different CA or with a different key source. If a certificate request is open, it's canceled first, along with its DigiCert order. If the signer's certificate was revoked, the new certificate always uses a new key, and the signer can sign again once it's issued.",
       params: SignerIdParamsSchema,
       body: z
         .object({
@@ -90,6 +97,107 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       });
 
       return signer;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/certificate/renew",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "renewSignerCertificate",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source. External CAs such as DigiCert issue it later: get the signer until `certificateRequest.status` is `completed`, `failed`, or `cancelled`.",
+      params: SignerIdParamsSchema,
+      response: { 200: PkiSignersSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { signer, caId, caName, previousSerialNumber } = await server.services.pkiSigner.renewCertificate({
+        signerId: req.params.signerId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.RENEW_PKI_SIGNER_CERTIFICATE,
+          metadata: {
+            signerId: signer.id,
+            name: signer.name,
+            status: signer.status,
+            caId,
+            caName,
+            previousSerialNumber
+          }
+        }
+      });
+
+      return signer;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/certificate/revoke",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "revokeSignerCertificate",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Revoke the signer's certificate, which stops the signer from signing right away and cancels any certificate request in progress. While the CA processes the revoke, the signer's status is `revocation_pending`, and when DigiCert requires approval, it stays there until the request is approved (`revoked`) or rejected. If the CA refuses the revoke, the certificate stays valid, the signer goes back to `active` (or stays `disabled`), the signer's admins get an in-app notification, and a canceled renewal must be started again. To sign again after a revoke, reissue the certificate with a new key.",
+      params: SignerIdParamsSchema,
+      body: z.object({
+        revocationReason: z.enum(PERMANENT_REVOCATION_REASONS).describe(CERTIFICATES.REVOKE.revocationReason)
+      }),
+      response: {
+        200: PkiSignersSchema.extend({
+          revocation: SignerRevocationResponseSchema,
+          crlWarning: z
+            .string()
+            .optional()
+            .describe("Set when the certificate was revoked but its CA's CRL couldn't be regenerated yet.")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { signer, certificateId, serialNumber, commonName, crlWarning, pendingRevocationRequestId } =
+        await server.services.pkiSigner.revokeCertificate({
+          signerId: req.params.signerId,
+          revocationReason: req.body.revocationReason,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.REVOKE_PKI_SIGNER_CERTIFICATE,
+          metadata: {
+            signerId: signer.id,
+            name: signer.name,
+            certificateId,
+            certificateCommonName: commonName,
+            serialNumber,
+            revocationReason: req.body.revocationReason,
+            status: signer.status,
+            digicertRevocationRequestId: pendingRevocationRequestId
+          }
+        }
+      });
+
+      return { ...signer, crlWarning };
     }
   });
 

@@ -60,6 +60,7 @@ type SignerKeyStepProps = {
   minRsaKeyBits?: number;
   currentKeyAlgorithm?: SignerKeyAlgorithm;
   importCheckError?: string;
+  canUseExistingCertificate?: boolean;
 };
 
 export const SignerKeyStep = ({
@@ -69,7 +70,8 @@ export const SignerKeyStep = ({
   isHsmConnectorsLoading,
   minRsaKeyBits,
   currentKeyAlgorithm,
-  importCheckError
+  importCheckError,
+  canUseExistingCertificate = true
 }: SignerKeyStepProps) => {
   const { subscription } = useSubscription();
   const isHsmLicensed = Boolean(subscription?.hsm);
@@ -294,7 +296,7 @@ export const SignerKeyStep = ({
         />
       )}
 
-      {isHsm && externalOrderId && (
+      {isHsm && externalOrderId && canUseExistingCertificate && (
         <Controller
           name="externalOrderMode"
           control={control}

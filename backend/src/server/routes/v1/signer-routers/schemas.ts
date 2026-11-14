@@ -4,11 +4,20 @@ import { z } from "zod";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { HsmKeyLabelSchema } from "@app/services/hsm-connector/hsm-connector-fns";
-import { CertKeySource } from "@app/services/signer/signer-enums";
+import { CertKeySource, UNSETTLED_SIGNER_REVOCATION_STATUSES } from "@app/services/signer/signer-enums";
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
 export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
+
+export const SignerRevocationResponseSchema = z
+  .object({
+    status: z.enum(UNSETTLED_SIGNER_REVOCATION_STATUSES),
+    caRequestId: z.number().nullable(),
+    failureReason: z.string().nullable()
+  })
+  .nullable()
+  .optional();
 
 export const SignerRequestParamsSchema = SignerIdParamsSchema.extend({ requestId: z.string().uuid() });
 

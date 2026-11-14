@@ -1,4 +1,5 @@
 import { CaType } from "@app/hooks/api/ca/enums";
+import { CrlReason } from "@app/hooks/api/certificates/enums";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks";
 
 export type TGetUserSignerPermissionDTO = {
@@ -16,7 +17,24 @@ export enum SignerStatus {
   Active = "active",
   Failed = "failed",
   Disabled = "disabled",
-  Expired = "expired"
+  Expired = "expired",
+  RevocationPending = "revocation_pending",
+  Revoked = "revoked"
+}
+
+export enum SignerCertificateRequestStatus {
+  Pending = "pending",
+  Completed = "completed",
+  Failed = "failed",
+  Cancelled = "cancelled"
+}
+
+export enum SignerRevocationStatus {
+  Submitting = "submitting",
+  AwaitingApproval = "awaiting_approval",
+  Completed = "completed",
+  Rejected = "rejected",
+  Failed = "failed"
 }
 
 export enum SignerKeyAlgorithm {
@@ -33,6 +51,12 @@ export enum CertKeySource {
   Hsm = "hsm",
   AwsKms = "aws-kms"
 }
+
+export const certKeySourceLabels: Record<CertKeySource, string> = {
+  [CertKeySource.Infisical]: "Infisical",
+  [CertKeySource.Hsm]: "HSM",
+  [CertKeySource.AwsKms]: "AWS KMS"
+};
 
 export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly SignerKeyAlgorithm[] = [
   SignerKeyAlgorithm.RSA_2048,
@@ -55,7 +79,9 @@ export const signerStatusLabels: Record<SignerStatus, string> = {
   [SignerStatus.Active]: "Active",
   [SignerStatus.Failed]: "Failed",
   [SignerStatus.Disabled]: "Disabled",
-  [SignerStatus.Expired]: "Expired"
+  [SignerStatus.Expired]: "Expired",
+  [SignerStatus.RevocationPending]: "Revocation Pending",
+  [SignerStatus.Revoked]: "Revoked"
 };
 
 export const getSignerStatusBadgeVariant = (status: SignerStatus) => {
@@ -67,6 +93,8 @@ export const getSignerStatusBadgeVariant = (status: SignerStatus) => {
     case SignerStatus.Failed:
       return "danger" as const;
     case SignerStatus.Expired:
+    case SignerStatus.RevocationPending:
+    case SignerStatus.Revoked:
       return "danger" as const;
     case SignerStatus.Disabled:
       return "neutral" as const;
@@ -170,6 +198,12 @@ export const signingAlgorithmLabels: Record<SigningAlgorithm, string> = {
   [SigningAlgorithm.ML_DSA_87]: "ML-DSA-87"
 };
 
+export type TSignerExternalOrder = {
+  provider: string;
+  orderId: number;
+  status?: string | null;
+};
+
 export type TSigner = {
   id: string;
   projectId: string;
@@ -192,14 +226,77 @@ export type TSigner = {
   certificateNotAfter?: string | null;
   certificateKeySource?: CertKeySource | string | null;
   certificateHsmConnectorId?: string | null;
+  certificateHsmKeyLabel?: string | null;
+  certificateStatus?: string | null;
+  caType?: CaType | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
-  externalOrder?: {
-    provider: string;
-    orderId: number;
-    status?: string | null;
+  externalOrder?: TSignerExternalOrder | null;
+  certificateRequest?: {
+    status: SignerCertificateRequestStatus;
+    failureReason: string | null;
+    externalOrder: TSignerExternalOrder | null;
+  } | null;
+  hasOpenCertificateRequest?: boolean;
+  revocation?: {
+    status:
+      | SignerRevocationStatus.Submitting
+      | SignerRevocationStatus.AwaitingApproval
+      | SignerRevocationStatus.Failed;
+    caRequestId: number | null;
+    failureReason: string | null;
   } | null;
 };
+
+export const getOpenCertificateRequest = (signer: Pick<TSigner, "certificateRequest">) =>
+  signer.certificateRequest?.status === SignerCertificateRequestStatus.Pending
+    ? signer.certificateRequest
+    : null;
+
+export const getPendingRevocationRequestId = (signer: Pick<TSigner, "revocation">) =>
+  signer.revocation?.status === SignerRevocationStatus.AwaitingApproval
+    ? signer.revocation.caRequestId
+    : null;
+
+export const getSignerRevocationNote = (
+  signer: Pick<TSigner, "status" | "revocation">,
+  { isDetailed = false }: { isDetailed?: boolean } = {}
+) => {
+  const pendingRevocationRequestId = getPendingRevocationRequestId(signer);
+  if (pendingRevocationRequestId) {
+    return isDetailed
+      ? `DigiCert revocation request #${pendingRevocationRequestId} is waiting for an administrator to approve it in CertCentral. The signer can't sign while it waits. Once it's approved, reissue the certificate with a new key to sign again. If it's rejected, the signer goes back to its earlier status.`
+      : `DigiCert revocation request #${pendingRevocationRequestId} is waiting for approval in CertCentral. The signer can't sign until it's decided.`;
+  }
+  if (
+    signer.revocation?.status === SignerRevocationStatus.Failed &&
+    signer.revocation.failureReason
+  ) {
+    return signer.revocation.failureReason;
+  }
+  if (signer.status === SignerStatus.RevocationPending) {
+    return "The revoke is in progress. The signer can't sign until it finishes.";
+  }
+  if (signer.status === SignerStatus.Revoked) {
+    return "The certificate was revoked. To sign again, use Reissue Certificate, which issues it with a new key.";
+  }
+  return null;
+};
+
+export const getNextDigicertOrderId = (signer: TSigner) => {
+  const nextOrderId = getOpenCertificateRequest(signer)?.externalOrder?.orderId;
+  return signer.certificateId && nextOrderId && nextOrderId !== signer.externalOrder?.orderId
+    ? nextOrderId
+    : null;
+};
+
+export const hasFailedRenewal = (signer: TSigner) =>
+  Boolean(signer.certificateFailureReason) &&
+  !signer.hasOpenCertificateRequest &&
+  signer.status !== SignerStatus.Failed &&
+  signer.status !== SignerStatus.Pending &&
+  signer.status !== SignerStatus.RevocationPending &&
+  signer.status !== SignerStatus.Revoked;
 
 export enum SigningActorType {
   User = "user",
@@ -386,6 +483,13 @@ export type TUpdateSignerDTO = {
 export type TDeleteSignerDTO = {
   signerId: string;
 };
+
+export type TRevokeSignerCertificateDTO = {
+  signerId: string;
+  revocationReason: CrlReason;
+};
+
+export type TRevokeSignerCertificateResponse = TSigner & { crlWarning?: string };
 
 export type TReissueSignerCertificateDTO = {
   signerId: string;

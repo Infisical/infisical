@@ -1,10 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiSigners } from "@app/db/schemas";
+import { TableName, TPkiSigners, TPkiSignersUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+
+import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
 
 export type TSignerWithCertificate = TPkiSigners & {
   certificateCommonName: string | null;
@@ -14,9 +17,13 @@ export type TSignerWithCertificate = TPkiSigners & {
   certificateKeyAlgorithm: string | null;
   certificateKeySource: string | null;
   certificateHsmConnectorId: string | null;
+  certificateHsmKeyLabel: string | null;
+  certificateExternalMetadata: unknown;
   certificateStatus: string | null;
   certificateCaId: string | null;
+  caType: CaType | null;
   approvalPolicyName: string | null;
+  hasOpenCertificateRequest: boolean;
 };
 
 export type TSignerWithCertificateSummary = TPkiSigners & {
@@ -25,12 +32,25 @@ export type TSignerWithCertificateSummary = TPkiSigners & {
   certificateNotAfter: Date | null;
   certificateStatus: string | null;
   approvalPolicyName: string | null;
+  hasOpenCertificateRequest: boolean;
 };
 
 export type TSignerDALFactory = ReturnType<typeof signerDALFactory>;
 
 export const signerDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PkiSigners);
+
+  const selectHasOpenCertificateRequest = () =>
+    db.raw(`exists (select 1 from ?? where ??.?? = ??.?? and ??.?? = ?) as "hasOpenCertificateRequest"`, [
+      TableName.PkiSignerCertificateIssuanceJobs,
+      TableName.PkiSignerCertificateIssuanceJobs,
+      "signerId",
+      TableName.PkiSigners,
+      "id",
+      TableName.PkiSignerCertificateIssuanceJobs,
+      "status",
+      SignerIssuanceJobStatus.Pending
+    ]);
 
   const findByIdWithCertificate = async (signerId: string, tx?: Knex): Promise<TSignerWithCertificate | undefined> => {
     try {
@@ -41,8 +61,28 @@ export const signerDALFactory = (db: TDbClient) => {
           `${TableName.PkiSigners}.approvalPolicyId`,
           `${TableName.ApprovalPolicies}.id`
         )
+        .leftJoin(TableName.CertificateAuthority, (join) => {
+          void join
+            .on(`${TableName.Certificate}.caId`, "=", `${TableName.CertificateAuthority}.id`)
+            .orOn((signerCaJoin) => {
+              void signerCaJoin
+                .onNull(`${TableName.PkiSigners}.certificateId`)
+                .andOn(`${TableName.PkiSigners}.caId`, "=", `${TableName.CertificateAuthority}.id`);
+            });
+        })
+        .leftJoin(
+          TableName.ExternalCertificateAuthority,
+          `${TableName.ExternalCertificateAuthority}.caId`,
+          `${TableName.CertificateAuthority}.id`
+        )
         .select(selectAllTableCols(TableName.PkiSigners))
         .select(
+          db.raw("CASE WHEN ?? IS NULL THEN NULL ELSE COALESCE(??, ?) END AS ??", [
+            `${TableName.CertificateAuthority}.id`,
+            `${TableName.ExternalCertificateAuthority}.type`,
+            CaType.INTERNAL,
+            "caType"
+          ]),
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
@@ -50,9 +90,12 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("keyAlgorithm").withSchema(TableName.Certificate).as("certificateKeyAlgorithm"),
           db.ref("keySource").withSchema(TableName.Certificate).as("certificateKeySource"),
           db.ref("hsmConnectorId").withSchema(TableName.Certificate).as("certificateHsmConnectorId"),
+          db.ref("hsmKeyLabel").withSchema(TableName.Certificate).as("certificateHsmKeyLabel"),
+          db.ref("externalMetadata").withSchema(TableName.Certificate).as("certificateExternalMetadata"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
-          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
+          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName"),
+          selectHasOpenCertificateRequest()
         )
         .where(`${TableName.PkiSigners}.id`, signerId)
         .first();
@@ -92,7 +135,8 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
-          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
+          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName"),
+          selectHasOpenCertificateRequest()
         )
         .where(`${TableName.PkiSigners}.projectId`, projectId);
 
@@ -165,6 +209,8 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("keyAlgorithm").withSchema(TableName.Certificate).as("certificateKeyAlgorithm"),
           db.ref("keySource").withSchema(TableName.Certificate).as("certificateKeySource"),
           db.ref("hsmConnectorId").withSchema(TableName.Certificate).as("certificateHsmConnectorId"),
+          db.ref("hsmKeyLabel").withSchema(TableName.Certificate).as("certificateHsmKeyLabel"),
+          db.ref("externalMetadata").withSchema(TableName.Certificate).as("certificateExternalMetadata"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
@@ -182,6 +228,23 @@ export const signerDALFactory = (db: TDbClient) => {
       return (await tx(TableName.PkiSigners).where({ id: signerId }).forUpdate().first()) as TPkiSigners | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSignerByIdForUpdate" });
+    }
+  };
+
+  const updateUnlessRevoked = async (
+    id: string,
+    data: TPkiSignersUpdate,
+    tx?: Knex
+  ): Promise<TPkiSigners | undefined> => {
+    try {
+      const [updated] = (await (tx || db)(TableName.PkiSigners)
+        .where({ id })
+        .whereNotIn("status", [SignerStatus.Revoked, SignerStatus.RevocationPending])
+        .update({ ...data, updatedAt: new Date() } as Record<string, unknown>)
+        .returning("*")) as TPkiSigners[];
+      return updated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpdateSignerUnlessRevoked" });
     }
   };
 
@@ -210,6 +273,7 @@ export const signerDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
+    updateUnlessRevoked,
     findByIdWithCertificate,
     findByStatusWithCertificate,
     findByProjectId,

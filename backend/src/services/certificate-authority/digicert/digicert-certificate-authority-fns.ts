@@ -32,12 +32,17 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
-import { createDigiCertApiClient, TDigiCertApiClient } from "./digicert-api-client";
+import {
+  DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS,
+  createDigiCertApiClient,
+  TDigiCertApiClient
+} from "./digicert-api-client";
 import {
   DIGICERT_FINAL_ISSUED_STATUSES,
   DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS,
   DigiCertOrderStatus,
-  DigiCertPollOutcome
+  DigiCertPollOutcome,
+  DigiCertRevocationRequestStatus
 } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose, DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
 import {
@@ -324,7 +329,7 @@ export const DigiCertCertificateAuthorityFns = ({
     return cas.map(castDbEntryToDigiCertCertificateAuthority);
   };
 
-  const $getActiveDigiCertCa = async (caId: string) => {
+  const $getActiveDigiCertCa = async (caId: string, clientOptions?: { requestTimeoutMs?: number }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
@@ -341,7 +346,7 @@ export const DigiCertCertificateAuthorityFns = ({
       kmsService
     );
 
-    return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
+    return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl, clientOptions) };
   };
 
   const $getOrderForCa = async (
@@ -651,9 +656,17 @@ export const DigiCertCertificateAuthorityFns = ({
     };
   };
 
-  const cancelReissue = async ({ caId, orderId }: { caId: string; orderId: number }): Promise<boolean> => {
+  const cancelReissue = async ({
+    caId,
+    orderId,
+    requestTimeoutMs
+  }: {
+    caId: string;
+    orderId: number;
+    requestTimeoutMs?: number;
+  }): Promise<boolean> => {
     try {
-      const { client } = await $getActiveDigiCertCa(caId);
+      const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs });
       await client.cancelOrderReissue(orderId, "Canceled from Infisical");
       logger.info(`DigiCert reissue canceled [caId=${caId}] [orderId=${orderId}]`);
       return true;
@@ -916,12 +929,14 @@ export const DigiCertCertificateAuthorityFns = ({
   const revokeCertificate = async ({
     caId,
     serialNumber,
-    reason
+    reason,
+    allowPendingApproval = false
   }: {
     caId: string;
     serialNumber: string;
     reason: CrlReason;
-  }) => {
+    allowPendingApproval?: boolean;
+  }): Promise<number | undefined> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
@@ -947,7 +962,11 @@ export const DigiCertCertificateAuthorityFns = ({
       appConnectionDAL,
       kmsService
     );
-    const client = createDigiCertApiClient(apiKey, baseUrl);
+    const client = createDigiCertApiClient(
+      apiKey,
+      baseUrl,
+      allowPendingApproval ? { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS } : undefined
+    );
 
     let digicertCertificateId = storedDigiCertCertificateId;
     if (!digicertCertificateId) {
@@ -966,10 +985,22 @@ export const DigiCertCertificateAuthorityFns = ({
 
     try {
       const comments = `Revoked via Infisical. Reason: ${reason}`;
-      if (digicertCertificateId) {
-        await client.revokeCertificate(digicertCertificateId, comments);
-      } else {
-        await client.revokeOrder(orderId, comments);
+      const revokeOptions = { skipApproval: allowPendingApproval };
+      const revocationRequest = digicertCertificateId
+        ? await client.revokeCertificate(digicertCertificateId, comments, revokeOptions)
+        : await client.revokeOrder(orderId, comments, revokeOptions);
+      if (allowPendingApproval && revocationRequest) {
+        if (revocationRequest.status === DigiCertRevocationRequestStatus.Rejected) {
+          throw new BadRequestError({
+            message: `DigiCert rejected the revocation request for order #${orderId}, so the certificate is still valid. Check the request in CertCentral.`
+          });
+        }
+        if (revocationRequest.status !== DigiCertRevocationRequestStatus.Approved) {
+          logger.info(
+            `DigiCert revocation waiting for approval [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [requestId=${revocationRequest.id}]`
+          );
+          return revocationRequest.id;
+        }
       }
     } catch (err) {
       const message = (err as Error)?.message ?? "";
@@ -987,6 +1018,12 @@ export const DigiCertCertificateAuthorityFns = ({
     );
   };
 
+  const getRevocationRequestStatus = async ({ caId, requestId }: { caId: string; requestId: number }) => {
+    const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
+    const request = await client.getRequest(requestId);
+    return request.status;
+  };
+
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
@@ -998,6 +1035,7 @@ export const DigiCertCertificateAuthorityFns = ({
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,
+    getRevocationRequestStatus,
     assertOrderMatchesCertificate,
     orderCodeSigningCertificate: codeSigningFns.orderCodeSigningCertificate,
     reissueCodeSigningCertificate: codeSigningFns.reissueCodeSigningCertificate,
