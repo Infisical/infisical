@@ -281,7 +281,7 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
               onSearch={setSearch}
               placeholder="Search incident contacts by email"
             />
-            <Button variant="accent" size="xs" icon="plus" onClick={() => setAdding(true)}>
+            <Button variant="accent" icon="plus" onClick={() => setAdding(true)}>
               Add contact
             </Button>
           </Inline>
