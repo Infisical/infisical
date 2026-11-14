@@ -350,17 +350,20 @@ const EXAMPLE: Record<Variant, ExampleRow[]> = {
   overwrite: [
     { key: "API_KEY", infisical: "unchanged", destination: "updated" },
     { key: "DB_URL", infisical: "unchanged", destination: "added" },
-    { key: "LEGACY_TOKEN", infisical: "absent", destination: "removed" }
+    { key: "LEGACY_TOKEN", infisical: "absent", destination: "removed" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
   ],
   "prioritize-infisical": [
     { key: "API_KEY", infisical: "unchanged", destination: "updated" },
     { key: "DB_URL", infisical: "unchanged", destination: "added" },
-    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" }
+    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
   ],
   "prioritize-destination": [
     { key: "API_KEY", infisical: "updated", destination: "unchanged" },
     { key: "DB_URL", infisical: "unchanged", destination: "added" },
-    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" }
+    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
   ]
 };
 
@@ -388,11 +391,17 @@ const STATE_WIDTH = 120;
 const isUnchanged = (row: ExampleRow) =>
   row.infisical === "unchanged" && row.destination === "unchanged";
 
-const stateCell = (state: SyncState) => (
-  <span className={styles.syncState} data-state={state}>
-    {STATE_LABEL[state]}
-  </span>
-);
+const stateCell = (state: SyncState) =>
+  state === "unchanged" ? (
+    <span className={styles.syncState}>
+      <span className={styles.unchangedMark} aria-hidden="true" />
+      <span className={flowStyles.srOnly}>{STATE_LABEL.unchanged}</span>
+    </span>
+  ) : (
+    <span className={styles.syncState} data-state={state}>
+      {STATE_LABEL[state]}
+    </span>
+  );
 
 function InitialSyncExample({
   rows,
