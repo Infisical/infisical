@@ -1,4 +1,4 @@
-import { Fragment, useId } from "react";
+import { Fragment, ReactNode, useId } from "react";
 import { Pencil, Plus, ShieldAlert, Sparkles, X } from "lucide-react";
 
 import {
@@ -130,41 +130,48 @@ const ConditionRow = ({
 }) => {
   const error = showErrors ? getConditionError(condition, catalog) : null;
 
-  if (isAiCondition(condition)) {
-    return (
-      <div className="relative flex flex-col gap-1 py-1.5 pr-1.5 pl-2.5">
-        {showConnector && (
-          <span className="absolute top-0 left-4 -translate-y-1/2 bg-card px-1 text-[10px] leading-none font-medium tracking-wider text-muted uppercase">
-            and
-          </span>
-        )}
-        <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
-          <Badge variant="neutral">
-            <Sparkles className="size-3.5 text-muted" />
-            AI
-          </Badge>
-          <span className="text-sm text-foreground">approves the request</span>
-          <span className="text-xs text-muted">
-            {ai.model ? `using ${ai.model}` : "No AI model set up in Organization Settings"}
-          </span>
-          <IconButton
-            variant="ghost"
-            size="xs"
-            aria-label="Remove condition"
-            className="ml-auto text-muted hover:text-danger"
-            onClick={onRemove}
-          >
-            <X className="size-4" />
-          </IconButton>
-        </div>
-        <AutoApprovalAiCondition
-          condition={condition}
-          ai={ai}
-          isError={Boolean(error)}
-          onChange={onChange}
-        />
-        {error && <p className="px-1.5 text-xs text-danger">{error}</p>}
+  const renderRow = (header: ReactNode, editor: ReactNode) => (
+    <div className="relative flex flex-col gap-1 py-1.5 pr-1.5 pl-2.5">
+      {showConnector && (
+        <span className="absolute top-0 left-4 -translate-y-1/2 bg-card px-1 text-[10px] leading-none font-medium tracking-wider text-muted uppercase">
+          and
+        </span>
+      )}
+      <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
+        {header}
+        <IconButton
+          variant="ghost"
+          size="xs"
+          aria-label="Remove condition"
+          className="ml-auto text-muted hover:text-danger"
+          onClick={onRemove}
+        >
+          <X className="size-4" />
+        </IconButton>
       </div>
+      {editor}
+      {error && <p className="px-1.5 text-xs text-danger">{error}</p>}
+    </div>
+  );
+
+  if (isAiCondition(condition)) {
+    return renderRow(
+      <>
+        <Badge variant="neutral">
+          <Sparkles className="size-3.5 text-muted" />
+          AI
+        </Badge>
+        <span className="text-sm text-foreground">approves the request</span>
+        <span className="text-xs text-muted">
+          {ai.model ? `using ${ai.model}` : "No AI model set up in Organization Settings"}
+        </span>
+      </>,
+      <AutoApprovalAiCondition
+        condition={condition}
+        ai={ai}
+        isError={Boolean(error)}
+        onChange={onChange}
+      />
     );
   }
 
@@ -192,50 +199,33 @@ const ConditionRow = ({
       .map((other) => [other.constraint, other.values])
   );
 
-  return (
-    <div className="relative flex flex-col gap-1 py-1.5 pr-1.5 pl-2.5">
-      {showConnector && (
-        <span className="absolute top-0 left-4 -translate-y-1/2 bg-card px-1 text-[10px] leading-none font-medium tracking-wider text-muted uppercase">
-          and
-        </span>
+  return renderRow(
+    <>
+      <Badge variant="neutral">
+        {connection && <ConnectionIcon app={connection.app} className="size-3.5" />}
+        {subjectLabel ?? "Unavailable record"}
+      </Badge>
+      <span className="text-sm text-foreground">{constraint?.label ?? condition.constraint}</span>
+      {constraint?.value === AutoApprovalConstraintValue.Many && (
+        <span className="text-xs text-muted">one of</span>
       )}
-      <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
-        <Badge variant="neutral">
-          {connection && <ConnectionIcon app={connection.app} className="size-3.5" />}
-          {subjectLabel ?? "Unavailable record"}
-        </Badge>
-        <span className="text-sm text-foreground">{constraint?.label ?? condition.constraint}</span>
-        {constraint?.value === AutoApprovalConstraintValue.Many && (
-          <span className="text-xs text-muted">one of</span>
-        )}
-        <IconButton
-          variant="ghost"
-          size="xs"
-          aria-label="Remove condition"
-          className="ml-auto text-muted hover:text-danger"
-          onClick={onRemove}
-        >
-          <X className="size-4" />
-        </IconButton>
+    </>,
+    constraint && constraint.value !== AutoApprovalConstraintValue.None && (
+      <div className="pb-1">
+        <AutoApprovalValuePicker
+          policyType={policyType}
+          scope={scope}
+          scopeId={scopeId}
+          connectionId={condition.connectionId}
+          subject={condition.subject}
+          constraint={constraint}
+          values={condition.values}
+          siblings={siblings}
+          onChange={(values) => onChange({ ...condition, values })}
+          isError={Boolean(error)}
+        />
       </div>
-      {constraint && constraint.value !== AutoApprovalConstraintValue.None && (
-        <div className="pb-1">
-          <AutoApprovalValuePicker
-            policyType={policyType}
-            scope={scope}
-            scopeId={scopeId}
-            connectionId={condition.connectionId}
-            subject={condition.subject}
-            constraint={constraint}
-            values={condition.values}
-            siblings={siblings}
-            onChange={(values) => onChange({ ...condition, values })}
-            isError={Boolean(error)}
-          />
-        </div>
-      )}
-      {error && <p className="px-1.5 text-xs text-danger">{error}</p>}
-    </div>
+    )
   );
 };
 
