@@ -5,6 +5,10 @@ description: "Learn how to authenticate with Infisical using SPIFFE JWT-SVIDs."
 
 **SPIFFE Auth** is a SPIFFE-native authentication method that validates JWT-SVIDs issued by [SPIRE](https://spiffe.io/docs/latest/spire-about/) or other SPIFFE-compliant workload identity providers, allowing workloads with SPIFFE identities to securely authenticate with Infisical.
 
+<Note>
+  The [Infisical Agent](/integrations/platforms/infisical-agent) doesn't support SPIFFE Auth. Use the API examples in this guide to exchange a JWT-SVID for an Infisical access token.
+</Note>
+
 ## Diagram
 
 The following sequence diagram illustrates the SPIFFE Auth workflow for authenticating with Infisical.
@@ -228,10 +232,6 @@ In the following steps, we explore how to create and use identities to access th
       }
       ```
     </Accordion>
-
-    <Tip>
-      We recommend using one of Infisical's clients like SDKs or the Infisical Agent to authenticate with Infisical using SPIFFE Auth as they handle the authentication process for you.
-    </Tip>
 
     <Note>
       Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
