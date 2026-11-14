@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Calendar } from "@infisical/cipher/ui/calendar";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Empty, EmptyHeader, EmptyState, EmptyTitle } from "@infisical/cipher/ui/empty";
 import { Json, type JsonValue } from "@infisical/cipher/ui/json";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -167,7 +167,7 @@ const makeColumns = (
           {detail && (
             <Meta
               mono={false}
-              style={{ ...truncate, flex: "1 1 0", minWidth: "var(--v4-space-48)" }}
+              style={{ ...truncate, flex: "1 1 0", minWidth: "var(--cipher-space-48)" }}
             >
               {detail}
             </Meta>
@@ -601,7 +601,10 @@ export const AuditLogsPage = () => {
         title="Audit logs"
         description="Review who did what in this organization, and when."
         badges={
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
+          <DocumentationLink
+            href="https://infisical.com/docs/documentation/platform/audit-logs"
+            subject="audit logs"
+          />
         }
         tabs={
           <Tabs

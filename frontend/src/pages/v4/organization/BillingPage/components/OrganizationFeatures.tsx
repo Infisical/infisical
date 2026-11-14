@@ -52,11 +52,7 @@ export const OrganizationFeatures = () => {
   if (features.length === 0) return null;
 
   return (
-    <Card
-      variant="framed"
-      title="Organization features"
-      description="Unlocked by your plans and applied across every product."
-    >
+    <Card variant="framed" title="Organization features">
       <Grid columns={3} gap={12}>
         {features.map((feature) => {
           const detail = feature.detail?.(subscription);

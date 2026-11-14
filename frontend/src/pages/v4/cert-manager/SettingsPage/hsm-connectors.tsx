@@ -16,7 +16,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -47,7 +47,7 @@ type Sort = { columnId: string; direction: "asc" | "desc" };
 const Title = () => (
   <Inline gap={8} align="center">
     HSM connectors
-    <DocumentationLinkBadge href={HSM_DOCS_URL} variant="minified" />
+    <DocumentationLink href={HSM_DOCS_URL} subject="HSM connectors" />
   </Inline>
 );
 

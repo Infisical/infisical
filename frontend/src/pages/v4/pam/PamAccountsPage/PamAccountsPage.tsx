@@ -3,7 +3,7 @@ import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -361,8 +361,8 @@ export const PamAccountsPage = () => {
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "var(--v4-space-8)",
-                    marginInlineStart: "var(--v4-space-8)",
+                    gap: "var(--cipher-space-8)",
+                    marginInlineStart: "var(--cipher-space-8)",
                     verticalAlign: "middle"
                   }}
                 >
@@ -395,8 +395,8 @@ export const PamAccountsPage = () => {
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "var(--v4-space-8)",
-                  marginInlineStart: "var(--v4-space-8)",
+                  gap: "var(--cipher-space-8)",
+                  marginInlineStart: "var(--cipher-space-8)",
                   verticalAlign: "middle"
                 }}
               >
@@ -457,7 +457,10 @@ export const PamAccountsPage = () => {
           title="Accounts"
           description="Launch sessions with the accounts you have access to."
           badges={
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pam/accounts/overview" />
+            <DocumentationLink
+              href="https://infisical.com/docs/documentation/platform/pam/accounts/overview"
+              subject="accounts"
+            />
           }
           actions={
             <Inline gap={8}>

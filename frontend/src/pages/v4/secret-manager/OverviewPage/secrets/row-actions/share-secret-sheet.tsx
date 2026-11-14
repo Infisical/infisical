@@ -298,7 +298,7 @@ export function ShareSecretSheet({
                                 variant="ghost"
                                 size="icon-xs"
                                 iconOnly
-                                icon="eye"
+                                icon={showPassword ? "eye-off" : "eye"}
                                 aria-pressed={showPassword}
                                 onClick={() => setShowPassword(!showPassword)}
                               >

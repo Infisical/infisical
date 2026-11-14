@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon, type IconName } from "@infisical/cipher/ui/icon";
@@ -22,7 +22,7 @@ const PROVIDER_ICONS: Record<string, IconName> = {
 };
 
 export const ProviderMark = ({ provider }: { provider: string }) => {
-  const scheme = useV4Scheme() ?? "light";
+  const scheme = useScheme() ?? "light";
   const image = PROVIDER_IMAGES[provider];
   if (image) {
     return <img alt="" className={styles.providerIcon} src={providerIconPath(image, scheme)} />;

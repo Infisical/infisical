@@ -3,7 +3,7 @@ import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filt
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
@@ -386,7 +386,10 @@ export const OverviewPage = () => {
           title="Keys"
           description="Encryption, signing, and MAC keys for this project."
           badges={
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/keys" />
+            <DocumentationLink
+              href="https://infisical.com/docs/documentation/platform/kms/keys"
+              subject="keys"
+            />
           }
           actions={
             <>

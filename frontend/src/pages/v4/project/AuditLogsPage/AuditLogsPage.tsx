@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -255,7 +255,10 @@ const ProjectAuditLogs = ({ projectId, projectType }: Scope) => {
         title="Audit logs"
         description={`Review who did what in ${scopeOf(projectType)}, and when.`}
         badges={
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
+          <DocumentationLink
+            href="https://infisical.com/docs/documentation/platform/audit-logs"
+            subject="audit logs"
+          />
         }
         tabs={
           <Tabs

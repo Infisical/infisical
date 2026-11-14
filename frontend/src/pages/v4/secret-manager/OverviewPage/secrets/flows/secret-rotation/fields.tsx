@@ -421,7 +421,7 @@ export function CreateUserStatementAlert({ statement }: { statement: string }) {
             copyable={false}
             wrap
             maxLines={8}
-            style={{ paddingInlineEnd: "var(--v4-space-40)" }}
+            style={{ paddingInlineEnd: "var(--cipher-space-40)" }}
           />
           <span className={styles.statementCopy}>
             <CopyButton value={statement} label="Copy statement" iconOnly />

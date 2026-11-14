@@ -1,7 +1,7 @@
 .mappings {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  gap: var(--v4-space-8);
+  gap: var(--cipher-space-8);
   align-items: start;
 }
 
@@ -12,12 +12,12 @@
 .mappingHeader {
   display: inline-flex;
   align-items: center;
-  gap: var(--v4-space-4);
-  font-family: var(--v4-type-small-font-family);
-  font-size: var(--v4-type-small-font-size);
-  line-height: var(--v4-type-small-line-height);
-  font-weight: var(--v4-type-small-font-weight);
-  color: var(--v4-muted);
+  gap: var(--cipher-space-4);
+  font-family: var(--cipher-type-small-font-family);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+  font-weight: var(--cipher-type-small-font-weight);
+  color: var(--cipher-muted);
 }
 
 .infoMark {
@@ -28,7 +28,7 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: var(--v4-space-4);
+  gap: var(--cipher-space-4);
 }
 
 .rawEvent {

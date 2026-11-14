@@ -229,8 +229,8 @@ export function EnvironmentPicker({
             <CommandList
               style={{
                 maxHeight: query
-                  ? "calc(8 * var(--v4-size-control-sm) + var(--v4-space-3))"
-                  : "calc(8 * var(--v4-size-control-sm) + 3 * var(--v4-space-3) + var(--v4-size-control-border))"
+                  ? "calc(8 * var(--cipher-size-control-sm) + var(--cipher-space-3))"
+                  : "calc(8 * var(--cipher-size-control-sm) + 3 * var(--cipher-space-3) + var(--cipher-size-control-border))"
               }}
             >
               <CommandEmpty>No environment found</CommandEmpty>

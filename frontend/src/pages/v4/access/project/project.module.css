@@ -1,7 +1,7 @@
 .inline {
   display: flex;
   align-items: center;
-  gap: var(--v4-space-8);
+  gap: var(--cipher-space-8);
 }
 .grow {
   flex: 1 1 auto;
@@ -14,14 +14,14 @@
   width: 288px;
 }
 .panelTitle {
-  padding-block-end: var(--v4-space-8);
-  border-block-end: var(--v4-size-control-border) solid var(--v4-line-soft);
-  color: var(--v4-muted);
+  padding-block-end: var(--cipher-space-8);
+  border-block-end: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  color: var(--cipher-muted);
 }
 .grantRow {
   display: flex;
   align-items: flex-end;
-  gap: var(--v4-space-8);
+  gap: var(--cipher-space-8);
 }
 .durationCell {
   flex: 0 0 176px;
@@ -33,7 +33,7 @@
 .copyValue {
   display: flex;
   align-items: center;
-  gap: var(--v4-space-4);
+  gap: var(--cipher-space-4);
   min-width: 0;
 }
 .wrap {

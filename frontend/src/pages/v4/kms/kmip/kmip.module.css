@@ -4,7 +4,7 @@
 .column {
   display: flex;
   flex-direction: column;
-  gap: var(--v4-space-24);
+  gap: var(--cipher-space-24);
   min-width: 0;
 }
 .start {
@@ -12,30 +12,32 @@
 }
 .value {
   display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--v4-space-4);
+  align-items: flex-start;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+}
+.valueText {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .mono {
-  font-family: var(--v4-type-mono-sm-font-family);
-  font-size: var(--v4-type-mono-sm-font-size);
-  line-height: var(--v4-type-mono-sm-line-height);
-  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  font-family: var(--cipher-type-mono-sm-font-family);
+  font-size: var(--cipher-type-mono-sm-font-size);
+  line-height: var(--cipher-type-mono-sm-line-height);
+  letter-spacing: var(--cipher-type-mono-sm-letter-spacing);
 }
 .muted {
-  color: var(--v4-muted);
+  color: var(--cipher-muted);
 }
 .note {
-  color: var(--v4-muted);
-  font-size: var(--v4-type-caption-font-size);
-  line-height: var(--v4-type-caption-line-height);
+  color: var(--cipher-muted);
+  font-size: var(--cipher-type-caption-font-size);
+  line-height: var(--cipher-type-caption-line-height);
 }
 .steps {
   display: flex;
   flex-direction: column;
-  gap: var(--v4-space-12);
+  gap: var(--cipher-space-12);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -44,7 +46,7 @@
 .step {
   display: flex;
   align-items: flex-start;
-  gap: var(--v4-space-12);
+  gap: var(--cipher-space-12);
   counter-increment: step;
 }
 .step::before {
@@ -53,14 +55,14 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: var(--v4-space-20);
-  height: var(--v4-space-20);
-  border: 1px solid var(--v4-line-soft);
-  color: var(--v4-muted);
-  font-size: var(--v4-type-caption-font-size);
+  width: var(--cipher-space-20);
+  height: var(--cipher-space-20);
+  border: 1px solid var(--cipher-line-soft);
+  color: var(--cipher-muted);
+  font-size: var(--cipher-type-caption-font-size);
 }
 .permissions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--v4-space-12);
+  gap: var(--cipher-space-12);
 }

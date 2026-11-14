@@ -249,7 +249,8 @@ const LogsCard = ({
     <Card
       variant="framed"
       title="Integration logs"
-      description={`Sync events from the last ${days} days`}
+      footer={`Last ${days} days`}
+      footerPlacement="frame"
     >
       <DataTable
         label="Integration logs"

@@ -288,7 +288,6 @@ export const EnforcementSection = ({
             {isAnySsoEnforced && <Badge tone="ok">Active</Badge>}
           </Inline>
         }
-        description="Require all members to sign in via your IdP."
       >
         <FieldGroup>
           {isSamlConfigured && !isGoogleOAuthEnforced && (

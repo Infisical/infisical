@@ -76,7 +76,7 @@ const SecretView = ({ secret }: { secret: TAccessSharedSecretResponse }) => {
           variant="ghost"
           size="icon-sm"
           iconOnly
-          icon="eye"
+          icon={visible ? "eye-off" : "eye"}
           aria-pressed={visible}
           className={styles.reveal}
           onClick={() => setVisible(!visible)}

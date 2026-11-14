@@ -76,19 +76,19 @@ const expirationSlices = (stats: TDashboardStats): DonutSlice[] => {
     {
       label: "Under 7 days",
       count: count(["expired", "0-7d"]),
-      color: "var(--v4-bad)",
+      color: "var(--cipher-bad)",
       filters: { filterExpiresDays: "7" }
     },
     {
       label: "7 to 30 days",
       count: count(["8-30d"]),
-      color: "var(--v4-warn)",
+      color: "var(--cipher-warn)",
       filters: { filterExpiresAfterDays: "7", filterExpiresDays: "30" }
     },
     {
       label: "Over 30 days",
       count: count(["31-60d", "61-90d", "90d+"]),
-      color: "var(--v4-ok)",
+      color: "var(--cipher-ok)",
       filters: { filterExpiresAfterDays: "30" }
     }
   ];
@@ -103,7 +103,7 @@ const pqcSlices = (stats: TDashboardStats): DonutSlice[] => {
     {
       label: "PQC-ready",
       count: sum(true),
-      color: "var(--v4-ok)",
+      color: "var(--cipher-ok)",
       filters: { viewId: "system-pqc" }
     },
     {
@@ -199,9 +199,9 @@ export const DashboardPage = () => {
               emptyTitle="No activity in this period"
               series={[
                 { key: "issued", label: "Issued", color: "var(--chart-1)" },
-                { key: "expired", label: "Expired", color: "var(--v4-bad)", dashed: true },
+                { key: "expired", label: "Expired", color: "var(--cipher-bad)", dashed: true },
                 { key: "revoked", label: "Revoked", color: "var(--chart-2)", dashed: true },
-                { key: "renewed", label: "Renewed", color: "var(--v4-ok)" }
+                { key: "renewed", label: "Renewed", color: "var(--cipher-ok)" }
               ]}
             />
           </Grid>
@@ -275,7 +275,7 @@ export const DashboardPage = () => {
                         onRangeChange={setPqcTrendRange}
                         emptyTitle="No certificates issued in this period"
                         series={[
-                          { key: "pqc", label: "PQC-ready", color: "var(--v4-ok)" },
+                          { key: "pqc", label: "PQC-ready", color: "var(--cipher-ok)" },
                           {
                             key: "nonPqc",
                             label: "Classical",

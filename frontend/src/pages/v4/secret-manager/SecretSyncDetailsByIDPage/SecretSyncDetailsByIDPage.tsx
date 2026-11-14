@@ -150,7 +150,7 @@ const LogsCard = ({ sync }: { sync: TSecretSync }) => {
   const rows = logs.error ? [] : (logs.data?.pages ?? []).flat();
   const lastPage = logs.data?.pages.at(-1);
   return (
-    <Card variant="framed" title="Sync logs" description={`Events from the last ${days} days`}>
+    <Card variant="framed" title="Sync logs" footer={`Last ${days} days`} footerPlacement="frame">
       <DataTable
         label="Sync logs"
         rows={rows}

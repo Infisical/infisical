@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useV4Scheme } from "@infisical/cipher/scope";
+import { useScheme } from "@infisical/cipher/scope";
 import { AnimatedCollapse } from "@infisical/cipher/ui/animated-collapse";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -59,7 +59,7 @@ const LOGIN_ERROR = "Login unsuccessful. Double-check your credentials and try a
 export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const navigate = useNavigate();
   const preview = useAuthPreview();
-  const scheme = useV4Scheme();
+  const scheme = useScheme();
   const { config } = useServerConfig();
   const { data: serverDetails } = useFetchServerStatus();
   const { lastLogin, saveLastLogin } = useLastLogin();

@@ -249,7 +249,6 @@ export const GithubOrgSync = () => {
       <Card
         variant="framed"
         title="GitHub organization sync"
-        description="Sync user groups from your GitHub organization teams."
         action={
           <Button
             variant="outline"

@@ -1549,7 +1549,7 @@ export const OverviewPage = () => {
         <TableHeadButton aria-label="Name column menu">
           Name
           <span className={styles.push}>
-            <Icon name="chev-down" size="var(--v4-size-icon-xs)" />
+            <Icon name="chev-down" size="var(--cipher-size-icon-xs)" />
           </span>
         </TableHeadButton>
       </DropdownMenuTrigger>
@@ -1581,7 +1581,7 @@ export const OverviewPage = () => {
         <TableHeadButton aria-label={`${environment.label} column menu`}>
           <TruncatedLabel>{environment.label}</TruncatedLabel>
           <span className={styles.push}>
-            <Icon name="chev-down" size="var(--v4-size-icon-xs)" />
+            <Icon name="chev-down" size="var(--cipher-size-icon-xs)" />
           </span>
         </TableHeadButton>
       </DropdownMenuTrigger>
@@ -1884,7 +1884,7 @@ export const OverviewPage = () => {
                                 />
                               </span>
                             </TableHead>
-                            <TableHead pin="start" pinOffset="var(--v4-size-row)">
+                            <TableHead pin="start" pinOffset="var(--cipher-size-row)">
                               {sortMenu}
                             </TableHead>
                             {single ? (
@@ -1937,14 +1937,14 @@ export const OverviewPage = () => {
                               <TableRow key={`skeleton-${index + 1}`}>
                                 <TableCell pin="start" selection divider={false}>
                                   <Skeleton
-                                    width="var(--v4-size-icon)"
-                                    height="var(--v4-size-icon)"
+                                    width="var(--cipher-size-icon)"
+                                    height="var(--cipher-size-icon)"
                                   />
                                 </TableCell>
                                 <TableCell colSpan={colSpan - 1}>
                                   <Skeleton
-                                    width="var(--v4-size-text-min)"
-                                    height="var(--v4-size-icon)"
+                                    width="var(--cipher-size-text-min)"
+                                    height="var(--cipher-size-icon)"
                                   />
                                 </TableCell>
                               </TableRow>

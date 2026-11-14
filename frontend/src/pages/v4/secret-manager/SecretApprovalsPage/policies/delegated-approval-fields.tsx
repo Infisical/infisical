@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { Combobox } from "@infisical/cipher/ui/combobox";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
@@ -35,14 +35,12 @@ const ConnectionField = ({
       name="delegatedApproval.connectionId"
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field
-          label={
-            <Inline gap={8}>
-              App connection
-              <DocumentationLinkBadge
-                variant="minified"
-                href={DELEGATED_APPROVAL_DOCS_MAP[option.type].connection}
-              />
-            </Inline>
+          label="App connection"
+          help={
+            <DocumentationLink
+              href={DELEGATED_APPROVAL_DOCS_MAP[option.type].connection}
+              subject={`${APP_CONNECTION_MAP[option.connection].name} app connections`}
+            />
           }
           description={
             !isPending && !connections.length
@@ -129,9 +127,9 @@ export const DelegatedApprovalFields = ({
         <Stack gap={4}>
           <Inline gap={8}>
             <span className={styles.groupLabel}>{selected.name} setup</span>
-            <DocumentationLinkBadge
-              variant="minified"
+            <DocumentationLink
               href={DELEGATED_APPROVAL_DOCS_MAP[selected.type].setup}
+              subject={`${selected.name} setup`}
             />
           </Inline>
           <span className={styles.secondary}>

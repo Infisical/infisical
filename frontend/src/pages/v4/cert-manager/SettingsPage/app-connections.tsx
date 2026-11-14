@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
@@ -445,7 +445,7 @@ export const AppConnectionsTab = () => {
         title={
           <Inline gap={8} align="center">
             App connections
-            <DocumentationLinkBadge href={DOCS_URL} variant="minified" />
+            <DocumentationLink href={DOCS_URL} subject="app connections" />
           </Inline>
         }
         action={

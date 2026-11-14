@@ -12,7 +12,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
@@ -386,7 +386,10 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
           title="Data sources"
           description="Connected platforms that Secret Scanning checks for leaked secrets."
           badges={
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
+            <DocumentationLink
+              href="https://infisical.com/docs/documentation/platform/secret-scanning/overview"
+              subject="data sources"
+            />
           }
           actions={
             <Button

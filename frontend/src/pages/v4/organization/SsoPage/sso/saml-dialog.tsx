@@ -14,7 +14,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import { Combobox } from "@infisical/cipher/ui/combobox";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -315,7 +315,10 @@ export const SamlConfigDialog = ({
               <SheetTitle>
                 <Inline gap={8} wrap={false}>
                   Manage SAML configuration
-                  <DocumentationLinkBadge href={docsUrl} />
+                  <DocumentationLink
+                    href={docsUrl}
+                    subject={provider ? `${provider.name} SAML` : "SAML"}
+                  />
                 </Inline>
               </SheetTitle>
             </SheetHeader>

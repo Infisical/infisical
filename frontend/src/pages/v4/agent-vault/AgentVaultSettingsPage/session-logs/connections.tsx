@@ -434,7 +434,7 @@ export const SessionLogConnections = ({ inUseId }: { inUseId: string | null }) =
         variant="framed"
         flush
         title="AWS connections"
-        description="Only this project can use these. Organization connections are managed in Integrations."
+        hint="Only this project can use these. Organization connections live in Integrations."
         action={
           <Button
             variant="accent"

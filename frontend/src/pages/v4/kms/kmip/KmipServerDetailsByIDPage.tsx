@@ -3,7 +3,7 @@ import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -167,7 +167,7 @@ export const KmipServerDetailsByIDPage = () => {
             <BackButton label="KMIP servers" onClick={back} />
             <PageHeader
               title={server.name}
-              badges={<DocumentationLinkBadge href={KMIP_SERVER_DOCS} />}
+              badges={<DocumentationLink href={KMIP_SERVER_DOCS} subject="KMIP servers" />}
               actions={
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

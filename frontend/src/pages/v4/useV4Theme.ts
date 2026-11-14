@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { defaultV4Theme, toV4Theme, v4ThemeScheme } from "@infisical/cipher/lib/theme-registry";
-import type { V4Scheme } from "@infisical/cipher/lib/themes";
+import { defaultTheme, toTheme, themeScheme } from "@infisical/cipher/lib/theme-registry";
+import type { Scheme } from "@infisical/cipher/lib/themes";
 import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 
 import {
@@ -18,7 +18,7 @@ const listeners = new Set<() => void>();
 
 const readStored = (): string | undefined => {
   try {
-    return toV4Theme(window.sessionStorage.getItem(KEY));
+    return toTheme(window.sessionStorage.getItem(KEY));
   } catch {
     return undefined;
   }
@@ -46,23 +46,23 @@ const readPreferredRaw = () => {
 
 // The live app keeps light, dark or system in the shared theme preference; this remembers which
 // named theme of each scheme the person picked, so System and the scheme can resolve to it.
-const parsePreferred = (raw: string): Record<V4Scheme, string> => {
-  let stored: Partial<Record<V4Scheme, unknown>> = {};
+const parsePreferred = (raw: string): Record<Scheme, string> => {
+  let stored: Partial<Record<Scheme, unknown>> = {};
   try {
     stored = raw ? (JSON.parse(raw) as typeof stored) : {};
   } catch {
     stored = {};
   }
-  const pick = (scheme: V4Scheme) => {
-    const theme = toV4Theme(stored[scheme]);
-    return theme && v4ThemeScheme(theme) === scheme ? theme : defaultV4Theme[scheme];
+  const pick = (scheme: Scheme) => {
+    const theme = toTheme(stored[scheme]);
+    return theme && themeScheme(theme) === scheme ? theme : defaultTheme[scheme];
   };
   return { light: pick("light"), dark: pick("dark") };
 };
 
 const writePreferred = (theme: string) => {
   try {
-    const next = { ...parsePreferred(readPreferredRaw()), [v4ThemeScheme(theme)]: theme };
+    const next = { ...parsePreferred(readPreferredRaw()), [themeScheme(theme)]: theme };
     window.localStorage.setItem(PREFERRED_KEY, JSON.stringify(next));
   } catch {
     return;
@@ -83,7 +83,7 @@ const usePreferred = () =>
 const useUrlOverride = () =>
   useRouterState({
     select: (state): string | undefined =>
-      toV4Theme((state.location.search as { theme?: unknown }).theme)
+      toTheme((state.location.search as { theme?: unknown }).theme)
   });
 
 const useIsLiveOrg = () => {
@@ -138,11 +138,11 @@ export const useV4ThemeChoice = (source: ThemeChangeSource) => {
         if (isLive) setTheme("system", source);
         return;
       }
-      const named = toV4Theme(next);
+      const named = toTheme(next);
       if (!named) return;
       if (isLive) {
         writePreferred(named);
-        setTheme(v4ThemeScheme(named), source);
+        setTheme(themeScheme(named), source);
       } else writeStored(named);
     },
     [clearThemeOverride, isLive, setTheme, source]

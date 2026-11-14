@@ -25,28 +25,28 @@ const validityBuckets = [
     bucket: ">=200d",
     label: "200 days or more",
     hint: "Non-compliant (exceeds current limit)",
-    color: "var(--v4-bad)"
+    color: "var(--cipher-bad)"
   },
   {
     bucket: "100-199d",
     label: "100 to 199 days",
     hint: "Compliant until Mar 2027",
-    color: "var(--v4-warn)"
+    color: "var(--cipher-warn)"
   },
   {
     bucket: "48-99d",
     label: "48 to 99 days",
     hint: "Compliant until Mar 2029",
-    color: "var(--v4-info)"
+    color: "var(--cipher-info)"
   },
-  { bucket: "<=47d", label: "47 days or less", hint: "Fully compliant", color: "var(--v4-ok)" }
+  { bucket: "<=47d", label: "47 days or less", hint: "Fully compliant", color: "var(--cipher-ok)" }
 ];
 
 const renewalConfig = {
   renewals: { label: "Renewals per year", color: "var(--chart-2)" }
 } satisfies ChartConfig;
 
-const axisTick = { fill: "var(--v4-text2)", style: { fill: "var(--v4-text2)" } };
+const axisTick = { fill: "var(--cipher-text2)", style: { fill: "var(--cipher-text2)" } };
 
 const MandateDeadlines = () => {
   const now = Date.now();
@@ -99,7 +99,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
             data={data}
             margin={{ top: 20, right: 8, bottom: 0, left: 0 }}
           >
-            <CartesianGrid vertical={false} stroke="var(--v4-line)" />
+            <CartesianGrid vertical={false} stroke="var(--cipher-line)" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} tick={axisTick} />
             <YAxis
               width={36}
@@ -121,7 +121,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
                   fill={index === 0 ? "var(--chart-1)" : "var(--color-renewals)"}
                 />
               ))}
-              <LabelList dataKey="renewals" position="top" fill="var(--v4-ink)" />
+              <LabelList dataKey="renewals" position="top" fill="var(--cipher-ink)" />
             </Bar>
           </BarChart>
         </ChartContainer>

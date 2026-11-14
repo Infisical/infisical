@@ -2,12 +2,12 @@
   display: inline-flex;
 }
 .muted {
-  color: var(--v4-muted);
+  color: var(--cipher-muted);
 }
 .toolbar {
   display: flex;
   align-items: center;
-  gap: var(--v4-space-8);
+  gap: var(--cipher-space-8);
 }
 .grow {
   flex: 1 1 auto;
@@ -20,20 +20,20 @@
 .roles {
   display: flex;
   align-items: center;
-  gap: var(--v4-space-4);
+  gap: var(--cipher-space-4);
   min-width: 0;
 }
 .groupRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--v4-space-12);
+  gap: var(--cipher-space-12);
 }
 .rowHint {
   display: inline-flex;
-  color: var(--v4-muted);
+  color: var(--cipher-muted);
   opacity: 0;
-  transition: opacity var(--v4-duration-fast) var(--v4-ease-fade);
+  transition: opacity var(--cipher-duration-fast) var(--cipher-ease-fade);
 }
 tr:is(:hover, :focus-within) .rowHint {
   opacity: 1;
@@ -49,16 +49,17 @@ tr:is(:hover, :focus-within) .rowHint {
 .removeList {
   display: flex;
   flex-direction: column;
-  gap: var(--v4-space-4);
+  gap: var(--cipher-space-4);
   max-height: 320px;
   overflow-y: auto;
   margin: 0;
-  padding: var(--v4-space-12) var(--v4-space-12) var(--v4-space-12) var(--v4-space-24);
-  border: var(--v4-size-control-border) solid var(--v4-line-soft);
+  padding: var(--cipher-space-12) var(--cipher-space-12) var(--cipher-space-12)
+    var(--cipher-space-24);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
   list-style: disc;
 }
 .removeList > li > span {
-  margin-inline-end: var(--v4-space-8);
+  margin-inline-end: var(--cipher-space-8);
 }
 .removeList > li[data-ignored] > span {
   text-decoration: line-through;
@@ -72,7 +73,7 @@ button.rowHint {
 .linkBadges {
   display: inline-flex;
   align-items: center;
-  gap: var(--v4-space-8);
-  margin-inline-start: var(--v4-space-8);
+  gap: var(--cipher-space-8);
+  margin-inline-start: var(--cipher-space-8);
   vertical-align: middle;
 }

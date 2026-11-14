@@ -1,18 +1,18 @@
 .scopes {
   display: flex;
   align-items: center;
-  gap: var(--v4-space-4);
+  gap: var(--cipher-space-4);
   min-width: 0;
 }
 .scopeEnv {
-  padding-inline-end: var(--v4-space-6);
-  border-inline-end: var(--v4-size-control-border) solid var(--v4-line-soft);
+  padding-inline-end: var(--cipher-space-6);
+  border-inline-end: var(--cipher-size-control-border) solid var(--cipher-line-soft);
 }
 .scopeRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: start;
-  gap: var(--v4-space-8);
+  gap: var(--cipher-space-8);
   width: 100%;
 }
 .rowAction {
@@ -20,10 +20,10 @@
 }
 .firstRowAction {
   display: inline-flex;
-  margin-top: calc(var(--v4-type-field-label-line-height) + var(--v4-space-field-label));
+  margin-top: calc(var(--cipher-type-field-label-line-height) + var(--cipher-space-field-label));
 }
 .source {
   display: inline-flex;
   align-items: center;
-  gap: var(--v4-space-4);
+  gap: var(--cipher-space-4);
 }

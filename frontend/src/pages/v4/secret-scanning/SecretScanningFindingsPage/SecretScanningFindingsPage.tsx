@@ -1,5 +1,5 @@
 import { Badge } from "@infisical/cipher/ui/badge";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
@@ -32,7 +32,10 @@ const Findings = ({ projectId }: { projectId: string }) => {
       description="Secrets detected across every data source."
       badges={
         <Inline gap={8} align="center">
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/findings" />
+          <DocumentationLink
+            href="https://infisical.com/docs/documentation/platform/secret-scanning/findings"
+            subject="findings"
+          />
           {unresolved > 0 && (
             <Badge tone="warn" dot>
               {unresolved} need attention

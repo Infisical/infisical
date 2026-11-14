@@ -2,12 +2,12 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: var(--v4-space-8);
+  gap: var(--cipher-space-8);
   width: 100%;
-  max-width: var(--v4-size-measure-field-wide);
+  max-width: var(--cipher-size-measure-field-wide);
 }
 .firstRowAction {
-  margin-top: calc(var(--v4-type-field-label-line-height) + var(--v4-space-field-label));
+  margin-top: calc(var(--cipher-type-field-label-line-height) + var(--cipher-space-field-label));
 }
 .fieldset {
   min-width: 0;
@@ -16,40 +16,40 @@
   border: 0;
 }
 .groupLabel {
-  font-family: var(--v4-type-field-label-font-family);
-  font-size: var(--v4-type-field-label-font-size);
-  font-weight: var(--v4-type-field-label-font-weight);
-  line-height: var(--v4-type-field-label-line-height);
-  color: var(--v4-ink);
+  font-family: var(--cipher-type-field-label-font-family);
+  font-size: var(--cipher-type-field-label-font-size);
+  font-weight: var(--cipher-type-field-label-font-weight);
+  line-height: var(--cipher-type-field-label-line-height);
+  color: var(--cipher-ink);
 }
 .secondary {
-  color: var(--v4-muted);
-  font-family: var(--v4-type-small-font-family);
-  font-size: var(--v4-type-small-font-size);
-  line-height: var(--v4-type-small-line-height);
+  color: var(--cipher-muted);
+  font-family: var(--cipher-type-small-font-family);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
 }
 .constraintFields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--v4-space-12);
+  gap: var(--cipher-space-12);
 }
 .pathRow {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--v4-space-8);
-  color: var(--v4-muted);
+  gap: var(--cipher-space-8);
+  color: var(--cipher-muted);
 }
 .pathValue {
   overflow: hidden;
-  color: var(--v4-ink);
-  font-family: var(--v4-type-mono-sm-font-family);
-  font-size: var(--v4-type-mono-sm-font-size);
+  color: var(--cipher-ink);
+  font-family: var(--cipher-type-mono-sm-font-family);
+  font-size: var(--cipher-type-mono-sm-font-size);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .pathAdder {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--v4-space-8);
+  gap: var(--cipher-space-8);
 }

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
@@ -120,7 +120,7 @@ export const AgentVaultIdentityDelegationSection = ({
         title={
           <Inline gap={8}>
             Delegation
-            <DocumentationLinkBadge href={DELEGATION_DOCS_URL} />
+            <DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />
           </Inline>
         }
         flush={Boolean(rows.length) && !loadFailed}

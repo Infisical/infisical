@@ -12,7 +12,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -277,7 +277,10 @@ export const LdapConfigDialog = ({
               <SheetTitle>
                 <Inline gap={8} wrap={false}>
                   Manage LDAP configuration
-                  <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
+                  <DocumentationLink
+                    href="https://infisical.com/docs/integrations/user-authentication"
+                    subject="LDAP"
+                  />
                 </Inline>
               </SheetTitle>
             </SheetHeader>

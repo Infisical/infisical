@@ -7,7 +7,7 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import {
   Empty,
@@ -337,7 +337,10 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
           title="Sessions"
           description="Tokens that let your agents reach the services they need."
           badges={
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/agent-vault/sessions" />
+            <DocumentationLink
+              href="https://infisical.com/docs/documentation/platform/agent-vault/sessions"
+              subject="sessions"
+            />
           }
           actions={
             <Tooltip content={NOT_PORTED}>

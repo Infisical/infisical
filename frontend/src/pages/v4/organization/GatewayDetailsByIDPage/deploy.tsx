@@ -4,7 +4,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import {
   Field,
   FieldContent,
@@ -271,7 +271,10 @@ helm install infisical-gateway infisical/infisical-gateway \\
       title={
         <Inline gap={8} wrap={false}>
           Deployment
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/gateway-deployment" />
+          <DocumentationLink
+            href="https://infisical.com/docs/documentation/platform/gateways/gateway-deployment"
+            subject="gateway deployment"
+          />
         </Inline>
       }
       action={

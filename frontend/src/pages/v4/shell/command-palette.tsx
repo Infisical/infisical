@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { v4Themes } from "@infisical/cipher/lib/theme-registry";
+import { themes } from "@infisical/cipher/lib/theme-registry";
 import {
   CommandMenu,
   type CommandMenuGroup,
@@ -193,7 +193,7 @@ export const CommandPalette = ({
     result.push({
       label: "Commands",
       items: [
-        ...v4Themes.map((theme) => ({
+        ...themes.map((theme) => ({
           id: `theme:${theme.id}`,
           label: `Switch to ${theme.name} theme`,
           icon: theme.scheme === "dark" ? ("moon" as const) : ("sun" as const),

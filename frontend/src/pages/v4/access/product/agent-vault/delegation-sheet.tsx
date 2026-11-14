@@ -13,7 +13,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -235,7 +235,7 @@ const Content = ({ identity }: { identity: Identity }) => {
         <SheetTitle>
           <Inline gap={8}>
             Manage delegation
-            <DocumentationLinkBadge href={DELEGATION_DOCS_URL} />
+            <DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />
           </Inline>
         </SheetTitle>
       </SheetHeader>

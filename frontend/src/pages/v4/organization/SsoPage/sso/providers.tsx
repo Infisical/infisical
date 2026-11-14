@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
-import { DocumentationLinkBadge } from "@infisical/cipher/ui/documentation-link-badge";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -623,7 +623,10 @@ export const ProviderChooserDialog = ({
           <DialogTitle>
             <Inline gap={8} wrap={false}>
               {exclude ? "Switch identity provider" : "Add identity provider"}
-              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
+              <DocumentationLink
+                href="https://infisical.com/docs/integrations/user-authentication"
+                subject="identity providers"
+              />
             </Inline>
           </DialogTitle>
         </DialogHeader>
