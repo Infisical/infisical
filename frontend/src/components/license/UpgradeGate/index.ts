@@ -30,7 +30,6 @@ export {
 export { hasEnvironmentCapacity } from "./environment-limit";
 export type { UpgradeIntent } from "./upgrade-intents";
 export {
-  AgentVaultAddCardUpgradeIntent,
   AgentVaultUpgradeIntent,
   BillingPlan,
   BillingProduct,

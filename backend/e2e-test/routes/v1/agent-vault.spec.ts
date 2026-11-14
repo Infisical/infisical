@@ -68,11 +68,8 @@ import { userDALFactory } from "@app/services/user/user-dal";
 
 const planWith = (features: Partial<TPlanFeatures>) => Plan.restore({ ...testFeatures(), ...features });
 
-// These specs exercise resolve itself; the Agent Vault plan gate has its own unit tests.
-const allowAgentVault = {
-  assertCanBroker: async () => {},
-  getAccess: async () => ({ assertAllowed: () => {} })
-} as never;
+// These specs exercise resolve itself; the Agent Vault free limit has its own unit tests.
+const allowAgentVault = { assertCanBroker: async () => {} };
 
 declare const testKeyStore: TKeyStoreFactory;
 

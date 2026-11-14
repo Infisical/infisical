@@ -58,11 +58,12 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   ...overrides
 });
 
-const agentVaultAccess = (notOnPlan = false) => ({
+const agentVaultAccess = (freeLimitReached = false) => ({
   assertCanBroker: vi.fn(async () => {
-    if (notOnPlan) throw new RuleViolationError({ name: "AgentVaultNotOnPlan", message: "not on plan" });
-  }),
-  getAccess: vi.fn() as never
+    if (freeLimitReached) {
+      throw new RuleViolationError({ name: "AgentVaultFreeLimitReached", message: "free limit reached" });
+    }
+  })
 });
 
 const sessionLogConfig = {
@@ -86,7 +87,7 @@ const setup = (
     onlyOnPrimary = false,
     personalRows = [],
     session = {},
-    notOnPlan = false,
+    freeLimitReached = false,
     proxy = {
       projectId: PROJECT_ID,
       orgId: "org-1",
@@ -101,7 +102,7 @@ const setup = (
     label?: string | null;
     // The session was minted a moment ago and hasn't reached the replica.
     onlyOnPrimary?: boolean;
-    notOnPlan?: boolean;
+    freeLimitReached?: boolean;
     personalRows?: { serviceId: string; field: string; encryptedValue: Buffer; oauthConfig: unknown }[];
     session?: Record<string, unknown>;
     proxy?: {
@@ -181,7 +182,7 @@ const setup = (
     },
     kmsService: { createCipherPairWithDataKey },
     licenseService: new FakeLicenseService(),
-    agentVaultAccessService: agentVaultAccess(notOnPlan),
+    agentVaultAccessService: agentVaultAccess(freeLimitReached),
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
       refreshServiceToken: refreshServiceToken as never,
@@ -240,10 +241,10 @@ describe("credential refresh", () => {
   });
 });
 
-describe("an org without Agent Vault on its plan", () => {
-  test("resolve refuses with AgentVaultNotOnPlan and hands out no credential", async () => {
+describe("an org past its free Agent Vault requests", () => {
+  test("resolve refuses with AgentVaultFreeLimitReached and hands out no credential", async () => {
     const { service, refreshServiceToken, createCipherPairWithDataKey } = setup(async () => refreshed, undefined, [], {
-      notOnPlan: true
+      freeLimitReached: true
     });
     const result = service.resolveSession({
       proxyId: "proxy-1",
@@ -251,20 +252,20 @@ describe("an org without Agent Vault on its plan", () => {
       sessionToken: "token",
       hasSessionLogKey: false
     });
-    await expect(result).rejects.toMatchObject({ name: "AgentVaultNotOnPlan" });
+    await expect(result).rejects.toMatchObject({ name: "AgentVaultFreeLimitReached" });
     expect(refreshServiceToken).not.toHaveBeenCalled();
     expect(createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 
   test("credential refresh refuses before refreshing", async () => {
-    const { service, refreshServiceToken } = setup(async () => refreshed, undefined, [], { notOnPlan: true });
+    const { service, refreshServiceToken } = setup(async () => refreshed, undefined, [], { freeLimitReached: true });
     const result = service.refreshCredential({ ...refreshArgs, hostPattern: "mcp.linear.app" });
-    await expect(result).rejects.toMatchObject({ name: "AgentVaultNotOnPlan" });
+    await expect(result).rejects.toMatchObject({ name: "AgentVaultFreeLimitReached" });
     expect(refreshServiceToken).not.toHaveBeenCalled();
   });
 
   test("the heartbeat still answers, so the proxy keeps running", async () => {
-    const { service, recordHeartbeat } = setup(async () => refreshed, undefined, [], { notOnPlan: true });
+    const { service, recordHeartbeat } = setup(async () => refreshed, undefined, [], { freeLimitReached: true });
     await service.heartbeat({ proxyId: "proxy-1", tokenVersion: 1 });
     expect(recordHeartbeat).toHaveBeenCalled();
   });

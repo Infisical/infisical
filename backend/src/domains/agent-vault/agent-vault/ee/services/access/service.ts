@@ -1,17 +1,16 @@
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { logger } from "@app/lib/logger";
 
 import { TAgentVaultAccessService } from "../../../ce/services/dependencies";
 import { AgentVaultAccess } from "../../models/agent-vault-access";
-import { TGrandfatheredOrgCache, TGrandfatheredOrgStore } from "../dependencies";
+import { TAgentVaultFreeUsageCache } from "../dependencies";
 
 export class AgentVaultAccessService implements TAgentVaultAccessService {
   constructor(
     private readonly licenseService: Pick<TLicenseService, "getPlan" | "getInstanceEntitlements">,
     private readonly organizationsProjectsService: Pick<TOrganizationsProjectsService, "resolveRootOrgId">,
-    private readonly grandfatheredOrgReader: Pick<TGrandfatheredOrgStore, "findByOrgId">,
-    private readonly grandfatheredOrgWriter: TGrandfatheredOrgStore,
-    private readonly grandfatheredOrgCache: TGrandfatheredOrgCache
+    private readonly freeUsageCache: Pick<TAgentVaultFreeUsageCache, "read">
   ) {}
 
   async assertCanBroker(orgId: string): Promise<void> {
@@ -19,37 +18,30 @@ export class AgentVaultAccessService implements TAgentVaultAccessService {
     if (!isCloud) return;
 
     const plan = await this.licenseService.getPlan(orgId);
-    const access = AgentVaultAccess.decide({ isCloud, plan, isGrandfathered: false });
-    if (access.allowed) return;
+    if (!AgentVaultAccess.isLimited({ isCloud, plan })) return;
 
-    const isGrandfathered = await this.isGrandfathered(await this.organizationsProjectsService.resolveRootOrgId(orgId));
-    AgentVaultAccess.decide({ isCloud, plan, isGrandfathered }).assertAllowed();
+    const now = new Date();
+    const used = await this.readFreeUsage(orgId, now);
+    AgentVaultAccess.decide({ isCloud, plan, used, now }).assertAllowed();
   }
 
   async getAccess(orgId: string): Promise<AgentVaultAccess> {
     const isCloud = this.licenseService.getInstanceEntitlements().isCloud();
     const plan = await this.licenseService.getPlan(orgId);
-    if (!isCloud) return AgentVaultAccess.decide({ isCloud, plan, isGrandfathered: false });
+    if (!AgentVaultAccess.isLimited({ isCloud, plan })) return AgentVaultAccess.decide({ isCloud, plan, used: null });
 
-    const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
-    const grandfatheredOrg = await this.grandfatheredOrgReader.findByOrgId(rootOrgId);
-
-    if (grandfatheredOrg?.isActive && AgentVaultAccess.endsGrandfathering(plan)) {
-      grandfatheredOrg.end();
-      await this.grandfatheredOrgWriter.saveEnded(grandfatheredOrg);
-      await this.grandfatheredOrgCache.forget(rootOrgId);
-    }
-
-    return AgentVaultAccess.decide({ isCloud, plan, isGrandfathered: Boolean(grandfatheredOrg?.isActive) });
+    const now = new Date();
+    return AgentVaultAccess.decide({ isCloud, plan, used: await this.readFreeUsage(orgId, now), now });
   }
 
-  private async isGrandfathered(rootOrgId: string): Promise<boolean> {
-    const cached = await this.grandfatheredOrgCache.read(rootOrgId);
-    if (cached !== null) return cached;
-
-    const grandfatheredOrg = await this.grandfatheredOrgReader.findByOrgId(rootOrgId);
-    const isGrandfathered = Boolean(grandfatheredOrg?.isActive);
-    await this.grandfatheredOrgCache.write(rootOrgId, isGrandfathered);
-    return isGrandfathered;
+  // Null when the count can't be read, which allows: a key store outage never blocks brokering.
+  private async readFreeUsage(orgId: string, now: Date): Promise<number | null> {
+    const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
+    try {
+      return await this.freeUsageCache.read(rootOrgId, now);
+    } catch (error) {
+      logger.error(error, `Failed to read Agent Vault free usage [rootOrgId=${rootOrgId}], allowing`);
+      return null;
+    }
   }
 }

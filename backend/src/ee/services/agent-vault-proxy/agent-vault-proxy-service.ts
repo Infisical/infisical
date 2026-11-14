@@ -155,7 +155,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: TLicenseService;
-  agentVaultAccessService: TAgentVaultAccessService;
+  agentVaultAccessService: Pick<TAgentVaultAccessService, "assertCanBroker">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
 };
@@ -391,7 +391,6 @@ export const agentVaultProxyServiceFactory = ({
 
   const createProxy = async ({ projectId, ctx, name, description, ...settings }: TCreateProxyDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Create);
-    (await agentVaultAccessService.getAccess(ctx.actorOrgId)).assertAllowed();
 
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
     if (existing) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
@@ -451,7 +450,6 @@ export const agentVaultProxyServiceFactory = ({
   const rotateProxyToken = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.IssueToken);
     const proxy = await $findProxyOr404({ projectId, proxyId });
-    (await agentVaultAccessService.getAccess(ctx.actorOrgId)).assertAllowed();
 
     const { stored, reported } = await $newRootCa(proxy.projectId);
     // The fingerprint is the only record that a proxy serves its own CA, and its next start reports that CA again.

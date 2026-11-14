@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { TAgentVaultAccessService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -73,7 +72,6 @@ type TAgentVaultSessionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "wrapKey" | "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseService, "getPlan">;
-  agentVaultAccessService: Pick<TAgentVaultAccessService, "getAccess">;
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -90,8 +88,7 @@ export const agentVaultSessionServiceFactory = ({
   orgDAL,
   permissionService,
   kmsService,
-  licenseService,
-  agentVaultAccessService
+  licenseService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -148,7 +145,6 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionAgentVaultSessionActions.Create,
       ProjectPermissionSub.AgentVaultSessions
     );
-    (await agentVaultAccessService.getAccess(ctx.actorOrgId)).assertAllowed();
 
     if (!accessBundles.length && !services.length) {
       throw new BadRequestError({

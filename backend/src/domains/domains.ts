@@ -55,7 +55,6 @@ export const createDomains = async (deps: TDomainDeps) => {
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
 
   const agentVault = new AgentVaultModule({
-    db: deps.db,
     keyStore: deps.keyStore,
     licenseService: license.licenseService,
     usageMeteringService: license.usageMeteringService,

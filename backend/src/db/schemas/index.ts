@@ -9,7 +9,6 @@ export * from "./agent-vault-access-bundle-skills";
 export * from "./agent-vault-access-bundles";
 export * from "./agent-vault-delegation-subjects";
 export * from "./agent-vault-delegations";
-export * from "./agent-vault-grandfathered-orgs";
 export * from "./agent-vault-personal-value-references";
 export * from "./agent-vault-personal-values";
 export * from "./agent-vault-proxies";

@@ -1,16 +1,13 @@
-import { TDbClient } from "@app/db";
 import { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "../ce/services/dependencies";
-import { GrandfatheredOrgCache } from "./data-access/grandfathered-org-cache";
-import { GrandfatheredOrgStore } from "./data-access/grandfathered-org-store";
+import { FreeUsageCache } from "./data-access/free-usage-cache";
 import { AgentVaultAccessService } from "./services/access/service";
 import { AgentVaultUsageService } from "./services/usage/service";
 
 export type TAgentVaultDeps = {
-  db: TDbClient;
   keyStore: TDomainKeyStore;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
@@ -22,14 +19,18 @@ export class AgentVaultModule {
 
   readonly agentVaultUsageService: TAgentVaultUsageService;
 
-  constructor({ db, keyStore, licenseService, usageMeteringService, organizationsProjectsService }: TAgentVaultDeps) {
+  constructor({ keyStore, licenseService, usageMeteringService, organizationsProjectsService }: TAgentVaultDeps) {
+    const freeUsageCache = new FreeUsageCache(keyStore);
     this.agentVaultAccessService = new AgentVaultAccessService(
       licenseService,
       organizationsProjectsService,
-      new GrandfatheredOrgStore(() => db.replicaNode()),
-      new GrandfatheredOrgStore(() => db),
-      new GrandfatheredOrgCache(keyStore)
+      freeUsageCache
     );
-    this.agentVaultUsageService = new AgentVaultUsageService(licenseService, usageMeteringService);
+    this.agentVaultUsageService = new AgentVaultUsageService(
+      licenseService,
+      usageMeteringService,
+      organizationsProjectsService,
+      freeUsageCache
+    );
   }
 }

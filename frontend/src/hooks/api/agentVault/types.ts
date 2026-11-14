@@ -1029,10 +1029,19 @@ export type TUpdateAgentVaultSkillDTO = TCreateAgentVaultSkillDTO & {
   baseVersion?: number;
 };
 
+export type TAgentVaultFreeUsage = {
+  used: number;
+  limit: number;
+  resetsAt: string;
+};
+
 export type TAgentVaultAccess = {
-  /** False when the org's plan doesn't include Agent Vault: starting sessions and adding proxies are refused. */
+  /** `free` and `limit-reached` are orgs without Agent Vault on their plan, counted against the free monthly requests. */
+  state: "self-hosted" | "plan" | "open" | "free" | "limit-reached";
+  /** False once the free requests are used: proxies stop attaching credentials until a card is added or the month resets. */
   allowed: boolean;
-  state: "self-hosted" | "plan" | "open" | "grandfathered" | "none";
-  /** True for orgs that used Agent Vault before billing launched and haven't added a card yet. */
-  showCardModal: boolean;
+  /** Only for an org on the free tier. Org-wide: sub-organizations share their root's count. */
+  freeUsage: TAgentVaultFreeUsage | null;
+  /** True from 80% of the free requests. */
+  warn: boolean;
 };

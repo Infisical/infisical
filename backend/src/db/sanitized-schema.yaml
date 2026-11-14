@@ -170,14 +170,6 @@ tables:
       - createdAt
       - updatedAt
 
-  - name: agent_vault_grandfathered_orgs
-    source: public.agent_vault_grandfathered_orgs
-    columns:
-      - orgId
-      - endedAt
-      - createdAt
-      - updatedAt
-
   - name: agent_vault_variables
     source: public.agent_vault_variables
     columns:

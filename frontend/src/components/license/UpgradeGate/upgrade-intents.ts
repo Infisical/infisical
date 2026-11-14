@@ -342,15 +342,7 @@ export const AgentVaultUpgradeIntent = {
   upgradeLabel: "Unlock Agent Vault",
   title: "Add Agent Vault to Your Plan",
   description:
-    "Agent Vault is on the Pro plan. The first 5,000 requests each month are free, then $1 per 10,000. Add a card to start sessions and add proxies."
-} satisfies UpgradeIntent;
-
-// For orgs that used Agent Vault before billing launched: nothing is blocked, this only asks for a card.
-export const AgentVaultAddCardUpgradeIntent = {
-  ...AgentVaultUpgradeIntent,
-  upgradeLabel: "Add a Card",
-  title: "Add a Card to Keep Using Agent Vault",
-  description: "The first 5,000 requests each month are free, then $1 per 10,000."
+    "Agent Vault is on the Pro plan. The first 5,000 requests each month are free, then $1 per 10,000. Add a card to keep brokering past the free requests."
 } satisfies UpgradeIntent;
 
 export const PamAccountLimitUpgradeIntent = {

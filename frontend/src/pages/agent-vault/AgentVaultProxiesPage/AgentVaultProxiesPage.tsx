@@ -79,7 +79,6 @@ import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVau
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
-import { useAgentVaultPlanGate } from "@app/hooks/useAgentVaultPlanGate";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
@@ -184,9 +183,7 @@ export const AgentVaultProxiesPage = () => {
   const rotateProxyToken = useRotateAgentVaultProxyToken(projectId);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const { withPlan, upgradeGate } = useAgentVaultPlanGate();
-  const openCreateDialog = withPlan("agent-vault.add-proxy", () => setIsCreateOpen(true));
-  useAgentVaultCreateIntent(openCreateDialog, isAdmin);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
   const [proxyToEdit, setProxyToEdit] = useState<TAgentVaultProxy | null>(null);
   const [proxyToDelete, setProxyToDelete] = useState<TAgentVaultProxy | null>(null);
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
@@ -265,7 +262,7 @@ export const AgentVaultProxiesPage = () => {
           <CardDescription>An agent points its HTTP traffic at one of these.</CardDescription>
           {isAdmin && (
             <CardAction>
-              <Button variant="av" onClick={openCreateDialog}>
+              <Button variant="av" onClick={() => setIsCreateOpen(true)}>
                 <PlusIcon />
                 Create Proxy
               </Button>
@@ -427,11 +424,7 @@ export const AgentVaultProxiesPage = () => {
                               <PencilIcon />
                               Edit Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={withPlan("agent-vault.rotate-proxy-token", () =>
-                                setProxyToRotate(proxy)
-                              )}
-                            >
+                            <DropdownMenuItem onClick={() => setProxyToRotate(proxy)}>
                               <RefreshCwIcon />
                               Rotate Proxy Token
                             </DropdownMenuItem>
@@ -555,7 +548,6 @@ export const AgentVaultProxiesPage = () => {
         isPending={deleteProxy.isPending}
         onConfirm={handleDelete}
       />
-      {upgradeGate}
     </div>
   );
 };

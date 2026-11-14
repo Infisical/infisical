@@ -146,7 +146,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
         throw new UnauthorizedError({ message: "A proxy token is required" });
       }
-      server.services.agentVaultUsageService.recordProxyUsage({ orgId: req.permission.orgId, ...req.body });
+      await server.services.agentVaultUsageService.recordProxyUsage({ orgId: req.permission.orgId, ...req.body });
       return res.status(204).send("");
     }
   });

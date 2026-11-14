@@ -90,19 +90,20 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Billing
 
-Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the access rule, grandfathering and usage.
+Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, the access rule and usage.
 
-- **Gate only where a credential can leave Infisical, plus the setup that leads there**: `mintSession`,
-  `createProxy` and `rotateProxyToken` (`agentVaultAccessService.getAccess(...).assertAllowed()`), and the proxy's
-  per-poll `resolveSession` and `refreshCredential` (`assertCanBroker`, after the session check so a refusal says
-  nothing about a token that isn't the caller's). Bootstrap and heartbeat stay open so a lapsed org's proxy keeps
-  running and resumes by itself. Everything else, reads, deletes and revokes included, never checks the plan. This
-  is the one written exception to the license rule in `backend/CODE_QUALITY.md`.
-- **The refusal is a `RuleViolationError` named `AgentVaultNotOnPlan`.** The CLI and the UI key on that name, so
+- **Gate only brokering**: the proxy's per-poll `resolveSession` and `refreshCredential` call
+  `agentVaultAccessService.assertCanBroker` (after the session check, so a refusal says nothing about a token that
+  isn't the caller's). On Infisical Cloud it refuses an org without Agent Vault on its plan once the org has used its
+  free requests for the month. Minting sessions, creating proxies, rotating tokens, bootstrap and heartbeat stay
+  open so the proxy keeps running and resumes by itself. Everything else, reads, deletes and revokes included, never
+  checks the plan. This is the one written exception to the license rule in `backend/CODE_QUALITY.md`.
+- **The refusal is a `RuleViolationError` named `AgentVaultFreeLimitReached`.** The CLI keys on that name, so
   keep it.
 - **Usage arrives from the proxy, never from session stats**: `POST /api/v1/agent-vault/proxy/usage` (proxy token)
-  with `{ reportId, endedAt, brokered }`. It isn't plan-gated, so the last minute of a lapsing org is still
-  reported. A resent report keeps its `reportId` and `endedAt`, which the License Server dedupes on.
+  with `{ reportId, endedAt, brokered }`. It isn't gated, so the last minute before the limit is still counted and
+  reported. A resent report keeps its `reportId` and `endedAt`, which the free count and the License Server dedupe
+  on.
 
 ## Grants and reachability
 

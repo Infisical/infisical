@@ -2117,8 +2117,7 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     kmsService,
-    licenseService,
-    agentVaultAccessService: domains.agentVault.agentVaultAccessService
+    licenseService
   });
 
   const agentVaultDelegationService = agentVaultDelegationServiceFactory({

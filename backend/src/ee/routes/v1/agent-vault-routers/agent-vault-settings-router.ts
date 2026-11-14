@@ -21,7 +21,7 @@ import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fn
 import { AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvider) => {
-  // Org-wide: the plan and grandfathering belong to the organization, not a project.
+  // Org-wide: the plan and the free monthly count belong to the root organization, not a project.
   server.route({
     method: "GET",
     url: "/access",
@@ -29,13 +29,20 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: true,
       operationId: "getAgentVaultAccess",
-      description: "Whether the organization's plan lets it start sessions and add proxies",
+      description: "Whether the organization can broker credentials, and its free usage this month",
       tags: [ApiDocsTags.AgentVaultSettings],
       response: {
         200: z.object({
-          allowed: z.boolean(),
           state: z.nativeEnum(AgentVaultAccessState),
-          showCardModal: z.boolean()
+          allowed: z.boolean(),
+          freeUsage: z
+            .object({
+              used: z.number(),
+              limit: z.number(),
+              resetsAt: z.date()
+            })
+            .nullable(),
+          warn: z.boolean()
         })
       }
     },

@@ -213,7 +213,7 @@ The proxy also returns a 403 for:
 - A request that breaks the service's [method or path rules](/documentation/platform/agent-vault/http-apis#methods-and-paths), under either traffic policy
 - A request to a service whose [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) aren't set up yet for the session's owner, or, for a session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), for that user
 - A request that the service's [hook](/documentation/platform/agent-vault/hooks) denies
-- On Infisical Cloud, a request from an organization whose plan doesn't include Agent Vault (an organization admin can add Agent Vault in **Billing**)
+- On Infisical Cloud, a request after the organization used its free requests for the month (an organization admin can add a card in **Usage & Billing**)
 
 For an [MCP service that allows only some tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools), the proxy also blocks:
 

@@ -89,7 +89,7 @@ export const getSessionLogStorageError = (error: unknown) =>
 // Every key carries the org and the project. By-id routes take the project from the row, so without the project in
 // the key a switch to another project would serve the previous one's data from cache.
 export const agentVaultKeys = {
-  // Org-wide: the plan and grandfathering belong to the org, not a project.
+  // Org-wide: the plan and the free monthly count belong to the org, not a project.
   access: (orgId: string) => ["agent-vault", orgId, "access"] as const,
   oauthAuthorization: (orgId: string, authorizationId: string) =>
     ["agent-vault", orgId, "oauth-authorizations", authorizationId] as const,
@@ -576,10 +576,11 @@ export const fetchAgentVaultProxyCa = async (proxyId: string) => {
   return data.ca;
 };
 
-export const useGetAgentVaultAccess = () => {
+export const useGetAgentVaultAccess = (enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
+    enabled,
     queryKey: agentVaultKeys.access(currentOrg.id),
     queryFn: async () => {
       const { data } = await apiRequest.get<TAgentVaultAccess>(
