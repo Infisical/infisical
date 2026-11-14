@@ -170,6 +170,18 @@ export const getOrgScopedProductFromPath = (pathname: string): ProjectType | nul
   return slug ? urlSlugToProjectType(slug) : null;
 };
 
+// Matches /projects/product-settings/<slug>, /projects/<slug>/..., and the org-scoped /<slug>/... URLs.
+const PRODUCT_PATH_RE =
+  /^\/organizations\/[^/]+\/(?:projects\/product-settings\/([^/]+)|projects\/([^/]+)|(cert-manager|secret-scanning|pam))(?:\/|$)/;
+
+// Resolves the product a page belongs to from its URL alone, including org-level pages (project list,
+// KMIP servers, product settings) that carry no $projectId.
+export const getProductFromPath = (pathname: string): ProjectType | null => {
+  const match = pathname.match(PRODUCT_PATH_RE);
+  const slug = match?.[1] ?? match?.[2] ?? match?.[3];
+  return slug ? urlSlugToProjectType(slug) : null;
+};
+
 const AGENT_VAULT_PROJECT_PATH_RE = /^\/organizations\/[^/]+\/projects\/agent-vault(?:\/|$)/;
 
 // Agent Vault keeps its own product colour on its project list and inside a project, so cosmetic chrome reads it
