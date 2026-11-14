@@ -10,8 +10,11 @@ import {
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
-  AgentVaultVariableReferenceField
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultHookInput, TAgentVaultHookUpdate } from "../agent-vault/agent-vault-hook-fns";
+import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
 export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
@@ -44,6 +47,15 @@ export type TAgentVaultCredentialInput =
       clientId?: string;
       clientSecret?: string;
       registration?: AgentVaultOauthRegistration.Dynamic;
+    }
+  | {
+      type: AgentVaultCredentialType.SshKey;
+      username?: string;
+      privateKey?: string;
+      // null removes a stored certificate.
+      certificate?: string | null;
+      // Accepted only so a request that sends any is refused by name: a key can't be left to members yet.
+      memberProvidedFields?: TAgentVaultMemberProvidedField[];
     };
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
@@ -65,21 +77,78 @@ export type TAgentVaultOauthCredentialSummary = {
   lastError?: string | null;
 };
 
+export type TAgentVaultBearerCredentialSummary = {
+  type: AgentVaultCredentialType.Bearer;
+  headerName: string;
+  headerPrefix: string;
+  memberProvidedFields: TAgentVaultBearerMemberField[];
+};
+
+export type TAgentVaultBasicCredentialSummary = {
+  type: AgentVaultCredentialType.Basic;
+  memberProvidedFields: TAgentVaultBasicMemberField[];
+};
+
+export type TAgentVaultSshKeyCredentialSummary = { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+
 export type TAgentVaultCredentialSummary =
-  | {
-      type: AgentVaultCredentialType.Bearer;
-      headerName: string;
-      headerPrefix: string;
-      memberProvidedFields: TAgentVaultBearerMemberField[];
-    }
-  | { type: AgentVaultCredentialType.Basic; memberProvidedFields: TAgentVaultBasicMemberField[] }
+  | TAgentVaultBearerCredentialSummary
+  | TAgentVaultBasicCredentialSummary
   | { type: AgentVaultCredentialType.Passthrough }
+  | TAgentVaultSshKeyCredentialSummary
   | TAgentVaultOauthCredentialSummary;
 
 export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string } & (
   | { field: AgentVaultVariableReferenceField.CredentialValue | AgentVaultVariableReferenceField.CredentialUsername }
   | { field: AgentVaultVariableReferenceField.CustomHeader; customHeaderId: string }
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
+);
+
+export type TAgentVaultCredentialReferenceSummary = Extract<
+  TAgentVaultVariableReferenceSummary,
+  { field: AgentVaultVariableReferenceField.CredentialValue | AgentVaultVariableReferenceField.CredentialUsername }
+>;
+
+type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
+
+// Each type carries only the credentials it accepts and the transformations it applies, and so only the variable
+// references those can hold.
+export type TAgentVaultServiceSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  // Left out for members.
+  hook?: { url: string } | null;
+} & (
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
+      credential: Extract<
+        TAgentVaultCredentialSummary,
+        {
+          type: AgentVaultCredentialType.Bearer | AgentVaultCredentialType.Basic | AgentVaultCredentialType.Passthrough;
+        }
+      >;
+      customHeaders: TAgentVaultCustomHeaderSummary[];
+      substitutions: { id: string; placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
+      variableReferences: TAgentVaultVariableReferenceSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
+      credential: TAgentVaultBearerCredentialSummary | TAgentVaultOauthCredentialSummary;
+      customHeaders: TAgentVaultCustomHeaderSummary[];
+      variableReferences: Exclude<
+        TAgentVaultVariableReferenceSummary,
+        { field: AgentVaultVariableReferenceField.Substitution }
+      >[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
+      credential: TAgentVaultBasicCredentialSummary;
+      variableReferences: TAgentVaultCredentialReferenceSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Ssh }> & {
+      credential: TAgentVaultBasicCredentialSummary | TAgentVaultSshKeyCredentialSummary;
+      variableReferences: TAgentVaultCredentialReferenceSummary[];
+    })
 );
 
 export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermission };
@@ -131,43 +200,60 @@ export type TAgentVaultSubstitutionUpdate = {
 
 // Flat rather than a union on `type`: which of the type-specific fields a service takes is decided by the
 // service type registry, which refuses the ones its type does not take.
+// `ca: null` (or "") removes a stored certificate authority.
+export type TAgentVaultNativeTlsInput = { enabled?: boolean; verify?: boolean; ca?: string | null };
+
 export type TCreateServiceDTO = TAgentVaultProjectScoped & {
-  accessBundleId: string;
+  // Bundles to add the new service to in the same write.
+  accessBundleIds?: string[];
   type: AgentVaultServiceType;
   name: string;
+  description?: string | null;
   hostPattern?: string;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
+  host?: string;
+  port?: number;
+  database?: string;
+  tls?: TAgentVaultNativeTlsInput;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   allowedTools?: string[] | null;
   credential: TAgentVaultCredentialInput;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+  hook?: TAgentVaultHookInput;
 };
 
 export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
-  accessBundleId: string;
   serviceId: string;
   // Must match the stored type, which never changes.
   type: AgentVaultServiceType;
   name?: string;
-  hostPattern?: string;
+  description?: string | null;
+  // Null only as a database or SSH service's read-back value.
+  hostPattern?: string | null;
   // Null only as an HTTP service's read-back value.
   serverUrl?: string | null;
   transport?: AgentVaultMcpTransport | null;
+  // Null only as the read-back value of a type that doesn't take them.
+  host?: string | null;
+  port?: number | null;
+  database?: string | null;
+  tls?: TAgentVaultNativeTlsInput | null;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   allowedTools?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderUpdate[];
   substitutions?: TAgentVaultSubstitutionUpdate[];
+  // null removes the hook and its signing secret.
+  hook?: TAgentVaultHookUpdate | null;
 };
 
 // What the service sheet would save, so the tools are listed with the credential agents will use. On edit, a value
 // left out falls back to what the saved service stores, as on update.
 export type TListMcpToolsDTO = TAgentVaultProjectScoped & {
-  accessBundleId: string;
   serviceId?: string;
   serverUrl: string;
   transport: AgentVaultMcpTransport;
@@ -176,9 +262,26 @@ export type TListMcpToolsDTO = TAgentVaultProjectScoped & {
 };
 
 export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
-  accessBundleId: string;
   serviceId: string;
 };
+
+export type TServiceByIdDTO = TAgentVaultProjectScoped & { serviceId: string };
+
+export type TListServicesDTO = TAgentVaultProjectScoped & {
+  search?: string;
+  // Only services that need (true) or don't need (false) the caller's personal values.
+  requiresSetup?: boolean;
+  // Only services in bundles granted to the caller, so an admin can leave out the ones they reach by role alone.
+  granted?: boolean;
+  orderBy?: "name" | "type" | "createdAt";
+  orderDirection?: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
+
+export type TBundleServiceDTO = TAgentVaultProjectScoped & { accessBundleId: string; serviceId: string };
+
+export type TAddBundleServicesDTO = TAgentVaultProjectScoped & { accessBundleId: string; serviceIds: string[] };
 
 export type TListMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;

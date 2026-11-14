@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -25,7 +26,6 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
-import { TLicenseServiceFactory } from "../../license/license-service";
 import { HoneyTokenManagedBy, HoneyTokenType } from "../honey-token-enums";
 import type { THoneyTokenCredentialTarget } from "../honey-token-service-types";
 import { AwsHoneyTokenConfigSchema } from "../honey-token-types";
@@ -45,7 +45,7 @@ import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredent
 type TConfigProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -313,7 +313,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     config
   }: TUpsertAwsHoneyTokenConfigInput): Promise<THoneyTokenConfigRecord> => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.honeyTokens) {
+    if (!plan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to save honey token configuration due to plan restriction. Upgrade plan to use honey tokens."
       });

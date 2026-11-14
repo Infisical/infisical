@@ -269,38 +269,6 @@ export const useRemoveBillingProduct = () => {
   });
 };
 
-export const useCancelBillingSubscription = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ orgId }: TBillingLifecycleDTO) => {
-      const { data } = await apiRequest.post<BillingMutationResult>(
-        `/api/v1/organizations/${orgId}/billing/v2/subscription/cancel`
-      );
-
-      return data;
-    },
-    onSuccess: (_data, { orgId }) => {
-      invalidateBilling(queryClient, orgId);
-    }
-  });
-};
-
-export const useResumeBillingSubscription = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ orgId }: TBillingLifecycleDTO) => {
-      const { data } = await apiRequest.post<BillingMutationResult>(
-        `/api/v1/organizations/${orgId}/billing/v2/subscription/resume`
-      );
-
-      return data;
-    },
-    onSuccess: (_data, { orgId }) => {
-      invalidateBilling(queryClient, orgId);
-    }
-  });
-};
-
 // Force the server to recompute entitlements from the license server and drop its cache, then refetch
 // the overview so the freshly-pulled entitlements land in the query cache.
 export const useRefreshBillingEntitlements = () => {

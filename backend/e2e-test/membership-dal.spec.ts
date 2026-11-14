@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
@@ -18,12 +19,13 @@ import { userDALFactory } from "@app/services/user/user-dal";
 
 import { createIsolatedOrgAndProject } from "./testUtils/fixtures";
 import { createProjectGroup } from "./testUtils/groups";
-import { pollUntil } from "./testUtils/poll";
+import { waitUntilBlockedBy } from "./testUtils/poll";
 import { addUserMembership, createUser, deleteUsers } from "./testUtils/users";
 
 const membershipDAL = membershipDALFactory(testDb);
 
 const removalDeps = {
+  usageMeteringService: new FakeUsageMeteringService(),
   userDAL: userDALFactory(testDb),
   userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
   identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
@@ -40,20 +42,6 @@ const removalDeps = {
   pamSessionDAL: pamSessionDALFactory(testDb),
   gatewayV2Service: { getPAMConnectionDetails: () => Promise.reject(new Error("unexpected gateway call")) }
 };
-
-const waitUntilBlockedBy = (pid: number) =>
-  pollUntil({
-    describe: `a query blocked by backend ${pid}`,
-    read: async () => {
-      const { rows } = await testDb.raw(
-        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
-        [pid]
-      );
-      return rows[0].waiting as number;
-    },
-    done: (waiting) => waiting > 0,
-    timeoutMs: 5_000
-  });
 
 describe("membershipDAL.lockUserProjectMemberships", () => {
   let fixture: Awaited<ReturnType<typeof createIsolatedOrgAndProject>>;

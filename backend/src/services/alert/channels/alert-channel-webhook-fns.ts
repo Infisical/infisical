@@ -2,8 +2,9 @@ import crypto from "node:crypto";
 
 import { z } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE, safeRequest } from "@app/lib/validator";
 
 import {
   ALERT_CHANNEL_HTTP_TIMEOUT,
@@ -118,15 +119,32 @@ const triggerWebhook = async (config: TWebhookChannelConfig, payload: TAlertWebh
     headers["x-infisical-signature"] = `t=${timestamp},v1=${signature}`;
   }
 
-  await safeRequest.post(url, payload, {
-    headers,
-    timeout: ALERT_CHANNEL_HTTP_TIMEOUT,
-    signal: AbortSignal.timeout(ALERT_CHANNEL_HTTP_TIMEOUT)
-  });
+  const appCfg = getConfig();
+  try {
+    await safeRequest.post(url, payload, {
+      headers,
+      timeout: ALERT_CHANNEL_HTTP_TIMEOUT,
+      signal: AbortSignal.timeout(ALERT_CHANNEL_HTTP_TIMEOUT),
+      allowPrivateIps: appCfg.ALERT_WEBHOOK_ALLOW_INTERNAL_IP
+    });
+  } catch (err) {
+    if (err instanceof BadRequestError && err.message === PRIVATE_ADDRESS_REFUSED_MESSAGE) {
+      throw new BadRequestError({
+        message: `Webhook URL points to a private or local address, which is not allowed.${appCfg.isCloud ? "" : " If you are self-hosting, you can allow private and local addresses for webhook alerts by setting the 'ALERT_WEBHOOK_ALLOW_INTERNAL_IP' environment variable to 'true' on your instance."}`
+      });
+    }
+    throw err;
+  }
 };
 
 export const sendWebhookNotification = async (ctx: TAlertChannelSendContext): Promise<TChannelResult> => {
-  const config = WebhookChannelConfigSchema.parse(ctx.config);
+  // A channel saved while ALERT_WEBHOOK_ALLOW_HTTP was on fails here once it is turned off, so the
+  // server log and the channel test need the readable issue rather than a raw Zod dump.
+  const parsed = WebhookChannelConfigSchema.safeParse(ctx.config);
+  if (!parsed.success) {
+    throw new BadRequestError({ message: parsed.error.issues.map((issue) => issue.message).join(", ") });
+  }
+  const config = parsed.data;
   const payload = buildWebhookPayload(ctx.payload);
 
   await triggerWebhook(config, payload);

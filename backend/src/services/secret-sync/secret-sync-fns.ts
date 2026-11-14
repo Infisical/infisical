@@ -1,9 +1,9 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
 import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "@app/ee/services/secret-sync/chef/chef-sync-fns";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
@@ -79,6 +79,7 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { JENKINS_SYNC_LIST_OPTION, JenkinsSyncFns } from "./jenkins";
 import { KEEPER_SYNC_LIST_OPTION, KeeperSyncFns } from "./keeper";
 import { LARAVEL_FORGE_SYNC_LIST_OPTION, LaravelForgeSyncFns } from "./laravel-forge";
 import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
@@ -157,7 +158,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION,
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
   [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
-  [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION
+  [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION,
+  [SecretSync.Jenkins]: JENKINS_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -391,6 +393,8 @@ export const SecretSyncFns = {
         return RundeckSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Portainer:
         return PortainerSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Jenkins:
+        return JenkinsSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -561,6 +565,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.Portainer:
         secretMap = await PortainerSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
+        break;
+      case SecretSync.Jenkins:
+        secretMap = await JenkinsSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
@@ -733,6 +740,8 @@ export const SecretSyncFns = {
         return RundeckSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Portainer:
         return PortainerSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Jenkins:
+        return JenkinsSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -810,14 +819,14 @@ export const parseSyncErrorMessage = (err: unknown): string => {
 };
 
 export const enterpriseSyncCheck = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: TLicenseService,
   secretSync: SecretSync,
   orgId: string,
   errorMessage: string
 ) => {
   if (SECRET_SYNC_PLAN_MAP[secretSync] === SecretSyncPlanType.Enterprise) {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.enterpriseSecretSyncs)
+    if (!plan.has(PlanFeature.EnterpriseSecretSyncs))
       throw new BadRequestError({
         message: errorMessage
       });

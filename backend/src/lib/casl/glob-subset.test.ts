@@ -88,7 +88,20 @@ describe("isGlobSubsetOfGlob", () => {
       ["/**", "/[ab]/**"],
       ["/**", "/foo?/**"],
       ["/public/**", "/public/@(foo|bar)"],
-      ["/public/**", "/public/{foo,bar}"]
+      ["/public/**", "/public/{foo,bar}"],
+
+      // A bare `|` is alternation to picomatch, so "/backend/x|/folder" also matches "/folder".
+      ["/backend/*/folder", "/backend/x|/folder"],
+      ["/**", "/a|b"],
+      ["/**", "/a\\b"]
+    ])("parent=%s, subset=%s → false", (parent, subset) => expect(isGlobSubsetOfGlob(parent, subset)).toBe(false));
+  });
+
+  describe("`*` never matches an empty segment", () => {
+    test.each([
+      ["/*", "/"],
+      ["/apps/*", "/apps/"],
+      ["/apps/*/x", "/apps//x"]
     ])("parent=%s, subset=%s → false", (parent, subset) => expect(isGlobSubsetOfGlob(parent, subset)).toBe(false));
   });
 

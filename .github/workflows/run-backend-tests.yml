@@ -62,6 +62,9 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
         working-directory: backend
+      - name: Run integration tests
+        run: npm run test:integration
+        working-directory: backend
       - name: Log in to GHCR
         continue-on-error: true
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0

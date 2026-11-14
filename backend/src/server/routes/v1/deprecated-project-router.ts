@@ -42,8 +42,11 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true"),
-        type: z.nativeEnum(ProjectType).optional()
+          .transform((value) => value === "true")
+          .describe(PROJECTS.LIST.includeRoles),
+        type: z.nativeEnum(ProjectType).optional().describe(PROJECTS.LIST.type),
+        limit: z.coerce.number().int().min(1).max(100).optional().describe(PROJECTS.LIST.limit),
+        offset: z.coerce.number().int().min(0).default(0).describe(PROJECTS.LIST.offset)
       }),
       response: {
         200: z.object({
@@ -51,21 +54,24 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
             .extend({
               roles: ProjectRolesSchema.array().optional()
             })
-            .array()
+            .array(),
+          totalCount: z.number().describe(PROJECTS.LIST.totalCount)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const workspaces = await server.services.project.getProjects({
+      const { projects: workspaces, totalCount } = await server.services.project.getProjects({
         includeRoles: req.query.includeRoles,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        type: req.query.type
+        type: req.query.type,
+        limit: req.query.limit,
+        offset: req.query.offset
       });
-      return { workspaces };
+      return { workspaces, totalCount };
     }
   });
 

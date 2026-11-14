@@ -22,6 +22,9 @@ import {
   TAdditionalPrivilegesUpdate,
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundleServices,
+  TAgentVaultAccessBundleServicesInsert,
+  TAgentVaultAccessBundleServicesUpdate,
   TAgentVaultAccessBundleSkills,
   TAgentVaultAccessBundleSkillsInsert,
   TAgentVaultAccessBundleSkillsUpdate,
@@ -65,6 +68,9 @@ import {
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultSessionStats,
+  TAgentVaultSessionStatsInsert,
+  TAgentVaultSessionStatsUpdate,
   TAgentVaultSkills,
   TAgentVaultSkillsInsert,
   TAgentVaultSkillsUpdate,
@@ -1938,6 +1944,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
     >;
+    [TableName.AgentVaultSessionStats]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionStats,
+      TAgentVaultSessionStatsInsert,
+      TAgentVaultSessionStatsUpdate
+    >;
     [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultSkills,
       TAgentVaultSkillsInsert,
@@ -1947,6 +1958,11 @@ declare module "knex/types/tables" {
       TAgentVaultSkillVersions,
       TAgentVaultSkillVersionsInsert,
       TAgentVaultSkillVersionsUpdate
+    >;
+    [TableName.AgentVaultAccessBundleService]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundleServices,
+      TAgentVaultAccessBundleServicesInsert,
+      TAgentVaultAccessBundleServicesUpdate
     >;
     [TableName.AgentVaultAccessBundleSkill]: KnexOriginal.CompositeTableType<
       TAgentVaultAccessBundleSkills,

@@ -58,7 +58,9 @@ export const ServiceNowAccessResponseRecordSchema = z.object({
     permissions: ServiceNowNullableText,
     state: z.string().max(100).nullable().optional(),
     decision: ServiceNowNullableText,
-    approved_by: ServiceNowNullableText,
+    // One display name per approver. An array rather than the list column's comma-joined display value,
+    // because a name can itself contain a comma. Audit only, so a bad value must never fail the parse.
+    approvals: z.string().max(255).array().max(100).nullish().catch(undefined),
     decision_date: ServiceNowNullableText,
     decision_notes: ServiceNowNullableText
   })

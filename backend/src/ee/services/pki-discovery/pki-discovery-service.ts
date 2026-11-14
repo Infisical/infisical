@@ -3,10 +3,10 @@ import pLimit from "p-limit";
 import { z } from "zod";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -87,7 +87,7 @@ type TPkiDiscoveryServiceFactoryDep = {
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
@@ -242,7 +242,7 @@ export const pkiDiscoveryServiceFactory = ({
 
     // Creation only; existing discoveries keep scanning and stay editable.
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiDiscovery) {
+    if (!plan.has(PlanFeature.PkiDiscovery)) {
       throw new BadRequestError({
         message:
           "Failed to create certificate discovery due to plan restriction. Upgrade plan to use certificate discovery."

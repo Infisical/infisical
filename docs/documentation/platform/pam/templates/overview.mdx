@@ -10,7 +10,7 @@ Every account uses one template, and the template's account type must match the 
 
 ## Default templates
 
-Infisical creates a template for each account type when your organization first opens PAM. The default templates have no policies turned on, so sessions on their accounts last up to one hour, and Infisical stores the recordings in its internal database.
+Infisical creates a template for each account type when your organization first opens PAM. If an account uses a default template, sessions on the account last up to one hour, and Infisical stores the recordings in its internal database. The default templates have no policies turned on, apart from [Output Masking](#output-masking) on the SSH and PostgreSQL templates.
 
 Windows and Windows AD accounts need recordings stored in AWS S3, so before anyone can launch sessions on them, change the default Windows templates to use [external storage](/documentation/platform/pam/sessions/external-storage).
 
@@ -48,10 +48,24 @@ To use the template, choose it when you [add an account](/documentation/platform
 | **Require Reason** | Users must give a reason before they connect |
 | **Max Session Duration** | Infisical ends the session after this many seconds (60 to 86,400, or 900 to 3,600 for AWS IAM) |
 | **Command Blocking** | Infisical rejects commands or SQL statements that match one of these regular expressions (SSH, Snowflake, and ClickHouse only) |
+| **Output Masking** | Infisical replaces text that matches the selected presets or your regular expressions with `[MASKED]` before the user sees it (SSH and PostgreSQL only) |
 
 **Allow Auto-Approval** and **Allow Break-Glass** only work together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns off **Allow Break-Glass**.
 
 Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overview) can't complete an MFA challenge, so they can't connect to accounts whose template has **Require MFA** on. If an agent needs an account, use **Require Approval** instead.
+
+### Output masking
+
+<Warning>
+Output masking is best effort. It hides values from accidental exposure, such as an AI agent reading query results, but a user who wants to see them can get around it, for example by encoding the data first.
+</Warning>
+
+New SSH and PostgreSQL templates, including the default templates, start with **Output Masking** on and the **Account Credentials** preset selected. On accounts that use **Output Masking**, Infisical blocks the output it can't reliably mask:
+
+- **SSH:** File transfers (SFTP and SCP) and port forwarding
+- **PostgreSQL:** `COPY ... TO STDOUT` and replication (use `SELECT` instead of `COPY`)
+
+In PostgreSQL query results, if a number or another value that isn't text matches, the user sees `NULL` instead. Sessions on these accounts fail to start until you update the account's Gateway to the latest version.
 
 ## System settings
 

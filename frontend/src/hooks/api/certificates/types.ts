@@ -102,6 +102,13 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
+export type TRevokeCertResponse = {
+  message: string;
+  serialNumber: string;
+  revokedAt: string;
+  crlWarning?: string;
+};
+
 export type TImportPkcs12EntriesDTO = {
   entries: TPkcs12Entry[];
   applicationId?: string;
@@ -179,6 +186,7 @@ export type TRenewCertificateDTO = {
 };
 
 export type TRenewCertificateResponse = {
+  status: CertificateRequestStatus;
   certificate: string;
   issuingCaCertificate: string;
   certificateChain: string;

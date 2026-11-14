@@ -13,6 +13,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -51,8 +52,6 @@ import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/al
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "@app/services/membership-user/membership-user-fns";
@@ -76,7 +75,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { verifyEmailDomainOwnership as verifyEmailDomainOwnershipValidate } from "../email-domain/email-domain-fns";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TScimEventsDALFactory } from "./scim-events-dal";
@@ -165,7 +163,8 @@ type TScimServiceFactoryDep = {
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
@@ -179,13 +178,13 @@ type TScimServiceFactoryDep = {
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   eventEmitter: TEventEmitter;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export const scimServiceFactory = ({
   licenseService,
+  usageMeteringService,
   scimDAL,
   userDAL,
   userAliasDAL,
@@ -210,7 +209,6 @@ export const scimServiceFactory = ({
   scimEventsDAL,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService,
   pamSessionDAL,
   pamAccountDAL,
   gatewayV2Service,
@@ -239,7 +237,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.has(PlanFeature.Scim))
       throw new BadRequestError({
         message: "Failed to create a SCIM token due to plan restriction. Upgrade plan to create a SCIM token."
       });
@@ -333,7 +331,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.has(PlanFeature.Scim))
       throw new BadRequestError({
         message: "Failed to get SCIM events due to plan restriction. Upgrade plan to get SCIM events."
       });
@@ -629,9 +627,11 @@ export const scimServiceFactory = ({
         },
         tx
       );
-      await licenseService.updateSubscriptionOrgMemberCount(org.id);
       return { user, orgMembership, isNewUser: newUserCreated };
     });
+
+    // After the commit: seat sync calls the License Server.
+    await usageMeteringService.syncSeats(org.id);
 
     if (isNewUser) {
       void telemetryService.sendPostHogEvents({
@@ -1038,6 +1038,7 @@ export const scimServiceFactory = ({
               alias.id,
               {
                 externalId,
+                ...(externalId !== alias.externalId ? { isEmailVerified: false } : {}),
                 ...(newEmail ? { emails: unique([...(alias.emails ?? []), newEmail]) } : {})
               },
               tx
@@ -1055,7 +1056,8 @@ export const scimServiceFactory = ({
               email: email?.toLowerCase(),
               lastName,
               active,
-              ...(newEmail ? { previousEmail: user.username, newEmail } : {})
+              ...(newEmail ? { previousEmail: user.username, newEmail } : {}),
+              ...(userAliases[0].externalId !== externalId ? { previousUserName: userAliases[0].externalId } : {})
             }
           },
           tx
@@ -1114,7 +1116,7 @@ export const scimServiceFactory = ({
       orgId: membership.scopeOrgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
@@ -1123,9 +1125,9 @@ export const scimServiceFactory = ({
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
-    usageMeteringService.emit(membership.scopeOrgId, SecretIdentities.key);
-    usageMeteringService.emit(membership.scopeOrgId, PamIdentities.key);
-    usageMeteringService.emit(membership.scopeOrgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(membership.scopeOrgId, Meter.PamIdentities);
+    usageMeteringService.emit(membership.scopeOrgId, Meter.AgentVaultIdentities);
 
     await scimEventsDAL.create({
       orgId,
@@ -1280,7 +1282,7 @@ export const scimServiceFactory = ({
 
   const createScimGroup: TScimServiceFactory["createScimGroup"] = async ({ displayName, orgId, members }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to create a SCIM group due to plan restriction. Upgrade plan to create a SCIM group."
       });
@@ -1661,7 +1663,7 @@ export const scimServiceFactory = ({
     members
   }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });
@@ -1721,7 +1723,7 @@ export const scimServiceFactory = ({
 
   const updateScimGroup: TScimServiceFactory["updateScimGroup"] = async ({ groupId, orgId, operations }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.has(PlanFeature.Groups))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });

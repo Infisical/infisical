@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -11,7 +12,6 @@ import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/ga
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
@@ -143,6 +143,8 @@ import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateImpervaConnectionCredentialsSchema } from "./imperva";
 import { impervaConnectionService } from "./imperva/imperva-connection-service";
+import { ValidateJenkinsConnectionCredentialsSchema } from "./jenkins";
+import { jenkinsConnectionService } from "./jenkins/jenkins-connection-service";
 import { ValidateJiraConnectionCredentialsSchema } from "./jira";
 import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
 import { keeperConnectionService } from "./keeper/keeper-connection-service";
@@ -233,7 +235,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -337,6 +339,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
   [AppConnection.Portainer]: ValidatePortainerConnectionCredentialsSchema,
+  [AppConnection.Jenkins]: ValidateJenkinsConnectionCredentialsSchema,
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
@@ -616,7 +619,7 @@ export const appConnectionServiceFactory = ({
 
     if (gatewayId) {
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -859,7 +862,7 @@ export const appConnectionServiceFactory = ({
 
       if (gatewayId) {
         const plan = await licenseService.getPlan(actor.orgId);
-        if (!plan.gateway) {
+        if (!plan.has(PlanFeature.Gateway)) {
           throw new BadRequestError({
             message:
               "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -1547,6 +1550,7 @@ export const appConnectionServiceFactory = ({
     supabase: supabaseConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
     portainer: portainerConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    jenkins: jenkinsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),

@@ -255,6 +255,24 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     }
   };
 
+  // A project pending deletion stops publishing, the same as one already deleted
+  const findPublishedCmekById = async (id: string, tx?: Knex) => {
+    try {
+      const key = await baseCmekQuery({
+        filter: { id, isPublicKeyPublished: true },
+        db,
+        tx
+      })
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.KmsKey}.projectId`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .first();
+
+      return key;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find published KMS key by ID" });
+    }
+  };
+
   const findCmeksByIds = async (ids: string[], tx?: Knex) => {
     try {
       return await baseCmekQuery({ db, tx }).whereIn(`${TableName.KmsKey}.id`, ids);
@@ -283,6 +301,7 @@ export const kmskeyDALFactory = (db: TDbClient) => {
     findByIdsWithAssociatedKms,
     listCmeksByProjectId,
     findCmekById,
+    findPublishedCmekById,
     findCmeksByIds,
     findCmekByName,
     findProjectCmeks

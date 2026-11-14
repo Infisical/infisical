@@ -1,11 +1,11 @@
 ---
 title: "Agent Vault"
-description: "Let the AI agents in your infrastructure call HTTP APIs and MCP servers without having access to their credentials."
+description: "Let the AI agents in your infrastructure call HTTP APIs and MCP servers, and reach databases and SSH servers, without having access to their credentials."
 sidebarTitle: "Agent Vault"
 icon: "vault"
 ---
 
-Infisical Agent Vault brokers credentials for the AI agents you run in your own infrastructure. Your agents call HTTP APIs and MCP servers through an Agent Vault proxy, which attaches the real credentials so the agents never see them.
+Infisical Agent Vault brokers credentials for the AI agents you run in your own infrastructure. Your agents call HTTP APIs and MCP servers, and reach databases and SSH servers, through an Agent Vault proxy, which attaches the real credentials or logs in with them, so the agents never see them.
 
 ## Get started
 
@@ -18,7 +18,7 @@ Infisical Agent Vault brokers credentials for the AI agents you run in your own 
     Why AI agents shouldn't have direct access to credentials and what Agent Vault does instead.
   </Card>
   <Card title="How it works" icon="settings-2" href="/documentation/platform/agent-vault/how-it-works">
-    The pieces of an Agent Vault setup and how a session gives an agent access to APIs and MCP servers.
+    The pieces of an Agent Vault setup and how a session gives an agent access to APIs, MCP servers, databases, and SSH servers.
   </Card>
   <Card title="Plan your setup" icon="route" href="/documentation/platform/agent-vault/plan-your-setup">
     Get a recommended setup for what you're building.
@@ -57,7 +57,7 @@ Set up Agent Vault for where your agents run.
     Lists of services that AI agents can access during a session.
   </Card>
   <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
-    Anything an AI agent talks to during a session, such as an API or an MCP server.
+    Anything an AI agent talks to during a session, such as an API, an MCP server, a database, or an SSH server.
   </Card>
   <Card title="Variables" icon="braces" href="/documentation/platform/agent-vault/variables">
     Values you store once and use in any service in an Agent Vault project.
