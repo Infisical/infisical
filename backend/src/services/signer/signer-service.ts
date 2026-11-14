@@ -260,6 +260,7 @@ type TSignerServiceFactoryDep = {
     | "cancelPendingDigiCertReissue"
     | "revokeUnattachedCertificate"
     | "cleanUpRequestsBeforeDelete"
+    | "assertNoUnrevokedRequestCertificate"
     | "revokeAtCa"
   >;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
@@ -1486,6 +1487,7 @@ export const signerServiceFactory = ({
       }
 
       await signerDAL.transaction(async (tx) => {
+        await signerIssuanceService.assertNoUnrevokedRequestCertificate(existingSigner.id, tx);
         const memberships = await membershipDAL.find(
           {
             scope: RESOURCE_SCOPE,
@@ -2023,7 +2025,7 @@ export const signerServiceFactory = ({
           type: NotificationType.SIGNER_REVOKE_REFUSED,
           title: "Signer Revoke Refused",
           body: `The certificate of signer **${signer.name}** wasn't revoked, so it's still valid. Reason: ${reason.endsWith(".") ? reason : `${reason}.`} Any renewal or reissue that was in progress was canceled. Start it again if you still need it.`,
-          link: `/organizations/${project.orgId}/cert-manager/code-signing/${signer.id}`
+          link: `/organizations/${project.orgId}/projects/cert-manager/${signer.projectId}/code-signing/${signer.id}`
         }))
       );
     } catch (err) {
