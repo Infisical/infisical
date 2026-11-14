@@ -419,6 +419,22 @@ export type TAgentVaultSessionInlineService = (
   hook?: TAgentVaultServiceHook | null;
 };
 
+/** A project service a session names. Only what identifies it is returned. */
+export type TAgentVaultSessionNamedService = {
+  id: string;
+  name: string;
+  type: AgentVaultServiceType;
+  description: string | null;
+  /** The host an HTTP or MCP service matches. Null for database and SSH services. */
+  hostPattern: string | null;
+  isInline: false;
+};
+
+/** A session's service: a project service it names, or one sent with it. */
+export type TAgentVaultSessionService =
+  | (TAgentVaultSessionInlineService & { isInline: true })
+  | TAgentVaultSessionNamedService;
+
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
       id: string | null;
@@ -443,7 +459,8 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  services: TAgentVaultSessionInlineService[];
+  /** The services it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  services: TAgentVaultSessionService[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
 };
@@ -502,7 +519,7 @@ export type TAgentVaultMintedSession = {
   createdAt: string;
   projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  services: TAgentVaultSessionInlineService[];
+  services: TAgentVaultSessionService[];
 };
 
 export type TAgentVaultProxy = {
@@ -680,8 +697,11 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
+// Needs an access bundle, at least one service, or both. Each is named rather than referenced by ID. The API also takes
+// services defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
-  accessBundle: string;
+  accessBundle?: string;
+  services?: string[];
   ttl: string;
   label?: string;
 };

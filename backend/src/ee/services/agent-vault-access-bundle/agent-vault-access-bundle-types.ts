@@ -273,6 +273,8 @@ export type TListServicesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;
   // Only services in bundles granted to the caller, so an admin can leave out the ones they reach by role alone.
   granted?: boolean;
+  // The services a session on this user's behalf could name, with the user's personal values.
+  onBehalfOf?: TOnBehalfOfUser;
   orderBy?: "name" | "type" | "createdAt";
   orderDirection?: "asc" | "desc";
   limit: number;

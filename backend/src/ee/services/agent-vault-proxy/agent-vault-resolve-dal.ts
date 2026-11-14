@@ -10,8 +10,9 @@ export type TResolveServiceRow = {
   id: string;
   name: string;
   description: string | null;
-  accessBundleId: string;
-  accessBundleName: string;
+  // Null for a service the session names itself rather than reaching through its bundle.
+  accessBundleId: string | null;
+  accessBundleName: string | null;
   type: string;
   hostPattern: string | null;
   config: unknown;
@@ -61,9 +62,29 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     return query;
   };
 
+  const SERVICE_COLUMNS = [
+    "id",
+    "name",
+    "description",
+    "type",
+    "hostPattern",
+    "config",
+    "credentialType",
+    "credentialConfig",
+    "encryptedCredential",
+    "allowedMethods",
+    "allowedPathPrefixes",
+    "allowedTools",
+    "memberProvidedFields",
+    "hookUrl",
+    "encryptedHookSecret"
+  ] as const;
+
   /**
-   * The hot path, and an intersection: a session's bundle set is a ceiling fixed at mint, re-checked against
-   * live grants on every resolve, so losing a grant empties a running session without touching its row.
+   * The hot path, and an intersection: the services a session reaches through its bundle and the ones it names are a
+   * ceiling fixed at mint, re-checked against live grants on every resolve, so losing a grant empties a running session
+   * without touching its rows. A named service stays only while the owner reaches it through a bundle they are granted
+   * (any of them when accessBundleIds is null). Services through the bundle come first, then the named ones.
    *
    * Read on the replica unless onPrimary, so replica lag adds to the one-poll-interval staleness promise.
    */
@@ -81,7 +102,10 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
   ): Promise<TResolveServiceRow[]> => {
     if (scope.accessBundleIds?.length === 0) return [];
     try {
-      const query = reachableSessionBundles(tx || (onPrimary ? db : db.replicaNode()), scope)
+      const conn = tx || (onPrimary ? db : db.replicaNode());
+      const serviceColumns = SERVICE_COLUMNS.map((column) => db.ref(column).withSchema(TableName.AgentVaultService));
+
+      const throughBundleQuery = reachableSessionBundles(conn, scope)
         .join(
           TableName.AgentVaultAccessBundleService,
           `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
@@ -93,26 +117,10 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultAccessBundleService}.serviceId`
         )
         .whereNull(`${TableName.AgentVaultService}.sessionId`);
-
-      if (serviceId) void query.where(`${TableName.AgentVaultService}.id`, serviceId);
-
-      return (await query
+      if (serviceId) void throughBundleQuery.where(`${TableName.AgentVaultService}.id`, serviceId);
+      const throughBundle = (await throughBundleQuery
         .select(
-          db.ref("id").withSchema(TableName.AgentVaultService),
-          db.ref("name").withSchema(TableName.AgentVaultService),
-          db.ref("description").withSchema(TableName.AgentVaultService),
-          db.ref("type").withSchema(TableName.AgentVaultService),
-          db.ref("hostPattern").withSchema(TableName.AgentVaultService),
-          db.ref("config").withSchema(TableName.AgentVaultService),
-          db.ref("credentialType").withSchema(TableName.AgentVaultService),
-          db.ref("credentialConfig").withSchema(TableName.AgentVaultService),
-          db.ref("encryptedCredential").withSchema(TableName.AgentVaultService),
-          db.ref("allowedMethods").withSchema(TableName.AgentVaultService),
-          db.ref("allowedPathPrefixes").withSchema(TableName.AgentVaultService),
-          db.ref("allowedTools").withSchema(TableName.AgentVaultService),
-          db.ref("memberProvidedFields").withSchema(TableName.AgentVaultService),
-          db.ref("hookUrl").withSchema(TableName.AgentVaultService),
-          db.ref("encryptedHookSecret").withSchema(TableName.AgentVaultService),
+          ...serviceColumns,
           db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
           // Resolve only reaches live bundles, so the current name is always the truthful one here.
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName"),
@@ -120,6 +128,42 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         )
         .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")
         .orderBy(`${TableName.AgentVaultService}.name`, "asc")) as TResolveServiceRow[];
+
+      const namedQuery = conn(TableName.AgentVaultSessionService)
+        .where(`${TableName.AgentVaultSessionService}.sessionId`, scope.sessionId)
+        .join(
+          TableName.AgentVaultService,
+          `${TableName.AgentVaultService}.id`,
+          `${TableName.AgentVaultSessionService}.serviceId`
+        )
+        .where(`${TableName.AgentVaultService}.projectId`, scope.projectId)
+        .whereNull(`${TableName.AgentVaultService}.sessionId`);
+      if (scope.accessBundleIds) {
+        void namedQuery.whereExists(
+          conn(TableName.AgentVaultAccessBundleService)
+            .whereRaw("??.?? = ??.??", [
+              TableName.AgentVaultAccessBundleService,
+              "serviceId",
+              TableName.AgentVaultService,
+              "id"
+            ])
+            .whereIn(`${TableName.AgentVaultAccessBundleService}.accessBundleId`, scope.accessBundleIds)
+            .select(db.raw("1"))
+        );
+      }
+      if (serviceId) void namedQuery.where(`${TableName.AgentVaultService}.id`, serviceId);
+      const named = (await namedQuery
+        .select(
+          ...serviceColumns,
+          db.raw("NULL::uuid AS ??", ["accessBundleId"]),
+          db.raw("NULL::text AS ??", ["accessBundleName"]),
+          db.ref("position").withSchema(TableName.AgentVaultSessionService)
+        )
+        .orderBy(`${TableName.AgentVaultSessionService}.position`, "asc")) as unknown as TResolveServiceRow[];
+
+      // A service the session names that its bundle also holds is sent once, as the bundle's.
+      const throughBundleIds = new Set(throughBundle.map((row) => row.id));
+      return [...throughBundle, ...named.filter((row) => !throughBundleIds.has(row.id))];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find resolvable agent vault services" });
     }

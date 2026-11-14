@@ -98,13 +98,29 @@ export type TAgentVaultInlineServiceSummary = {
     })
 );
 
+/** A project service a session names, as every read returns it: only what identifies it. */
+export type TAgentVaultSessionNamedServiceSummary = {
+  id: string;
+  name: string;
+  type: AgentVaultServiceType;
+  description: string | null;
+  // The host an HTTP or MCP service matches. Null for database and SSH services, which have none.
+  hostPattern: string | null;
+  isInline: false;
+};
+
+/** A session's services as every read returns them, the ones it names and the ones sent inline, in the order sent. */
+export type TAgentVaultSessionServiceSummary =
+  | TAgentVaultSessionNamedServiceSummary
+  | (TAgentVaultInlineServiceSummary & { isInline: true });
+
 export type TMintSessionDTO = {
   projectId: string;
   ctx: TGenericPermission;
-  // Leave it out for a session with services of its own only.
+  // Leave it out for a session with only the services it names or sends.
   accessBundle?: string;
-  // Inline services, which the API calls the session's services.
-  services?: TAgentVaultInlineServiceInput[];
+  // Each one the name of a project service, or a service sent inline.
+  services?: (string | TAgentVaultInlineServiceInput)[];
   /** The caller's name and email, snapshotted from the request. */
   actorName: string;
   actorEmail: string | null;
