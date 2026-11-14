@@ -14,6 +14,7 @@ import {
 import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { Inset } from "@infisical/cipher/ui/inset";
 import { Tile } from "@infisical/cipher/ui/item";
 import { Grid, Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
@@ -792,7 +793,7 @@ export function SubstitutionDiagram({
           </span>
         </Tooltip>
       </div>
-      <div className={styles.node}>
+      <Inset className={styles.node}>
         <span className={styles.nodeTitle}>
           <Icon icon={BotIcon} size={14} />
           Your Agent
@@ -801,9 +802,9 @@ export function SubstitutionDiagram({
         <span className={styles.nodeNote}>
           Infisical sets this env var to a fake, real-looking value.
         </span>
-      </div>
+      </Inset>
       {connector("Agent sends the placeholder in its request")}
-      <div className={styles.node} data-accent="">
+      <Inset className={styles.node} data-accent="">
         <span className={styles.nodeTitle}>
           <Icon icon={ChevronsLeftRightEllipsisIcon} size={14} />
           Agent Proxy
@@ -814,9 +815,9 @@ export function SubstitutionDiagram({
           real secret
         </span>
         <span className={styles.nodeNote}>Swaps the placeholder for the real secret.</span>
-      </div>
+      </Inset>
       {connector("Forwards the real request")}
-      <div className={styles.node}>
+      <Inset className={styles.node}>
         <span className={styles.nodeTitle}>
           {template ? (
             <ProviderLogo image={template.image} size={14} />
@@ -828,7 +829,7 @@ export function SubstitutionDiagram({
         <span className={styles.nodeNote}>
           Receives the real credential. Your agent never held it.
         </span>
-      </div>
+      </Inset>
     </div>
   );
 }

@@ -28,6 +28,8 @@ import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 
+const noop = () => {};
+
 const KeyManagement = ({
   projectId,
   activeKmsKeyId,
@@ -230,7 +232,7 @@ export const EncryptionSettings = () => {
   const { permission, isPending } = useProjectPermission(projectId);
   const { data: activeKms } = useV4Adapter("projectIntegrations").useActiveProjectKms(projectId);
   const [dialog, setDialog] = useState<"create" | "load">();
-  if (!activeKms || isPending) return <SettingsCard title="Key management" loading />;
+  if (!activeKms || isPending) return <SettingsCard title="Key management" loading onSave={noop} />;
   const activeKmsKeyId = activeKms.isExternal ? activeKms.id : INTERNAL_KMS_KEY_ID;
   const canEdit =
     permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms) &&

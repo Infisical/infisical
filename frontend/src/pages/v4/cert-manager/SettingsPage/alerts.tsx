@@ -273,7 +273,6 @@ export const AlertsTab = () => {
         action={
           <Button
             variant="outline"
-            size="sm"
             icon="plus"
             disabledReason={canCreate ? undefined : CREATE_RESTRICTED}
             onClick={() => openWizard()}

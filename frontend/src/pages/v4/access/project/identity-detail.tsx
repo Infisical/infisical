@@ -291,7 +291,7 @@ const DetailsCard = ({
           <Gate allowed={canEdit}>
             <Button
               variant="outline"
-              size="icon-xs"
+              size="icon"
               aria-label="Edit machine identity"
               disabled={!canEdit}
               onClick={onEdit}

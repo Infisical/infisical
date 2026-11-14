@@ -263,7 +263,6 @@ export const WorkflowIntegrationsSettings = () => {
         action={
           <Button
             variant="outline"
-            size="xs"
             icon="plus"
             disabledReason={canEdit ? undefined : RESTRICTED}
             onClick={() => setSheet({})}

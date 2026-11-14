@@ -446,7 +446,7 @@ export const RelayDetailsByIDPage = () => {
               action={
                 <Button
                   variant="outline"
-                  size="icon-xs"
+                  size="icon"
                   aria-label="Edit relay host"
                   disabledReason={canEdit ? undefined : RESTRICTED}
                   onClick={() => setDialog("host")}

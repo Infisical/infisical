@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
@@ -6,7 +6,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -64,18 +64,26 @@ const EventClassesCard = ({ projectId, projectType, canEdit }: Scope & { canEdit
   const update = adapter.useUpdateProjectSettings();
   const newPrivileges =
     settings?.shouldUseNewPrivilegeSystem ?? org?.shouldUseNewPrivilegeSystem ?? false;
-  const stored = Object.fromEntries(
-    AUDIT_LOG_EVENT_CLASSES.map((eventClass) => [
-      eventClass,
-      settings?.eventClasses.find((entry) => entry.eventClass === eventClass)?.isEnabled ??
-        AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass]
-    ])
-  ) as Record<AuditLogEventClass, boolean>;
-  const [draft, setDraft] = useState<Partial<Record<AuditLogEventClass, boolean>>>({});
-  const current = { ...stored, ...draft };
-  const dirty = AUDIT_LOG_EVENT_CLASSES.some(
-    (eventClass) => current[eventClass] !== stored[eventClass]
+  const stored = useMemo(
+    () =>
+      CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
+        eventClass,
+        isEnabled:
+          eventClass === AuditLogEventClass.Authorization && !newPrivileges
+            ? false
+            : (settings?.eventClasses.find((entry) => entry.eventClass === eventClass)?.isEnabled ??
+              AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
+      })),
+    [settings?.eventClasses, newPrivileges]
   );
+  const { value, save, status, pending } = useAutosave({
+    value: stored,
+    errorMessage: "Couldn't update the recorded event classes. Try again.",
+    onSave: async (eventClasses) => {
+      await update.mutateAsync({ projectId, eventClasses });
+      toast({ tone: "ok", title: "Audit log settings saved" });
+    }
+  });
 
   let locked: string | undefined;
   if (!canEdit) locked = EDIT_REQUIRED;
@@ -99,24 +107,8 @@ const EventClassesCard = ({ projectId, projectType, canEdit }: Scope & { canEdit
       title="Event classes"
       description={`Choose which classes of events ${scopeOf(projectType)} records.`}
       loading={isPending}
-      dirty={dirty}
       locked={locked}
-      onDiscard={() => setDraft({})}
-      onSave={async () => {
-        const saved = await update.mutateAsync({
-          projectId,
-          eventClasses: CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
-            eventClass,
-            isEnabled:
-              eventClass === AuditLogEventClass.Authorization && !newPrivileges
-                ? false
-                : current[eventClass]
-          }))
-        });
-        setDraft({});
-        toast({ tone: "ok", title: "Audit log settings saved" });
-        return saved;
-      }}
+      saveStatus={status}
     >
       <Stack gap={16}>
         {AUDIT_LOG_EVENT_CLASSES.map((eventClass) => {
@@ -132,9 +124,19 @@ const EventClassesCard = ({ projectId, projectType, canEdit }: Scope & { canEdit
               layout="row"
               label={auditLogEventClassToNameMap[eventClass]}
               description={description}
-              checked={always || (!needsPrivileges && current[eventClass])}
-              disabled={always || needsPrivileges || Boolean(locked)}
-              onCheckedChange={(checked) => setDraft({ ...draft, [eventClass]: checked })}
+              checked={
+                always ||
+                (!needsPrivileges &&
+                  Boolean(value.find((entry) => entry.eventClass === eventClass)?.isEnabled))
+              }
+              disabled={always || needsPrivileges || Boolean(locked) || pending}
+              onCheckedChange={(checked) =>
+                save(
+                  value.map((entry) =>
+                    entry.eventClass === eventClass ? { ...entry, isEnabled: checked } : entry
+                  )
+                )
+              }
             />
           );
         })}

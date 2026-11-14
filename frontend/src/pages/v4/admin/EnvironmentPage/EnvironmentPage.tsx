@@ -23,6 +23,8 @@ import { failed, toast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 
+const noop = () => {};
+
 const DOCS =
   "https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides";
 
@@ -65,7 +67,6 @@ const OverridesEditor = ({ overrides }: { overrides: TGetEnvOverrides }) => {
         title="Overrides"
         action={
           <ListToolbar
-            band
             search={search}
             onSearch={setSearch}
             placeholder="Search keys and descriptions"
@@ -177,7 +178,7 @@ export const EnvironmentPage = () => {
       {overrides ? (
         <OverridesEditor overrides={overrides} />
       ) : (
-        <SettingsCard title="Overrides" loading />
+        <SettingsCard title="Overrides" loading onSave={noop} />
       )}
     </Stack>
   );

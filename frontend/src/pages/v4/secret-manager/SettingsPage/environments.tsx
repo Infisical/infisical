@@ -543,7 +543,6 @@ export const EnvironmentsSettings = () => {
         action={
           <Button
             variant="accent"
-            size="xs"
             icon="plus"
             disabledReason={createBlocked}
             onClick={() => setDialog({ open: true, key: Date.now() })}

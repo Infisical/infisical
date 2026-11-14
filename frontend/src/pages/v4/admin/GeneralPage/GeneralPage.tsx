@@ -7,7 +7,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Select } from "@infisical/cipher/ui/select";
-import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { z } from "zod";
 
@@ -18,6 +18,8 @@ import type { TServerConfig, TUpdateServerConfigDTO } from "@app/hooks/api/admin
 
 import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+
+const noop = () => {};
 
 enum SignUpMode {
   Disabled = "disabled",
@@ -124,24 +126,23 @@ const DefaultOrganizationCard = ({ config }: { config: TServerConfig }) => {
 };
 
 const TrustLdapEmailsCard = ({ config }: { config: TServerConfig }) => {
-  const save = useSave();
-  const initial = config.trustLdapEmails ?? false;
-  const [draft, setDraft] = useState(initial);
+  const update = useV4Adapter("admin").useUpdateServerConfig();
+  const { value, save, status, pending } = useAutosave({
+    value: config.trustLdapEmails ?? false,
+    errorMessage: "Couldn't update LDAP email verification. Try again.",
+    onSave: async (trustLdapEmails) => {
+      await update.mutateAsync({ trustLdapEmails });
+      saved("LDAP email verification setting updated");
+    }
+  });
   return (
-    <SettingsCard
-      title="LDAP email verification"
-      dirty={draft !== initial}
-      onDiscard={() => setDraft(initial)}
-      onSave={async () => {
-        await save({ trustLdapEmails: draft });
-        saved("LDAP email verification setting updated");
-      }}
-    >
+    <SettingsCard title="LDAP email verification" saveStatus={status}>
       <Checkbox
         label="Trust LDAP emails"
         description="Users provisioned through LDAP skip email verification on first login. SAML and OIDC users are unaffected."
-        checked={draft}
-        onChange={setDraft}
+        checked={value}
+        disabled={pending}
+        onChange={(checked) => save(checked)}
       />
     </SettingsCard>
   );
@@ -290,8 +291,8 @@ export const GeneralPage = () => {
     return (
       <Stack gap={24}>
         <PageHeader title="General" />
-        <SettingsCard title="Allow user signups" loading />
-        <SettingsCard title="Default organization" loading />
+        <SettingsCard title="Allow user signups" loading onSave={noop} />
+        <SettingsCard title="Default organization" loading onSave={noop} />
         <SettingsCard title="LDAP email verification" loading />
       </Stack>
     );

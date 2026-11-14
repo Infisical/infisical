@@ -10,6 +10,8 @@ import { LoginMethod, SuperAdminErrorCode } from "@app/hooks/api/admin/types";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 
+const noop = () => {};
+
 const loginMethods = [
   { value: LoginMethod.EMAIL, label: "Email" },
   { value: LoginMethod.GOOGLE, label: "Google SSO" },
@@ -76,7 +78,7 @@ export const AuthenticationPage = () => {
       {config ? (
         <LoginMethodsCard key={enabled.join()} enabled={enabled} />
       ) : (
-        <SettingsCard title="Login methods" loading />
+        <SettingsCard title="Login methods" loading onSave={noop} />
       )}
     </Stack>
   );

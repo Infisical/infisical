@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -16,7 +16,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
-import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import { toast } from "@infisical/cipher/ui/sonner";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -56,43 +56,51 @@ const Profile = () => {
   const { data: user } = personal.useUser();
   const rename = personal.useRenameUser();
   const savedName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
-  const [name, setName] = useState(savedName);
   const [error, setError] = useState<string>();
+  const { value, edit, save, reset, status, pending } = useAutosave({
+    value: savedName,
+    errorMessage: "Couldn't update your name. Try again.",
+    onSave: async (newName) => {
+      await rename.mutateAsync({ newName });
+      toast.success("Name updated");
+    }
+  });
 
-  useEffect(() => setName(savedName), [savedName]);
+  const commit = () => {
+    const parsed = nameSchema.safeParse(value);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0].message);
+      return;
+    }
+    if (parsed.data === savedName) {
+      reset();
+      return;
+    }
+    save(parsed.data);
+  };
 
   return (
-    <SettingsCard
-      title="Profile"
-      loading={!user}
-      dirty={name.trim() !== savedName}
-      onDiscard={() => {
-        setName(savedName);
-        setError(undefined);
-      }}
-      onSave={async () => {
-        const parsed = nameSchema.safeParse(name);
-        if (!parsed.success) {
-          setError(parsed.error.issues[0].message);
-          return;
-        }
-        try {
-          await rename.mutateAsync({ newName: parsed.data });
-        } catch (cause) {
-          failed("Failed to update name", cause);
-          return;
-        }
-        toast.success("Name updated");
-      }}
-    >
+    <SettingsCard title="Profile" loading={!user} saveStatus={status}>
       <Field label="Name" error={error}>
         <Input
-          value={name}
+          value={value}
           invalid={Boolean(error)}
+          disabled={pending}
           autoComplete="name"
           onChange={(event) => {
-            setName(event.target.value);
+            edit(event.target.value);
             setError(undefined);
+          }}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commit();
+            }
+            if (event.key === "Escape") {
+              reset();
+              setError(undefined);
+            }
           }}
         />
       </Field>

@@ -442,12 +442,11 @@ export const EmailDomainsSection = () => {
         action={
           <Inline gap={8} wrap={false}>
             {hasEmailDomainVerification && canRead && (
-              <ListToolbar band search={search} onSearch={setSearch} placeholder="Search domains" />
+              <ListToolbar search={search} onSearch={setSearch} placeholder="Search domains" />
             )}
             {hasEmailDomainVerification && (
               <Button
                 variant="outline"
-                size="xs"
                 icon="plus"
                 disabledReason={canCreate ? undefined : RESTRICTED}
                 onClick={() => setAdding(true)}

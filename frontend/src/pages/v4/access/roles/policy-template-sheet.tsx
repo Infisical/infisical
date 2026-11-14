@@ -10,6 +10,7 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { Inset } from "@infisical/cipher/ui/inset";
 import { Inline } from "@infisical/cipher/ui/layout";
 import {
   Sheet,
@@ -107,7 +108,7 @@ const CompactView = ({ template }: { template: PolicyTemplate }) => (
 const DetailedView = ({ template }: { template: PolicyTemplate }) => (
   <div className={styles.templateCards}>
     {groupsOf(template).map((group) => (
-      <section key={group.subject} className={styles.templateCard}>
+      <Inset key={group.subject} className={styles.templateCard}>
         <header className={styles.templateCardHead}>
           <span className={styles.tile}>
             <Glyph glyph={SUBJECT_ICONS[group.subject] ?? { name: "lock" }} size={16} />
@@ -135,7 +136,7 @@ const DetailedView = ({ template }: { template: PolicyTemplate }) => (
             );
           })}
         </ul>
-      </section>
+      </Inset>
     ))}
   </div>
 );

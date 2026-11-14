@@ -264,13 +264,12 @@ const GroupMembersCard = ({
         flush={hasRows}
         action={
           <ListToolbar
-            band
             search={search}
             onSearch={(value) => {
               setSearch(value);
               setPage(1);
             }}
-            placeholder="Search group members..."
+            placeholder="Search group members"
             filter={{
               label: "Filter by member type",
               options: [

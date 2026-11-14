@@ -12,6 +12,8 @@ import type { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 import { failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 
+const noop = () => {};
+
 const TEAMS_DOCS =
   "https://infisical.com/docs/documentation/platform/workflow-integrations/microsoft-teams-integration";
 
@@ -201,8 +203,8 @@ export const IntegrationsPage = () => {
         </>
       ) : (
         <>
-          <SettingsCard title="Slack" loading />
-          <SettingsCard title="Microsoft Teams" loading />
+          <SettingsCard title="Slack" loading onSave={noop} />
+          <SettingsCard title="Microsoft Teams" loading onSave={noop} />
         </>
       )}
     </Stack>

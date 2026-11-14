@@ -252,7 +252,6 @@ export const GithubOrgSync = () => {
         action={
           <Button
             variant="outline"
-            size="xs"
             loading={isPending || isSubscriptionPending}
             disabledReason={
               canRead ? undefined : "You need permission to read GitHub organization sync."

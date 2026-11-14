@@ -51,6 +51,8 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
 
+const noop = () => {};
+
 const GENERAL_TAB = "tab-org-general";
 
 const detailsSchema = z.object({
@@ -275,7 +277,6 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
-              band
               search={search}
               onSearch={setSearch}
               placeholder="Search incident contacts by email"
@@ -366,7 +367,7 @@ const GeneralTab = () => {
       {organization && roles ? (
         <OrganizationDetails key={organization.id} organization={organization} roles={roles} />
       ) : (
-        <SettingsCard title="Organization details" loading />
+        <SettingsCard title="Organization details" loading onSave={noop} />
       )}
       {!current.isSubOrganization && <IncidentContacts orgId={current.id} />}
     </Stack>

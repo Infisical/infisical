@@ -17,7 +17,6 @@ import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Inline } from "@infisical/cipher/ui/layout";
 import { PencilIcon } from "lucide-react";
 
 import {
@@ -216,23 +215,20 @@ export const CrossProjectSharingSection = ({
         variant="framed"
         flush
         title="Cross-project secret sharing"
+        badges={<DocumentationLink href={DOCS_URL} subject="cross-project secret sharing" />}
         hint="Gives other projects read access to folders here, to import or reference inline."
         action={
-          <Inline gap={8} wrap={false}>
-            <DocumentationLink href={DOCS_URL} subject="cross-project secret sharing" />
-            <Button
-              variant="accent"
-              size="xs"
-              icon="plus"
-              disabledReason={shareBlocked}
-              onClick={() => {
-                setEditData(null);
-                setSheetOpen(true);
-              }}
-            >
-              Share secrets
-            </Button>
-          </Inline>
+          <Button
+            variant="accent"
+            icon="plus"
+            disabledReason={shareBlocked}
+            onClick={() => {
+              setEditData(null);
+              setSheetOpen(true);
+            }}
+          >
+            Share secrets
+          </Button>
         }
       >
         {canReadGrants ? (
