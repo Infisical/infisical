@@ -100,6 +100,7 @@ const buildService = ({
     findPendingForSignerForUpdate: vi.fn().mockResolvedValue(pendingJobs),
     closePending: vi.fn().mockResolvedValue(undefined),
     find: vi.fn().mockResolvedValue(pendingJobs),
+    findUnrevokedUnownedCertificateId: vi.fn().mockResolvedValue(undefined),
     findLatestForSigner: vi.fn().mockResolvedValue(job),
     create: vi.fn(async (data: Partial<TPkiSignerCertificateIssuanceJobs>) => buildJob({ ...data, id: "job-new" })),
     transaction: vi.fn(async (cb: (trx: Knex) => unknown) => cb(tx))
@@ -889,31 +890,20 @@ describe("signerIssuanceService deleting a signer with open requests", () => {
 });
 
 describe("signerIssuanceService.assertNoUnrevokedRequestCertificate", () => {
-  const heldJob = buildJob({ id: "job-held", status: SignerIssuanceJobStatus.Cancelling, certificateId: NEW_CERT_ID });
-
   it("refuses the delete when a canceled request's certificate arrived after the cleanup", async () => {
-    const { service, deps } = buildService({ pendingJobs: [heldJob] });
+    const { service, deps } = buildService();
+    deps.signerIssuanceJobDAL.findUnrevokedUnownedCertificateId.mockResolvedValue(NEW_CERT_ID);
 
     await expect(service.assertNoUnrevokedRequestCertificate(SIGNER_ID, tx)).rejects.toThrow(
       "Delete the signer again to revoke it"
     );
     expect(deps.signerDAL.findByIdForUpdate).toHaveBeenCalledWith(SIGNER_ID, tx);
+    expect(deps.signerIssuanceJobDAL.findUnrevokedUnownedCertificateId).toHaveBeenCalledWith(SIGNER_ID, tx);
   });
 
-  it("allows the delete once that certificate is revoked or owned by another signer", async () => {
-    const revoked = buildService({ pendingJobs: [heldJob] });
-    revoked.deps.certificateDAL.findById.mockResolvedValue({
-      id: NEW_CERT_ID,
-      projectId: PROJECT_ID,
-      serialNumber: `serial-${NEW_CERT_ID}`,
-      status: CertStatus.REVOKED,
-      commonName: "Example Release Signing",
-      notBefore: new Date(),
-      createdAt: new Date()
-    });
-    await expect(revoked.service.assertNoUnrevokedRequestCertificate(SIGNER_ID, tx)).resolves.toBeUndefined();
+  it("allows the delete when no canceled request holds an unrevoked, unowned certificate", async () => {
+    const { service } = buildService();
 
-    const owned = buildService({ pendingJobs: [heldJob], signerOwningCertificate: { id: "other-signer" } });
-    await expect(owned.service.assertNoUnrevokedRequestCertificate(SIGNER_ID, tx)).resolves.toBeUndefined();
+    await expect(service.assertNoUnrevokedRequestCertificate(SIGNER_ID, tx)).resolves.toBeUndefined();
   });
 });

@@ -1248,24 +1248,12 @@ export const signerIssuanceServiceFactory = ({
 
   const assertNoUnrevokedRequestCertificate = async (signerId: string, tx: Knex) => {
     await signerDAL.findByIdForUpdate(signerId, tx);
-    const jobs = await signerIssuanceJobDAL.find(
-      { signerId, $in: { status: POLLED_SIGNER_ISSUANCE_JOB_STATUSES } },
-      { tx }
-    );
-    for (const { certificateId } of jobs) {
-      if (certificateId) {
-        // eslint-disable-next-line no-await-in-loop
-        const certificate = await certificateDAL.findById(certificateId, tx);
-        // eslint-disable-next-line no-await-in-loop
-        const owner =
-          certificate?.status === CertStatus.REVOKED ? null : await signerDAL.findOne({ certificateId }, tx);
-        if (certificate && certificate.status !== CertStatus.REVOKED && !owner) {
-          throw new BadRequestError({
-            message:
-              "A certificate was just issued for a request this delete canceled. Delete the signer again to revoke it."
-          });
-        }
-      }
+    const certificateId = await signerIssuanceJobDAL.findUnrevokedUnownedCertificateId(signerId, tx);
+    if (certificateId) {
+      throw new BadRequestError({
+        message:
+          "A certificate was just issued for a request this delete canceled. Delete the signer again to revoke it."
+      });
     }
   };
 

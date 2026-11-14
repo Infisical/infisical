@@ -6,6 +6,7 @@ import { TableName, TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
+import { CertStatus } from "../certificate/certificate-types";
 import {
   POLLED_SIGNER_ISSUANCE_JOB_STATUSES,
   SignerIssuanceJobCancelReason,
@@ -132,8 +133,34 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findUnrevokedUnownedCertificateId = async (signerId: string, tx: Knex): Promise<string | undefined> => {
+    try {
+      const row = (await tx(TableName.PkiSignerCertificateIssuanceJobs)
+        .join(
+          TableName.Certificate,
+          `${TableName.Certificate}.id`,
+          `${TableName.PkiSignerCertificateIssuanceJobs}.certificateId`
+        )
+        .where(`${TableName.PkiSignerCertificateIssuanceJobs}.signerId`, signerId)
+        .whereIn(`${TableName.PkiSignerCertificateIssuanceJobs}.status`, POLLED_SIGNER_ISSUANCE_JOB_STATUSES)
+        .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+        .whereNotExists((qb) => {
+          void qb
+            .select(tx.raw("1"))
+            .from(TableName.PkiSigners)
+            .whereRaw("??.?? = ??.??", [TableName.PkiSigners, "certificateId", TableName.Certificate, "id"]);
+        })
+        .select(`${TableName.Certificate}.id`)
+        .first()) as { id: string } | undefined;
+      return row?.id;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindUnrevokedUnownedSignerIssuanceCertificate" });
+    }
+  };
+
   return {
     ...orm,
+    findUnrevokedUnownedCertificateId,
     findDuePolled,
     findPendingForSignerForUpdate,
     closePending,
