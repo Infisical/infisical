@@ -29,7 +29,11 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
-import { useGetAgentVaultAccessBundle, useListAgentVaultServices } from "@app/hooks/api/agentVault";
+import {
+  useGetAgentVaultAccessBundle,
+  useListAgentVaultServices,
+  useListAllAgentVaultServicesRequiringSetup
+} from "@app/hooks/api/agentVault";
 import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultProjectService,
@@ -133,11 +137,9 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
 
   const { data: bundleDetails } = useGetAgentVaultAccessBundle(projectId, accessBundle?.id ?? "");
   // Read again rather than taken from the picked options, so values set up from this dialog clear the warning.
-  const { data: servicesRequiringSetup } = useListAgentVaultServices(
-    projectId,
-    { requiresSetup: true, limit: 100 },
-    { enabled: selectedServices.length > 0 }
-  );
+  const { data: servicesRequiringSetup } = useListAllAgentVaultServicesRequiringSetup(projectId, {
+    enabled: selectedServices.length > 0
+  });
   const bundleNeedsSetup =
     accessBundle && bundleDetails?.id === accessBundle.id
       ? bundleDetails.services.filter(
@@ -146,7 +148,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
       : [];
   const pickedIds = new Set(selectedServices.map((service) => service.id));
   // A picked service can be in the bundle too, so each is listed once.
-  const pickedNeedsSetup = (servicesRequiringSetup?.services ?? []).filter(
+  const pickedNeedsSetup = (servicesRequiringSetup ?? []).filter(
     (service) =>
       pickedIds.has(service.id) && !bundleNeedsSetup.some((other) => other.id === service.id)
   );

@@ -75,7 +75,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
-    "findByAccessBundleId" | "findCatalogByNames" | "findIdsInBundles"
+    "find" | "findByAccessBundleId" | "findCatalogByNames" | "findIdsInBundles"
   >;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
@@ -321,15 +321,25 @@ export const agentVaultSessionServiceFactory = ({
     }
 
     // Two services for one host would leave the proxy to guess which credential a request means. A service the session
-    // names that its bundle also holds is the same service, and resolve sends it once.
+    // names that its bundle also holds is the same service, and resolve sends it once. A fast failure off the replica,
+    // like the inline check below: the check that counts runs again in the transaction, under the lock that adding a
+    // service to a bundle and changing a service's hosts take.
     const orderedNamed = namedEntries.map(({ name, position }) => ({ service: namedByName.get(name)!, position }));
-    if (orderedNamed.length) {
+    const assertNoNamedServiceHostConflicts = async (tx?: Knex) => {
+      if (!orderedNamed.length) return;
+      const current = tx
+        ? await agentVaultServiceDAL.find({ $in: { id: orderedNamed.map(({ service }) => service.id) } }, { tx })
+        : [];
+      const named = orderedNamed.map(({ service }) => {
+        const fresh = current.find((currentService) => currentService.id === service.id);
+        return fresh ? { ...service, hostPattern: fresh.hostPattern ?? null } : service;
+      });
       const sessionServices = (
         await Promise.all(
-          accessBundles.map((name) => agentVaultServiceDAL.findByAccessBundleId(bundlesByName.get(name)!.id))
+          accessBundles.map((name) => agentVaultServiceDAL.findByAccessBundleId(bundlesByName.get(name)!.id, tx))
         )
       ).flat();
-      orderedNamed.forEach(({ service }) => {
+      named.forEach((service) => {
         const [conflict] = findHostPatternConflicts(
           service.hostPattern ?? null,
           sessionServices.filter((other) => other.id !== service.id)
@@ -341,11 +351,9 @@ export const agentVaultSessionServiceFactory = ({
         }
         sessionServices.push(service);
       });
-      assertNoNamedServiceConflicts(
-        preparedInlineServices,
-        orderedNamed.map(({ service }) => service)
-      );
-    }
+      assertNoNamedServiceConflicts(preparedInlineServices, named);
+    };
+    await assertNoNamedServiceHostConflicts();
 
     // A fast failure only: the check that counts runs again in the transaction, under the lock renames take.
     const assertNoBundleConflicts = async (tx?: Knex) => {
@@ -415,9 +423,10 @@ export const agentVaultSessionServiceFactory = ({
     };
 
     const { session, insertedInlineServices } = await agentVaultSessionDAL.transaction(async (tx) => {
-      if (preparedInlineServices.length && accessBundles.length) {
+      if ((preparedInlineServices.length && accessBundles.length) || orderedNamed.length) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
         await assertNoBundleConflicts(tx);
+        await assertNoNamedServiceHostConflicts(tx);
       }
       const created = await agentVaultSessionDAL.createWithId(
         {

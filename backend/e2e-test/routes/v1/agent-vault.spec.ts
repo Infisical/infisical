@@ -5116,6 +5116,58 @@ describe("Agent Vault V1 Router", async () => {
         expect(twoNamed.json().message).toContain("both cover ns-dup.example.com");
       });
 
+      test("a Member naming a wildcard service gets the more specific services its bundle uses for some of its hosts", async () => {
+        const member = await createMemberIdentity(`ns-override-member-${Date.now()}`);
+        try {
+          const bundle = await createAccessBundle(`ns-override-bundle-${Date.now()}`);
+          await bearerService("ns-ov-wild", "*.ns-ov.example.com", [bundle.id]);
+          // An override of the wildcard, whose own wildcard is overridden in turn.
+          await bearerService("ns-ov-api", "api.ns-ov.example.com, *.api.ns-ov.example.com", [bundle.id]);
+          const deep = await bearerService("ns-ov-v1", "v1.api.ns-ov.example.com", [bundle.id]);
+          await bearerService("ns-ov-elsewhere", "ns-ov-elsewhere.example.com", [bundle.id]);
+          await grant(bundle.id, member.id);
+
+          const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `ns-override-${Date.now()}` });
+          expect(proxy.statusCode, proxy.payload).toBe(200);
+          const { proxyToken } = proxy.json() as { proxyToken: string };
+          const resolved = async (sessionToken: string) => {
+            const res = await testServer.inject({
+              method: "POST",
+              url: "/api/v1/agent-vault/proxy/resolve",
+              headers: { authorization: `Bearer ${proxyToken}`, "x-infisical-agent-session": sessionToken }
+            });
+            expect(res.statusCode, res.payload).toBe(200);
+            return (res.json().services as { name: string; accessBundleName: string | null }[]).map(
+              (entry) => `${entry.name}@${entry.accessBundleName ?? "-"}`
+            );
+          };
+
+          const minted = await member.as("POST", sessionsUrl, { services: ["ns-ov-wild"] });
+          expect(minted.statusCode, minted.payload).toBe(200);
+          const { token, services } = minted.json().session as { token: string; services: { name: string }[] };
+          // Reads keep what the session names; resolve adds the overrides last, credited to the bundle that pairs them.
+          expect(services.map((entry) => entry.name)).toEqual(["ns-ov-wild"]);
+          expect(await resolved(token)).toEqual([
+            "ns-ov-wild@-",
+            `ns-ov-api@${bundle.name}`,
+            `ns-ov-v1@${bundle.name}`
+          ]);
+          expect(await sessionServiceNames(token)).toEqual(["ns-ov-api", "ns-ov-v1", "ns-ov-wild"]);
+
+          // The bundle's later edits reach the session on the next resolve, as they would a session carrying it.
+          const unlinked = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${deep.id}`);
+          expect(unlinked.statusCode, unlinked.payload).toBe(200);
+          expect(await resolved(token)).toEqual(["ns-ov-wild@-", `ns-ov-api@${bundle.name}`]);
+
+          // An admin reaches every bundle and could name the wildcard service alone anyway, so gets exactly that.
+          const asAdmin = await inject("POST", sessionsUrl, { services: ["ns-ov-wild"] });
+          expect(asAdmin.statusCode, asAdmin.payload).toBe(200);
+          expect(await resolved(asAdmin.json().session.token as string)).toEqual(["ns-ov-wild@-"]);
+        } finally {
+          await member.cleanup();
+        }
+      });
+
       test("a deleted service drops out of the sessions that named it", async () => {
         const doomed = await bearerService("ns-deleted", "ns-deleted.example.com");
         const minted = await inject("POST", sessionsUrl, { services: ["ns-deleted"] });
@@ -6815,6 +6867,7 @@ describe("Agent Vault V1 Router", async () => {
           .json()
           .services.filter((service) => service.name.endsWith(stamp))
           .map((service) => service.name);
+      let adminVariableId: string | undefined;
       try {
         await grantBundle(shared.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
         await grantBundle(usersOnly.id, { userIds: [alice.userId] });
@@ -6875,17 +6928,37 @@ describe("Agent Vault V1 Router", async () => {
           (pendingForAdmin.json().services as TListedService[]).find((row) => row.name === setupService.name)
             ?.personalValues?.isConfigured
         ).toBe(false);
+        const variableKey = `OBO_SVC_${stamp}`;
+        const variable = await inject("POST", "/api/v1/agent-vault/variables", {
+          scope: "personal",
+          key: variableKey,
+          value: "admin_personal_token"
+        });
+        expect(variable.statusCode, variable.payload).toBe(200);
+        adminVariableId = (variable.json() as { variable: { id: string } }).variable.id;
         const saved = await inject("PATCH", `/api/v1/agent-vault/services/${setupService.id}/personal-values`, {
-          values: [{ field: "credential-value", value: "admin_personal_token" }]
+          values: [{ field: "credential-value", value: `{{${variableKey}}}` }]
         });
         expect(saved.statusCode).toBe(200);
         expect(listed(await forAdmin("true"))).toEqual([]);
         const configuredForAdmin = await forAdmin("false");
         expect(listed(configuredForAdmin)).toEqual([botService.name, setupService.name, sharedService.name]);
+
+        // The admin's own list shows the variable their value uses. On their behalf, the identity learns only that the
+        // value is set: not the admin's variables, nor their OAuth connection.
+        const adminsOwn = await inject("GET", servicesUrl(`search=${encodeURIComponent(setupService.name)}`));
+        expect(
+          (adminsOwn.json().services as TListedService[]).find((row) => row.name === setupService.name)?.personalValues
+        ).toMatchObject({
+          fields: [{ field: "credential-value", variableReferences: [{ variableId: adminVariableId, key: variableKey }] }]
+        });
         expect(
           (configuredForAdmin.json().services as TListedService[]).find((row) => row.name === setupService.name)
-            ?.personalValues?.isConfigured
-        ).toBe(true);
+            ?.personalValues
+        ).toEqual({
+          isConfigured: true,
+          fields: [{ field: "credential-value", isSet: true, updatedAt: expect.any(String) }]
+        });
       } finally {
         await bot.cleanup();
         await deleteUsers([alice.userId, outsider.userId]);
@@ -6893,6 +6966,7 @@ describe("Agent Vault V1 Router", async () => {
           // eslint-disable-next-line no-await-in-loop
           await inject("DELETE", `/api/v1/agent-vault/services/${service.id}`);
         }
+        if (adminVariableId) await inject("DELETE", `/api/v1/agent-vault/variables/${adminVariableId}`);
       }
     });
 
