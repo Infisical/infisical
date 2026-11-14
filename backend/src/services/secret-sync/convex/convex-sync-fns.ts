@@ -12,7 +12,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-import { CONVEX_ENV_VAR_NAME_RULE, isValidConvexEnvVarName } from "./convex-sync-schemas";
+import { CONVEX_ENV_VAR_NAME_RULE, isValidConvexEnvVarName } from "./convex-sync-constants";
 import { TConvexEnvVarChange, TConvexSyncWithCredentials } from "./convex-sync-types";
 
 type TConvexDeploymentApi = { apiUrl: string; headers: Record<string, string> };
