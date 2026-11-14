@@ -1,6 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-react";
+import {
+  BanIcon,
+  BookOpenTextIcon,
+  BotIcon,
+  PackageIcon,
+  PencilIcon,
+  UserIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
@@ -28,19 +35,22 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
-import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import {
   InlineServicesList,
   NamedServicesList,
-  ServicesHoverCard
+  ServicesHoverCard,
+  SessionSkillsList
 } from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
 import {
   inlineServiceTarget,
   sessionInlineServices,
-  sessionNamedServices
+  sessionInlineSkills,
+  sessionNamedServices,
+  sessionNamedSkills
 } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionRequestCount } from "./SessionRequestCount";
@@ -48,6 +58,7 @@ import { SessionStatusBadge } from "./SessionStatusBadge";
 
 const SHOWN_INLINE_SERVICES = 1;
 const SHOWN_NAMED_SERVICES = 2;
+const SHOWN_SKILLS = 2;
 
 // An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
 // One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam.
@@ -59,6 +70,47 @@ const moreButton = (count: number) => (
     <span className="underline decoration-dotted underline-offset-2">{`+${count} more`}</span>
   </button>
 );
+
+// A session's named or inline skills: the first few by name, with the rest behind a hover card.
+const SkillsDetail = ({
+  label,
+  skills,
+  isInline
+}: {
+  label: string;
+  skills: TAgentVaultSessionSkill[];
+  isInline: boolean;
+}) => {
+  const more = skills.slice(SHOWN_SKILLS);
+  return (
+    <Detail className="min-w-0">
+      <DetailLabel>{label}</DetailLabel>
+      <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {skills.slice(0, SHOWN_SKILLS).map((skill) => (
+          <Tooltip key={skill.id}>
+            <TooltipTrigger asChild>
+              <span className="flex min-w-0 items-center gap-2">
+                <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
+                <span className="truncate">{skill.name}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm">
+              {isInline
+                ? "Sent with this session when it was created"
+                : "A project skill this session names"}
+              <span className="block">{skill.description}</span>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        {more.length > 0 && (
+          <ServicesHoverCard content={<SessionSkillsList skills={more} isInline={isInline} />}>
+            {moreButton(more.length)}
+          </ServicesHoverCard>
+        )}
+      </DetailValue>
+    </Detail>
+  );
+};
 
 type Props = {
   session: TAgentVaultSession | undefined;
@@ -90,6 +142,8 @@ export const SessionDetailSheet = ({
   const namedServices = session ? sessionNamedServices(session) : [];
   const shownNamedServices = namedServices.slice(0, SHOWN_NAMED_SERVICES);
   const moreNamedServices = namedServices.slice(SHOWN_NAMED_SERVICES);
+  const namedSkills = session ? sessionNamedSkills(session) : [];
+  const inlineSkills = session ? sessionInlineSkills(session) : [];
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -273,6 +327,12 @@ export const SessionDetailSheet = ({
                           )}
                         </DetailValue>
                       </Detail>
+                    )}
+                    {namedSkills.length > 0 && (
+                      <SkillsDetail label="Skills" skills={namedSkills} isInline={false} />
+                    )}
+                    {inlineSkills.length > 0 && (
+                      <SkillsDetail label="Inline Skills" skills={inlineSkills} isInline />
                     )}
                     <Detail>
                       <DetailLabel>Created</DetailLabel>

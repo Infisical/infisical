@@ -8,6 +8,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import type { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
+import type { TAgentVaultSkillBundleDALFactory } from "../agent-vault-skill/agent-vault-skill-bundle-dal";
 import { AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE } from "./agent-vault-enums";
 
 type TProjectPermissionResult = Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>;
@@ -78,6 +79,15 @@ export const serviceIdsReachedThrough = (
   accessBundleIds: string[] | null
 ): Promise<string[] | null> =>
   accessBundleIds === null ? Promise.resolve(null) : agentVaultServiceDAL.findIdsInBundles(accessBundleIds);
+
+// The skills a session can name through these bundles, the same rule as its services: every project skill when every
+// bundle is reached (null), otherwise those in one of them. Session creation checks names against it and the skills
+// list scopes itself to it.
+export const skillIdsReachedThrough = (
+  agentVaultSkillBundleDAL: Pick<TAgentVaultSkillBundleDALFactory, "findSkillIdsInBundles">,
+  accessBundleIds: string[] | null
+): Promise<string[] | null> =>
+  accessBundleIds === null ? Promise.resolve(null) : agentVaultSkillBundleDAL.findSkillIdsInBundles(accessBundleIds);
 
 const $loadAgentVaultPermission = async (
   { permissionService }: { permissionService: TPermissionDep },

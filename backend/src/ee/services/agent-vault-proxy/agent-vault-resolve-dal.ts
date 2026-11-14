@@ -34,8 +34,9 @@ export type TResolveSkillRow = {
   version: number;
   sha256: string;
   encryptedFiles: Buffer;
-  accessBundleId: string;
-  accessBundleName: string;
+  // Null for a skill the session names itself rather than reaching through its bundle.
+  accessBundleId: string | null;
+  accessBundleName: string | null;
 };
 
 type TResolveScope = { sessionId: string; projectId: string; accessBundleIds: string[] | null };
@@ -169,12 +170,35 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The latest version of each skill, once, credited to the first of the session's bundles that carries it. Reads the
-  // primary: this runs once per agent start, and a skill published a moment before must not arrive a version late.
+  /**
+   * The latest version of each skill the session reaches through its bundle or names, once. Like the services, both are
+   * a ceiling fixed at mint and re-checked against live grants: a named skill stays only while a bundle the owner
+   * reaches holds it (any of them when accessBundleIds is null). A skill through the bundle is credited to the first of
+   * the session's bundles that carries it, and one the bundle also holds is sent once, as the bundle's. Reads the
+   * primary: this runs once per agent start, and a skill published a moment before must not arrive a version late.
+   */
   const findSessionSkills = async (scope: TResolveScope, tx?: Knex): Promise<TResolveSkillRow[]> => {
     if (scope.accessBundleIds?.length === 0) return [];
     try {
-      const rows = (await reachableSessionBundles(tx || db, scope)
+      const conn = tx || db;
+      const latestVersion = function joinLatestVersion(this: Knex.JoinClause) {
+        this.on(`${TableName.AgentVaultSkillVersion}.skillId`, `${TableName.AgentVaultSkill}.id`).andOn(
+          `${TableName.AgentVaultSkillVersion}.version`,
+          db.raw(`(SELECT MAX(v."version") FROM ?? v WHERE v."skillId" = ??.id)`, [
+            TableName.AgentVaultSkillVersion,
+            TableName.AgentVaultSkill
+          ])
+        );
+      };
+      const skillColumns = [
+        db.ref("id").withSchema(TableName.AgentVaultSkill),
+        db.ref("name").withSchema(TableName.AgentVaultSkill),
+        db.ref("version").withSchema(TableName.AgentVaultSkillVersion),
+        db.ref("sha256").withSchema(TableName.AgentVaultSkillVersion),
+        db.ref("encryptedFiles").withSchema(TableName.AgentVaultSkillVersion)
+      ];
+
+      const throughBundle = (await reachableSessionBundles(conn, scope)
         .join(
           TableName.AgentVaultAccessBundleSkill,
           `${TableName.AgentVaultAccessBundleSkill}.accessBundleId`,
@@ -186,22 +210,11 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultSkill}.id`
         )
         .where(`${TableName.AgentVaultSkill}.projectId`, scope.projectId)
-        .join(TableName.AgentVaultSkillVersion, function joinLatestVersion() {
-          this.on(`${TableName.AgentVaultSkillVersion}.skillId`, `${TableName.AgentVaultSkill}.id`).andOn(
-            `${TableName.AgentVaultSkillVersion}.version`,
-            db.raw(`(SELECT MAX(v."version") FROM ?? v WHERE v."skillId" = ??.id)`, [
-              TableName.AgentVaultSkillVersion,
-              TableName.AgentVaultSkill
-            ])
-          );
-        })
+        .whereNull(`${TableName.AgentVaultSkill}.sessionId`)
+        .join(TableName.AgentVaultSkillVersion, latestVersion)
         .distinctOn(`${TableName.AgentVaultSkill}.id`)
         .select(
-          db.ref("id").withSchema(TableName.AgentVaultSkill),
-          db.ref("name").withSchema(TableName.AgentVaultSkill),
-          db.ref("version").withSchema(TableName.AgentVaultSkillVersion),
-          db.ref("sha256").withSchema(TableName.AgentVaultSkillVersion),
-          db.ref("encryptedFiles").withSchema(TableName.AgentVaultSkillVersion),
+          ...skillColumns,
           db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName")
         )
@@ -209,7 +222,40 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           { column: `${TableName.AgentVaultSkill}.id` },
           { column: `${TableName.AgentVaultSessionAccessBundle}.position`, order: "asc" }
         ])) as TResolveSkillRow[];
-      return rows.sort((a, b) => (a.name < b.name ? -1 : 1));
+
+      const namedQuery = conn(TableName.AgentVaultSessionSkill)
+        .where(`${TableName.AgentVaultSessionSkill}.sessionId`, scope.sessionId)
+        .join(
+          TableName.AgentVaultSkill,
+          `${TableName.AgentVaultSkill}.id`,
+          `${TableName.AgentVaultSessionSkill}.skillId`
+        )
+        .where(`${TableName.AgentVaultSkill}.projectId`, scope.projectId)
+        .whereNull(`${TableName.AgentVaultSkill}.sessionId`)
+        .join(TableName.AgentVaultSkillVersion, latestVersion);
+      if (scope.accessBundleIds) {
+        void namedQuery.whereExists(
+          conn(TableName.AgentVaultAccessBundleSkill)
+            .whereRaw("??.?? = ??.??", [
+              TableName.AgentVaultAccessBundleSkill,
+              "skillId",
+              TableName.AgentVaultSkill,
+              "id"
+            ])
+            .whereIn(`${TableName.AgentVaultAccessBundleSkill}.accessBundleId`, scope.accessBundleIds)
+            .select(db.raw("1"))
+        );
+      }
+      const named = (await namedQuery.select(
+        ...skillColumns,
+        db.raw("NULL::uuid AS ??", ["accessBundleId"]),
+        db.raw("NULL::text AS ??", ["accessBundleName"])
+      )) as unknown as TResolveSkillRow[];
+
+      const throughBundleIds = new Set(throughBundle.map((row) => row.id));
+      return [...throughBundle, ...named.filter((row) => !throughBundleIds.has(row.id))].sort((a, b) =>
+        a.name < b.name ? -1 : 1
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session skills" });
     }

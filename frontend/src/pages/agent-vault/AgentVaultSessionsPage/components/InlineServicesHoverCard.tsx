@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { BookOpenTextIcon } from "lucide-react";
 
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -10,7 +11,8 @@ import {
 } from "@app/components/v3";
 import {
   TAgentVaultSessionInlineService,
-  TAgentVaultSessionNamedService
+  TAgentVaultSessionNamedService,
+  TAgentVaultSessionSkill
 } from "@app/hooks/api/agentVault/types";
 
 import { inlineServiceTarget } from "./sessionInlineServices";
@@ -81,6 +83,31 @@ export const NamedServicesList = ({ services }: { services: TAgentVaultSessionNa
         {service.description && (
           <span className="truncate text-xs text-muted">{service.description}</span>
         )}
+      </div>
+    ))}
+  </ServiceListFrame>
+);
+
+export const SessionSkillsList = ({
+  skills,
+  isInline
+}: {
+  skills: TAgentVaultSessionSkill[];
+  isInline: boolean;
+}) => (
+  <ServiceListFrame
+    caption={
+      isInline
+        ? "Sent with the session when it was created."
+        : "The project's skills, named when the session was created."
+    }
+    label={isInline ? "Inline skills" : "Skills"}
+  >
+    {skills.map((skill) => (
+      <div key={skill.id} className="flex min-w-0 items-center gap-2">
+        <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
+        <span className="truncate">{skill.name}</span>
+        <span className="truncate text-xs text-muted">{skill.description}</span>
       </div>
     ))}
   </ServiceListFrame>

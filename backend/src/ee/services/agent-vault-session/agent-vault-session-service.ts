@@ -23,6 +23,8 @@ import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { TAgentVaultSkillBundleDALFactory } from "../agent-vault-skill/agent-vault-skill-bundle-dal";
+import { TAgentVaultSkillDALFactory } from "../agent-vault-skill/agent-vault-skill-dal";
 import { findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import { AgentVaultMemberType, AgentVaultServiceType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import { assertAgentVaultHooksOnPlan } from "../agent-vault/agent-vault-hook-fns";
@@ -30,7 +32,8 @@ import {
   getAgentVaultPermission,
   getAgentVaultReachability,
   intersectAccessBundleIds,
-  serviceIdsReachedThrough
+  serviceIdsReachedThrough,
+  skillIdsReachedThrough
 } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
@@ -45,9 +48,16 @@ import {
   prepareInlineServices,
   toInlineServiceSummary
 } from "./agent-vault-session-inline-service-fns";
+import {
+  TAgentVaultInlineSkillInsert,
+  TAgentVaultSessionInlineSkillDALFactory
+} from "./agent-vault-session-inline-skill-dal";
+import { prepareInlineSkills, toInlineSkillSummary } from "./agent-vault-session-inline-skill-fns";
 import { TAgentVaultSessionServiceDALFactory } from "./agent-vault-session-service-dal";
+import { TAgentVaultSessionSkillDALFactory } from "./agent-vault-session-skill-dal";
 import {
   TAgentVaultSessionServiceSummary,
+  TAgentVaultSessionSkillSummary,
   TGetSessionByIdDTO,
   TListSessionsDTO,
   TMintSessionDTO,
@@ -72,11 +82,18 @@ type TAgentVaultSessionServiceFactoryDep = {
     "insertForSession" | "findSummariesBySessionIds" | "deleteSecretsBySessionId"
   >;
   agentVaultSessionServiceDAL: Pick<TAgentVaultSessionServiceDALFactory, "insertMany" | "findSummariesBySessionIds">;
+  agentVaultSessionSkillDAL: Pick<TAgentVaultSessionSkillDALFactory, "insertMany" | "findSummariesBySessionIds">;
+  agentVaultSessionInlineSkillDAL: Pick<
+    TAgentVaultSessionInlineSkillDALFactory,
+    "insertForSession" | "findSummariesBySessionIds" | "deleteFilesBySessionId"
+  >;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
     "findByAccessBundleId" | "findCatalogByNames" | "findIdsInBundles"
   >;
+  agentVaultSkillDAL: Pick<TAgentVaultSkillDALFactory, "findByNamesInProject">;
+  agentVaultSkillBundleDAL: Pick<TAgentVaultSkillBundleDALFactory, "findSkillIdsInBundles">;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   userDAL: Pick<TUserDALFactory, "findOne">;
@@ -96,8 +113,12 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionAccessBundleDAL,
   agentVaultSessionInlineServiceDAL,
   agentVaultSessionServiceDAL,
+  agentVaultSessionSkillDAL,
+  agentVaultSessionInlineSkillDAL,
   agentVaultAccessBundleDAL,
   agentVaultServiceDAL,
+  agentVaultSkillDAL,
+  agentVaultSkillBundleDAL,
   agentVaultDelegationDAL,
   membershipDAL,
   userDAL,
@@ -125,8 +146,7 @@ export const agentVaultSessionServiceFactory = ({
   });
 
   // The services each session names and the ones sent with it, as one list in the order they were sent.
-  const withSessionServices = async <T extends { id: string }>(sessions: T[]) => {
-    const sessionIds = sessions.map((session) => session.id);
+  const findSessionServices = async (sessionIds: string[]) => {
     const [inlineRows, namedRows] = await Promise.all([
       agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(sessionIds),
       agentVaultSessionServiceDAL.findSummariesBySessionIds(sessionIds)
@@ -146,10 +166,32 @@ export const agentVaultSessionServiceFactory = ({
         isInline: false
       })
     );
-    return sessions.map((session) => ({
-      ...session,
-      services: (bySession.get(session.id) ?? []).sort((a, b) => a.position - b.position).map(({ service }) => service)
-    }));
+    return (sessionId: string) =>
+      (bySession.get(sessionId) ?? []).sort((a, b) => a.position - b.position).map(({ service }) => service);
+  };
+
+  // The skills each session names and the ones sent with it, the same way.
+  const findSessionSkills = async (sessionIds: string[]) => {
+    const [inlineRows, namedRows] = await Promise.all([
+      agentVaultSessionInlineSkillDAL.findSummariesBySessionIds(sessionIds),
+      agentVaultSessionSkillDAL.findSummariesBySessionIds(sessionIds)
+    ]);
+    const bySession = new Map<string, { position: number; skill: TAgentVaultSessionSkillSummary }[]>();
+    const add = (sessionId: string, position: number, skill: TAgentVaultSessionSkillSummary) => {
+      bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), { position, skill }]);
+    };
+    inlineRows.forEach((row) => add(row.sessionId, row.position, toInlineSkillSummary(row)));
+    namedRows.forEach(({ sessionId, position, id, name, description }) =>
+      add(sessionId, position, { id, name, description, isInline: false })
+    );
+    return (sessionId: string) =>
+      (bySession.get(sessionId) ?? []).sort((a, b) => a.position - b.position).map(({ skill }) => skill);
+  };
+
+  const withSessionServicesAndSkills = async <T extends { id: string }>(sessions: T[]) => {
+    const sessionIds = sessions.map((session) => session.id);
+    const [servicesOf, skillsOf] = await Promise.all([findSessionServices(sessionIds), findSessionSkills(sessionIds)]);
+    return sessions.map((session) => ({ ...session, services: servicesOf(session.id), skills: skillsOf(session.id) }));
   };
 
   const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) =>
@@ -160,6 +202,7 @@ export const agentVaultSessionServiceFactory = ({
     ctx,
     accessBundle,
     services = [],
+    skills = [],
     actorName,
     actorEmail,
     ttl: requestedTtl,
@@ -177,9 +220,9 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    if (!accessBundles.length && !services.length) {
+    if (!accessBundles.length && !services.length && !skills.length) {
       throw new BadRequestError({
-        message: "Name the access bundle this session should carry, or the services it should reach."
+        message: "Name the access bundle this session should carry, or the services or skills it should have."
       });
     }
 
@@ -206,6 +249,26 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
+    // Skills the same way, with positions of their own.
+    const namedSkillEntries = skills.flatMap((entry, position) =>
+      typeof entry === "string" ? [{ name: entry, position }] : []
+    );
+    const inlineSkillEntries = skills.flatMap((entry, position) =>
+      typeof entry === "string" ? [] : [{ input: entry, position }]
+    );
+    if (
+      inlineSkillEntries.length &&
+      permission.cannot(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+        ProjectPermissionSub.AgentVaultSessions
+      )
+    ) {
+      throw new ForbiddenRequestError({
+        message:
+          "You don't have permission to send skills with a session. Name an access bundle or the project's skills instead."
+      });
+    }
+
     const preparedInlineServices = prepareInlineServices(
       inlineEntries.map(({ input }) => input),
       inlineEntries.map(({ position }) => position)
@@ -213,6 +276,10 @@ export const agentVaultSessionServiceFactory = ({
     if (preparedInlineServices.some((service) => service.hookUrl)) {
       await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
     }
+    const preparedInlineSkills = prepareInlineSkills(
+      inlineSkillEntries.map(({ input }) => input),
+      inlineSkillEntries.map(({ position }) => position)
+    );
 
     const bundles = accessBundles.length
       ? await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } })
@@ -241,6 +308,21 @@ export const agentVaultSessionServiceFactory = ({
       })?.name;
     };
 
+    const namedSkills = namedSkillEntries.length
+      ? await agentVaultSkillDAL.findByNamesInProject({ projectId, names: namedSkillEntries.map(({ name }) => name) })
+      : [];
+    const namedSkillsByName = new Map(namedSkills.map((skill) => [skill.name, skill]));
+    // The same reach as a service the session names.
+    const firstUnreachableSkill = async (reachableBundleIds: string[] | null) => {
+      if (!namedSkillEntries.length) return undefined;
+      const reachableIds = await skillIdsReachedThrough(agentVaultSkillBundleDAL, reachableBundleIds);
+      const reachable = reachableIds === null ? null : new Set(reachableIds);
+      return namedSkillEntries.find(({ name }) => {
+        const skill = namedSkillsByName.get(name);
+        return !skill || (reachable !== null && !reachable.has(skill.id));
+      })?.name;
+    };
+
     let onBehalfOfUser: Awaited<ReturnType<typeof resolveOnBehalfOfUser>> | null = null;
     if (onBehalfOf) {
       // A session on a user's behalf can use only the bundles both the user and the identity reach. The delegation is
@@ -263,6 +345,13 @@ export const agentVaultSessionServiceFactory = ({
         throw new BadRequestError({
           name: "ServiceNotGranted",
           message: `This machine identity can't name a service called '${serviceOutOfIdentityReach}'. A session on behalf of a user can name only services in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
+        });
+      }
+      const skillOutOfIdentityReach = await firstUnreachableSkill(identityReach);
+      if (skillOutOfIdentityReach) {
+        throw new BadRequestError({
+          name: "SkillNotGranted",
+          message: `This machine identity can't name a skill called '${skillOutOfIdentityReach}'. A session on behalf of a user can name only skills in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
         });
       }
 
@@ -288,15 +377,28 @@ export const agentVaultSessionServiceFactory = ({
           message: `'${onBehalfOfUser.identifier}' can't use a service called '${serviceOutOfUserReach}'. Check the name, or ask an Agent Vault admin to grant them an access bundle that holds it.`
         });
       }
+      const skillOutOfUserReach = await firstUnreachableSkill(onBehalfOfUser.accessBundleIds);
+      if (skillOutOfUserReach) {
+        throw new BadRequestError({
+          name: "SkillNotGranted",
+          message: `'${onBehalfOfUser.identifier}' can't use a skill called '${skillOutOfUserReach}'. Check the name, or ask an Agent Vault admin to grant them an access bundle that holds it.`
+        });
+      }
       // Resolve reaches only the bundles both of them are granted, so a service each reaches through a different bundle
-      // would never arrive.
-      const serviceOutOfSharedReach = await firstUnreachableService(
-        intersectAccessBundleIds(identityReach, onBehalfOfUser.accessBundleIds)
-      );
+      // would never arrive. The skills fetch reaches the same bundles.
+      const sharedReach = intersectAccessBundleIds(identityReach, onBehalfOfUser.accessBundleIds);
+      const serviceOutOfSharedReach = await firstUnreachableService(sharedReach);
       if (serviceOutOfSharedReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
           message: `The service '${serviceOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can name only services in an access bundle granted to both.`
+        });
+      }
+      const skillOutOfSharedReach = await firstUnreachableSkill(sharedReach);
+      if (skillOutOfSharedReach) {
+        throw new BadRequestError({
+          name: "SkillNotGranted",
+          message: `The skill '${skillOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can name only skills in an access bundle granted to both.`
         });
       }
     } else {
@@ -316,6 +418,13 @@ export const agentVaultSessionServiceFactory = ({
         throw new BadRequestError({
           name: "ServiceNotGranted",
           message: `You can't name a service called '${serviceOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+        });
+      }
+      const skillOutOfReach = await firstUnreachableSkill(accessBundleIds);
+      if (skillOutOfReach) {
+        throw new BadRequestError({
+          name: "SkillNotGranted",
+          message: `You can't name a skill called '${skillOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
         });
       }
     }
@@ -360,32 +469,48 @@ export const agentVaultSessionServiceFactory = ({
     await assertNoBundleConflicts();
 
     // Sealed before the transaction: with an external KMS this is a network call, and the transaction stays short.
-    // Each value is sealed on its own, the way a project's services keep them, so the two can share one table.
-    let seal: ((value: unknown) => Buffer) | null = null;
-    if (preparedInlineServices.some((service) => service.secrets)) {
+    // Each value is sealed on its own, the way a project's services keep them, so the two can share one table. An
+    // inline skill's files are sealed whole, the way a project skill's versions are.
+    let encrypt: ((plainText: Buffer) => Buffer) | null = null;
+    if (preparedInlineServices.some((service) => service.secrets) || preparedInlineSkills.length) {
       const { encryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      seal = (value) => encryptor({ plainText: Buffer.from(JSON.stringify(value)) }).cipherTextBlob;
+      encrypt = (plainText) => encryptor({ plainText }).cipherTextBlob;
     }
+    const seal = (value: unknown) => encrypt!(Buffer.from(JSON.stringify(value)));
     const inlineServiceRows: TAgentVaultInlineServiceInsert[] = preparedInlineServices.map(
       ({ secrets, customHeaders, substitutions, ...service }) => ({
         ...service,
         projectId,
         credentialType: service.credentialConfig.type,
-        encryptedCredential: secrets?.credential ? seal!(secrets.credential) : null,
-        encryptedHookSecret: secrets?.hookSecret ? seal!({ value: secrets.hookSecret }) : null,
+        encryptedCredential: secrets?.credential ? seal(secrets.credential) : null,
+        encryptedHookSecret: secrets?.hookSecret ? seal({ value: secrets.hookSecret }) : null,
         customHeaders: customHeaders.map((header, index) => ({
           ...header,
-          encryptedValue: seal!({ value: secrets!.customHeaders[index] })
+          encryptedValue: seal({ value: secrets!.customHeaders[index] })
         })),
         substitutions: substitutions.map((substitution, index) => ({
           ...substitution,
-          encryptedValue: seal!({ value: secrets!.substitutions[index] })
+          encryptedValue: seal({ value: secrets!.substitutions[index] })
         }))
       })
     );
+    const inlineSkillRows: TAgentVaultInlineSkillInsert[] = preparedInlineSkills.map((skill) => ({
+      projectId,
+      position: skill.position,
+      name: skill.name,
+      description: skill.description,
+      encryptedFiles: encrypt!(skill.serialized),
+      sha256: skill.sha256,
+      sizeBytes: skill.sizeBytes,
+      fileCount: skill.fileCount
+    }));
+    const orderedNamedSkills = namedSkillEntries.map(({ name, position }) => ({
+      skill: namedSkillsByName.get(name)!,
+      position
+    }));
 
     const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
     const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
@@ -414,48 +539,61 @@ export const agentVaultSessionServiceFactory = ({
       })
     };
 
-    const { session, insertedInlineServices } = await agentVaultSessionDAL.transaction(async (tx) => {
-      if (preparedInlineServices.length && accessBundles.length) {
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
-        await assertNoBundleConflicts(tx);
-      }
-      const created = await agentVaultSessionDAL.createWithId(
-        {
-          id: sessionId,
-          projectId,
-          ...owner,
-          label: label || null,
-          tokenHash,
-          expiresAt,
-          encryptedSessionLogKey
-        },
-        tx
-      );
-
-      await agentVaultSessionAccessBundleDAL.insertMany(
-        accessBundles.map((name, position) => ({
-          sessionId: created.id,
-          accessBundleId: bundlesByName.get(name)!.id,
-          accessBundleName: name,
-          position
-        })),
-        tx
-      );
-
-      if (orderedNamed.length) {
-        await agentVaultSessionServiceDAL.insertMany(
-          orderedNamed.map(({ service, position }) => ({ sessionId: created.id, serviceId: service.id, position })),
+    const { session, insertedInlineServices, insertedInlineSkills } = await agentVaultSessionDAL.transaction(
+      async (tx) => {
+        if (preparedInlineServices.length && accessBundles.length) {
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
+          await assertNoBundleConflicts(tx);
+        }
+        const created = await agentVaultSessionDAL.createWithId(
+          {
+            id: sessionId,
+            projectId,
+            ...owner,
+            label: label || null,
+            tokenHash,
+            expiresAt,
+            encryptedSessionLogKey
+          },
           tx
         );
+
+        await agentVaultSessionAccessBundleDAL.insertMany(
+          accessBundles.map((name, position) => ({
+            sessionId: created.id,
+            accessBundleId: bundlesByName.get(name)!.id,
+            accessBundleName: name,
+            position
+          })),
+          tx
+        );
+
+        if (orderedNamed.length) {
+          await agentVaultSessionServiceDAL.insertMany(
+            orderedNamed.map(({ service, position }) => ({ sessionId: created.id, serviceId: service.id, position })),
+            tx
+          );
+        }
+
+        const inserted = await agentVaultSessionInlineServiceDAL.insertForSession(
+          { sessionId: created.id, services: inlineServiceRows },
+          tx
+        );
+
+        if (orderedNamedSkills.length) {
+          await agentVaultSessionSkillDAL.insertMany(
+            orderedNamedSkills.map(({ skill, position }) => ({ sessionId: created.id, skillId: skill.id, position })),
+            tx
+          );
+        }
+        const insertedSkills = await agentVaultSessionInlineSkillDAL.insertForSession(
+          { sessionId: created.id, skills: inlineSkillRows },
+          tx
+        );
+
+        return { session: created, insertedInlineServices: inserted, insertedInlineSkills: insertedSkills };
       }
-
-      const inserted = await agentVaultSessionInlineServiceDAL.insertForSession(
-        { sessionId: created.id, services: inlineServiceRows },
-        tx
-      );
-
-      return { session: created, insertedInlineServices: inserted };
-    });
+    );
 
     return {
       session: {
@@ -482,7 +620,16 @@ export const agentVaultSessionServiceFactory = ({
           }))
         ]
           .sort((a, b) => a.position - b.position)
-          .map(({ service }): TAgentVaultSessionServiceSummary => service)
+          .map(({ service }): TAgentVaultSessionServiceSummary => service),
+        skills: [
+          ...orderedNamedSkills.map(({ skill, position }) => ({
+            position,
+            skill: { id: skill.id, name: skill.name, description: skill.description, isInline: false as const }
+          })),
+          ...insertedInlineSkills.map((row) => ({ position: row.position, skill: toInlineSkillSummary(row) }))
+        ]
+          .sort((a, b) => a.position - b.position)
+          .map(({ skill }): TAgentVaultSessionSkillSummary => skill)
       },
       token,
       ttlSeconds: ttlMs === null ? null : Math.floor(ttlMs / 1000),
@@ -516,7 +663,7 @@ export const agentVaultSessionServiceFactory = ({
       offset
     });
 
-    return { sessions: await withSessionServices(sessions.map(toSessionView)), totalCount };
+    return { sessions: await withSessionServicesAndSkills(sessions.map(toSessionView)), totalCount };
   };
 
   // A session you may not see reads exactly like one that does not exist.
@@ -550,7 +697,7 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    const [session] = await withSessionServices([
+    const [session] = await withSessionServicesAndSkills([
       toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))
     ]);
     return { session };
@@ -576,8 +723,10 @@ export const agentVaultSessionServiceFactory = ({
     // The timestamp comes from the written row: a read-back could land on a replica that has not seen it.
     const revoked = await agentVaultSessionDAL.transaction(async (tx) => {
       const row = await agentVaultSessionDAL.revokeIfActive(session.id, new Date(), tx);
-      // Revoked by this call or found already over, the session can't use its inline services' secrets again.
+      // Revoked by this call or found already over, the session can't use its inline services' secrets or its inline
+      // skills' files again.
       await agentVaultSessionInlineServiceDAL.deleteSecretsBySessionId(session.id, tx);
+      await agentVaultSessionInlineSkillDAL.deleteFilesBySessionId(session.id, tx);
       return row;
     });
     if (revoked) {
@@ -627,7 +776,7 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
-    const [view] = await withSessionServices([toSessionView({ ...session, label })]);
+    const [view] = await withSessionServicesAndSkills([toSessionView({ ...session, label })]);
     return { session: view, previousLabel: updated.previousLabel };
   };
 

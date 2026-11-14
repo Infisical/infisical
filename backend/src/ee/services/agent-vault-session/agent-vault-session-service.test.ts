@@ -5,9 +5,12 @@ import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { sha256Hex } from "../agent-vault-skill/agent-vault-skill-fns";
+import { AgentVaultSkillFileMode } from "../agent-vault-skill/agent-vault-skill-types";
 import { AgentVaultCredentialType, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
 import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault/agent-vault-hook-fns";
 import { TAgentVaultInlineServiceInsert } from "./agent-vault-session-inline-service-dal";
+import { TAgentVaultInlineSkillInsert } from "./agent-vault-session-inline-skill-dal";
 import { agentVaultSessionServiceFactory } from "./agent-vault-session-service";
 import { TMintSessionDTO } from "./agent-vault-session-types";
 
@@ -52,6 +55,7 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     },
     agentVaultSessionAccessBundleDAL: { insertMany: vi.fn() },
     agentVaultSessionInlineServiceDAL: { insertForSession },
+    agentVaultSessionInlineSkillDAL: { insertForSession: vi.fn(async () => []) },
     agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
     agentVaultServiceDAL: { findByAccessBundleId: vi.fn().mockResolvedValue([]) },
     membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
@@ -162,6 +166,7 @@ const buildNamingService = ({
     agentVaultSessionAccessBundleDAL: { insertMany: vi.fn() },
     agentVaultSessionInlineServiceDAL: { insertForSession },
     agentVaultSessionServiceDAL: { insertMany: insertNamed },
+    agentVaultSessionInlineSkillDAL: { insertForSession: vi.fn(async () => []) },
     agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
     agentVaultServiceDAL: {
       findByAccessBundleId: vi.fn().mockResolvedValue([]),
@@ -262,6 +267,195 @@ describe("mintSession, project services named in services", () => {
 
     await expect(mintWith(service, ["github", inline("api.github.com", "gh-direct")])).rejects.toThrow(
       "which 'github', a service this session names, already covers"
+    );
+  });
+});
+
+type TSkillCatalogEntry = { id: string; name: string; description: string };
+
+const CODE_REVIEW: TSkillCatalogEntry = { id: "skill-review", name: "code-review", description: "Reviews code." };
+const RELEASE_NOTES: TSkillCatalogEntry = { id: "skill-notes", name: "release-notes", description: "Writes notes." };
+
+const skillFolder = (name: string, body = "Body.") => ({
+  files: [
+    {
+      path: "SKILL.md",
+      mode: AgentVaultSkillFileMode.Regular,
+      contentBase64: Buffer.from(`---\nname: ${name}\ndescription: Does ${name}.\n---\n${body}\n`).toString("base64")
+    }
+  ]
+});
+
+// Like buildNamingService, for a project whose skills are `catalog`, each in the bundles `bundlesOf` lists.
+const buildSkillService = ({
+  isAdmin,
+  grantedBundleIds = [],
+  catalog = [CODE_REVIEW, RELEASE_NOTES],
+  bundlesOf = {},
+  canSendSkills = true
+}: {
+  isAdmin: boolean;
+  grantedBundleIds?: string[];
+  catalog?: TSkillCatalogEntry[];
+  bundlesOf?: Record<string, string[]>;
+  canSendSkills?: boolean;
+}) => {
+  const insertNamedSkills = vi.fn();
+  const insertInlineSkills = vi.fn(async ({ skills }: { skills: TAgentVaultInlineSkillInsert[] }) =>
+    skills.map(({ encryptedFiles, ...row }) => ({
+      ...row,
+      id: `inline-skill-${row.position}`,
+      sessionId: "session-1",
+      filesDeletedAt: null,
+      createdAt: new Date()
+    }))
+  );
+  const memberActions = ["read", "create", "edit", "revoke", ...(canSendSkills ? ["create-with-inline-skills"] : [])];
+  const permission = isAdmin
+    ? createMongoAbility([{ action: "manage", subject: "all" }])
+    : createMongoAbility([{ action: memberActions, subject: "agent-vault-sessions" }]);
+  const service = agentVaultSessionServiceFactory({
+    agentVaultSessionDAL: {
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ raw: vi.fn() })),
+      createWithId: vi.fn(async (row: Record<string, unknown>) => ({ ...row, createdAt: new Date() }))
+    },
+    agentVaultSessionAccessBundleDAL: { insertMany: vi.fn() },
+    agentVaultSessionInlineServiceDAL: { insertForSession: vi.fn(async () => []) },
+    agentVaultSessionServiceDAL: { insertMany: vi.fn() },
+    agentVaultSessionSkillDAL: { insertMany: insertNamedSkills },
+    agentVaultSessionInlineSkillDAL: { insertForSession: insertInlineSkills },
+    agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
+    agentVaultServiceDAL: { findByAccessBundleId: vi.fn().mockResolvedValue([]) },
+    agentVaultSkillDAL: {
+      findByNamesInProject: vi.fn(async ({ names }: { names: string[] }) =>
+        catalog.filter((entry) => names.includes(entry.name))
+      )
+    },
+    agentVaultSkillBundleDAL: {
+      findSkillIdsInBundles: vi.fn(async (bundleIds: string[]) =>
+        catalog
+          .filter((entry) => (bundlesOf[entry.id] ?? []).some((bundleId) => bundleIds.includes(bundleId)))
+          .map((entry) => entry.id)
+      )
+    },
+    membershipDAL: {
+      findResourceMembershipsForActor: vi
+        .fn()
+        .mockResolvedValue(
+          grantedBundleIds.map((bundleId) => ({ scopeResourceId: bundleId, isActive: true, actorGroupId: null }))
+        )
+    },
+    permissionService: {
+      getProjectPermission: vi.fn().mockResolvedValue({ permission, hasRole: () => isAdmin, memberships: [] })
+    },
+    kmsService: {
+      wrapKey: vi.fn().mockResolvedValue(Buffer.from("wrapped")),
+      createCipherPairWithDataKey: vi.fn().mockResolvedValue({
+        encryptor: ({ plainText }: { plainText: Buffer }) => ({
+          cipherTextBlob: Buffer.concat([Buffer.from("sealed:"), plainText])
+        })
+      })
+    },
+    licenseService: { getPlan: vi.fn() }
+  } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
+  return { service, insertNamedSkills, insertInlineSkills };
+};
+
+const mintSkills = (service: ReturnType<typeof buildSkillService>["service"], skills: TMintSessionDTO["skills"]) =>
+  service.mintSession({ projectId: PROJECT_ID, ctx, skills, actorName: "Ana Silva", actorEmail: null, label: null });
+
+describe("mintSession, skills", () => {
+  test("an Admin names any project skill beside an inline one, and the list reads back in the order sent", async () => {
+    const { service, insertNamedSkills, insertInlineSkills } = buildSkillService({ isAdmin: true });
+
+    const { session } = await mintSkills(service, ["code-review", skillFolder("scratch"), "release-notes"]);
+
+    const [namedRows] = insertNamedSkills.mock.calls[0] as [{ skillId: string; position: number }[]];
+    expect(namedRows.map(({ skillId, position }) => [skillId, position])).toEqual([
+      [CODE_REVIEW.id, 0],
+      [RELEASE_NOTES.id, 2]
+    ]);
+    const [inlineRow] = insertInlineSkills.mock.calls[0][0].skills;
+    expect(inlineRow).toMatchObject({
+      projectId: PROJECT_ID,
+      position: 1,
+      name: "scratch",
+      description: "Does scratch.",
+      fileCount: 1
+    });
+    expect(session.skills.map((entry) => [entry.name, entry.isInline])).toEqual([
+      ["code-review", false],
+      ["scratch", true],
+      ["release-notes", false]
+    ]);
+    expect(session.services).toEqual([]);
+  });
+
+  test("seals an inline skill's files whole, in the form its hash is taken over, and never returns them", async () => {
+    const { service, insertInlineSkills } = buildSkillService({ isAdmin: true });
+
+    const { session } = await mintSkills(service, [skillFolder("scratch", "Secret steps.")]);
+
+    const [row] = insertInlineSkills.mock.calls[0][0].skills;
+    const sealed = row.encryptedFiles.subarray("sealed:".length).toString();
+    expect(JSON.parse(sealed)).toEqual(skillFolder("scratch", "Secret steps.").files);
+    expect(row.sha256).toBe(sha256Hex(sealed));
+    expect(session.skills[0]).toMatchObject({ isInline: true, sha256: row.sha256, sizeBytes: row.sizeBytes });
+    expect(JSON.stringify(session)).not.toContain(Buffer.from("Secret steps.").toString("base64"));
+  });
+
+  test("a Member names a skill in an access bundle granted to them, and no other", async () => {
+    const { service } = buildSkillService({
+      isAdmin: false,
+      grantedBundleIds: ["bundle-1"],
+      bundlesOf: { [CODE_REVIEW.id]: ["bundle-1"], [RELEASE_NOTES.id]: ["bundle-2"] }
+    });
+
+    await expect(mintSkills(service, ["code-review"])).resolves.toBeDefined();
+    await expect(mintSkills(service, ["release-notes"])).rejects.toThrow(
+      "You can't name a skill called 'release-notes'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+    );
+  });
+
+  test("an unknown name is refused like one out of reach, so it doesn't confirm what exists", async () => {
+    const { service } = buildSkillService({ isAdmin: true });
+
+    await expect(mintSkills(service, ["nope"])).rejects.toThrow("You can't name a skill called 'nope'.");
+  });
+
+  test("a Member sends a skill inline, and without the action no one can", async () => {
+    const { service } = buildSkillService({ isAdmin: false });
+    await expect(mintSkills(service, [skillFolder("scratch")])).resolves.toBeDefined();
+
+    const { service: withoutAction, insertInlineSkills } = buildSkillService({ isAdmin: false, canSendSkills: false });
+    await expect(mintSkills(withoutAction, [skillFolder("scratch")])).rejects.toThrow(
+      "You don't have permission to send skills with a session."
+    );
+    expect(insertInlineSkills).not.toHaveBeenCalled();
+  });
+
+  test("checks an inline skill's files like an upload, and names the skill in the error", async () => {
+    const { service } = buildSkillService({ isAdmin: true });
+    const tooBig = {
+      files: [
+        ...skillFolder("big").files,
+        { path: "data.bin", mode: AgentVaultSkillFileMode.Regular, contentBase64: "A".repeat(400 * 1024) }
+      ]
+    };
+
+    await expect(mintSkills(service, [tooBig])).rejects.toThrow("Skill 'big': File 'data.bin' is larger than 256 KB.");
+    await expect(
+      mintSkills(service, [
+        { files: [{ path: "README.md", mode: AgentVaultSkillFileMode.Regular, contentBase64: "" }] }
+      ])
+    ).rejects.toThrow("Skill at index 0: SKILL.md is missing.");
+  });
+
+  test("an inline skill can't take the built-in skill's name", async () => {
+    const { service } = buildSkillService({ isAdmin: true });
+
+    await expect(mintSkills(service, [skillFolder("infisical-agent-vault")])).rejects.toThrow(
+      "Skill 'infisical-agent-vault': 'infisical-agent-vault' is reserved for the skill Agent Vault gives every agent."
     );
   });
 });

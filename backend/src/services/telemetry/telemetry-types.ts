@@ -2583,6 +2583,8 @@ export type TAgentVaultSessionCreatedEvent = {
     accessBundleId: string | null;
     inlineServiceCount: number;
     namedServiceCount: number;
+    inlineSkillCount: number;
+    namedSkillCount: number;
     ttlSeconds: number | null;
     isOnBehalfOfUser: boolean;
   };

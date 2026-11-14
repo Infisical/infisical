@@ -12,10 +12,18 @@ import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
+import { findOnBehalfOfListScope } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  getAgentVaultPermission,
+  getAgentVaultReachability,
+  skillIdsReachedThrough
+} from "../agent-vault/agent-vault-permission";
 import { assertSkillNameNotReserved, getAgentVaultBuiltinSkill } from "./agent-vault-builtin-skill";
 import { TAgentVaultSkillBundleDALFactory } from "./agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory, TAgentVaultSkillSummaryRow } from "./agent-vault-skill-dal";
@@ -54,6 +62,9 @@ type TAgentVaultSkillServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
+  userDAL: Pick<TUserDALFactory, "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
 };
 
 export type TAgentVaultSkillServiceFactory = ReturnType<typeof agentVaultSkillServiceFactory>;
@@ -65,7 +76,10 @@ export const agentVaultSkillServiceFactory = ({
   agentVaultAccessBundleDAL,
   permissionService,
   membershipDAL,
-  kmsService
+  kmsService,
+  agentVaultDelegationDAL,
+  userDAL,
+  orgDAL
 }: TAgentVaultSkillServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -210,7 +224,8 @@ export const agentVaultSkillServiceFactory = ({
     projectId: string;
     allowRename: boolean;
     baseVersion?: number;
-    content: Pick<TAgentVaultSkillVersions, "encryptedFiles" | "sha256" | "sizeBytes" | "fileCount"> & {
+    content: Pick<TAgentVaultSkillVersions, "sha256" | "sizeBytes" | "fileCount"> & {
+      encryptedFiles: Buffer;
       name: string;
       description: string;
     };
@@ -404,12 +419,21 @@ export const agentVaultSkillServiceFactory = ({
     };
   };
 
-  const listSkills = async ({ search, name, limit, offset, ...scoped }: TListSkillsDTO) => {
+  // On a user's behalf it lists the skills a session for them could name, scoped like the services list.
+  const listSkills = async ({ search, name, limit, offset, onBehalfOf, ...scoped }: TListSkillsDTO) => {
     const accessBundleIds = await $authorizeRead(scoped);
+    const scopeBundleIds = onBehalfOf
+      ? (
+          await findOnBehalfOfListScope(
+            { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
+            { ...scoped, onBehalfOf, callerAccessBundleIds: accessBundleIds }
+          )
+        ).scopeIds
+      : accessBundleIds;
 
     const { skills, totalCount } = await agentVaultSkillDAL.findForList({
       projectId: scoped.projectId,
-      accessBundleIds,
+      skillIds: await skillIdsReachedThrough(agentVaultSkillBundleDAL, scopeBundleIds),
       search,
       name,
       limit,
@@ -417,7 +441,7 @@ export const agentVaultSkillServiceFactory = ({
     });
     const bundlesBySkill = await agentVaultSkillBundleDAL.findBundlesForSkills(
       skills.map((skill) => skill.id),
-      accessBundleIds
+      scopeBundleIds
     );
     return {
       skills: skills.map((skill): TAgentVaultSkillWithBundles => ({
@@ -603,7 +627,7 @@ export const agentVaultSkillServiceFactory = ({
       );
       if (!bundle) throw bundleNotFound(accessBundleId);
 
-      const skill = await agentVaultSkillDAL.findOne({ id: skillId, projectId: scoped.projectId }, tx);
+      const skill = await agentVaultSkillDAL.findSummaryByIdInProject({ id: skillId, projectId: scoped.projectId }, tx);
       if (!skill) throw skillNotFound(skillId);
 
       const [removed] = await agentVaultSkillBundleDAL.delete({ accessBundleId: bundle.id, skillId: skill.id }, tx);

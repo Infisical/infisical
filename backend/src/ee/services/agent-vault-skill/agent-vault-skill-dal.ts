@@ -14,13 +14,21 @@ type TSummaryQueryRow = TAgentVaultSkills & { latestVersion: number | string };
 
 const SKILL_COLUMNS = ["id", "projectId", "name", "description", "createdAt", "updatedAt"] as const;
 
+/**
+ * A project's own skills. A skill sent with a session is a row of the same table with sessionId set, which only
+ * agent-vault-session-inline-skill-dal.ts reads: every query here leaves those rows out, and the generic orm methods,
+ * which don't, take only ids these queries returned.
+ */
 export const agentVaultSkillDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultSkill);
+
+  const projectSkills = (conn: Knex) =>
+    conn(TableName.AgentVaultSkill).whereNull(`${TableName.AgentVaultSkill}.sessionId`);
 
   const columns = SKILL_COLUMNS.map((column) => `${TableName.AgentVaultSkill}.${column}`);
 
   const summaryQuery = (conn: Knex) =>
-    conn(TableName.AgentVaultSkill).select(
+    projectSkills(conn).select(
       ...columns,
       db.raw(`(SELECT MAX(v."version") FROM ?? v WHERE v."skillId" = ??.id) AS "latestVersion"`, [
         TableName.AgentVaultSkillVersion,
@@ -34,18 +42,18 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
   });
 
   // Reads the primary even without a tx, so a skill created or published a moment ago is listed as it now is.
-  // accessBundleIds null lists every skill; otherwise only skills in one of those bundles.
+  // skillIds null lists every skill; otherwise only those of them.
   const findForList = async (
     {
       projectId,
-      accessBundleIds,
+      skillIds,
       search,
       name,
       limit,
       offset
     }: {
       projectId: string;
-      accessBundleIds: string[] | null;
+      skillIds: string[] | null;
       search?: string;
       name?: string;
       limit: number;
@@ -53,20 +61,13 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     },
     tx?: Knex
   ): Promise<{ skills: TAgentVaultSkillSummaryRow[]; totalCount: number }> => {
-    if (accessBundleIds?.length === 0) return { skills: [], totalCount: 0 };
+    if (skillIds?.length === 0) return { skills: [], totalCount: 0 };
 
     try {
       const conn = tx || db;
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultSkill}.projectId`, projectId);
-        if (accessBundleIds) {
-          void query.whereExists(
-            conn(TableName.AgentVaultAccessBundleSkill)
-              .select(db.raw("1"))
-              .whereRaw(`??."skillId" = ??.id`, [TableName.AgentVaultAccessBundleSkill, TableName.AgentVaultSkill])
-              .whereIn(`${TableName.AgentVaultAccessBundleSkill}.accessBundleId`, accessBundleIds)
-          );
-        }
+        if (skillIds) void query.whereIn(`${TableName.AgentVaultSkill}.id`, skillIds);
         if (name !== undefined) void query.where(`${TableName.AgentVaultSkill}.name`, name);
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
@@ -80,9 +81,9 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
       };
 
       const [countResult, rows] = await Promise.all([
-        applyFilters(conn(TableName.AgentVaultSkill))
-          .count(`${TableName.AgentVaultSkill}.id as count`)
-          .first() as Promise<{ count: string } | undefined>,
+        applyFilters(projectSkills(conn)).count(`${TableName.AgentVaultSkill}.id as count`).first() as Promise<
+          { count: string } | undefined
+        >,
         applyFilters(summaryQuery(conn))
           .orderBy(`${TableName.AgentVaultSkill}.name`, "asc")
           .limit(limit)
@@ -114,19 +115,36 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TAgentVaultSkills | undefined> => {
     try {
-      return (await (tx || db)(TableName.AgentVaultSkill).where({ name, projectId }).first(columns)) as
-        | TAgentVaultSkills
-        | undefined;
+      return (await projectSkills(tx || db)
+        .where({ name, projectId })
+        .first(columns)) as TAgentVaultSkills | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault skill by name" });
     }
   };
 
+  // Reads the primary even without a tx, so a skill created a moment ago can be named.
+  const findByNamesInProject = async (
+    { projectId, names }: { projectId: string; names: string[] },
+    tx?: Knex
+  ): Promise<TAgentVaultSkills[]> => {
+    if (!names.length) return [];
+    try {
+      return (await projectSkills(tx || db)
+        .where({ projectId })
+        .whereIn("name", names)
+        .select(columns)) as TAgentVaultSkills[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault skills by name" });
+    }
+  };
+
   const countInProject = async (projectId: string, tx?: Knex): Promise<number> => {
     try {
-      const result = (await (tx || db)(TableName.AgentVaultSkill).where({ projectId }).count("id as count").first()) as
-        | { count: string | number }
-        | undefined;
+      const result = (await projectSkills(tx || db)
+        .where({ projectId })
+        .count("id as count")
+        .first()) as { count: string | number } | undefined;
       return Number(result?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count agent vault skills" });
@@ -140,7 +158,7 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     tx: Knex
   ): Promise<TAgentVaultSkills | undefined> => {
     try {
-      return (await tx(TableName.AgentVaultSkill).where({ id, projectId }).forUpdate().first(columns)) as
+      return (await projectSkills(tx).where({ id, projectId }).forUpdate().first(columns)) as
         | TAgentVaultSkills
         | undefined;
     } catch (error) {
@@ -148,5 +166,13 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForList, findSummaryByIdInProject, findByNameInProject, countInProject, lockByIdInProject };
+  return {
+    ...orm,
+    findForList,
+    findSummaryByIdInProject,
+    findByNameInProject,
+    findByNamesInProject,
+    countInProject,
+    lockByIdInProject
+  };
 };

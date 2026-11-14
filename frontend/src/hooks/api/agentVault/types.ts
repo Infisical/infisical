@@ -435,6 +435,22 @@ export type TAgentVaultSessionService =
   | (TAgentVaultSessionInlineService & { isInline: true })
   | TAgentVaultSessionNamedService;
 
+/**
+ * A session's skill: a project skill it names, which carries only what identifies it, or one sent with it, which also
+ * carries the hash and size of its files.
+ */
+export type TAgentVaultSessionSkill =
+  | { id: string; name: string; description: string; isInline: false }
+  | {
+      id: string;
+      name: string;
+      description: string;
+      sha256: string;
+      sizeBytes: number;
+      fileCount: number;
+      isInline: true;
+    };
+
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
       id: string | null;
@@ -461,6 +477,8 @@ export type TAgentVaultSession = {
   accessBundle: TAgentVaultSessionAccessBundle | null;
   /** The services it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
   services: TAgentVaultSessionService[];
+  /** The skills it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  skills: TAgentVaultSessionSkill[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
 };
@@ -520,6 +538,7 @@ export type TAgentVaultMintedSession = {
   projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionService[];
+  skills: TAgentVaultSessionSkill[];
 };
 
 export type TAgentVaultProxy = {
@@ -697,11 +716,12 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
-// Needs an access bundle, at least one service, or both. Each is named rather than referenced by ID. The API also takes
-// services defined inline, which this UI doesn't send.
+// Needs an access bundle, or at least one service or skill. Each is named rather than referenced by ID. The API also
+// takes services and skills defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
   accessBundle?: string;
   services?: string[];
+  skills?: string[];
   ttl: string;
   label?: string;
 };

@@ -99,6 +99,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - **Only the admin rule set holds them.** In an Agent Vault project any role but admin resolves to the member set,
   custom roles and additional privileges included, so `buildAgentVaultProjectAdminPermissionRules` is the one place an
   action is granted. A new role is a new rule set, not a new branch in a service.
+- **`create-with-inline-skills` on sessions is the one session action both rule sets hold.** A skill sent with a session
+  carries instructions, not credentials or hosts, so any member may send one; it is still an action so a later role
+  can be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
 - **Reaching every bundle without a grant is the one rule that follows the role** (see below), because queries lock and
   read the role rows that confer it.
 - Keep each refusal's error type and message when a gate changes: an id you may not act on stays a 404, and the
@@ -387,6 +390,39 @@ inline services share, so reads (`withSessionServices`) return both kinds in the
   mint, and inline against both (`assertNoNamedServiceConflicts`).
 - **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `isInline: false`); the
   service's settings belong to the services API, which a member reaches through their bundles.
+
+## Skills a session names or sends
+
+Mint's `skills` takes a project skill's name as a string or an inline skill as `{ files }`, the upload body of a project
+skill, with name and description read from its `SKILL.md`. `agent_vault_session_skills` links named skills with the
+`position` they were sent at; inline skills are rows of `agent_vault_skills` with `sessionId` and the same positions,
+each with one `agent_vault_skill_versions` row holding its files, so reads return both in the order sent, told apart by
+`isInline`. Only `agent-vault-session-inline-skill-dal.ts` reads or writes inline skills, and nothing edits them.
+
+- **Every project skill query leaves inline rows out** (`whereNull("sessionId")`, as `agent-vault-skill-dal.ts` does
+  through `projectSkills`, and the project resolver for `/skills/:skillId`), so no list, read, count, bundle link or
+  picker sees them. Project names are unique only among project skills (`agent_vault_skills_project_name_unique`,
+  partial on `sessionId IS NULL`), so a project skill may share a name with a live inline skill, and inline skills
+  don't count toward `AGENT_VAULT_MAX_SKILLS`.
+- **A named skill follows the named-service rule exactly** (`skillIdsReachedThrough`, shared with the skills list's
+  scope): admin any skill, member only skills in a bundle they reach, on-behalf-of only skills in a bundle both reach,
+  and an unknown name gets the same 400 as an unreachable one. `findSessionSkills` re-checks it on every fetch, so a
+  lost bundle or a deleted skill drops it from the next agent start.
+- **Inline skills are validated like an upload** (`prepareInlineSkills` runs `validateSkillFiles` and
+  `assertSkillNameNotReserved`, prefixing each error with the skill) and sealed whole with the project's SecretManager
+  key. At most 5 per session, and their files share the session create body limit (`AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT`,
+  2 MB). Names are unique across the whole `skills` array, refused in the schema (422) by reading each inline
+  `SKILL.md` (`skillNameOf`).
+- **A session names at most 20 skills** (`AGENT_VAULT_MAX_SESSION_NAMED_SKILLS`): with the bundle's 25 and the 2 MB of
+  inline files, every skill at 1 MB still fits the 64 MB that released CLIs and proxies read from `GET /session/skills`.
+  Raise it only with those read limits.
+- **Delivery:** `getSessionSkills` returns bundle and named skills (a skill in both once, as the bundle's), plus inline
+  skills while the owner holds `create-with-inline-skills`. An inline skill replaces any project skill of its name, since
+  each installs as a folder of its name; it is delivered as version 1 with its own row id.
+- **Files go when the session ends; the row stays.** The version's `encryptedFiles` is set to NULL and the skill's
+  `filesDeletedAt` set at revoke (both revoke routes) and by the hourly `deleteFilesOfEndedSessions`, the same predicate
+  and cron as inline service secrets. Only an inline skill's version may have no files, so a project read that opens
+  files goes through `findByVersion`, which never returns one.
 
 ## Database and SSH services
 
@@ -802,15 +838,16 @@ an installed copy.
   audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
   skill (for that version); the list routes return no files and write none.
 - **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
-  intersection as the services), sorted by name, read from the primary. The CLI calls it through the proxy at the
+  intersection as the services) and of the skills it names or was sent with (see
+  [Skills a session names or sends](#skills-a-session-names-or-sends)), sorted by name, read from the primary. The CLI calls it through the proxy at the
   proxy's Infisical host, or directly behind an older proxy, with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
   proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
-  (data-access class) listing every skill delivered (id, name, version, sha256), with the session's owner as the
-  actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
-  bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
-  count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
+  (data-access class) listing every skill delivered (id, name, version, sha256, the bundle it came through or null for
+  a named or inline skill, and `isInline`), with the session's owner as the actor (a user named as they are now, or
+  from the session's snapshot if they are gone) and the session's access bundle when any skill came through it, plus
+  one anonymous `Agent Vault Skills Delivered` PostHog event with the count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
 - **`GET /session/skills` also returns the built-in `infisical-agent-vault` skill** (`isBuiltin: true`, left out with
   `includeBuiltin=false`), so an orchestrator that installs skills without `agent-vault run` gets it too. Its file
   is `agent-vault-skill/builtin-skill/SKILL.md`, read beside its loader at runtime (a dedicated `tsdown` copy rule

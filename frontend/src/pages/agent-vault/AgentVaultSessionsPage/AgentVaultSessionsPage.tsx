@@ -3,6 +3,7 @@ import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
+  BookOpenTextIcon,
   CircleAlertIcon,
   FilterIcon,
   GlobeIcon,
@@ -87,7 +88,8 @@ import {
   useGetAgentVaultSessionLogSettings,
   useListAgentVaultAccessBundles,
   useListAgentVaultServices,
-  useListAgentVaultSessions
+  useListAgentVaultSessions,
+  useListAgentVaultSkills
 } from "@app/hooks/api/agentVault";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
@@ -99,13 +101,14 @@ import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSett
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
-import { InlineServicesList } from "./components/InlineServicesHoverCard";
+import { InlineServicesList, SessionSkillsList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
 import {
   inlineServicesLabel,
+  inlineSkillsLabel,
   toAccessItems,
   TSessionAccessItem
 } from "./components/sessionInlineServices";
@@ -121,18 +124,22 @@ const STATUS_OPTIONS = [
 const accessItemIcon = (item: TSessionAccessItem) => {
   if (item.kind === "bundle") return <PackageIcon />;
   if (item.kind === "service") return <PlugIcon />;
+  if (item.kind === "skill" || item.kind === "inline-skills") return <BookOpenTextIcon />;
   return <GlobeIcon />;
 };
 
 const accessItemKey = (item: TSessionAccessItem) => {
   if (item.kind === "bundle") return `bundle:${item.bundle.id ?? item.bundle.name}`;
   if (item.kind === "service") return `service:${item.service.id}`;
-  return "inline";
+  if (item.kind === "skill") return `skill:${item.skill.id}`;
+  return item.kind;
 };
 
 const accessItemLabel = (item: TSessionAccessItem) => {
   if (item.kind === "bundle") return item.bundle.name;
   if (item.kind === "service") return item.service.name;
+  if (item.kind === "skill") return item.skill.name;
+  if (item.kind === "inline-skills") return inlineSkillsLabel(item.skills.length);
   return inlineServicesLabel(item.services.length);
 };
 
@@ -140,11 +147,15 @@ const accessItemTooltip = (item: TSessionAccessItem) => {
   if (item.kind === "bundle" && !item.bundle.id) return `${item.bundle.name} (deleted)`;
   if (item.kind === "service")
     return item.service.description ?? "A project service this session names";
+  if (item.kind === "skill") return item.skill.description;
   return undefined;
 };
 
-const accessItemHoverCard = (item: TSessionAccessItem) =>
-  item.kind === "inline" ? <InlineServicesList services={item.services} /> : undefined;
+const accessItemHoverCard = (item: TSessionAccessItem) => {
+  if (item.kind === "inline") return <InlineServicesList services={item.services} />;
+  if (item.kind === "inline-skills") return <SessionSkillsList skills={item.skills} isInline />;
+  return undefined;
+};
 
 export const AgentVaultSessionsPage = () => {
   const { projectId } = useProject();
@@ -189,10 +200,11 @@ export const AgentVaultSessionsPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  // A session needs a bundle the caller reaches or a service they can name. A member can name only the services in
-  // their bundles, so only someone who reaches every bundle can have services and no bundle.
+  // A session needs a bundle the caller reaches or a service or skill they can name. A member can name only the
+  // services and skills in their bundles, so only someone who reaches every bundle can have them and no bundle.
   const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
   const { data: nameableServices } = useListAgentVaultServices(projectId, { limit: 1 });
+  const { data: nameableSkills } = useListAgentVaultSkills(projectId, { limit: 1 });
   const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
     projectId,
     canReadSessionLogSettings
@@ -227,7 +239,9 @@ export const AgentVaultSessionsPage = () => {
   // off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
   const canStartSession =
-    (accessBundles?.totalCount ?? 0) > 0 || (nameableServices?.totalCount ?? 0) > 0;
+    (accessBundles?.totalCount ?? 0) > 0 ||
+    (nameableServices?.totalCount ?? 0) > 0 ||
+    (nameableSkills?.totalCount ?? 0) > 0;
   useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), canStartSession);
 
   let emptyTitle: string;
