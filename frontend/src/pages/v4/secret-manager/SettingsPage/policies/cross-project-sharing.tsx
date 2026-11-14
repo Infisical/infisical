@@ -18,8 +18,6 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
-import { RowActions } from "@infisical/cipher/ui/table";
-import { format } from "date-fns";
 import { PencilIcon } from "lucide-react";
 
 import {
@@ -54,16 +52,18 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
   grants.forEach((grant) => {
     byProject.set(grant.targetProjectId, [...(byProject.get(grant.targetProjectId) ?? []), grant]);
   });
-  return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => ({
-    targetProjectId,
-    targetProjectName: projectGrants[0].targetProjectName,
-    totalSecrets: projectGrants.reduce((sum, grant) => sum + grant.secretCount, 0),
-    grants: [...projectGrants].sort(
-      (a, b) =>
-        a.environmentName.localeCompare(b.environmentName) ||
-        a.secretPath.localeCompare(b.secretPath)
-    )
-  }));
+  return Array.from(byProject.entries())
+    .map(([targetProjectId, projectGrants]) => ({
+      targetProjectId,
+      targetProjectName: projectGrants[0].targetProjectName,
+      totalSecrets: projectGrants.reduce((sum, grant) => sum + grant.secretCount, 0),
+      grants: [...projectGrants].sort(
+        (a, b) =>
+          a.environmentName.localeCompare(b.environmentName) ||
+          a.secretPath.localeCompare(b.secretPath)
+      )
+    }))
+    .sort((a, b) => a.targetProjectName.localeCompare(b.targetProjectName));
 };
 
 const RevokeProjectDialog = ({
@@ -125,36 +125,39 @@ const RevokeProjectDialog = ({
   );
 };
 
-const columns: DataTableColumn<TProjectFolderGrant>[] = [
+const folderLabel = (grant: TProjectFolderGrant) => `${grant.environmentName} ${grant.secretPath}`;
+
+const columns: DataTableColumn<ProjectGroup>[] = [
   {
-    id: "environment",
-    header: "Environment",
-    width: 180,
+    id: "project",
+    header: "Project",
+    width: 220,
     primary: true,
-    text: (grant) => grant.environmentName,
-    render: (grant) => grant.environmentName
+    text: (group) => group.targetProjectName,
+    render: (group) => group.targetProjectName
   },
   {
-    id: "path",
-    header: "Folder path",
+    id: "folders",
+    header: "Shared folders",
     grow: true,
-    mono: true,
-    text: (grant) => grant.secretPath,
-    render: (grant) => grant.secretPath
-  },
-  {
-    id: "shared",
-    header: "Shared",
-    width: 140,
-    text: (grant) => format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a"),
-    render: (grant) => format(new Date(grant.createdAt), "MMM d, yyyy")
+    text: (group) => group.grants.map(folderLabel).join(", "),
+    render: (group) => (
+      <Inline gap={24}>
+        {group.grants.map((grant) => (
+          <Inline key={grant.id} gap={6} wrap={false}>
+            {grant.environmentName}
+            <code>{grant.secretPath}</code>
+          </Inline>
+        ))}
+      </Inline>
+    )
   },
   {
     id: "secrets",
     header: "Secrets shared",
     width: 130,
     align: "end",
-    render: (grant) => grant.secretCount
+    render: (group) => group.totalSecrets
   }
 ];
 
@@ -243,55 +246,45 @@ export const CrossProjectSharingSection = ({
         {canReadGrants ? (
           <DataTable
             label="Projects with access"
-            groups={projectGroups.map((group) => {
-              const edit = editBlocked(group);
-              const revoke = revokeBlocked(group);
-              return {
-                id: group.targetProjectId,
-                label: group.targetProjectName,
-                meta: `${group.totalSecrets} ${group.totalSecrets === 1 ? "secret" : "secrets"} shared`,
-                rows: group.grants,
-                actions: (
-                  <RowActions
-                    label={group.targetProjectName}
-                    menu={
-                      <>
-                        <DropdownMenuItem
-                          disabled={Boolean(edit)}
-                          description={edit}
-                          onSelect={() => {
-                            setEditData({
-                              targetProjectId: group.targetProjectId,
-                              targetProjectName: group.targetProjectName,
-                              grants: group.grants
-                            });
-                            setSheetOpen(true);
-                          }}
-                        >
-                          <Icon icon={PencilIcon} />
-                          Edit shared folders
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={Boolean(revoke)}
-                          description={revoke}
-                          onSelect={() => setRevoking(group)}
-                        >
-                          <Icon name="trash" />
-                          Remove access
-                        </DropdownMenuItem>
-                      </>
-                    }
-                  />
-                )
-              };
-            })}
+            rows={projectGroups}
             columns={columns}
             loading={isPending}
-            getRowId={(grant) => grant.id}
-            rowLabel={(grant) => `${grant.environmentName} ${grant.secretPath}`}
-            rowActions={{}}
-            rowContextMenu={false}
+            getRowId={(group) => group.targetProjectId}
+            rowLabel={(group) => group.targetProjectName}
+            rowActions={{
+              renderMenu: (group) => {
+                const edit = editBlocked(group);
+                const revoke = revokeBlocked(group);
+                return (
+                  <>
+                    <DropdownMenuItem
+                      disabled={Boolean(edit)}
+                      description={edit}
+                      onSelect={() => {
+                        setEditData({
+                          targetProjectId: group.targetProjectId,
+                          targetProjectName: group.targetProjectName,
+                          grants: group.grants
+                        });
+                        setSheetOpen(true);
+                      }}
+                    >
+                      <Icon icon={PencilIcon} />
+                      Edit shared folders
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={Boolean(revoke)}
+                      description={revoke}
+                      onSelect={() => setRevoking(group)}
+                    >
+                      <Icon name="trash" />
+                      Remove access
+                    </DropdownMenuItem>
+                  </>
+                );
+              }
+            }}
             empty={
               <EmptyState
                 size="sm"
