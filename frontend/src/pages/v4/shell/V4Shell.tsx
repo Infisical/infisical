@@ -95,7 +95,6 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
   const project = session.projects.find((entry) => entry.id === at.projectId);
   const trail = shellTrail({
     at,
-    orgName: organization.name,
     projectName: project?.name,
     isSubOrganization: session.organization.isSubOrganization,
     nested: nav?.levels,

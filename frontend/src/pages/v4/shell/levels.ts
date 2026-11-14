@@ -57,14 +57,12 @@ const shellLevel = (
 /** The sidebar levels from the org down to the one the route is on; each lands on its first row. */
 export const shellTrail = ({
   at,
-  orgName,
   projectName,
   isSubOrganization,
   nested = [],
   linkTo
 }: {
   at: ShellLocation;
-  orgName: string;
   projectName?: string;
   isSubOrganization: boolean;
   nested?: readonly V4ShellLevel[];
@@ -78,7 +76,7 @@ export const shellTrail = ({
     settingsSections(isSubOrganization)
   );
   const trail = [
-    shellLevel(linkTo, "org", orgName, orgSections(isSubOrganization), { settings: orgSettings }),
+    shellLevel(linkTo, "org", "Home", orgSections(isSubOrganization), { settings: orgSettings }),
     ...nested
   ];
   if (at.level === "settings") trail.push(orgSettings);
