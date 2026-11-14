@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 
@@ -70,14 +70,25 @@ type FormTab = {
   subtitle: string;
   rightLabel: string;
   rightDescription: string;
-  fields: (keyof TSecretSyncForm)[];
+  rightExtra?: {
+    title: string;
+    description: string;
+    examples: { path: string; result: string; tone: "warning" | "success" }[];
+  };
+  fields: FieldPath<TSecretSyncForm>[];
 };
 
-const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[] => {
+const getFormTabs = (
+  destination: SecretSync,
+  destinationName: string,
+  supportsFolderStructure: boolean
+): FormTab[] => {
   const sourceFields: (keyof TSecretSyncForm)[] =
     destination === SecretSync.AzureEntraIdScim
       ? ["secretPath", "environment", "includeAllSubFolders", "syncOptions"]
       : ["secretPath", "environment", "includeAllSubFolders"];
+
+  const mirroredPrefix = destination === SecretSync.AWSParameterStore ? "/prod/" : "";
 
   return [
     {
@@ -89,7 +100,21 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       rightLabel: "SOURCE",
       rightDescription:
         "Choose what gets synced. The environment + path together define the set of secrets this sync will push out.",
-      fields: sourceFields
+      fields: sourceFields,
+      ...(supportsFolderStructure && {
+        subtitle: "Pick the Infisical environment, path, and how deep this sync reaches.",
+        rightDescription:
+          "Choose what gets synced. The environment and path define the set of secrets this sync pushes out. Including nested folders sweeps every folder under the path into the same sync.",
+        rightExtra: {
+          title: "About duplicate keys",
+          description:
+            "The same key can exist in several folders. What happens to duplicates is decided by the folder mapping in the Destination step: mirroring keeps every value at its own path, while flattening needs each name to be unique.",
+          examples: [
+            { path: "/backend/API_KEY", result: "duplicate", tone: "warning" },
+            { path: "/backend/api/API_KEY", result: "duplicate", tone: "warning" }
+          ]
+        }
+      })
     },
     {
       name: "Destination",
@@ -99,7 +124,28 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       subtitle: "Choose a connection and configure the target location.",
       rightLabel: "DESTINATION",
       rightDescription: `Tell Infisical where to write. Pick a ${destinationName} connection and the exact destination, like a workspace, project, namespace, or whatever this provider expects.`,
-      fields: ["connection", "destinationConfig"]
+      fields: ["connection", "destinationConfig"],
+      ...(supportsFolderStructure && {
+        rightExtra: {
+          title: "Folder mapping",
+          description:
+            destination === SecretSync.AWSParameterStore
+              ? "Mirror recreates your Infisical folder tree under the base path, one-to-one. Every key keeps its own path, so duplicate keys never collide."
+              : "Mirror prefixes each secret's name with its folder, one-to-one. Every key keeps its own name, so duplicate keys never collide.",
+          examples: [
+            {
+              path: "/backend/api/API_KEY",
+              result: `${mirroredPrefix}api/API_KEY`,
+              tone: "success"
+            },
+            {
+              path: "/backend/workers/API_KEY",
+              result: `${mirroredPrefix}workers/API_KEY`,
+              tone: "success"
+            }
+          ]
+        }
+      })
     },
     {
       name: "Initial Sync",
@@ -110,7 +156,9 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       rightLabel: "INITIAL SYNC",
       rightDescription:
         "The first run is special. Infisical can either overwrite everything in the destination or import existing secrets back into Infisical. Subsequent runs follow your sync options.",
-      fields: ["syncOptions"]
+      // Only the field this step shows: a check on another step's sync option would otherwise block
+      // the way forward to the step where it can be fixed.
+      fields: ["syncOptions.initialSyncBehavior"]
     },
     {
       name: "Sync Options",
@@ -161,13 +209,13 @@ export const CreateSecretSyncForm = ({
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
-  const formTabs = getFormTabs(destination, destinationName);
+  const { syncOption } = useSecretSyncOption(destination);
+  const supportsFolderStructure = Boolean(syncOption?.supportsPreserveFolderStructure);
+  const formTabs = getFormTabs(destination, destinationName, supportsFolderStructure);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(startOnDestination ? 1 : 0);
-
-  const { syncOption } = useSecretSyncOption(destination);
 
   const formMethods = useForm<TSecretSyncForm>({
     resolver: zodResolver(SecretSyncFormSchema),
@@ -260,11 +308,20 @@ export const CreateSecretSyncForm = ({
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
+  // Duplicate names block a flattened sync. Where the destination can keep folders instead, that
+  // choice is made in the Destination step, so the block moves there and lifts once folders are kept.
+  const preservesFolderStructure = Boolean(watch("syncOptions.preserveFolderStructure"));
+  const isSourceBlocked = !supportsFolderStructure && recursiveConflicts.length > 0;
+  const isDestinationBlocked =
+    supportsFolderStructure && !preservesFolderStructure && recursiveConflicts.length > 0;
+
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
   const isSourceStep = selectedTabIndex === 0;
+  const isDestinationStep = selectedTabIndex === 1;
   const isNextButtonDisabled =
     (isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations) ||
-    (isSourceStep && recursiveConflicts.length > 0);
+    (isSourceStep && isSourceBlocked) ||
+    (isDestinationStep && isDestinationBlocked);
 
   const handleNext = async () => {
     if (isFinalStep) {
@@ -272,7 +329,7 @@ export const CreateSecretSyncForm = ({
       return;
     }
 
-    if (isSourceStep && recursiveConflicts.length > 0) return;
+    if ((isSourceStep && isSourceBlocked) || (isDestinationStep && isDestinationBlocked)) return;
 
     const isValid = await isStepValid(selectedTabIndex);
 
@@ -299,8 +356,10 @@ export const CreateSecretSyncForm = ({
     }
 
     // The Source step (index 0) is always behind a forward jump, since targetTab > selectedTabIndex
-    // here, so a conflict there must block the jump the same way it blocks handleNext.
-    if (recursiveConflicts.length > 0) return;
+    // here, so a conflict there must block the jump the same way it blocks handleNext. The same goes
+    // for the Destination step (index 1) when the jump passes it.
+    if (isSourceBlocked) return;
+    if (isDestinationBlocked && selectedTabIndex <= 1 && targetTab > 1) return;
 
     let canJump = true;
     for (let i = selectedTabIndex; i < targetTab; i += 1) {
@@ -402,6 +461,26 @@ export const CreateSecretSyncForm = ({
               <p className="mt-2 text-sm leading-relaxed text-muted">
                 {currentTab.rightDescription}
               </p>
+              {currentTab.rightExtra && (
+                <>
+                  <p className="mt-6 text-sm font-semibold text-foreground">
+                    {currentTab.rightExtra.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {currentTab.rightExtra.description}
+                  </p>
+                  <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-container p-4 font-mono text-xs">
+                    {currentTab.rightExtra.examples.map(({ path, result, tone }) => (
+                      <div key={path}>
+                        <p className="text-label">{path}</p>
+                        <p className={tone === "warning" ? "text-warning" : "text-success"}>
+                          → {result}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             {selectedTabIndex >= 2 && (
               <InitialSyncAlerts

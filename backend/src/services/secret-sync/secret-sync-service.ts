@@ -12,6 +12,7 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -32,7 +33,8 @@ import {
   enterpriseSyncCheck,
   listSecretSyncOptions,
   preSaveTransformDestinationConfig,
-  preSaveTransformSyncOptions
+  preSaveTransformSyncOptions,
+  preservesFolderStructure
 } from "@app/services/secret-sync/secret-sync-fns";
 import { buildSyncPayload, getSyncedFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
@@ -266,8 +268,9 @@ export const secretSyncServiceFactory = ({
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
   // the same destination key. flatten() is what detects that, and the job runs it on every sync, so
   // calling it here means a user reads the same sentence at save time and when the sync later drifts
-  // into the same state. Callers only call this for a sync that includes subfolders — one that does
-  // not covers a single folder, where flatten() can never find a conflict.
+  // into the same state. Callers only call this for a sync that includes subfolders and flattens
+  // them: one without subfolders covers a single folder, where flatten() can never find a conflict,
+  // and one that preserves folder structure never flattens.
   const $assertSyncedSecretsAreFlattenable = async ({
     projectId,
     actorOrgId,
@@ -301,11 +304,30 @@ export const secretSyncServiceFactory = ({
     }
   };
 
+  // Checked here rather than in the destination's schema because an update can leave
+  // includeAllSubFolders out, and only the service knows the stored value it falls back to.
+  const $assertPreserveFolderStructureHasSubFolders = ({
+    includeAllSubFolders,
+    syncOptions
+  }: {
+    includeAllSubFolders: boolean;
+    syncOptions?: Record<string, unknown>;
+  }) => {
+    if (!includeAllSubFolders && syncOptions?.preserveFolderStructure)
+      throw new BadRequestError({
+        message:
+          "Preserving folder structure only applies to a sync that includes subfolders. Turn on subfolders, or turn off preserving folder structure."
+      });
+  };
+
   // Lets the frontend check for duplicate-name conflicts while the user is still on the Source
   // step, before a provider or destination is even chosen: the check is destination-agnostic
   // (flatten() never uses the destination or the source folder path to build a key), so nothing
   // downstream can change the answer. Returns every conflict, untruncated, unlike the
-  // BadRequestError $assertSyncedSecretsAreFlattenable throws at create/update time.
+  // BadRequestError $assertSyncedSecretsAreFlattenable throws at create/update time. Also counts
+  // the synced secrets in each folder so the form can preview the subtree. Counts, not names:
+  // $assertCanReadSyncedFolders below checks the actor's access per folder, not per secret, and a
+  // role can deny individual secret names or tags inside a folder it allows.
   const findRecursiveConflicts = async (
     { projectId, environment, secretPath, keySchema }: TFindRecursiveSyncConflictsDTO,
     actor: OrgServiceActor
@@ -360,7 +382,12 @@ export const secretSyncServiceFactory = ({
       keySchema
     });
 
-    return { conflicts: payload.findConflicts() };
+    return {
+      conflicts: payload.findConflicts(),
+      folders: Object.entries(groupBy(payload.secrets, (secret) => secret.path))
+        .map(([path, secrets]) => ({ path, secretCount: secrets.length }))
+        .sort((a, b) => a.path.localeCompare(b.path))
+    };
   };
 
   const listSecretSyncsByProjectId = async (
@@ -673,6 +700,8 @@ export const secretSyncServiceFactory = ({
           "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
       });
 
+    $assertPreserveFolderStructureHasSubFolders({ includeAllSubFolders, syncOptions: requestedSyncOptions });
+
     await $assertCanReadSyncedFolders(projectPermission, {
       projectId,
       environment,
@@ -685,7 +714,15 @@ export const secretSyncServiceFactory = ({
     // sync including subfolders must flatten its whole subtree to one namespace. Check that it can
     // here, so
     // the sync doesn't get created only to fail immediately on its first run.
-    if (includeAllSubFolders) {
+    if (
+      includeAllSubFolders &&
+      !preservesFolderStructure({
+        destination: params.destination,
+        destinationConfig: params.destinationConfig,
+        includeAllSubFolders,
+        syncOptions: requestedSyncOptions
+      })
+    ) {
       await $assertSyncedSecretsAreFlattenable({
         projectId,
         actorOrgId: actor.orgId,
@@ -923,7 +960,8 @@ export const secretSyncServiceFactory = ({
     // so the gate cannot authorize one sync while the row ends up describing another.
     const updatedSyncOptions = resolvedSyncOptions ?? (secretSync.syncOptions as Record<string, unknown> | undefined);
 
-    const { keySchema, initialSyncBehavior } = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
+    const resolvedOptions = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
+    const { keySchema, initialSyncBehavior } = resolvedOptions;
     // The deprecated value comes from the request rather than updatedSyncOptions: a destination
     // that merges options (Azure Entra ID SCIM) would otherwise hand back the stored mirror as if
     // the caller had sent it.
@@ -936,6 +974,8 @@ export const secretSyncServiceFactory = ({
         message:
           "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
       });
+
+    $assertPreserveFolderStructureHasSubFolders({ includeAllSubFolders, syncOptions: resolvedOptions });
 
     // Every update to a sync that includes subfolders re-authorizes the whole subtree, because an
     // actor holding Edit on the source folder can otherwise repoint it at a destination they control
@@ -958,7 +998,15 @@ export const secretSyncServiceFactory = ({
         includeAllSubFolders
       });
 
-      if (includeAllSubFolders) {
+      if (
+        includeAllSubFolders &&
+        !preservesFolderStructure({
+          destination,
+          destinationConfig: params.destinationConfig ?? secretSync.destinationConfig,
+          includeAllSubFolders,
+          syncOptions: resolvedOptions
+        })
+      ) {
         await $assertSyncedSecretsAreFlattenable({
           projectId: secretSync.projectId,
           actorOrgId: actor.orgId,

@@ -234,9 +234,46 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
   return strippedMap;
 };
 
+// Destinations that can write each secret under its folder, given their destination config.
+// Secrets Manager's many-to-one mapping writes every secret into one AWS secret, so it can't.
+const FOLDER_STRUCTURE_DESTINATION_MAP: Partial<
+  Record<SecretSync, (destinationConfig: Record<string, unknown>) => boolean>
+> = {
+  [SecretSync.AWSParameterStore]: () => true,
+  [SecretSync.AWSSecretsManager]: (destinationConfig) =>
+    destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne
+};
+
+// The save-time duplicate check and the sync jobs both ask this, so a stored option the
+// destination config no longer allows (a Secrets Manager sync switched to many-to-one) is treated
+// as flattening everywhere, and a duplicate name is refused at save rather than failing every run.
+export const preservesFolderStructure = ({
+  destination,
+  destinationConfig,
+  includeAllSubFolders,
+  syncOptions
+}: {
+  destination: SecretSync;
+  destinationConfig: unknown;
+  includeAllSubFolders: boolean;
+  syncOptions?: Record<string, unknown>;
+}) =>
+  includeAllSubFolders &&
+  Boolean(syncOptions?.preserveFolderStructure) &&
+  Boolean(FOLDER_STRUCTURE_DESTINATION_MAP[destination]?.(destinationConfig as Record<string, unknown>));
+
 // Checks if a key matches a schema
-export const matchesSchema = (key: string, environment: string, schema?: string): boolean => {
+export const matchesSchema = (
+  key: string,
+  environment: string,
+  schema?: string,
+  { preserveFolderStructure = false }: { preserveFolderStructure?: boolean } = {}
+): boolean => {
   if (!schema) return true;
+
+  // With folders preserved, the key schema only names the last path segment (see mirror() in
+  // secret-sync-payload.ts); the folders before it are not part of the schema.
+  if (preserveFolderStructure) return matchesSchema(key.substring(key.lastIndexOf("/") + 1), environment, schema);
 
   const compiledSchemaPattern = handlebars.compile(schema)({
     secretKey: "{{secretKey}}", // Keep secretKey

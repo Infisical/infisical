@@ -28,7 +28,7 @@ import { crypto } from "@app/lib/crypto";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { matchesSchema, preservesFolderStructure } from "@app/services/secret-sync/secret-sync-fns";
 import { getKeyWithSchema, TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -64,7 +64,8 @@ const sleep = async () =>
 const getSecretsRecord = async (
   client: SecretsManagerClient,
   environment: string,
-  keySchema?: string
+  keySchema?: string,
+  preserveFolderStructure = false
 ): Promise<TAwsSecretsRecord> => {
   const awsSecretsRecord: TAwsSecretsRecord = {};
   let hasNext = true;
@@ -80,7 +81,10 @@ const getSecretsRecord = async (
 
       if (output.SecretList) {
         output.SecretList.forEach((secretEntry) => {
-          if (secretEntry.Name && matchesSchema(secretEntry.Name, environment, keySchema)) {
+          if (
+            secretEntry.Name &&
+            matchesSchema(secretEntry.Name, environment, keySchema, { preserveFolderStructure })
+          ) {
             awsSecretsRecord[secretEntry.Name] = secretEntry;
           }
         });
@@ -358,12 +362,9 @@ const getSingleSecretValue = async (
 export const AwsSecretsManagerSyncFns = {
   syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
 
-    // The many-to-one mapping combines every secret into one AWS secret's JSON body under its
-    // own (unprefixed) key, so this destination needs both views: the schema-applied map for
-    // the one-to-one path below, and the raw-key map for that JSON body.
-    const secretMap = payload.flatten();
-    const unmodifiedSecretMap = payload.flatten({ disableKeySchema: true });
+    const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 
     const client = await getSecretsManagerClient(secretSync);
 
@@ -376,7 +377,12 @@ export const AwsSecretsManagerSyncFns = {
     const deletedSecretKeys: string[] = [];
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
-      const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
+      const awsSecretsRecord = await getSecretsRecord(
+        client,
+        environment?.slug || "",
+        syncOptions.keySchema,
+        preserveFolderStructure
+      );
 
       const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
 
@@ -464,7 +470,8 @@ export const AwsSecretsManagerSyncFns = {
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         // eslint-disable-next-line no-continue
-        if (!matchesSchema(secretKey, environment?.slug || "", syncOptions.keySchema)) continue;
+        if (!matchesSchema(secretKey, environment?.slug || "", syncOptions.keySchema, { preserveFolderStructure }))
+          continue;
 
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
@@ -480,6 +487,10 @@ export const AwsSecretsManagerSyncFns = {
       }
     } else {
       // Many-To-One Mapping: only fetch the single target secret instead of listing all secrets
+
+      // Every secret goes into this one AWS secret's JSON body under its own (unprefixed) key, so
+      // the body needs the raw-key map rather than the schema-applied one.
+      const unmodifiedSecretMap = payload.flatten({ disableKeySchema: true });
 
       const secretValue = JSON.stringify(
         Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
@@ -594,13 +605,20 @@ export const AwsSecretsManagerSyncFns = {
     }
   },
   removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
+
+    const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 
     const client = await getSecretsManagerClient(secretSync);
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
-      const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
+      const awsSecretsRecord = await getSecretsRecord(
+        client,
+        environment?.slug || "",
+        syncOptions.keySchema,
+        preserveFolderStructure
+      );
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         if (secretKey in secretMap) {

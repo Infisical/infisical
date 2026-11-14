@@ -575,7 +575,15 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
               key: z.string(),
               paths: z.array(z.string())
             })
-          )
+          ),
+          folders: z
+            .array(
+              z.object({
+                path: z.string().describe(SecretSyncs.RECURSIVE_CONFLICTS.folderPath),
+                secretCount: z.number().describe(SecretSyncs.RECURSIVE_CONFLICTS.secretCount)
+              })
+            )
+            .describe(SecretSyncs.RECURSIVE_CONFLICTS.folders)
         })
       }
     },

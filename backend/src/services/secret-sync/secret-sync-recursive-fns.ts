@@ -102,7 +102,7 @@ export const mergeImportedSecrets = (
 // Resolves and decrypts every secret in the sync's source subtree (a single folder, or, when the
 // sync includes subfolders, that folder plus every folder beneath it), merging in any imports, and wraps the
 // result in a TSecretSyncPayload. A cross-folder duplicate name is not resolved here: flatten()
-// throws on it by default, and payload.dedupeConflicts() is how the one caller that needs to
+// throws on it by default, and payload.tolerateConflicts() is how the one caller that needs to
 // tolerate it (removal) gets a payload that won't.
 export const buildSyncPayload = async (
   args: {
@@ -174,7 +174,7 @@ export const buildSyncPayload = async (
   );
 
   if (!includeImports) {
-    return createSecretSyncPayload(entries, { environment, keySchema });
+    return createSecretSyncPayload(entries, { environment, keySchema, sourcePath });
   }
 
   const secretImports = await secretImportDAL.findByFolderIds(folders.map(({ folderId }) => folderId));
@@ -217,5 +217,5 @@ export const buildSyncPayload = async (
     );
   }
 
-  return createSecretSyncPayload(allEntries, { environment, keySchema });
+  return createSecretSyncPayload(allEntries, { environment, keySchema, sourcePath });
 };

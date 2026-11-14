@@ -3,6 +3,22 @@ import { AnyZodObject, z } from "zod";
 import { SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs/enums";
 import { slugSchema } from "@app/lib/schemas";
 
+// The API refuses a key schema containing "/" while folder structure is preserved. The two are set
+// on different steps, so destinations that offer the option check the pair on the Key Schema field.
+export const refinePreserveFolderStructure = (
+  options: { keySchema?: string; preserveFolderStructure?: boolean },
+  ctx: z.RefinementCtx
+) => {
+  if (options.preserveFolderStructure && options.keySchema?.includes("/")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["keySchema"],
+      message:
+        'Key schema cannot contain "/" while Mirror folder structure is on, because the folders already form the path.'
+    });
+  }
+};
+
 export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefined>(
   additionalSyncOptions?: T
 ) => {

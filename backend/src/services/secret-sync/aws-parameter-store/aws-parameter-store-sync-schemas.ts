@@ -5,6 +5,7 @@ import { CharacterType, characterValidator } from "@app/lib/validator/validate-s
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
+  addPreserveFolderStructureIssues,
   BaseSecretSyncSchema,
   GenericCreateSecretSyncFieldsSchema,
   GenericUpdateSecretSyncFieldsSchema
@@ -98,7 +99,11 @@ export const AwsParameterStoreSyncOptionsSchema = z.object({
   syncSecretMetadataAsTags: z
     .boolean()
     .optional()
-    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_PARAMETER_STORE.syncSecretMetadataAsTags)
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_PARAMETER_STORE.syncSecretMetadataAsTags),
+  preserveFolderStructure: z
+    .boolean()
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_PARAMETER_STORE.preserveFolderStructure)
 });
 
 const AwsParameterStoreSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
@@ -118,17 +123,21 @@ export const CreateAwsParameterStoreSyncSchema = GenericCreateSecretSyncFieldsSc
   SecretSync.AWSParameterStore,
   AwsParameterStoreSyncOptionsConfig,
   AwsParameterStoreSyncOptionsSchema
-).extend({
-  destinationConfig: AwsParameterStoreSyncDestinationConfigSchema
-});
+)
+  .extend({
+    destinationConfig: AwsParameterStoreSyncDestinationConfigSchema
+  })
+  .superRefine((sync, ctx) => addPreserveFolderStructureIssues(sync.syncOptions, ctx));
 
 export const UpdateAwsParameterStoreSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.AWSParameterStore,
   AwsParameterStoreSyncOptionsConfig,
   AwsParameterStoreSyncOptionsSchema
-).extend({
-  destinationConfig: AwsParameterStoreSyncDestinationConfigSchema.optional()
-});
+)
+  .extend({
+    destinationConfig: AwsParameterStoreSyncDestinationConfigSchema.optional()
+  })
+  .superRefine((sync, ctx) => addPreserveFolderStructureIssues(sync.syncOptions, ctx));
 
 export const AwsParameterStoreSyncListItemSchema = z
   .object({
@@ -136,6 +145,7 @@ export const AwsParameterStoreSyncListItemSchema = z
     connection: z.literal(AppConnection.AWS),
     destination: z.literal(SecretSync.AWSParameterStore),
     canImportSecrets: z.literal(true),
-    canRemoveSecretsOnDeletion: z.literal(true)
+    canRemoveSecretsOnDeletion: z.literal(true),
+    supportsPreserveFolderStructure: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSParameterStore] }));

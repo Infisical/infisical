@@ -9,6 +9,25 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+// For destinations that can keep a sync's folders as path segments. A key schema containing "/"
+// would add a second set of path segments to the same name, so it is not accepted. Whether the
+// sync includes subfolders is checked in the service, since an update can leave that setting out.
+export const addPreserveFolderStructureIssues = (
+  syncOptions: { keySchema?: string; preserveFolderStructure?: boolean } | undefined,
+  ctx: z.RefinementCtx
+) => {
+  if (!syncOptions?.preserveFolderStructure) return;
+
+  if (syncOptions.keySchema?.includes("/")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["syncOptions", "keySchema"],
+      message:
+        'A key schema cannot contain "/" when the sync preserves folder structure, because the folders already form the path. Remove the "/" from the key schema, or turn off preserving folder structure.'
+    });
+  }
+};
+
 // Shared by BaseSyncOptionsSchema and the recursive-conflicts preview route: both compile this
 // string as a Handlebars template (getKeyWithSchema in secret-sync-payload.ts), so both need the
 // same guard against a syntactically invalid one reaching handlebars.compile() uncaught.

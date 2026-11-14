@@ -1,10 +1,13 @@
 import { z } from "zod";
 
-import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
+import {
+  BaseSecretSyncSchema,
+  refinePreserveFolderStructure
+} from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/hooks/api/secretSyncs/types/aws-secrets-manager-sync";
 
-export const AwsSecretsManagerSyncDestinationSchema = BaseSecretSyncSchema(
+const AwsSecretsManagerSyncBaseSchema = BaseSecretSyncSchema(
   z.object({
     keyId: z
       .string()
@@ -32,11 +35,17 @@ export const AwsSecretsManagerSyncDestinationSchema = BaseSecretSyncSchema(
       .array()
       .max(50)
       .optional(),
-    syncSecretMetadataAsTags: z.boolean().optional()
+    syncSecretMetadataAsTags: z.boolean().optional(),
+    preserveFolderStructure: z.boolean().optional()
   })
-).merge(
+);
+
+export const AwsSecretsManagerSyncDestinationSchema = AwsSecretsManagerSyncBaseSchema.merge(
   z.object({
     destination: z.literal(SecretSync.AWSSecretsManager),
+    syncOptions: AwsSecretsManagerSyncBaseSchema.shape.syncOptions.superRefine(
+      refinePreserveFolderStructure
+    ),
     destinationConfig: z
       .discriminatedUnion("mappingBehavior", [
         z.object({

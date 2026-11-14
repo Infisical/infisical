@@ -22,6 +22,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/hooks/api/secretSyncs/types/aws-secrets-manager-sync";
 
 import { TSecretSyncForm } from "../schemas";
+import { SecretSyncPreserveFolderStructureField } from "./SecretSyncPreserveFolderStructureField";
 import { AwsRegionSelect } from "./shared";
 
 export const AwsSecretsManagerSyncFields = () => {
@@ -109,6 +110,9 @@ export const AwsSecretsManagerSyncFields = () => {
                 onValueChange={(val) => {
                   onChange(val);
                   setValue("syncOptions.syncSecretMetadataAsTags", false);
+                  if (val === AwsSecretsManagerSyncMappingBehavior.ManyToOne) {
+                    setValue("syncOptions.preserveFolderStructure", false);
+                  }
                 }}
               >
                 <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
@@ -147,6 +151,9 @@ export const AwsSecretsManagerSyncFields = () => {
           name="destinationConfig.secretName"
         />
       )}
+      <SecretSyncPreserveFolderStructureField
+        canPreserve={mappingBehavior !== AwsSecretsManagerSyncMappingBehavior.ManyToOne}
+      />
     </FieldGroup>
   );
 };

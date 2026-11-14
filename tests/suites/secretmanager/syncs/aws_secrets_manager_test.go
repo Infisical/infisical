@@ -2,11 +2,13 @@ package syncs_test
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -114,5 +116,65 @@ func TestAwsSecretsManagerSync_SyncSecrets(t *testing.T) {
 		require.Equal(t, "failed", got.status)
 		require.Contains(t, got.message, "Invalid format for Many-To-One mapping behavior")
 		require.Empty(t, secretsAt(t, proj, "/"))
+	})
+}
+
+func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should prefix each secret's name with its folder when mapped one to one", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		duplicateUnder(t, proj, "/backend", "DB_URL")
+		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{
+			"DB_URL":       "value-for-/backend",
+			"child/DB_URL": "value-for-/backend/child",
+		}, secretValues(t, cp))
+	})
+
+	t.Run("should refuse and keep one-to-one when an update switches only the mapping to many-to-one over a duplicate key", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The update carries no syncOptions, so the stored option stays on. Many-to-one
+			writes every secret into one AWS secret, so the sync would flatten the folders, and
+			two secrets with the same name would fail every run.`)
+
+		// Setup
+		proj, conn, _ := setupAWS(t)
+		duplicateUnder(t, proj, "/backend", "DB_URL")
+		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		status, body := s.update(t, map[string]any{"destinationConfig": manyToOne("bundle").config})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, message(body), `"DB_URL" in /backend and /backend/child`)
+		got, err := s.view(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, "one-to-one", got.DestinationConfig["mappingBehavior"])
+	})
+
+	t.Run("should refuse and create nothing when preserving folder structure with many-to-one mapping", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, _ := setupAWS(t)
+		dest := manyToOne("bundle")
+
+		// Action
+		status, body := createAWSSync(t, proj, conn, dest, fromPath("/"), includeSubFolders(), preserveFolders())
+
+		// Assert
+		require.Equal(t, http.StatusUnprocessableEntity, status)
+		require.Contains(t, message(body), "Preserving folder structure is not supported with")
+		require.Zero(t, awsSyncCount(t, proj, dest))
 	})
 }

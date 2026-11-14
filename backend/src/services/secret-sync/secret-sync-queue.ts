@@ -896,7 +896,7 @@ export const secretSyncQueueFactory = ({
         } as TSecretSyncWithCredentials,
         // We don't care about duplicates when removing secrets: a duplicate name still maps to
         // the same destination key we're deleting either way.
-        payload.dedupeConflicts(),
+        payload.tolerateConflicts(),
         {
           appConnectionDAL,
           gitHubAppDAL,

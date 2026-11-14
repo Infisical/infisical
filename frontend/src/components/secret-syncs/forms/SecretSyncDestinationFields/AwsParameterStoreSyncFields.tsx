@@ -17,12 +17,15 @@ import {
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
+import { SecretSyncPreserveFolderStructureField } from "./SecretSyncPreserveFolderStructureField";
 import { AwsRegionSelect } from "./shared";
 
 export const AwsParameterStoreSyncFields = () => {
-  const { control, setValue } = useFormContext<
+  const { control, setValue, watch } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
+
+  const path = watch("destinationConfig.path");
 
   return (
     <FieldGroup>
@@ -107,6 +110,7 @@ export const AwsParameterStoreSyncFields = () => {
           </Field>
         )}
       />
+      <SecretSyncPreserveFolderStructureField destinationPrefix={path || "/"} />
     </FieldGroup>
   );
 };
