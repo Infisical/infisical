@@ -145,19 +145,14 @@ export const ProjectsPage = () => {
                 }
                 description={product.blurb}
                 footer={
-                  <>
-                    <span className={styles.backdropIcon}>
-                      <Icon name={product.icon} size={112} />
-                    </span>
-                    {stats ? (
-                      <ProductStats
-                        stats={statsFor(product.type, stats)}
-                        link={blocked.has(product.type) ? undefined : link}
-                      />
-                    ) : (
-                      <Skeleton width={240} height={12} />
-                    )}
-                  </>
+                  stats ? (
+                    <ProductStats
+                      stats={statsFor(product.type, stats)}
+                      link={blocked.has(product.type) ? undefined : link}
+                    />
+                  ) : (
+                    <Skeleton width={240} height={12} />
+                  )
                 }
               />
             );

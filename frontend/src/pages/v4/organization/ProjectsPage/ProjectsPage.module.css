@@ -22,30 +22,6 @@
 .productIcon {
   color: color-mix(in oklab, var(--cipher-hue-icon) 55%, transparent);
 }
-.backdropIcon {
-  --backdrop-icon: 112px;
-  position: absolute;
-  inset-inline-end: var(--cipher-space-16);
-  bottom: calc(100% - var(--backdrop-icon) / 4);
-  z-index: -1;
-  display: flex;
-  color: var(--cipher-surface);
-  mix-blend-mode: difference;
-  opacity: 0;
-  transform: scale(0.92);
-  transform-origin: bottom right;
-  pointer-events: none;
-  transition:
-    opacity calc(var(--cipher-duration-slow) * 2) var(--cipher-ease-fade),
-    transform calc(var(--cipher-duration-slow) * 3) var(--cipher-ease-standard);
-}
-:global(.cipher[data-scheme="dark"]) .backdropIcon {
-  color: var(--cipher-ink);
-}
-.productCard:is(:hover, :focus-within) .backdropIcon {
-  opacity: 1;
-  transform: none;
-}
 .setUp {
   display: inline-flex;
   align-items: center;
