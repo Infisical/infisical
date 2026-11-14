@@ -389,7 +389,7 @@ function DiagramColumn({ label, rows }: { label: string; rows: DiagramRow[] }) {
       <span className={flowStyles.eyebrow}>{label}</span>
       {rows.map((row) => (
         <div key={row.name} className={styles.diagramRow} data-fate={row.fate}>
-          <span>{row.name}</span>
+          <span title={row.name}>{row.name}</span>
           {row.fate && (
             <span className={styles.fate} data-fate={row.fate}>
               {FATE_LABEL[row.fate]}
@@ -413,7 +413,7 @@ function DiagramSection({
   destination: DiagramRow[];
 }) {
   return (
-    <Card variant="framed" size="sm" title={title}>
+    <Card variant="framed" size="sm" title={<span title={title}>{title}</span>}>
       <div className={styles.diagramColumns}>
         <DiagramColumn label="Infisical" rows={infisical} />
         <DiagramColumn label={destinationName} rows={destination} />
