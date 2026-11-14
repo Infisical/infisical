@@ -354,6 +354,15 @@ export const agentVaultSessionServiceFactory = ({
           message: `This machine identity can't name a skill called '${skillOutOfIdentityReach}'. A session on behalf of a user can name only skills in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
         });
       }
+      // A request with only inline skills names nothing the checks above refuse, so without this an identity granted no
+      // bundle would reach the user lookup, whose answers tell who is in the org. The lists hold back the same way.
+      if (identityReach?.length === 0) {
+        throw new BadRequestError({
+          name: "AccessBundleNotGranted",
+          message:
+            "No access bundle in this project is granted to this machine identity. A session on behalf of a user needs at least one, even with only inline skills, so ask an Agent Vault admin to grant the machine identity a bundle."
+        });
+      }
 
       onBehalfOfUser = await resolveOnBehalfOfUser(
         { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },

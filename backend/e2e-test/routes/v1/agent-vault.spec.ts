@@ -7159,6 +7159,57 @@ describe("Agent Vault V1 Router", async () => {
         }
       });
 
+      test("an identity granted no bundles learns nothing about a user by sending only inline skills on their behalf", async () => {
+        const projectId = await getProjectId();
+        const stamp = Date.now();
+        const bot = await createMemberIdentity(`obo-ski-probe-bot-${stamp}`);
+        const alice = await createAgentVaultUser("obo-ski-probe-alice", projectId);
+        const outsider = await createAgentVaultUser("obo-ski-probe-outsider", null);
+        const bundle = await createAccessBundle(`obo-ski-probe-${stamp}`);
+        const inlineSkill = {
+          files: [
+            {
+              path: "SKILL.md",
+              mode: "0644",
+              contentBase64: Buffer.from(
+                `---\nname: obo-ski-inline-${stamp}\ndescription: Sent with the session.\n---\nBody.\n`
+              ).toString("base64")
+            }
+          ]
+        };
+        const mintFor = (onBehalfOf: Record<string, string>) =>
+          bot.as("POST", sessionsUrl, { skills: [inlineSkill], onBehalfOf });
+        try {
+          await grantBundle(bundle.id, { userIds: [alice.userId] });
+          await delegate(bot, { scope: "all-members" });
+
+          // A member of Agent Vault, an org member outside it, and no one at all read the same.
+          const replies = await Promise.all([
+            mintFor({ userId: alice.userId }),
+            mintFor({ userId: outsider.userId }),
+            mintFor({ userId: crypto.randomUUID() }),
+            mintFor({ userEmail: `obo-ski-probe-nobody-${stamp}@example.com` })
+          ]);
+          replies.forEach((reply) => {
+            expect(reply.statusCode).toBe(400);
+            expect(reply.json().message).toBe(
+              "No access bundle in this project is granted to this machine identity. A session on behalf of a user needs at least one, even with only inline skills, so ask an Agent Vault admin to grant the machine identity a bundle."
+            );
+          });
+
+          // Once the identity holds a bundle, the same request starts the session.
+          await grantBundle(bundle.id, { machineIdentityIds: [bot.id] });
+          const minted = await mintFor({ userId: alice.userId });
+          expect(minted.statusCode, minted.payload).toBe(200);
+          expect((minted.json().session.skills as { name: string; isInline: boolean }[]).map((skill) => skill.name)).toEqual(
+            [`obo-ski-inline-${stamp}`]
+          );
+        } finally {
+          await bot.cleanup();
+          await deleteUsers([alice.userId, outsider.userId]);
+        }
+      });
+
       test("an identity granted no bundles learns nothing about a user by listing skills on their behalf", async () => {
         const projectId = await getProjectId();
         const stamp = Date.now();

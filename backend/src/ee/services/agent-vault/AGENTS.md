@@ -246,8 +246,10 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   personal variables those values use or the user's OAuth connection, which only the user may read.
 - **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
   who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
-  as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
-  as resolve requires.
+  as an uncovered one. A request that names nothing, only inline skills, is refused before the user lookup when the
+  identity holds no bundle at all, as `findOnBehalfOfListScope` does for the lists; keep that guard for anything else a
+  member can send without a grant. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted
+  org member, as resolve requires.
 - **The delegation read and write return `missingAccessBundles`**, per user and group and in total: the bundles they
   can use and the identity can't. Users and the identity go through `getAgentVaultReachability`, the function mint
   uses, so the view can't disagree with mint; a group's reach is its own live role and grants, read directly since a
