@@ -1,0 +1,39 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+.ghosts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--cipher-space-16);
+  opacity: 0.8;
+  mask-image:
+    radial-gradient(ellipse 420px 190px at center, transparent 60%, var(--cipher-ink) 100%),
+    linear-gradient(to bottom, var(--cipher-ink) 0%, transparent 90%);
+  mask-composite: intersect;
+}
+/* v4-check-ignore page-css-frame -- a placeholder outline that stays dashed wherever it renders */
+.ghost {
+  height: 132px;
+  /* v4-check-ignore line-on-edge -- a dashed, faded ghost disappears on line-soft in Dark */
+  border: var(--cipher-size-control-border) dashed var(--cipher-line);
+}
+.root[data-layout="rows"] .ghosts {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.root[data-layout="rows"] .ghost {
+  height: 48px;
+  border-width: 0 0 var(--cipher-size-control-border);
+}
+.content {
+  position: absolute;
+  inset: 0;
+}
+.content .title {
+  font-family: var(--cipher-type-body-font-family);
+  font-size: var(--cipher-type-body-font-size);
+  line-height: var(--cipher-type-body-line-height);
+  font-weight: var(--cipher-type-body-font-weight);
+  letter-spacing: var(--cipher-type-body-letter-spacing);
+}

@@ -57,13 +57,14 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
+import {
+  gitHubConnectionFormSchema as formSchema,
+  gitHubPatConnectionFormSchema
+} from "@app/lib/schemas/app-connections";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import { GitHubAppSelector } from "./GitHubAppSelector";
 
 type Props = {
@@ -72,51 +73,7 @@ type Props = {
   onSubmit: (formData: PatSchemaForm) => Promise<void>;
 };
 
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.GitHub),
-  method: z.nativeEnum(GitHubConnectionMethod)
-});
-
-const baseCredentialsSchema = z.union([
-  z.object({
-    instanceType: z.literal("server"),
-    host: z.string().min(1, "Host is required for server instance type")
-  }),
-  z.object({
-    instanceType: z.literal("cloud").optional(),
-    host: z.string().optional()
-  })
-]);
-
-const appSchema = rootSchema.extend({
-  method: z.literal(GitHubConnectionMethod.App),
-  credentials: baseCredentialsSchema
-});
-
-const oauthSchema = rootSchema.extend({
-  method: z.literal(GitHubConnectionMethod.OAuth),
-  credentials: baseCredentialsSchema
-});
-
-const patSchema = rootSchema.extend({
-  method: z.literal(GitHubConnectionMethod.Pat),
-  credentials: z.union([
-    z.object({
-      instanceType: z.literal("server"),
-      host: z.string().min(1, "Host is required for server instance type"),
-      personalAccessToken: z.string().min(1, "Personal Access Token is required")
-    }),
-    z.object({
-      instanceType: z.literal("cloud").optional(),
-      host: z.string().optional(),
-      personalAccessToken: z.string().min(1, "Personal Access Token is required")
-    })
-  ])
-});
-
-type PatSchemaForm = z.infer<typeof patSchema>;
-
-const formSchema = z.discriminatedUnion("method", [appSchema, oauthSchema, patSchema]);
+type PatSchemaForm = z.infer<typeof gitHubPatConnectionFormSchema>;
 
 type FormData = z.infer<typeof formSchema>;
 

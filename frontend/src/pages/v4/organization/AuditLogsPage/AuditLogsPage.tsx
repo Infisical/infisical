@@ -1,0 +1,638 @@
+import { useMemo, useState } from "react";
+import { type DateRange } from "react-day-picker";
+import {
+  FilterBar,
+  type FilterBarField,
+  type FilterBarFilter
+} from "@infisical/cipher/patterns/filter-bar";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
+import { Button } from "@infisical/cipher/ui/button";
+import { Calendar } from "@infisical/cipher/ui/calendar";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
+import { Empty, EmptyHeader, EmptyState, EmptyTitle } from "@infisical/cipher/ui/empty";
+import { Json, type JsonValue } from "@infisical/cipher/ui/json";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from "@infisical/cipher/ui/sheet";
+import { Tabs } from "@infisical/cipher/ui/tabs";
+import { Heading, Meta } from "@infisical/cipher/ui/text";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+
+import {
+  eventToNameMap,
+  projectToEventsMap,
+  userAgentTypeToNameMap
+} from "@app/hooks/api/auditLogs/constants";
+import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import type { Actor, AuditLog, TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
+import {
+  AUDIT_LOG_EVENT_CLASSES,
+  auditLogEventClassToNameMap
+} from "@app/hooks/api/auditLogSettings/constants";
+import type { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
+
+import { useV4Adapter, useV4Mode } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
+import { orgHref, v4Path } from "../../links";
+import { AuditLogStreamsTab } from "./streams/streams";
+
+const PAGE_SIZE = 500;
+const rowHeight = 48;
+const initialFrame = 11 * rowHeight;
+const maxFrame = 840;
+const hour = 3600 * 1000;
+const day = 24 * hour;
+
+const ranges = [
+  { value: "1h", label: "1h", ms: hour, title: "last hour" },
+  { value: "24h", label: "24h", ms: day, title: "last 24 hours" },
+  { value: "7d", label: "7d", ms: 7 * day, title: "last 7 days" },
+  { value: "30d", label: "30d", ms: 30 * day, title: "last 30 days" }
+] as const;
+
+const tabs = [
+  { value: "audit-logs", label: "Audit logs" },
+  { value: "streams", label: "External log streams" },
+  { value: "settings", label: "Settings" }
+];
+
+const actorTypeLabel: Partial<Record<ActorType, string>> = {
+  [ActorType.USER]: "User",
+  [ActorType.IDENTITY]: "Machine identity",
+  [ActorType.SERVICE]: "Service token",
+  [ActorType.PLATFORM]: "Platform",
+  [ActorType.KMIP_CLIENT]: "KMIP client",
+  [ActorType.UNKNOWN_USER]: "Unknown user"
+};
+
+const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const two = (value: number) => String(value).padStart(2, "0");
+const formatTime = (at: string) => {
+  const date = new Date(at);
+  return `${months[date.getMonth()]} ${date.getDate()}, ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
+};
+const formatDay = (date: Date) => `${months[date.getMonth()]} ${date.getDate()}`;
+
+const actorName = (actor: Actor) => {
+  switch (actor.type) {
+    case ActorType.USER:
+      return actor.metadata.email;
+    case ActorType.IDENTITY:
+    case ActorType.SERVICE:
+    case ActorType.KMIP_CLIENT:
+      return actor.metadata.name;
+    default:
+      return actorTypeLabel[actor.type] ?? actor.type;
+  }
+};
+const isMachine = (actor: Actor) => actor.type !== ActorType.USER;
+
+const metadataOf = (log: AuditLog) => (log.event.metadata ?? {}) as Record<string, unknown>;
+const stringField = (log: AuditLog, keys: string[]) => {
+  const metadata = metadataOf(log);
+  const found = keys.map((key) => metadata[key]).find((value) => typeof value === "string");
+  return typeof found === "string" && found ? found : undefined;
+};
+const environmentOf = (log: AuditLog) => stringField(log, ["environment"]);
+const targetOf = (log: AuditLog) =>
+  stringField(log, ["secretKey", "dn", "keyName", "email", "name"]);
+const sourceOf = (log: AuditLog) =>
+  userAgentTypeToNameMap[log.userAgentType] ?? log.userAgentType ?? "Unknown";
+
+const truncate = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap"
+} as const;
+
+const makeColumns = (
+  onOpen: (log: AuditLog) => void,
+  showProject: boolean
+): DataTableColumn<AuditLog>[] => [
+  {
+    id: "time",
+    header: "Time",
+    width: 184,
+    render: (row) => <Meta>{formatTime(row.createdAt)}</Meta>
+  },
+  {
+    id: "actor",
+    header: "Actor",
+    width: 264,
+    maxWidth: 264,
+    text: (row) => actorName(row.actor),
+    render: (row) => <MiddleTruncate text={actorName(row.actor)} />
+  },
+  {
+    id: "event",
+    header: "Event",
+    grow: true,
+    maxWidth: 380,
+    primary: true,
+    text: (row) => row.event.type,
+    render: (row) => {
+      const detail = [showProject && row.projectName, environmentOf(row), targetOf(row)]
+        .filter(Boolean)
+        .join(", ");
+      return (
+        <Inline
+          gap={12}
+          align="center"
+          wrap={false}
+          style={{ minWidth: 0, overflow: "hidden" }}
+          title={[row.event.type, detail].filter(Boolean).join(", ")}
+        >
+          <Button
+            variant="link"
+            underline="hover"
+            onClick={() => onOpen(row)}
+            style={{ minWidth: 0, flexShrink: 1 }}
+          >
+            <code style={truncate}>{row.event.type}</code>
+          </Button>
+          {detail && (
+            <Meta
+              mono={false}
+              style={{ ...truncate, flex: "1 1 0", minWidth: "var(--cipher-space-48)" }}
+            >
+              {detail}
+            </Meta>
+          )}
+        </Inline>
+      );
+    }
+  },
+  {
+    id: "source",
+    header: "Source",
+    width: 232,
+    render: (row) => (
+      <Inline gap={8} align="center" wrap={false}>
+        {sourceOf(row)}
+        <Meta>{row.ipAddress}</Meta>
+      </Inline>
+    )
+  }
+];
+
+const LogDetails = ({ log, onClose }: { log: AuditLog | null; onClose: () => void }) => (
+  <Sheet open={Boolean(log)} onOpenChange={(open) => !open && onClose()}>
+    <SheetContent size="lg">
+      {log && (
+        <>
+          <SheetHeader>
+            <SheetTitle>
+              <code>{log.event.type}</code>
+            </SheetTitle>
+            <SheetDescription>
+              {eventToNameMap[log.event.type] ?? log.event.type}, {formatTime(log.createdAt)}
+            </SheetDescription>
+          </SheetHeader>
+          <SheetBody>
+            <Stack gap={24}>
+              <DataList
+                variant="props"
+                items={[
+                  [
+                    "Actor",
+                    isMachine(log.actor) ? (
+                      <code key="actor">{actorName(log.actor)}</code>
+                    ) : (
+                      actorName(log.actor)
+                    )
+                  ],
+                  ["Actor type", actorTypeLabel[log.actor.type] ?? log.actor.type],
+                  ["Project", log.projectName ?? "Organization"],
+                  ["Environment", environmentOf(log) ?? "None"],
+                  ["Resource", targetOf(log) ? <code key="target">{targetOf(log)}</code> : "None"],
+                  ["Source", sourceOf(log)],
+                  ["IP address", <Meta key="ip">{log.ipAddress}</Meta>],
+                  ["Event ID", <Meta key="id">{log.id}</Meta>]
+                ]}
+              />
+              <Json
+                label="Event metadata"
+                value={metadataOf(log) as JsonValue}
+                defaultExpandDepth={2}
+              />
+            </Stack>
+          </SheetBody>
+        </>
+      )}
+    </SheetContent>
+  </Sheet>
+);
+
+export type AuditLogsProject = { id: string; type: ProjectType };
+
+const productsWithoutSecrets = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+
+const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
+  const { projects } = useV4Session();
+  const org = useV4Adapter("org");
+  const access = useV4Adapter("access");
+  const { data: storage } = useV4Adapter("auditLogs").useStorage();
+  const [range, setRange] = useState<string>("30d");
+  const [custom, setCustom] = useState<DateRange>();
+  const [anchor, setAnchor] = useState(() => Date.now());
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const [frame, setFrame] = useState(initialFrame);
+  const [opened, setOpened] = useState<AuditLog | null>(null);
+  const columns = useMemo(() => makeColumns(setOpened, !project), [project]);
+  const preset = ranges.find((item) => item.value === range);
+  const active =
+    !preset && custom?.from && custom.to
+      ? {
+          from: custom.from.getTime(),
+          to: Math.min(custom.to.getTime() + day, anchor),
+          title: `${formatDay(custom.from)} to ${formatDay(custom.to)}`
+        }
+      : { from: anchor - (preset ?? ranges[3]).ms, to: anchor, title: (preset ?? ranges[3]).title };
+
+  const value = (field: string) => filters.find((filter) => filter.field === field)?.values ?? [];
+  const projectId = project?.id ?? value("project")[0] ?? null;
+  const projectType = project?.type ?? projects.find((entry) => entry.id === projectId)?.type;
+  const hasSecrets = !projectType || !productsWithoutSecrets.has(projectType);
+  const actorType = value("actor-type")[0] as ActorType | undefined;
+  const [pickedActorType, pickedActor] = (value("actor")[0] ?? "").split(":");
+  const eventTypes = (projectType && projectToEventsMap[projectType]) || Object.values(EventType);
+  const pickedEvents = new Set(value("event"));
+  const everyEvent = eventTypes.every((type) => pickedEvents.has(type));
+
+  const users = access.useProjectUsers(projectId ?? "", false, [], { enabled: Boolean(projectId) });
+  const identities = access.useProjectIdentities(
+    { projectId: projectId ?? "", limit: 100 },
+    { enabled: Boolean(projectId) }
+  );
+  const actorOptions = [
+    ...(actorType && actorType !== ActorType.USER ? [] : (users.data ?? [])).map((member) => ({
+      value: `${ActorType.USER}:${member.user.id}`,
+      label: member.user.email || member.user.username
+    })),
+    ...(actorType && actorType !== ActorType.IDENTITY
+      ? []
+      : (identities.data?.identityMemberships ?? [])
+    ).map((membership) => ({
+      value: `${ActorType.IDENTITY}:${membership.identity.id}`,
+      label: membership.identity.name
+    }))
+  ];
+
+  const query: TGetAuditLogsFilter = {
+    startDate: new Date(active.from),
+    endDate: new Date(active.to),
+    limit: PAGE_SIZE,
+    eventType: everyEvent ? [] : (value("event") as EventType[]),
+    eventClass: value("class") as AuditLogEventClass[],
+    actorType: actorType ?? ((pickedActorType || undefined) as ActorType | undefined),
+    actor: pickedActor || undefined,
+    userAgentType: value("source")[0] as UserAgentType | undefined,
+    environment: (hasSecrets && value("environment")[0]) || undefined,
+    secretPath: (hasSecrets && projectId && value("secret-path")[0]) || undefined,
+    secretKey: (hasSecrets && projectId && value("secret-key")[0]) || undefined,
+    projectId: projectId ?? undefined
+  };
+  const { data, isPending, error, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } =
+    org.useAuditLogs(query, projectId);
+  const pages = error ? [] : (data?.pages ?? []);
+  const rows = pages.flat();
+  const canLoadMore = hasNextPage && pages[pages.length - 1]?.length === PAGE_SIZE;
+  const filtered = filters.some((filter) => filter.values.length > 0);
+
+  const fields: FilterBarField[] = [
+    {
+      key: "event",
+      label: "Event type",
+      type: "multi-select",
+      searchable: true,
+      options: eventTypes.map((type) => ({
+        value: type,
+        label: eventToNameMap[type] ?? type
+      }))
+    },
+    {
+      key: "class",
+      label: "Event class",
+      type: "multi-select",
+      options: AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
+        value: eventClass,
+        label: auditLogEventClassToNameMap[eventClass]
+      }))
+    },
+    {
+      key: "actor-type",
+      label: "Actor type",
+      type: "select",
+      options: [ActorType.USER, ActorType.IDENTITY, ActorType.PLATFORM].map((type) => ({
+        value: type,
+        label: actorTypeLabel[type] ?? type
+      }))
+    },
+    ...(projectId
+      ? [
+          {
+            key: "actor",
+            label: "Actor",
+            type: "select" as const,
+            searchable: true,
+            options: actorOptions
+          }
+        ]
+      : []),
+    ...(project
+      ? []
+      : [
+          {
+            key: "project",
+            label: "Project",
+            type: "select" as const,
+            searchable: true,
+            options: projects.map((entry) => ({ value: entry.id, label: entry.name }))
+          }
+        ]),
+    ...(hasSecrets
+      ? [
+          {
+            key: "environment",
+            label: "Environment",
+            type: "text" as const,
+            placeholder: "Environment slug"
+          }
+        ]
+      : []),
+    ...(hasSecrets && projectId
+      ? [
+          {
+            key: "secret-path",
+            label: "Secret path",
+            type: "text" as const,
+            placeholder: "/app/services"
+          },
+          { key: "secret-key", label: "Secret key", type: "text" as const, placeholder: "API_KEY" }
+        ]
+      : []),
+    {
+      key: "source",
+      label: "Source",
+      type: "select",
+      options: Object.values(UserAgentType).map((type) => ({
+        value: type,
+        label: userAgentTypeToNameMap[type]
+      }))
+    }
+  ];
+
+  const reset = () => {
+    setFrame(initialFrame);
+    setAnchor(Date.now());
+  };
+
+  let empty = (
+    <EmptyState
+      size="sm"
+      media="bare"
+      icon="history"
+      title="No events match these filters"
+      description={`Nothing in the ${active.title}. Try a wider date range.`}
+      actions={
+        filtered ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFilters([]);
+              reset();
+            }}
+          >
+            Clear filters
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+  if (error)
+    empty = (
+      <EmptyState
+        size="sm"
+        media="bare"
+        icon="alert"
+        title="Couldn't load audit logs"
+        actions={
+          <Button variant="outline" onClick={() => refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    );
+  else if (storage?.storageDisabled)
+    empty = (
+      <EmptyState size="sm" media="bare" icon="history" title="Audit log storage is disabled" />
+    );
+
+  return (
+    <>
+      {storage?.volumeWarning && (
+        <Alert tone="warn">
+          <AlertDescription>
+            Your audit log volume is growing. To keep searches fast, stream logs to an{" "}
+            <a
+              href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              external destination
+            </a>{" "}
+            or use the{" "}
+            <a
+              href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ClickHouse integration
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
+      )}
+      <FilterBar
+        label="Audit log filters"
+        fields={fields}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          reset();
+        }}
+        actions={
+          <>
+            <ToggleGroup
+              type="single"
+              aria-label="Date range"
+              value={range}
+              onValueChange={(next) => {
+                const item = ranges.find((entry) => entry.value === next);
+                if (!item) return;
+                setRange(item.value);
+                reset();
+              }}
+            >
+              {ranges.map((item) => (
+                <ToggleGroupItem key={item.value} value={item.value}>
+                  {item.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" icon="calendar">
+                  {preset ? "Custom" : active.title}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" aria-label="Custom date range">
+                <Calendar
+                  aria-label="Custom date range"
+                  mode="range"
+                  disabled={{ after: new Date() }}
+                  selected={custom}
+                  onSelect={(next) => {
+                    setCustom(next);
+                    if (next?.from && next.to) {
+                      setRange("custom");
+                      reset();
+                    }
+                  }}
+                  footer={
+                    custom?.from && custom.to
+                      ? `${formatDay(custom.from)} to ${formatDay(custom.to)}`
+                      : "Choose a start and end date"
+                  }
+                />
+              </PopoverContent>
+            </Popover>
+          </>
+        }
+      />
+      <Stack gap={12}>
+        <Inline gap={16} align="center" justify="between">
+          <Heading level={2} size="subsection">
+            Audit log, {active.title}
+          </Heading>
+          {!error && (
+            <Meta mono={false}>
+              {isPending
+                ? "Loading events"
+                : `Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`}
+            </Meta>
+          )}
+        </Inline>
+        <DataTable<AuditLog>
+          key={[active.from, active.to, JSON.stringify(filters)].join()}
+          label={`Audit log, ${active.title}`}
+          rows={rows}
+          columns={columns}
+          loading={isPending}
+          getRowId={(row) => row.id}
+          rowLabel={(row) => `${row.event.type} by ${actorName(row.actor)}`}
+          onRowActivate={setOpened}
+          height={frame}
+          rowHeight={rowHeight}
+          virtual
+          loadMore={
+            canLoadMore
+              ? {
+                  label: `Load ${PAGE_SIZE} more`,
+                  loading: isFetchingNextPage,
+                  onClick: () => {
+                    fetchNextPage().then(() =>
+                      setFrame((height) => Math.min(maxFrame, height + 6 * rowHeight))
+                    );
+                  }
+                }
+              : undefined
+          }
+          end={isPending || rows.length === 0 ? undefined : "End of logs"}
+          empty={empty}
+        />
+      </Stack>
+      <LogDetails log={opened} onClose={() => setOpened(null)} />
+    </>
+  );
+};
+
+export const AuditLogsTab = ({ project }: { project?: AuditLogsProject }) => {
+  const { organization } = useV4Session();
+  const { data: plan } = useV4Adapter("auditLogs").usePlan(organization.id);
+  if (plan && !plan.auditLogs)
+    return (
+      <EmptyState
+        icon="lock"
+        title="Upgrade your plan to view audit logs"
+        actions={
+          <Button variant="outline" asChild>
+            <a href={orgHref(organization.id, "/billing")}>View plans</a>
+          </Button>
+        }
+      />
+    );
+  return <LogsTable project={project} />;
+};
+
+export const AuditLogsPage = () => {
+  const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/audit-logs" });
+  const { orgId } = useParams({ from: "/v4/organizations/$orgId/audit-logs" });
+  const navigate = useNavigate();
+  const mode = useV4Mode();
+  const activeTab = tabs.some((tab) => tab.value === selectedTab) ? selectedTab : "audit-logs";
+  return (
+    <Stack gap={24}>
+      <PageHeader
+        title="Audit logs"
+        description="Review who did what in this organization, and when."
+        badges={
+          <DocumentationLink
+            href="https://infisical.com/docs/documentation/platform/audit-logs"
+            subject="audit logs"
+          />
+        }
+        tabs={
+          <Tabs
+            label="Audit log sections"
+            value={activeTab}
+            onValueChange={(next) =>
+              navigate({
+                to:
+                  mode === "live" && next === "settings"
+                    ? "/organizations/$orgId/audit-logs"
+                    : v4Path("/organizations/$orgId/audit-logs"),
+                params: { orgId },
+                search: { selectedTab: next }
+              })
+            }
+            tabs={tabs.map((tab) => ({ ...tab, content: null }))}
+          />
+        }
+      />
+      {activeTab === "audit-logs" && <AuditLogsTab />}
+      {activeTab === "streams" && <AuditLogStreamsTab />}
+      {activeTab === "settings" && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>This tab isn&apos;t in v4 yet</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </Stack>
+  );
+};

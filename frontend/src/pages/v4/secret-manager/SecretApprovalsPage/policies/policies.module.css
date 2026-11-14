@@ -1,0 +1,85 @@
+.secondary {
+  color: var(--cipher-muted);
+  font-family: var(--cipher-type-small-font-family);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+}
+.groupLabel {
+  font-family: var(--cipher-type-field-label-font-family);
+  font-size: var(--cipher-type-field-label-font-size);
+  font-weight: var(--cipher-type-field-label-font-weight);
+  line-height: var(--cipher-type-field-label-line-height);
+  color: var(--cipher-ink);
+}
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  align-items: start;
+  gap: var(--cipher-space-12);
+}
+.stepSingle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem;
+  align-items: start;
+  gap: var(--cipher-space-12);
+}
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) 4.5rem auto;
+  align-items: start;
+  gap: var(--cipher-space-8);
+  padding-block: var(--cipher-space-8);
+}
+.step + .step {
+  border-top: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}
+.step[data-drag-over] {
+  background: var(--cipher-hover);
+}
+.step[data-dragging] {
+  opacity: var(--cipher-opacity-row-dim);
+}
+.stepPicker {
+  min-width: 0;
+}
+.stepMin {
+  min-width: 0;
+}
+.approverList {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--cipher-space-6) var(--cipher-space-12);
+  margin: 0;
+  font-family: var(--cipher-type-small-font-family);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+}
+.approverList dt {
+  color: var(--cipher-muted);
+}
+.approverList dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--cipher-ink);
+}
+.names {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.names li {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-6);
+}
+.names li[data-muted] {
+  color: var(--cipher-muted);
+}

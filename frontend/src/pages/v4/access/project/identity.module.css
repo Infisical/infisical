@@ -1,0 +1,54 @@
+.helper {
+  color: var(--cipher-muted);
+}
+.idValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+}
+.pairs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--cipher-space-8);
+}
+.pair {
+  display: inline-flex;
+  min-width: 0;
+}
+.lock {
+  display: inline-flex;
+}
+.metadataBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-12);
+  max-height: 30vh;
+  overflow-y: auto;
+  padding: var(--cipher-space-16);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}
+.metadataBox[data-empty] {
+  border-style: dashed;
+  color: var(--cipher-muted);
+  text-align: center;
+}
+.metadataRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cipher-space-8);
+}
+.metadataField {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.metadataRemove {
+  padding-block-start: var(--cipher-space-24);
+}
+.metadataRow + .metadataRow .metadataRemove {
+  padding-block-start: 0;
+}
+.sectionLabel {
+  color: var(--cipher-muted);
+}

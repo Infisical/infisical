@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -119,16 +119,13 @@ export const useCountOrgIdentityMemberships = (dto: TCountIdentitiesDTO) => {
   });
 };
 
-export const useGetIdentityProjectMemberships = (
+export const identityProjectMembershipsQuery = (
+  orgId: string,
   identityId: string,
-  params: TListActorProjectMembershipsParams = {},
-  options: { enabled?: boolean } = {}
-) => {
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg?.id || "";
-
-  return useQuery({
-    enabled: Boolean(identityId) && (options.enabled ?? true),
+  params: TListActorProjectMembershipsParams = {}
+) =>
+  queryOptions({
+    enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityProjectMembershipsForOrg(orgId, identityId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
@@ -139,6 +136,15 @@ export const useGetIdentityProjectMemberships = (
     },
     placeholderData: (prev) => prev
   });
+
+export const useGetIdentityProjectMemberships = (
+  identityId: string,
+  params: TListActorProjectMembershipsParams = {},
+  options: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+  const query = identityProjectMembershipsQuery(currentOrg?.id || "", identityId, params);
+  return useQuery({ ...query, enabled: query.enabled && (options.enabled ?? true) });
 };
 
 export const useGetIdentityUniversalAuth = (

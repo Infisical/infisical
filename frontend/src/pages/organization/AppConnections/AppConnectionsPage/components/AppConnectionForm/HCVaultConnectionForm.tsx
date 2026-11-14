@@ -28,49 +28,15 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { HCVaultConnectionMethod, THCVaultConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { hcVaultConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: THCVaultConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.HCVault)
-});
-
-const InstanceUrlSchema = z
-  .string()
-  .trim()
-  .min(1, "Instance URL required")
-  .url("Invalid Instance URL");
-
-const NamespaceSchema = z.string().trim().optional();
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(HCVaultConnectionMethod.AccessToken),
-    credentials: z.object({
-      instanceUrl: InstanceUrlSchema,
-      namespace: NamespaceSchema,
-      accessToken: z.string().trim().min(1, "Access Token required")
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(HCVaultConnectionMethod.AppRole),
-    credentials: z.object({
-      instanceUrl: InstanceUrlSchema,
-      namespace: NamespaceSchema,
-      roleId: z.string().trim().min(1, "Role ID required"),
-      secretId: z.string().trim().min(1, "Secret ID required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

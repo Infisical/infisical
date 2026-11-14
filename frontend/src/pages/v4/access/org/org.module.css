@@ -1,0 +1,107 @@
+.detailPage {
+  container-type: inline-size;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-24);
+  min-width: 0;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-12);
+  min-width: 0;
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cipher-space-12);
+}
+.start {
+  align-self: flex-start;
+}
+.value {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mono {
+  font-family: var(--cipher-type-mono-sm-font-family);
+  font-size: var(--cipher-type-mono-sm-font-size);
+  line-height: var(--cipher-type-mono-sm-line-height);
+  letter-spacing: var(--cipher-type-mono-sm-letter-spacing);
+}
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--cipher-space-4);
+}
+.typeIcon {
+  display: inline-flex;
+  color: var(--cipher-muted);
+}
+.ok {
+  display: inline-flex;
+  color: var(--cipher-ok);
+}
+.bad {
+  display: inline-flex;
+  color: var(--cipher-bad);
+}
+.metaRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--cipher-space-8);
+}
+.metaBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-12);
+  max-height: 30vh;
+  overflow-y: auto;
+  padding: var(--cipher-space-16);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}
+.metaBox[data-empty] {
+  border-style: dashed;
+  color: var(--cipher-muted);
+  text-align: center;
+}
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--cipher-space-8);
+}
+.ipRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--cipher-space-8);
+}
+.dimmed {
+  opacity: 0.7;
+}
+.projectCell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.usageList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.end {
+  align-self: flex-end;
+}

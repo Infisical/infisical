@@ -1,0 +1,49 @@
+.roleCell {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+}
+.editor {
+  width: 288px;
+}
+.editorFooter {
+  display: flex;
+  padding: var(--cipher-space-8);
+  border-block-start: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}
+.editorFooter > * {
+  flex: 1 1 auto;
+}
+.roleName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roleMeta {
+  color: var(--cipher-muted);
+  white-space: nowrap;
+}
+.roleMeta[data-expired] {
+  color: var(--cipher-bad);
+}
+.notice {
+  margin: 0;
+}
+.idValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+  font-family: var(--cipher-type-mono-font-family);
+  overflow-wrap: anywhere;
+}
+.memberIcon {
+  display: inline-flex;
+  color: var(--cipher-muted);
+}
+.muted {
+  color: var(--cipher-muted);
+}

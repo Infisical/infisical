@@ -9,6 +9,7 @@ import NProgress from "nprogress";
 import { PageTitle } from "./components/PageTitle";
 import { Loader } from "./components/v3/generic/Loader";
 import { initializeTheme } from "./components/v3/platform/ThemeProvider";
+import { registerV4BridgeRouter } from "./helpers/v4Bridge";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
@@ -84,8 +85,15 @@ const router = createRouter({
   defaultNotFoundComponent: NotFoundPage,
   defaultErrorComponent: ErrorPage
 });
+registerV4BridgeRouter(router);
 
-router.subscribe("onBeforeLoad", ({ pathChanged }) => {
+const isV4Path = (pathname: string) => /^\/v4(?:\/|$)/.test(pathname);
+
+router.subscribe("onBeforeLoad", ({ pathChanged, toLocation }) => {
+  if (isV4Path(toLocation.pathname)) return;
+  // index.html paints the v4 theme's ground on /v4 paths before any JavaScript runs; main's pages
+  // paint their own, so the ground goes as soon as a navigation leaves /v4.
+  document.documentElement.removeAttribute("data-v4-boot");
   if (pathChanged) {
     NProgress.start();
     const timer = setTimeout(() => {

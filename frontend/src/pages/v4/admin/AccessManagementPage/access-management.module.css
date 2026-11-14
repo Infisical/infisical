@@ -1,0 +1,15 @@
+.removeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-4);
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--cipher-space-12) var(--cipher-space-12) var(--cipher-space-12)
+    var(--cipher-space-24);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  list-style: disc;
+}
+.removeList > li > span {
+  margin-inline-end: var(--cipher-space-8);
+}

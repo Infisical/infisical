@@ -16,6 +16,17 @@ All commands run from the `frontend/` directory:
 - `make reviewable-ui` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
 - `npm run storybook` — Storybook on port 6006
 
+### React health tooling
+
+Both tools are dev-only and never reach the production bundle.
+
+- `npm run react:doctor:diff` — React Doctor static checks (effects, state, performance, accessibility) on the issues your branch introduces. Run it before opening a PR that touches components or pages, and fix what it reports. It detects the base branch; on a stacked branch pass it (`npm run react:doctor:diff -- --base origin/<parent-branch>`). CI runs the same scan as the `React Doctor` job, which fails a PR that introduces an error-level finding; warnings are reported but do not fail it.
+- `npm run react:doctor` — full scan of the frontend. Use it to audit an area (`-- --verbose` lists every file), not as a pre-PR gate, since existing findings are not fixed yet.
+- `npm run dev:scan` — the dev server with the React Scan overlay, which outlines components as they re-render and records slow frames. Use it when an interaction feels slow or you changed state, context, or memoization. Plain `npm run dev` never loads it.
+- `npm run react:doctor:trace` — records a Chrome performance trace of one interaction against a running app. Prefer a production build (`npm run build && npm run preview`) for real timings.
+
+`doctor.config.json` keeps React Doctor to its own rules (the Oxlint config is `npm run lint`'s job) and turns off its score upload, share links, and Socket.dev dependency lookups so source details stay local. Keep `--no-telemetry` on the scripts, since it also stops React Doctor's Sentry crash reports.
+
 Path alias: `@app/*` maps to `./src/*`.
 
 ## Architecture Overview
@@ -115,6 +126,30 @@ Certificate Manager is org-scoped too (`/organizations/$orgId/cert-manager/...`)
 ### Single-project products
 
 Secret Scanning has one active project per org (see the root `AGENTS.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
+
+### v4 app (`src/pages/v4`)
+
+The v4 app coexists with the current frontend until cutover. It mirrors main's URLs under `/v4` (`routes.ts` builds the subtree).
+- **Cipher:** v4 UI comes from `@infisical/cipher`, installed from [Infisical/cipher](https://github.com/Infisical/cipher) and pinned to a release tag. Change a component with a PR there and a release, then bump the tag here; never copy Cipher source into this repo. After a bump, run `npm run v4:boot` to regenerate the boot block in `index.html` from Cipher's tokens. `src/pages/v4/cipher.css` is the stylesheet entry, and `pages/v4/components/` holds the app-only pieces built on Cipher (`AppConnectionForm`, `ProviderIcon`). To try unreleased Cipher changes, install a tarball from `npm pack` in your cipher checkout; a linked checkout loads a second React.
+- **Usage checks:** `npm run v4:lint` checks `pages/v4` against Cipher's usage rules on `scripts/check-v4-baseline.json`, which may only shrink.
+- **Modes:** org id `demo` runs on fixtures with no login. Any other org id needs the `v4-app` PostHog flag, reuses main's guards (`helpers/routeGuards.ts`), and redirects to the v3 path when the flag is off.
+- **Server console:** `/v4/admin/*` has no org id, so its layout route (`pages/v4/admin/route.tsx`) sets `v4Mode` and `adapters` itself: `?demo=true` (kept across navigation by `retainSearchParams`) runs it on fixtures, otherwise it runs main's guards plus the server admin check. `useV4Mode` and `useV4Adapter` read whichever of the two layouts is active, so never read them with `from: "/v4/organizations/$orgId"`.
+- **Data:** pages read data only through `useV4Adapter(domain)` (`pages/v4/data/<domain>`). Each contract is typed from `hooks/api`. `live.ts` assigns main's hooks directly, and `demo.ts` holds fixtures on `createFixtureStore`. Live mode runs on `liveQueryClient` (`data/live-query-client.ts`, provided by `LiveSessionProvider`), which shares main's caches but defaults every mutation to `meta.skipErrorToast`, so main's global error toast never fires there and every call site must report its own failure with `failed()`. Where main's hook takes meta, forward the adapter's `V4MutationOptions` (`withMutationMeta`) so `skipErrorToast: false` can restore main's toast. Personal settings (`/v4/personal-settings`) is a layout route like the admin console: its `beforeLoad` sets `v4Mode` and `adapters`, runs on fixtures when `?org=demo`, and also returns the page's own adapter in context (`usePersonalSettings`).
+- **Shell outside the org route:** the admin console and personal settings render `V4Shell` with a `nav` prop (extra sidebar levels, the current item and the crumbs after the org crumb). Without `$orgId` in the URL the shell takes the org from the session (the token's current org), shows that org's top-level nav as the parent level, and skips the project gate and path-based location.
+- **Routes:** add pages as flat leaf routes. A path-only layout node outranks the `/$` placeholder, so its unported siblings would 404. Route files must be named `route.tsx` and hold only `component`, `validateSearch`, `staticData` (the route's readiness, see below), the lazy `V4PageLoader` `pendingComponent` and the lazy `V4ErrorPage` `errorComponent`, plus the lazy `V4NotFoundPage` `notFoundComponent` on `/v4` and the org route. The bundle fence (`scripts/v4-bundle-fence.ts`, CI job **v4 Bundle Fence**) fails the build if anything else from v4 reaches main's entry or a v3 route.
+- **Auth screens** live in `pages/v4/auth` under the same paths as main (`/v4/login`, `/v4/signup`, ...). Main's auth route guards live in `helpers/authRouteGuards.ts` and both trees call them, so change auth redirects there; `pages/v4/auth/paths.ts` sends a redirect to its `/v4` twin when the bridge finds one, so a new v4 auth route only needs its `staticData.readiness`.
+- **Import fences** in `.oxlintrc.json`: v4 code never imports v3 or v2 UI, layouts, views or non-v4 pages, and nothing outside `pages/v4` imports it or Cipher.
+- **Readiness:** every v4 page route sets `staticData.readiness`: `full` (parity with main, signed off for live use), `partial` (opens in v4 and shows Open in classic; `staticData.missing` names what main still has) or `none` (the `/$` placeholders). `helpers/v4Bridge.ts` is the only place that reads it. It matches the `/v4` path synchronously with `router.matchRoutes` and counts a `/$` leaf, `globalNotFound` or `none` as no v4 page. Main's org layout and auth middleware hand a path to v4 only when it has a page there, and v4's org route sends a path back to main only when it has none, so the two directions read one answer and cannot loop. Legacy main redirects set `staticData.v3Alias` so they run before any handoff. Never send a navigation across with a hand-built `/v4` prefix or a path list: build v4 paths with `pages/v4/links.ts` (`v4Path` for typed route paths, `orgHref` for org hrefs, `useGo` to navigate and link), which resolves them through `useResolveV4Href`.
+
+### v4 bridge: remove at the full switch
+
+The switch happens when every v4 page route reads `readiness: "full"`. Until then the bridge stays, and nothing else may decide which app serves a path. At the switch, delete in this order:
+
+1. **Prefix move:** move the `/v4` subtree to the root paths. Delete main's routes and pages it replaces, drop the `/v4` prefix from `pages/v4/routes.ts` and every v4 route id, and redirect old `/v4/...` URLs to the bare path.
+2. **Resolver module:** delete `helpers/v4Bridge.ts`, `registerV4BridgeRouter` in `main.tsx`, the `handoffToV4` `beforeLoad` in `pages/organization/layout.tsx` and `pages/middlewares/restrict-login-signup.tsx`, the miss redirect in `pages/v4/organization/route.tsx`, `pages/v4/resolveV4Href.ts`, the resolve step in `useGo` (`pages/v4/links.ts`, whose `v4Path` and `orgHref` lose the prefix in step 1), the `withV4Redirects` and `toV3Location` wrappers in `pages/v4/auth/paths.ts`, and `NotPortedPage` with its `/$` routes.
+3. **Readiness field:** remove `staticData.readiness`, `staticData.missing` and `staticData.v3Alias` from every route file and the `StaticDataRouteOption` declaration, and drop `staticData` from the route-file rule above.
+4. **Open in classic:** remove the link and `keepInClassic` from `pages/v4/shell/V4Shell.tsx`, and the `data-open-classic` check in `routeInternalLinks`.
+5. **Flag helper:** delete `helpers/v4AppFlag.ts`, its re-export in `pages/v4/mode.ts` and every `isV4AppEnabled` guard in v4 route files, then retire the `v4-app` PostHog flag.
 
 ## Conventions
 

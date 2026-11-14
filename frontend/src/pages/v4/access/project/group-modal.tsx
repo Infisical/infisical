@@ -1,0 +1,249 @@
+import { type ReactNode, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@infisical/cipher/ui/dialog";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { ArrowRightIcon } from "lucide-react";
+
+import { OrgAccessControlTabSections } from "@app/types/org";
+
+import { useV4Adapter } from "../../data/adapters";
+import { accessLinks } from "../links";
+import { useGo } from "../navigation";
+import { useOrgId } from "../permissions";
+import { failed, saved } from "../toast";
+import { accessNoun } from "./product";
+import { useProjectScope } from "./scope";
+
+import styles from "./group.module.css";
+
+const REQUIRED = "Required";
+const FORM_ID = "add-project-group";
+const GROUP_PAGE_SIZE = 100;
+
+const Content = ({ projectId, onClose }: { projectId: string; onClose: () => void }) => {
+  const orgId = useOrgId();
+  const scope = useProjectScope();
+  const go = useGo();
+  const access = useV4Adapter("access");
+  const orgGroups = access.useOrgGroups({ organizationId: orgId, limit: GROUP_PAGE_SIZE });
+  const projectGroups = access.useProjectGroups(projectId, scope.projectType);
+  const roles = access.useProjectRoles(projectId, scope.projectType);
+  const addGroup = access.useAddProjectGroup();
+  const [groupId, setGroupId] = useState<string>();
+  const [role, setRole] = useState<string>();
+  const [submitted, setSubmitted] = useState(false);
+  const [pending, setPending] = useState(false);
+
+  const loading = orgGroups.isPending || projectGroups.isPending || roles.isPending;
+  const assigned = new Set((projectGroups.data ?? []).map((membership) => membership.group.id));
+  const allGroups = orgGroups.data?.groups ?? [];
+  const available = allGroups.filter((group) => !assigned.has(group.id));
+
+  const submit = async () => {
+    setSubmitted(true);
+    if (!groupId || !role) return;
+    setPending(true);
+    try {
+      await addGroup.mutateAsync({ projectId, projectType: scope.projectType, groupId, role });
+      saved(`Successfully added group to ${accessNoun(scope.projectType)}`);
+      onClose();
+    } catch (error) {
+      failed(`Failed to add group to ${accessNoun(scope.projectType)}`, error);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const cancel = (
+    <Button variant="ghost" onClick={onClose}>
+      Cancel
+    </Button>
+  );
+  let body: ReactNode;
+  let footer: ReactNode;
+  if (loading) {
+    body = (
+      <Stack gap={16} role="status" aria-label="Loading groups and roles">
+        <Stack gap={8}>
+          <span>Group</span>
+          <Skeleton width="100%" height={32} />
+        </Stack>
+        <Stack gap={8}>
+          <span>Role</span>
+          <Skeleton width="100%" height={32} />
+        </Stack>
+      </Stack>
+    );
+    footer = (
+      <>
+        {cancel}
+        <Button variant="primary" loading disabled>
+          Add
+        </Button>
+      </>
+    );
+  } else if (!available.length) {
+    body = (
+      <p className={styles.notice}>
+        {allGroups.length === 0
+          ? "Your organization has no groups yet. Create one at the organization level first."
+          : "Every organization group is already added. Create another at the organization level first."}
+      </p>
+    );
+    footer = (
+      <Button
+        variant="outline"
+        onClick={() => {
+          onClose();
+          go(accessLinks.org(orgId, OrgAccessControlTabSections.Groups));
+        }}
+      >
+        Go to organization groups
+        <Icon icon={ArrowRightIcon} />
+      </Button>
+    );
+  } else {
+    const groupError = submitted && !groupId ? REQUIRED : undefined;
+    const roleError = submitted && !role ? REQUIRED : undefined;
+    body = (
+      <form
+        id={FORM_ID}
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
+        <Stack gap={16}>
+          <Field label="Group" error={groupError}>
+            <Combobox
+              label="Group"
+              placeholder="Select group..."
+              emptyText="No groups match your search"
+              options={available.map((group) => ({ value: group.id, label: group.name }))}
+              value={groupId ?? ""}
+              invalid={Boolean(groupError)}
+              onChange={setGroupId}
+            />
+          </Field>
+          <Field label="Role" error={roleError}>
+            <Combobox
+              label="Role"
+              placeholder="Select role..."
+              emptyText="No roles found"
+              options={(roles.data ?? []).map((item) => ({
+                value: item.slug,
+                label: item.name,
+                meta: item.description ?? undefined
+              }))}
+              value={role ?? ""}
+              invalid={Boolean(roleError)}
+              onChange={setRole}
+            />
+          </Field>
+        </Stack>
+      </form>
+    );
+    footer = (
+      <>
+        {cancel}
+        <Button variant="primary" type="submit" form={FORM_ID} loading={pending}>
+          Add
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <DialogContent pending={pending}>
+      <DialogHeader>
+        <DialogTitle>{`Add group to ${accessNoun(scope.projectType)}`}</DialogTitle>
+      </DialogHeader>
+      {body}
+      <DialogFooter>{footer}</DialogFooter>
+    </DialogContent>
+  );
+};
+
+export const GroupModal = ({
+  projectId,
+  open,
+  onOpenChange
+}: {
+  projectId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <Content key={String(open)} projectId={projectId} onClose={() => onOpenChange(false)} />
+  </Dialog>
+);
+
+export const RemoveGroupDialog = ({
+  projectId,
+  group,
+  onOpenChange,
+  onRemoved
+}: {
+  projectId: string;
+  group?: { id: string; name: string };
+  onOpenChange: (open: boolean) => void;
+  onRemoved?: () => void;
+}) => {
+  const scope = useProjectScope();
+  const removeGroup = useV4Adapter("access").useRemoveProjectGroup();
+  return (
+    <AlertDialog open={Boolean(group)} onOpenChange={onOpenChange}>
+      <AlertDialogContent tone="danger" confirmText={group?.name ?? ""}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Remove "${group?.name ?? ""}" from ${accessNoun(scope.projectType)}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            Members lose access granted through this group. You can add it again later.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              if (!group) return;
+              onOpenChange(false);
+              try {
+                await removeGroup.mutateAsync({
+                  groupId: group.id,
+                  projectId,
+                  projectType: scope.projectType
+                });
+                saved(`Successfully removed group from ${accessNoun(scope.projectType)}`);
+                onRemoved?.();
+              } catch (error) {
+                failed(`Failed to remove group from ${accessNoun(scope.projectType)}`, error);
+              }
+            }}
+          >
+            Remove group
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};

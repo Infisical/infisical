@@ -23,30 +23,15 @@ import {
   OnaConnectionMethod,
   TOnaConnection
 } from "@app/hooks/api/appConnections/types/ona-connection";
+import { onaConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TOnaConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Ona)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(OnaConnectionMethod.PersonalAccessToken),
-    credentials: z.object({
-      personalAccessToken: z.string().trim().min(1, "Personal Access Token required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

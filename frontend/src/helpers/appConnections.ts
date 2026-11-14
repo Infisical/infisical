@@ -984,6 +984,7 @@ export const AWS_REGIONS = [
 
 export const CSRF_TOKEN_STORAGE_KEY = "latestCSRFToken";
 export const GITHUB_CONNECTION_FORM_STORAGE_KEY = "githubConnectionFormData";
+export const V4_CONNECTION_REDIRECT_STORAGE_KEY = "v4-app-connection-redirect";
 
 export const buildGitHubHostUrl = (host?: string | null) =>
   host && host.trim().length > 0 ? `https://${host.trim()}` : "https://github.com";

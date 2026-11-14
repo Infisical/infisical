@@ -8,6 +8,8 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import wasm from "vite-plugin-wasm";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+import { v4BundleFence } from "./scripts/v4-bundle-fence";
+
 const virtualRouteFileChangeReloadPlugin: PluginOption = {
   name: "watch-config-restart",
   configureServer(server) {
@@ -36,6 +38,21 @@ const hashLocales = () => {
     });
   return hash.digest("hex").slice(0, 12);
 };
+
+const reactScanPlugin = (enabled: boolean): PluginOption => ({
+  name: "react-scan",
+  apply: "serve",
+  transformIndexHtml() {
+    if (!enabled) return [];
+    return [
+      {
+        tag: "script",
+        attrs: { type: "module", src: "/src/dev/reactScan.ts" },
+        injectTo: "head"
+      }
+    ];
+  }
+});
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -127,7 +144,9 @@ export default defineConfig(({ mode }) => {
         virtualRouteConfig: "./src/routes.ts"
       }),
       react(),
-      virtualRouteFileChangeReloadPlugin
+      reactScanPlugin(env.VITE_REACT_SCAN === "true"),
+      virtualRouteFileChangeReloadPlugin,
+      v4BundleFence()
     ]
   };
 });

@@ -1,0 +1,42 @@
+.inline {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-8);
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: start;
+}
+.panel {
+  width: 288px;
+}
+.panelTitle {
+  padding-block-end: var(--cipher-space-8);
+  border-block-end: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  color: var(--cipher-muted);
+}
+.grantRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--cipher-space-8);
+}
+.durationCell {
+  flex: 0 0 176px;
+  min-width: 0;
+}
+.durationCell :global([data-slot="button"]) {
+  width: 100%;
+}
+.copyValue {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+}
+.wrap {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

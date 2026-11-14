@@ -1,0 +1,7 @@
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: var(--cipher-space-12);
+  height: var(--cipher-space-12);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}

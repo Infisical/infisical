@@ -1,0 +1,1241 @@
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
+export type V4Check = {
+  id: string;
+  /** The Cipher rule this check enforces. */
+  rule: string;
+  message: string;
+  appliesTo: (file: string) => boolean;
+  /** Patterns for .ts/.tsx files. */
+  markup?: readonly RegExp[];
+  /** Patterns for .css files. */
+  css?: readonly RegExp[];
+  /** Files this one check does not scan. */
+  exempt?: readonly string[];
+  /** For .css files: judges each innermost rule block and returns the offending declarations. */
+  cssBlock?: (selector: string, body: string) => readonly string[];
+  /** For .ts/.tsx files: judges each className-like string literal and returns the offending text. */
+  classString?: (value: string) => readonly string[];
+  /** For .ts/.tsx files: judges the whole source and returns each offending text with its offset. */
+  source?: (text: string) => readonly { index: number; text: string }[];
+};
+
+/**
+ * Modules allowed to spell the /v4 prefix: the v4 link helpers and path registries. Moving v4 to
+ * the root changes these, the route definitions and the resolver in src/helpers/v4Bridge.ts, which
+ * sits outside the scanned folders.
+ */
+const v4PathModules = [
+  "src/pages/v4/links.ts",
+  "src/pages/v4/auth/paths.ts",
+  "src/pages/v4/access/links.ts",
+  "src/pages/v4/liveReady.ts",
+  "src/pages/v4/resolveV4Href.ts"
+];
+const isRouteDefinition = (file: string) =>
+  file.endsWith("/route.tsx") || file === "src/routes.ts" || file === "src/pages/v4/routes.ts";
+const isCss = (file: string) => file.endsWith(".css");
+const isMarkup = (file: string) => /\.tsx?$/.test(file);
+const isAuthored = (file: string) => file.startsWith("src/pages/v4/");
+
+const tailwindPalette =
+  "black|white|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
+const tailwindColorUtility =
+  "bg|text|border|ring|outline|fill|stroke|from|via|to|decoration|divide|placeholder|caret|accent";
+
+const splitVariant = (token: string) => {
+  let depth = 0;
+  let cut = -1;
+  [...token].forEach((char, index) => {
+    if (char === "[" || char === "(") depth += 1;
+    else if (char === "]" || char === ")") depth -= 1;
+    else if (char === ":" && depth === 0) cut = index;
+  });
+  return {
+    variant: token.slice(0, cut + 1),
+    utility: token.slice(cut + 1).replace(/^!|!$/g, "")
+  };
+};
+const borderWidth =
+  /^border(?:-[trblxyse])?(?:-(?:[1-9]\d*|\[(?:length:)?\.?\d[^\]]*\]|\(length:[^)]*\)))?$/;
+const borderColor =
+  /^border(?:-[trblxyse])?-(?:\[(?!length:|\.?\d)[^\]]+\]|\((?!length:)[^)]+\)|(?!(?:solid|dashed|dotted|double|none|hidden|collapse|separate|spacing)\b|[trblxyse](?:-\d|$))[a-z][\w-]*(?:\/[\w.[\]]+)?)$/;
+
+/** Border width utilities whose state (variant chain) has no border colour in the same string. */
+export const bareBorders = (value: string): string[] => {
+  const tokens = value.split(/\s+/).filter(Boolean).map(splitVariant);
+  const colored = new Set(
+    tokens.filter((token) => borderColor.test(token.utility)).map((token) => token.variant)
+  );
+  return tokens
+    .filter((token) => borderWidth.test(token.utility))
+    .filter((token) => !colored.has("") && !colored.has(token.variant))
+    .map((token) => `${token.variant}${token.utility}`);
+};
+
+const destructiveLabel = /^\s*["'`](?:Delete|Remove|Revoke|Disable)\b/;
+const destructiveIcon = /\bicon\s*:\s*["']trash["']/;
+
+/** Entries of every rowActions or RowActions inline array literal that are destructive actions. */
+export const destructiveInlineActions = (text: string) => {
+  const found: { index: number; text: string }[] = [];
+  [...text.matchAll(/\binline\s*(?::|=\{)\s*\[/g)].forEach((start) => {
+    let depth = 0;
+    let entry = -1;
+    let index = (start.index ?? 0) + start[0].length;
+    while (index < text.length && depth >= 0) {
+      const char = text[index];
+      if (char === '"' || char === "'" || char === "`") {
+        let end = index + 1;
+        while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+        index = end;
+      } else if (char === "{" || char === "[" || char === "(") {
+        if (depth === 0 && char === "{") entry = index;
+        depth += 1;
+      } else if (char === "}" || char === "]" || char === ")") {
+        depth -= 1;
+        if (depth === 0 && char === "}" && entry >= 0) {
+          const body = text.slice(entry, index + 1);
+          const label = body.match(
+            /\blabel\s*:((?:(?!\b(?:icon|onSelect|disabledReason|hidden)\s*:)[\s\S])*)/
+          );
+          const labelText = label?.[1].replace(/^\s*\([^)]*\)\s*=>\s*/, "") ?? "";
+          const destructive =
+            destructiveLabel.test(labelText) ||
+            /[?:]\s*["'`](?:Delete|Remove|Revoke|Disable)\b/.test(labelText) ||
+            destructiveIcon.test(body);
+          if (destructive) {
+            const offset = label ? (label.index ?? 0) : body.search(destructiveIcon);
+            found.push({ index: entry + offset, text: body.slice(offset).split("\n")[0].trim() });
+          }
+          entry = -1;
+        }
+      }
+      index += 1;
+    }
+  });
+  return found;
+};
+
+const jsxTagEnd = (text: string, from: number) => {
+  let depth = 0;
+  for (let index = from; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"' || char === "'" || char === "`") {
+      let end = index + 1;
+      while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+      index = end;
+    } else if (char === "{") depth += 1;
+    else if (char === "}") depth -= 1;
+    else if (char === ">" && depth === 0) return index;
+  }
+  return text.length;
+};
+
+/** Natively disabled Buttons inside a Tooltip or TooltipTrigger: they take no pointer or focus, so the tooltip never opens. */
+export const disabledButtonsInTooltips = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(Tooltip|TooltipTrigger)(?=[\s>])/g)].forEach((open) => {
+    const start = jsxTagEnd(text, open.index ?? 0);
+    if (text[start - 1] === "/") return;
+    const close = text.indexOf(`</${open[1]}>`, start);
+    if (close < 0) return;
+    [...text.slice(start, close).matchAll(/<Button(?=[\s>])/g)].forEach((button) => {
+      const at = start + (button.index ?? 0);
+      const tag = text.slice(at, jsxTagEnd(text, at));
+      if (/\sdisabled(?=[\s=/>]|$)/.test(tag) && !/\sdisabledReason\b/.test(tag))
+        found.set(at, tag.split("\n")[0].trim());
+    });
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
+const chevronGlyph =
+  /\b(?:iconRight|icon|name)=(?:"chev-(?:down|ud)"|\{\s*["'`]chev-(?:down|ud)["'`]\s*\})|<(?:ChevronDown|ChevronsUpDown)\b|\{(?:ChevronDown|ChevronsUpDown)(?:Icon)?\}/;
+
+/** Buttons with a chevron inside a PopoverTrigger or DropdownMenuTrigger that do not use layout="trigger", so their label and chevron center instead of sitting at the start and end. */
+export const chevronTriggersWithoutLayout = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(PopoverTrigger|DropdownMenuTrigger)(?=[\s>])/g)].forEach((open) => {
+    const start = jsxTagEnd(text, open.index ?? 0);
+    if (text[start - 1] === "/") return;
+    const close = text.indexOf(`</${open[1]}>`, start);
+    if (close < 0) return;
+    [...text.slice(start, close).matchAll(/<Button(?=[\s>])/g)].forEach((button) => {
+      const at = start + (button.index ?? 0);
+      const tagEnd = jsxTagEnd(text, at);
+      const tag = text.slice(at, tagEnd + 1);
+      if (/\slayout=(?:"trigger"|\{\s*["'`]trigger["'`]\s*\})/.test(tag)) return;
+      if (/\siconOnly\b/.test(tag) || /\ssize=(?:"icon|\{\s*["'`]icon)/.test(tag)) return;
+      const bodyEnd = tag.endsWith("/>") ? tagEnd : text.indexOf("</Button>", tagEnd);
+      const element = text.slice(at, bodyEnd < 0 ? tagEnd : bodyEnd);
+      if (chevronGlyph.test(element)) found.set(at, tag.split("\n")[0].trim());
+    });
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
+const enclosingObject = (text: string, at: number): [number, number] | null => {
+  let depth = 0;
+  let start = -1;
+  for (let index = at; index >= 0; index -= 1) {
+    if (text[index] === "}") depth += 1;
+    else if (text[index] === "{") {
+      if (depth === 0) {
+        start = index;
+        break;
+      }
+      depth -= 1;
+    }
+  }
+  if (start < 0) return null;
+  depth = 0;
+  for (let index = start; index < text.length; index += 1) {
+    if (text[index] === "{") depth += 1;
+    else if (text[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return [start, index + 1];
+    }
+  }
+  return null;
+};
+const namedValue = /\.name\b/;
+const namedProperty = /\b(?:title|label|text)\s*:\s*([^,]*)/g;
+
+const tagAttributes = (tag: string) => {
+  const flags = new Set<string>();
+  const values = new Map<string, string>();
+  let depth = 0;
+  let name = "";
+  let valueStart = -1;
+  let word = "";
+  for (let index = 0; index < tag.length; index += 1) {
+    const char = tag[index];
+    if (depth === 0 && (char === '"' || char === "'")) {
+      const end = tag.indexOf(char, index + 1);
+      if (word.endsWith("=")) values.set(word.slice(0, -1), tag.slice(index + 1, end));
+      word = "";
+      index = end;
+    } else if (char === "{") {
+      if (depth === 0) {
+        name = word.endsWith("=") ? word.slice(0, -1) : "";
+        valueStart = index + 1;
+      }
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        if (name) values.set(name, tag.slice(valueStart, index));
+        word = "";
+      }
+    } else if (depth === 0) {
+      if (/[\s/>]/.test(char)) {
+        if (word && !word.endsWith("=")) flags.add(word);
+        word = "";
+      } else word += char;
+    }
+  }
+  return { flags, values };
+};
+
+/** mono set on a JSX element or option object whose title, label or text is an entity's .name: names people chose stay in the sans. */
+export const monoOnNamedEntity = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<([A-Z]\w*)(?=[\s>])/g)].forEach((open) => {
+    const at = open.index ?? 0;
+    const { flags, values } = tagAttributes(
+      text.slice(at + open[0].length, jsxTagEnd(text, at) + 1)
+    );
+    if (!flags.has("mono") && values.get("mono")?.trim() !== "true") return;
+    if (["title", "label", "text"].some((key) => namedValue.test(values.get(key) ?? "")))
+      found.set(at, text.slice(at, text.indexOf("\n", at)).trim());
+  });
+  [...text.matchAll(/\bmono\s*:\s*true\b/g)].forEach((match) => {
+    const span = enclosingObject(text, match.index ?? 0);
+    if (!span) return;
+    const object = text.slice(span[0], span[1]);
+    if (/<[A-Za-z]/.test(object)) return;
+    if ([...object.matchAll(namedProperty)].some((property) => namedValue.test(property[1])))
+      found.set(match.index ?? 0, object.split("\n")[0].trim() || match[0]);
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
+const framedParents = /<(Card|List|ApprovalQueue|DataTable|CodeBlock)(?=[\s>/])/g;
+const framedChildren = /<(Card|List|ApprovalQueue)(?=[\s>/])/g;
+const variantValue = /\svariant=(?:"(\w+)"|\{\s*["'`](\w+)["'`]\s*\})/;
+
+const opensFrame = (name: string, tag: string) => {
+  if (name === "DataTable" || name === "CodeBlock") return true;
+  const variant = tag.match(variantValue);
+  const value = variant?.[1] ?? variant?.[2];
+  if (name === "Card") return value === "framed";
+  return !/\svariant=/.test(tag) || value === "framed";
+};
+
+const elementEnd = (text: string, name: string, from: number) => {
+  const tagEnd = jsxTagEnd(text, from);
+  if (text[tagEnd - 1] === "/") return tagEnd;
+  const tokens = new RegExp(`<${name}(?=[\\s>/])|</${name}>`, "g");
+  tokens.lastIndex = tagEnd;
+  let depth = 1;
+  for (let token = tokens.exec(text); token; token = tokens.exec(text)) {
+    if (token[0].startsWith("</")) depth -= 1;
+    else if (text[jsxTagEnd(text, token.index) - 1] !== "/") depth += 1;
+    if (depth === 0) return token.index;
+  }
+  return text.length;
+};
+
+/** An explicit variant="framed" Card, List or ApprovalQueue written inside a framed Card, a framed List or ApprovalQueue, a DataTable or a CodeBlock. */
+export const nestedFrames = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(framedParents)].forEach((open) => {
+    const start = open.index ?? 0;
+    if (!opensFrame(open[1], text.slice(start, jsxTagEnd(text, start)))) return;
+    const region = text.slice(start + 1, elementEnd(text, open[1], start));
+    [...region.matchAll(framedChildren)].forEach((child) => {
+      const at = start + 1 + (child.index ?? 0);
+      const tag = text.slice(at, jsxTagEnd(text, at));
+      const variant = tag.match(variantValue);
+      if ((variant?.[1] ?? variant?.[2]) === "framed") found.set(at, tag.split("\n")[0].trim());
+    });
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
+const interactiveElement =
+  /<(?:a|button|input|select|textarea|Button|Link|RowLink|CardLink|CopyButton|Checkbox|Switch)(?=[\s>/])|\son(?:Click|PointerDown|KeyDown)=/;
+
+const attributeValue = (tag: string, name: string) => {
+  const start = tag.search(new RegExp(`\\s${name}=\\{`));
+  if (start < 0) return "";
+  const open = tag.indexOf("{", start);
+  let depth = 0;
+  for (let index = open; index < tag.length; index += 1) {
+    if (tag[index] === "{") depth += 1;
+    else if (tag[index] === "}") depth -= 1;
+    if (depth === 0) return tag.slice(open + 1, index);
+  }
+  return tag.slice(open + 1);
+};
+
+/** Links, buttons, inputs and click handlers inside a Tooltip's content or a TooltipContent, which the pointer can never reach. */
+export const interactiveTooltipContent = (text: string) => {
+  const found: { index: number; text: string }[] = [];
+  [...text.matchAll(/<(Tooltip|TooltipContent)(?=[\s>])/g)].forEach((open) => {
+    const start = open.index ?? 0;
+    const tagEnd = jsxTagEnd(text, start);
+    const tag = text.slice(start, tagEnd + 1);
+    const content =
+      open[1] === "Tooltip"
+        ? attributeValue(tag, "content")
+        : text.slice(tagEnd + 1, Math.max(tagEnd + 1, text.indexOf("</TooltipContent>", tagEnd)));
+    if (interactiveElement.test(content))
+      found.push({ index: start, text: tag.split("\n")[0].trim() });
+  });
+  return found;
+};
+
+const flatHoverGround =
+  /^background(?:-color)?\s*:\s*(?:var\(--cipher-(?:tint|surface|inset|sidebar|line-soft|paper|pop|frame|select)(?:,[^)]*)?\)|#[0-9a-f]{3,8}|rgba?\([^)]*\))\s*$/i;
+
+/** A :hover rule that paints its own element with a flat ground instead of the shared hover overlay. */
+export const flatHoverBackgrounds = (selector: string, body: string) => {
+  const bare = selector.replace(/:not\([^()]*(?:\([^()]*\)[^()]*)*\)/g, "");
+  if (!/:hover\b/.test(bare) || /::?(?:before|after)\b/.test(selector)) return [];
+  if (
+    /\[(?:aria-(?:pressed|current|selected)|data-(?:current|selected)|data-state="(?:on|active)")/.test(
+      bare
+    )
+  )
+    return [];
+  return body
+    .split(";")
+    .map((declaration) => declaration.trim())
+    .filter((declaration) => flatHoverGround.test(declaration));
+};
+
+const topLevelParts = (selector: string) => {
+  const parts = [""];
+  let depth = 0;
+  [...selector].forEach((char) => {
+    if (char === "(" || char === "[") depth += 1;
+    else if (char === ")" || char === "]") depth -= 1;
+    if (char === "," && depth === 0) parts.push("");
+    else parts[parts.length - 1] += char;
+  });
+  return parts.map((part) => part.trim()).filter(Boolean);
+};
+const namesLink = /(?:^|[\s>+~(])a(?=$|[\s.:#[>+~)])|\[href\b|:any-link\b|link/i;
+
+/** cursor: pointer on a selector list with a part that does not name a link. */
+export const pointerOutsideLinks = (selector: string, body: string) => {
+  const declarations = [...body.matchAll(/(?:^|;|\n)\s*(cursor\s*:\s*pointer\b[^;]*)/g)];
+  if (!declarations.length || topLevelParts(selector).every((part) => namesLink.test(part)))
+    return [];
+  return declarations.map((match) => match[1].trim());
+};
+
+const hiddenEdge = /^(?:none|hidden|0(?:px)?)$|\b(?:none|hidden|transparent)\b|^0(?:px)?\s/;
+const frameSides = [
+  ["border-top", "border-right", "border-bottom", "border-left"],
+  ["border-block", "border-inline"]
+];
+
+/** Four-sided borders, and outlines outside a focus state, that a page stylesheet draws around a box. */
+export const pageCssFrames = (selector: string, body: string) => {
+  const declarations = [
+    ...body.matchAll(/(?:^|;|\n)\s*((border|outline)(-[\w-]+)?\s*:\s*([^;]+))/g)
+  ]
+    .filter((match) => !hiddenEdge.test(match[4].trim()))
+    .map((match) => ({ text: match[1].trim(), property: `${match[2]}${match[3] ?? ""}` }));
+  const shorthand = declarations.filter(
+    ({ property }) => property === "border" || (property === "outline" && !/:focus/.test(selector))
+  );
+  const sides = frameSides.find((set) =>
+    set.every((side) => declarations.some(({ property }) => property === side))
+  );
+  return [
+    ...shorthand.map(({ text }) => text),
+    ...(sides
+      ? [
+          sides
+            .map((side) => declarations.find(({ property }) => property === side)?.text)
+            .join("; ")
+        ]
+      : [])
+  ];
+};
+
+const tabWidthSubject =
+  /\[role=["']?tab["']?\]|\[data-slot=["']?(?:tabs-(?:list|trigger)|toggle-group(?:-item)?)["']?\]/;
+
+/** Width or growth set on a tab list, tab, toggle group or toggle item outside the primitive, which sizes the list and its triggers together from one width prop. */
+export const tabWidthDeclarations = (selector: string, body: string) => {
+  const subjects = topLevelParts(selector).map((part) => part.split(/\s*[\s>+~]\s*/).pop() ?? "");
+  if (!subjects.some((subject) => tabWidthSubject.test(subject))) return [];
+  return [
+    ...body.matchAll(/(?:^|;|\n)\s*((?:width|inline-size|flex|flex-grow|flex-basis)\s*:[^;]+)/g)
+  ].map((match) => match[1].trim());
+};
+
+const classCallee = /(?:^|[^\w.$])(?:cn|cva|cx|clsx|twMerge)\s*$/;
+
+/** String literals that hold classes: className attributes and cn/cva/clsx call arguments, at any depth. */
+export const classStringLiterals = (text: string) => {
+  const found: { value: string; index: number }[] = [];
+  const stack: ("class" | "other")[] = [];
+  let index = 0;
+  const inClass = () => stack.includes("class");
+  while (index < text.length) {
+    const char = text[index];
+    const rest = text.slice(index, index + 2);
+    if (rest === "//") {
+      index = text.indexOf("\n", index);
+      if (index < 0) break;
+    } else if (rest === "/*") {
+      index = text.indexOf("*/", index) + 2;
+      if (index < 2) break;
+    } else if (
+      (char === '"' || char === "'" || char === "`") &&
+      /(?:^|[=(,:[{?+!&|]|return)\s*$/.test(text.slice(Math.max(0, index - 12), index))
+    ) {
+      let end = index + 1;
+      while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+      const value = text.slice(index + 1, end);
+      const attribute = /className\s*=\s*$/.test(text.slice(Math.max(0, index - 40), index));
+      if ((inClass() || attribute) && !(char === "`" && value.includes("${")))
+        found.push({ value, index });
+      index = end + 1;
+    } else {
+      if (char === "(" || char === "{" || char === "[") {
+        const before = text.slice(Math.max(0, index - 40), index);
+        const opensClass =
+          (char === "(" && classCallee.test(before)) ||
+          (char === "{" && /className\s*=\s*$/.test(before));
+        stack.push(opensClass ? "class" : "other");
+      } else if (char === ")" || char === "}" || char === "]") stack.pop();
+      index += 1;
+    }
+  }
+  return found;
+};
+
+const tabWidthUtility =
+  /^(?:w-|min-w-full$|flex-(?:1|auto|\[)|grow|basis-|justify-(?:between|around|evenly|stretch)$)/;
+const tabWidthVariant = /role=tab|tabs-(?:list|trigger)|toggle-group/;
+
+/** Width or growth classes on Tabs, TabsList, TabsTrigger, ToggleGroup or ToggleGroupItem, or aimed at their parts through an arbitrary variant. */
+export const tabWidthClasses = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(Tabs|TabsList|TabsTrigger|ToggleGroup|ToggleGroupItem)(?=[\s>/])/g)].forEach(
+    (open) => {
+      const at = open.index ?? 0;
+      const { values } = tagAttributes(text.slice(at + open[0].length, jsxTagEnd(text, at) + 1));
+      const offending = (values.get("className") ?? "")
+        .split(/[\s"'`]+/)
+        .filter((token) => tabWidthUtility.test(splitVariant(token).utility));
+      if (offending.length) found.set(at, offending.join(" "));
+    }
+  );
+  classStringLiterals(text).forEach(({ value, index }) => {
+    const offending = value
+      .split(/\s+/)
+      .map(splitVariant)
+      .filter(
+        ({ variant, utility }) => tabWidthVariant.test(variant) && tabWidthUtility.test(utility)
+      );
+    if (offending.length)
+      found.set(index, offending.map(({ variant, utility }) => variant + utility).join(" "));
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
+const isPage = (file: string) => file.startsWith("src/pages/v4/");
+const isComposition = (file: string) => isMarkup(file) && isPage(file);
+
+const braceEnd = (text: string, open: number) => {
+  let depth = 0;
+  for (let index = open; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"' || char === "'" || char === "`") {
+      let end = index + 1;
+      while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+      index = end;
+    } else if (char === "{" || char === "(" || char === "[") depth += 1;
+    else if (char === "}" || char === ")" || char === "]") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return text.length;
+};
+
+const definitionOf = (text: string, name: string) => {
+  const start = text.search(new RegExp(`(?:const|let|function)\\s+${name}\\b`));
+  if (start < 0) return "";
+  let depth = 0;
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"' || char === "'" || char === "`") {
+      let end = index + 1;
+      while (end < text.length && text[end] !== char) end += text[end] === "\\" ? 2 : 1;
+      index = end;
+    } else if (char === "{" || char === "(" || char === "[") depth += 1;
+    else if (char === "}" || char === ")" || char === "]") {
+      depth -= 1;
+      if (depth === 0 && /^\s*(?:;|\n)/.test(text.slice(index + 1, index + 3)))
+        return text.slice(start, index + 1);
+    } else if (char === ";" && depth === 0) return text.slice(start, index);
+  }
+  return text.slice(start);
+};
+
+const navigationCall =
+  /\b(?:navigate|go)\s*\(|\brouter\.(?:navigate|push|history)\b|\bhistory\.push\s*\(|\bwindow\.location\b/;
+
+/** onRowActivate handlers that navigate, inline or through a function defined in the same file. */
+export const navigatingRowActivations = (text: string) =>
+  [...text.matchAll(/\bonRowActivate=\{/g)].flatMap((match) => {
+    const open = (match.index ?? 0) + match[0].length - 1;
+    const value = text.slice(open + 1, braceEnd(text, open));
+    const called = [...value.matchAll(/(?:^\s*|\b)([A-Za-z_$][\w$]*)\s*(?:\(|$)/g)].map(
+      (call) => call[1]
+    );
+    const bodies = [value, ...called.map((name) => definitionOf(text, name))];
+    return bodies.some((body) => navigationCall.test(body))
+      ? [{ index: match.index ?? 0, text: `onRowActivate={${value.trim().split("\n")[0]}}` }]
+      : [];
+  });
+
+const compactVariant = /\svariant=(?:"compact"|\{\s*["'`]compact["'`]\s*\})/;
+
+/** A Pagination rendered right after a DataTable instead of in its pagination slot, or a slot Pagination that is not compact. */
+export const paginationOutsideFrames = (text: string) =>
+  [...text.matchAll(/<DataTable(?=[\s>/])/g)].flatMap((match) => {
+    const start = match.index ?? 0;
+    const found: { index: number; text: string }[] = [];
+    const tag = text.slice(start, jsxTagEnd(text, start) + 1);
+    const slot = tag.match(/\spagination=\{/);
+    if (slot) {
+      const open = start + (slot.index ?? 0) + slot[0].length - 1;
+      const value = text.slice(open, braceEnd(text, open));
+      [...value.matchAll(/<Pagination(?=[\s>/])/g)].forEach((pagination) => {
+        const at = open + (pagination.index ?? 0);
+        const paginationTag = text.slice(at, jsxTagEnd(text, at) + 1);
+        if (!compactVariant.test(paginationTag))
+          found.push({ index: at, text: paginationTag.split("\n")[0].trim() });
+      });
+    }
+    const end = elementEnd(text, "DataTable", start);
+    const after = text[end] === ">" ? end + 1 : end + "</DataTable>".length;
+    const sibling = text
+      .slice(after, after + 300)
+      .match(/^\s*(?:<Pagination\b|\{[^{}<]*<Pagination\b|\{[^{}<]*?[\w.]*[pP]agination\s*\})/);
+    if (sibling) {
+      const offset = sibling[0].length - sibling[0].trimStart().length;
+      found.push({ index: after + offset, text: sibling[0].trim().split("\n")[0] });
+    }
+    return found;
+  });
+
+const elementsNamed = (text: string, pattern: RegExp) =>
+  [...text.matchAll(pattern)].map((match) => {
+    const start = match.index ?? 0;
+    return { start, end: elementEnd(text, match[1], start) };
+  });
+
+/** Hand-built TableRows that hold RowActions or a TableActionsCell with content, without a RowContextMenu around them. An empty self-closing TableActionsCell only keeps the actions column aligned. */
+export const rowsWithoutContextMenu = (text: string) => {
+  const rows = elementsNamed(text, /<(TableRow)(?=[\s>/])/g);
+  const menus = elementsNamed(text, /<(RowContextMenu)(?=[\s>/])/g);
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(RowActions|TableActionsCell)(?=[\s>/])/g)].forEach((actions) => {
+    const at = actions.index ?? 0;
+    if (actions[1] === "TableActionsCell" && text[jsxTagEnd(text, at) - 1] === "/") return;
+    const row = rows.filter((candidate) => candidate.start < at && candidate.end > at).pop();
+    if (!row) return;
+    if (menus.some((menu) => menu.start < row.start && menu.end > row.end)) return;
+    const variable = text.slice(0, row.start).match(/(?:const|let)\s+(\w+)\s*=\s*\(?\s*$/)?.[1];
+    if (
+      variable &&
+      new RegExp(`<RowContextMenu[^]*?\\{\\s*${variable}\\s*\\}[^]*?</RowContextMenu>`).test(text)
+    )
+      return;
+    found.set(
+      row.start,
+      text
+        .slice(row.start, jsxTagEnd(text, row.start) + 1)
+        .split("\n")[0]
+        .trim()
+    );
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
+/** A native Table inside a Card or SettingsCard that is not inside a dialog, sheet or popover. */
+export const rawTablesInCards = (text: string) => {
+  const cards = elementsNamed(text, /<(Card|SettingsCard)(?=[\s>/])/g);
+  const overlays = elementsNamed(
+    text,
+    /<(Dialog|DialogContent|AlertDialogContent|Sheet|SheetContent|Popover|PopoverContent|HoverCardContent)(?=[\s>/])/g
+  );
+  const inside = (at: number, elements: { start: number; end: number }[]) =>
+    elements.some((element) => element.start < at && element.end > at);
+  return [...text.matchAll(/<Table(?=[\s>/])/g)].flatMap((match) => {
+    const at = match.index ?? 0;
+    if (!inside(at, cards) || inside(at, overlays)) return [];
+    return [
+      {
+        index: at,
+        text: text
+          .slice(at, jsxTagEnd(text, at) + 1)
+          .split("\n")[0]
+          .trim()
+      }
+    ];
+  });
+};
+
+const sentenceLiteral = /(["'`])[^"'`\n]*[A-Za-z]\s[^"'`\n]*\1/;
+
+/** State set to sentence text by a handler and rendered in a table or list status footer or in a role="status" element. */
+export const actionFeedbackInStatus = (text: string) => {
+  const feedback = [
+    ...text.matchAll(/\[\s*(\w+)\s*,\s*(set\w+)\s*\]\s*=\s*(?:React\.)?useState\b/g)
+  ]
+    .filter((state) =>
+      [...text.matchAll(new RegExp("\\b" + state[2] + "\\(", "g"))].some((call) => {
+        const open = (call.index ?? 0) + call[0].length - 1;
+        let argument = text.slice(open, braceEnd(text, open));
+        while (/\$\{[^{}]*\}/.test(argument)) argument = argument.replace(/\$\{[^{}]*\}/g, "");
+        return sentenceLiteral.test(argument);
+      })
+    )
+    .map((state) => new RegExp("\\b" + state[1] + "\\b"));
+  if (!feedback.length) return [];
+  const shows = (value: string) => feedback.some((name) => name.test(value));
+  const found: { index: number; text: string }[] = [];
+  const slots: { start: number; end: number }[] = [];
+  [...text.matchAll(/<(DataTable|DataGrid|List)(?=[\s>/])/g)].forEach((match) => {
+    const start = match.index ?? 0;
+    const tag = text.slice(start, jsxTagEnd(text, start) + 1);
+    const slot = tag.match(/\s(persistentStatus|footer)=\{/);
+    if (!slot) return;
+    const open = start + (slot.index ?? 0) + slot[0].length - 1;
+    const value = text.slice(open, braceEnd(text, open) + 1);
+    if (!shows(value)) return;
+    slots.push({ start: open, end: open + value.length });
+    found.push({ index: open - slot[1].length - 1, text: slot[1] + "=" + value.split("\n")[0] });
+  });
+  [
+    ...text.matchAll(/<(ListFooter)(?=[\s>/])|\srole=(?:"status"|\{\s*["'`]status["'`]\s*\})/g)
+  ].forEach((match) => {
+    const at = match.index ?? 0;
+    const start = match[1] ? at : text.lastIndexOf("<", at);
+    const name = text.slice(start + 1).match(/^[\w.]+/)?.[0];
+    if (!name || slots.some((slot) => slot.start < start && slot.end > start)) return;
+    const content = text.slice(jsxTagEnd(text, start) + 1, elementEnd(text, name, start));
+    if (shows(content))
+      found.push({
+        index: start,
+        text: text
+          .slice(start, jsxTagEnd(text, start) + 1)
+          .split("\n")[0]
+          .trim()
+      });
+  });
+  return found;
+};
+
+/** Tailwind has-* variants, including group-has, peer-has, not-has and arbitrary :has() variants. */
+export const hasVariants = (value: string): string[] =>
+  value
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token) => /(?:^|[:-])has-|:has\(/.test(splitVariant(token).variant));
+
+const splitTopLevel = (text: string, separator: RegExp) => {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  [...text].forEach((char, index) => {
+    if (char === "(" || char === "[") depth += 1;
+    else if (char === ")" || char === "]") depth -= 1;
+    else if (depth === 0 && separator.test(char)) {
+      parts.push(text.slice(start, index));
+      start = index + 1;
+    }
+  });
+  parts.push(text.slice(start));
+  return parts.map((part) => part.trim()).filter(Boolean);
+};
+
+/** Selectors in the list whose subject, the rightmost compound, names no class, attribute or id. */
+export const unscopedSubjects = (selector: string): string[] =>
+  splitTopLevel(selector, /,/).filter((part) => {
+    const subject =
+      splitTopLevel(part.replace(/:global\(([^()]*)\)/g, "$1"), /[\s>+~]/).pop() ?? "";
+    return !/[.[#]/.test(subject.replace(/::[\w-]+(\([^)]*\))?/g, ""));
+  });
+
+export const v4Checks: readonly V4Check[] = [
+  {
+    id: "has-selector",
+    rule: "no-has-selectors",
+    message:
+      "No :has() selector or Tailwind has-* variant. Chrome re-checks :has() on DOM changes far from the element, so one cell update in a large table relayouts the page. Set a data attribute from the component (props, context, or useDescendantFlags in lib/descendant-flags.ts) and select on that.",
+    appliesTo: isAuthored,
+    css: [/:has\(/g],
+    classString: hasVariants
+  },
+  {
+    id: "logical-inline-unscoped",
+    rule: "scoped-logical-inline",
+    message:
+      "The build lowers inset-inline and the logical corner radii into :lang() selectors for older browsers (margin and padding logical properties ship as they are). Give the rule's subject a class or attribute: a subject left with only :lang() is matched against every element on every style recalc.",
+    appliesTo: (file) => isAuthored(file) && isCss(file),
+    cssBlock: (selector, body) => {
+      if (!unscopedSubjects(selector).length) return [];
+      return [
+        ...body.matchAll(
+          /(?:^|;|\n)\s*((?:inset-inline(?:-start|-end)?|border-(?:start|end)-(?:start|end)-radius)\s*:[^;]+)/g
+        )
+      ].map((match) => match[1].trim());
+    }
+  },
+  {
+    id: "raw-color",
+    rule: "token-colors",
+    message: "Colour comes from a v4 token, not a hex, rgb/hsl literal or Tailwind palette class.",
+    appliesTo: isAuthored,
+    css: [/#[0-9a-fA-F]{3,8}\b(?![-\w])/g, /\b(?:rgba?|hsla?)\(\s*\d/g],
+    markup: [
+      /#[0-9a-fA-F]{3,8}\b(?![-\w])/g,
+      /\b(?:rgba?|hsla?)\(\s*\d/g,
+      new RegExp(
+        `\\b(?:${tailwindColorUtility})-(?:${tailwindPalette})(?:-\\d{2,3})?(?:/\\d{1,3})?(?![-\\w])`,
+        "g"
+      )
+    ]
+  },
+  {
+    id: "bare-border",
+    rule: "line-colored-borders",
+    message:
+      "A border width utility needs a v4 line colour for the same state in the same class string. A bare border falls back to the global gray.",
+    appliesTo: isAuthored,
+    classString: (value) => bareBorders(value)
+  },
+  {
+    id: "theme-name-branch",
+    rule: "theme-scheme",
+    message:
+      "Select light or dark by scheme, [data-scheme], not by theme name: a [data-theme] light or dark selector misses every other theme of that scheme.",
+    appliesTo: isAuthored,
+    css: [/\[data-theme=["']?(?:light|dark)["']?\]/g],
+    markup: [/\[data-theme=["']?(?:light|dark)["']?\]/g]
+  },
+  {
+    id: "line-on-edge",
+    rule: "line-roles",
+    message:
+      "A four-sided border is a surface edge, so it takes line-soft. Keep line for a standalone rule that touches no other border.",
+    appliesTo: isAuthored,
+    css: [/(?:^|[;{\s])border(?:-color)?\s*:[^;{}]*var\(--cipher-line\)/g],
+    classString: (value) =>
+      /(?:^|\s)border(?:-\d+)?(?=\s|$)/.test(value) &&
+      value.includes("border-[color:var(--cipher-line)]")
+        ? ["border-[color:var(--cipher-line)]"]
+        : []
+  },
+  {
+    id: "decorative-effect",
+    rule: "no-added-depth",
+    message:
+      "No added shadow or backdrop blur. Use the owned surface, or the shadow-raised and shadow-pop tokens.",
+    appliesTo: isAuthored,
+    css: [/(?:^|[;{\s])backdrop-filter\s*:/g],
+    markup: [
+      /(?<![-\w])shadow(?:-(?:xs|sm|md|lg|xl|2xl|\[[^\]]*\]))?(?![-\w])/g,
+      /\bdrop-shadow(?:-[\w[\]]+)?/g,
+      /\bbackdrop-blur(?:-\w+)?\b/g
+    ]
+  },
+  {
+    id: "transition-all",
+    rule: "named-transitions",
+    message:
+      "Name the properties that animate. transition: all also animates layout and colour you did not mean to move.",
+    appliesTo: isAuthored,
+    markup: [/\btransition-all\b/g],
+    css: [/transition(?:-property)?\s*:\s*all\b/g]
+  },
+  {
+    id: "motion-literal",
+    rule: "motion-tokens",
+    message:
+      "Time motion with the v4 duration and ease tokens, or the named springs and tweens in lib/motion.ts, not a literal duration, delay, easing curve or inline spring number.",
+    appliesTo: (file) => isAuthored(file) && !file.endsWith("lib/motion.ts"),
+    css: [
+      /(?<![\w.])(?!0*\.?0+m?s\b)\d*\.?\d+m?s\b/g,
+      /\bcubic-bezier\(/g,
+      /(?:transition|animation)[\w-]*\s*:[^;]*?\b(?:ease(?:-in-out|-in|-out)?|linear)\b(?![-(])/g
+    ],
+    markup: [
+      /\b(?:duration|delay)-(?:\d+\b|\[)/g,
+      /\bease-(?:linear|in-out|in|out)\b/g,
+      /\bease-\[/g,
+      /\bcubic-bezier\(/g,
+      /\b(?:transition|animation)\w*\s*:\s*["'`][^"'`]*?(?<![\w.])(?!0*\.?0+m?s\b)\d*\.?\d+m?s\b/g,
+      /\b(?:transition|animation)TimingFunction\s*:\s*["'`](?!var\()/g,
+      /\b(?:stiffness|damping|mass|bounce|duration|delay)\s*:\s*(?:[1-9]\d*|0?\.\d*[1-9])/g
+    ]
+  },
+  {
+    id: "arbitrary-geometry",
+    rule: "token-geometry",
+    message:
+      "No arbitrary Tailwind size, spacing or radius value. Use the component recipe or a v4 size, space or radius token.",
+    appliesTo: isAuthored,
+    markup: [
+      /\b(?:[mp][trblxyse]?|gap(?:-[xy])?|[wh]|min-[wh]|max-[wh]|size|rounded(?:-[trbl]{1,2})?|inset(?:-[xy])?|top|right|bottom|left|text|leading|tracking|basis|ring(?:-offset)?|outline|border(?:-[trblxy])?|translate-[xy]|grid-(?:cols|rows))-\[(?:min\(|max\(|calc\()?-?\d[^\]]*\]/g
+    ]
+  },
+  {
+    id: "icon-source",
+    rule: "one-icon-set",
+    message:
+      "Icons come from the v4 set through the v4 Icon component, with Lucide only for glyphs the set lacks. Do not import another icon library.",
+    appliesTo: isAuthored,
+    markup: [
+      /from\s+["'](?:react-icons[^"']*|@radix-ui\/react-icons|@heroicons\/[^"']+|@tabler\/icons[^"']*|@phosphor-icons\/[^"']+)["']/g
+    ]
+  },
+  {
+    id: "left-accent-bar",
+    rule: "no-left-accent-bars",
+    message:
+      "No left accent bar. Mark the state with a translucent tint over the whole row or surface plus a Badge or icon with text. Dividers and guides in line or line-soft are fine.",
+    appliesTo: isAuthored,
+    css: [
+      /box-shadow\s*:\s*inset\s+(?!-|0(?:px)?\s)[^\s;]+\s+0(?:px)?\s+0(?:px)?\s/g,
+      /border-(?:left|inline-start)(?:-color)?\s*:[^;]*var\(--cipher-(?!line\b|size-|space-)[\w-]+\)/g
+    ],
+    markup: [/\bborder-[ls](?:-\d+)?-\[color:var\(--cipher-(?!line\b)[\w-]+\)\]/g]
+  },
+  {
+    id: "row-action-reveal",
+    rule: "persistent-row-actions",
+    message:
+      "Row actions are persistent and live in the sticky actions column (DataTable rowActions, or TableActionsCell with RowActions). Nothing a hover or focus shows may change a cell's width or the row's layout.",
+    appliesTo: isAuthored,
+    markup: [
+      /<TableRowActions\b[^>]*\breveal\b/g,
+      /<TableRowIndicators\b[^>]*\bswap\b/g,
+      /\bdata-(?:reveal|swap)\b/g
+    ],
+    cssBlock: (selector, body) => {
+      if (!/:hover|:focus-within/.test(selector)) return [];
+      if (!/(?:^|[\s>+~,(])(?:tr|td|th)\b|row|table|cell/i.test(selector)) return [];
+      return [
+        ...body.matchAll(
+          /(?:^|;|\n)\s*((?:display|position|(?:min-|max-)?(?:width|inline-size)|flex(?:-basis)?|margin(?:-[\w-]+)?|padding(?:-[\w-]+)?|gap)\s*:\s*[^;]+)/g
+        )
+      ].map((match) => match[1].trim());
+    }
+  },
+  {
+    id: "row-action-destructive-inline",
+    rule: "row-actions-destructive-in-more",
+    message:
+      "Delete, Remove, Revoke, Disable and other destructive row actions never sit in the inline actions. Put them last in the More menu, after a separator, with the destructive menu item variant.",
+    appliesTo: isAuthored,
+    source: destructiveInlineActions
+  },
+  {
+    id: "disabled-in-tooltip",
+    rule: "disabled-reason-tooltip",
+    message:
+      "A natively disabled Button gets no pointer or focus events, so a Tooltip around it never opens. Pass the reason as disabledReason, which keeps the Button focusable and shows the reason in its own tooltip.",
+    appliesTo: isAuthored,
+    source: disabledButtonsInTooltips
+  },
+  {
+    id: "tab-width",
+    rule: "tab-width",
+    message:
+      'Tabs and ToggleGroup size the list and its triggers together: width="full" stretches the track and every trigger to fill it, and the default width="content" fits both to the labels. Pass width instead of setting a width, flex or grow on the list, the track or a trigger, so a full-width track never holds content-width triggers.',
+    appliesTo: isAuthored,
+    cssBlock: tabWidthDeclarations,
+    source: tabWidthClasses
+  },
+  {
+    id: "trigger-start-aligned",
+    rule: "trigger-start-aligned",
+    message:
+      'A Button that opens a menu, popover or picker with a chevron uses layout="trigger": its label sits at the start and truncates and the chevron sits at the end, like SelectTrigger. Pass layout="trigger" and drop iconRight="chev-down" (the layout draws the chevron).',
+    appliesTo: isAuthored,
+    source: chevronTriggersWithoutLayout
+  },
+  {
+    id: "mono-named-entity",
+    rule: "mono-machine-values",
+    message:
+      "Mono is for machine values a person copies or compares character by character (secret keys, IDs, hashes, hosts, env var names, code). A name someone chose, such as a project, organization, environment, role, group, identity, folder or key name, stays in the sans: drop mono here.",
+    appliesTo: isAuthored,
+    source: monoOnNamedEntity
+  },
+  {
+    id: "nested-frame",
+    rule: "no-nested-frames",
+    message:
+      'A framed container never renders inside another framed container. Remove variant="framed": inside a framed Card, List, DataTable or CodeBlock, a Card, List or ApprovalQueue drops to its frameless treatment on its own.',
+    appliesTo: isMarkup,
+    source: nestedFrames
+  },
+  {
+    id: "page-css-frame",
+    rule: "page-boxes-from-primitives",
+    message:
+      "A page stylesheet never draws a four-sided border or an outline around a box: it cannot see the frame it lands in, so inside a framed Card, List or DataTable it nests a frame in a frame. Use a v4 primitive that reads the frame context (Card, Tile, List, CodeBlock), the frame's own section, or the tint shade. A box that stays bordered wherever it renders, such as a dropzone or a standalone tile, takes v4-check-ignore page-css-frame with the reason in a comment before the rule.",
+    appliesTo: (file) => isPage(file) && file.endsWith(".module.css"),
+    cssBlock: pageCssFrames
+  },
+  {
+    id: "interactive-tooltip",
+    rule: "tooltip-pass-through",
+    message:
+      "A tooltip is pass-through: the pointer never reaches it and it closes when the pointer leaves the trigger, so a link, button, input or click handler inside it can never be used. Use HoverCard for content meant to be read, selected or copied, and Popover when it holds actions.",
+    appliesTo: isMarkup,
+    source: interactiveTooltipContent
+  },
+  {
+    id: "flat-hover",
+    rule: "translucent-hover",
+    message:
+      "Hover grounds use the shared overlay: background var(--cipher-hover) (var(--cipher-press) while pressed), translucent ink that lands on whatever sits underneath. Never paint a hovered element with a flat ground such as tint, surface or a literal color; where an opaque fill is needed, mix ink at var(--cipher-hover-mix) into that ground in srgb.",
+    appliesTo: isCss,
+    cssBlock: flatHoverBackgrounds
+  },
+  {
+    id: "dot-separator",
+    rule: "no-dot-separators",
+    message: "Separate details with words or layout, not a middle dot or bullet.",
+    appliesTo: isAuthored,
+    markup: [/\s[·•]\s/g]
+  },
+  {
+    id: "slash-separator",
+    rule: "breadcrumb-divider",
+    message:
+      "Breadcrumb draws its own vertical divider between crumbs from the crumb-divider tokens. Do not type a slash between crumbs.",
+    appliesTo: isAuthored,
+    markup: [/^\s*\/\s*$/g, /(?<!<code)>\s*\/\s*</g],
+    css: [/content\s*:\s*["']\/["']/g]
+  },
+  {
+    id: "cursor-pointer",
+    rule: "pointer-cursor-for-links",
+    message:
+      "Only links take the pointer cursor: a selector that names an anchor (a, [href], :any-link) or a link by name (.link, .rowLink, [data-row-link]). Buttons, triggers, menu and sidebar items, tabs, toggles and other styled controls keep the default cursor. An unstyled text button that reads as a link takes v4-check-ignore cursor-pointer with that reason.",
+    appliesTo: isAuthored,
+    cssBlock: pointerOutsideLinks,
+    source: (text) => [
+      ...classStringLiterals(text).flatMap(({ value, index }) =>
+        value
+          .split(/\s+/)
+          .filter((token) => splitVariant(token).utility === "cursor-pointer")
+          .map((token) => ({ index, text: token }))
+      ),
+      ...[...text.matchAll(/\bcursor\s*[:=]\s*\{?[^,;}\n]*?["'`]pointer["'`]/g)].map((match) => ({
+        index: match.index ?? 0,
+        text: match[0]
+      }))
+    ]
+  },
+  {
+    id: "row-activate-navigates",
+    rule: "row-navigation-link",
+    message:
+      "A row that navigates puts RowLink in its primary cell. onRowActivate is for opening a sheet or dialog in place; navigating from it loses new tab, copy link and the named link screen readers meet.",
+    appliesTo: isComposition,
+    source: navigatingRowActivations
+  },
+  {
+    id: "pagination-outside-frame",
+    rule: "pagination-in-frame",
+    message:
+      'A DataTable takes its Pagination through the pagination slot, with variant="compact", so it sits inside the frame below the rows. Never render it as a sibling after the table.',
+    appliesTo: isComposition,
+    source: paginationOutsideFrames
+  },
+  {
+    id: "row-actions-without-context-menu",
+    rule: "row-context-menu",
+    message:
+      "A hand-built TableRow with RowActions or a TableActionsCell is wrapped in RowContextMenu with the same label, inline actions and menu, so right-click and Shift+F10 open the row's actions like every DataTable row.",
+    appliesTo: isComposition,
+    source: rowsWithoutContextMenu
+  },
+  {
+    id: "raw-table-in-card",
+    rule: "detail-card-data-table",
+    message:
+      "A table inside a Card or SettingsCard is a DataTable, which embeds frameless and brings loading, empty and sort. The native Table is for the secrets matrix and for dialog and sheet internals.",
+    appliesTo: (file) =>
+      isComposition(file) && !file.startsWith("src/pages/v4/secret-manager/OverviewPage/"),
+    source: rawTablesInCards
+  },
+  {
+    id: "action-feedback-in-status",
+    rule: "toast-action-feedback",
+    message:
+      'Report an action result (copied, saved, deleted, moved, uploaded, failed) with a toast, never in a table or list status footer or a role="status" line. persistentStatus and footer hold state that must stay visible, such as Showing 5 of 120 after filter.',
+    appliesTo: isComposition,
+    source: actionFeedbackInStatus
+  },
+  {
+    id: "v4-path-literal",
+    rule: "v4-path-helper",
+    message:
+      "Build v4 links through the v4 path helpers, not a literal /v4 path, so moving v4 to the root at launch changes one module. Route definitions and the modules in v4PathModules may spell the prefix.",
+    appliesTo: (file) =>
+      isMarkup(file) &&
+      file.startsWith("src/pages/v4/") &&
+      !isRouteDefinition(file) &&
+      !v4PathModules.includes(file),
+    markup: [
+      /(?<!\bfrom\s*:\s*|\bgetRouteApi\(\s*)(["'`])\/v4(?=\/|\?|#|\$\{|\1)/g,
+      /\/\^?\\\/v4(?![\w-])/g
+    ]
+  },
+  {
+    id: "suspense-fallback",
+    rule: "page-loading",
+    message:
+      "A Suspense fallback is a Loader (size page for a page or a lazy page chunk) or Skeleton shapes for a known layout. Never a Spinner, bare status text or null.",
+    appliesTo: isAuthored,
+    markup: [/\bfallback=\{\s*(?:null\b|<(?!Loader\b|Skeleton\b)[\w.]+|["'`])/g]
+  }
+];
+
+const patternsFor = (check: V4Check, file: string): readonly RegExp[] => {
+  if (isCss(file)) return check.css ?? [];
+  if (isMarkup(file)) return check.markup ?? [];
+  return [];
+};
+
+const ignoreMarker = /v4-check-ignore\s+([\w-]+)\s+--\s+\S/;
+
+const skipped = (file: string) => file.endsWith(".test.ts") || file.endsWith(".test.tsx");
+
+export type Finding = { check: string; file: string; line: number; text: string };
+
+/** Scan one file's text. A line marked `v4-check-ignore <id> -- <reason>`, or the line after it, is exempt. */
+export const scanSource = (file: string, text: string): Finding[] => {
+  if (skipped(file)) return [];
+  const lines = text.split("\n");
+  const exemptLine = (line: number, id: string) =>
+    [lines[line - 1] ?? "", lines[line - 2] ?? ""].some(
+      (candidate) => candidate.match(ignoreMarker)?.[1] === id
+    );
+  const classStrings = isMarkup(file) ? classStringLiterals(text) : [];
+  return v4Checks
+    .filter((check) => check.appliesTo(file) && !check.exempt?.includes(file))
+    .flatMap((check) => {
+      const block = check.cssBlock;
+      if (block && isCss(file))
+        return [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap((match) => {
+          const selector = match[1].replace(/\/\*[\s\S]*?\*\//g, "").trim();
+          if (selector.startsWith("@")) return [];
+          const line = text.slice(0, (match.index ?? 0) + match[0].indexOf("{")).split("\n").length;
+          const markedRule = [...match[1].matchAll(new RegExp(ignoreMarker, "g"))].some(
+            (marker) => marker[1] === check.id
+          );
+          if (markedRule || exemptLine(line, check.id)) return [];
+          return block(selector, match[2]).map((found) => ({
+            check: check.id,
+            file,
+            line,
+            text: found
+          }));
+        });
+      const whole = check.source;
+      if (whole && isMarkup(file))
+        return whole(text).flatMap(({ index, text: match }) => {
+          const line = text.slice(0, index).split("\n").length;
+          if (exemptLine(line, check.id)) return [];
+          return [{ check: check.id, file, line, text: match }];
+        });
+      const judge = check.classString;
+      if (judge && isMarkup(file))
+        return classStrings.flatMap(({ value, index }) => {
+          const line = text.slice(0, index).split("\n").length;
+          if (exemptLine(line, check.id)) return [];
+          return judge(value).map((match) => ({ check: check.id, file, line, text: match }));
+        });
+      return lines.flatMap((lineText, index) => {
+        const exempt = [lineText, lines[index - 1] ?? ""].some(
+          (candidate) => candidate.match(ignoreMarker)?.[1] === check.id
+        );
+        if (exempt) return [];
+        return patternsFor(check, file).flatMap((pattern) =>
+          [...lineText.matchAll(pattern)].map((match) => ({
+            check: check.id,
+            file,
+            line: index + 1,
+            text: match[0]
+          }))
+        );
+      });
+    });
+};
+
+const root = path.resolve(import.meta.dirname, "..");
+const scanRoots = ["src/pages/v4"];
+const baselinePath = path.join(root, "scripts/check-v4-baseline.json");
+
+const walk = (dir: string): string[] =>
+  readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
+    const relative = path.posix.join(dir, entry.name);
+    if (entry.isDirectory()) return walk(relative);
+    return /\.(tsx?|css)$/.test(entry.name) ? [relative] : [];
+  });
+
+export type Counts = Record<string, Record<string, number>>;
+
+const countFindings = (findings: Finding[]): Counts =>
+  findings.reduce<Counts>((counts, finding) => {
+    const byFile = counts[finding.check] ?? {};
+    return {
+      ...counts,
+      [finding.check]: { ...byFile, [finding.file]: (byFile[finding.file] ?? 0) + 1 }
+    };
+  }, {});
+
+const sorted = (counts: Counts): Counts =>
+  Object.fromEntries(
+    Object.keys(counts)
+      .sort()
+      .map((check) => [
+        check,
+        Object.fromEntries(Object.entries(counts[check]).sort(([a], [b]) => a.localeCompare(b)))
+      ])
+  );
+
+export const scanTree = (): Finding[] =>
+  scanRoots
+    .flatMap(walk)
+    .flatMap((file) => scanSource(file, readFileSync(path.join(root, file), "utf8")));
+
+/** Findings above the recorded per-file count for their check. The baseline may only shrink. */
+export const compareToBaseline = (findings: Finding[], baseline: Counts) => {
+  const current = countFindings(findings);
+  const grown = findings.filter(
+    (finding) =>
+      (current[finding.check]?.[finding.file] ?? 0) > (baseline[finding.check]?.[finding.file] ?? 0)
+  );
+  const shrunk = Object.entries(baseline).flatMap(([check, files]) =>
+    Object.entries(files)
+      .filter(([file, count]) => (current[check]?.[file] ?? 0) < count)
+      .map(([file, count]) => `${check} ${file}: ${count} -> ${current[check]?.[file] ?? 0}`)
+  );
+  return { current, grown, shrunk };
+};
+
+export const readBaseline = (): Counts | undefined =>
+  existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, "utf8")) : undefined;
+
+const writeBaseline = (counts: Counts) =>
+  writeFileSync(baselinePath, `${JSON.stringify(sorted(counts), null, 2)}\n`);
+
+const run = () => {
+  const update = process.argv.includes("--update");
+  const findings = scanTree();
+  const baseline = readBaseline();
+  if (!baseline) {
+    if (update) {
+      writeBaseline(countFindings(findings));
+      console.log(`Baseline recorded: ${findings.length} known finding(s).`);
+      return;
+    }
+    console.error(
+      `${path.relative(root, baselinePath)} is missing. Run with --update to record it.`
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const { current, grown, shrunk } = compareToBaseline(findings, baseline);
+
+  if (grown.length) {
+    const messages = new Map(
+      v4Checks.map((check) => [check.id, `${check.message} (rule ${check.rule})`])
+    );
+    grown.forEach((finding) =>
+      console.error(
+        `${finding.file}:${finding.line}  ${finding.check}  ${finding.text}\n  ${messages.get(finding.check)}`
+      )
+    );
+    console.error(
+      `\n${grown.length} finding(s) above the baseline. Fix them; the baseline only shrinks.`
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (update) {
+    writeBaseline(current);
+    console.log(`Baseline written: ${findings.length} known finding(s).`);
+    return;
+  }
+  if (shrunk.length) {
+    console.log(`Fixed since the baseline, run with --update to lock it in:\n${shrunk.join("\n")}`);
+  }
+  console.log(
+    `v4 checks pass: ${v4Checks.length} checks, ${findings.length} known finding(s) in the baseline.`
+  );
+};
+
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) run();

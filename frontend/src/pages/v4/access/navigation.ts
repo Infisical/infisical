@@ -1,0 +1,1 @@
+export { useGo } from "../links";

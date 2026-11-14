@@ -23,30 +23,15 @@ import {
   ChecklyConnectionMethod,
   TChecklyConnection
 } from "@app/hooks/api/appConnections/types/checkly-connection";
+import { checklyConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TChecklyConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Checkly)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(ChecklyConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiKey: z.string().trim().min(1, "Service API Key required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

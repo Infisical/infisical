@@ -36,35 +36,16 @@ import {
   HerokuConnectionMethod,
   THerokuConnection
 } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { herokuConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: THerokuConnection;
   onSubmit: (formData: FormData) => Promise<void>;
   projectId: string | undefined | null;
 };
-
-const formSchema = z.discriminatedUnion("method", [
-  genericAppConnectionFieldsSchema.extend({
-    app: z.literal(AppConnection.Heroku),
-    method: z.literal(HerokuConnectionMethod.AuthToken),
-    credentials: z.object({
-      authToken: z.string().min(1, "Auth token is required")
-    })
-  }),
-  genericAppConnectionFieldsSchema.extend({
-    app: z.literal(AppConnection.Heroku),
-    method: z.literal(HerokuConnectionMethod.OAuth),
-    credentials: z.object({
-      code: z.string().min(1, "Code is required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

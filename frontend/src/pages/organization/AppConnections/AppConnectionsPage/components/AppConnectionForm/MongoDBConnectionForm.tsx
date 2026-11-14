@@ -32,41 +32,15 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { useScopeVariant } from "@app/hooks";
 import { MongoDBConnectionMethod, TMongoDBConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { mongoDBConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TMongoDBConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.MongoDB)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(MongoDBConnectionMethod.UsernameAndPassword),
-    credentials: z.object({
-      host: z.string().trim().min(1, "Host required"),
-      port: z.coerce.number().default(27017),
-      username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().min(1, "Password required"),
-      database: z.string().trim().min(1, "Database required"),
-      tlsEnabled: z.boolean().default(false),
-      tlsRejectUnauthorized: z.boolean().default(true),
-      tlsCertificate: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

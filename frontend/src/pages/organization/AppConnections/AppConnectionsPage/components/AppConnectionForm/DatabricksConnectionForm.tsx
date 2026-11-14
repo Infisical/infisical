@@ -31,33 +31,15 @@ import {
   DatabricksConnectionScope,
   TDatabricksConnection
 } from "@app/hooks/api/appConnections/types/databricks-connection";
+import { databricksConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TDatabricksConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Databricks)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(DatabricksConnectionMethod.ServicePrincipal),
-    credentials: z.object({
-      workspaceUrl: z.string().url().trim().min(1, "Workspace URL required"),
-      clientId: z.string().trim().min(1, "Client ID required"),
-      clientSecret: z.string().trim().min(1, "Client secret required"),
-      scopes: z.nativeEnum(DatabricksConnectionScope).array().optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

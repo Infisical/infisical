@@ -1,0 +1,79 @@
+.blockedCheck {
+  display: inline-flex;
+}
+.muted {
+  color: var(--cipher-muted);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-8);
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bandSearch {
+  width: 280px;
+  max-width: 100%;
+}
+.roles {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+}
+.groupRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cipher-space-12);
+}
+.rowHint {
+  display: inline-flex;
+  color: var(--cipher-muted);
+  opacity: 0;
+  transition: opacity var(--cipher-duration-fast) var(--cipher-ease-fade);
+}
+tr:is(:hover, :focus-within) .rowHint {
+  opacity: 1;
+}
+.roleSelect {
+  display: block;
+  width: 100%;
+  max-width: 256px;
+}
+.roleSelect > span {
+  width: 100%;
+}
+.removeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-4);
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--cipher-space-12) var(--cipher-space-12) var(--cipher-space-12)
+    var(--cipher-space-24);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  list-style: disc;
+}
+.removeList > li > span {
+  margin-inline-end: var(--cipher-space-8);
+}
+.removeList > li[data-ignored] > span {
+  text-decoration: line-through;
+}
+button.rowHint {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+.linkBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-8);
+  margin-inline-start: var(--cipher-space-8);
+  vertical-align: middle;
+}

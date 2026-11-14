@@ -25,31 +25,15 @@ import {
   VenafiConnectionMethod,
   VenafiRegion
 } from "@app/hooks/api/appConnections/types/venafi-connection";
+import { venafiConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TVenafiConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Venafi)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(VenafiConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiKey: z.string().trim().min(1, "API Key required"),
-      region: z.nativeEnum(VenafiRegion)
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

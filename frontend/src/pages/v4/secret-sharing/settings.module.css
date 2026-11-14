@@ -1,0 +1,48 @@
+.grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.pair {
+  max-width: var(--cipher-size-measure-field);
+}
+.assets {
+  display: flex;
+  flex-direction: column;
+}
+.asset {
+  display: flex;
+  align-items: center;
+  gap: var(--cipher-space-12);
+  padding: var(--cipher-space-12) var(--cipher-space-16);
+}
+.asset + .asset {
+  border-top: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+}
+.assetPreview {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--cipher-size-control-lg);
+  height: var(--cipher-size-control-lg);
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  background: var(--cipher-inset);
+}
+.assetImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.swatch {
+  width: var(--cipher-size-nested-sm);
+  height: var(--cipher-size-nested-sm);
+  padding: 0;
+  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  background: none;
+}
+.swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.swatch::-webkit-color-swatch {
+  border: none;
+}

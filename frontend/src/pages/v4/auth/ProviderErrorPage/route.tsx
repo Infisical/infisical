@@ -1,0 +1,10 @@
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+
+import { ProviderErrorPage } from "./ProviderErrorPage";
+
+export const Route = createFileRoute("/v4/_v4-auth/login/provider/error")({
+  staticData: { readiness: "full" },
+  component: ProviderErrorPage,
+  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
+  errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
+});
