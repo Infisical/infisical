@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   DatabaseIcon,
@@ -130,16 +130,21 @@ const PermissionsTab = ({
   const { currentOrg } = useOrganization();
   const { user } = useUser();
   const navigate = useNavigate();
+  const matchRoute = useMatchRoute();
   const { data: accountMembers, isLoading: isLoadingAccount } = useListAccountMembers(accountId);
   const { data: folderMembers, isLoading: isLoadingFolder } = useListFolderMembers(folderId);
 
-  // Only the Accounts root page opens the folder sheet from the URL.
   const goToFolderPermissions = () => {
-    navigate({
-      to: "/organizations/$orgId/pam/accounts",
-      params: { orgId: currentOrg.id },
-      search: { folderId, tab: PamSheetTab.Permissions }
-    });
+    const search = { folderId, tab: PamSheetTab.Permissions };
+    if (matchRoute({ to: "/organizations/$orgId/pam/accounts/my-accounts" })) {
+      navigate({
+        to: "/organizations/$orgId/pam/accounts",
+        params: { orgId: currentOrg.id },
+        search
+      });
+      return;
+    }
+    navigate({ to: ".", search });
   };
   const { data: resourceRoles } = useListPamResourceRoles();
   const { userMap } = usePamProductUsers();
