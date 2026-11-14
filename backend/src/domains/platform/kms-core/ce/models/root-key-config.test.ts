@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
+import { StateConflictError } from "@app/domains/lib/errors";
+
 import {
   KMS_ROOT_CONFIG_UUID,
   RootKeyConfig,
@@ -341,6 +343,7 @@ describe("RootKeyConfig.assertNamed", () => {
     expect(result).toThrow(
       "The staged encryption key is 'abc', not 'xyz'. Someone else staged a key after you loaded this page. Re-read the current state before discarding."
     );
+    expect(result).toThrow(StateConflictError);
   });
 
   test("should refuse another label on a retained row, naming both", () => {
@@ -354,6 +357,7 @@ describe("RootKeyConfig.assertNamed", () => {
     expect(result).toThrow(
       "The previous encryption key is 'abc', not 'xyz'. Another rotation has taken effect since you loaded this page. Re-read the current state before removing it."
     );
+    expect(result).toThrow(StateConflictError);
   });
 
   test("should refuse to name a row that has no label", () => {
@@ -462,6 +466,7 @@ describe("RootKeyConfig.assertWrappedAs", () => {
 
     // Assert
     expect(result).toThrow("The active root key changed while this request was in flight");
+    expect(result).toThrow(StateConflictError);
   });
 
   test("should accept the same wrapped key", () => {

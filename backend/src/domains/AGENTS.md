@@ -279,8 +279,9 @@ maps them at the HTTP boundary.
 
 | Kind                  | Throw when                                                                                                                   | HTTP |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---- |
-| `RuleViolationError`  | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan, a conflict           | 400  |
+| `RuleViolationError`  | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan                       | 400  |
 | `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404  |
+| `StateConflictError`  | The request is valid, but the current state prevents it: the name is taken, it is in use, or it changed since it was read    | 409  |
 | `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong                   | 500  |
 
 Who throws:

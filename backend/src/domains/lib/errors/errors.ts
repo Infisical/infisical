@@ -27,5 +27,9 @@ export class RuleViolationError extends DomainError {}
 
 export class EntityNotFoundError extends DomainError {}
 
+// The request is valid, but the current state prevents it: the thing is taken or in use, or it changed since the
+// caller read it. Reading it again and retrying may succeed.
+export class StateConflictError extends DomainError {}
+
 // Something we depend on failed. Nothing the caller sent is wrong.
 export class ExternalSystemError extends DomainError {}

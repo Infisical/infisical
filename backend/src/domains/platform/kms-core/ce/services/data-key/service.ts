@@ -1,4 +1,4 @@
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError, StateConflictError } from "@app/domains/lib/errors";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { logger } from "@app/lib/logger";
 
@@ -80,7 +80,7 @@ const findProjectKeyIn = async (stores: TKmsCoreStores, projectId: string): Prom
 // Only a writer that takes no lock (a pod of the previous release) can make a claim fail under the frozen locks.
 const assertClaimed = (claimed: boolean, what: string) => {
   if (!claimed) {
-    throw new RuleViolationError({
+    throw new StateConflictError({
       message: `The ${what} was set by another request while this one was running. Retry the request.`
     });
   }
@@ -216,7 +216,7 @@ export class DataKeyService implements TDataKeyService {
       if (isNewKey) await stores.kmsKeyStore.insert(target);
       const expectedKmsKeyId = projectKey.switchTo(target.id, sealed);
       if (!(await stores.projectKeyStore.switchKey(projectKey, expectedKmsKeyId))) {
-        throw new RuleViolationError({
+        throw new StateConflictError({
           message:
             "The project's KMS key changed while this request was in flight, so it was left unchanged. Retry the change."
         });

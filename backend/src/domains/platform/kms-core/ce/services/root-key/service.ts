@@ -1,4 +1,4 @@
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError, StateConflictError } from "@app/domains/lib/errors";
 import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
@@ -188,7 +188,7 @@ export class RootKeyService implements TRootKeyService {
       staged.assertNamed(label);
 
       if (!(await stores.rootKeyConfigStore.delete(staged.id))) {
-        throw new RuleViolationError({
+        throw new StateConflictError({
           message:
             "The key was applied by a running instance while this request was in flight, so it could not be discarded. There is no rollback once a rotation takes effect."
         });
@@ -215,7 +215,7 @@ export class RootKeyService implements TRootKeyService {
       }
 
       if (!(await removeRootKeyConfig(stores, retained))) {
-        throw new RuleViolationError({
+        throw new StateConflictError({
           message: "The previous encryption key was already removed while this request was in flight."
         });
       }

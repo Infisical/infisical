@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { RuleViolationError } from "@app/domains/lib/errors";
+import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 
 export enum RootKeyEncryptionStrategy {
   Software = "SOFTWARE",
@@ -173,13 +173,13 @@ export class RootKeyConfig {
   assertNamed(label: string): void {
     if (this.label === label) return;
     if (this.isStaged) {
-      throw new RuleViolationError({
+      throw new StateConflictError({
         message: this.label
           ? `The staged encryption key is '${this.label}', not '${label}'. Someone else staged a key after you loaded this page. Re-read the current state before discarding.`
           : "The staged encryption key carries no label to match against, so it cannot be named. Restart the instance to record one, then retry."
       });
     }
-    throw new RuleViolationError({
+    throw new StateConflictError({
       message: this.label
         ? `The previous encryption key is '${this.label}', not '${label}'. Another rotation has taken effect since you loaded this page. Re-read the current state before removing it.`
         : "The previous encryption key carries no label to match against, so it cannot be named. Restart the instance to record one, then retry."
@@ -219,7 +219,7 @@ export class RootKeyConfig {
   // A strategy change prepares its wrapped key before the transaction, so it must find the row it read unchanged.
   assertWrappedAs(encryptedRootKey: Buffer): void {
     if (!this.wrappedRootKey.equals(encryptedRootKey)) {
-      throw new RuleViolationError({
+      throw new StateConflictError({
         message:
           "The active root key changed while this request was in flight, so the encryption strategy was left unchanged. Retry the change."
       });

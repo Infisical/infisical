@@ -1,4 +1,4 @@
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { EntityNotFoundError, RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 
 import { RootKeyConfig, RootKeyEncryptionStrategy } from "./root-key-config";
 
@@ -76,7 +76,7 @@ export class RootKeyRing {
   // A key staged when the request was read can be applied by a running instance before the request gets its lock.
   assertStagedNotApplied(readEarlier: RootKeyRing): void {
     if (readEarlier.staged && !this.staged) {
-      throw new RuleViolationError({
+      throw new StateConflictError({
         message:
           "The staged key was applied by a running instance while this request was in flight, so it cannot be replaced. There is no rollback once a rotation takes effect."
       });

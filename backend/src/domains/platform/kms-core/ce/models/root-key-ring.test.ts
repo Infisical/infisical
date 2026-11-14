@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
+import { StateConflictError } from "@app/domains/lib/errors";
+
 import {
   KMS_ROOT_CONFIG_UUID,
   RootKeyConfig,
@@ -160,6 +162,7 @@ describe("RootKeyRing.assertStagedNotApplied", () => {
 
     // Assert
     expect(result).toThrow("The staged key was applied by a running instance while this request was in flight");
+    expect(result).toThrow(StateConflictError);
   });
 
   test("should accept when the staged key is still there or none was seen", () => {
