@@ -1,7 +1,9 @@
 import { type ReactNode, useState } from "react";
 import { useScheme } from "@infisical/cipher/scope";
+import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Steps } from "@infisical/cipher/ui/multi-step";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import {
   Sheet,
   SheetBody,
@@ -98,7 +100,27 @@ export function WizardSheet({
               </nav>
               <div className={styles.wizardMain}>
                 <div className={styles.stepHead}>
-                  <h3 className={styles.stepHeading}>{heading}</h3>
+                  <div className={styles.stepTitleRow}>
+                    <h3 className={styles.stepHeading}>{heading}</h3>
+                    {aside && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="xs"
+                            icon="info"
+                            className={styles.asideToggle}
+                          >
+                            About this step
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className={styles.asidePopover}>
+                          {aside}
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </div>
                   {subtitle && <p className={styles.stepSubtitle}>{subtitle}</p>}
                 </div>
                 {children}

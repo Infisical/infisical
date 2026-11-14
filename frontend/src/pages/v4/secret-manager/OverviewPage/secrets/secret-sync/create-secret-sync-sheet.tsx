@@ -20,7 +20,9 @@ import {
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DataTable } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -332,47 +334,37 @@ export function SourceFields({
   );
 }
 
-type Fate = "added" | "removed" | "updated" | "imported";
-type DiagramRow = { name: string; fate?: Fate };
+type SyncState = "unchanged" | "updated" | "added" | "imported" | "removed" | "absent";
+type ExampleRow = { key: string; infisical: SyncState; destination: SyncState };
 type Variant = "overwrite" | "prioritize-infisical" | "prioritize-destination";
 
-const FATE_LABEL: Record<Fate, string> = {
-  added: "added",
-  updated: "updated",
-  imported: "imported",
-  removed: "removed"
+const STATE_LABEL: Record<SyncState, string> = {
+  unchanged: "Unchanged",
+  updated: "Updated",
+  added: "Added",
+  imported: "Imported",
+  removed: "Removed",
+  absent: "Not present"
 };
-const BEFORE_INFISICAL: DiagramRow[] = [{ name: "API_KEY" }, { name: "DB_URL" }];
-const BEFORE_DESTINATION: DiagramRow[] = [{ name: "API_KEY" }, { name: "LEGACY_TOKEN" }];
-const AFTER: Record<Variant, { infisical: DiagramRow[]; destination: DiagramRow[] }> = {
-  overwrite: {
-    infisical: [{ name: "API_KEY" }, { name: "DB_URL" }],
-    destination: [
-      { name: "API_KEY", fate: "updated" },
-      { name: "DB_URL", fate: "added" },
-      { name: "LEGACY_TOKEN", fate: "removed" }
-    ]
-  },
-  "prioritize-infisical": {
-    infisical: [
-      { name: "API_KEY" },
-      { name: "DB_URL" },
-      { name: "LEGACY_TOKEN", fate: "imported" }
-    ],
-    destination: [
-      { name: "API_KEY", fate: "updated" },
-      { name: "DB_URL", fate: "added" },
-      { name: "LEGACY_TOKEN" }
-    ]
-  },
-  "prioritize-destination": {
-    infisical: [
-      { name: "API_KEY", fate: "updated" },
-      { name: "DB_URL" },
-      { name: "LEGACY_TOKEN", fate: "imported" }
-    ],
-    destination: [{ name: "API_KEY" }, { name: "DB_URL", fate: "added" }, { name: "LEGACY_TOKEN" }]
-  }
+const EXAMPLE: Record<Variant, ExampleRow[]> = {
+  overwrite: [
+    { key: "API_KEY", infisical: "unchanged", destination: "updated" },
+    { key: "DB_URL", infisical: "unchanged", destination: "added" },
+    { key: "LEGACY_TOKEN", infisical: "absent", destination: "removed" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
+  ],
+  "prioritize-infisical": [
+    { key: "API_KEY", infisical: "unchanged", destination: "updated" },
+    { key: "DB_URL", infisical: "unchanged", destination: "added" },
+    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
+  ],
+  "prioritize-destination": [
+    { key: "API_KEY", infisical: "updated", destination: "unchanged" },
+    { key: "DB_URL", infisical: "unchanged", destination: "added" },
+    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
+  ]
 };
 
 const variantOf = (behavior: string): Variant => {
@@ -382,90 +374,76 @@ const variantOf = (behavior: string): Variant => {
   return "prioritize-destination";
 };
 
-function DiagramColumn({ label, rows }: { label: string; rows: DiagramRow[] }) {
+function DiagramColumn({ label, rows }: { label: string; rows: { name: string }[] }) {
   return (
     <div className={styles.diagramColumn}>
       <span className={flowStyles.eyebrow}>{label}</span>
       {rows.map((row) => (
-        <div key={row.name} className={styles.diagramRow} data-fate={row.fate}>
+        <div key={row.name} className={styles.diagramRow}>
           <span>{row.name}</span>
-          {row.fate && (
-            <span className={styles.fate} data-fate={row.fate}>
-              {FATE_LABEL[row.fate]}
-            </span>
-          )}
         </div>
       ))}
     </div>
   );
 }
 
-function DiagramSection({
-  title,
-  destinationName,
-  infisical,
-  destination
-}: {
-  title: string;
-  destinationName: string;
-  infisical: DiagramRow[];
-  destination: DiagramRow[];
-}) {
-  return (
-    <div className={styles.diagramSection}>
-      <div className={styles.diagramHead}>
-        <span className={flowStyles.label}>{title}</span>
-      </div>
-      <div className={styles.diagramColumns}>
-        <DiagramColumn label="Infisical" rows={infisical} />
-        <DiagramColumn label={destinationName} rows={destination} />
-      </div>
-    </div>
-  );
-}
+const STATE_WIDTH = 120;
+const isUnchanged = (row: ExampleRow) =>
+  row.infisical === "unchanged" && row.destination === "unchanged";
 
-function ReconciliationDiagram({
-  variant,
+const stateCell = (state: SyncState) =>
+  state === "unchanged" ? (
+    <span className={styles.unchangedMark}>
+      <Icon name="check" size={14} />
+      <span className={flowStyles.srOnly}>{STATE_LABEL.unchanged}</span>
+    </span>
+  ) : (
+    <span className={styles.syncState} data-state={state}>
+      {STATE_LABEL[state]}
+    </span>
+  );
+
+function InitialSyncExample({
+  rows,
+  title,
   destinationName
 }: {
-  variant: Variant;
+  rows: ExampleRow[];
+  title: string;
   destinationName: string;
 }) {
   return (
-    <div className={styles.diagram} aria-hidden="true">
-      <DiagramSection
-        title="Before"
-        destinationName={destinationName}
-        infisical={BEFORE_INFISICAL}
-        destination={BEFORE_DESTINATION}
+    <Card variant="framed" size="sm" flush title={<span title={title}>{title}</span>}>
+      <DataTable
+        label="What the first sync does to each secret"
+        rows={[...rows].sort((a, b) => Number(isUnchanged(a)) - Number(isUnchanged(b)))}
+        getRowId={(row) => row.key}
+        empty="Neither side has secrets yet"
+        rowLabel={(row) => row.key}
+        columns={[
+          {
+            id: "key",
+            header: "Key",
+            primary: true,
+            mono: true,
+            grow: true,
+            render: (row) => <span title={row.key}>{row.key}</span>
+          },
+          {
+            id: "infisical",
+            header: "Infisical",
+            width: STATE_WIDTH,
+            render: (row) => stateCell(row.infisical)
+          },
+          {
+            id: "destination",
+            header: destinationName,
+            width: STATE_WIDTH,
+            render: (row) => stateCell(row.destination)
+          }
+        ]}
       />
-      <div className={styles.diagramDivider}>
-        <Icon name="arrow-down" size="var(--cipher-size-icon-xs)" />
-        <span className={flowStyles.eyebrow}>First sync runs</span>
-      </div>
-      <DiagramSection
-        title="After"
-        destinationName={destinationName}
-        infisical={AFTER[variant].infisical}
-        destination={AFTER[variant].destination}
-      />
-      <div className={styles.legend}>
-        {(
-          [
-            [undefined, "unchanged"],
-            ["updated", "value updated"],
-            ["added", "added"],
-            ["imported", "imported"],
-            ["removed", "removed"]
-          ] as const
-        ).map(([fate, label]) => (
-          <span key={label} className={styles.legendItem}>
-            <span className={styles.swatch} data-fate={fate} />
-            <span className={flowStyles.eyebrow}>{label}</span>
-          </span>
-        ))}
-      </div>
-    </div>
+    </Card>
   );
 }
 
@@ -612,8 +590,9 @@ export function InitialSyncFields() {
             {field.value && (
               <Stack gap={8}>
                 <span className={flowStyles.eyebrow}>Example</span>
-                <ReconciliationDiagram
-                  variant={variantOf(field.value)}
+                <InitialSyncExample
+                  rows={EXAMPLE[variantOf(field.value)]}
+                  title={behaviorCopy(field.value, destinationName).title}
                   destinationName={destinationName}
                 />
               </Stack>
