@@ -32,7 +32,16 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
       (connection) => !ai.contextConnections.some((option) => option.id === connection.id)
     )
   ];
-  const selected = contextIds.flatMap((id) => options.find((option) => option.id === id) ?? []);
+  const selected = contextIds.map(
+    (id) =>
+      options.find((option) => option.id === id) ?? {
+        id,
+        name: "Unavailable connection",
+        app: "",
+        tools: []
+      }
+  );
+  const hasUnavailable = selected.some((connection) => !connection.app);
 
   // Jira is the only app with AI lookups so far; the picker offers to create one inline
   const creation = useOrgConnectionCreation<TAutoApprovalAiContextConnection>(
@@ -95,6 +104,11 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
         <p className="px-1.5 text-xs text-muted">
           The AI can only read from these connections, for example to look up a Jira ticket.
         </p>
+        {hasUnavailable && (
+          <p className="px-1.5 text-xs text-muted">
+            Connection unavailable. You may not have access to it.
+          </p>
+        )}
       </div>
       <Alert variant="warning" className="py-1.5">
         <TriangleAlert />
