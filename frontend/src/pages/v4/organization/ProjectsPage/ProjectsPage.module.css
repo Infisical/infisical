@@ -1,25 +1,44 @@
 .productCard {
-  isolation: isolate;
+  overflow: clip;
 }
-.productCard > :global([data-slot="card-header"]) {
+.productCard.productCard[data-stretched-link]:hover {
+  background-image: linear-gradient(var(--cipher-sidebar-hover), var(--cipher-sidebar-hover));
+}
+.productCard > :global([data-slot="card-footer"]) {
   position: relative;
-}
-.halftoneCorner {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: 0;
-  z-index: -1;
-  width: calc(20 * var(--cipher-size-halftone-cell));
-  pointer-events: none;
+  background: var(--cipher-tint);
 }
 .productCard:is(:hover, :focus-within) > :global([data-slot="card-footer"]) {
   border-top-color: var(--cipher-line);
 }
-.productIcon {
-  transition: color var(--cipher-duration-slow) var(--cipher-ease-fade);
-}
-:global([data-slot="card"]):is(:hover, :focus-within) .productIcon {
+.productTitle {
   color: var(--cipher-hue-icon);
+}
+.productTitle a {
+  color: inherit;
+}
+.productIcon {
+  color: color-mix(in oklab, var(--cipher-hue-icon) 55%, transparent);
+}
+.backdropIcon {
+  --backdrop-icon: 112px;
+  position: absolute;
+  inset-inline-end: calc(var(--backdrop-icon) / -3);
+  bottom: calc(100% - var(--backdrop-icon) / 3);
+  z-index: -1;
+  display: flex;
+  color: var(--cipher-hue-icon);
+  opacity: 0;
+  transform: scale(0.92);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition:
+    opacity var(--cipher-duration-slow) var(--cipher-ease-fade),
+    transform var(--cipher-duration-slow) var(--cipher-ease-standard);
+}
+.productCard:is(:hover, :focus-within) .backdropIcon {
+  opacity: 0.55;
+  transform: none;
 }
 .setUp {
   display: inline-flex;

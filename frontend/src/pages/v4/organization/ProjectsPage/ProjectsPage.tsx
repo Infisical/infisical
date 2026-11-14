@@ -133,17 +133,10 @@ export const ProjectsPage = () => {
                 key={product.type}
                 {...hueScope(product.hue)}
                 className={cn(styles.productCard, blocked.has(product.type) && styles.blocked)}
+                backdrop={<Halftone seed={product.type} />}
                 title={
-                  <Inline gap={8} align="center">
-                    <span className={styles.halftoneCorner}>
-                      <Halftone seed={product.type} reach={160} depth={1} />
-                    </span>
-                    <Icon
-                      name={product.icon}
-                      size={18}
-                      motion="draw"
-                      className={styles.productIcon}
-                    />
+                  <Inline gap={8} align="center" className={styles.productTitle}>
+                    <Icon name={product.icon} size={18} className={styles.productIcon} />
                     <CardLink disabled={blocked.has(product.type)} link={link}>
                       {product.label}
                     </CardLink>
@@ -152,14 +145,19 @@ export const ProjectsPage = () => {
                 }
                 description={product.blurb}
                 footer={
-                  stats ? (
-                    <ProductStats
-                      stats={statsFor(product.type, stats)}
-                      link={blocked.has(product.type) ? undefined : link}
-                    />
-                  ) : (
-                    <Skeleton width={240} height={12} />
-                  )
+                  <>
+                    <span className={styles.backdropIcon}>
+                      <Icon name={product.icon} size={112} />
+                    </span>
+                    {stats ? (
+                      <ProductStats
+                        stats={statsFor(product.type, stats)}
+                        link={blocked.has(product.type) ? undefined : link}
+                      />
+                    ) : (
+                      <Skeleton width={240} height={12} />
+                    )}
+                  </>
                 }
               />
             );
