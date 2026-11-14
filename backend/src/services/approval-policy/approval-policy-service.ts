@@ -1971,11 +1971,25 @@ export const approvalPolicyServiceFactory = ({
       if (hasReadPermission) return requests;
 
       const userGroupIds = await ctx.getUserGroupIds();
+      const reviewableRequests = requests.filter(
+        (request) =>
+          !$isRequester(request, actor) &&
+          request.steps.some((step) =>
+            step.approvers.some(
+              (approver) =>
+                (approver.type === ApproverType.User && approver.id === actor.id) ||
+                (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+            )
+          )
+      );
 
-      // Check each request's own scope, since a project-wide list (the Requests page and its pending badge) spans
-      // scopes the actor may have left.
+      // Check each named request's own scope, since a project-wide list (the Requests page and its pending badge)
+      // spans scopes the actor may have left. Only scopes of requests naming the actor are checked, because the
+      // request history can span every Application in the project and each check reads its memberships.
       const checkLiveApprover = resources[policyType]?.isLiveApprover;
-      const requestScopeIds = [...new Set(requests.flatMap((request) => (request.scopeId ? [request.scopeId] : [])))];
+      const requestScopeIds = [
+        ...new Set(reviewableRequests.flatMap((request) => (request.scopeId ? [request.scopeId] : [])))
+      ];
       const liveScopeIds = new Set(
         checkLiveApprover
           ? (
@@ -1987,18 +2001,13 @@ export const approvalPolicyServiceFactory = ({
             ).flat()
           : requestScopeIds
       );
+      const liveReviewableIds = new Set(
+        reviewableRequests
+          .filter((request) => !request.scopeId || liveScopeIds.has(request.scopeId))
+          .map((request) => request.id)
+      );
 
-      return requests.filter((request) => {
-        if ($isRequester(request, actor)) return true;
-        if (request.scopeId && !liveScopeIds.has(request.scopeId)) return false;
-        return request.steps.some((step) =>
-          step.approvers.some(
-            (approver) =>
-              (approver.type === ApproverType.User && approver.id === actor.id) ||
-              (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-          )
-        );
-      });
+      return requests.filter((request) => $isRequester(request, actor) || liveReviewableIds.has(request.id));
     })();
 
     if (visibleRequests.length > 0) {

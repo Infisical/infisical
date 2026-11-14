@@ -284,17 +284,27 @@ describe("certRequestApprovalResourceFactory live approver checks", () => {
     ).resolves.toBe(true);
   });
 
+  // The org group lookup is empty for a user who reaches a sub-org only through a linked group, so these pass none.
   it("treats a member through a group as a live approver", async () => {
-    const { resource } = setupMembership({ memberships: [{ actorGroupId: SECURITY_GROUP }] });
+    const { resource } = setupMembership({
+      memberships: [{ actorGroupId: SECURITY_GROUP }],
+      groupMembers: [{ userId: BOB, groupId: SECURITY_GROUP }]
+    });
 
     await expect(
-      resource.isLiveApprover!({
-        projectId: PROJECT_ID,
-        scopeId: APP_ID,
-        actor: actor(BOB),
-        userGroupIds: new Set([SECURITY_GROUP])
-      })
+      resource.isLiveApprover!({ projectId: PROJECT_ID, scopeId: APP_ID, actor: actor(BOB), userGroupIds: new Set() })
     ).resolves.toBe(true);
+  });
+
+  it("doesn't treat someone outside the Application's groups as a live approver", async () => {
+    const { resource } = setupMembership({
+      memberships: [{ actorGroupId: SECURITY_GROUP }],
+      groupMembers: [{ userId: ALICE, groupId: SECURITY_GROUP }]
+    });
+
+    await expect(
+      resource.isLiveApprover!({ projectId: PROJECT_ID, scopeId: APP_ID, actor: actor(BOB), userGroupIds: new Set() })
+    ).resolves.toBe(false);
   });
 
   it("doesn't treat someone removed from the Application as a live approver", async () => {
@@ -329,15 +339,18 @@ describe("certRequestApprovalResourceFactory live approver checks", () => {
     );
   });
 
-  it("lets a current member review", async () => {
-    const { resource } = setupMembership({ memberships: [{ actorGroupId: SECURITY_GROUP }] });
+  it("lets a named user review who is still in the Application through a group", async () => {
+    const { resource } = setupMembership({
+      memberships: [{ actorGroupId: SECURITY_GROUP }],
+      groupMembers: [{ userId: BOB, groupId: SECURITY_GROUP }]
+    });
 
     await expect(
       resource.assertCanReview!({
         request: appRequest,
         decision: "rejected" as never,
         actor: actor(BOB),
-        userGroupIds: new Set([SECURITY_GROUP])
+        userGroupIds: new Set()
       })
     ).resolves.toBeUndefined();
   });

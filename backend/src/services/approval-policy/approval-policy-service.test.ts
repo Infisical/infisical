@@ -378,16 +378,17 @@ describe("approvalPolicyService.listRequests for an approver removed from the Ap
     steps: [{ stepNumber: 1, requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: BOB }], approvals: [] }]
   });
 
-  const buildListService = () => {
+  const buildListService = (extraRequests: object[] = []) => {
     const noRead = createMongoAbility([]);
+    const membershipFind = vi.fn().mockResolvedValue([{ actorUserId: ALICE, actorGroupId: null, isActive: true }]);
     const certRequestResource = certRequestApprovalResourceFactory({
       approvalPolicyDAL: { findByProjectId: vi.fn() },
-      membershipDAL: { find: vi.fn().mockResolvedValue([{ actorUserId: ALICE, actorGroupId: null, isActive: true }]) },
+      membershipDAL: { find: membershipFind },
       userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
       pkiApplicationProfileDAL: { findByApplicationId: vi.fn() },
       certificateProfileDAL: { find: vi.fn() }
     } as never);
-    return approvalPolicyServiceFactory({
+    const service = approvalPolicyServiceFactory({
       approvalPolicyDAL: {
         find: vi.fn().mockResolvedValue([]),
         findBypassersByPolicyIds: vi.fn().mockResolvedValue({})
@@ -397,7 +398,8 @@ describe("approvalPolicyService.listRequests for an approver removed from the Ap
           .fn()
           .mockResolvedValue([
             pendingRequestNaming(REQUEST_ID, { scopeType: ApprovalPolicyScope.PkiApplication, scopeId: APP_ID }),
-            pendingRequestNaming(LEGACY_REQUEST_ID, { scopeType: null, scopeId: null })
+            pendingRequestNaming(LEGACY_REQUEST_ID, { scopeType: null, scopeId: null }),
+            ...extraRequests
           ])
       },
       approvalRequestGrantsDAL: { find: vi.fn().mockResolvedValue([]) },
@@ -409,10 +411,11 @@ describe("approvalPolicyService.listRequests for an approver removed from the Ap
       userGroupMembershipDAL: { findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]) },
       resources: { [ApprovalPolicyType.CertRequest]: certRequestResource }
     } as never);
+    return { service, membershipFind };
   };
 
   it("drops the Application's requests from the project-wide list (Requests page and pending badge)", async () => {
-    const { requests } = await buildListService().listRequests(
+    const { requests } = await buildListService().service.listRequests(
       ApprovalPolicyType.CertRequest,
       ApprovalPolicyScope.Project,
       PROJECT_ID,
@@ -420,5 +423,39 @@ describe("approvalPolicyService.listRequests for an approver removed from the Ap
     );
 
     expect(requests.map((request) => request.id)).toEqual([LEGACY_REQUEST_ID]);
+  });
+
+  it("reads memberships only for Applications whose requests name the caller as an approver", async () => {
+    const OTHER_APP_ID = "5a0c6d2e-9f13-4b8a-a1c2-3d4e5f6a7b07";
+    const OWN_APP_ID = "5a0c6d2e-9f13-4b8a-a1c2-3d4e5f6a7b08";
+    const { service, membershipFind } = buildListService([
+      {
+        ...pendingRequestNaming("5a0c6d2e-9f13-4b8a-a1c2-3d4e5f6a7b09", {
+          scopeType: ApprovalPolicyScope.PkiApplication,
+          scopeId: OTHER_APP_ID
+        }),
+        steps: [
+          { stepNumber: 1, requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: ALICE }], approvals: [] }
+        ]
+      },
+      {
+        ...pendingRequestNaming("5a0c6d2e-9f13-4b8a-a1c2-3d4e5f6a7b10", {
+          scopeType: ApprovalPolicyScope.PkiApplication,
+          scopeId: OWN_APP_ID
+        }),
+        requesterId: BOB
+      }
+    ]);
+
+    const { requests } = await service.listRequests(
+      ApprovalPolicyType.CertRequest,
+      ApprovalPolicyScope.Project,
+      PROJECT_ID,
+      actorFor(BOB)
+    );
+
+    expect(requests.map((request) => request.id)).toEqual([LEGACY_REQUEST_ID, "5a0c6d2e-9f13-4b8a-a1c2-3d4e5f6a7b10"]);
+    expect(membershipFind).toHaveBeenCalledTimes(1);
+    expect(membershipFind).toHaveBeenCalledWith(expect.objectContaining({ scopeResourceId: APP_ID }));
   });
 });

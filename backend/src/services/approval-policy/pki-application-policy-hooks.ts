@@ -35,26 +35,23 @@ const findActiveApplicationMemberships = async (
 };
 
 // A request snapshots its approvers when it is raised, and removing a member from the Application only edits the
-// policy, so the snapshot alone would let a removed member decide requests that were already pending.
+// policy, so the snapshot alone would let a removed member decide requests that were already pending. Group
+// membership is read from the Application's own groups rather than the actor's org groups: a user who reaches a
+// sub-org only through a linked group has no org membership row there, so their org group lookup comes back empty.
 const holdsApplicationMembership = async (
-  membershipDAL: TPkiApplicationPolicyHooksDep["membershipDAL"],
   {
-    projectId,
-    applicationId,
-    userId,
-    userGroupIds
-  }: {
-    projectId: string;
-    applicationId: string;
-    userId: string;
-    userGroupIds: Set<string>;
-  }
+    membershipDAL,
+    userGroupMembershipDAL
+  }: Pick<TPkiApplicationPolicyHooksDep, "membershipDAL" | "userGroupMembershipDAL">,
+  { projectId, applicationId, userId }: { projectId: string; applicationId: string; userId: string }
 ) => {
   const memberships = await findActiveApplicationMemberships(membershipDAL, projectId, applicationId);
-  return memberships.some(
-    (membership) =>
-      membership.actorUserId === userId || Boolean(membership.actorGroupId && userGroupIds.has(membership.actorGroupId))
-  );
+  if (memberships.some((membership) => membership.actorUserId === userId)) return true;
+
+  const groupIds = memberships.flatMap((membership) => (membership.actorGroupId ? [membership.actorGroupId] : []));
+  if (groupIds.length === 0) return false;
+  const viaGroup = await userGroupMembershipDAL.find({ $in: { userId: [userId], groupId: groupIds } });
+  return viaGroup.length > 0;
 };
 
 // Certificate approval policies scoped to a PKI Application match on profile slugs and take their approvers from the
@@ -97,18 +94,19 @@ export const pkiApplicationPolicyHooksFactory = ({
     });
   },
 
-  isLiveApprover: async ({ projectId, scopeId, actor, userGroupIds }) =>
-    holdsApplicationMembership(membershipDAL, { projectId, applicationId: scopeId, userId: actor.id, userGroupIds }),
+  isLiveApprover: async ({ projectId, scopeId, actor }) =>
+    holdsApplicationMembership(
+      { membershipDAL, userGroupMembershipDAL },
+      { projectId, applicationId: scopeId, userId: actor.id }
+    ),
 
-  assertCanReview: async ({ request, actor, userGroupIds }) => {
+  assertCanReview: async ({ request, actor }) => {
     if (request.scopeType !== ApprovalPolicyScope.PkiApplication || !request.scopeId) return;
 
-    const isMember = await holdsApplicationMembership(membershipDAL, {
-      projectId: request.projectId,
-      applicationId: request.scopeId,
-      userId: actor.id,
-      userGroupIds
-    });
+    const isMember = await holdsApplicationMembership(
+      { membershipDAL, userGroupMembershipDAL },
+      { projectId: request.projectId, applicationId: request.scopeId, userId: actor.id }
+    );
     if (!isMember) {
       throw new ForbiddenRequestError({
         message: "You can't review this request because you're no longer a member of its Application."
