@@ -26,6 +26,11 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import {
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
+} from "@app/helpers/agentVaultControlChars";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import {
   findVariableReferences,
@@ -37,15 +42,17 @@ import {
   AgentVaultVariableReferenceField,
   AgentVaultVariableScope,
   TAgentVaultMemberProvidedField,
+  useConnectAgentVaultPersonalOauth,
   useDeleteAgentVaultPersonalValues,
-  useGetAgentVaultAccessBundle,
+  useGetAgentVaultService,
   useListAgentVaultVariables,
   useSetAgentVaultPersonalValues
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService, TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
+import { PersonalOAuthConnection } from "./PersonalOAuthConnection";
 import { SecretInput } from "./service-sheet/CredentialFields";
-import { TServiceForm } from "./service-sheet/serviceSchema";
+import { hostOf, hostPatternOf, serverUrlOf, TServiceForm } from "./service-sheet/serviceSchema";
 import {
   NO_MISSING_KEYS,
   NO_STORED_KEYS,
@@ -53,13 +60,6 @@ import {
 } from "./service-sheet/ServiceVariablesContext";
 import { VariableKeyChips } from "./service-sheet/VariableChips";
 import { VariableFormDialog } from "./VariableFormDialog";
-
-// Mirrors AGENT_VAULT_NO_CONTROL_CHARS_RE on the backend.
-// eslint-disable-next-line no-control-regex
-const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
-
-const CONTROL_CHARS_MESSAGE =
-  "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
 // The fields reuse the service sheet's secret input, which names them as the sheet does: a token or a basic
 // password is `secret`.
@@ -110,7 +110,8 @@ const buildSchema = (
         if (!savedFields.has(field)) at("Required");
       } else if (value.length > maxLength) {
         at(`This can be at most ${maxLength} characters.`);
-      } else if (!NO_CONTROL_CHARS_RE.test(value)) at(CONTROL_CHARS_MESSAGE);
+      } else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(value))
+        at(AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
       else {
         // Only once the list has loaded: until then no key can be called missing.
         const missingKeys = keys
@@ -123,7 +124,7 @@ const buildSchema = (
   });
 };
 
-export type TPersonalValuesTarget = { service: TAgentVaultService; accessBundleName: string };
+export type TPersonalValuesTarget = { service: TAgentVaultService };
 
 type Props = {
   target: TPersonalValuesTarget | null;
@@ -135,20 +136,23 @@ type Props = {
  * so ones already set are replaced in full by typing them again.
  */
 export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
+  const { projectId } = useProject();
   const isOpen = Boolean(target);
-  // Read from the bundle query rather than the copy the dialog opened with, so a refetch after an admin changes the
+  // Read from the service query rather than the copy the dialog opened with, so a refetch after an admin changes the
   // service (a save answered 409) shows the service as it is now.
-  const { data: liveBundle } = useGetAgentVaultAccessBundle(
-    isOpen ? (target?.service.accessBundleId ?? "") : ""
+  const { data: liveService } = useGetAgentVaultService(
+    projectId,
+    isOpen ? (target?.service.id ?? "") : ""
   );
-  const service =
-    liveBundle?.services.find((candidate) => candidate.id === target?.service.id) ??
-    target?.service;
+  const service = liveService ?? target?.service;
   const personalValues = service?.personalValues;
-  const setValues = useSetAgentVaultPersonalValues();
-  const deleteValues = useDeleteAgentVaultPersonalValues();
+  const setValues = useSetAgentVaultPersonalValues(projectId);
+  const connectOauth = useConnectAgentVaultPersonalOauth(projectId);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const deleteValues = useDeleteAgentVaultPersonalValues(projectId);
   // A member keeps at most MAX_PERSONAL_VARIABLES, so one page holds every one of them.
   const { data: variablePage } = useListAgentVaultVariables(
+    projectId,
     { scope: AgentVaultVariableScope.Personal, limit: MAX_PERSONAL_VARIABLES },
     { enabled: isOpen }
   );
@@ -232,8 +236,14 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     [missingKeys, variables, requestVariable]
   );
 
-  const template = service ? findTemplateForHostPattern(service.hostPattern) : undefined;
+  const hostPattern = service ? hostPatternOf(service) : null;
+  const template = hostPattern ? findTemplateForHostPattern(hostPattern) : undefined;
   const providerName = template?.name ?? service?.name;
+  // A service that leaves its OAuth sign-in to each member takes the caller's account rather than typed values.
+  const isOAuth = service?.credential.type === AgentVaultCredentialType.OAuth;
+  const oauthConnection = personalValues?.fields.find((entry) => entry.oauth)?.oauth ?? null;
+  const host = hostOf(serverUrlOf(service) ?? "");
+  const hasSavedValues = savedFields.size > 0 || Boolean(oauthConnection);
 
   const storedKeysOf = (field: TAgentVaultMemberProvidedField) =>
     (personalValues?.fields.find((entry) => entry.field === field)?.variableReferences ?? []).map(
@@ -248,7 +258,6 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     if (!service) return;
     try {
       await setValues.mutateAsync({
-        accessBundleId: service.accessBundleId,
         serviceId: service.id,
         credentialType: service.credential.type,
         // A blank field keeps its saved value, so only the ones typed are sent.
@@ -269,15 +278,30 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     }
   };
 
+  const saveConnection = async (authorizationId: string) => {
+    if (!service) return;
+    await connectOauth.mutateAsync({
+      serviceId: service.id,
+      credentialType: AgentVaultCredentialType.OAuth,
+      authorizationId
+    });
+    createNotification({
+      text: `Connected your ${host} account for ${service.name}`,
+      type: "success"
+    });
+    onOpenChange(false);
+  };
+
   const handleRemove = async () => {
     if (!service) return;
     try {
       await deleteValues.mutateAsync({
-        accessBundleId: service.accessBundleId,
         serviceId: service.id
       });
       createNotification({
-        text: `Personal values removed for ${service.name}`,
+        text: isOAuth
+          ? `Your ${host} account was disconnected from ${service.name}`
+          : `Personal values removed for ${service.name}`,
         type: "success"
       });
       setIsRemoveOpen(false);
@@ -287,117 +311,155 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     }
   };
 
+  // Values belong to the service, so they apply in every access bundle it's in.
+  let description = `Your sessions use your personal ${providerName} values in every access bundle with this service. Only you can read them.`;
+  if (isOAuth) {
+    description = `Your sessions use your own ${host} account in every access bundle with this service. Only your sessions can use this connection.`;
+  } else if (personalValues?.isConfigured && lastSetAt) {
+    description = `You set these up on ${format(new Date(lastSetAt), "MMM d, yyyy")}. Your sessions use them in every access bundle with this service. A field you leave blank keeps its saved value.`;
+  }
+
+  const removeButton = hasSavedValues ? (
+    <Button type="button" variant="danger" onClick={() => setIsRemoveOpen(true)}>
+      Remove
+    </Button>
+  ) : (
+    <span />
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent isPending={isSubmitting}>
+      <DialogContent
+        isPending={isSubmitting || setValues.isPending || connectOauth.isPending || isSigningIn}
+      >
         <DialogHeader>
           <DialogTitle>
             {personalValues?.isConfigured ? "Update" : "Set Up"} Personal Values for {service?.name}
           </DialogTitle>
-          <DialogDescription>
-            {personalValues?.isConfigured && lastSetAt
-              ? `You set these up on ${format(new Date(lastSetAt), "MMM d, yyyy")}. Sessions you start with ${target?.accessBundleName} use them. A field you leave blank keeps its saved value.`
-              : `Sessions you start with ${target?.accessBundleName} use your personal ${providerName} values. Only you can read them.`}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <FormProvider {...formMethods}>
-          <ServiceVariablesContext.Provider value={ownVariables}>
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              {fields.map((field) => {
-                const label = fieldLabel(
-                  service?.credential.type ?? AgentVaultCredentialType.Bearer,
-                  field
-                );
-                const storedKeys = storedKeysOf(field);
-                return (
-                  <Controller
-                    key={field}
-                    control={control}
-                    name={FORM_FIELD_OF[field]}
-                    render={({ field: formField, fieldState }) => (
-                      <Field>
-                        <FieldLabel>
-                          {providerName} {label.toLowerCase()}
-                        </FieldLabel>
-                        <FieldContent>
-                          <SecretInput
-                            // The input is the service sheet's, typed against its form. This form names the
-                            // same two fields, so only the type differs.
-                            field={
-                              formField as unknown as ControllerRenderProps<
-                                TServiceForm,
-                                TFormField
-                              >
-                            }
-                            label={label}
-                            placeholder={
-                              savedFields.has(field)
-                                ? "Leave blank to keep your saved value"
-                                : "Enter a value or choose a variable"
-                            }
-                            isError={Boolean(fieldState.error)}
-                            isUntouched={false}
-                            hasStoredSecret={false}
-                            canBeCleared={false}
-                            canInsertVariable
-                          />
-                          {savedFields.has(field) && storedKeys.length > 0 && (
-                            <FieldDescription className="flex flex-wrap items-center gap-1">
-                              Your current {label.toLowerCase()} uses
-                              <VariableKeyChips keys={storedKeys} />
-                            </FieldDescription>
-                          )}
-                          <FieldError>{fieldState.error?.message}</FieldError>
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                );
-              })}
+        {isOAuth && service && (
+          <div className="flex flex-col gap-4">
+            <PersonalOAuthConnection
+              service={service}
+              connection={oauthConnection}
+              isSaving={connectOauth.isPending}
+              onAuthorized={saveConnection}
+              onWaitingChange={setIsSigningIn}
+            />
+            <DialogFooter className="sm:justify-between">
+              {removeButton}
+              <Button
+                type="button"
+                variant="ghost"
+                isDisabled={isSigningIn}
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
 
-              <DialogFooter className="sm:justify-between">
-                {savedFields.size > 0 ? (
-                  <Button type="button" variant="danger" onClick={() => setIsRemoveOpen(true)}>
-                    Remove
-                  </Button>
-                ) : (
-                  <span />
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    isDisabled={isSubmitting}
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="av"
-                    isPending={isSubmitting}
-                    // Every field is saved and none was typed, so there is nothing to send.
-                    isDisabled={fields.every(
-                      (field) =>
-                        savedFields.has(field) && !(formValues[FORM_FIELD_OF[field]] ?? "").trim()
-                    )}
-                  >
-                    Save
-                  </Button>
-                </div>
-              </DialogFooter>
-            </form>
-          </ServiceVariablesContext.Provider>
-        </FormProvider>
+        {!isOAuth && (
+          <FormProvider {...formMethods}>
+            <ServiceVariablesContext.Provider value={ownVariables}>
+              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                {fields.map((field) => {
+                  const label = fieldLabel(
+                    service?.credential.type ?? AgentVaultCredentialType.Bearer,
+                    field
+                  );
+                  const storedKeys = storedKeysOf(field);
+                  return (
+                    <Controller
+                      key={field}
+                      control={control}
+                      name={FORM_FIELD_OF[field]}
+                      render={({ field: formField, fieldState }) => (
+                        <Field>
+                          <FieldLabel>
+                            {providerName} {label.toLowerCase()}
+                          </FieldLabel>
+                          <FieldContent>
+                            <SecretInput
+                              // The input is the service sheet's, typed against its form. This form names the
+                              // same two fields, so only the type differs.
+                              field={
+                                formField as unknown as ControllerRenderProps<
+                                  TServiceForm,
+                                  TFormField
+                                >
+                              }
+                              label={label}
+                              placeholder={
+                                savedFields.has(field)
+                                  ? "Leave blank to keep your saved value"
+                                  : "Enter a value or choose a variable"
+                              }
+                              isError={Boolean(fieldState.error)}
+                              isUntouched={false}
+                              hasStoredSecret={false}
+                              canBeCleared={false}
+                              canInsertVariable
+                            />
+                            {savedFields.has(field) && storedKeys.length > 0 && (
+                              <FieldDescription className="flex flex-wrap items-center gap-1">
+                                Your current {label.toLowerCase()} uses
+                                <VariableKeyChips keys={storedKeys} />
+                              </FieldDescription>
+                            )}
+                            <FieldError>{fieldState.error?.message}</FieldError>
+                          </FieldContent>
+                        </Field>
+                      )}
+                    />
+                  );
+                })}
+
+                <DialogFooter className="sm:justify-between">
+                  {removeButton}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      isDisabled={isSubmitting}
+                      onClick={() => onOpenChange(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="av"
+                      isPending={isSubmitting}
+                      // Every field is saved and none was typed, so there is nothing to send.
+                      isDisabled={fields.every(
+                        (field) =>
+                          savedFields.has(field) && !(formValues[FORM_FIELD_OF[field]] ?? "").trim()
+                      )}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </form>
+            </ServiceVariablesContext.Provider>
+          </FormProvider>
+        )}
 
         <AlertDialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Remove your personal {service?.name} values?</AlertDialogTitle>
+              <AlertDialogTitle>
+                {isOAuth
+                  ? `Disconnect your ${host} account?`
+                  : `Remove your personal ${service?.name} values?`}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Until you set them up again, your sessions can&apos;t reach {service?.name}. Your
-                variables are kept.
+                {isOAuth
+                  ? `Until you connect again, your sessions can't reach ${service?.name}.`
+                  : `Until you set them up again, your sessions can't reach ${service?.name}. Your variables are kept.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -410,7 +472,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
                 isPending={deleteValues.isPending}
                 onClick={handleRemove}
               >
-                Remove Personal Values
+                {isOAuth ? "Disconnect Account" : "Remove Personal Values"}
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>

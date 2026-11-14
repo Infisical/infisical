@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import {
   availableUsersUrl,
   groupMembershipsBase,
+  isCertManagerProject,
   userMembershipsBase
 } from "@app/hooks/api/certManagerAccess";
 
@@ -27,12 +28,15 @@ import { projectKeys } from "./query-keys";
 import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,
+  DeletedProject,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
+  PermanentlyDeleteProjectDTO,
   Project,
   ProjectEnv,
   ProjectType,
   RestoreEnvironmentDTO,
+  RestoreProjectDTO,
   TGetIdentityPermissionAuditResponse,
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
@@ -226,6 +230,10 @@ export const createWorkspace = (
   return apiRequest.post("/api/v1/projects", dto);
 };
 
+// Org product stats include project counts, so creating, deleting or restoring a project refreshes them.
+const isOrgProductStatsQuery = (query: { queryKey: readonly unknown[] }) =>
+  query.queryKey[1] === "organization-product-stats";
+
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
@@ -242,6 +250,7 @@ export const useCreateWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getAllUserProjects()
       });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
     }
   });
 };
@@ -306,8 +315,10 @@ export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<Project, object, DeleteWorkspaceDTO>({
-    mutationFn: async ({ projectID }) => {
-      const { data } = await apiRequest.delete(`/api/v1/projects/${projectID}`);
+    mutationFn: async ({ projectID, hardDelete }) => {
+      const { data } = await apiRequest.delete(`/api/v1/projects/${projectID}`, {
+        params: hardDelete ? { hardDelete: true } : undefined
+      });
       return data.project;
     },
     onSuccess: () => {
@@ -315,6 +326,52 @@ export const useDeleteWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
       });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
+    }
+  });
+};
+
+export const useGetDeletedProjects = (type?: ProjectType, options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: projectKeys.getDeletedProjects(type),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ projects: DeletedProject[] }>(
+        "/api/v1/projects/deleted",
+        { params: { type } }
+      );
+      return data.projects;
+    },
+    ...options
+  });
+
+export const usePermanentlyDeleteProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Project, object, PermanentlyDeleteProjectDTO>({
+    mutationFn: async ({ projectId }) => {
+      const { data } = await apiRequest.delete(`/api/v1/projects/deleted/${projectId}`);
+      return data.project;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
+    }
+  });
+};
+
+export const useRestoreProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Project, object, RestoreProjectDTO>({
+    mutationFn: async ({ projectId }) => {
+      const { data } = await apiRequest.post(`/api/v1/projects/${projectId}/restore`);
+      return data.project;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
+      queryClient.invalidateQueries({
+        queryKey: ["org-admin-projects"]
+      });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
     }
   });
 };
@@ -510,7 +567,8 @@ export const useDeleteUserFromWorkspace = () => {
       const {
         data: { deletedMembership }
       } = await apiRequest.delete(userMembershipsBase(projectType, projectId), {
-        data: { usernames }
+        data: { usernames },
+        params: isCertManagerProject(projectType) ? { projectId } : undefined
       });
       return deletedMembership;
     },
@@ -634,6 +692,7 @@ export const useListWorkspaceCertificates = ({
   forPkiSync,
   search,
   status,
+  includeDeleted,
   profileIds,
   fromDate,
   toDate,
@@ -662,6 +721,7 @@ export const useListWorkspaceCertificates = ({
   forPkiSync?: boolean;
   search?: string;
   status?: string | string[];
+  includeDeleted?: boolean;
   profileIds?: string[];
   fromDate?: Date;
   toDate?: Date;
@@ -692,6 +752,7 @@ export const useListWorkspaceCertificates = ({
       forPkiSync,
       search,
       status,
+      includeDeleted,
       profileIds,
       fromDate,
       toDate,
@@ -725,6 +786,7 @@ export const useListWorkspaceCertificates = ({
           ...(forPkiSync && { forPkiSync }),
           ...(search && { search }),
           ...(status && { status: Array.isArray(status) ? status.join(",") : status }),
+          ...(includeDeleted && { includeDeleted }),
           ...(profileIds && profileIds.length > 0 && { profileIds }),
           ...(fromDate && { fromDate: fromDate.toISOString() }),
           ...(toDate && { toDate: toDate.toISOString() }),

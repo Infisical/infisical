@@ -61,6 +61,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
+import { CopyIdMenuItem } from "../../components/CopyIdMenuItem";
 import { LaunchSessionSheet } from "../../components/LaunchSessionSheet";
 import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
 import { RequestAccessSheet } from "../../components/RequestAccessSheet";
@@ -240,6 +241,7 @@ export const PamFolderPage = () => {
                 </IconButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" sideOffset={4} className="min-w-48">
+                <CopyIdMenuItem id={folderId} />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div>
@@ -291,9 +293,8 @@ export const PamFolderPage = () => {
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <IconButton
-                        variant="outline"
+                        variant={selectedAccountType ? "pam" : "outline"}
                         aria-label="Filter by account type"
-                        className={selectedAccountType ? "text-product-pam" : undefined}
                       >
                         <Filter />
                       </IconButton>
@@ -302,12 +303,12 @@ export const PamFolderPage = () => {
                   <TooltipContent>{selectedTypeName ?? "Filter by account type"}</TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
-                  <DropdownMenuLabel>Account type</DropdownMenuLabel>
+                  <DropdownMenuLabel>Account Type</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={selectedAccountType || "all"}
                     onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
                   >
-                    <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="all">All Types</DropdownMenuRadioItem>
                     {accountTypes.map((meta) => (
                       <DropdownMenuRadioItem key={meta.type} value={meta.type}>
                         <ProviderIcon

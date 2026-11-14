@@ -93,7 +93,10 @@ export enum EventType {
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
+  IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
+  DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRL = "get-certificate-authority-crl",
+  REGENERATE_CA_CRL = "regenerate-certificate-authority-crl",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   GET_CERT = "get-cert",
@@ -145,6 +148,7 @@ export enum EventType {
   DELETE_PKI_COLLECTION_ITEM = "delete-pki-collection-item",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
+  SELECT_ORGANIZATION_REFUSED = "select-organization-refused",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -285,6 +289,7 @@ export enum EventType {
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
+  RESTORE_PROJECT = "restore-project",
 
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
@@ -327,6 +332,7 @@ export enum EventType {
 
   UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
   DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+  INVITE_ORG_MEMBERS = "invite-org-members",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -496,6 +502,8 @@ export enum EventType {
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD = "agent-vault-access-bundle-service-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_REMOVE = "agent-vault-access-bundle-service-remove",
   AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",

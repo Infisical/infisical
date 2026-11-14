@@ -2,7 +2,8 @@ export enum AgentVaultCredentialType {
   Bearer = "bearer",
   Basic = "basic",
   Passthrough = "passthrough",
-  OAuth = "oauth"
+  OAuth = "oauth",
+  SshKey = "ssh-key"
 }
 
 export enum AgentVaultOauthStatus {
@@ -19,7 +20,10 @@ export enum AgentVaultOauthAuthorizationStatus {
 
 export enum AgentVaultServiceType {
   Http = "http",
-  Mcp = "mcp"
+  Mcp = "mcp",
+  Postgres = "postgres",
+  Mysql = "mysql",
+  Ssh = "ssh"
 }
 
 export enum AgentVaultMcpTransport {
@@ -32,6 +36,15 @@ export enum AgentVaultMemberType {
   MachineIdentity = "machineIdentity",
   Group = "group"
 }
+
+export type TAgentVaultActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
+
+// The `memberships` column that holds each member type's actor id.
+export const AGENT_VAULT_ACTOR_COLUMN: Record<AgentVaultMemberType, TAgentVaultActorColumn> = {
+  [AgentVaultMemberType.User]: "actorUserId",
+  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
+  [AgentVaultMemberType.Group]: "actorGroupId"
+};
 
 export enum AgentVaultResourceRole {
   Consumer = "consumer"
@@ -56,8 +69,19 @@ export enum AgentVaultSubstitutionSurface {
 
 export enum AgentVaultTrafficPolicy {
   AnyHost = "any-host",
+  ServiceHosts = "service-hosts",
+  // The old name of service-hosts. Still accepted, still what is stored, and still what proxies are sent: a released
+  // CLI only blocks under this value and lets every host through under one it doesn't know.
   BundleHosts = "bundle-hosts"
 }
+
+// What a proxy's traffic policy is stored as, and sent to proxies as, until every CLI in use knows service-hosts.
+export const toStoredTrafficPolicy = (policy: AgentVaultTrafficPolicy) =>
+  policy === AgentVaultTrafficPolicy.ServiceHosts ? AgentVaultTrafficPolicy.BundleHosts : policy;
+
+// What the admin API and the UI call it.
+export const toTrafficPolicyView = (policy: AgentVaultTrafficPolicy) =>
+  policy === AgentVaultTrafficPolicy.BundleHosts ? AgentVaultTrafficPolicy.ServiceHosts : policy;
 
 export enum AgentVaultSessionStatus {
   Active = "active",

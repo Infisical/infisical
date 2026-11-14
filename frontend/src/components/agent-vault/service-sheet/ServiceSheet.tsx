@@ -6,6 +6,14 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   DiscardChangesAlertDialog,
   DocumentationLinkBadge,
@@ -28,6 +36,7 @@ import {
   StepperStep
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
+import { useProject } from "@app/context";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultHttpTemplate,
@@ -41,12 +50,15 @@ import {
 import { findVariableReferences, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 import { useDebounce, useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
+  AGENT_VAULT_NATIVE_DEFAULT_PORTS,
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
+  isNativeServiceType,
   SERVICE_SAVE_HANDLED_ERROR_CODES,
   TAgentVaultMemberProvidedField,
+  TAgentVaultNativeServiceType,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
   useUpdateAgentVaultService
@@ -59,25 +71,43 @@ import {
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
+import { NATIVE_SERVICE_META } from "../nativeServiceMeta";
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
 import { VariableFormDialog } from "../VariableFormDialog";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
+import { HookFields } from "./HookFields";
 import { McpCredentialFields } from "./McpCredentialFields";
 import { McpDetailsFields } from "./McpDetailsFields";
+import { McpToolsFields, TLoadedMcpTools } from "./McpToolsFields";
+import { NativeCredentialFields } from "./NativeCredentialFields";
+import { NativeDetailsFields } from "./NativeDetailsFields";
 import { ReviewFields } from "./ReviewFields";
-import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
+import {
+  buildCreateServiceRequest,
+  buildUpdateServiceRequest,
+  membersClearedNotice,
+  TMembersClearedNotice
+} from "./serviceRequest";
 import {
   buildServiceSchema,
   displayHostPattern,
+  HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
   HTTP_METHODS,
+  isCredentialMemberProvided,
+  isNativeService,
   isOAuthAuthorizationMissing,
   MCP_SERVICE_STEP_FIELDS,
+  McpToolScope,
+  NATIVE_SERVICE_STEP_FIELDS,
+  OAUTH_OWN_APP_REQUIRED_ERROR,
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
+  serviceKindOf,
   ServiceStep,
   storedMemberFields,
   TServiceForm,
+  TServiceKind,
   UNCHANGED_SECRET
 } from "./serviceSchema";
 import {
@@ -85,17 +115,37 @@ import {
   NO_STORED_KEYS,
   ServiceVariablesContext
 } from "./ServiceVariablesContext";
-import { MCP_SERVICE_STEPS, SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
+import { MCP_SERVICE_STEPS, nativeServiceSteps, SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
+import { serverMessage } from "./useOAuthAuthorize";
+
+const NATIVE_FIELD_OF_CONFIG_ERROR: [string, keyof TServiceForm][] = [
+  ["'host'", "host"],
+  ["'port'", "port"],
+  ["'database'", "database"],
+  ["'tls.ca'", "tlsCa"]
+];
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   serviceType: AgentVaultServiceType.Http,
   name: "",
+  description: "",
   serverUrl: "",
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: [],
+  host: "",
+  port: "",
+  database: "",
+  tlsEnabled: true,
+  tlsVerify: true,
+  tlsCa: "",
+  sshPrivateKey: "",
+  sshCertificate: "",
+  sshCertificateRemoved: false,
   hostDraft: "",
   pathDraft: "",
+  toolScope: McpToolScope.All,
+  allowedTools: [],
   credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -112,7 +162,10 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
   customHeaders: [],
-  substitutions: []
+  substitutions: [],
+  hookEnabled: false,
+  hookUrl: "",
+  hookSigningSecret: ""
 };
 
 const BLANK_MCP_SERVICE_FORM: TServiceForm = {
@@ -120,6 +173,26 @@ const BLANK_MCP_SERVICE_FORM: TServiceForm = {
   serviceType: AgentVaultServiceType.Mcp,
   credentialType: AgentVaultCredentialType.OAuth
 };
+
+const STEP_FIELDS_OF_KIND: Record<TServiceKind, Record<ServiceStep, string[]>> = {
+  http: SERVICE_STEP_FIELDS,
+  mcp: MCP_SERVICE_STEP_FIELDS,
+  native: NATIVE_SERVICE_STEP_FIELDS
+};
+
+const blankNativeForm = (serviceType: TAgentVaultNativeServiceType): TServiceForm => ({
+  ...BLANK_SERVICE_FORM,
+  serviceType,
+  port: String(AGENT_VAULT_NATIVE_DEFAULT_PORTS[serviceType]),
+  credentialType: AgentVaultCredentialType.Basic
+});
+
+// A hook on a saved service always has a stored secret, so the box starts at the sentinel.
+const hookFormFieldsOf = (service: TAgentVaultService) => ({
+  hookEnabled: Boolean(service.hook),
+  hookUrl: service.hook?.url ?? "",
+  hookSigningSecret: service.hook ? UNCHANGED_SECRET : ""
+});
 
 const mcpFormFromTemplate = (picked: AgentVaultMcpTemplate | null): TServiceForm => {
   if (!picked) return BLANK_MCP_SERVICE_FORM;
@@ -209,11 +282,13 @@ const PrefillTypeField = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper">
-            {Object.values(AgentVaultServiceType).map((type) => (
-              <SelectItem key={type} value={type}>
-                {SERVICE_TYPE_LABELS[type]}
-              </SelectItem>
-            ))}
+            {Object.values(AgentVaultServiceType)
+              .filter((type) => !isNativeServiceType(type))
+              .map((type) => (
+                <SelectItem key={type} value={type}>
+                  {SERVICE_TYPE_LABELS[type]}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </FieldContent>
@@ -224,7 +299,8 @@ const PrefillTypeField = ({
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  accessBundleId: string;
+  // Set when the sheet is opened from an access bundle, so a new service goes into it.
+  accessBundleId?: string;
   service?: TAgentVaultService | null;
   prefillHost?: string;
   // The path of the logged request, which helps tell an MCP server from an HTTP API.
@@ -253,12 +329,12 @@ const storedVariableKeys = (service?: TAgentVaultService | null) => {
     username: keysWhere(
       (reference) => reference.field === AgentVaultVariableReferenceField.CredentialUsername
     ),
-    customHeaders: byRow(service.customHeaders, (reference) =>
+    customHeaders: byRow("customHeaders" in service ? service.customHeaders : [], (reference) =>
       reference.field === AgentVaultVariableReferenceField.CustomHeader
         ? reference.customHeaderId
         : null
     ),
-    substitutions: byRow(service.substitutions, (reference) =>
+    substitutions: byRow("substitutions" in service ? service.substitutions : [], (reference) =>
       reference.field === AgentVaultVariableReferenceField.Substitution
         ? reference.substitutionId
         : null
@@ -291,6 +367,22 @@ const rejectedAuthorizationMessage = (error: unknown) => {
   return isRejected ? message : null;
 };
 
+// Discovery runs on save when each member signs in, so a server it can't use is refused then, naming the server.
+const memberOAuthSetupMessage = (error: unknown) => {
+  if (
+    !axios.isAxiosError<{ details?: { oauthSetup?: unknown } }>(error) ||
+    error.response?.status !== 400 ||
+    error.response.data?.details?.oauthSetup !== true
+  ) {
+    return null;
+  }
+  return serverMessage(error) ?? null;
+};
+
+const isRegistrationRequired = (error: unknown) =>
+  axios.isAxiosError<{ details?: { registrationRequired?: unknown } }>(error) &&
+  error.response?.data?.details?.registrationRequired === true;
+
 export const ServiceSheet = ({
   isOpen,
   onOpenChange,
@@ -300,9 +392,10 @@ export const ServiceSheet = ({
   prefillPath,
   onSaved
 }: Props) => {
+  const { projectId } = useProject();
   const isUpdate = Boolean(service);
-  const createService = useCreateAgentVaultService();
-  const updateService = useUpdateAgentVaultService();
+  const createService = useCreateAgentVaultService(projectId);
+  const updateService = useUpdateAgentVaultService(projectId);
 
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
@@ -347,8 +440,11 @@ export const ServiceSheet = ({
     formState: { errors, isDirty, isSubmitting }
   } = formMethods;
 
-  const isMcp = watch("serviceType") === AgentVaultServiceType.Mcp;
-  const stepFields = isMcp ? MCP_SERVICE_STEP_FIELDS : SERVICE_STEP_FIELDS;
+  const formServiceType = watch("serviceType");
+  const kind = serviceKindOf(formServiceType);
+  const isMcp = kind === "mcp";
+  const nativeType = isNativeServiceType(formServiceType) ? formServiceType : null;
+  const stepFields = STEP_FIELDS_OF_KIND[kind];
 
   // Only the keys the form references are looked up, never the whole list.
   const [secret, username, customHeaders, substitutions] = useWatch({
@@ -369,6 +465,7 @@ export const ServiceSheet = ({
   }, [secret, username, customHeaders, substitutions]);
   const [debouncedReferencedKeys] = useDebounce(referencedKeys, 300);
   const { missing: missingKeys } = useAgentVaultVariableKeyStatus(
+    projectId,
     debouncedReferencedKeys ? debouncedReferencedKeys.split(",") : [],
     { enabled: isOpen }
   );
@@ -392,14 +489,18 @@ export const ServiceSheet = ({
   // template step would replace that host.
   const hasTemplateStep = !isUpdate && !prefillHost;
   const steps = useMemo(() => {
-    const all = isMcp ? MCP_SERVICE_STEPS : SERVICE_STEPS;
+    let all = SERVICE_STEPS;
+    if (nativeType) all = nativeServiceSteps(nativeType);
+    else if (isMcp) all = MCP_SERVICE_STEPS;
     return hasTemplateStep ? all : all.filter((meta) => meta.step !== ServiceStep.Template);
-  }, [hasTemplateStep, isMcp]);
+  }, [hasTemplateStep, isMcp, nativeType]);
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  // Held here rather than in the Tools step, so going to Review and back doesn't drop the list.
+  const [loadedTools, setLoadedTools] = useState<TLoadedMcpTools | null>(null);
   // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
   // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
   // the errors it finds are the ones already there.
@@ -443,26 +544,71 @@ export const ServiceSheet = ({
 
     setStep(0);
     setTemplate(null);
-    setOpenItem(service?.type === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
+    setLoadedTools(null);
+    setOpenItem(
+      service?.type === AgentVaultServiceType.Mcp || isNativeServiceType(service?.type)
+        ? ""
+        : ADVANCED_ITEM
+    );
 
-    if (service?.type === AgentVaultServiceType.Mcp) {
+    if (isNativeService(service)) {
+      const { credential } = service;
+      const databaseService = service.type === AgentVaultServiceType.Ssh ? null : service;
+      const memberProvidedFields = storedMemberFields(service);
+      const storedValue = (field: TAgentVaultMemberProvidedField) =>
+        memberProvidedFields.includes(field) ? "" : UNCHANGED_SECRET;
+      const isSshKey = credential.type === AgentVaultCredentialType.SshKey;
+      reset({
+        ...blankNativeForm(service.type),
+        name: service.name,
+        description: service.description ?? "",
+        host: service.host,
+        port: String(service.port),
+        database: databaseService?.database ?? "",
+        tlsEnabled: databaseService?.tls.enabled ?? true,
+        tlsVerify: databaseService?.tls.verify ?? true,
+        tlsCa: databaseService?.tls.ca ?? "",
+        credentialType: credential.type,
+        username:
+          credential.type === AgentVaultCredentialType.Basic
+            ? storedValue(AgentVaultVariableReferenceField.CredentialUsername)
+            : UNCHANGED_SECRET,
+        secret:
+          credential.type === AgentVaultCredentialType.Basic
+            ? storedValue(AgentVaultVariableReferenceField.CredentialValue)
+            : "",
+        memberProvidedFields,
+        sshPrivateKey: isSshKey ? UNCHANGED_SECRET : "",
+        sshCertificate: isSshKey && credential.hasCertificate ? UNCHANGED_SECRET : "",
+        ...hookFormFieldsOf(service)
+      });
+    } else if (service?.type === AgentVaultServiceType.Mcp) {
       const { credential } = service;
       const isBearer = credential.type === AgentVaultCredentialType.Bearer;
+      const memberProvidedFields = storedMemberFields(service);
       reset({
         ...BLANK_MCP_SERVICE_FORM,
         name: service.name,
+        description: service.description ?? "",
         serverUrl: service.serverUrl,
         transport: service.transport,
+        toolScope: service.allowedTools ? McpToolScope.Selected : McpToolScope.All,
+        allowedTools: service.allowedTools ?? [],
         credentialType: isBearer ? AgentVaultCredentialType.Bearer : AgentVaultCredentialType.OAuth,
         headerName: isBearer ? credential.headerName : "Authorization",
         headerPrefix: isBearer ? credential.headerPrefix : "Bearer",
-        secret: isBearer ? UNCHANGED_SECRET : "",
+        secret: isBearer && !memberProvidedFields.length ? UNCHANGED_SECRET : "",
+        memberProvidedFields,
+        // The admin-entered client every member signs in with, shown so it can be kept or changed.
+        oauthClientId:
+          credential.type === AgentVaultCredentialType.OAuth ? (credential.clientId ?? "") : "",
         customHeaders: service.customHeaders.map((header) => ({
           id: header.id,
           name: header.name,
           prefix: header.prefix,
           value: UNCHANGED_SECRET
-        }))
+        })),
+        ...hookFormFieldsOf(service)
       });
     } else if (service) {
       const { credential } = service;
@@ -473,6 +619,7 @@ export const ServiceSheet = ({
       reset({
         ...BLANK_SERVICE_FORM,
         name: service.name,
+        description: service.description ?? "",
         hosts: displayHostPattern(service.hostPattern).split(", "),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
@@ -507,7 +654,8 @@ export const ServiceSheet = ({
           placeholder: substitution.placeholder,
           surfaces: substitution.surfaces,
           value: UNCHANGED_SECRET
-        }))
+        })),
+        ...hookFormFieldsOf(service)
       });
     } else if (prefillHost) {
       const { template: picked, form } = prefillFor(
@@ -539,7 +687,10 @@ export const ServiceSheet = ({
     serviceType: AgentVaultServiceType
   ) => {
     setTemplate(picked);
-    if (serviceType === AgentVaultServiceType.Mcp) {
+    if (isNativeServiceType(serviceType)) {
+      setOpenItem("");
+      reset(blankNativeForm(serviceType));
+    } else if (serviceType === AgentVaultServiceType.Mcp) {
       setOpenItem("");
       reset(mcpFormFromTemplate(picked?.serviceType === AgentVaultServiceType.Mcp ? picked : null));
     } else {
@@ -563,12 +714,20 @@ export const ServiceSheet = ({
       setStep(0);
     });
 
+  // A save that deletes members' values (or the admin's own sign-in) is confirmed first, then submitted again.
+  const [membersNotice, setMembersNotice] = useState<TMembersClearedNotice | null>(null);
+  const isMembersNoticeConfirmed = useRef(false);
+
   const onSubmit = async (data: TServiceForm) => {
+    const notice = membersClearedNotice(data, service);
+    if (notice && !isMembersNoticeConfirmed.current) {
+      setMembersNotice(notice);
+      return;
+    }
+    isMembersNoticeConfirmed.current = false;
     try {
       if (service) {
-        await updateService.mutateAsync(
-          buildUpdateServiceRequest(accessBundleId, service.id, data)
-        );
+        await updateService.mutateAsync(buildUpdateServiceRequest(service, data));
       } else {
         await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
       }
@@ -587,6 +746,15 @@ export const ServiceSheet = ({
 
       if (
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        (serverResponse.details as { field?: string } | undefined)?.field === "name"
+      ) {
+        setError("name", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Details));
+        return;
+      }
+
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
       ) {
         setError(isMcp ? "serverUrl" : "hosts", {
@@ -594,6 +762,23 @@ export const ServiceSheet = ({
           message: serverResponse.message
         });
         setStep(stepKeys.indexOf(ServiceStep.Details));
+        return;
+      }
+
+      const isMemberOAuthSave =
+        isMcp &&
+        data.credentialType === AgentVaultCredentialType.OAuth &&
+        isCredentialMemberProvided(data);
+      const isOwnAppRequired = isMemberOAuthSave && isRegistrationRequired(error);
+      let memberOAuthSetupError: string | null = null;
+      if (isOwnAppRequired) memberOAuthSetupError = serverMessage(error);
+      else if (isMemberOAuthSave) memberOAuthSetupError = memberOAuthSetupMessage(error);
+      if (memberOAuthSetupError) {
+        setError("oauthAuthorizationId", {
+          type: isOwnAppRequired ? OAUTH_OWN_APP_REQUIRED_ERROR : "server",
+          message: memberOAuthSetupError
+        });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
         return;
       }
 
@@ -620,27 +805,75 @@ export const ServiceSheet = ({
         return;
       }
 
+      // The form checks these too, so this only catches a rule it doesn't know yet. The message names the field
+      // as the config schema does, as in `'host': ...`.
+      const nativeField =
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        isNativeServiceType(data.serviceType)
+          ? NATIVE_FIELD_OF_CONFIG_ERROR.find(([prefix]) =>
+              serverResponse.message.startsWith(`${prefix}: `)
+            )
+          : undefined;
+      if (serverResponse?.error === ApiErrorTypes.BadRequestError && nativeField) {
+        const [prefix, field] = nativeField;
+        setError(field, {
+          type: "server",
+          message: serverResponse.message.slice(prefix.length + 2)
+        });
+        setStep(stepKeys.indexOf(ServiceStep.Details));
+        return;
+      }
+
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        serverResponse.message === HOOK_SIGNING_SECRET_REQUIRED_MESSAGE
+      ) {
+        setError("hookSigningSecret", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Hook));
+        return;
+      }
+
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
         const STEP_OF_FIELD: Record<string, ServiceStep> = {
           name: ServiceStep.Details,
+          description: ServiceStep.Details,
           hostPattern: ServiceStep.Details,
           serverUrl: ServiceStep.Details,
           transport: ServiceStep.Details,
+          host: ServiceStep.Details,
+          port: ServiceStep.Details,
+          database: ServiceStep.Details,
+          tls: ServiceStep.Details,
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
+          allowedTools: ServiceStep.Tools,
           credential: ServiceStep.Credential,
           customHeaders: ServiceStep.Credential,
-          substitutions: ServiceStep.Credential
+          substitutions: ServiceStep.Credential,
+          hook: ServiceStep.Hook
         };
 
         const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
           hostPattern: isMcp ? "serverUrl" : "hosts",
           allowedMethods: "methods",
           allowedPathPrefixes: "pathPrefixes",
+          tls: "tlsCa",
           credential:
             data.credentialType === AgentVaultCredentialType.OAuth
               ? "oauthAuthorizationId"
-              : "secret"
+              : "secret",
+          hook: "hookUrl"
+        };
+        const FORM_FIELD_OF_CREDENTIAL_PART: Record<string, keyof TServiceForm> = {
+          username: "username",
+          password: "secret",
+          value: "secret",
+          privateKey: "sshPrivateKey",
+          certificate: "sshCertificate"
+        };
+        const FORM_FIELD_OF_HOOK_PART: Record<string, keyof TServiceForm> = {
+          url: "hookUrl",
+          signingSecret: "hookSigningSecret"
         };
 
         let earliestStep: number | null = null;
@@ -654,10 +887,17 @@ export const ServiceSheet = ({
             return;
           }
 
-          const target =
-            issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
-              ? (issue.path.join(".") as keyof TServiceForm)
-              : (FORM_FIELD_OF[root] ?? (root as keyof TServiceForm));
+          const credentialPart =
+            root === "credential"
+              ? FORM_FIELD_OF_CREDENTIAL_PART[String(issue.path[1])]
+              : undefined;
+          const hookPart =
+            root === "hook" ? FORM_FIELD_OF_HOOK_PART[String(issue.path[1])] : undefined;
+          let target =
+            credentialPart ?? hookPart ?? FORM_FIELD_OF[root] ?? (root as keyof TServiceForm);
+          if (issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")) {
+            target = issue.path.join(".") as keyof TServiceForm;
+          }
 
           setError(target, { type: "server", message: issue.message });
           const index = stepKeys.indexOf(issueStep);
@@ -701,7 +941,10 @@ export const ServiceSheet = ({
     await goNext();
   };
 
-  const customName = isMcp ? "Custom MCP Server" : "Custom HTTP API";
+  let customName = "Custom HTTP API";
+  if (nativeType) customName = NATIVE_SERVICE_META[nativeType].label;
+  else if (isMcp) customName = "Custom MCP Server";
+  const nativeImage = nativeType ? NATIVE_SERVICE_META[nativeType].image : null;
 
   const stepDescription = (meta: (typeof SERVICE_STEPS)[number]) => {
     if (meta.step === ServiceStep.Template) return template?.name ?? customName;
@@ -710,12 +953,23 @@ export const ServiceSheet = ({
   };
 
   const current = steps[step];
-  const [credentialType, serverUrl, oauthAuthorizationId, oauthAuthorizedUrl] = watch([
+  const [
+    credentialType,
+    serverUrl,
+    oauthAuthorizationId,
+    oauthAuthorizedUrl,
+    oauthAuthorizationRejection,
+    memberProvidedFields
+  ] = watch([
     "credentialType",
     "serverUrl",
     "oauthAuthorizationId",
-    "oauthAuthorizedUrl"
+    "oauthAuthorizedUrl",
+    "oauthAuthorizationRejection",
+    "memberProvidedFields"
   ]);
+  const isMcpCredentialMemberProvided =
+    isMcp && isCredentialMemberProvided({ memberProvidedFields });
 
   useEffect(() => {
     if (!oauthAuthorizationId) return undefined;
@@ -733,18 +987,25 @@ export const ServiceSheet = ({
     return () => window.clearTimeout(timeout);
   }, [oauthAuthorizationId, getValues, setValue, setError]);
 
-  const isAwaitingAuthorization =
-    current.step === ServiceStep.Credential &&
-    isOAuthAuthorizationMissing(
-      {
-        serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
-        credentialType,
-        serverUrl,
-        oauthAuthorizationId,
-        oauthAuthorizedUrl
-      },
-      service
-    );
+  const isAuthorizationMissing = isOAuthAuthorizationMissing(
+    {
+      serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
+      credentialType,
+      serverUrl,
+      oauthAuthorizationId,
+      oauthAuthorizedUrl,
+      memberProvidedFields
+    },
+    service
+  );
+  const isAwaitingAuthorization = current.step === ServiceStep.Credential && isAuthorizationMissing;
+  // Set once a sign-in expired or was refused, even when a saved login could stand in for it; only authorizing
+  // again or keeping the current login on the Credential step clears it.
+  const isAuthorizationRejected =
+    isMcp &&
+    credentialType === AgentVaultCredentialType.OAuth &&
+    !isMcpCredentialMemberProvided &&
+    Boolean(oauthAuthorizationRejection);
   const isTemplateStep = current.step === ServiceStep.Template;
   const saveLabel = isUpdate ? "Save" : "Add Service";
 
@@ -773,6 +1034,9 @@ export const ServiceSheet = ({
               <SheetTitle className="flex items-center gap-2.5">
                 {template && (
                   <ProviderIcon icon={template.image} alt="" className="size-6 object-contain" />
+                )}
+                {nativeImage && (
+                  <ProviderIcon icon={nativeImage} alt="" className="size-6 object-contain" />
                 )}
                 {template?.name ?? (isUpdate ? service?.name : customName)}
                 <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
@@ -809,6 +1073,11 @@ export const ServiceSheet = ({
                           index={index}
                           title={meta.name}
                           description={stepDescription(meta)}
+                          status={
+                            meta.step === ServiceStep.Credential && isAuthorizationRejected
+                              ? "error"
+                              : undefined
+                          }
                         />
                       ))}
                     </StepperList>
@@ -832,13 +1101,15 @@ export const ServiceSheet = ({
                           onChange={switchPrefillType}
                         />
                       )}
-                      {isMcp ? <McpDetailsFields /> : <DetailsFields />}
+                      {kind === "native" && <NativeDetailsFields />}
+                      {kind === "mcp" && <McpDetailsFields />}
+                      {kind === "http" && <DetailsFields />}
                     </div>
                   )}
                   {current.step === ServiceStep.Credential && isMcp && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <McpCredentialFields
-                        accessBundleId={accessBundleId}
+                        projectId={projectId}
                         service={service}
                         openItem={openItem}
                         onOpenChange={setOpenItem}
@@ -846,7 +1117,20 @@ export const ServiceSheet = ({
                       />
                     </ServiceVariablesContext.Provider>
                   )}
-                  {current.step === ServiceStep.Credential && !isMcp && (
+                  {current.step === ServiceStep.Credential && nativeType && (
+                    <ServiceVariablesContext.Provider value={serviceVariables}>
+                      <NativeCredentialFields
+                        serviceType={nativeType}
+                        storedType={service?.credential.type}
+                        storedMemberFields={storedMemberFields(service)}
+                        hasStoredCertificate={
+                          service?.credential.type === AgentVaultCredentialType.SshKey &&
+                          service.credential.hasCertificate
+                        }
+                      />
+                    </ServiceVariablesContext.Provider>
+                  )}
+                  {current.step === ServiceStep.Credential && kind === "http" && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <div className="flex flex-col gap-5">
                         <CredentialFields
@@ -856,6 +1140,25 @@ export const ServiceSheet = ({
                         <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                       </div>
                     </ServiceVariablesContext.Provider>
+                  )}
+                  {current.step === ServiceStep.Tools && (
+                    <McpToolsFields
+                      projectId={projectId}
+                      service={service}
+                      loaded={loadedTools}
+                      onLoaded={setLoadedTools}
+                      isAuthorizationExpired={isAuthorizationRejected}
+                      isCredentialMemberProvided={isMcpCredentialMemberProvided}
+                      onGoToDetails={() => setStep(stepKeys.indexOf(ServiceStep.Details))}
+                      onGoToCredential={() => setStep(stepKeys.indexOf(ServiceStep.Credential))}
+                      onSignInChange={setIsSigningIn}
+                    />
+                  )}
+                  {current.step === ServiceStep.Hook && (
+                    <HookFields
+                      serviceType={formServiceType}
+                      hasStoredHook={Boolean(service?.hook)}
+                    />
                   )}
                   {current.step === ServiceStep.Review && (
                     <ReviewFields
@@ -872,7 +1175,7 @@ export const ServiceSheet = ({
                     <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
                       Step {step + 1} · {current.rightLabel}
                     </p>
-                    <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
+                    <DocumentationLinkBadge href={current.docsUrl ?? SERVICE_DOCS_URL} />
                   </div>
                   <p className="text-sm font-semibold text-foreground">What this step does</p>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
@@ -936,6 +1239,35 @@ export const ServiceSheet = ({
             request.resolve(request.created);
           }}
         />
+
+        <AlertDialog
+          open={Boolean(membersNotice)}
+          onOpenChange={(open) => {
+            if (!open) setMembersNotice(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{membersNotice?.title}</AlertDialogTitle>
+              <AlertDialogDescription>{membersNotice?.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel variant="outline">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="danger"
+                onClick={() => {
+                  isMembersNoticeConfirmed.current = true;
+                  handleSubmit(onSubmit, (formErrors) => {
+                    isMembersNoticeConfirmed.current = false;
+                    onFormInvalid(formErrors);
+                  })();
+                }}
+              >
+                Remove and Save
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}

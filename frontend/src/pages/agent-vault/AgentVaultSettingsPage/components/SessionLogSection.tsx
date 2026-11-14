@@ -62,7 +62,7 @@ const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
 export const SessionLogSection = () => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
+  const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const queryClient = useQueryClient();
@@ -73,7 +73,7 @@ export const SessionLogSection = () => {
     bucket: string | null;
     keyPrefix: string | null;
   } | null>(null);
-  const { data: state, isPending } = useGetAgentVaultSessionLogSettings();
+  const { data: state, isPending } = useGetAgentVaultSessionLogSettings(projectId);
   const { data: connections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
@@ -95,8 +95,8 @@ export const SessionLogSection = () => {
     const { bucket, keyPrefix } = saved.storage;
     const readCheck = await queryClient
       .fetchQuery({
-        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id),
-        queryFn: fetchAgentVaultSessionLogReadAccess
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id, projectId),
+        queryFn: () => fetchAgentVaultSessionLogReadAccess(projectId)
       })
       .catch(() => null);
     if (readCheck?.status === "cors-missing" || readCheck?.status === "access-denied") {

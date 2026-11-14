@@ -9,6 +9,26 @@ If you can't find the answer you're looking for, please create an issue on the [
 
 <AccordionGroup>
 
+<Accordion title="Why does Homebrew skip the upgrade or install an older version?">
+If `brew upgrade` leaves you without the latest version, check which formula your CLI was installed from:
+
+```bash
+brew info infisical
+```
+
+If the `From:` line points to `Homebrew/homebrew-core`, you have Homebrew's copy of the CLI, which Homebrew updates some time after each Infisical release. To get new versions as soon as they're released, switch to the Infisical tap:
+
+```bash
+brew uninstall infisical && brew install infisical/get-cli/infisical
+```
+
+If Homebrew warns that the `infisical/get-cli` tap isn't trusted, upgrade with the full formula name. Homebrew then trusts the formula, so later upgrades work too:
+
+```bash
+brew upgrade infisical/get-cli/infisical
+```
+</Accordion>
+
 <Accordion title="I'm getting a Keyring-related error message when trying to login">
 By default, the CLI will choose the most suitable store available on your system. 
 If you experience issues with the default store, you can switch to a different one. 
@@ -20,21 +40,21 @@ If you're still experiencing trouble, please seek support.
 </Accordion>
 
 <Accordion title="How do I keep secret values out of my shell history?">
-Your shell saves the commands you run to a history file, so a secret value you pass to `infisical sm secrets set` stays in that file. To avoid this, pass the values with `--file` or `name=@path`, or configure your shell to skip those commands.
+Your shell saves the commands you run to a history file, so a secret value you pass to `infisical secrets-manager secrets create` or `secrets update` stays in that file. To avoid this, pass the values with `--file` or `name=@path`, or configure your shell to skip those commands.
 
 <Tabs>
   <Tab title="Bash">
     Add the pattern to `HISTIGNORE` in `~/.bashrc`:
 
     ```bash
-    echo 'export HISTIGNORE="*infisical*secrets set*:$HISTIGNORE"' >> ~/.bashrc && source ~/.bashrc
+    echo 'export HISTIGNORE="*infisical*secrets create*:*infisical*secrets update*:*infisical*secrets set*:$HISTIGNORE"' >> ~/.bashrc && source ~/.bashrc
     ```
   </Tab>
   <Tab title="Zsh">
     Add the pattern to `HISTORY_IGNORE` in `~/.zshrc`:
 
     ```bash
-    echo "HISTORY_IGNORE='(*infisical*secrets set*)'" >> ~/.zshrc && source ~/.zshrc
+    echo "HISTORY_IGNORE='(*infisical*secrets (create|update|set)*)'" >> ~/.zshrc && source ~/.zshrc
     ```
 
     Zsh applies `HISTORY_IGNORE` when it writes the history file, so the command still appears when you press the up arrow in the current session.
@@ -44,12 +64,12 @@ Your shell saves the commands you run to a history file, so a secret value you p
 
     In PowerShell, the PSReadLine module saves your command history. To check its version, run `(Get-Module PSReadLine).Version`.
 
-    PSReadLine 2.2 and later, which ships with PowerShell 7.2 and later, doesn't save commands that contain words such as `secret`, `token`, or `password`, so `infisical sm secrets set` is already skipped.
+    PSReadLine 2.2 and later, which ships with PowerShell 7.2 and later, doesn't save commands that contain words such as `secret`, `token`, or `password`, so `infisical secrets-manager secrets create` and `secrets update` are already skipped.
 
-    Older versions, including the one that ships with Windows PowerShell 5.1, save every command. Add this line to your [PowerShell profile](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles) to skip `infisical sm secrets set`:
+    Older versions, including the one that ships with Windows PowerShell 5.1, save every command. Add this line to your [PowerShell profile](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles) to skip the commands that write secrets:
 
     ```powershell
-    Set-PSReadLineOption -AddToHistoryHandler { param($line) $line -notlike '*infisical*secrets set*' }
+    Set-PSReadLineOption -AddToHistoryHandler { param($line) $line -notmatch 'infisical.*secrets (create|update|set)' }
     ```
 
     Don't add this line on PSReadLine 2.2 or later, because a custom handler replaces the built-in one that skips commands with sensitive words.
@@ -73,7 +93,7 @@ Yes. This is simply a configuration file and contains no sensitive data.
 
 <Accordion title="Where can I find my Project ID?">
 
-  Run [infisical sm projects list](/cli/reference#sm-projects-list) to print the name, slug, and ID of each of your projects.
+  Run [infisical secrets-manager projects get](/cli/reference#secrets-manager-projects-get) to print the name, slug, and ID of each of your projects.
 
   You can also find the ID in Infisical.
 

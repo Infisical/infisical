@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { QueueName } from "@app/queue";
 
 import { auditLogQueueServiceFactory } from "./audit-log-queue";
@@ -91,11 +92,8 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
   const projectDAL = {
     findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
-  const licenseService = {
-    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number | null }>>(async () => ({
-      auditLogsRetentionDays: 30
-    }))
-  };
+  const licenseService = new FakeLicenseService();
+  licenseService.defaultPlan = { ...licenseService.defaultPlan, auditLogsRetentionDays: 30 };
   const auditLogStreamOutboxService = {
     enqueueForLogs: vi.fn<(logs: unknown[]) => Promise<void>>(async () => undefined)
   };
@@ -116,7 +114,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     auditLogDAL: auditLogDAL as never,
     queueService: queueService as never,
     projectDAL: projectDAL as never,
-    licenseService: licenseService as never,
+    licenseService,
     auditLogSettingsService: auditLogSettingsService as never,
     auditLogStreamOutboxService: auditLogStreamOutboxService as never,
     clickhouseClient: clickhouseClient as never,
@@ -196,7 +194,7 @@ describe("audit-log-queue pushToLog", () => {
   test("caps the TTL at the project-level retention when it is lower than the plan", async () => {
     const { service, keyStore, projectDAL, licenseService } = await createHarness();
     projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: 5 });
-    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: 30 });
+    licenseService.setPlan("org-1", { auditLogsRetentionDays: 30 });
 
     await service.pushToLog(dto({ orgId: undefined, projectId: "p1" }) as never);
 
@@ -224,7 +222,7 @@ describe("audit-log-queue pushToLog", () => {
 
   test("drops (no streamAdd) when audit log retention is 0/unset", async () => {
     const { service, keyStore, licenseService } = await createHarness();
-    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: 0 });
+    licenseService.setPlan("org-zero", { auditLogsRetentionDays: 0 });
 
     await service.pushToLog(dto({ orgId: "org-zero" }) as never);
 
@@ -233,7 +231,7 @@ describe("audit-log-queue pushToLog", () => {
 
   test("keeps logs until the expiry cap when the plan's retention is unlimited (null)", async () => {
     const { service, keyStore, licenseService } = await createHarness();
-    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+    licenseService.setPlan("org-unlimited", { auditLogsRetentionDays: null });
 
     await service.pushToLog(dto({ orgId: "org-unlimited" }) as never);
 
@@ -243,7 +241,7 @@ describe("audit-log-queue pushToLog", () => {
   test("applies the project-level retention under an unlimited plan", async () => {
     const { service, keyStore, projectDAL, licenseService } = await createHarness();
     projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: 5 });
-    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+    licenseService.setPlan("org-1", { auditLogsRetentionDays: null });
 
     await service.pushToLog(dto({ orgId: undefined, projectId: "p1" }) as never);
 
@@ -261,7 +259,7 @@ describe("audit-log-queue pushToLog", () => {
 
   test("never throws when a resolution lookup fails", async () => {
     const { service, keyStore, licenseService } = await createHarness();
-    licenseService.getPlan.mockRejectedValueOnce(new Error("license service down"));
+    vi.spyOn(licenseService, "getPlan").mockRejectedValueOnce(new Error("license service down"));
 
     await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
@@ -377,12 +375,13 @@ describe("audit-log-queue unified consumer", () => {
 
   test("does not perform any DB lookups while draining", async () => {
     const { consumer, projectDAL, licenseService, keyStore } = await createHarness();
+    const getPlan = vi.spyOn(licenseService, "getPlan");
     keyStore.streamCollect.mockResolvedValueOnce(collectResult([streamEntry({ projectId: "p1" })]));
 
     await consumer();
 
     expect(projectDAL.findById).not.toHaveBeenCalled();
-    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(getPlan).not.toHaveBeenCalled();
   });
 
   test("postgres branch inserts the resolved entry (null-normalized empties + projectName), then trims", async () => {

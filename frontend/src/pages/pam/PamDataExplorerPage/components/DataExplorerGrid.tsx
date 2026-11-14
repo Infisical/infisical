@@ -47,11 +47,15 @@ type DataExplorerGridProps = {
 };
 
 const ROW_KEY_PREFIX = "__new_";
+const MASKED_VALUE = "[MASKED]";
 
-function readOnlyReason(dialect: SqlDialect, tableType?: string): string {
+function readOnlyReason(dialect: SqlDialect, tableType?: string, hasMaskedKeys?: boolean): string {
   if (tableType === "view" || tableType === "materialized_view") return "This view is read-only.";
   if (!supportsRowEditing(dialect)) {
     return "This table is read-only. Edit it from the SQL editor.";
+  }
+  if (hasMaskedKeys) {
+    return "Output Masking hides this table's primary key, so its rows can't be edited here.";
   }
   return "This table has no primary key. Browsing is read-only — editing requires a primary key.";
 }
@@ -184,6 +188,14 @@ function getPkMatch(row: Record<string, unknown>, primaryKeys: string[]): Record
   return match;
 }
 
+// Output masking turns key values into the placeholder, or NULL for non-text types.
+function hasMaskedKey(row: Record<string, unknown>, primaryKeys: string[]): boolean {
+  return primaryKeys.some((pk) => {
+    const value = row[pk];
+    return value === null || value === undefined || String(value).includes(MASKED_VALUE);
+  });
+}
+
 export const DataExplorerGrid = ({
   tableDetail,
   tableType,
@@ -220,7 +232,8 @@ export const DataExplorerGrid = ({
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const foreignKeys = tableDetail?.foreignKeys ?? [];
   const tableColumns = tableDetail?.columns ?? [];
-  const canEditRows = primaryKeys.length > 0 && supportsRowEditing(dialect);
+  const hasMaskedKeys = originalData.some((row) => hasMaskedKey(row, primaryKeys));
+  const canEditRows = primaryKeys.length > 0 && supportsRowEditing(dialect) && !hasMaskedKeys;
   const primaryKeysRef = useRef(primaryKeys);
   primaryKeysRef.current = primaryKeys;
 
@@ -265,9 +278,12 @@ export const DataExplorerGrid = ({
           executeQuery(connectionId, countSql)
         ]);
 
-        const taggedRows = dataResult.rows.map((row: Record<string, unknown>) => ({
+        // Masked keys repeat across rows, so give those rows a unique id of their own.
+        const taggedRows = dataResult.rows.map((row: Record<string, unknown>, i: number) => ({
           ...row,
-          originalPkKey: getRowKey(row, primaryKeys)
+          originalPkKey: hasMaskedKey(row, primaryKeys)
+            ? `masked:${i}`
+            : getRowKey(row, primaryKeys)
         }));
         setOriginalData(taggedRows);
         setCurrentData(taggedRows);
@@ -761,7 +777,7 @@ export const DataExplorerGrid = ({
         <div className="shrink-0 px-3 py-3">
           <Alert variant="info" className="py-2">
             <EyeIcon />
-            <AlertDescription>{readOnlyReason(dialect, tableType)}</AlertDescription>
+            <AlertDescription>{readOnlyReason(dialect, tableType, hasMaskedKeys)}</AlertDescription>
           </Alert>
         </div>
       )}

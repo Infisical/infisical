@@ -96,7 +96,9 @@ Each type's full config (connection/credential schemas, icon, label, sanitized-c
 in one `ACCOUNT_TYPE_CONFIGS` entry in `pam-account/pam-account-schemas.ts`. Forms are **schema-driven**:
 the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, so there are **no per-type
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
-`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
+`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file. CockroachDB reuses the
+Postgres implementation throughout and reaches the gateway as `postgres` (`resolveGatewayAccountType`, mirrored
+by the CLI's capability check), so it needs no gateway upgrade.
 
 **Auth methods** are a discriminated union on `credentials`. `forceWhen` (a UI hint, applied server-side
 by `applyForcedFields` on create/update and mirrored by the form) pins fields an auth method leaves no
@@ -186,6 +188,11 @@ policies apply before the session starts; gateway-enforced ones flow to the gate
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
 
+**Output masking fails closed**: an older gateway would silently ignore the rule, so
+`assertGatewayEnforcesOutputMasking` refuses the session unless the gateway advertises `outputMasking`. A new
+gateway capability must also be added to the heartbeat body schema in `ee/routes/v2/gateway-router.ts`, which
+strips unknown keys, so a capability missing there is never stored and every check on it fails.
+
 **External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
 (`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
 backend list gateways read. Hosts beyond the built-in providers come from the server admin's
@@ -241,15 +248,17 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 ## Sessions
 
 `pam-session/` + `pam-web-access/`. Sessions reference accounts via nullable `accountId` (history survives
-account deletion). Duration is capped at the template max; expiration is enforced by a delayed BullMQ job
-scheduled at session creation.
+account deletion). Duration is capped at the template max, the approval grant's expiry and the end of a
+temporary folder or account membership (`getLaunchAccessRemainingMs`), since nothing ends a session when a
+membership lapses on its own; expiration is enforced by a delayed BullMQ job scheduled at session creation.
 
 **Nothing re-checks the actor mid-session**, so every path that takes access away has to close sessions
-itself. `pam-session-access-fns.ts` holds the two: `terminatePamSessionsWithoutLaunchAccess` re-derives
-`LaunchSessions` after a membership or role change, and `terminatePamSessionsForUsers` drops everything a
-user holds when they leave the org (SCIM deactivate/delete, org deactivate/remove). Both run inside the
-caller's transaction and hand back a callback to fire after COMMIT — the row flip rolls back, the gateway
-signal does not.
+itself. `pam-session-access-fns.ts` holds the helpers: `terminatePamSessionsWithoutLaunchAccess` re-derives
+`LaunchSessions` after a membership or role change, `terminatePamSessionsLosingGroupAccess` runs it for group
+changes made outside PAM (removal from a group, group delete or sub-org unlink, including SCIM and IdP sync),
+and `terminatePamSessionsForUsers` drops everything a user holds when they leave the org (SCIM
+deactivate/delete, org deactivate/remove). All run inside the caller's transaction and hand back a callback
+to fire after COMMIT — the row flip rolls back, the gateway signal does not.
 
 **An orphaned session (null `accountId`) is scoped to product admin.** Every
 resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Admin` stands in on the

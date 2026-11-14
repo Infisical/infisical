@@ -1,12 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -52,7 +52,7 @@ export type THsmConnectorServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 export type THsmConnectorServiceFactory = ReturnType<typeof hsmConnectorServiceFactory>;
@@ -101,7 +101,7 @@ export const hsmConnectorServiceFactory = ({
 
   const assertLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.hsm) {
+    if (!plan.has(PlanFeature.Hsm)) {
       throw new BadRequestError({
         message: "Your plan does not include HSM support. Please upgrade to use HSM Connectors."
       });
@@ -353,6 +353,7 @@ export const hsmConnectorServiceFactory = ({
           message: `HSM Connector is in use by ${caCount} certificate authority(ies). Delete or migrate those CAs before removing this connector.`
         });
       }
+      await hsmConnectorDAL.detachDeletedCertificates(row.id, tx);
       try {
         await hsmConnectorDAL.deleteById(row.id, tx);
       } catch (err) {

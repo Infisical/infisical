@@ -493,12 +493,13 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         200: z.object({
           message: z.string().trim(),
           serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
-          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt)
+          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt),
+          crlWarning: z.string().optional().describe(CERTIFICATES.REVOKE.crlWarning)
         })
       }
     },
     handler: async (req) => {
-      const { revokedAt, cert, applicationName, ca } = await server.services.certificate.revokeCert({
+      const { revokedAt, cert, applicationName, ca, crlWarning } = await server.services.certificate.revokeCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -526,7 +527,8 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       return {
         message: "Successfully revoked certificate",
         serialNumber: req.params.serialNumber,
-        revokedAt
+        revokedAt,
+        crlWarning
       };
     }
   });
@@ -552,7 +554,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
+      const { deletedCert, applicationName, statusAtDeletion } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -573,7 +575,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
             serialNumber: deletedCert.serialNumber,
             notAfter: deletedCert.notAfter.toISOString(),
             source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
-            deletionAllowedReason: deletionEligibility,
+            statusAtDeletion,
             applicationId: deletedCert.applicationId,
             applicationName
           }

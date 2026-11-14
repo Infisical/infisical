@@ -166,6 +166,12 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TJenkinsSync,
+  TJenkinsSyncInput,
+  TJenkinsSyncListItem,
+  TJenkinsSyncWithCredentials
+} from "./jenkins/jenkins-sync-types";
+import {
   TKeeperSync,
   TKeeperSyncInput,
   TKeeperSyncListItem,
@@ -308,7 +314,8 @@ export type TSecretSync =
   | TCloud66Sync
   | TSpaceliftSync
   | TDaytonaSync
-  | TKeeperSync;
+  | TKeeperSync
+  | TJenkinsSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -362,7 +369,8 @@ export type TSecretSyncWithCredentials =
   | TCloud66SyncWithCredentials
   | TSpaceliftSyncWithCredentials
   | TDaytonaSyncWithCredentials
-  | TKeeperSyncWithCredentials;
+  | TKeeperSyncWithCredentials
+  | TJenkinsSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -416,7 +424,8 @@ export type TSecretSyncInput =
   | TCloud66SyncInput
   | TSpaceliftSyncInput
   | TDaytonaSyncInput
-  | TKeeperSyncInput;
+  | TKeeperSyncInput
+  | TJenkinsSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -470,7 +479,8 @@ export type TSecretSyncListItem =
   | TCloud66SyncListItem
   | TSpaceliftSyncListItem
   | TDaytonaSyncListItem
-  | TKeeperSyncListItem;
+  | TKeeperSyncListItem
+  | TJenkinsSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
@@ -507,6 +517,7 @@ export type TCreateSecretSyncDTO = Pick<TSecretSync, "syncOptions" | "destinatio
   projectId: string;
   secretPath: string;
   environment: string;
+  includeAllSubFolders?: boolean;
   isAutoSyncEnabled?: boolean;
 };
 
@@ -553,6 +564,8 @@ export type TSyncSecretsResult = {
   createdSecretKeys: string[];
   updatedSecretKeys: string[];
   deletedSecretKeys: string[];
+  // Something the user has to act on although the sync succeeded; saved as the sync's last message.
+  message?: string;
 };
 
 // ReturnType<> resolves findById's includeFolderPath generic to boolean, a union whose members may

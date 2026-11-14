@@ -70,6 +70,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  ClickHouseConnectionListItemSchema,
+  SanitizedClickHouseConnectionSchema
+} from "@app/services/app-connection/clickhouse";
+import {
   Cloud66ConnectionListItemSchema,
   SanitizedCloud66ConnectionSchema
 } from "@app/services/app-connection/cloud-66";
@@ -150,6 +154,10 @@ import {
   ImpervaConnectionListItemSchema,
   SanitizedImpervaConnectionSchema
 } from "@app/services/app-connection/imperva";
+import {
+  JenkinsConnectionListItemSchema,
+  SanitizedJenkinsConnectionSchema
+} from "@app/services/app-connection/jenkins";
 import { JiraConnectionListItemSchema, SanitizedJiraConnectionSchema } from "@app/services/app-connection/jira";
 import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
@@ -381,6 +389,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedPortainerConnectionSchema.options,
+  ...SanitizedJenkinsConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
@@ -393,7 +402,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHpeIloConnectionSchema.options,
   ...SanitizedServiceNowConnectionSchema.options,
   ...SanitizedS3CompatibleConnectionSchema.options,
-  ...SanitizedJiraConnectionSchema.options
+  ...SanitizedJiraConnectionSchema.options,
+  ...SanitizedClickHouseConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -479,6 +489,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
   PortainerConnectionListItemSchema,
+  JenkinsConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
@@ -491,7 +502,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HpeIloConnectionListItemSchema,
   ServiceNowConnectionListItemSchema,
   S3CompatibleConnectionListItemSchema,
-  JiraConnectionListItemSchema
+  JiraConnectionListItemSchema,
+  ClickHouseConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

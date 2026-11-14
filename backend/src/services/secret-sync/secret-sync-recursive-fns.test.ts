@@ -227,6 +227,7 @@ describe("buildSyncPayload", () => {
         sourcePath: "/",
         sourceFolderId: "root",
         syncOptions: { includeAllSubFolders: true },
+        includeAllSubFolders: true,
         includeImports: true
       },
       buildDeps
@@ -286,6 +287,7 @@ describe("buildSyncPayload cross-folder duplicates", () => {
     sourcePath: "/",
     sourceFolderId: "root",
     syncOptions: { includeAllSubFolders: true },
+    includeAllSubFolders: true,
     includeImports: true
   } as Parameters<typeof buildSyncPayload>[0];
 

@@ -71,7 +71,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         actorType: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         directAddress: req.body.directAddress,
-        name: req.body.name
+        name: req.body.name,
+        tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined
       });
 
       await server.services.auditLog.createAuditLog({
@@ -140,6 +141,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               pkcs11MlDsa: z.boolean().optional(),
               sessionLogMaskingBuiltInDetection: z.boolean().optional(),
               clickhouseNativeProtocol: z.boolean().optional(),
+              outputMasking: z.boolean().optional(),
               certificateScan: z.boolean().optional(),
               windowsCertificateScan: z.boolean().optional(),
               supported_account_types: z.array(z.string().trim().max(64)).max(64).optional()

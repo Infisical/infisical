@@ -1,6 +1,11 @@
 import { validateHeaderValue } from "node:http";
 
-import { safeRequest } from "@app/lib/validator";
+import { render } from "@react-email/components";
+import React from "react";
+
+import { BadRequestError } from "@app/lib/errors";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE, safeRequest } from "@app/lib/validator";
+import { AlertNotificationTemplate } from "@app/services/smtp/emails/AlertNotificationTemplate";
 
 import {
   AlertChannelType,
@@ -27,6 +32,12 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
 }));
+
+const { configState } = vi.hoisted(() => ({
+  configState: { isCloud: false, ALERT_WEBHOOK_ALLOW_HTTP: false, ALERT_WEBHOOK_ALLOW_INTERNAL_IP: false }
+}));
+
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => configState }));
 
 vi.mock("@app/lib/validator", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/validator")>()),
@@ -75,6 +86,73 @@ const baseCtx = () => ({
   deps: {
     smtpService: { sendMail: async () => undefined }
   }
+});
+
+const CERT_A_URL = "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-a";
+
+const payloadWithFirstItemUrl = (): TAlertPayload => {
+  const payload = samplePayload();
+  payload.items[0].url = CERT_A_URL;
+  return payload;
+};
+
+const captureEmailSubstitutions = async (payload: TAlertPayload) => {
+  let substitutions: object | undefined;
+  await sendEmailNotification({
+    ...baseCtx(),
+    payload,
+    config: {},
+    recipient: { email: "user@example.com" },
+    deps: {
+      smtpService: {
+        sendMail: async (opts: { substitutions: object }) => {
+          substitutions = opts.substitutions;
+        }
+      }
+    }
+  });
+  return substitutions;
+};
+
+describe("item links", () => {
+  test("email links an item's title only when the item has a url, and keeps the overview button", async () => {
+    const html = await render(
+      React.createElement(AlertNotificationTemplate, {
+        ...(await captureEmailSubstitutions(payloadWithFirstItemUrl())),
+        siteUrl: "https://app.infisical.com"
+      } as React.ComponentProps<typeof AlertNotificationTemplate>)
+    );
+    expect(html).toContain(`href="${CERT_A_URL}"`);
+    expect(html).toContain(">api.prod.example.com</a>");
+    expect(html).not.toContain(">web.example.com</a>");
+    expect(html).toContain('href="https://app.infisical.com/inventory"');
+  });
+
+  test("slack links an item's name only when the item has a url, and keeps the overview button", () => {
+    const blocks = buildSlackPayload(payloadWithFirstItemUrl()).attachments?.[0].blocks ?? [];
+    const names = blocks.flatMap((block) =>
+      block.type === "section" && "fields" in block && block.fields ? [block.fields[0].text] : []
+    );
+    expect(names).toEqual([`*Name:*\n<${CERT_A_URL}|api.prod.example.com>`, "*Name:*\nweb.example.com"]);
+    expect(JSON.stringify(blocks.find((block) => block.type === "actions"))).toContain(
+      '"url":"https://app.infisical.com/inventory"'
+    );
+  });
+
+  test("slack still escapes a linked name", () => {
+    const payload = payloadWithFirstItemUrl();
+    payload.items[0].title = "<!channel> a&b";
+    const fields = buildSlackPayload(payload).attachments?.[0].blocks.find(
+      (block) => block.type === "section" && "fields" in block
+    );
+    expect(JSON.stringify(fields)).toContain(`<${CERT_A_URL}|&lt;!channel&gt; a&amp;b>`);
+  });
+
+  test("webhook includes the url on the items that have one", () => {
+    const { items } = buildWebhookPayload(payloadWithFirstItemUrl()).data;
+    expect(items[0].url).toBe(CERT_A_URL);
+    expect(items[1]).not.toHaveProperty("url");
+  });
 });
 
 describe("alert channel registry", () => {
@@ -429,6 +507,76 @@ describe("sendWebhookNotification", () => {
       authHeaderValue: "k"
     });
     expect(header?.headers).toMatchObject({ "X-API-Key": "k" });
+  });
+});
+
+describe("webhook alert self-hosting flags", () => {
+  beforeEach(() => {
+    configState.isCloud = false;
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = false;
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = false;
+  });
+
+  const schemeError = (url: string) =>
+    WebhookChannelConfigSchema.safeParse({ url }).error?.issues.map((issue) => issue.message);
+
+  test("refuses HTTP by default and names the flag on self-hosted", () => {
+    expect(schemeError("http://example.com/hook")).toEqual([expect.stringContaining("'ALERT_WEBHOOK_ALLOW_HTTP'")]);
+  });
+
+  test("refuses HTTP on Cloud without mentioning environment variables", () => {
+    configState.isCloud = true;
+    expect(schemeError("http://example.com/hook")).toEqual(["Webhook URL must use HTTPS."]);
+  });
+
+  test("accepts HTTP with ALERT_WEBHOOK_ALLOW_HTTP, but no other scheme", () => {
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = true;
+    expect(WebhookChannelConfigSchema.safeParse({ url: "http://example.com/hook" }).success).toBe(true);
+    expect(WebhookChannelConfigSchema.safeParse({ url: "ftp://example.com/hook" }).success).toBe(false);
+  });
+
+  test("leaves Slack strict with both flags on", () => {
+    configState.ALERT_WEBHOOK_ALLOW_HTTP = true;
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = true;
+    expect(SlackChannelConfigSchema.safeParse({ webhookUrl: "http://hooks.slack.com/services/T/B/x" }).success).toBe(
+      false
+    );
+  });
+
+  test("passes ALERT_WEBHOOK_ALLOW_INTERNAL_IP to the request", async () => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    configState.ALERT_WEBHOOK_ALLOW_INTERNAL_IP = true;
+    await sendWebhookNotification({ ...baseCtx(), config: { url: "https://example.com/hook" } });
+    expect(post.mock.calls[0][2]).toMatchObject({ allowPrivateIps: true });
+  });
+
+  test("names ALERT_WEBHOOK_ALLOW_INTERNAL_IP when a private address is refused on self-hosted", async () => {
+    vi.mocked(safeRequest.post).mockRejectedValueOnce(
+      new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE })
+    );
+    await expect(
+      sendWebhookNotification({ ...baseCtx(), config: { url: "https://internal.example/hook" } })
+    ).rejects.toThrow(/'ALERT_WEBHOOK_ALLOW_INTERNAL_IP'/);
+  });
+
+  test("does not mention environment variables for a refused private address on Cloud", async () => {
+    configState.isCloud = true;
+    vi.mocked(safeRequest.post).mockRejectedValueOnce(
+      new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE })
+    );
+    await expect(
+      sendWebhookNotification({ ...baseCtx(), config: { url: "https://internal.example/hook" } })
+    ).rejects.toThrow("Webhook URL points to a private or local address, which is not allowed.");
+  });
+
+  test("fails a stored HTTP channel readably once the HTTP flag is off", async () => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+    const result = sendWebhookNotification({ ...baseCtx(), config: { url: "http://example.com/hook" } });
+    await expect(result).rejects.toBeInstanceOf(BadRequestError);
+    await expect(result).rejects.toThrow(/^Webhook URL must use HTTPS\. If you are self-hosting/);
+    expect(post).not.toHaveBeenCalled();
   });
 });
 

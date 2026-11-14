@@ -172,9 +172,11 @@ export const DbtServiceTokenRotationParametersFields = () => {
                   if (roles && roles.length > 1) {
                     permissionGrantsFields.remove(i);
                   } else {
-                    setValue("parameters.permissionGrants", [
-                      { permissionSet: DbtPermissionsSet.AccountAdmin, projectId: undefined }
-                    ]);
+                    setValue(
+                      "parameters.permissionGrants",
+                      [{ permissionSet: DbtPermissionsSet.AccountAdmin, projectId: undefined }],
+                      { shouldDirty: true }
+                    );
                   }
                 }}
               >

@@ -330,6 +330,8 @@ export enum PostHogEventTypes {
   AgentVaultSkillDeleted = "Agent Vault Skill Deleted",
   AgentVaultAccessBundleSkillAdded = "Agent Vault Access Bundle Skill Added",
   AgentVaultAccessBundleSkillRemoved = "Agent Vault Access Bundle Skill Removed",
+  AgentVaultAccessBundleServiceAdded = "Agent Vault Access Bundle Service Added",
+  AgentVaultAccessBundleServiceRemoved = "Agent Vault Access Bundle Service Removed",
   AgentVaultSkillsDelivered = "Agent Vault Skills Delivered",
   AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
@@ -1300,6 +1302,7 @@ export type THoneyTokenCreatedEvent = {
   properties: {
     honeyTokenId: string;
     type: string;
+    managedBy: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -1337,6 +1340,7 @@ export type THoneyTokenTriggeredEvent = {
   event: PostHogEventTypes.HoneyTokenTriggered;
   properties: {
     type: string;
+    managedBy: string;
   };
 };
 
@@ -2451,13 +2455,15 @@ export type TAgentVaultAccessBundleDeletedEvent = {
 export type TAgentVaultServiceCreatedEvent = {
   event: PostHogEventTypes.AgentVaultServiceCreated;
   properties: TAgentVaultEventBase & {
-    accessBundleId: string;
+    // The access bundles it was added to in the same request.
+    accessBundleCount: number;
     serviceId: string;
     serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
     allowedMethodCount: number;
     allowedPathPrefixCount: number;
+    allowedToolCount: number;
     customHeaderCount: number;
     substitutionCount: number;
     variableReferenceCount: number;
@@ -2467,13 +2473,13 @@ export type TAgentVaultServiceCreatedEvent = {
 export type TAgentVaultServiceUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultServiceUpdated;
   properties: TAgentVaultEventBase & {
-    accessBundleId: string;
     serviceId: string;
     serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
     allowedMethodCount: number;
     allowedPathPrefixCount: number;
+    allowedToolCount: number;
     customHeaderCount: number;
     substitutionCount: number;
     variableReferenceCount: number;
@@ -2482,7 +2488,7 @@ export type TAgentVaultServiceUpdatedEvent = {
 
 export type TAgentVaultServiceDeletedEvent = {
   event: PostHogEventTypes.AgentVaultServiceDeleted;
-  properties: TAgentVaultEventBase & { accessBundleId: string; serviceId: string };
+  properties: TAgentVaultEventBase & { serviceId: string };
 };
 
 export type TAgentVaultVariableCreatedEvent = {
@@ -2538,6 +2544,16 @@ export type TAgentVaultAccessBundleSkillRemovedEvent = {
   properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
 };
 
+export type TAgentVaultAccessBundleServiceAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleServiceAdded;
+  properties: TAgentVaultEventBase & { serviceId: string; accessBundleId: string; serviceType: string };
+};
+
+export type TAgentVaultAccessBundleServiceRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleServiceRemoved;
+  properties: TAgentVaultEventBase & { serviceId: string; accessBundleId: string; serviceType: string };
+};
+
 // Fired once per agent start by the route the CLI calls with a session token, which has no request actor.
 export type TAgentVaultSkillsDeliveredEvent = {
   event: PostHogEventTypes.AgentVaultSkillsDelivered;
@@ -2563,7 +2579,9 @@ export type TAgentVaultSessionCreatedEvent = {
   event: PostHogEventTypes.AgentVaultSessionCreated;
   properties: TAgentVaultEventBase & {
     sessionId: string;
-    accessBundleId: string;
+    // Null for a session started with inline services only.
+    accessBundleId: string | null;
+    inlineServiceCount: number;
     ttlSeconds: number | null;
     isOnBehalfOfUser: boolean;
   };
@@ -2617,7 +2635,8 @@ export type TAgentVaultProxyTokenRotatedEvent = {
 };
 
 // Sent per upload link a proxy is given, and aggregated (POSTHOG_AGGREGATED_EVENTS), so bytes and records sum per org.
-// records is the proxy's own count, unchecked, and missing from CLIs that don't send it.
+// records is the proxy's own count, unchecked, and missing from CLIs that don't send it. The per-decision counts
+// (brokered, passthrough, blocked, error) are sent only when they add up to records, so ratios divide by their sum.
 export type TAgentVaultSessionLogChunkAcceptedEvent = {
   event: PostHogEventTypes.AgentVaultSessionLogChunkAccepted;
   properties: {
@@ -2625,6 +2644,10 @@ export type TAgentVaultSessionLogChunkAcceptedEvent = {
     storageType: ObjectStorageType;
     bytes: number;
     records?: number;
+    brokered?: number;
+    passthrough?: number;
+    blocked?: number;
+    error?: number;
   };
 };
 
@@ -2669,6 +2692,8 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultSkillDeletedEvent
   | TAgentVaultAccessBundleSkillAddedEvent
   | TAgentVaultAccessBundleSkillRemovedEvent
+  | TAgentVaultAccessBundleServiceAddedEvent
+  | TAgentVaultAccessBundleServiceRemovedEvent
   | TAgentVaultSkillsDeliveredEvent
   | TAgentVaultAccessBundleMemberAddedEvent
   | TAgentVaultAccessBundleMemberRemovedEvent

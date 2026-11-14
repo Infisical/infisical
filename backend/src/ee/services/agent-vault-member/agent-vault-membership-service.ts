@@ -9,6 +9,7 @@ import {
   ResourceType,
   TMemberships
 } from "@app/db/schemas";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -22,8 +23,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { AgentVaultIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -39,7 +38,11 @@ import {
   TClearPersonalValuesDeps
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
-import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ACTOR_COLUMN,
+  AgentVaultMemberType,
+  TAgentVaultActorColumn
+} from "../agent-vault/agent-vault-enums";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
 type TAgentVaultMembershipServiceFactoryDep = {
@@ -53,7 +56,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  usageMeteringService: TUsageMeteringService;
 } & TClearPersonalValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
@@ -85,6 +88,7 @@ export type TAgentVaultMemberIds = {
 export type TAddAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
   projectId: string;
   emails: string[];
+  usernames?: string[];
   role: ProjectMembershipRole.Admin | ProjectMembershipRole.Member;
   ctx: TGenericPermission;
 };
@@ -116,14 +120,6 @@ type TAgentVaultMemberWriteResult<TMember> = Promise<{
 const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member];
 
 const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
-
-type TActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
-
-const ACTOR_COLUMN: Record<AgentVaultMemberType, TActorColumn> = {
-  [AgentVaultMemberType.User]: "actorUserId",
-  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
-  [AgentVaultMemberType.Group]: "actorGroupId"
-};
 
 const isSelf = (actor: TAgentVaultActorRef, ctx: TGenericPermission) =>
   (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
@@ -299,7 +295,7 @@ export const agentVaultMembershipServiceFactory = ({
         throw new BadRequestError({
           message: `Cannot add ${unresolved
             .map((el) => `'${el}'`)
-            .join(", ")} to Agent Vault because they are not a member of this organization. Invite them first.`
+            .join(", ")} to this project because they are not a member of this organization. Invite them first.`
         });
       }
 
@@ -323,7 +319,7 @@ export const agentVaultMembershipServiceFactory = ({
     // An org reaches a group or an identity through an org-scope membership row, not by owning the row:
     // that is how a sub-org is given one of its parent's, and how the generic project membership path
     // decides the same question. Reading orgId off the group or identity refuses every linked one.
-    const orgScoped = (column: TActorColumn, ids: string[]) =>
+    const orgScoped = (column: TAgentVaultActorColumn, ids: string[]) =>
       ids.length
         ? membershipDAL.find({ scope: AccessScope.Organization, scopeOrgId: orgId, $in: { [column]: ids } })
         : [];
@@ -338,7 +334,7 @@ export const agentVaultMembershipServiceFactory = ({
       ]
     );
 
-    const activeIds = (memberships: TMemberships[], column: TActorColumn) =>
+    const activeIds = (memberships: TMemberships[], column: TAgentVaultActorColumn) =>
       new Set(memberships.filter((membership) => membership.isActive).map((membership) => membership[column]));
 
     const userMemberIds = withActiveOrgAccess.userIds;
@@ -375,7 +371,7 @@ export const agentVaultMembershipServiceFactory = ({
       throw new BadRequestError({
         message: `Machine identity(s) ${foreign
           .map((el) => `'${el}'`)
-          .join(", ")} belong to another project and cannot be given access to Agent Vault`
+          .join(", ")} belong to another project and cannot be given access to this project`
       });
     }
 
@@ -438,12 +434,12 @@ export const agentVaultMembershipServiceFactory = ({
           {
             scope: AccessScope.Project,
             scopeProjectId: projectId,
-            $in: { [ACTOR_COLUMN[type]]: ids }
+            $in: { [AGENT_VAULT_ACTOR_COLUMN[type]]: ids }
           },
           { tx }
         );
         rows.forEach((row) => {
-          const id = row[ACTOR_COLUMN[type]];
+          const id = row[AGENT_VAULT_ACTOR_COLUMN[type]];
           if (id) byActor.set(`${type}:${id}`, row);
         });
       })
@@ -457,12 +453,14 @@ export const agentVaultMembershipServiceFactory = ({
     role,
     ctx,
     emails,
+    usernames = [],
     ...ids
   }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
     await checkProductAdmin(projectId, ctx);
     assertValidRole(role);
 
-    const actors = await resolveNamedActors({ ...ids, emails }, ctx.actorOrgId);
+    // A username is matched the same way as an email, by the user's username and then their SSO aliases.
+    const actors = await resolveNamedActors({ ...ids, emails: [...emails, ...usernames] }, ctx.actorOrgId);
     await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
 
     const nameByKey = await resolveActorNames(actors);
@@ -488,7 +486,7 @@ export const agentVaultMembershipServiceFactory = ({
           scope: AccessScope.Project,
           scopeOrgId: ctx.actorOrgId,
           scopeProjectId: projectId,
-          [ACTOR_COLUMN[actor.type]]: actor.id,
+          [AGENT_VAULT_ACTOR_COLUMN[actor.type]]: actor.id,
           isActive: true
         })),
         tx
@@ -506,8 +504,8 @@ export const agentVaultMembershipServiceFactory = ({
 
       const membershipByActor = new Map(
         memberships.map((membership) => {
-          const type = ALL_ACTOR_TYPES.find((el) => membership[ACTOR_COLUMN[el]])!;
-          return [`${type}:${membership[ACTOR_COLUMN[type]]!}`, membership];
+          const type = ALL_ACTOR_TYPES.find((el) => membership[AGENT_VAULT_ACTOR_COLUMN[el]])!;
+          return [`${type}:${membership[AGENT_VAULT_ACTOR_COLUMN[type]]!}`, membership];
         })
       );
 
@@ -526,7 +524,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.created.length) usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    if (written.created.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities);
     return { members: written.created, skipped: written.skipped };
   };
 
@@ -583,7 +581,7 @@ export const agentVaultMembershipServiceFactory = ({
         await assertWillRetainProjectAdmin({
           scopeProjectId: projectId,
           excludeMembershipIds: membershipIds,
-          productLabel: "Agent Vault",
+          productLabel: "This project",
           tx
         });
       }
@@ -665,7 +663,7 @@ export const agentVaultMembershipServiceFactory = ({
       await assertWillRetainProjectAdmin({
         scopeProjectId: projectId,
         excludeMembershipIds: membershipIds,
-        productLabel: "Agent Vault",
+        productLabel: "This project",
         tx
       });
 
@@ -682,7 +680,7 @@ export const agentVaultMembershipServiceFactory = ({
               scope: RESOURCE_SCOPE,
               scopeProjectId: projectId,
               scopeResourceType: ResourceType.AgentVaultAccessBundle,
-              $in: { [ACTOR_COLUMN[type]]: typeIds }
+              $in: { [AGENT_VAULT_ACTOR_COLUMN[type]]: typeIds }
             },
             tx
           );
@@ -715,7 +713,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.removed.length) usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
+    if (written.removed.length) usageMeteringService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities);
     return { members: written.removed, skipped: written.skipped };
   };
   return {

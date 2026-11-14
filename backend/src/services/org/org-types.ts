@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { TOrgPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType, MfaMethod, SsoMfaTrust } from "../auth/auth-type";
+import { TListActorProjectMembershipsFilter } from "../project-membership/project-membership-types";
 import { OrgWithSubOrgsSchema } from "./org-schema";
 
 /** Root org with accessible sub-orgs (basic info only) */
@@ -78,6 +79,7 @@ export type TUpdateOrgDTO = {
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
     selectedMfaMethod: MfaMethod;
+    ssoMfaTrust: SsoMfaTrust;
     allowSecretSharingOutsideOrganization: boolean;
     bypassOrgAuthEnabled: boolean;
     userTokenExpiration: string;
@@ -103,7 +105,8 @@ export type TFindAllOrgMembersDTO = TOrgPermission;
 
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
-} & TOrgPermission;
+} & TListActorProjectMembershipsFilter &
+  TOrgPermission;
 
 export enum OrgAuthMethod {
   OIDC = "oidc",

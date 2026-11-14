@@ -4,6 +4,8 @@ import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-reac
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
   Detail,
@@ -19,16 +21,24 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  Spinner
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
+import { InlineServicesHoverCard } from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
+import { inlineServiceTarget } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
+import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
+
+const SHOWN_INLINE_SERVICES = 1;
 
 type Props = {
   session: TAgentVaultSession | undefined;
@@ -43,6 +53,7 @@ export const SessionDetailSheet = ({
   onRevoke,
   onEditLabel
 }: Props) => {
+  const { projectId } = useProject();
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
 
@@ -53,6 +64,9 @@ export const SessionDetailSheet = ({
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
+  const services = session?.services ?? [];
+  const shownServices = services.slice(0, SHOWN_INLINE_SERVICES);
+  const moreServices = services.slice(SHOWN_INLINE_SERVICES);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -64,7 +78,7 @@ export const SessionDetailSheet = ({
         {!session && isPending && (
           <Empty className="m-4 border">
             <EmptyHeader>
-              <Spinner size="sm" />
+              <Spinner size="sm" variant="av" />
             </EmptyHeader>
           </Empty>
         )}
@@ -136,36 +150,79 @@ export const SessionDetailSheet = ({
                         </DetailValue>
                       </Detail>
                     )}
-                    <Detail className="min-w-0">
-                      <DetailLabel>
-                        {session.accessBundles.length === 1 ? "Access Bundle" : "Access Bundles"}
-                      </DetailLabel>
-                      <DetailValue className="flex flex-wrap gap-x-4 gap-y-1">
-                        {session.accessBundles.map((bundle) =>
-                          bundle.id ? (
+                    {session.accessBundle && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Access Bundle</DetailLabel>
+                        <DetailValue className="flex min-w-0">
+                          {session.accessBundle.id ? (
                             <Link
-                              key={bundle.id}
-                              to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                              params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                              params={{
+                                orgId: currentOrg.id,
+                                projectId,
+                                accessBundleId: session.accessBundle.id
+                              }}
                               className="group flex min-w-0 items-center gap-2"
                             >
                               <PackageIcon className="size-4 shrink-0 text-muted" />
                               <span className="truncate group-hover:underline group-hover:underline-offset-2">
-                                {bundle.name}
+                                {session.accessBundle.name}
                               </span>
                             </Link>
                           ) : (
-                            <span
-                              key={bundle.name}
-                              className="flex min-w-0 items-center gap-2 text-muted"
-                            >
+                            <span className="flex min-w-0 items-center gap-2 text-muted">
                               <PackageIcon className="size-4 shrink-0" />
-                              <span className="truncate">{bundle.name} (deleted)</span>
+                              <span className="truncate">
+                                {session.accessBundle.name} (deleted)
+                              </span>
                             </span>
-                          )
-                        )}
-                      </DetailValue>
-                    </Detail>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.services.length > 0 && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Inline Services</DetailLabel>
+                        <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          {shownServices.map((service) => (
+                            <Tooltip key={service.id}>
+                              <TooltipTrigger asChild>
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <ServiceIcon
+                                    hostPattern={hostPatternOf(service)}
+                                    serviceType={service.type}
+                                    className="size-5"
+                                  />
+                                  <span className="truncate">{service.name}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                Sent with this session when it was created, for{" "}
+                                {inlineServiceTarget(service)}
+                                {service.hook && (
+                                  <span className="block break-all">
+                                    Calls the hook at {service.hook.url} first.
+                                  </span>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                          {moreServices.length > 0 && (
+                            <InlineServicesHoverCard services={moreServices}>
+                              <button
+                                type="button"
+                                className="shrink-0 rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                              >
+                                {/* One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam. */}
+                                <span className="underline decoration-dotted underline-offset-2">
+                                  {`+${moreServices.length} more`}
+                                </span>
+                              </button>
+                            </InlineServicesHoverCard>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
                     <Detail>
                       <DetailLabel>Created</DetailLabel>
                       <DetailValue>
@@ -185,6 +242,14 @@ export const SessionDetailSheet = ({
                         <DetailLabel>{hasExpired ? "Expired" : "Expires"}</DetailLabel>
                         <DetailValue>
                           <SessionExpiry expiresAt={session.expiresAt} />
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.stats && (
+                      <Detail>
+                        <DetailLabel>Requests</DetailLabel>
+                        <DetailValue>
+                          <SessionRequestCount stats={session.stats} />
                         </DetailValue>
                       </Detail>
                     )}

@@ -24,7 +24,10 @@ export type TAgentVaultSessionListRow = {
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
-  accessBundles: { id: string | null; name: string; position: number }[];
+  // Null for a session with services of its own only.
+  accessBundle: { id: string | null; name: string } | null;
+  // Null until the proxy uploads the session's first log chunk.
+  stats: { requests: number; brokered: number | null } | null;
 };
 
 // The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
@@ -155,6 +158,16 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       return await (tx || db.replicaNode())(TableName.AgentVaultSession).where({ tokenHash }).first();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session by token hash" });
+    }
+  };
+
+  // Revoking by token and listing the proxy CA fingerprints read the primary: a script that mints and then revokes
+  // or connects straight away would otherwise get a 401 from a replica that hasn't seen the new session.
+  const findByTokenHashOnPrimary = async (tokenHash: string): Promise<TAgentVaultSessions | undefined> => {
+    try {
+      return await db(TableName.AgentVaultSession).where({ tokenHash }).first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault session by token hash on primary" });
     }
   };
 
@@ -293,6 +306,11 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultAccessBundle}.id`,
           `${TableName.AgentVaultSessionAccessBundle}.accessBundleId`
         )
+        .leftJoin(
+          TableName.AgentVaultSessionStats,
+          `${TableName.AgentVaultSessionStats}.sessionId`,
+          `${TableName.AgentVaultSession}.id`
+        )
         .select(
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
@@ -319,10 +337,10 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
-          db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
+          db.ref("requests").withSchema(TableName.AgentVaultSessionStats).as("statsRequests"),
+          db.ref("brokered").withSchema(TableName.AgentVaultSessionStats).as("statsBrokered")
         )
-        .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")
-        .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")) as {
+        .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
         userId: string | null;
         identityId: string | null;
@@ -348,50 +366,51 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
-        position: number | null;
+        // bigint columns, which pg returns as strings
+        statsRequests: string | null;
+        statsBrokered: string | null;
       }[];
 
-      const bySession = new Map<string, TAgentVaultSessionListRow>();
-      rows.forEach((row) => {
-        let session = bySession.get(row.id);
-        if (!session) {
-          session = {
-            id: row.id,
-            userId: row.userId,
-            identityId: row.identityId,
-            onBehalfOfUserId: row.onBehalfOfUserId,
-            onBehalfOfUserName: row.onBehalfOfUserName,
-            label: row.label,
-            actor: toSessionActor(row),
-            onBehalfOf:
-              row.onBehalfOfUserName !== null
-                ? toSessionUser(
-                    {
-                      id: row.onBehalfOfUserId,
-                      username: row.onBehalfOfUserLiveUsername,
-                      email: row.onBehalfOfUserLiveEmail,
-                      firstName: row.onBehalfOfUserLiveFirstName,
-                      lastName: row.onBehalfOfUserLiveLastName
-                    },
-                    { name: row.onBehalfOfUserName, email: row.onBehalfOfUserEmail }
-                  )
-                : null,
-            expiresAt: row.expiresAt,
-            revokedAt: row.revokedAt,
-            createdAt: row.createdAt,
-            accessBundles: []
-          };
-          bySession.set(row.id, session);
-        }
-        if (row.accessBundleName === null || row.position === null) return;
-        session.accessBundles.push({
-          id: row.accessBundleId,
-          name: row.liveAccessBundleName ?? row.accessBundleName,
-          position: row.position
-        });
+      const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
+        return {
+          id: row.id,
+          userId: row.userId,
+          identityId: row.identityId,
+          onBehalfOfUserId: row.onBehalfOfUserId,
+          onBehalfOfUserName: row.onBehalfOfUserName,
+          label: row.label,
+          actor: toSessionActor(row),
+          onBehalfOf:
+            row.onBehalfOfUserName !== null
+              ? toSessionUser(
+                  {
+                    id: row.onBehalfOfUserId,
+                    username: row.onBehalfOfUserLiveUsername,
+                    email: row.onBehalfOfUserLiveEmail,
+                    firstName: row.onBehalfOfUserLiveFirstName,
+                    lastName: row.onBehalfOfUserLiveLastName
+                  },
+                  { name: row.onBehalfOfUserName, email: row.onBehalfOfUserEmail }
+                )
+              : null,
+          expiresAt: row.expiresAt,
+          revokedAt: row.revokedAt,
+          createdAt: row.createdAt,
+          accessBundle:
+            row.accessBundleName === null
+              ? null
+              : { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName },
+          stats:
+            row.statsRequests === null
+              ? null
+              : {
+                  requests: Number(row.statsRequests),
+                  brokered: row.statsBrokered === null ? null : Number(row.statsBrokered)
+                }
+        };
       });
 
-      return { sessions: [...bySession.values()], totalCount };
+      return { sessions, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault sessions" });
     }
@@ -468,5 +487,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, updateLabel, findByIdOnPrimary, createWithId };
+  return {
+    ...orm,
+    findByTokenHash,
+    findByTokenHashOnPrimary,
+    findForList,
+    revokeIfActive,
+    updateLabel,
+    findByIdOnPrimary,
+    createWithId
+  };
 };

@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -43,13 +42,12 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
-import { ProjectPermissionActions, useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionActions, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { useUpdateSecretV3 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -130,6 +128,8 @@ type Props = {
   timestampSortField?: "createdAt" | "updatedAt";
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  initialAction?: EnvironmentSecretAction;
+  onInitialActionHandled?: () => void;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -164,7 +164,9 @@ export const SecretTableRow = ({
   onAccessInsightsUpgrade,
   timestampSortField,
   activityId,
-  onActivityChange
+  onActivityChange,
+  initialAction,
+  onInitialActionHandled
 }: Props) => {
   const telemetry = useOverviewTelemetry();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -199,8 +201,6 @@ export const SecretTableRow = ({
   const isRowActive = isSingleEnvView
     ? isSingleEnvBaseActive || isSingleEnvOverrideActive
     : isExpanded;
-  const { projectId } = useProject();
-  const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
   useEffect(() => {
     onActivityChange(activityId, isRowActive);
@@ -232,23 +232,6 @@ export const SecretTableRow = ({
     ? creatingOverrideEnvs.has(singleEnvSlug)
     : false;
   const singleEnvShowOverride = singleEnvHasOverride || singleEnvIsCreatingOverride;
-
-  const handleSecretRename = async (newName: string) => {
-    if (!isSingleEnvView || !singleEnvSecret) return;
-    try {
-      await updateSecretV3ForRename({
-        environment: singleEnvSecret.env,
-        projectId,
-        secretPath,
-        secretKey: singleEnvSecret.key,
-        type: SecretType.Shared,
-        newSecretName: newName
-      });
-      createNotification({ type: "success", text: "Successfully renamed the secret" });
-    } catch {
-      createNotification({ type: "error", text: "Error renaming the secret" });
-    }
-  };
 
   // Clean up creatingOverrideEnvs once the query refetch confirms the override exists.
   // This prevents the override row from flickering between "creating" and "has override" states.
@@ -422,6 +405,7 @@ export const SecretTableRow = ({
       },
       environment: slug,
       environmentName: name,
+      initialActionEntryPoint: "name-cell-icon",
       isRotatedSecret: secret?.isRotatedSecret,
       isHoneyTokenSecret: secret?.isHoneyTokenSecret,
       importedBy,
@@ -469,6 +453,7 @@ export const SecretTableRow = ({
       >
         {(isSingleEnvView || !isExpanded) && (
           <TableCell
+            isTopAligned
             className={twMerge(
               "w-10 max-w-10 min-w-10 p-0",
               !isSingleEnvView && "sticky left-0 z-10",
@@ -479,7 +464,7 @@ export const SecretTableRow = ({
               pendingActionBorderClass(singleEnvPendingAction)
             )}
           >
-            <div className="flex h-full items-center justify-center [&>svg]:size-4">
+            <div className="relative flex h-10 items-center justify-center [&>svg]:size-4">
               <Checkbox
                 variant="project"
                 id={`checkbox-${secretKey}`}
@@ -526,6 +511,9 @@ export const SecretTableRow = ({
           <SecretEditTableRow
             isSingleEnvView
             isBatchMode
+            initialAction={initialAction}
+            initialActionEntryPoint="quick-add"
+            onInitialActionHandled={onInitialActionHandled}
             onBatchRevert={onBatchRevert}
             onPendingSave={onPendingSave}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
@@ -537,7 +525,6 @@ export const SecretTableRow = ({
                 ? singleEnvSecret.key
                 : undefined
             }
-            onSecretRename={handleSecretRename}
             secretPath={secretPath}
             isVisible={isSecretVisible || isSingleEnvSecretsVisible}
             secretName={secretKey}
@@ -735,18 +722,21 @@ export const SecretTableRow = ({
             (isSingleEnvOverrideActive || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
           )}
         >
-          <TableCell>
-            <GitBranchIcon className="text-override-foreground" />
+          <TableCell isTopAligned>
+            <div className="flex h-7 items-center">
+              <GitBranchIcon className="size-4 text-override-foreground" />
+            </div>
           </TableCell>
           <TableCell
+            isTopAligned
             className={twMerge(
               "border-r text-override-foreground",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
-            <span>{secretKey}</span>
+            <div className="flex min-h-7 items-center">{secretKey}</div>
           </TableCell>
-          <TableCell className="max-w-0">
+          <TableCell isTopAligned className="max-w-0">
             <SecretOverrideRow
               isSingleEnvView
               secretName={secretKey}
@@ -940,7 +930,7 @@ export const SecretTableRow = ({
                             <TableCell
                               className={hasOverride ? "border-l border-l-override" : undefined}
                             />
-                            <TableCell colSpan={2} className="max-w-0">
+                            <TableCell isTopAligned colSpan={2} className="max-w-0">
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}

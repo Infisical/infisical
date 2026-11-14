@@ -104,10 +104,13 @@ tables:
     columns:
       - id
       - accessBundleId
+      - projectId
+      - sessionId
       - hostPattern
       - credentialType
       - allowedMethods
       - allowedPathPrefixes
+      - allowedTools
       - type
       - memberProvidedFields
       - createdAt
@@ -120,6 +123,19 @@ tables:
       - sessionId
       - accessBundleId
       - createdAt
+
+  - name: agent_vault_session_inline_services
+    source: public.agent_vault_session_inline_services
+    columns:
+      - id
+      - sessionId
+      - type
+      - hostPattern
+      - credentialType
+      - allowedMethods
+      - allowedPathPrefixes
+      - createdAt
+      - updatedAt
 
   - name: agent_vault_session_log_configs
     source: public.agent_vault_session_log_configs
@@ -142,6 +158,15 @@ tables:
       - onBehalfOfUserId
       - expiresAt
       - revokedAt
+      - createdAt
+      - updatedAt
+
+  - name: agent_vault_session_stats
+    source: public.agent_vault_session_stats
+    columns:
+      - sessionId
+      - requests
+      - brokered
       - createdAt
       - updatedAt
 

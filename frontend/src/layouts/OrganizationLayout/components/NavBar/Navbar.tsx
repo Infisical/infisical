@@ -74,13 +74,14 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useServerConfig,
   useSubscription,
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
+import { getOrgScopedProductFromPath, isAgentVaultProjectPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
@@ -151,6 +152,7 @@ export const Navbar = () => {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { permission } = useOrgPermission();
   const { config: serverConfig } = useServerConfig();
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
@@ -163,6 +165,12 @@ export const Navbar = () => {
     enabled: Boolean(subscription.subOrganization),
     select: (data) => data.organizations
   });
+
+  const canCreateSubOrg =
+    !isSubOrganization &&
+    permission.can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
+  const showSubOrgs =
+    Boolean(subscription.subOrganization) && (subOrganizations.length > 0 || canCreateSubOrg);
 
   const isCardDeclined = Boolean(subscription?.cardDeclined);
   const isCardDeclinedMoreThan30Days = Boolean(
@@ -330,7 +338,7 @@ export const Navbar = () => {
 
   const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
   const isPamScope = orgScopedProduct === ProjectType.PAM;
-  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
+  const isAgentVaultScope = isAgentVaultProjectPath(location.pathname);
   const isProjectScope =
     Boolean(orgScopedProduct) ||
     (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
@@ -496,7 +504,7 @@ export const Navbar = () => {
                         </CommandItem>
                       </CommandGroup>
                       {/* Sub-Organizations */}
-                      {subscription.subOrganization && (
+                      {showSubOrgs && (
                         <>
                           <CommandGroup
                             className="mb-3 ml-4.5 border-l border-border pt-0 pl-3 [&_[cmdk-group-heading]]:pt-0"
@@ -557,25 +565,18 @@ export const Navbar = () => {
                                 <span className="truncate">{subOrg.name}</span>
                               </CommandItem>
                             ))}
-                            <OrgPermissionCan
-                              I={OrgPermissionSubOrgActions.Create}
-                              a={OrgPermissionSubjects.SubOrganization}
-                            >
-                              {(isAllowed) =>
-                                isAllowed && !isSubOrganization ? (
-                                  <CommandItem
-                                    className="text-muted"
-                                    onSelect={() => {
-                                      setIsOrgSelectOpen(false);
-                                      setShowSubOrgForm(true);
-                                    }}
-                                  >
-                                    <Plus />
-                                    <span>New Sub-Organization</span>
-                                  </CommandItem>
-                                ) : null
-                              }
-                            </OrgPermissionCan>
+                            {canCreateSubOrg && (
+                              <CommandItem
+                                className="text-muted"
+                                onSelect={() => {
+                                  setIsOrgSelectOpen(false);
+                                  setShowSubOrgForm(true);
+                                }}
+                              >
+                                <Plus />
+                                <span>New Sub-Organization</span>
+                              </CommandItem>
+                            )}
                           </CommandGroup>
                           {otherOrgs.length > 0 && <CommandSeparator />}
                         </>

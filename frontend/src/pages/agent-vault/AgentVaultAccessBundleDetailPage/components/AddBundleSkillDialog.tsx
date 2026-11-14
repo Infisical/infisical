@@ -16,6 +16,7 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { AGENT_VAULT_MAX_SKILLS_PER_BUNDLE } from "@app/helpers/agentVaultSkills";
 import { useDebounce } from "@app/hooks";
 import {
@@ -44,13 +45,14 @@ export const AddBundleSkillDialog = ({
   canCreateSkills,
   onCreateNew
 }: Props) => {
-  const addSkill = useAddAgentVaultAccessBundleSkill();
+  const { projectId } = useProject();
+  const addSkill = useAddAgentVaultAccessBundleSkill(projectId);
   const [skills, setSkills] = useState<TAgentVaultSkill[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const [isAdding, setIsAdding] = useState(false);
 
   const { data, isFetching } = useListAgentVaultSkills(
+    projectId,
     { search: debouncedSearch.trim() || undefined, limit: PICKER_LIMIT },
     { enabled: isOpen }
   );
@@ -72,29 +74,23 @@ export const AddBundleSkillDialog = ({
 
   const handleAdd = async () => {
     if (skills.length === 0) return;
-    setIsAdding(true);
-    const added: TAgentVaultSkill[] = [];
     try {
-      // One at a time, so the bundle's skill limit stops the rest once it is reached.
-      for (const skill of skills) {
-        // eslint-disable-next-line no-await-in-loop
-        await addSkill.mutateAsync({ accessBundleId, skillId: skill.id });
-        added.push(skill);
+      // All or nothing: if one is missing or the bundle would go over its limit, none are added.
+      const { skills: added } = await addSkill.mutateAsync({
+        accessBundleId,
+        skillIds: skills.map((skill) => skill.id)
+      });
+      if (added.length > 0) {
+        createNotification({
+          text:
+            added.length === 1 ? `Skill "${added[0].name}" added` : `${added.length} skills added`,
+          type: "success"
+        });
       }
+      handleClose();
     } catch {
       // The global mutation handler shows the server's message.
-    } finally {
-      setIsAdding(false);
     }
-    if (added.length > 0) {
-      createNotification({
-        text:
-          added.length === 1 ? `Skill "${added[0].name}" added` : `${added.length} skills added`,
-        type: "success"
-      });
-    }
-    if (added.length === skills.length) handleClose();
-    else setSkills((prev) => prev.filter((skill) => !added.includes(skill)));
   };
 
   return (
@@ -108,7 +104,7 @@ export const AddBundleSkillDialog = ({
         onOpenChange(open);
       }}
     >
-      <DialogContent isPending={isAdding}>
+      <DialogContent isPending={addSkill.isPending}>
         <DialogHeader>
           <DialogTitle>Add Skills</DialogTitle>
           <DialogDescription>
@@ -172,12 +168,12 @@ export const AddBundleSkillDialog = ({
         </Field>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} isDisabled={isAdding}>
+          <Button variant="outline" onClick={handleClose} isDisabled={addSkill.isPending}>
             Cancel
           </Button>
           <Button
             variant="av"
-            isPending={isAdding}
+            isPending={addSkill.isPending}
             isDisabled={skills.length === 0 || isOverLimit}
             onClick={handleAdd}
           >

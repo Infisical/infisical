@@ -33,7 +33,8 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useOrganization, useProjectPermission, useProject } from "@app/context";
+import { isInfisicalSessionEndpointRequest } from "@app/helpers/agentVaultSessionLogs";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
@@ -53,11 +54,18 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
-import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
+import {
+  DECISION_PRESENTATION,
+  hostPatternFor,
+  SESSION_LOG_COLUMN_COUNT,
+  SessionLogRow
+} from "./SessionLogRow";
 import {
   chunkIdTime,
   groupSessionLogGaps,
+  isNativeSessionLogRecord,
   matchesSessionLogSearch,
+  nativeSessionLogSearchTerm,
   sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
@@ -94,22 +102,22 @@ const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; man
   }
 };
 
-const COLUMN_COUNT = 7;
+const COLUMN_COUNT = SESSION_LOG_COLUMN_COUNT;
+const NO_EXPANDED_ROWS: ReadonlySet<string> = new Set();
 
 type Props = {
   session: TAgentVaultSession;
 };
 
 export const SessionLogsPanel = ({ session }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   // Only admins can read the settings; they need the storage type to show the right upgrade.
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
-  // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
-  // picker here: the rows offering Add Service matched no service, so they name no bundle.
-  const accessBundle = session.accessBundles[0];
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
+  const { accessBundle } = session;
   const canAddService = isAdmin && Boolean(accessBundle?.id);
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
@@ -117,16 +125,33 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const [servicePath, setServicePath] = useState<string | undefined>();
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
+  // Kept here, not in each row, because the virtualizer unmounts rows scrolled out of view and must keep sizing
+  // an expanded one while it is gone. Tied to the session so another session's rows open collapsed.
+  const [expanded, setExpanded] = useState<{ sessionId: string; keys: ReadonlySet<string> }>(
+    () => ({ sessionId: session.id, keys: new Set() })
+  );
+  const expandedKeys = expanded.sessionId === session.id ? expanded.keys : NO_EXPANDED_ROWS;
+  const toggleExpanded = (key: string) =>
+    setExpanded((prev) => {
+      const keys = new Set(prev.sessionId === session.id ? prev.keys : NO_EXPANDED_ROWS);
+      if (keys.has(key)) keys.delete(key);
+      else keys.add(key);
+      return { sessionId: session.id, keys };
+    });
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
   const { range, applyRange, isActive, canTail, isLive, isPausedForBudget, pauseForBudget } =
     useSessionLogsLiveTail(session);
-  const { history, live, arrived, isLiveGapUnfilled } = useGetAgentVaultSessionLogs(session.id, {
-    isLive,
-    from: range?.startDate,
-    to: range?.endDate
-  });
+  const { history, live, arrived, isLiveGapUnfilled } = useGetAgentVaultSessionLogs(
+    projectId,
+    session.id,
+    {
+      isLive,
+      from: range?.startDate,
+      to: range?.endDate
+    }
+  );
   const retryLive = () => live.refetch().catch(() => {});
   const {
     data,
@@ -205,7 +230,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
     [records, search, decisionFilter]
   );
 
-  const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
+  const hasBrowserFilter =
+    Boolean(sessionLogSearchTerm(search) || nativeSessionLogSearchTerm(search)) ||
+    decisionFilter !== "all";
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   // Counted once opened: a chunk's request count isn't known until it is decrypted.
@@ -234,6 +261,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const filterKey = [
     sessionLogSearchTerm(search),
+    nativeSessionLogSearchTerm(search),
     decisionFilter,
     range?.startDate.getTime(),
     range?.endDate.getTime()
@@ -264,6 +292,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
     count: visible.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => SESSION_LOG_ROW_HEIGHT,
+    // Keyed by record, so an expanded row keeps its height when newer rows land above it.
+    getItemKey: (index) => sessionLogRecordKey(visible[index]),
     overscan: 16
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
@@ -298,9 +328,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { newRequestCount, showNewRequests } = useNewRequestsCounter({
     scrollRef,
     visible,
+    measuredRows: rowVirtualizer.measurementsCache,
     arrivals,
-    resetKey: `${session.id}|${filterKey}`,
-    rowHeight: SESSION_LOG_ROW_HEIGHT
+    resetKey: `${session.id}|${filterKey}`
   });
 
   const padTop = virtualRows.length ? virtualRows[0].start : 0;
@@ -406,8 +436,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
           {isAdmin && !isDefaultStorage && (
             <Button variant="av" asChild>
               <Link
-                to="/organizations/$orgId/agent-vault/settings"
-                params={{ orgId: currentOrg.id }}
+                to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+                params={{ orgId: currentOrg.id, projectId }}
+                search={{ selectedTab: "tab-session-logs" }}
               >
                 Go to Settings
               </Link>
@@ -429,7 +460,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <EmptyDescription>
               {isAdmin
                 ? "Upgrade to see recorded logs and record what your agents reach."
-                : "Ask an Agent Vault administrator about upgrading."}
+                : "Ask a project admin about upgrading."}
             </EmptyDescription>
           </EmptyHeader>
           {isAdmin && (
@@ -448,7 +479,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
     const offDescription = isAdmin
       ? "Turn them on in Settings to record what your agents do."
-      : "Ask an Agent Vault administrator to turn them on.";
+      : "Ask a project admin to turn them on.";
 
     return (
       <Empty className="border">
@@ -458,7 +489,11 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </EmptyHeader>
         {isAdmin && isActive && (
           <Button variant="av" asChild>
-            <Link to="/organizations/$orgId/agent-vault/settings" params={{ orgId: currentOrg.id }}>
+            <Link
+              to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+              params={{ orgId: currentOrg.id, projectId }}
+              search={{ selectedTab: "tab-session-logs" }}
+            >
               Go to Settings
             </Link>
           </Button>
@@ -500,7 +535,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <InputGroupInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method, tool or service..."
+              placeholder="Search host, path, method, tool, service, statement, command or output..."
             />
             {search && (
               <InputGroupAddon align="inline-end">
@@ -568,9 +603,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   bucket&apos;s CORS rule may not allow this origin, or this network may block the
                   bucket.
                 </p>
-                {!isAdmin && (
-                  <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
-                )}
+                {!isAdmin && <p>Ask a project admin to check the bucket&apos;s CORS rule.</p>}
               </div>
             )}
             <AlertAction className="flex gap-2">
@@ -578,8 +611,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
               {isAdmin && !isDefaultStorage && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
-                    to="/organizations/$orgId/agent-vault/settings"
-                    params={{ orgId: currentOrg.id }}
+                    to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+                    params={{ orgId: currentOrg.id, projectId }}
+                    search={{ selectedTab: "tab-session-logs" }}
                   >
                     Go to Settings
                   </Link>
@@ -623,7 +657,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
       {visible.length === 0 ? (
         <Empty className="border">
           <EmptyHeader>
-            {(isOpening || isStillSearching || isStillLoading) && <Spinner size="sm" />}
+            {(isOpening || isStillSearching || isStillLoading) && (
+              <Spinner size="sm" variant="av" />
+            )}
             {noRecordsLiveState && <LiveStateBadge state={noRecordsLiveState} />}
             <EmptyTitle>{noRecordsTitle}</EmptyTitle>
             {noRecordsDescription && <EmptyDescription>{noRecordsDescription}</EmptyDescription>}
@@ -696,13 +732,19 @@ export const SessionLogsPanel = ({ session }: Props) => {
               const isAddable =
                 canAddService &&
                 !record.service &&
+                !isNativeSessionLogRecord(record) &&
                 (record.decision === AgentVaultSessionLogDecision.Blocked ||
                   record.decision === AgentVaultSessionLogDecision.Passthrough) &&
+                !isInfisicalSessionEndpointRequest(record) &&
                 !addedHosts.has(hostPatternFor(record));
+              const recordKey = sessionLogRecordKey(record);
               return (
                 <SessionLogRow
-                  key={sessionLogRecordKey(record)}
+                  key={recordKey}
                   record={record}
+                  isExpanded={expandedKeys.has(recordKey)}
+                  onToggleExpanded={() => toggleExpanded(recordKey)}
+                  onMeasure={(height) => rowVirtualizer.resizeItem(virtualRow.index, height)}
                   arrivedAt={arrivals.get(sessionLogRecordKey(record))}
                   accessBundleName={accessBundle?.name}
                   onAddService={
@@ -726,7 +768,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                 <TableCell colSpan={COLUMN_COUNT} className="text-center text-xs text-muted">
                   {isFetchingNextPage && (
                     <span className="flex items-center justify-center gap-2">
-                      <Spinner size="xs" />
+                      <Spinner size="xs" variant="av" />
                       Loading more
                     </span>
                   )}
@@ -772,7 +814,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </p>
       )}
 
-      {canAddService && accessBundle.id && (
+      {canAddService && accessBundle?.id && (
         <ServiceSheet
           isOpen={isServiceSheetOpen}
           onOpenChange={setIsServiceSheetOpen}

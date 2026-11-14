@@ -60,8 +60,13 @@ export function EnvironmentSelect({
       ? projectEnvs.length < subscription.environmentLimit
       : true;
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) setInputValue("");
+  };
+
   const handleAddEnvironment = () => {
-    setIsOpen(false);
+    handleOpenChange(false);
     if (isMoreEnvironmentsAllowed) {
       handlePopUpOpen("createEnvironment");
     } else {
@@ -79,7 +84,10 @@ export function EnvironmentSelect({
     label = "All Environments";
   }
 
-  const handleSelectAll = () => setSelectedEnvs([]);
+  const handleSelectAll = () => {
+    setSelectedEnvs([]);
+    handleOpenChange(false);
+  };
 
   const handleSwitchEnv = (envId: string) => {
     setSelectedEnvs((prev) => {
@@ -90,6 +98,7 @@ export function EnvironmentSelect({
       // switching to the sole selected environment clears back to all
       return prev.length === 1 && prev[0].id === envId ? [] : [selectedEnv];
     });
+    handleOpenChange(false);
   };
 
   const handleToggleEnv = (envId: string) => {
@@ -116,7 +125,7 @@ export function EnvironmentSelect({
           setSelectedEnvs([newEnv]);
         }}
       />
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <Tooltip open={isDisabled ? undefined : false}>
           <TooltipTrigger>
             <PopoverTrigger asChild>

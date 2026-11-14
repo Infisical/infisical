@@ -8,7 +8,7 @@ import {
   HoverCardTrigger,
   ScrollableContent
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { TAgentVaultMissingAccessBundle } from "@app/hooks/api/agentVault/types";
 
 type Props = {
@@ -21,6 +21,7 @@ type Props = {
 // An admin can leave bundles out of a delegation on purpose, so this informs rather than warns.
 export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehalfOf }: Props) => {
   const { currentOrg } = useOrganization();
+  const { projectId } = useProject();
   if (!bundles.length) return null;
 
   const label = `${bundles.length} ${bundles.length === 1 ? "bundle" : "bundles"} excluded`;
@@ -55,8 +56,8 @@ export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehal
             {bundles.map((bundle) => (
               <Badge key={bundle.id} variant="neutral" iconPosition="left" asChild>
                 <Link
-                  to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                  params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                  to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                  params={{ orgId: currentOrg.id, projectId, accessBundleId: bundle.id }}
                 >
                   <PackageIcon />
                   {bundle.name}

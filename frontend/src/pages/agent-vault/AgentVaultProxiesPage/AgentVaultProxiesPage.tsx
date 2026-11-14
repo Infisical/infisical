@@ -1,8 +1,10 @@
 import { ReactNode, useState } from "react";
+import axios from "axios";
 import { format } from "date-fns";
 import {
   BanIcon,
   ChevronDownIcon,
+  DownloadIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -57,7 +59,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -65,7 +68,8 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useResetPageHelper } from "@app/hooks";
 import {
-  AgentVaultTrafficPolicy,
+  fetchAgentVaultProxyCa,
+  isServiceHostsPolicy,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
   useRevokeAgentVaultProxyAccess,
@@ -90,12 +94,12 @@ const allowedHostsOf = (proxy: TAgentVaultProxy) =>
     : [];
 
 const TrafficPolicyCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
-  const isBundleOnly = proxy.trafficPolicy === AgentVaultTrafficPolicy.BundleHosts;
-  const allowedHosts = isBundleOnly ? allowedHostsOf(proxy) : [];
+  const isServiceHostsOnly = isServiceHostsPolicy(proxy.trafficPolicy);
+  const allowedHosts = isServiceHostsOnly ? allowedHostsOf(proxy) : [];
 
   const cell = (
     <span>
-      {isBundleOnly ? "Access bundle hosts only" : "Any host"}
+      {isServiceHostsOnly ? "Service hosts only" : "Any host"}
       {allowedHosts.length > 0 &&
         ` · ${allowedHosts.length} ${allowedHosts.length === 1 ? "exception" : "exceptions"}`}
     </span>
@@ -137,8 +141,25 @@ const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 
 export const AgentVaultProxiesPage = () => {
+  const { projectId } = useProject();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // Asked of the server on every click, never cached: the CA changes on rotation, and only the server can
+  // refuse a proxy that serves its own CA.
+  const downloadProxyCa = async (proxy: TAgentVaultProxy) => {
+    try {
+      const ca = await fetchAgentVaultProxyCa(proxy.id);
+      downloadTxtFile(`${proxy.name}-ca.pem`, ca.certificate);
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      createNotification({
+        type: "error",
+        text: message ?? "Failed to download the certificate authority"
+      });
+    }
+  };
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
@@ -147,7 +168,7 @@ export const AgentVaultProxiesPage = () => {
     getUserTablePreference("agentVaultProxiesTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data, isPending } = useListAgentVaultProxies({
+  const { data, isPending } = useListAgentVaultProxies(projectId, {
     orderBy: sortColumn,
     orderDirection: sortDirection === "ascending" ? "asc" : "desc",
     limit: perPage,
@@ -157,9 +178,9 @@ export const AgentVaultProxiesPage = () => {
   const displayed = data?.proxies ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
-  const deleteProxy = useDeleteAgentVaultProxy();
-  const revokeProxy = useRevokeAgentVaultProxyAccess();
-  const rotateProxyToken = useRotateAgentVaultProxyToken();
+  const deleteProxy = useDeleteAgentVaultProxy(projectId);
+  const revokeProxy = useRevokeAgentVaultProxyAccess(projectId);
+  const rotateProxyToken = useRotateAgentVaultProxyToken(projectId);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
@@ -265,6 +286,8 @@ export const AgentVaultProxiesPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead
+                  isTruncatable
+                  className="w-2/5"
                   sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
                   onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
                 >
@@ -312,7 +335,21 @@ export const AgentVaultProxiesPage = () => {
               {!isPending &&
                 displayed.map((proxy) => (
                   <TableRow key={proxy.id}>
-                    <TableCell>{proxy.name}</TableCell>
+                    <TableCell isTruncatable className="min-w-64">
+                      <div className="flex items-center gap-2.5">
+                        <span className="truncate" title={proxy.name}>
+                          {proxy.name}
+                        </span>
+                        {proxy.description && (
+                          <span
+                            className="min-w-0 flex-1 truncate text-sm text-muted"
+                            title={proxy.description}
+                          >
+                            {proxy.description}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <ProxyStatusBadge proxy={proxy} />
                     </TableCell>
@@ -338,6 +375,19 @@ export const AgentVaultProxiesPage = () => {
                             variant="ghost"
                             size="xs"
                           />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <IconButton
+                                aria-label="Download certificate authority"
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => downloadProxyCa(proxy)}
+                              >
+                                <DownloadIcon />
+                              </IconButton>
+                            </TooltipTrigger>
+                            <TooltipContent>Download certificate authority</TooltipContent>
+                          </Tooltip>
                         </div>
                       ) : (
                         <span className="text-muted">&mdash;</span>

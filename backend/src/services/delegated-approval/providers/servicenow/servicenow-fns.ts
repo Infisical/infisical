@@ -332,7 +332,7 @@ export const parseServiceNowDecision = (data: unknown): TDelegatedApprovalDecisi
     decision,
     approvalRequestId: toOptionalText(record.request_id),
     permissions: permissions.split(/\r?\n/),
-    decidedBy: toOptionalText(record.approved_by),
+    approvedBy: (record.approvals ?? []).map((name) => name.trim()).filter(Boolean),
     decidedAt: toOptionalText(record.decision_date),
     notes: toOptionalText(record.decision_notes)
   };

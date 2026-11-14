@@ -1,27 +1,39 @@
 // Command fakenet serves the harness's fakes.
 //
-// Four listeners, and each exists for a different reason:
+// Five listeners, and each exists for a different reason:
 //
 //	25   SMTP, where Infisical delivers mail
 //	53   DNS, so every hostname resolves here and nothing reaches the real internet
+//	80   the fakes over plain HTTP, for a protocol that never uses TLS: ACME HTTP-01
 //	443  the fakes, with a certificate minted per name asked for
 //	8080 the control API, on its own port so the application can never reach it
 package main
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/Infisical/infisical/tests/fakes/acmeca"
+	"github.com/Infisical/infisical/tests/fakes/alicloud"
 	"github.com/Infisical/infisical/tests/fakes/aws"
+	"github.com/Infisical/infisical/tests/fakes/azure"
+	"github.com/Infisical/infisical/tests/fakes/cloudflare"
+	"github.com/Infisical/infisical/tests/fakes/dnsmadeeasy"
 	"github.com/Infisical/infisical/tests/fakes/github"
+	"github.com/Infisical/infisical/tests/fakes/kubernetes"
+	"github.com/Infisical/infisical/tests/fakes/ldap"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oauth"
+	"github.com/Infisical/infisical/tests/fakes/oci"
 	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/fakes/vercel"
 	"github.com/Infisical/infisical/tests/fakes/webhook"
+	"github.com/Infisical/infisical/tests/fakes/website"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
@@ -43,9 +55,16 @@ func main() {
 		oidcidp.Service,
 		webhook.Service,
 		webhook.Slack,
-		aws.STS, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
+		webhook.Splunk,
+		aws.STS, aws.STSGlobal, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
 		vercel.Service,
+		oauth.Google, oauth.GitHub, oauth.GitLab,
+		kubernetes.Service, azure.Service, alicloud.Service, oci.Service,
+		ldap.Service,
+		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, website.Service,
 	)
+
+	go func() { log.Fatalf("fakenet: ldap listener: %v", ldap.Serve(fmt.Sprintf(":%d", ldap.Port), srv)) }()
 
 	mail := smtp.New(func(domain string) fakenet.Emitter { return srv.Emitter(smtp.Host, domain) })
 	if err := mail.Start(); err != nil {
@@ -57,6 +76,8 @@ func main() {
 	go func() {
 		log.Fatalf("fakenet: admin listener: %v", http.ListenAndServe(":8080", srv.Admin(ca)))
 	}()
+
+	go func() { log.Fatalf("fakenet: http listener: %v", http.ListenAndServe(":80", srv)) }()
 
 	ln, err := tls.Listen("tcp", ":443", ca.TLSConfig())
 	if err != nil {

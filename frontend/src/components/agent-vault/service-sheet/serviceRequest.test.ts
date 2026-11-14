@@ -4,23 +4,43 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
-  AgentVaultSubstitutionSurface
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableReferenceField
 } from "@app/hooks/api/agentVault";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
-import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
-import { HTTP_METHODS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  buildCreateServiceRequest,
+  buildListMcpToolsRequest,
+  buildUpdateServiceRequest,
+  membersClearedNotice
+} from "./serviceRequest";
+import { HTTP_METHODS, McpToolScope, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 
 const SERVER_URL = "https://mcp.linear.app/mcp";
 
 const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   serviceType: AgentVaultServiceType.Http,
   name: "stripe",
+  description: "",
   serverUrl: "",
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: ["api.stripe.com"],
+  host: "",
+  port: "",
+  database: "",
+  tlsEnabled: true,
+  tlsVerify: true,
+  tlsCa: "",
+  sshPrivateKey: "",
+  sshCertificate: "",
+  sshCertificateRemoved: false,
   hostDraft: "",
   pathDraft: "",
+  toolScope: McpToolScope.All,
+  allowedTools: [],
   credentialType: AgentVaultCredentialType.Bearer,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -34,6 +54,9 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
+  hookEnabled: false,
+  hookUrl: "",
+  hookSigningSecret: "",
   ...overrides
 });
 
@@ -69,7 +92,7 @@ describe("buildCreateServiceRequest", () => {
         })
       )
     ).toEqual({
-      accessBundleId: "bundle-1",
+      accessBundleIds: ["bundle-1"],
       type: AgentVaultServiceType.Http,
       name: "stripe",
       hostPattern: "api.stripe.com,files.stripe.com",
@@ -92,6 +115,21 @@ describe("buildCreateServiceRequest", () => {
   it("sends null for every method and no path prefixes", () => {
     const request = buildCreateServiceRequest("bundle-1", form());
     expect(request).toMatchObject({ allowedMethods: null, allowedPathPrefixes: null });
+  });
+
+  it("sends a trimmed description for either type, and leaves a blank one out", () => {
+    expect(
+      buildCreateServiceRequest("bundle-1", form({ description: " Payments, read only " }))
+    ).toMatchObject({ description: "Payments, read only" });
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ description: "Issues for the platform team" })
+      )
+    ).toMatchObject({ description: "Issues for the platform team" });
+    expect(buildCreateServiceRequest("bundle-1", form({ description: "  " })).description).toBe(
+      undefined
+    );
   });
 
   it("builds basic and pass-through credentials", () => {
@@ -126,14 +164,39 @@ describe("buildCreateServiceRequest", () => {
         })
       )
     ).toEqual({
-      accessBundleId: "bundle-1",
+      accessBundleIds: ["bundle-1"],
       type: AgentVaultServiceType.Mcp,
       name: "linear-mcp",
       serverUrl: SERVER_URL,
       transport: AgentVaultMcpTransport.StreamableHttp,
+      allowedTools: null,
       customHeaders: [],
       credential: { type: AgentVaultCredentialType.OAuth, authorizationId: "auth-1" }
     });
+  });
+
+  it("sends the selected tools for an MCP service, and null for all tools even with picks kept", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ toolScope: McpToolScope.Selected, allowedTools: ["read_file", "list_issues"] })
+      )
+    ).toMatchObject({ allowedTools: ["read_file", "list_issues"] });
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ toolScope: McpToolScope.All, allowedTools: ["read_file"] })
+      )
+    ).toMatchObject({ allowedTools: null });
+  });
+
+  it("never sends allowed tools for an HTTP service", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        form({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
+      )
+    ).not.toHaveProperty("allowedTools");
   });
 
   it("sends an empty authorization when it was made for another URL", () => {
@@ -154,17 +217,76 @@ describe("buildCreateServiceRequest", () => {
       type: AgentVaultCredentialType.Bearer,
       headerName: "Authorization",
       headerPrefix: "Bearer",
-      value: "lin_api"
+      value: "lin_api",
+      memberProvidedFields: []
     });
   });
 });
+
+const MEMBER = [AgentVaultVariableReferenceField.CredentialValue as const];
+
+type TStoredMcp = Extract<TAgentVaultService, { type: AgentVaultServiceType.Mcp }>;
+
+const storedMcp = (credential: TStoredMcp["credential"]): TStoredMcp => ({
+  id: "service-1",
+  name: "linear-mcp",
+  description: null,
+  hostPattern: "mcp.linear.app",
+  type: AgentVaultServiceType.Mcp,
+  serverUrl: SERVER_URL,
+  transport: AgentVaultMcpTransport.StreamableHttp,
+  allowedTools: null,
+  credential,
+  customHeaders: [],
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z"
+});
+
+const memberOAuth = (clientId: string | null = null) =>
+  storedMcp({
+    type: AgentVaultCredentialType.OAuth,
+    memberProvidedFields: MEMBER,
+    issuer: "https://mcp.linear.app",
+    grantedScopes: [],
+    requiredScopes: [],
+    registration: clientId ? "manual" : "dynamic",
+    clientId
+  });
+
+const sharedOAuth = storedMcp({
+  type: AgentVaultCredentialType.OAuth,
+  memberProvidedFields: [],
+  status: AgentVaultOauthStatus.Connected,
+  issuer: "https://mcp.linear.app",
+  grantedScopes: [],
+  requiredScopes: []
+});
+
+const storedHttp = {
+  id: "service-1",
+  name: "linear-mcp",
+  description: null,
+  hostPattern: "mcp.linear.app",
+  type: AgentVaultServiceType.Http,
+  allowedMethods: null,
+  allowedPathPrefixes: null,
+  credential: {
+    type: AgentVaultCredentialType.Bearer,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
+    memberProvidedFields: []
+  },
+  customHeaders: [],
+  substitutions: [],
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z"
+} satisfies TAgentVaultService;
 
 describe("buildUpdateServiceRequest", () => {
   it("omits untouched secrets and keeps row ids", () => {
     expect(
       buildUpdateServiceRequest(
-        "bundle-1",
-        "service-1",
+        storedHttp,
         form({
           secret: UNCHANGED_SECRET,
           customHeaders: [{ id: "h-1", name: "X-Org", prefix: "", value: UNCHANGED_SECRET }],
@@ -179,10 +301,10 @@ describe("buildUpdateServiceRequest", () => {
         })
       )
     ).toEqual({
-      accessBundleId: "bundle-1",
       serviceId: "service-1",
       type: AgentVaultServiceType.Http,
       name: "stripe",
+      description: null,
       hostPattern: "api.stripe.com",
       allowedMethods: null,
       allowedPathPrefixes: null,
@@ -202,8 +324,7 @@ describe("buildUpdateServiceRequest", () => {
 
   it("omits an empty bearer token but sends an emptied basic half", () => {
     expect(
-      buildUpdateServiceRequest("bundle-1", "service-1", form({ secret: "", headerName: "" }))
-        .credential
+      buildUpdateServiceRequest(storedHttp, form({ secret: "", headerName: "" })).credential
     ).toEqual({
       type: AgentVaultCredentialType.Bearer,
       headerName: "Authorization",
@@ -213,8 +334,7 @@ describe("buildUpdateServiceRequest", () => {
     });
     expect(
       buildUpdateServiceRequest(
-        "bundle-1",
-        "service-1",
+        storedHttp,
         form({
           credentialType: AgentVaultCredentialType.Basic,
           username: UNCHANGED_SECRET,
@@ -230,36 +350,61 @@ describe("buildUpdateServiceRequest", () => {
   });
 
   it("leaves the OAuth credential out unless a new authorization matches the URL", () => {
-    expect(buildUpdateServiceRequest("bundle-1", "service-1", mcpForm())).toEqual({
-      accessBundleId: "bundle-1",
+    expect(buildUpdateServiceRequest(sharedOAuth, mcpForm())).toEqual({
       serviceId: "service-1",
       type: AgentVaultServiceType.Mcp,
       name: "linear-mcp",
+      description: null,
       serverUrl: SERVER_URL,
       transport: AgentVaultMcpTransport.StreamableHttp,
+      allowedTools: null,
       customHeaders: []
     });
     expect(
       buildUpdateServiceRequest(
-        "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ oauthAuthorizationId: "auth-2", oauthAuthorizedUrl: "https://other.example/mcp" })
       )
     ).not.toHaveProperty("credential");
     expect(
       buildUpdateServiceRequest(
-        "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ oauthAuthorizationId: "auth-2", oauthAuthorizedUrl: SERVER_URL })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
   });
 
+  it("clears allowed tools with null, sends a changed list, and never sends them for HTTP", () => {
+    expect(
+      buildUpdateServiceRequest(
+        sharedOAuth,
+        mcpForm({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
+      )
+    ).toMatchObject({ allowedTools: ["read_file"] });
+    expect(buildUpdateServiceRequest(sharedOAuth, mcpForm())).toMatchObject({
+      allowedTools: null
+    });
+    expect(
+      buildUpdateServiceRequest(
+        storedHttp,
+        form({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
+      )
+    ).not.toHaveProperty("allowedTools");
+  });
+
+  it("sends a trimmed description, and null to remove it once the field is cleared", () => {
+    expect(
+      buildUpdateServiceRequest(storedHttp, form({ description: " Payments " }))
+    ).toMatchObject({ description: "Payments" });
+    expect(buildUpdateServiceRequest(sharedOAuth, mcpForm({ description: "  " }))).toMatchObject({
+      description: null
+    });
+  });
+
   it("never sends a header name or prefix for OAuth", () => {
     expect(
       buildUpdateServiceRequest(
-        "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({
           headerName: "X-Api-Key",
           headerPrefix: "Token",
@@ -268,5 +413,536 @@ describe("buildUpdateServiceRequest", () => {
         })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
+  });
+});
+
+describe("buildListMcpToolsRequest", () => {
+  it("sends a typed token and header values for a new service", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        undefined,
+        mcpForm({
+          credentialType: AgentVaultCredentialType.Bearer,
+          secret: "{{LINEAR_TOKEN}}",
+          transport: AgentVaultMcpTransport.Sse,
+          customHeaders: [{ name: "X-Org", prefix: "", value: "acme" }],
+          toolScope: McpToolScope.Selected,
+          allowedTools: ["read_file"]
+        })
+      )
+    ).toEqual({
+      projectId: "project-1",
+      serverUrl: SERVER_URL,
+      transport: AgentVaultMcpTransport.Sse,
+      customHeaders: [{ name: "X-Org", prefix: "", value: "acme" }],
+      credential: {
+        type: AgentVaultCredentialType.Bearer,
+        headerName: "Authorization",
+        headerPrefix: "Bearer",
+        value: "{{LINEAR_TOKEN}}",
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("leaves untouched values out on edit, so the saved service's are used", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        "service-1",
+        mcpForm({
+          credentialType: AgentVaultCredentialType.Bearer,
+          secret: UNCHANGED_SECRET,
+          customHeaders: [{ id: "h-1", name: "X-Org", prefix: "", value: UNCHANGED_SECRET }]
+        })
+      )
+    ).toEqual({
+      projectId: "project-1",
+      serviceId: "service-1",
+      serverUrl: SERVER_URL,
+      transport: AgentVaultMcpTransport.StreamableHttp,
+      customHeaders: [{ id: "h-1", name: "X-Org", prefix: "" }],
+      credential: {
+        type: AgentVaultCredentialType.Bearer,
+        headerName: "Authorization",
+        headerPrefix: "Bearer",
+        value: undefined,
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("sends a pending OAuth authorization for the current URL, and none otherwise", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        undefined,
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-1" });
+    expect(buildListMcpToolsRequest("project-1", "service-1", mcpForm())).not.toHaveProperty(
+      "credential"
+    );
+  });
+
+  it("sends the admin's own token in place of a member-provided one, as a credential set in full", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        "service-1",
+        mcpForm({
+          credentialType: AgentVaultCredentialType.Bearer,
+          secret: UNCHANGED_SECRET,
+          memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue]
+        }),
+        { token: "admin-token" }
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.Bearer,
+      headerName: "Authorization",
+      headerPrefix: "Bearer",
+      value: "admin-token",
+      memberProvidedFields: []
+    });
+  });
+
+  it("sends the admin's own sign-in in place of a member-provided OAuth credential", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        undefined,
+        mcpForm({ memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue] }),
+        { authorizationId: "auth-2" }
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
+  });
+});
+
+describe("member-provided MCP credentials", () => {
+  it("creates a member-provided OAuth service without an authorization, with an optional client", () => {
+    expect(
+      buildCreateServiceRequest("bundle-1", mcpForm({ memberProvidedFields: MEMBER })).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, memberProvidedFields: MEMBER });
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: " app ", oauthClientSecret: "s" })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      memberProvidedFields: MEMBER,
+      clientId: "app",
+      clientSecret: "s"
+    });
+  });
+
+  it("creates a member-provided bearer token without a value", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ credentialType: AgentVaultCredentialType.Bearer, memberProvidedFields: MEMBER })
+      ).credential
+    ).toMatchObject({
+      type: AgentVaultCredentialType.Bearer,
+      value: undefined,
+      memberProvidedFields: MEMBER
+    });
+  });
+
+  it("leaves a member-provided OAuth credential out unless its client changes", () => {
+    const service = memberOAuth("app");
+    const update = (overrides: Partial<TServiceForm>) =>
+      buildUpdateServiceRequest(
+        service,
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: "app", ...overrides })
+      ).credential;
+    expect(update({})).toBeUndefined();
+    expect(update({ oauthClientSecret: "new" })).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      memberProvidedFields: MEMBER,
+      clientId: "app",
+      clientSecret: "new"
+    });
+    expect(update({ oauthClientId: "" })).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      memberProvidedFields: MEMBER,
+      registration: "dynamic"
+    });
+  });
+
+  it("hands the sign-in back to the admin with an empty member list", () => {
+    expect(
+      buildUpdateServiceRequest(
+        memberOAuth(),
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      authorizationId: "auth-1",
+      memberProvidedFields: []
+    });
+  });
+});
+
+describe("membersClearedNotice", () => {
+  it("names each edit that removes connections or values", () => {
+    expect(
+      membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), sharedOAuth)?.description
+    ).toBe(
+      "Your connection to mcp.linear.app will be removed. Sessions can't use this service until each member connects their own account."
+    );
+    expect(membersClearedNotice(mcpForm(), memberOAuth())?.description).toBe(
+      "Every member's connection to mcp.linear.app will be removed, and sessions will use your account."
+    );
+    expect(
+      membersClearedNotice(
+        mcpForm({ memberProvidedFields: MEMBER, serverUrl: "https://mcp.linear.app/v2" }),
+        memberOAuth()
+      )?.description
+    ).toBe("Every member's connection will be removed. Each member has to connect again.");
+    expect(
+      membersClearedNotice(
+        mcpForm({ credentialType: AgentVaultCredentialType.Bearer }),
+        storedMcp({
+          type: AgentVaultCredentialType.Bearer,
+          headerName: "Authorization",
+          headerPrefix: "Bearer",
+          memberProvidedFields: MEMBER
+        })
+      )?.description
+    ).toBe(
+      "Every member's token for this service will be removed, and sessions will use the token you set."
+    );
+    expect(
+      membersClearedNotice(
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: "other-app" }),
+        memberOAuth("admin-app")
+      )?.description
+    ).toBe("Every member's connection will be removed. Each member has to connect again.");
+    expect(
+      membersClearedNotice(
+        mcpForm({ credentialType: AgentVaultCredentialType.Bearer, secret: "t" }),
+        memberOAuth()
+      )?.description
+    ).toBe(
+      "Every member's connection to mcp.linear.app will be removed, and sessions will use the credential you set."
+    );
+  });
+
+  it("asks nothing for edits that keep members' values", () => {
+    expect(
+      membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), memberOAuth())
+    ).toBeNull();
+    expect(membersClearedNotice(mcpForm({ name: "renamed" }), sharedOAuth)).toBeNull();
+    expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }))).toBeNull();
+  });
+});
+
+const {
+  hostPattern,
+  allowedMethods,
+  allowedPathPrefixes,
+  credential,
+  customHeaders,
+  substitutions,
+  ...storedNativeBase
+} = storedHttp;
+
+const storedPostgres = {
+  ...storedNativeBase,
+  type: AgentVaultServiceType.Postgres,
+  host: "db.internal",
+  port: 5432,
+  database: "orders",
+  tls: { enabled: true, verify: true, ca: null },
+  credential: { type: AgentVaultCredentialType.Basic, memberProvidedFields: [] }
+} satisfies TAgentVaultService;
+
+const storedSsh = {
+  ...storedNativeBase,
+  type: AgentVaultServiceType.Ssh,
+  host: "build.internal",
+  port: 22,
+  credential: { type: AgentVaultCredentialType.SshKey, hasCertificate: true }
+} satisfies TAgentVaultService;
+
+const postgresForm = (overrides: Partial<TServiceForm> = {}) =>
+  form({
+    serviceType: AgentVaultServiceType.Postgres,
+    name: "orders-db",
+    hosts: [],
+    host: " db.internal ",
+    port: "5432",
+    database: "orders",
+    credentialType: AgentVaultCredentialType.Basic,
+    username: "agent",
+    secret: "pw",
+    ...overrides
+  });
+
+const sshKeyForm = (overrides: Partial<TServiceForm> = {}) =>
+  form({
+    serviceType: AgentVaultServiceType.Ssh,
+    name: "build-server",
+    hosts: [],
+    host: "build.internal",
+    port: "22",
+    credentialType: AgentVaultCredentialType.SshKey,
+    username: "deploy",
+    secret: "",
+    sshPrivateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n-----END OPENSSH PRIVATE KEY-----\n",
+    ...overrides
+  });
+
+describe("native service requests", () => {
+  it("builds a database service with its server, TLS and login", () => {
+    expect(buildCreateServiceRequest("bundle-1", postgresForm())).toEqual({
+      accessBundleIds: ["bundle-1"],
+      type: AgentVaultServiceType.Postgres,
+      name: "orders-db",
+      host: "db.internal",
+      port: 5432,
+      database: "orders",
+      tls: { enabled: true, verify: true, ca: null },
+      credential: {
+        type: AgentVaultCredentialType.Basic,
+        username: "agent",
+        password: "pw",
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("builds an SSH key service without a certificate when none is given", () => {
+    expect(buildCreateServiceRequest("bundle-1", sshKeyForm())).toEqual({
+      accessBundleIds: ["bundle-1"],
+      type: AgentVaultServiceType.Ssh,
+      name: "build-server",
+      host: "build.internal",
+      port: 22,
+      credential: {
+        type: AgentVaultCredentialType.SshKey,
+        username: "deploy",
+        privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n-----END OPENSSH PRIVATE KEY-----"
+      }
+    });
+  });
+
+  it("leaves untouched SSH key parts out of an update and removes the certificate only when asked", () => {
+    expect(
+      buildUpdateServiceRequest(
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: UNCHANGED_SECRET,
+          sshCertificateRemoved: true
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey, certificate: null });
+    expect(
+      buildUpdateServiceRequest(
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: "  "
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+    expect(
+      buildUpdateServiceRequest(
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: " ssh-ed25519-cert-v01@openssh.com AAAA "
+        })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.SshKey,
+      certificate: "ssh-ed25519-cert-v01@openssh.com AAAA"
+    });
+    expect(
+      buildUpdateServiceRequest(
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: UNCHANGED_SECRET
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+  });
+
+  it("keeps the stored SSH username and key when their boxes hold only spaces", () => {
+    expect(
+      buildUpdateServiceRequest(
+        storedSsh,
+        sshKeyForm({ username: "   ", sshPrivateKey: " \n ", sshCertificate: UNCHANGED_SECRET })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+  });
+
+  it("keeps an untouched database password and clears a removed CA on update", () => {
+    expect(
+      buildUpdateServiceRequest(
+        storedPostgres,
+        postgresForm({ username: UNCHANGED_SECRET, secret: UNCHANGED_SECRET, tlsCa: " " })
+      )
+    ).toEqual({
+      serviceId: "service-1",
+      type: AgentVaultServiceType.Postgres,
+      name: "orders-db",
+      host: "db.internal",
+      port: 5432,
+      database: "orders",
+      tls: { enabled: true, verify: true, ca: null },
+      description: null,
+      credential: {
+        type: AgentVaultCredentialType.Basic,
+        username: undefined,
+        password: undefined,
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("leaves the CA out while TLS is off, so a stored one is kept", () => {
+    const tlsOff = postgresForm({ tlsEnabled: false, tlsVerify: true, tlsCa: "not sent" });
+    expect(buildCreateServiceRequest("bundle-1", tlsOff)).toMatchObject({
+      tls: { enabled: false, verify: true }
+    });
+    expect(buildUpdateServiceRequest(storedPostgres, tlsOff)).toMatchObject({
+      tls: { enabled: false, verify: true }
+    });
+    expect(buildUpdateServiceRequest(storedPostgres, tlsOff)).not.toHaveProperty("tls.ca");
+  });
+
+  it("leaves the CA out while the certificate isn't verified, so a stored one is kept", () => {
+    const noVerify = postgresForm({ tlsVerify: false, tlsCa: "not a certificate" });
+    expect(buildUpdateServiceRequest(storedPostgres, noVerify)).toMatchObject({
+      tls: { enabled: true, verify: false }
+    });
+    expect(buildUpdateServiceRequest(storedPostgres, noVerify)).not.toHaveProperty("tls.ca");
+  });
+
+  it("sends a trimmed CA while TLS is on", () => {
+    expect(buildCreateServiceRequest("bundle-1", postgresForm({ tlsCa: " PEM " }))).toMatchObject({
+      tls: { enabled: true, verify: true, ca: "PEM" }
+    });
+  });
+});
+
+const HOOK_URL = "https://hooks.example.com/agent-vault";
+const HOOK_SECRET = "s".repeat(32);
+
+const storedHooked = { ...storedHttp, hook: { url: HOOK_URL } } satisfies TAgentVaultService;
+
+const hookOf = (request: object) => ("hook" in request ? request.hook : "absent");
+
+describe("hook requests", () => {
+  it("sends the hook on create only while it is on, with the URL trimmed", () => {
+    expect(
+      hookOf(
+        buildCreateServiceRequest(
+          undefined,
+          form({ hookEnabled: true, hookUrl: ` ${HOOK_URL} `, hookSigningSecret: HOOK_SECRET })
+        )
+      )
+    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
+    expect(
+      hookOf(
+        buildCreateServiceRequest(
+          undefined,
+          form({ hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET })
+        )
+      )
+    ).toBe("absent");
+  });
+
+  it("sends the hook on create for MCP and database services too", () => {
+    const hook = { hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET };
+    expect(hookOf(buildCreateServiceRequest(undefined, mcpForm(hook)))).toEqual({
+      url: HOOK_URL,
+      signingSecret: HOOK_SECRET
+    });
+    expect(
+      hookOf(
+        buildCreateServiceRequest(
+          undefined,
+          form({
+            ...hook,
+            serviceType: AgentVaultServiceType.Postgres,
+            host: "db.internal",
+            port: "5432",
+            database: "billing",
+            credentialType: AgentVaultCredentialType.Basic,
+            username: "agent"
+          })
+        )
+      )
+    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
+  });
+
+  it("leaves an untouched hook out of an update", () => {
+    expect(
+      hookOf(
+        buildUpdateServiceRequest(
+          storedHooked,
+          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: UNCHANGED_SECRET })
+        )
+      )
+    ).toBe("absent");
+    expect(
+      hookOf(
+        buildUpdateServiceRequest(
+          storedHooked,
+          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: "" })
+        )
+      )
+    ).toBe("absent");
+  });
+
+  it("sends a new URL alone, keeping the stored secret", () => {
+    expect(
+      hookOf(
+        buildUpdateServiceRequest(
+          storedHooked,
+          form({
+            hookEnabled: true,
+            hookUrl: "https://hooks.example.com/v2",
+            hookSigningSecret: UNCHANGED_SECRET
+          })
+        )
+      )
+    ).toEqual({ url: "https://hooks.example.com/v2" });
+  });
+
+  it("sends a new secret with the URL", () => {
+    expect(
+      hookOf(
+        buildUpdateServiceRequest(
+          storedHooked,
+          form({ hookEnabled: true, hookUrl: HOOK_URL, hookSigningSecret: HOOK_SECRET })
+        )
+      )
+    ).toEqual({ url: HOOK_URL, signingSecret: HOOK_SECRET });
+  });
+
+  it("removes a stored hook with null once it is turned off", () => {
+    expect(
+      hookOf(
+        buildUpdateServiceRequest(
+          storedHooked,
+          form({ hookUrl: HOOK_URL, hookSigningSecret: UNCHANGED_SECRET })
+        )
+      )
+    ).toBeNull();
+  });
+
+  it("sends nothing for a service with no hook and the toggle off", () => {
+    expect(hookOf(buildUpdateServiceRequest({ ...storedHttp, hook: null }, form()))).toBe("absent");
   });
 });

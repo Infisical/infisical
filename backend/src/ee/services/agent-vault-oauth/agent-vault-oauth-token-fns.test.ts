@@ -13,7 +13,6 @@ import {
   decideRefresh,
   exchangeAuthorizationCode,
   expiresAtFrom,
-  formUrlEncode,
   generatePkce,
   generateState,
   hashAccessToken,
@@ -30,6 +29,8 @@ import {
   withTokenCompatibility
 } from "./agent-vault-oauth-token-fns";
 import { AgentVaultOauthClientAuthMethod, AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
+
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isCloud: false }) }));
 
 vi.mock("@app/lib/logger", async () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -137,6 +138,22 @@ describe("the authorize URL", () => {
         scopes: ["read", "offline_access"]
       })
     );
+    expect(url.searchParams.get("prompt")).toBe("consent");
+  });
+
+  test("Google's authorize endpoint asks for offline access, since Google ignores offline_access", () => {
+    const url = new URL(
+      buildAuthorizeUrl({
+        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+        clientId: "123-abc.apps.googleusercontent.com",
+        redirectUri: "https://app.infisical.com/agent-vault/oauth/callback",
+        codeChallenge: "challenge",
+        state: "id.random",
+        resource: null,
+        scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+      })
+    );
+    expect(url.searchParams.get("access_type")).toBe("offline");
     expect(url.searchParams.get("prompt")).toBe("consent");
   });
 
@@ -280,8 +297,7 @@ describe("token requests", () => {
   test("provider refusals cannot expose request secrets or their Basic authorization header", async () => {
     const clientSecret = "client +/secret-with_.*";
     const encoded = new URLSearchParams({ value: clientSecret }).toString().slice("value=".length);
-    // oauth4webapi escapes - _ . * in the Basic header, which URLSearchParams leaves alone.
-    const basic = Buffer.from("client%2D1:client+%2B%2Fsecret%2Dwith%5F%2E%2A").toString("base64");
+    const basic = Buffer.from("client-1:client+%2B%2Fsecret-with_.*").toString("base64");
     const { http } = stubPosts([
       json(400, {
         error: "invalid_grant",
@@ -311,19 +327,18 @@ describe("token requests", () => {
     expect(result.ok && result.tokens.scopes).toEqual(["read"]);
   });
 
-  test("client_secret_basic form-encodes both halves into the header", async () => {
+  test("client_secret_basic leaves a Google client ID and secret unescaped in the header", async () => {
     const { http, calls } = stubPosts([json(200, { access_token: "a", token_type: "bearer" })]);
     await requestToken({
       http,
       ...tokenArgs,
-      clientId: "id:1-a",
-      clientSecret: "s&2_b.c*",
+      clientId: "123-abc.apps.googleusercontent.com",
+      clientSecret: "GOCSPX-a_b.c*",
       tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic
     });
     expect(new Headers(calls[0].headers).get("authorization")).toBe(
-      `Basic ${Buffer.from(`${formUrlEncode("id:1-a")}:${formUrlEncode("s&2_b.c*")}`).toString("base64")}`
+      `Basic ${Buffer.from("123-abc.apps.googleusercontent.com:GOCSPX-a_b.c*").toString("base64")}`
     );
-    expect(formUrlEncode("id:1-a s&2_b.c*!~'()")).toBe("id%3A1%2Da+s%262%5Fb%2Ec%2A%21%7E%27%28%29");
     expect(calls[0].form!.has("client_secret")).toBe(false);
   });
 
@@ -344,11 +359,11 @@ describe("token requests", () => {
       http,
       ...tokenArgs,
       clientId: "id :!~",
-      clientSecret: "s &'()",
+      clientSecret: "s &'()+é",
       tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic
     });
     expect(new Headers(calls[0].headers).get("authorization")).toBe(
-      `Basic ${Buffer.from("id+%3A%21%7E:s+%26%27%28%29").toString("base64")}`
+      `Basic ${Buffer.from("id+%3A%21%7E:s+%26%27%28%29%2B%C3%A9").toString("base64")}`
     );
   });
 
@@ -449,7 +464,7 @@ describe("token requests", () => {
     };
     const result = await requestToken({ http, ...tokenArgs });
     expect(!result.ok && result.message).toBe(
-      "Infisical can't reach the login server 'auth.example.com' because it's on a private network. Use a bearer token for this service instead."
+      "Infisical can't reach the login server 'auth.example.com' because it's on a private network. Use a bearer token for this service instead. If you're self-hosting Infisical, set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to allow it."
     );
   });
 

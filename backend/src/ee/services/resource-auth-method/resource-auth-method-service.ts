@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -16,7 +17,6 @@ import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
@@ -114,7 +114,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
@@ -353,7 +353,7 @@ export const resourceAuthMethodServiceFactory = ({
       );
 
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
@@ -1133,6 +1133,11 @@ export const resourceAuthMethodServiceFactory = ({
         }
       }
       await $bumpTokenVersion(resource, tx);
+      // Routing only checks that a transport is recorded, so a running agent would keep receiving
+      // traffic until it next authenticates. Clearing them cuts it off now; re-enrolling connects again.
+      if (resource.type === RESOURCE_TYPE_GATEWAY) {
+        await gatewayV2DAL.updateById(resource.id, { relayId: null, directAddress: null }, tx);
+      }
     });
 
     return {

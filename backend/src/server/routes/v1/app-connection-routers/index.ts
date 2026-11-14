@@ -19,6 +19,7 @@ import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
+import { registerClickHouseConnectionRouter } from "./clickhouse-connection-router";
 import { registerCloud66ConnectionRouter } from "./cloud-66-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerConvexConnectionRouter } from "./convex-connection-router";
@@ -46,6 +47,7 @@ import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerImpervaConnectionRouter } from "./imperva-connection-router";
+import { registerJenkinsConnectionRouter } from "./jenkins-connection-router";
 import { registerJiraConnectionRouter } from "./jira-connection-router";
 import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
@@ -182,6 +184,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Convex]: registerConvexConnectionRouter,
     [AppConnection.Rundeck]: registerRundeckConnectionRouter,
     [AppConnection.Portainer]: registerPortainerConnectionRouter,
+    [AppConnection.Jenkins]: registerJenkinsConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
@@ -194,5 +197,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
     [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
     [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter,
-    [AppConnection.Jira]: registerJiraConnectionRouter
+    [AppConnection.Jira]: registerJiraConnectionRouter,
+    [AppConnection.ClickHouse]: registerClickHouseConnectionRouter
   };
