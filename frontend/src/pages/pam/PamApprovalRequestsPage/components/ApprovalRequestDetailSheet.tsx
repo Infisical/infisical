@@ -38,9 +38,15 @@ type Props = {
   request: TPamAccessRequest | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  canRevokeGrants?: boolean;
 };
 
-export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Props) => {
+export const ApprovalRequestDetailSheet = ({
+  request,
+  isOpen,
+  onOpenChange,
+  canRevokeGrants = true
+}: Props) => {
   const { user } = useUser();
   const reviewMutation = useReviewPamAccessRequest();
   const revokeMutation = useRevokePamAccessRequest();
@@ -58,7 +64,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
   const isPending = request?.status === PamAccessRequestStatus.Pending;
   // Self-approval is always blocked server-side; denying your own request stays allowed
   const isOwnRequest = Boolean(request?.requesterId && request.requesterId === user?.id);
-  const canRevoke = isGrantActive(request);
+  const canRevoke = canRevokeGrants && isGrantActive(request);
 
   const handleReview = (decision: PamAccessRequestDecision) => {
     if (!request) return;
