@@ -200,7 +200,7 @@ A service represents one external system that an agent can reach, such as GitHub
 
 Agent Vault supports three kinds of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis), [MCP servers](/documentation/platform/agent-vault/mcp-servers), and [databases and SSH servers](/documentation/platform/agent-vault/databases-and-ssh).
 
-You don't give services to an agent directly. You add services to an access bundle, and a session gives the agent access to the services in its access bundle.
+You don't give services to an agent directly. A session gives the agent access to the services in its access bundle, and to any services you name when you create the session.
 
 <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
   Anything an AI agent talks to during a session, such as an API, an MCP server, a database, or an SSH server.
@@ -218,11 +218,11 @@ You grant a bundle to a user, group, or machine identity. Anyone with that grant
 
 ### Sessions
 
-A session is a time-bound access grant that's scoped to one access bundle. Infisical returns a session token that identifies the session; the agent uses that token to authenticate to the Agent Vault proxy on every outbound request.
+A session is a time-bound access grant that's scoped to an access bundle, to services you name, or to both. Infisical returns a session token that identifies the session; the agent uses that token to authenticate to the Agent Vault proxy on every outbound request.
 
-When the orchestrator creates a session, it picks one access bundle and sets when the session expires. The agent never sees the real credentials inside the bundle. All it has is the session token, which the proxy only accepts while the session is live.
+When the orchestrator creates a session, it picks an access bundle, the services to name, or both, and sets when the session expires. The agent never sees the real credentials inside the bundle. All it has is the session token, which the proxy only accepts while the session is live.
 
-Even if an attacker stole the session token, they could only reach the hosts, methods, and paths that the access bundle's services allow, and only until the session expires or you revoke it.
+Even if an attacker stole the session token, they could only reach the hosts, methods, and paths that the session's services allow, and only until the session expires or you revoke it.
 
 <Card title="Sessions" icon="monitor" href="/documentation/platform/agent-vault/sessions">
   Time-bound grants that let AI agents access services without holding real credentials.

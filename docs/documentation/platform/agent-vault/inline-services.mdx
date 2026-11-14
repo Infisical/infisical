@@ -47,7 +47,7 @@ An inline service has the same fields as an [HTTP API](/documentation/platform/a
 
 An inline service can also have a [hook](/documentation/platform/agent-vault/hooks): send a `hook` object with its `url` and `signingSecret`, the same as for a service in the project.
 
-A session can have up to 20 inline services, and no two of its services can have the same name, including the services in its access bundle. A service sent without a name counts as its first host. The reference for [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) lists every field and its limits.
+A session can have up to 20 inline services, and no two of its services can have the same name, including the services in its access bundle and the services you name. A service sent without a name counts as its first host. The reference for [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) lists every field and its limits.
 
 Start the agent with the session token from the response, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/sessions-api#step-5-revoke-the-session).
 
@@ -55,14 +55,16 @@ Start the agent with the session token from the response, as [Step 4 of Create s
   A machine identity can also send inline services with a session that it creates [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users). The user doesn't need the **Admin** role, and the inline services don't use the user's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values).
 </Tip>
 
-## Combine inline services with an access bundle
+## Combine inline services with services in the project
 
 To give a session an access bundle as well as inline services, name the access bundle in `accessBundle` in the same request. A session can have only one access bundle.
 
-When you create the session, Infisical compares the host patterns of the inline services with each other and with the access bundle's services, using the same [host conflict rules](/documentation/platform/agent-vault/http-apis#host-conflicts) as for the services in one access bundle:
+To give the session services from the project one by one, put their names in `services` next to the inline services, as in `"services": ["linear", {"type": "http", ...}]`. As an admin of the project, the machine identity can name any of the project's services.
+
+When you create the session, Infisical compares the host patterns of the inline services with each other, with the access bundle's services, and with the services you name, using the same [host conflict rules](/documentation/platform/agent-vault/http-apis#host-conflicts) as for the services in one access bundle:
 
 - If two of the services use the same host pattern, creating the session fails
-- If an inline service and a service in the access bundle cover the same host with different patterns, such as `api.github.com` and `*.github.com`, requests to that host use the service with the more specific pattern
+- If an inline service and a service from the project cover the same host with different patterns, such as `api.github.com` and `*.github.com`, requests to that host use the service with the more specific pattern
 
 If someone later adds a service to the access bundle with the same name as one of the session's inline services, or renames a service in the access bundle to that name, the session keeps using its own inline service and doesn't get the access bundle's service. Other sessions on the access bundle get the access bundle's service as usual.
 
@@ -90,8 +92,8 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="Creating the session fails with &quot;Only an Agent Vault admin can send services with a session&quot;">
-    The machine identity has the **Member** role in the Agent Vault project. Either give it the **Admin** role, or add the services to an access bundle and [grant the bundle](/documentation/platform/agent-vault/access-bundles#grant-access) to the machine identity.
+  <Accordion title="Creating the session fails with &quot;Only an Agent Vault admin can send inline services with a session&quot;">
+    The machine identity has the **Member** role in the Agent Vault project. Either give it the **Admin** role, or add the services to an access bundle, [grant the bundle](/documentation/platform/agent-vault/access-bundles#grant-access) to the machine identity, and name the access bundle or the services instead.
 
     To give the machine identity the **Admin** role:
 

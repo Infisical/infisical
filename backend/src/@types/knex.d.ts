@@ -62,6 +62,9 @@ import {
   TAgentVaultSessionInlineServices,
   TAgentVaultSessionInlineServicesInsert,
   TAgentVaultSessionInlineServicesUpdate,
+  TAgentVaultSessionServices,
+  TAgentVaultSessionServicesInsert,
+  TAgentVaultSessionServicesUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
@@ -1920,6 +1923,11 @@ declare module "knex/types/tables" {
       TAgentVaultSessionInlineServices,
       TAgentVaultSessionInlineServicesInsert,
       TAgentVaultSessionInlineServicesUpdate
+    >;
+    [TableName.AgentVaultSessionService]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionServices,
+      TAgentVaultSessionServicesInsert,
+      TAgentVaultSessionServicesUpdate
     >;
     [TableName.AgentVaultDelegation]: KnexOriginal.CompositeTableType<
       TAgentVaultDelegations,

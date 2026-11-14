@@ -4,14 +4,26 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
+import {
+  AgentVaultPatternRelation,
+  parseHostPatterns,
+  relateHostPatterns,
+  TAgentVaultHostPattern
+} from "../agent-vault/agent-vault-host-pattern-fns";
+
 export type TAgentVaultResolveDALFactory = ReturnType<typeof agentVaultResolveDALFactory>;
 
 export type TResolveServiceRow = {
   id: string;
   name: string;
   description: string | null;
-  accessBundleId: string;
-  accessBundleName: string;
+  // Null for a service the session names itself rather than reaching through its bundle. An override carries the bundle
+  // that pairs it with the named service.
+  accessBundleId: string | null;
+  accessBundleName: string | null;
+  // A service the session gets only because a bundle that gives the owner one of its named services uses it for some of
+  // that service's hosts.
+  isOverride?: boolean;
   type: string;
   hostPattern: string | null;
   config: unknown;
@@ -61,9 +73,115 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     return query;
   };
 
+  const SERVICE_COLUMNS = [
+    "id",
+    "name",
+    "description",
+    "type",
+    "hostPattern",
+    "config",
+    "credentialType",
+    "credentialConfig",
+    "encryptedCredential",
+    "allowedMethods",
+    "allowedPathPrefixes",
+    "allowedTools",
+    "memberProvidedFields",
+    "hookUrl",
+    "encryptedHookSecret"
+  ] as const;
+
+  const wildcardsOf = ({ hostPattern }: { hostPattern: string | null }) =>
+    hostPattern ? parseHostPatterns(hostPattern).patterns.filter((pattern) => pattern.isWildcard) : [];
+
+  const coversExactHostOf = (wildcards: TAgentVaultHostPattern[], { hostPattern }: { hostPattern: string | null }) =>
+    Boolean(hostPattern) &&
+    parseHostPatterns(hostPattern!).patterns.some(
+      (pattern) =>
+        !pattern.isWildcard &&
+        wildcards.some((wildcard) => relateHostPatterns(wildcard, pattern) === AgentVaultPatternRelation.Contained)
+    );
+
   /**
-   * The hot path, and an intersection: a session's bundle set is a ceiling fixed at mint, re-checked against
-   * live grants on every resolve, so losing a grant empties a running session without touching its row.
+   * An exact host beats a wildcard, which is how a bundle writes an override: `api.example.com` read-only beside an
+   * unrestricted `*.example.com`. A session that names only the wildcard service would take that host with the
+   * wildcard's credential and rules, so it also gets each service that a bundle giving the owner a named service uses for
+   * one of its hosts, and those services' overrides in turn, the way a session carrying that bundle would.
+   */
+  const findOverridesOfNamedServices = async (
+    conn: Knex,
+    { projectId, accessBundleIds }: { projectId: string; accessBundleIds: string[] },
+    named: TResolveServiceRow[],
+    presentIds: Set<string>
+  ): Promise<TResolveServiceRow[]> => {
+    const roots = named.filter((row) => wildcardsOf(row).length);
+    if (!roots.length) return [];
+
+    const rows = (await conn(TableName.AgentVaultAccessBundleService)
+      .join(
+        TableName.AgentVaultAccessBundle,
+        `${TableName.AgentVaultAccessBundle}.id`,
+        `${TableName.AgentVaultAccessBundleService}.accessBundleId`
+      )
+      .join(
+        TableName.AgentVaultService,
+        `${TableName.AgentVaultService}.id`,
+        `${TableName.AgentVaultAccessBundleService}.serviceId`
+      )
+      .where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId)
+      .whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds)
+      .whereIn(
+        `${TableName.AgentVaultAccessBundle}.id`,
+        conn({ holder: TableName.AgentVaultAccessBundleService })
+          .whereIn(
+            "holder.serviceId",
+            roots.map((row) => row.id)
+          )
+          .select("holder.accessBundleId")
+      )
+      .whereNull(`${TableName.AgentVaultService}.sessionId`)
+      .whereNotNull(`${TableName.AgentVaultService}.hostPattern`)
+      .select(
+        ...SERVICE_COLUMNS.map((column) => db.ref(column).withSchema(TableName.AgentVaultService)),
+        db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
+        db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName")
+      )
+      .orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc")
+      .orderBy(`${TableName.AgentVaultService}.name`, "asc")) as Omit<TResolveServiceRow, "position">[];
+
+    const rootPositions = new Map(roots.map((row) => [row.id, row.position]));
+    const byBundle = new Map<string, typeof rows>();
+    rows.forEach((row) => byBundle.set(row.accessBundleId!, [...(byBundle.get(row.accessBundleId!) ?? []), row]));
+
+    // Bundles in name order, so a service two of them pair with a named service is credited to the same one each time.
+    const overrides = new Map<string, TResolveServiceRow>();
+    byBundle.forEach((bundleRows) => {
+      const bundleRoots = bundleRows.filter((row) => rootPositions.has(row.id));
+      const position = Math.min(...bundleRoots.map((row) => rootPositions.get(row.id)!));
+      const reached = new Set(bundleRoots.map((row) => row.id));
+      let frontier: typeof bundleRows = bundleRoots;
+      while (frontier.length) {
+        const wildcards = frontier.flatMap(wildcardsOf);
+        frontier = wildcards.length
+          ? bundleRows.filter((row) => !reached.has(row.id) && coversExactHostOf(wildcards, row))
+          : [];
+        frontier.forEach((row) => {
+          reached.add(row.id);
+          if (!presentIds.has(row.id) && !overrides.has(row.id)) {
+            overrides.set(row.id, { ...row, position, isOverride: true });
+          }
+        });
+      }
+    });
+    return [...overrides.values()];
+  };
+
+  /**
+   * The hot path, and an intersection: the services a session reaches through its bundle and the ones it names are a
+   * ceiling fixed at mint, re-checked against live grants on every resolve, so losing a grant empties a running session
+   * without touching its rows. A named service stays only while the owner reaches it through a bundle they are granted
+   * (any of them when accessBundleIds is null), and brings that bundle's overrides of its hosts with it. Services through
+   * the bundle come first, then the named ones, then the overrides.
    *
    * Read on the replica unless onPrimary, so replica lag adds to the one-poll-interval staleness promise.
    */
@@ -81,7 +199,10 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
   ): Promise<TResolveServiceRow[]> => {
     if (scope.accessBundleIds?.length === 0) return [];
     try {
-      const query = reachableSessionBundles(tx || (onPrimary ? db : db.replicaNode()), scope)
+      const conn = tx || (onPrimary ? db : db.replicaNode());
+      const serviceColumns = SERVICE_COLUMNS.map((column) => db.ref(column).withSchema(TableName.AgentVaultService));
+
+      const throughBundleQuery = reachableSessionBundles(conn, scope)
         .join(
           TableName.AgentVaultAccessBundleService,
           `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
@@ -93,26 +214,9 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultAccessBundleService}.serviceId`
         )
         .whereNull(`${TableName.AgentVaultService}.sessionId`);
-
-      if (serviceId) void query.where(`${TableName.AgentVaultService}.id`, serviceId);
-
-      return (await query
+      const throughBundle = (await throughBundleQuery
         .select(
-          db.ref("id").withSchema(TableName.AgentVaultService),
-          db.ref("name").withSchema(TableName.AgentVaultService),
-          db.ref("description").withSchema(TableName.AgentVaultService),
-          db.ref("type").withSchema(TableName.AgentVaultService),
-          db.ref("hostPattern").withSchema(TableName.AgentVaultService),
-          db.ref("config").withSchema(TableName.AgentVaultService),
-          db.ref("credentialType").withSchema(TableName.AgentVaultService),
-          db.ref("credentialConfig").withSchema(TableName.AgentVaultService),
-          db.ref("encryptedCredential").withSchema(TableName.AgentVaultService),
-          db.ref("allowedMethods").withSchema(TableName.AgentVaultService),
-          db.ref("allowedPathPrefixes").withSchema(TableName.AgentVaultService),
-          db.ref("allowedTools").withSchema(TableName.AgentVaultService),
-          db.ref("memberProvidedFields").withSchema(TableName.AgentVaultService),
-          db.ref("hookUrl").withSchema(TableName.AgentVaultService),
-          db.ref("encryptedHookSecret").withSchema(TableName.AgentVaultService),
+          ...serviceColumns,
           db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
           // Resolve only reaches live bundles, so the current name is always the truthful one here.
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName"),
@@ -120,6 +224,55 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         )
         .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")
         .orderBy(`${TableName.AgentVaultService}.name`, "asc")) as TResolveServiceRow[];
+
+      const namedQuery = conn(TableName.AgentVaultSessionService)
+        .where(`${TableName.AgentVaultSessionService}.sessionId`, scope.sessionId)
+        .join(
+          TableName.AgentVaultService,
+          `${TableName.AgentVaultService}.id`,
+          `${TableName.AgentVaultSessionService}.serviceId`
+        )
+        .where(`${TableName.AgentVaultService}.projectId`, scope.projectId)
+        .whereNull(`${TableName.AgentVaultService}.sessionId`);
+      if (scope.accessBundleIds) {
+        void namedQuery.whereExists(
+          conn(TableName.AgentVaultAccessBundleService)
+            .whereRaw("??.?? = ??.??", [
+              TableName.AgentVaultAccessBundleService,
+              "serviceId",
+              TableName.AgentVaultService,
+              "id"
+            ])
+            .whereIn(`${TableName.AgentVaultAccessBundleService}.accessBundleId`, scope.accessBundleIds)
+            .select(db.raw("1"))
+        );
+      }
+      const named = (await namedQuery
+        .select(
+          ...serviceColumns,
+          db.raw("NULL::uuid AS ??", ["accessBundleId"]),
+          db.raw("NULL::text AS ??", ["accessBundleName"]),
+          db.ref("position").withSchema(TableName.AgentVaultSessionService)
+        )
+        .orderBy(`${TableName.AgentVaultSessionService}.position`, "asc")) as unknown as TResolveServiceRow[];
+
+      // A service the session names that its bundle also holds is sent once, as the bundle's, with the bundle's
+      // overrides already beside it.
+      const throughBundleIds = new Set(throughBundle.map((row) => row.id));
+      const namedOnly = named.filter((row) => !throughBundleIds.has(row.id));
+      const present = [...throughBundle, ...namedOnly];
+      // An owner who reaches every bundle could name the wildcard service alone anyway, so theirs get none.
+      const overrides = scope.accessBundleIds
+        ? await findOverridesOfNamedServices(
+            conn,
+            { projectId: scope.projectId, accessBundleIds: scope.accessBundleIds },
+            namedOnly,
+            new Set(present.map((row) => row.id))
+          )
+        : [];
+      const resolvable = [...present, ...overrides];
+      // Narrowed after the overrides are found, since one can only be found through the service it overrides.
+      return serviceId ? resolvable.filter((row) => row.id === serviceId) : resolvable;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find resolvable agent vault services" });
     }

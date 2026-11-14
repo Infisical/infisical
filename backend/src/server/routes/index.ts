@@ -49,6 +49,7 @@ import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSessionServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service-dal";
 import { agentVaultSessionStatsDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-stats-dal";
 import { agentVaultSkillBundleDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-bundle-dal";
 import { agentVaultSkillDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-dal";
@@ -2033,6 +2034,7 @@ export const registerRoutes = async (
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultSessionInlineServiceDAL = agentVaultSessionInlineServiceDALFactory(db);
+  const agentVaultSessionServiceDAL = agentVaultSessionServiceDALFactory(db);
   const agentVaultSessionStatsDAL = agentVaultSessionStatsDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
@@ -2110,6 +2112,7 @@ export const registerRoutes = async (
     agentVaultSessionDAL,
     agentVaultSessionAccessBundleDAL,
     agentVaultSessionInlineServiceDAL,
+    agentVaultSessionServiceDAL,
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
     agentVaultDelegationDAL,

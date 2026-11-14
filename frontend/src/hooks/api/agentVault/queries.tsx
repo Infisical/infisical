@@ -157,6 +157,8 @@ export const agentVaultKeys = {
     [...agentVaultKeys.all(orgId, projectId), "services"] as const,
   serviceList: (orgId: string, projectId: string, params: TListAgentVaultServicesDTO) =>
     [...agentVaultKeys.services(orgId, projectId), "list", params] as const,
+  allServicesRequiringSetup: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.services(orgId, projectId), "all-requiring-setup"] as const,
   service: (orgId: string, projectId: string, serviceId: string) =>
     [...agentVaultKeys.services(orgId, projectId), "detail", serviceId] as const,
   skills: (orgId: string, projectId: string) =>
@@ -944,6 +946,44 @@ export const useListAgentVaultServices = (
         totalCount: number;
       }>("/api/v1/agent-vault/services", { params: { ...params, projectId } });
       return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+const SERVICES_REQUIRING_SETUP_PAGE_SIZE = 100;
+
+// Every service that still needs the caller's personal values, a page at a time, for a form that can pick any of the
+// project's services rather than only those on the first page.
+export const useListAllAgentVaultServicesRequiringSetup = (
+  projectId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.allServicesRequiringSetup(currentOrg.id, projectId),
+    queryFn: async () => {
+      const services: TAgentVaultProjectService[] = [];
+      let totalCount = Infinity;
+      while (services.length < totalCount) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data } = await apiRequest.get<{
+          services: TAgentVaultProjectService[];
+          totalCount: number;
+        }>("/api/v1/agent-vault/services", {
+          params: {
+            projectId,
+            requiresSetup: true,
+            limit: SERVICES_REQUIRING_SETUP_PAGE_SIZE,
+            offset: services.length
+          }
+        });
+        services.push(...data.services);
+        totalCount = data.services.length ? data.totalCount : services.length;
+      }
+      return services;
     },
     placeholderData: keepPreviousInProject(projectId),
     enabled

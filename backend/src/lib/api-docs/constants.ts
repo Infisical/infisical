@@ -4821,6 +4821,10 @@ export const AGENT_VAULT = {
       "true lists only the services that still need your personal values; false leaves them out. Leave it out to list both.",
     granted:
       "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
+    onBehalfOfUserId:
+      "List the services a session on behalf of this user could name: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     orderBy: "What to sort services by: name, type, or createdAt.",
     orderDirection: "The sort direction, asc or desc.",
     description:
@@ -5000,11 +5004,15 @@ export const AGENT_VAULT = {
     isSet: "Whether you have set this value.",
     updatedAt: "When this value last changed, or null if you haven't set it.",
     variableReferences: "Your personal variables that this value uses.",
+    serviceVariableReferences:
+      "Your personal variables that this value uses. Left out when a machine identity lists services on a user's behalf.",
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
     value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`,
     oauth:
       "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field.",
+    serviceOauth:
+      "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field, and left out when a machine identity lists services on a user's behalf.",
     oauthStatus:
       "`connected`, `needs-reauthorization` (your login is no longer accepted, so connect again; until then your sessions can't use the service), or `needs-additional-scopes` (the MCP server asked for scopes your connection lacks; connect again to grant them).",
     oauthRequiredScopes: "Scopes the MCP server asked for that your connection lacks. Connect again to grant them.",
@@ -5286,15 +5294,29 @@ export const AGENT_VAULT = {
     sessionId: "The ID of the session.",
     revokedAt: "When the session was revoked.",
     accessBundle:
-      "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
-    accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",
+      "The name of the access bundle this session carries. Leave it out to start a session with only the services it names or sends.",
+    accessBundleRead:
+      "The access bundle this session carries. Null for a session with only the services it names or sends.",
+    services:
+      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that names it.",
+    serviceName:
+      "The name of a service in this project. An Agent Vault admin can name any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can name only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
+    servicesRead:
+      "The services this session names and the ones sent with it, in the order they were sent. Inline services are listed without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
+    namedServiceId: "The ID of the project service.",
+    namedServiceName: "The name of the project service.",
+    namedServiceType: "The type of the project service.",
+    namedServiceHostPattern:
+      "The host the project service matches, for an HTTP or MCP service. Null for a database or SSH service, which has no host pattern.",
+    serviceIsInline:
+      "Whether the service was sent with this session (true) or is a service in the project that the session names (false).",
     stats:
       "How many requests went through this session, as counted by the proxy when it uploads session logs. Null when no logs were uploaded for the session, for example while session logs are off.",
     statsRequests: "Every request the proxy recorded for this session, whatever its decision.",
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "Services this session carries itself, alongside its access bundle's or without one. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's and the services it names. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:

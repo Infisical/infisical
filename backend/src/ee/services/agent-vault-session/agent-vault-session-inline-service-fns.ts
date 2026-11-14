@@ -252,8 +252,14 @@ const toConflictCandidate = (service: TPreparedInlineService): TConflictCandidat
  * same host rule as one bundle's services: an exact host may sit beside a wildcard that contains it, but two services
  * covering the same pattern would leave the proxy's choice to the order they were sent in.
  */
-export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): TPreparedInlineService[] => {
-  const prepared = inputs.map((input, position) => {
+// `positions` places each service in the session's list of services, which an error also names it by. Its index among
+// the inline services otherwise.
+export const prepareInlineServices = (
+  inputs: TAgentVaultInlineServiceInput[],
+  positions?: number[]
+): TPreparedInlineService[] => {
+  const prepared = inputs.map((input, index) => {
+    const position = positions?.[index] ?? index;
     try {
       return prepareInlineService(input, position);
     } catch (error) {
@@ -314,6 +320,27 @@ export const assertNoAccessBundleConflicts = (
         message: service.name
           ? `The service ${label} has the same name as a service in the access bundle '${accessBundle.name}'. Give it a different name.`
           : `The service ${label} goes by its first host, '${displayName}', which is the name of a service in the access bundle '${accessBundle.name}'. Give it a name.`
+      });
+    }
+  });
+};
+
+// A service sent inline can't cover a host a project service the session names covers, or go by that service's name.
+// One with a name of its own was already checked against the names the session sends, so only a service that goes by
+// its first host can match here.
+export const assertNoNamedServiceConflicts = (prepared: TPreparedInlineService[], named: TConflictCandidate[]) => {
+  prepared.forEach((service) => {
+    const label = inlineServiceLabel(service);
+    const [conflict] = findHostPatternConflicts(service.hostPattern, named);
+    if (conflict) {
+      throw new BadRequestError({
+        message: `The service ${label} covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}', a service this session names, already covers. Remove it from the service ${label}, or leave '${conflict.serviceName}' out.`
+      });
+    }
+    const displayName = inlineServiceDisplayName(service);
+    if (named.some((candidate) => candidate.name === displayName)) {
+      throw new BadRequestError({
+        message: `The service ${label} goes by its first host, '${displayName}', which is the name of a service this session names. Give it a name.`
       });
     }
   });

@@ -147,7 +147,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 ## Sessions and resolve
 
 - The token is the lookup key, so it is stored as sha256 (not bcrypt) and returned exactly once.
-- A session carries at most one bundle, and none when an admin sends only inline services. The session API
+- A session carries at most one bundle, and none when it carries only services it names or sends inline. The session API
   takes an optional `accessBundle` name and returns `accessBundle` as `{ id, name }` or null; the router still
   accepts the old `accessBundles` list (at most one name, mapped in a preprocess so the API reference does not
   show it) until 2027-01-04, the date in the router's comment. Storage was not narrowed: the junction
@@ -238,7 +238,9 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   a grant drops the bundle's services like an owner's lost grant, with no 401.
 - **Listing access bundles with `onBehalfOfUserId` or `onBehalfOfUserEmail` runs mint's delegation and user checks**
   (`agent-vault-on-behalf-of-fns.ts`, shared by both), then returns the bundles the user and the identity both reach,
-  with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints.
+  with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints. The
+  services list does the same, and its `personalValues` say only which of the user's values are set: never the
+  personal variables those values use or the user's OAuth connection, which only the user may read.
 - **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
   who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
   as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
@@ -322,9 +324,9 @@ keyed by the service, so a member sets them once however many bundles give them 
 ## Inline services
 
 An Agent Vault admin can send services with a session itself, without an access bundle or alongside one, for a caller
-that holds its own credentials and needs a host for one session only. The API calls them the session's `services` (on
-mint, on session reads and in the mint audit event); the code and the Sessions page say inline services, which is what
-tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
+that holds its own credentials and needs a host for one session only. The API sends them in the session's `services`,
+beside the project services it names (`isInline` tells the two apart on reads, and the mint audit event lists named ones
+in `namedServices`); the code and the Sessions page say inline services, which is what tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
 child table with a project's services so the two can't drift, and only `agent-vault-session-inline-service-dal.ts`
 reads or writes them. They belong to that session alone: nothing edits them, no bundle or other session reads them, and
 only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields and OAuth off them in
@@ -365,6 +367,38 @@ the database too.
   `secretsDeletedAt` is set or any value it needs is missing, so resolve leaves the service out rather than send a
   half-built one. Only a pass-through service with no custom headers, substitutions or hook goes out with nothing
   sealed.
+
+## Services a session names
+
+Mint's `services` also takes a project service's name as a plain string, beside or instead of an access bundle and
+inline objects. `agent_vault_session_services` links the session to each one with the `position` it was sent at, which
+inline services share, so reads (`withSessionServices`) return both kinds in the order sent.
+
+- **A named service has to be in a bundle the owner could carry.** An admin (a role in
+  `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`) can name any project service, even one in no bundle; anyone else only a
+  service in a bundle granted to them, directly or through a group; an on-behalf-of session only one in a bundle both the
+  identity and the user reach. An unknown name and an unreachable one get the same 400, so mint never confirms a service
+  exists. Keep this rule identical to the access bundle's, or naming becomes a way round a bundle grant.
+- **Resolve re-checks it on every poll.** `findResolvableServices` returns a named service only while a link to a bundle
+  in the owner's live reach holds it (no check when the reach is every bundle), so losing the bundle drops the service
+  and deleting the service drops it by cascade. A named service resolves with `accessBundleId` and `accessBundleName`
+  null, like an inline one; catalog names are unique per project, so the proxy's inline-first rule never has two
+  candidates.
+- **A named service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
+  re-credentials one host of a wildcard service with a second service for that host. Naming the wildcard service alone
+  would drop that, so `findOverridesOfNamedServices` adds every service that a bundle in the owner's reach holding the
+  named service uses for one of its hosts, and their own overrides in turn, read live on each resolve. They resolve with
+  `isOverride`, credited to that bundle, and go out after inline services, so they only take a host no other service in
+  the session names exactly. Not when the reach is every bundle: that owner could name the wildcard service alone
+  anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or naming becomes a way
+  round a bundle's override.
+- **Names are unique across the whole `services` array**, named and inline together, refused in the schema (422) like a
+  duplicate inline name. Host patterns are checked like a bundle's services: named against the bundle's and each other at
+  mint, and inline against both (`assertNoNamedServiceConflicts`). The named check runs off the replica to fail fast,
+  then again in the mint's transaction under `AgentVaultServiceNames` on the primary, because an admin can add a
+  service to the bundle or change a host right then.
+- **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `isInline: false`); the
+  service's settings belong to the services API, which a member reaches through their bundles.
 
 ## Database and SSH services
 

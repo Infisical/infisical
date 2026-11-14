@@ -210,11 +210,11 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, ttl }: TDashboardSessionInput) => {
-    if (!accessBundle) return;
+  const onCreateNowSubmit = async ({ label, ttl, services }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
-        accessBundle: accessBundle.name,
+        accessBundle: accessBundle?.name,
+        services: services.length ? services : undefined,
         ttl,
         label
       });
@@ -276,7 +276,11 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           // The created session keeps the bundle it was made with.
           isDisabled={isLocked}
         />
-        <FieldDescription>The services an agent can reach with this session.</FieldDescription>
+        <FieldDescription>
+          {isCreateNow
+            ? "Optional when you pick services below."
+            : "The services an agent can reach with this session."}
+        </FieldDescription>
       </FieldContent>
     </Field>
   );
@@ -441,8 +445,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           <DialogHeader>
             <DialogTitle>Create Session</DialogTitle>
             <DialogDescription>
-              An agent running with this session can only reach the hosts in the session&apos;s
-              associated access bundle.
+              An agent running with this session can only reach the services it was created with.
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -552,7 +555,6 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
                 type="submit"
                 form={CREATE_NOW_FORM_ID}
                 variant="av"
-                isDisabled={!accessBundle}
                 isPending={createSession.isPending}
               >
                 Create Session

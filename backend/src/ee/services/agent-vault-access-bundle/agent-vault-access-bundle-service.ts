@@ -98,6 +98,7 @@ import {
   getAgentVaultGrantedReachability,
   getAgentVaultReachability,
   intersectAccessBundleIds,
+  serviceIdsReachedThrough,
   TAgentVaultPermission
 } from "../agent-vault/agent-vault-permission";
 import {
@@ -2355,14 +2356,24 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   // The services the caller can see, each with the bundles they reach it through and their own setup status. A member
   // sees a service only while a bundle they reach holds it.
+  // personalValues describe the owner's values: the caller's, or the user a session on their behalf would be for.
   const $viewServices = async (
-    { projectId, ctx }: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] },
+    {
+      projectId,
+      ctx,
+      owner = ownerOrNullOf(ctx),
+      isOnBehalfOf = false
+    }: {
+      projectId: string;
+      ctx: TGetAccessBundleDTO["ctx"];
+      owner?: ReturnType<typeof ownerOrNullOf>;
+      isOnBehalfOf?: boolean;
+    },
     services: TAgentVaultCatalogService[],
     accessBundleIds: string[] | null,
     visibility: ReturnType<typeof serviceVisibilityOf>
   ) => {
     const serviceIds = services.map((service) => service.id);
-    const owner = ownerOrNullOf(ctx);
     const [transformations, bundlesByService, statuses] = await Promise.all([
       loadTransformations(serviceIds, undefined, { withVariableReferences: visibility.canReadVariables }),
       agentVaultServiceDAL.findBundlesForServices(serviceIds, accessBundleIds),
@@ -2371,7 +2382,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             projectId,
             owner,
             accessBundleIds,
-            includeUnlinked: true
+            includeUnlinked: true,
+            withVariableReferences: !isOnBehalfOf
           })
         : []
     ]);
@@ -2397,14 +2409,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   // The list a member sets up their personal values from, so it can be narrowed to what still needs them. Setup is
-  // counted over the same bundles the list is scoped to, the way the bundle list counts it.
-  const listServices = async ({ projectId, ctx, requiresSetup, granted, ...page }: TListServicesDTO) => {
+  // counted over the same bundles the list is scoped to, the way the bundle list counts it. On a user's behalf it lists
+  // the services a session for them could name, scoped like the bundle list's on-behalf-of mode and set up with the
+  // user's personal values.
+  const listServices = async ({ projectId, ctx, requiresSetup, granted, onBehalfOf, ...page }: TListServicesDTO) => {
     const { accessBundleIds, grantedAccessBundleIds, visibility } = await $readServicesAccess({ projectId, ctx });
-    const scopeBundleIds = granted ? grantedAccessBundleIds : accessBundleIds;
-    let serviceIds = scopeBundleIds ? await agentVaultServiceDAL.findIdsInBundles(scopeBundleIds) : null;
+    const { scopeIds: scopeBundleIds, owner } = onBehalfOf
+      ? await $onBehalfOfListScope({ projectId, ctx, onBehalfOf, callerAccessBundleIds: accessBundleIds })
+      : { scopeIds: granted ? grantedAccessBundleIds : accessBundleIds, owner: ownerOrNullOf(ctx) };
+    let serviceIds = await serviceIdsReachedThrough(agentVaultServiceDAL, scopeBundleIds);
     let excludeServiceIds: string[] = [];
 
-    const owner = ownerOrNullOf(ctx);
     if (requiresSetup !== undefined) {
       const statuses = owner
         ? await agentVaultPersonalValueService.findStatusesForOwner({
@@ -2428,8 +2443,23 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       excludeServiceIds,
       ...page
     });
+    const views = await $viewServices(
+      { projectId, ctx, owner, isOnBehalfOf: Boolean(onBehalfOf) },
+      services,
+      onBehalfOf ? scopeBundleIds : accessBundleIds,
+      visibility
+    );
     return {
-      services: await $viewServices({ projectId, ctx }, services, accessBundleIds, visibility),
+      // Another user's values say only what is set: the variables they use and the user's OAuth connection are theirs.
+      services: onBehalfOf
+        ? views.map((view) => ({
+            ...view,
+            personalValues: view.personalValues && {
+              isConfigured: view.personalValues.isConfigured,
+              fields: view.personalValues.fields.map(({ field, isSet, updatedAt }) => ({ field, isSet, updatedAt }))
+            }
+          }))
+        : views,
       totalCount
     };
   };

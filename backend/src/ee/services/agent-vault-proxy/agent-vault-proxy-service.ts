@@ -1216,7 +1216,14 @@ export const agentVaultProxyServiceFactory = ({
       }
       return [resolved];
     });
-    const services = [...bundleServices, ...inlineServices];
+    // An override goes last, so it takes only a host that nothing else in the session names exactly: an exact host beats
+    // a wildcard wherever it sits, and the Go matcher breaks a tie between two exact ones by order.
+    const overrideIds = new Set(rows.filter((row) => row.isOverride).map((row) => row.id));
+    const services = [
+      ...bundleServices.filter((service) => !overrideIds.has(service.id)),
+      ...inlineServices,
+      ...bundleServices.filter((service) => overrideIds.has(service.id))
+    ];
 
     // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
     const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
@@ -1438,22 +1445,23 @@ export const agentVaultProxyServiceFactory = ({
     ]);
 
     const setPersonalFields = toSetPersonalFields(rows, personalValueRows);
+    const factsOf = (row: (typeof rows)[number]) =>
+      toBundleServiceFacts(row, {
+        customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
+        substitutions: substitutionRows
+          .filter((substitution) => substitution.serviceId === row.id)
+          .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
+        setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
+      });
 
-    // Bundle services before inline ones, the order resolve sends them in.
+    // The order resolve sends them in: bundle and named services, inline ones, then overrides.
     const services = [
-      ...rows.map((row) =>
-        toBundleServiceFacts(row, {
-          customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
-          substitutions: substitutionRows
-            .filter((substitution) => substitution.serviceId === row.id)
-            .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-          setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
-        })
-      ),
+      ...rows.filter((row) => !row.isOverride).map(factsOf),
       ...inlineRows.flatMap((row) => {
         const facts = toInlineServiceFacts(row);
         return facts ? [facts] : [];
-      })
+      }),
+      ...rows.filter((row) => row.isOverride).map(factsOf)
     ];
 
     // A proxy names itself on the requests it forwards. One outside the session's project is ignored rather than

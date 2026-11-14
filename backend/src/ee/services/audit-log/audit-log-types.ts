@@ -7080,11 +7080,13 @@ interface AgentVaultSessionMintEvent {
   metadata: {
     sessionId: string;
     label: string | null;
-    // Null for a session started with inline services only.
+    // Null for a session started without an access bundle.
     accessBundleId: string | null;
     accessBundleName: string | null;
     expiresAt: string | null;
-    // Set when an admin sent services with the session. Never their values.
+    // Set when the session names project services, in the order it named them.
+    namedServices?: { serviceId: string; name: string }[];
+    // Set when an admin sent services inline with the session. Never their values.
     services?: {
       serviceId: string;
       // The name it was sent with, or its first host when it was sent without one.

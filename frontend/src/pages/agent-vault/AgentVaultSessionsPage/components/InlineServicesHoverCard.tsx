@@ -8,20 +8,27 @@ import {
   HoverCardTrigger,
   ScrollableContent
 } from "@app/components/v3";
-import { TAgentVaultSessionInlineService } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultSessionInlineService,
+  TAgentVaultSessionNamedService
+} from "@app/hooks/api/agentVault/types";
 
 import { inlineServiceTarget } from "./sessionInlineServices";
 
-type ListProps = {
-  services: TAgentVaultSessionInlineService[];
-};
-
-export const InlineServicesList = ({ services }: ListProps) => (
+const ServiceListFrame = ({
+  caption,
+  label,
+  children
+}: {
+  caption: string;
+  label: string;
+  children: ReactNode;
+}) => (
   <div className="flex w-72 flex-col gap-2.5">
-    <p className="text-xs text-muted">Sent with the session when it was created.</p>
+    <p className="text-xs text-muted">{caption}</p>
     {/* A hover card portals out of any open sheet, whose scroll lock would otherwise swallow the wheel. */}
     <ScrollableContent
-      aria-label="Inline services"
+      aria-label={label}
       edgeBehavior="fade"
       outline={false}
       maxHeight="12rem"
@@ -29,32 +36,62 @@ export const InlineServicesList = ({ services }: ListProps) => (
       contentClassName="flex flex-col gap-2"
       onWheel={(event) => event.stopPropagation()}
     >
-      {services.map((service) => {
-        const target = inlineServiceTarget(service);
-        return (
-          <div key={service.id} className="flex min-w-0 items-center gap-2">
-            <ServiceIcon
-              hostPattern={hostPatternOf(service)}
-              serviceType={service.type}
-              className="size-5"
-            />
-            <span className="truncate">{service.name}</span>
-            {/* A service sent without a name goes by its host, which would only repeat here. */}
-            {target !== service.name && (
-              <span className="truncate text-xs text-muted">{target}</span>
-            )}
-          </div>
-        );
-      })}
+      {children}
     </ScrollableContent>
   </div>
 );
 
-type HoverCardProps = ListProps & {
+export const InlineServicesList = ({
+  services
+}: {
+  services: TAgentVaultSessionInlineService[];
+}) => (
+  <ServiceListFrame caption="Sent with the session when it was created." label="Inline services">
+    {services.map((service) => {
+      const target = inlineServiceTarget(service);
+      return (
+        <div key={service.id} className="flex min-w-0 items-center gap-2">
+          <ServiceIcon
+            hostPattern={hostPatternOf(service)}
+            serviceType={service.type}
+            className="size-5"
+          />
+          <span className="truncate">{service.name}</span>
+          {/* A service sent without a name goes by its host, which would only repeat here. */}
+          {target !== service.name && <span className="truncate text-xs text-muted">{target}</span>}
+        </div>
+      );
+    })}
+  </ServiceListFrame>
+);
+
+export const NamedServicesList = ({ services }: { services: TAgentVaultSessionNamedService[] }) => (
+  <ServiceListFrame
+    caption="The project's services, named when the session was created."
+    label="Services"
+  >
+    {services.map((service) => (
+      <div key={service.id} className="flex min-w-0 items-center gap-2">
+        <ServiceIcon
+          hostPattern={service.hostPattern}
+          serviceType={service.type}
+          className="size-5"
+        />
+        <span className="truncate">{service.name}</span>
+        {service.description && (
+          <span className="truncate text-xs text-muted">{service.description}</span>
+        )}
+      </div>
+    ))}
+  </ServiceListFrame>
+);
+
+type HoverCardProps = {
+  content: ReactNode;
   children: ReactNode;
 };
 
-export const InlineServicesHoverCard = ({ services, children }: HoverCardProps) => {
+export const ServicesHoverCard = ({ content, children }: HoverCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <HoverCard open={isOpen} onOpenChange={setIsOpen} openDelay={150} closeDelay={100}>
@@ -69,7 +106,7 @@ export const InlineServicesHoverCard = ({ services, children }: HoverCardProps) 
         {children}
       </HoverCardTrigger>
       <HoverCardContent align="start" className="w-auto">
-        <InlineServicesList services={services} />
+        {content}
       </HoverCardContent>
     </HoverCard>
   );
