@@ -136,7 +136,12 @@ export const ProjectsPage = () => {
                 backdrop={<Halftone seed={product.type} />}
                 title={
                   <Inline gap={8} align="center" className={styles.productTitle}>
-                    <Icon name={product.icon} size={18} className={styles.productIcon} />
+                    <Icon
+                      name={product.icon}
+                      size={18}
+                      motion="draw"
+                      className={styles.productIcon}
+                    />
                     <CardLink disabled={blocked.has(product.type)} link={link}>
                       {product.label}
                     </CardLink>
