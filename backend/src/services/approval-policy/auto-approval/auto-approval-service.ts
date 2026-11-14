@@ -164,7 +164,7 @@ export const autoApprovalServiceFactory = ({
     ) {
       throw new BadRequestError({
         message:
-          "Set up an AI model under Organization Settings > General before adding an AI condition to auto-approval rules."
+          "Set up an AI model under Organization Settings > General before adding an AI check to auto-approval rules."
       });
     }
 
@@ -216,7 +216,7 @@ export const autoApprovalServiceFactory = ({
 
       if (rule.conditions.filter(isAiCondition).length > 1) {
         throw new BadRequestError({
-          message: `Rule '${name}' has more than one AI condition. Combine their instructions into one.`
+          message: `Rule '${name}' has more than one AI check. Combine their instructions into one.`
         });
       }
 
@@ -253,7 +253,7 @@ export const autoApprovalServiceFactory = ({
 
         if (condition.prompt || condition.contextConnectionIds?.length) {
           throw new BadRequestError({
-            message: `Rule '${name}': only AI conditions take instructions and context connections`
+            message: `Rule '${name}': only AI checks take instructions and context connections`
           });
         }
         if (!condition.connectionId) {
@@ -588,7 +588,7 @@ export const autoApprovalServiceFactory = ({
     const runAiCondition = async (condition: TStoredAutoApproval["rules"][number]["conditions"][number]) => {
       const contextConnections = await Promise.all(condition.contextConnectionIds.map(loadConnection));
       if (contextConnections.some((connection) => !connection)) {
-        const error = "A connection this AI condition reads from is no longer available";
+        const error = "A connection this AI check reads from is no longer available";
         return { approve: false, reason: error, model: "", toolCalls: [], error } satisfies TAiJudgeResult;
       }
 

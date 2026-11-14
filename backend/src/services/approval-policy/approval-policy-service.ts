@@ -1425,7 +1425,7 @@ export const approvalPolicyServiceFactory = ({
         const closest = autoApprovalEvidence ? getClosestFailedRule(autoApprovalEvidence) : null;
         throw new BadRequestError({
           message: closest
-            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it. Closest rule "${closest.ruleName}": ${closest.reason}`
+            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it.${closest.reason ? ` Closest rule "${closest.ruleName}": ${closest.reason}` : ""}`
             : "Request rejected. There are no approvers to review it. Auto-approval doesn't apply to this request either."
         });
       }

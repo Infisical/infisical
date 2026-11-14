@@ -121,10 +121,9 @@ const isAutoApprovalEvidence = (value: unknown): value is TAutoApprovalEvidence 
   (value as { version?: unknown }).version === 1 &&
   Array.isArray((value as { rules?: unknown }).rules);
 
-export const AUTO_APPROVAL_AI_HIDDEN_REASON = "The AI didn't approve this request";
-
+// The requester isn't told why the AI declined, so they can't tune their input against it
 const getVisibleReason = (condition: { subject: string; passed: boolean; reason: string | null }, hideAi: boolean) =>
-  hideAi && isAiCondition(condition) && !condition.passed ? AUTO_APPROVAL_AI_HIDDEN_REASON : condition.reason;
+  hideAi && isAiCondition(condition) && !condition.passed ? null : condition.reason;
 
 // What the API returns about an evaluation: results and reasons
 export const toAutoApprovalOutcome = (
@@ -200,8 +199,8 @@ export const getClosestFailedRule = (evidence: Pick<TAutoApprovalEvidence, "rule
   return {
     ruleName: closest.rule.name,
     reason:
-      (failedCondition && getVisibleReason(failedCondition, true)) ??
-      failedCondition?.description ??
-      "a condition didn't pass"
+      failedCondition && isAiCondition(failedCondition)
+        ? null
+        : (failedCondition?.reason ?? failedCondition?.description ?? "a condition didn't pass")
   };
 };

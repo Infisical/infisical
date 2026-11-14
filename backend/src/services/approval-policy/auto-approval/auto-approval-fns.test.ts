@@ -1,5 +1,4 @@
 import {
-  AUTO_APPROVAL_AI_HIDDEN_REASON,
   evaluateAutoApprovalRules,
   getAutoApprovalSummary,
   getClosestFailedRule,
@@ -362,9 +361,9 @@ describe("AI conditions", () => {
 
     const outcome = toAutoApprovalOutcome({ autoApprovalEvidence: evidence }, { hideAi: true });
 
-    expect(outcome?.rules[0].conditions[1]).toMatchObject({ reason: AUTO_APPROVAL_AI_HIDDEN_REASON, ai: null });
+    expect(outcome?.rules[0].conditions[1]).toMatchObject({ reason: null, ai: null });
     expect(JSON.stringify(outcome)).not.toContain("INC-1 is closed");
-    expect(getClosestFailedRule(evidence)?.reason).toBe(AUTO_APPROVAL_AI_HIDDEN_REASON);
+    expect(getClosestFailedRule(evidence)?.reason).toBeNull();
     expect(toAutoApprovalOutcome({ autoApprovalEvidence: evidence })?.rules[0].conditions[1].reason).toBe(
       "INC-1 is closed"
     );

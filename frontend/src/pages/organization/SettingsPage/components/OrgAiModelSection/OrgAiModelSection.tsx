@@ -120,7 +120,7 @@ export const OrgAiModelSection = () => {
 
   const onSubmit = async (data: FormData) => {
     await updateConfig.mutateAsync(data);
-    createNotification({ text: "AI model saved", type: "success" });
+    createNotification({ text: "AI features saved", type: "success" });
   };
 
   const turnOff = async () => {
@@ -133,9 +133,9 @@ export const OrgAiModelSection = () => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Card className="gap-0 overflow-hidden p-0">
         <CardHeader className="p-6">
-          <CardTitle>AI Model</CardTitle>
+          <CardTitle>AI Features</CardTitle>
           <CardDescription>
-            The model Infisical uses for AI features, such as AI conditions in auto-approval rules.
+            The model Infisical uses for AI features, such as AI checks in auto-approval rules.
           </CardDescription>
         </CardHeader>
         <CardContent className="max-w-md px-6 pb-6">
@@ -242,7 +242,7 @@ export const OrgAiModelSection = () => {
         isOpen={isTurnOffOpen}
         onOpenChange={setIsTurnOffOpen}
         title="Turn Off AI Features"
-        description="Every AI condition in your auto-approval rules will stop passing. Requests those rules would have approved will wait for approvers, and on policies without approvers they'll be rejected."
+        description="Every AI check in your auto-approval rules will stop passing. Requests those rules would have approved will wait for approvers, and on policies without approvers they'll be rejected."
         confirmKey="turn off"
         confirmLabel="Turn Off"
         isPending={updateConfig.isPending}
