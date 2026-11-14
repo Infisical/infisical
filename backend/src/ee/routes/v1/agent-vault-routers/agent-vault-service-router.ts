@@ -28,6 +28,7 @@ import {
   agentVaultListQuery,
   AgentVaultPersonalValueInputSchema,
   AgentVaultPersonalValuesSchema,
+  AgentVaultListedProjectServiceSchema,
   AgentVaultProjectIdSchema,
   AgentVaultProjectServiceSchema,
   AgentVaultUpdateServiceBodySchema
@@ -97,7 +98,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         }),
       response: {
         200: z.object({
-          services: AgentVaultProjectServiceSchema.array(),
+          services: AgentVaultListedProjectServiceSchema.array(),
           totalCount: z.number().describe(AGENT_VAULT.SERVICE.totalCount)
         })
       }

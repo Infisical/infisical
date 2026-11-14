@@ -1463,9 +1463,9 @@ export const AgentVaultPersonalValuesSchema = z
   })
   .describe(AGENT_VAULT.PERSONAL_VALUE.personalValues);
 
-// A service list on a user's behalf says which of the user's values are set, and leaves out the variables those values
-// use and the user's OAuth connection.
-const AgentVaultServicePersonalValuesSchema = AgentVaultPersonalValuesSchema.extend({
+// On a user's behalf, the services list says which of the user's values are set, and leaves out the variables those
+// values use and the user's OAuth connection.
+const AgentVaultListedPersonalValuesSchema = AgentVaultPersonalValuesSchema.extend({
   fields: personalValueFieldStatusSchema
     .extend({
       variableReferences: personalValueVariableReferencesSchema
@@ -1477,18 +1477,29 @@ const AgentVaultServicePersonalValuesSchema = AgentVaultPersonalValuesSchema.ext
     .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
 });
 
+const projectServiceAccessBundlesSchema = z
+  .object({
+    id: z.string().uuid().describe(AGENT_VAULT.SERVICE.accessBundleId),
+    name: z.string().describe(AGENT_VAULT.SERVICE.accessBundleName)
+  })
+  .array()
+  .describe(AGENT_VAULT.SERVICE.accessBundles);
+
 // A service in the project, with the access bundles it is in. Only reads carry the caller's own setup status, and only
 // an admin's carry variableReferences.
 export const AgentVaultProjectServiceSchema = agentVaultServiceResponseSchema(
   {
-    accessBundles: z
-      .object({
-        id: z.string().uuid().describe(AGENT_VAULT.SERVICE.accessBundleId),
-        name: z.string().describe(AGENT_VAULT.SERVICE.accessBundleName)
-      })
-      .array()
-      .describe(AGENT_VAULT.SERVICE.accessBundles),
-    personalValues: AgentVaultServicePersonalValuesSchema.nullable().optional()
+    accessBundles: projectServiceAccessBundlesSchema,
+    personalValues: AgentVaultPersonalValuesSchema.nullable().optional()
+  },
+  { optionalVariableReferences: true }
+);
+
+// The services list alone can answer on a user's behalf, so only it may leave fields out of personalValues.
+export const AgentVaultListedProjectServiceSchema = agentVaultServiceResponseSchema(
+  {
+    accessBundles: projectServiceAccessBundlesSchema,
+    personalValues: AgentVaultListedPersonalValuesSchema.nullable().optional()
   },
   { optionalVariableReferences: true }
 );

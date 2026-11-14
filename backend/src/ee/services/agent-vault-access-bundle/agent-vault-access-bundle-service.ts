@@ -2361,24 +2361,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           })
         : []
     ]);
-    return services.map((service) => {
-      const view = viewService(service, transformations, {
+    return services.map((service) => ({
+      ...viewService(service, transformations, {
         ...visibility,
         status: statuses.find((entry) => entry.serviceId === service.id)
-      });
-      return {
-        ...view,
-        // Another user's values say only what is set: the variables they use and the user's OAuth connection are theirs.
-        personalValues:
-          isOnBehalfOf && view.personalValues
-            ? {
-                isConfigured: view.personalValues.isConfigured,
-                fields: view.personalValues.fields.map(({ field, isSet, updatedAt }) => ({ field, isSet, updatedAt }))
-              }
-            : view.personalValues,
-        accessBundles: bundlesByService.get(service.id) ?? []
-      };
-    });
+      }),
+      accessBundles: bundlesByService.get(service.id) ?? []
+    }));
   };
 
   const $readServicesAccess = async (dto: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] }) => {
@@ -2428,13 +2417,23 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       excludeServiceIds,
       ...page
     });
+    const views = await $viewServices(
+      { projectId, ctx, owner, isOnBehalfOf: Boolean(onBehalfOf) },
+      services,
+      onBehalfOf ? scopeBundleIds : accessBundleIds,
+      visibility
+    );
     return {
-      services: await $viewServices(
-        { projectId, ctx, owner, isOnBehalfOf: Boolean(onBehalfOf) },
-        services,
-        onBehalfOf ? scopeBundleIds : accessBundleIds,
-        visibility
-      ),
+      // Another user's values say only what is set: the variables they use and the user's OAuth connection are theirs.
+      services: onBehalfOf
+        ? views.map((view) => ({
+            ...view,
+            personalValues: view.personalValues && {
+              isConfigured: view.personalValues.isConfigured,
+              fields: view.personalValues.fields.map(({ field, isSet, updatedAt }) => ({ field, isSet, updatedAt }))
+            }
+          }))
+        : views,
       totalCount
     };
   };
