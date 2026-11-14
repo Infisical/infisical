@@ -39,6 +39,8 @@ export const PgSqlLock = {
   ClearAgentVaultPersonalValues: (projectId: string) =>
     pgAdvisoryLockHashText(`clear-agent-vault-personal-values:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
+  OrgAssetUpsert: (orgId: string, assetType: string) =>
+    pgAdvisoryLockHashText(`org-asset-upsert:${orgId}:${assetType}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),

@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { ormify } from "@app/lib/knex";
 
 export type TOrgAssetDALFactory = ReturnType<typeof orgAssetDALFactory>;
@@ -21,6 +22,8 @@ export const orgAssetDALFactory = (db: TDbClient) => {
     size: number
   ) => {
     return db.transaction(async (tx) => {
+      // The asset may not exist yet, so a row lock cannot serialize first uploads.
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAssetUpsert(orgId, assetType)]);
       const existing = await tx(TableName.OrganizationAsset).where({ orgId, assetType }).first();
       if (existing) {
         const [updated] = await tx(TableName.OrganizationAsset)
