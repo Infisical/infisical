@@ -52,16 +52,18 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
   grants.forEach((grant) => {
     byProject.set(grant.targetProjectId, [...(byProject.get(grant.targetProjectId) ?? []), grant]);
   });
-  return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => ({
-    targetProjectId,
-    targetProjectName: projectGrants[0].targetProjectName,
-    totalSecrets: projectGrants.reduce((sum, grant) => sum + grant.secretCount, 0),
-    grants: [...projectGrants].sort(
-      (a, b) =>
-        a.environmentName.localeCompare(b.environmentName) ||
-        a.secretPath.localeCompare(b.secretPath)
-    )
-  })).sort((a, b) => a.targetProjectName.localeCompare(b.targetProjectName));
+  return Array.from(byProject.entries())
+    .map(([targetProjectId, projectGrants]) => ({
+      targetProjectId,
+      targetProjectName: projectGrants[0].targetProjectName,
+      totalSecrets: projectGrants.reduce((sum, grant) => sum + grant.secretCount, 0),
+      grants: [...projectGrants].sort(
+        (a, b) =>
+          a.environmentName.localeCompare(b.environmentName) ||
+          a.secretPath.localeCompare(b.secretPath)
+      )
+    }))
+    .sort((a, b) => a.targetProjectName.localeCompare(b.targetProjectName));
 };
 
 const RevokeProjectDialog = ({
