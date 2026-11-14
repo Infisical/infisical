@@ -26,6 +26,7 @@ import {
   SelectValue,
   Skeleton
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import {
   TAnthropicModel,
@@ -68,6 +69,7 @@ export const OrgAiModelSection = () => {
   const { data: connections = [], isPending: isConnectionsPending } =
     useListOrgAnthropicConnections();
   const [created, setCreated] = useState<TAvailableAppConnection | null>(null);
+  const [isTurnOffOpen, setIsTurnOffOpen] = useState(false);
 
   const {
     control,
@@ -123,6 +125,7 @@ export const OrgAiModelSection = () => {
 
   const turnOff = async () => {
     await updateConfig.mutateAsync({ connectionId: null, model: null });
+    setIsTurnOffOpen(false);
     createNotification({ text: "AI features turned off", type: "success" });
   };
 
@@ -219,7 +222,7 @@ export const OrgAiModelSection = () => {
               size="sm"
               type="button"
               isDisabled={!canEdit || updateConfig.isPending}
-              onClick={turnOff}
+              onClick={() => setIsTurnOffOpen(true)}
             >
               Turn Off
             </Button>
@@ -235,6 +238,16 @@ export const OrgAiModelSection = () => {
           </Button>
         </CardFooter>
       </Card>
+      <ConfirmationAlertDialog
+        isOpen={isTurnOffOpen}
+        onOpenChange={setIsTurnOffOpen}
+        title="Turn Off AI Features"
+        description="Every AI condition in your auto-approval rules will stop passing. Requests those rules would have approved will wait for approvers, and on policies without approvers they'll be rejected."
+        confirmKey="turn off"
+        confirmLabel="Turn Off"
+        isPending={updateConfig.isPending}
+        onConfirm={turnOff}
+      />
     </form>
   );
 };
