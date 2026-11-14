@@ -3808,6 +3808,9 @@ export const SecretSyncs = {
       scopes:
         "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
     },
+    CONVEX: {
+      deploymentName: "The name of the Convex deployment to sync secrets to, such as happy-otter-123."
+    },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
       hostId: "The ID of the Zabbix host to sync secrets to.",
