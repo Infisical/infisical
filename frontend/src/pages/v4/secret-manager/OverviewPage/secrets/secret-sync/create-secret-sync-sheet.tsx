@@ -20,6 +20,7 @@ import {
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FieldError } from "@infisical/cipher/ui/field";
@@ -412,23 +413,22 @@ function DiagramSection({
   destination: DiagramRow[];
 }) {
   return (
-    <div className={styles.diagramSection}>
-      <div className={styles.diagramHead}>
-        <span className={flowStyles.label}>{title}</span>
-      </div>
+    <Card variant="framed" size="sm" title={title}>
       <div className={styles.diagramColumns}>
         <DiagramColumn label="Infisical" rows={infisical} />
         <DiagramColumn label={destinationName} rows={destination} />
       </div>
-    </div>
+    </Card>
   );
 }
 
 function ReconciliationDiagram({
   variant,
+  behaviorTitle,
   destinationName
 }: {
   variant: Variant;
+  behaviorTitle: string;
   destinationName: string;
 }) {
   return (
@@ -440,31 +440,17 @@ function ReconciliationDiagram({
         destination={BEFORE_DESTINATION}
       />
       <div className={styles.diagramDivider}>
-        <Icon name="arrow-down" size="var(--cipher-size-icon-xs)" />
-        <span className={flowStyles.eyebrow}>First sync runs</span>
+        <span className={styles.dividerLabel}>
+          <Icon name="arrow-down" size="var(--cipher-size-icon-xs)" />
+          <span className={flowStyles.eyebrow}>First sync runs</span>
+        </span>
       </div>
       <DiagramSection
-        title="After"
+        title={`After: ${behaviorTitle.charAt(0).toLowerCase()}${behaviorTitle.slice(1)}`}
         destinationName={destinationName}
         infisical={AFTER[variant].infisical}
         destination={AFTER[variant].destination}
       />
-      <div className={styles.legend}>
-        {(
-          [
-            [undefined, "unchanged"],
-            ["updated", "value updated"],
-            ["added", "added"],
-            ["imported", "imported"],
-            ["removed", "removed"]
-          ] as const
-        ).map(([fate, label]) => (
-          <span key={label} className={styles.legendItem}>
-            <span className={styles.swatch} data-fate={fate} />
-            <span className={flowStyles.eyebrow}>{label}</span>
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -614,6 +600,7 @@ export function InitialSyncFields() {
                 <span className={flowStyles.eyebrow}>Example</span>
                 <ReconciliationDiagram
                   variant={variantOf(field.value)}
+                  behaviorTitle={behaviorCopy(field.value, destinationName).title}
                   destinationName={destinationName}
                 />
               </Stack>
