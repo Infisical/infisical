@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -18,7 +19,6 @@ import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { isDefaultStorageConfigured } from "@app/services/object-storage/object-storage-default-fns";
 import { ObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { isS3DirectoryBucket } from "@app/services/object-storage/object-storage-path-fns";
@@ -98,7 +98,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "unwrapKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
   objectStorage: Pick<TObjectStorageServiceFactory, "at">;
@@ -135,7 +135,7 @@ export const agentVaultSessionLogServiceFactory = ({
   appConnectionDAL,
   appConnectionService,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   licenseService,
   keyStore,
   objectStorage
@@ -381,7 +381,7 @@ export const agentVaultSessionLogServiceFactory = ({
         presignedGetUrl: await folder.presignGet(key, AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS)
       }))
     );
-    const sessionKey = await unwrapSessionLogKey(keyScope, kmsService);
+    const sessionKey = await unwrapSessionLogKey(keyScope, kmsDataKeyService);
     return { chunks, sessionKey: sessionKey.toString("base64") };
   };
 

@@ -42,7 +42,7 @@ const assume = (service: ReturnType<typeof createService>, targetActorId: string
 describe("assume member privileges", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   afterAll(() => {

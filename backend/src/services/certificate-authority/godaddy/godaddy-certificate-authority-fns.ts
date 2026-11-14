@@ -3,6 +3,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
@@ -27,9 +28,7 @@ import {
 } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -56,10 +55,8 @@ type TGoDaddyCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
@@ -166,7 +163,7 @@ export const castDbEntryToGoDaddyCertificateAuthority = (
 export const getGoDaddyClientCredentials = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<{ authHeader: string; baseUrl: string }> => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -180,7 +177,7 @@ export const getGoDaddyClientCredentials = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
+    kmsDataKeyService
   })) as TGoDaddyConnection["credentials"];
 
   return {
@@ -197,8 +194,8 @@ export const GoDaddyCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL
+  kmsDataKeyService,
+  kmsKeyService
 }: TGoDaddyCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -288,30 +285,35 @@ export const GoDaddyCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    // Validated before the transaction: checking the connection decrypts it through KMS Core, which takes its own
+    // connection.
+    if (configuration) {
+      const { appConnectionId } = configuration;
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+      if (!appConnection) {
+        throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
+      }
+      if (appConnection.app !== AppConnection.GoDaddy) {
+        throw new BadRequestError({
+          message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { appConnectionId, productType } = configuration;
-        const appConnection = await appConnectionDAL.findById(appConnectionId);
-        if (!appConnection) {
-          throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
-        }
-        if (appConnection.app !== AppConnection.GoDaddy) {
-          throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: appConnectionId, projectId: ca.projectId },
-          actor
-        );
-
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -437,7 +439,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
       godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 
@@ -513,7 +515,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
       godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 
@@ -539,12 +541,8 @@ export const GoDaddyCertificateAuthorityFns = ({
       }
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
 
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
@@ -638,7 +636,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
       godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 

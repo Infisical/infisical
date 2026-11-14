@@ -11,11 +11,13 @@ import {
   TSecretV2TagJunctionInsert,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -27,18 +29,16 @@ import { TFolderCommitChangesDALFactory } from "../folder-commit-changes/folder-
 import { TFolderTreeCheckpointResourcesDALFactory } from "../folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { TFolderTreeCheckpointDALFactory } from "../folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1, previousSecretLocation } from "../secret-folder/secret-folder-events";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { secretModifiedEvents } from "../secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TUserDALFactory } from "../user/user-dal";
 import { TFolderCommitDALFactory } from "./folder-commit-dal";
 import { TFolderCommitQueueServiceFactory } from "./folder-commit-queue";
@@ -181,7 +181,7 @@ type TFolderCommitServiceFactoryDep = {
     "scheduleTreeCheckpoint" | "createFolderTreeCheckpoint"
   >;
   permissionService?: TPermissionServiceFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
     | "findSecretTagsByVersionId"
@@ -245,7 +245,7 @@ export const folderCommitServiceFactory = ({
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   secretTagDAL,
   resourceMetadataDAL,
   eventEmitter
@@ -467,6 +467,14 @@ export const folderCommitServiceFactory = ({
     return Object.values(folderState);
   };
 
+  const $getSecretManagerDecryptor = async (projectId: string, tx?: Knex) => {
+    const { decryptor } = await dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    return decryptor;
+  };
+
   /**
    * Compares folder states between two commits and returns the differences
    */
@@ -660,10 +668,7 @@ export const folderCommitServiceFactory = ({
 
     const removeNoChangeUpdate: string[] = [];
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId: project.id
-    });
+    const secretManagerDecryptor = await $getSecretManagerDecryptor(project.id, tx);
 
     await Promise.all(
       differences.map(async (change) => {
@@ -843,12 +848,10 @@ export const folderCommitServiceFactory = ({
   const compareSecretVersions = async (
     version1: TSecretVersionsV2 & { tags: { id: string }[] },
     version2: TSecretVersionsV2 & { tags: { id: string }[] },
-    projectId: string
+    projectId: string,
+    tx?: Knex
   ) => {
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const secretManagerDecryptor = await $getSecretManagerDecryptor(projectId, tx);
     const objectsEqual = (o1: unknown, o2: unknown): boolean => {
       if (typeof o1 !== "object" || o1 === null || typeof o2 !== "object" || o2 === null) {
         return o1 === o2;
@@ -912,7 +915,7 @@ export const folderCommitServiceFactory = ({
     for (const change of changes) {
       if (change.type === ChangeType.ADD && change.isUpdate && change.secretVersionId) {
         const secretVersions = await secretVersionV2BridgeDAL.findByIdAndPreviousVersion(change.secretVersionId, tx);
-        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], projectId);
+        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], projectId, tx);
         if (comparison) {
           filteredChanges = filteredChanges.filter(
             (filteredChange) => filteredChange.secretVersionId !== change.secretVersionId
@@ -1028,15 +1031,17 @@ export const folderCommitServiceFactory = ({
     const project = await projectDAL.findById(projectId, tx);
     if (!project) return (version) => version;
 
-    const [{ decryptor }, blindIndexer] = await Promise.all([
-      kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx),
-      createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService, tx })
-    ]);
+    const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
+      kmsDataKeyService,
+      projectId,
+      orgId: project.orgId,
+      tx
+    });
 
     return async (version) => {
       if (!version.encryptedValue) return version;
 
-      const value = decryptor({ cipherTextBlob: version.encryptedValue });
+      const value = secretManager.decryptor({ cipherTextBlob: version.encryptedValue });
       return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
     };
   };

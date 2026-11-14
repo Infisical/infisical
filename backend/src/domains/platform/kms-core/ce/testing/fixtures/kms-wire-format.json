@@ -1,0 +1,215 @@
+{
+  "generatedBy": "scripts/generate-kms-fixtures.ts",
+  "env": {
+    "ENCRYPTION_KEY": "4bnfe4e407b8921c104518903515b218"
+  },
+  "rows": {
+    "kmsRootConfig": [
+      {
+        "id": "00000000-0000-0000-0000-000000000000",
+        "encryptedRootKey": {
+          "$buffer": "pqq8mh9vG5JUn/3qI2tYXxuo+5PWBci5TTz//3FOUEdI6Uyz/dk+FCGNJ/43yiL5XgJ2u2PksPbGy1Pc"
+        },
+        "encryptionStrategy": "SOFTWARE",
+        "createdAt": {
+          "$date": "2026-11-08T16:18:20.393Z"
+        },
+        "updatedAt": {
+          "$date": "2026-11-08T16:18:30.683Z"
+        },
+        "activatedAt": {
+          "$date": "2026-11-08T16:18:29.190Z"
+        },
+        "supersededAt": null,
+        "lastResolvedAt": null,
+        "kekLabel": "ef1de143fbb21920dc5ffd308be743de"
+      }
+    ],
+    "kmsLegacyEncryptionKeys": [
+      {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "encryptedKeySnapshot": {
+          "$buffer": "NLXiEMKGlTdTFXjFvZIo3ZybTM8cD/pSHD9TYAk56p99IbfWcyK182xgWtMfjc7tnv1fnX/TG7Ce3PoAtsU0e1qivVMxXRAnuTNp1ATfqOxtOVrosBC7MXWwNUXX"
+        },
+        "createdAt": {
+          "$date": "2026-11-08T16:18:30.685Z"
+        },
+        "updatedAt": {
+          "$date": "2026-11-08T16:18:30.685Z"
+        }
+      }
+    ],
+    "kmsKekHistory": [
+      {
+        "id": "ce1b440b-3e3b-4132-8ce9-12ffb022aa70",
+        "kekLabel": "ef1de143fbb21920dc5ffd308be743de",
+        "activatedAt": {
+          "$date": "2026-11-08T16:18:29.190Z"
+        },
+        "supersededAt": null,
+        "retiredAt": null,
+        "createdAt": {
+          "$date": "2026-11-08T16:18:30.689Z"
+        },
+        "updatedAt": {
+          "$date": "2026-11-08T16:18:30.689Z"
+        }
+      }
+    ],
+    "organization": {
+      "id": "2b31df1a-fb47-4761-9168-07dc08cadfc1",
+      "kmsDefaultKeyId": "75e52442-62ab-4204-8624-6d1c66e911b8",
+      "kmsEncryptedDataKey": "Akpw/WAfDlh7fRI/MEfY8h0Gl9V4zl/E1AC/tB+YpQGFuDrHgjiKU9wgq86Ab42gN/NlLMFiH55U2KtrdjAx"
+    },
+    "project": {
+      "id": "62681392-ea88-4f33-8789-28a57c1af194",
+      "orgId": "2b31df1a-fb47-4761-9168-07dc08cadfc1",
+      "kmsSecretManagerKeyId": "62beeefe-228d-4dfb-a90d-7af739b63ff9",
+      "kmsSecretManagerEncryptedDataKey": "9gx1Nw50/4tBvlA7aawF0cyp9PNvtoRPTeHFv4YPMK2m4p6XaLM6+6UXkH/XlC96Cq9x/o2oH06rIxsSdjAx"
+    },
+    "kmsKeys": [
+      {
+        "id": "75e52442-62ab-4204-8624-6d1c66e911b8",
+        "description": null,
+        "isDisabled": false,
+        "isReserved": true,
+        "orgId": "2b31df1a-fb47-4761-9168-07dc08cadfc1",
+        "name": "uzwgfmel",
+        "createdAt": {
+          "$date": "2026-11-08T16:18:30.701Z"
+        },
+        "updatedAt": {
+          "$date": "2026-11-08T16:18:30.701Z"
+        },
+        "projectId": null,
+        "keyUsage": "encrypt-decrypt",
+        "kmipMetadata": null,
+        "isExportable": true,
+        "hasDeleteProtection": false
+      },
+      {
+        "id": "62beeefe-228d-4dfb-a90d-7af739b63ff9",
+        "description": null,
+        "isDisabled": false,
+        "isReserved": true,
+        "orgId": "2b31df1a-fb47-4761-9168-07dc08cadfc1",
+        "name": "xxyzwq0e",
+        "createdAt": {
+          "$date": "2026-11-08T16:18:30.713Z"
+        },
+        "updatedAt": {
+          "$date": "2026-11-08T16:18:30.713Z"
+        },
+        "projectId": null,
+        "keyUsage": "encrypt-decrypt",
+        "kmipMetadata": null,
+        "isExportable": true,
+        "hasDeleteProtection": false
+      },
+      {
+        "id": "e5ae7827-4ede-490f-b488-a7d0ca3b681a",
+        "description": null,
+        "isDisabled": false,
+        "isReserved": false,
+        "orgId": "2b31df1a-fb47-4761-9168-07dc08cadfc1",
+        "name": "fixture-cmek",
+        "createdAt": {
+          "$date": "2026-11-08T16:18:30.722Z"
+        },
+        "updatedAt": {
+          "$date": "2026-11-08T16:18:30.722Z"
+        },
+        "projectId": "62681392-ea88-4f33-8789-28a57c1af194",
+        "keyUsage": "encrypt-decrypt",
+        "kmipMetadata": null,
+        "isExportable": true,
+        "hasDeleteProtection": false
+      }
+    ],
+    "internalKms": [
+      {
+        "id": "5ccfedac-b542-4c19-b578-91866d8b5a07",
+        "encryptedKey": {
+          "$buffer": "6VtCeBPucpmcUiy7gRHdLUB7M9PyZmsvZU18BtI9j4QrfSui5GQUZrI4+Nzykur9cwu2gMSPPlGj+WO4"
+        },
+        "encryptionAlgorithm": "aes-256-gcm",
+        "version": 1,
+        "kmsKeyId": "75e52442-62ab-4204-8624-6d1c66e911b8"
+      },
+      {
+        "id": "e4078760-749d-4c7e-9e00-9459d935bafe",
+        "encryptedKey": {
+          "$buffer": "IaL1tm3MlDl/yCGZqBDykT/nQKRqMJ4hedRFJgQqw+FiRbND8WhkVbHUiUwXTkhHqP5up/PLFZ+OEama"
+        },
+        "encryptionAlgorithm": "aes-256-gcm",
+        "version": 1,
+        "kmsKeyId": "62beeefe-228d-4dfb-a90d-7af739b63ff9"
+      },
+      {
+        "id": "ed5b656b-d273-4f9d-85fd-abf82081fff9",
+        "encryptedKey": {
+          "$buffer": "jmGIc6sqsiLIYh3MDytiP0VwQ/HROe0dD+OcvsxvJI21sxuDbZn5E8QfSxvhqnvSTCiSPzcNNBes7k7O"
+        },
+        "encryptionAlgorithm": "aes-256-gcm",
+        "version": 2,
+        "kmsKeyId": "e5ae7827-4ede-490f-b488-a7d0ca3b681a"
+      }
+    ],
+    "internalKmsKeyVersions": [
+      {
+        "id": "4d253c6a-1f14-4976-86bf-c9a575a64ef6",
+        "encryptedKey": {
+          "$buffer": "oR9tRnKOUXyWjl+3yOVtmNIM5eV0WVl/s8uIyMKqZkXG/aAkzObqIgdT0+NRyev5jdZkhCpeaKzdO2el"
+        },
+        "version": 1,
+        "internalKmsId": "ed5b656b-d273-4f9d-85fd-abf82081fff9"
+      }
+    ]
+  },
+  "vectors": {
+    "orgDataKey": {
+      "orgId": "2b31df1a-fb47-4761-9168-07dc08cadfc1",
+      "plainText": "a21zLWNvcmUgZml4dHVyZTogb3JnIGRhdGEga2V5",
+      "cipherTextBlob": "/1cdGDSf+YSNNUZXJYDVV8TsyBmwMMAHwbtq5yRx/CSEf1M6V6tWTw6w8HQCwWraIEDOHxCb3zHCgXYwMQ=="
+    },
+    "projectDataKey": {
+      "projectId": "62681392-ea88-4f33-8789-28a57c1af194",
+      "plainText": "a21zLWNvcmUgZml4dHVyZTogcHJvamVjdCBkYXRhIGtleQ==",
+      "cipherTextBlob": "+8pqrM8Jb/bJ3LcJe7b8013wmPSmyZKiwD9aEnQfyFVAZk8xDLrWGdItPR7rv7ibzcxgVRN1gttdXrVJNTx2MDE=",
+      "blindIndexInput": "fixture-value",
+      "blindIndex": "2fb0faa8ec8af71bec9cd06775f97de40d9553915687fd2d60eed053eb508921"
+    },
+    "cmek": {
+      "kmsId": "e5ae7827-4ede-490f-b488-a7d0ca3b681a",
+      "v01": {
+        "plainText": "a21zLWNvcmUgZml4dHVyZTogdjAx",
+        "cipherTextBlob": "6npdyf9bcf7w9BCy6tigOCtGQmfK4oG8z+Y58zuPgyxG1dDdYow3PD2jBujebKFWfHYwMQ=="
+      },
+      "v02": {
+        "plainText": "a21zLWNvcmUgZml4dHVyZTogdjAy",
+        "cipherTextBlob": "h0bQwELxzwdBIoihOmdLO5pqmdkaC3meiYa7ns+zA3IXy9PccfD8D0MgdFCyeDOSxgAAAAJ2MDI="
+      }
+    },
+    "wrappedKey": {
+      "projectId": "62681392-ea88-4f33-8789-28a57c1af194",
+      "label": "fixture-session|v1",
+      "key": "L/UdF5/i4uA4CFRzYFPspxTofH584c1EgUeVgKm1Msg=",
+      "wrapped": "cfm7/ZhLvnXc8GlpfETuwms9rWEmEx+qh0088UCI0wgTRIiNzGwgbd9mCd7VQU069a/QFe6GOBodSARqBYWaZTcidnMaN0odAwYNpHeB5MEJk5urfVHGuUwvPCR2MDE="
+    },
+    "rootKey": {
+      "plainText": "a21zLWNvcmUgZml4dHVyZTogcm9vdCBrZXk=",
+      "cipherTextBlob": "b7LqhyKO4Vb7QTwgZ5SA9dtKIoa+4oMaW6D4Ea2BGFSqdzwXUCP8UoydGW4e8l6p1DZJWX9u"
+    },
+    "inputKey": {
+      "key": "fM74MNP03R3vfaEQs5JL5YJ9TWpj705JdvUoEEccemI=",
+      "plainText": "a21zLWNvcmUgZml4dHVyZTogaW5wdXQga2V5",
+      "cipherTextBlob": "mtvQWSqOBJ52XHuRELuHLp7SZRpBnBNNB2OSVHCDcBNGYAkKTXGwwGNlD3KzsO3wAzxwCwQfZHYwMQ=="
+    },
+    "backup": {
+      "projectId": "62681392-ea88-4f33-8789-28a57c1af194",
+      "secretManager": "v1.62681392-ea88-4f33-8789-28a57c1af194.secretManager.75e52442-62ab-4204-8624-6d1c66e911b8.RkVKeCKlPoZGBASpWghIcgkh3QTfBkGTa1MNuqwRlZc7jWsC0Gfpuu2vJvN1fwxCa/ciUoRYhRJXtg3ddjAx.d9e734dd2430b65f9fbb31a95988d481b5f448fb9ad3d4e3fe48cddce30dacdc"
+    },
+    "cookieSigningKey": "LL85bEJx3h4jvCpS/ZyQ4pl5T5aYB1essw2CiAM8fEk=",
+    "kekLabel": "ef1de143fbb21920dc5ffd308be743de"
+  }
+}

@@ -1,4 +1,6 @@
 import { AccessScope } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -11,7 +13,6 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "../auth/auth-type";
 import { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
@@ -59,7 +60,7 @@ type TProjectCleanupQueueFactoryDep = {
   >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "deleteById">;
-  kmsService: Pick<TKmsServiceFactory, "deleteInternalKms">;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -75,7 +76,7 @@ export const projectCleanupQueueFactory = ({
   projectDAL,
   membershipUserDAL,
   userDAL,
-  kmsService,
+  kmsDataKeyService,
   certificateAuthoritySecretDAL,
   caKeySourceService,
   keyStore,
@@ -206,22 +207,13 @@ export const projectCleanupQueueFactory = ({
         // a racing worker may have hard-deleted it after our re-read but before we acquired the row
         if (!delProject) return false;
 
-        // before removing a KMS key, ensure no other (incl. pending-deletion) project references it
-        if (delProject.kmsCertificateKeyId) {
-          const linked = await projectDAL.findIncludingExpired(
-            { kmsCertificateKeyId: delProject.kmsCertificateKeyId },
-            { tx }
-          );
-          if (!linked.length) await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
-        }
-        if (delProject.kmsSecretManagerKeyId) {
-          const linked = await projectDAL.findIncludingExpired(
-            { kmsSecretManagerKeyId: delProject.kmsSecretManagerKeyId },
-            { tx }
-          );
-          if (!linked.length)
-            await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
-        }
+        // KMS Core skips a key that another project (including one pending deletion) still references
+        const kmsKeyIds = [delProject.kmsCertificateKeyId, delProject.kmsSecretManagerKeyId].filter(
+          (id): id is string => Boolean(id)
+        );
+        await kmsDataKeyService
+          .within(sealKnexTransaction(tx))
+          .deleteProjectKeys({ orgId: delProject.orgId, kmsKeyIds });
 
         if (ghostUser) await userDAL.deleteById(ghostUser.id, tx);
         return true;

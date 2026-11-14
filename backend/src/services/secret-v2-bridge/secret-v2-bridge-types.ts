@@ -2,13 +2,13 @@ import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
+import { TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -26,7 +26,7 @@ import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
-import { TSecretValueBlindIndexes } from "./secret-blind-index-fns";
+import { TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { TSecretEventScope } from "./secret-events";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
@@ -282,6 +282,11 @@ export type TFnSecretBulkDelete = {
 // a source/destination folder resolved by folderDAL.findBySecretPath (carries id, path and environment)
 export type TMoveSecretResolvedFolder = NonNullable<Awaited<ReturnType<TSecretFolderDALFactory["findBySecretPath"]>>>;
 
+export type TSecretWriteCiphers = {
+  secretManager: TCipherPair;
+  blindIndexer: TSecretBlindIndexer;
+};
+
 // performs the two-step move (create/update at destination + delete at source) inside the caller-supplied
 // transaction. does no snapshot/sync/cache-invalidation — the caller runs those after the tx commits.
 export type TFnSecretMove = {
@@ -297,7 +302,7 @@ export type TFnSecretMove = {
   actorOrgId: string;
   permission: MongoAbility<ProjectPermissionSet>;
   tx: Knex;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: Pick<
     TSecretV2BridgeDALFactory,

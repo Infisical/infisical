@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 
+import { Knex } from "knex";
+
+import { poolStoreConnection, ReadFrom } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { Meter } from "@app/domains/platform/license/ce/module";
 import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
@@ -7,6 +10,7 @@ import { OrganizationsProjectsModule } from "@app/domains/platform/organizations
 
 import { CertManagerModule } from "../module";
 import { seedPkiOrgs } from "../testing/pki-fixture";
+import { CertificateUsageStore } from "./certificate-usage-store";
 
 describe("CertManagerModule usage counters", () => {
   const h = setupIntegration();
@@ -114,5 +118,35 @@ describe("CertManagerModule usage counters", () => {
 
     // Assert
     expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(2);
+  });
+
+  test("should read the primary and not the replica when asked for the primary", async () => {
+    // Setup
+    const pki = await seedPkiOrgs(h.db, h.factories);
+    await pki.internalCa(pki.rootProject.id);
+    const store = new CertificateUsageStore(
+      poolStoreConnection(h.db, () => {
+        throw new Error("replica used");
+      })
+    );
+
+    // Action
+    const countInternalCas = await store.countInternalCas(pki.root.id, { readFrom: ReadFrom.Primary });
+
+    // Assert
+    expect(countInternalCas).toBe(1);
+  });
+
+  test("should read the replica by default", async () => {
+    // Setup
+    const pki = await seedPkiOrgs(h.db, h.factories);
+    const replica = vi.fn(() => h.db as Knex);
+    const store = new CertificateUsageStore(poolStoreConnection(h.db, replica));
+
+    // Action
+    await store.countInternalCas(pki.root.id);
+
+    // Assert
+    expect(replica).toHaveBeenCalled();
   });
 });

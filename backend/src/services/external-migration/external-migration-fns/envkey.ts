@@ -2,13 +2,13 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../../folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "../../kms/kms-service";
 import { TProjectEnvDALFactory } from "../../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../../project-env/project-env-service";
 import { TProjectDALFactory } from "../../project/project-dal";
@@ -26,7 +26,7 @@ import { InfisicalImportData, TEnvKeyExportJSON, TImportInfisicalDataCreate } fr
 export type TImportDataIntoInfisicalDTO = {
   projectDAL: Pick<TProjectDALFactory, "transaction">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;

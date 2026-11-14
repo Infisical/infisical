@@ -1,6 +1,8 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -14,7 +16,6 @@ import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnection, TAppConnectionRaw } from "../app-connection-types";
 import { AzureAppConfigurationConnectionMethod } from "../azure-app-configuration/azure-app-configuration-connection-enums";
@@ -118,7 +119,7 @@ const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
 export type TAppConnectionCredentialRotationServiceFactoryDep = {
   appConnectionCredentialRotationDAL: TAppConnectionCredentialRotationDALFactory;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   queueService: TQueueServiceFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -132,7 +133,7 @@ export type TAppConnectionCredentialRotationServiceFactory = ReturnType<
 export const appConnectionCredentialRotationServiceFactory = ({
   appConnectionCredentialRotationDAL,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
   keyStore,
   queueService,
   gatewayV2Service,
@@ -150,18 +151,15 @@ export const appConnectionCredentialRotationServiceFactory = ({
     return decryptAppConnectionCredentials({
       orgId: connection.orgId,
       encryptedCredentials: connection.encryptedCredentials,
-      kmsService,
+      kmsDataKeyService,
       projectId: connection.projectId
     }) as Promise<Record<string, unknown>>;
   };
 
-  /**
-   * Update the connection's stored credentials.
-   */
   const updateConnectionCredentials = async (
     connectionId: string,
     updatedCredentials: TAppConnection["credentials"],
-    tx?: Knex
+    tx: Knex
   ) => {
     const connection = await appConnectionDAL.findById(connectionId, tx);
     if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
@@ -169,7 +167,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const encryptedCredentials = await encryptAppConnectionCredentials({
       orgId: connection.orgId,
       credentials: updatedCredentials,
-      kmsService,
+      kmsDataKeyService: kmsDataKeyService.within(sealKnexTransaction(tx)),
       projectId: connection.projectId
     });
 
@@ -177,10 +175,12 @@ export const appConnectionCredentialRotationServiceFactory = ({
   };
 
   /**
-   * Create credential rotation for a connection.
-   * Permission checks are handled by the caller (app-connection-endpoints).
+   * Create credential rotation for a connection, inside the caller's transaction: the connection row is written
+   * first, so a rejected row fails before the provider is touched, and any later failure rolls back with it.
+   * The caller runs the returned postCommitCallback, which revokes the replaced credential, once that
+   * transaction has committed. Permission checks are handled by the caller (app-connection-endpoints).
    */
-  const createRotation = async (dto: TCreateAppConnectionCredentialRotationDTO, tx?: Knex) => {
+  const createRotation = async (dto: TCreateAppConnectionCredentialRotationDTO, tx: Knex) => {
     const { connectionId, rotationInterval, rotateAtUtc } = dto;
 
     const connection = await appConnectionDAL.findById(connectionId, tx);
@@ -205,25 +205,31 @@ export const appConnectionCredentialRotationServiceFactory = ({
       throw new BadRequestError({ message: "Credential rotation is already configured for this connection" });
     }
 
-    const credentials = await getConnectionClientCredentials(connection);
+    const credentials = await decryptAppConnectionCredentials({
+      orgId: connection.orgId,
+      encryptedCredentials: connection.encryptedCredentials,
+      kmsDataKeyService: kmsDataKeyService.within(sealKnexTransaction(tx)),
+      projectId: connection.projectId
+    });
 
     const { strategyConfig, generatedCredentials, updatedCredentials, postCommitCallback } =
-      await provider.issueInitialCredentials(credentials, rotationInterval);
+      await provider.issueInitialCredentials(credentials as Record<string, unknown>, rotationInterval);
 
     const now = new Date();
+    const txDataKeyService = kmsDataKeyService.within(sealKnexTransaction(tx));
 
     const encryptedGeneratedCreds = await encryptCredentialRotationGeneratedCredentials({
       orgId: connection.orgId,
       projectId: connection.projectId,
       generatedCredentials,
-      kmsService
+      kmsDataKeyService: txDataKeyService
     });
 
     const encryptedConfig = await encryptStrategyConfig({
       orgId: connection.orgId,
       projectId: connection.projectId,
       config: strategyConfig,
-      kmsService
+      kmsDataKeyService: txDataKeyService
     });
 
     const nextRotationAt = calculateNextRotationAt({
@@ -235,47 +241,37 @@ export const appConnectionCredentialRotationServiceFactory = ({
       lastRotatedAt: now
     });
 
-    const create = async (trx: Knex) => {
-      await updateConnectionCredentials(connectionId, updatedCredentials as TAppConnection["credentials"], trx);
+    await updateConnectionCredentials(connectionId, updatedCredentials as TAppConnection["credentials"], tx);
 
-      return appConnectionCredentialRotationDAL.create(
-        {
-          connectionId,
-          strategy,
-          encryptedStrategyConfig: encryptedConfig,
-          rotationInterval,
-          rotateAtUtc: JSON.stringify(rotateAtUtc),
-          rotationStatus: AppConnectionCredentialRotationStatus.Success,
-          lastRotatedAt: now,
-          lastRotationAttemptedAt: now,
-          nextRotationAt,
-          activeIndex: 0,
-          encryptedGeneratedCredentials: encryptedGeneratedCreds
-        },
-        trx
-      );
+    const rotation = await appConnectionCredentialRotationDAL.create(
+      {
+        connectionId,
+        strategy,
+        encryptedStrategyConfig: encryptedConfig,
+        rotationInterval,
+        rotateAtUtc: JSON.stringify(rotateAtUtc),
+        rotationStatus: AppConnectionCredentialRotationStatus.Success,
+        lastRotatedAt: now,
+        lastRotationAttemptedAt: now,
+        nextRotationAt,
+        activeIndex: 0,
+        encryptedGeneratedCredentials: encryptedGeneratedCreds
+      },
+      tx
+    );
+
+    return {
+      rotation: await expandCredentialRotation(rotation, connection.orgId, connection.projectId, txDataKeyService),
+      postCommitCallback
     };
-
-    const rotation = tx ? await create(tx) : await appConnectionDAL.transaction(create);
-
-    // Revoke old credentials only after the transaction has committed successfully,
-    // so we don't end up with a dead connection if the DB write fails.
-    if (postCommitCallback) {
-      await postCommitCallback();
-    }
-
-    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
   };
 
   /**
-   * Update credential rotation config for a connection.
-   * Permission checks are handled by the caller.
+   * Update credential rotation config for a connection. Database writes only, so it is safe in the caller's
+   * transaction. Permission checks are handled by the caller.
    */
-  const updateRotation = async (dto: TUpdateAppConnectionCredentialRotationDTO, tx: Knex) => {
+  const updateRotation = async (dto: TUpdateAppConnectionCredentialRotationDTO, tx: Knex): Promise<void> => {
     const { connectionId, rotationInterval, rotateAtUtc, isAutoRotationEnabled } = dto;
-
-    const connection = await appConnectionDAL.findById(connectionId, tx);
-    if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
 
     const existingRotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
     if (!existingRotation) {
@@ -287,7 +283,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: false }, tx);
       await appConnectionCredentialRotationDAL.updateById(existingRotation.id, { nextRotationAt: null }, tx);
 
-      return null;
+      return;
     }
 
     // If re-enabling auto rotation, recalculate nextRotationAt
@@ -310,8 +306,8 @@ export const appConnectionCredentialRotationServiceFactory = ({
       if (rotationInterval !== undefined) updateData.rotationInterval = rotationInterval;
       if (rotateAtUtc !== undefined) updateData.rotateAtUtc = JSON.stringify(rotateAtUtc);
 
-      const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
-      return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsService);
+      await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
+      return;
     }
 
     // Build update payload
@@ -346,12 +342,9 @@ export const appConnectionCredentialRotationServiceFactory = ({
       await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled }, tx);
     }
 
-    if (Object.keys(updateData).length === 0) {
-      return expandCredentialRotation(existingRotation, connection.orgId, connection.projectId, kmsService);
-    }
+    if (Object.keys(updateData).length === 0) return;
 
-    const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
-    return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsService);
+    await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
   };
 
   /**
@@ -365,7 +358,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const rotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
     if (!rotation) return null;
 
-    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsDataKeyService);
   };
 
   /**
@@ -399,7 +392,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       }
     );
 
-    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsService);
+    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsDataKeyService);
   };
 
   /**
@@ -451,14 +444,14 @@ export const appConnectionCredentialRotationServiceFactory = ({
           orgId,
           projectId: connection.projectId,
           encryptedStrategyConfig: encryptedConfig,
-          kmsService
+          kmsDataKeyService
         });
 
         const generatedCredentials = await decryptCredentialRotationGeneratedCredentials({
           orgId,
           projectId: connection.projectId,
           encryptedGeneratedCredentials: encryptedGenCreds,
-          kmsService
+          kmsDataKeyService
         });
 
         const provider = CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy as AppConnectionCredentialRotationStrategy](
@@ -502,7 +495,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
           orgId,
           projectId: connection.projectId,
           generatedCredentials: updatedGeneratedCredentials,
-          kmsService
+          kmsDataKeyService
         });
 
         const nextRotationAt = calculateNextRotationAt({
@@ -563,7 +556,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
           orgId,
           projectId: connection.projectId,
           message: errorMessage,
-          kmsService
+          kmsDataKeyService
         });
       }
 

@@ -1,5 +1,10 @@
-import { EntityNotFoundError, ExternalSystemError, RuleViolationError } from "@app/domains/lib/errors";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import {
+  EntityNotFoundError,
+  ExternalSystemError,
+  RuleViolationError,
+  StateConflictError
+} from "@app/domains/lib/errors";
+import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
 import { toHttpError } from "./domain-errors";
 
@@ -42,6 +47,18 @@ describe("toHttpError", () => {
     // Assert
     expect(result).toBeInstanceOf(NotFoundError);
     expect(result).toMatchObject({ name: "NotFound", message: "Organization with ID 'o1' not found" });
+  });
+
+  test("should turn a state conflict into a conflict error", () => {
+    // Setup
+    const error = new StateConflictError({ message: "The staged encryption key is 'a', not 'b'." });
+
+    // Action
+    const result = toHttpError(error);
+
+    // Assert
+    expect(result).toBeInstanceOf(ConflictError);
+    expect(result).toMatchObject({ name: "Conflict", message: "The staged encryption key is 'a', not 'b'." });
   });
 
   test("should return an error that is not a domain error unchanged", () => {

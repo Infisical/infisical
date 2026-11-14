@@ -20,7 +20,7 @@ vi.mock("../secret-scanning-v2/secret-scanning-v2-fns", () => ({
   scanSecretPolicyViolations: vi.fn().mockResolvedValue(undefined)
 }));
 
-const TX = { isTx: true } as unknown as Knex;
+const TX = { isTransaction: true, executionPromise: Promise.resolve() } as unknown as Knex;
 const FOLDER = { id: "folder-1", envId: "env-1" };
 const PROJECT = { id: "project-1", name: "Project", orgId: "org-1", secretDetectionIgnoreValues: [] };
 
@@ -56,6 +56,10 @@ const buildFns = ({
   const findBySecretKeys = vi.fn((_folderId: string, keys: { key: string }[]) =>
     Promise.resolve(stored.filter((secret) => keys.some((el) => el.key === secret.key)))
   );
+  const kmsDataKeyService = {
+    createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }),
+    within: vi.fn(() => kmsDataKeyService)
+  };
   const deps = {
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
@@ -65,7 +69,7 @@ const buildFns = ({
     },
     folderDAL: { findBySecretPath: vi.fn().mockResolvedValue(FOLDER) },
     projectDAL: { findById: vi.fn().mockResolvedValue(PROJECT) },
-    kmsService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue({ encryptor }) },
+    kmsDataKeyService,
     secretV2BridgeDAL: {
       findBySecretKeys,
       find: vi.fn(() => Promise.resolve(stored))
@@ -197,7 +201,8 @@ describe("buildSecretApprovalCommits", () => {
 
     expect(scanSecretPolicyViolations).not.toHaveBeenCalled();
     expect(deps.folderDAL.findBySecretPath).toHaveBeenCalledWith("project-1", "dev", "/", TX);
-    expect(deps.kmsService.createCipherPairWithDataKey).toHaveBeenCalledWith(expect.anything(), TX);
+    expect(deps.kmsDataKeyService.within).toHaveBeenCalledTimes(1);
+    expect(deps.kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
     expect(deps.projectDAL.findById).toHaveBeenCalledWith("project-1", TX);
     expect(deps.secretV2BridgeDAL.findBySecretKeys).toHaveBeenCalledWith("folder-1", expect.anything(), TX);
     expect(deps.secretV2BridgeDAL.find).toHaveBeenCalledWith(expect.anything(), { tx: TX });

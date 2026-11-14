@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -62,10 +63,8 @@ import {
 } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
@@ -220,17 +219,13 @@ const validateExternalConfigs = async (
 
 export const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+  kmsDataKeyService: TKmsDataKeyService,
+  kmsKeyService: TKmsKeyService
 ) => {
   try {
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -251,8 +246,8 @@ export const generateAndEncryptAcmeEabSecret = async (
 export const validateAndEncryptPemCaChain = async (
   caChain: string,
   projectId: string,
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+  kmsDataKeyService: TKmsDataKeyService,
+  kmsKeyService: TKmsKeyService
 ) => {
   try {
     const certificates = extractX509CertFromChain(caChain)?.map((cert) => new x509.X509Certificate(cert));
@@ -265,13 +260,9 @@ export const validateAndEncryptPemCaChain = async (
       throw new BadRequestError({ message: "Invalid certificate chain" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -288,17 +279,13 @@ export const validateAndEncryptPemCaChain = async (
 export const decryptCaChain = async (
   encryptedCaChain: Buffer,
   projectId: string,
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey">,
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+  kmsDataKeyService: TKmsDataKeyService,
+  kmsKeyService: TKmsKeyService
 ): Promise<string> => {
   try {
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -340,7 +327,8 @@ type TCertificateProfileServiceFactoryDep = {
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiApplicationProfileDAL?: Pick<
@@ -404,7 +392,8 @@ export const certificateProfileServiceFactory = ({
   caKeySourceService,
   externalCertificateAuthorityDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   projectDAL,
   resourceMetadataDAL,
   pkiApplicationProfileDAL
@@ -630,7 +619,8 @@ export const certificateProfileServiceFactory = ({
           certificateAuthoritySecretDAL,
           certificateAuthorityCertDAL,
           projectDAL,
-          kmsService,
+          kmsDataKeyService,
+          kmsKeyService,
           caKeySourceService
         }
       });
@@ -661,6 +651,26 @@ export const certificateProfileServiceFactory = ({
       };
     }
 
+    let precomputedEstConfig: { hashedPassphrase: string; encryptedCaChain: Buffer | null } | undefined;
+    if (enrollmentType === EnrollmentType.EST && data.estConfig) {
+      const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, getConfig().SALT_ROUNDS);
+      let encryptedCaChain: Buffer | null = null;
+      if (!data.estConfig.disableBootstrapCaValidation && data.estConfig.caChain) {
+        ({ encryptedCaChain } = await validateAndEncryptPemCaChain(
+          data.estConfig.caChain,
+          projectId,
+          kmsDataKeyService,
+          kmsKeyService
+        ));
+      }
+      precomputedEstConfig = { hashedPassphrase, encryptedCaChain };
+    }
+
+    const precomputedAcmeEabSecret =
+      enrollmentType === EnrollmentType.ACME && data.acmeConfig
+        ? (await generateAndEncryptAcmeEabSecret(projectId, kmsDataKeyService, kmsKeyService)).encryptedEabSecret
+        : undefined;
+
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
       let estConfigId: string | null = null;
@@ -668,27 +678,12 @@ export const certificateProfileServiceFactory = ({
       let acmeConfigId: string | null = null;
       let scepConfigId: string | null = null;
 
-      if (enrollmentType === EnrollmentType.EST && data.estConfig) {
-        const appCfg = getConfig();
-        // Hash the passphrase
-        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
-
-        let encryptedCaChainBuffer: Buffer | null = null;
-        if (!data.estConfig.disableBootstrapCaValidation && data.estConfig.caChain) {
-          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
-            data.estConfig.caChain,
-            projectId,
-            kmsService,
-            projectDAL
-          );
-          encryptedCaChainBuffer = encryptedCaChain;
-        }
-
+      if (enrollmentType === EnrollmentType.EST && data.estConfig && precomputedEstConfig) {
         const estConfig = await estEnrollmentConfigDAL.create(
           {
             disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation,
-            hashedPassphrase,
-            encryptedCaChain: encryptedCaChainBuffer
+            hashedPassphrase: precomputedEstConfig.hashedPassphrase,
+            encryptedCaChain: precomputedEstConfig.encryptedCaChain
           },
           tx
         );
@@ -702,13 +697,12 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         apiConfigId = apiConfig.id;
-      } else if (enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-        const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
+      } else if (enrollmentType === EnrollmentType.ACME && data.acmeConfig && precomputedAcmeEabSecret) {
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
             skipEabBinding: data.acmeConfig.skipEabBinding ?? false,
-            encryptedEabSecret
+            encryptedEabSecret: precomputedAcmeEabSecret
           },
           tx
         );
@@ -904,33 +898,30 @@ export const certificateProfileServiceFactory = ({
 
     const { estConfig, apiConfig, acmeConfig, scepConfig, ...profileUpdateData } = updatedData;
 
+    let estUpdateData:
+      | { disableBootstrapCaValidation: boolean; hashedPassphrase?: string; encryptedCaChain?: Buffer }
+      | undefined;
+    if (estConfig && existingProfile.estConfigId) {
+      estUpdateData = { disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation ?? false };
+      if (estConfig.passphrase) {
+        estUpdateData.hashedPassphrase = await crypto
+          .hashing()
+          .createHash(estConfig.passphrase, getConfig().SALT_ROUNDS);
+      }
+      if (estConfig.caChain) {
+        const { encryptedCaChain } = await validateAndEncryptPemCaChain(
+          estConfig.caChain,
+          existingProfile.projectId,
+          kmsDataKeyService,
+          kmsKeyService
+        );
+        estUpdateData.encryptedCaChain = encryptedCaChain;
+      }
+    }
+
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
-      if (estConfig && existingProfile.estConfigId) {
-        const updateData: {
-          disableBootstrapCaValidation: boolean;
-          hashedPassphrase?: string;
-          encryptedCaChain?: Buffer;
-        } = {
-          disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation ?? false
-        };
-
-        if (estConfig.passphrase) {
-          updateData.hashedPassphrase = await crypto
-            .hashing()
-            .createHash(estConfig.passphrase, getConfig().SALT_ROUNDS);
-        }
-
-        if (estConfig.caChain) {
-          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
-            estConfig.caChain,
-            existingProfile.projectId,
-            kmsService,
-            projectDAL
-          );
-          updateData.encryptedCaChain = encryptedCaChain;
-        }
-
-        await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, updateData, tx);
+      if (estUpdateData && existingProfile.estConfigId) {
+        await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, estUpdateData, tx);
       }
 
       if (apiConfig && existingProfile.apiConfigId) {
@@ -1146,8 +1137,8 @@ export const certificateProfileServiceFactory = ({
           const decryptedCaChain = await decryptCaChain(
             estConfig.encryptedCaChain,
             profile.projectId,
-            kmsService,
-            projectDAL
+            kmsDataKeyService,
+            kmsKeyService
           );
           profile.estConfig.caChain = decryptedCaChain;
         } else {
@@ -1359,8 +1350,8 @@ export const certificateProfileServiceFactory = ({
               const decryptedCaChain = await decryptCaChain(
                 estConfig.encryptedCaChain,
                 projectId,
-                kmsService,
-                projectDAL
+                kmsDataKeyService,
+                kmsKeyService
               );
               decryptedEstConfig = {
                 ...decryptedEstConfig,
@@ -1597,13 +1588,9 @@ export const certificateProfileServiceFactory = ({
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({
@@ -1624,7 +1611,8 @@ export const certificateProfileServiceFactory = ({
         projectId: cert.projectId,
         certificateSecretDAL,
         projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
       privateKey = certPrivateKey;
     } catch (error) {
@@ -1780,13 +1768,9 @@ export const certificateProfileServiceFactory = ({
       throw new NotFoundError({ message: "ACME configuration not found for this profile" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: profile.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig.encryptedEabSecret! });

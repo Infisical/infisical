@@ -1,7 +1,7 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
-import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -38,7 +38,7 @@ export const projectScopedInsightsDepStubs: Pick<
   | "projectBotService"
   | "projectDAL"
   | "userDAL"
-  | "kmsService"
+  | "kmsDataKeyService"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -79,9 +79,9 @@ export const projectScopedInsightsDepStubs: Pick<
   userDAL: {
     find: unreachable("userDAL.find")
   },
-  kmsService: {
-    createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
-  }
+  kmsDataKeyService: {
+    createCipherPairWithDataKey: unreachable("kmsDataKeyService.createCipherPairWithDataKey")
+  } as never
 };
 
 // getSecretsUsageInsights is the only method that reads these three counts, and it has its own spec.

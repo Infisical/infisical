@@ -1,6 +1,7 @@
 import acme from "acme-client";
 import { UnrecoverableError } from "bullmq";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -22,9 +23,7 @@ import {
   CertKeyUsage,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -167,10 +166,8 @@ type TCertificateIssuanceQueueFactoryDep = {
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
@@ -214,7 +211,8 @@ export const certificateIssuanceQueueFactory = ({
   externalCertificateAuthorityDAL,
   certificateDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   queueService,
   certificateBodyDAL,
   certificateSecretDAL,
@@ -243,7 +241,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
@@ -262,7 +261,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
@@ -278,7 +278,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
@@ -293,7 +294,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL
   });
@@ -306,7 +308,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     projectDAL
   });
 
@@ -318,7 +321,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     projectDAL
   });
 
@@ -330,7 +334,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL
   });
@@ -343,7 +348,8 @@ export const certificateIssuanceQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateProfileDAL,
     gatewayV2Service,
@@ -908,12 +914,8 @@ export const certificateIssuanceQueueFactory = ({
         };
 
         const encryptPrivateKey = async (privateKey: string) => {
-          const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-            projectId: ca.projectId,
-            projectDAL,
-            kmsService
-          });
-          const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+          const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+          const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
           const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(privateKey) });
           return cipherTextBlob;
         };
@@ -1100,12 +1102,8 @@ export const certificateIssuanceQueueFactory = ({
 
         let encryptedPrivateKey: Buffer | undefined;
         if (godaddyResult.privateKey) {
-          const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-            projectId: ca.projectId,
-            projectDAL,
-            kmsService
-          });
-          const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+          const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+          const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
           const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(godaddyResult.privateKey) });
           encryptedPrivateKey = cipherTextBlob;
         }

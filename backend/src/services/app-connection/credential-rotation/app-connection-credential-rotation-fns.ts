@@ -1,8 +1,8 @@
 import { AxiosError } from "axios";
 
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TCipherPairSource } from "@app/services/app-connection/app-connection-fns";
 
 import { AppConnectionCredentialRotationStatus } from "./app-connection-credential-rotation-enums";
 import {
@@ -104,14 +104,14 @@ export const encryptCredentialRotationGeneratedCredentials = async ({
   orgId,
   projectId,
   generatedCredentials,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -134,14 +134,14 @@ export const decryptCredentialRotationGeneratedCredentials = async ({
   orgId,
   projectId,
   encryptedGeneratedCredentials,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedGeneratedCredentials: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -164,14 +164,14 @@ export const encryptStrategyConfig = async ({
   orgId,
   projectId,
   config,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   config: Record<string, unknown>;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -194,14 +194,14 @@ export const decryptStrategyConfig = async <T>({
   orgId,
   projectId,
   encryptedStrategyConfig,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedStrategyConfig: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -224,14 +224,14 @@ export const encryptRotationMessage = async ({
   orgId,
   projectId,
   message,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   message: string;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -254,14 +254,14 @@ export const decryptRotationMessage = async ({
   orgId,
   projectId,
   encryptedLastRotationMessage,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   projectId: string | null | undefined;
   encryptedLastRotationMessage: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TCipherPairSource;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -284,12 +284,12 @@ export const expandCredentialRotation = async (
   { encryptedLastRotationMessage, ...rotation }: TAppConnectionCredentialRotationRaw,
   orgId: string,
   projectId: string | null | undefined,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TCipherPairSource
 ): Promise<TAppConnectionCredentialRotation> => {
   let lastRotationMessage: string | null = null;
 
   if (encryptedLastRotationMessage) {
-    const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
       projectId
         ? {
             type: KmsDataKey.SecretManager,

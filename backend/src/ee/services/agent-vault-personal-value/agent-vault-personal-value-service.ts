@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { TAgentVaultPersonalValueReferencesInsert } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -11,8 +12,6 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
@@ -69,7 +68,7 @@ type TAgentVaultPersonalValueServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TAgentVaultPersonalValueServiceFactory = ReturnType<typeof agentVaultPersonalValueServiceFactory>;
@@ -101,10 +100,10 @@ export const agentVaultPersonalValueServiceFactory = ({
   agentVaultOauthService,
   permissionService,
   membershipDAL,
-  kmsService
+  kmsDataKeyService
 }: TAgentVaultPersonalValueServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const resolveCaller = async ({ projectId, ctx }: TAgentVaultProjectScoped) => {
     const reachability = await getAgentVaultGrantedReachability(

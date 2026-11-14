@@ -1,6 +1,5 @@
 import { TAuditLogs, TAuditLogStreams } from "@app/db/schemas";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 import { AuditLogStreamProduct } from "./audit-log-stream-enums";
 import { TAuditLogStreamFilters } from "./audit-log-stream-schemas";
@@ -37,13 +36,13 @@ export const listProviderOptions = () => {
 export const encryptLogStreamCredentials = async ({
   orgId,
   credentials,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   credentials: TAuditLogStreamCredentials;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
   });
@@ -58,13 +57,13 @@ export const encryptLogStreamCredentials = async ({
 export const decryptLogStreamCredentials = async ({
   orgId,
   encryptedCredentials,
-  kmsService
+  kmsDataKeyService
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
   });
@@ -97,16 +96,13 @@ export const auditLogMatchesStreamFilter = (
   return products.includes(product);
 };
 
-export const decryptLogStream = async (
-  logStream: TAuditLogStreams,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-) => {
+export const decryptLogStream = async (logStream: TAuditLogStreams, kmsDataKeyService: TKmsDataKeyService) => {
   return {
     ...logStream,
     credentials: await decryptLogStreamCredentials({
       encryptedCredentials: logStream.encryptedCredentials,
       orgId: logStream.orgId,
-      kmsService
+      kmsDataKeyService
     })
   } as TAuditLogStream;
 };

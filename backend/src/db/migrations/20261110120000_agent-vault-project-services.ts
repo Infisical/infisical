@@ -1,17 +1,15 @@
 /* eslint-disable no-await-in-loop -- batches run one after another on purpose */
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger, logger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { findServiceNameRenames, TServiceNameRow } from "./utils/agent-vault-service-name-dedupe";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 const SERVICE = TableName.AgentVaultService;
 const LINK = TableName.AgentVaultAccessBundleService;
@@ -41,15 +39,10 @@ const resealInlineSecrets = async (knex: Knex) => {
   const hasSecrets = await knex(INLINE).whereNotNull("encryptedSecrets").first("id");
   if (!hasSecrets) return;
 
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
-  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex), hsmService, kmsRootConfigDALFactory(knex));
-  const { kmsService } = await getMigrationEncryptionServices({
-    envConfig,
-    keyStore: inMemoryKeyStore(),
-    db: knex,
-    skipHsmLicenseCheck: true
-  });
-  const cipherCache = createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
+  const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const cipherCache =
+    createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   let lastId: string | undefined;
   let resealed = 0;
@@ -74,10 +67,10 @@ const resealInlineSecrets = async (knex: Knex) => {
     for (const row of rows) {
       let cipher = cipherCache.getItem(row.projectId);
       if (!cipher) {
-        cipher = await kmsService.createCipherPairWithDataKey(
-          { type: KmsDataKey.SecretManager, projectId: row.projectId },
-          knex
-        );
+        cipher = await kmsDataKeyService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: row.projectId
+        });
         cipherCache.push(row.projectId, cipher);
       }
       const { encryptor, decryptor } = cipher;

@@ -5,6 +5,14 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
+// KMS Core loads the root key from the database when it is built, which this test has none of.
+vi.mock("./platform/kms-core/ee/module", () => ({
+  KmsCoreEeModule: { create: vi.fn(async () => ({ hooks: {} })) }
+}));
+vi.mock("./platform/kms-core/ce/module", () => ({
+  KmsCoreModule: { create: vi.fn(async () => ({ start: vi.fn() })) }
+}));
+
 describe("createDomains", () => {
   test("should give License exactly one usage counter for every metered dimension", async () => {
     // Setup

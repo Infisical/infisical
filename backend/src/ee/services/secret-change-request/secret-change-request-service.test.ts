@@ -239,7 +239,7 @@ const buildService = ({
       findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]),
       find: vi.fn().mockResolvedValue([])
     },
-    kmsService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue(CIPHER) },
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn().mockResolvedValue(CIPHER) },
     secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn().mockResolvedValue(undefined) },
     projectDAL: { findById: vi.fn().mockResolvedValue(PROJECT) },
     folderDAL: {
@@ -678,7 +678,7 @@ describe("secretChangeRequest mergeSecretApprovalRequest", () => {
 
     expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
     expect(detectSecretApprovalCommitConflicts).toHaveBeenCalledWith({ folderId: "folder-1", commits: COMMIT_ROWS });
-    expect(deps.kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+    expect(deps.kmsDataKeyService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
     expect(applySecretApprovalCommitsV2Bridge).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: "project-1",

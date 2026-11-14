@@ -1,11 +1,9 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { RunMode } from "@app/lib/types";
-import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import {
   isS3DirectoryBucket,
   keyPrefixSchema,
@@ -879,12 +877,7 @@ export const getConfig = () => envCfg;
 export const getOriginalConfig = () => originalEnvConfig;
 
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = async (
-  hsmService: THsmServiceFactory,
-  kmsRootConfigDAL: TKmsRootConfigDALFactory,
-  superAdminDAL?: TSuperAdminDALFactory,
-  logger?: CustomLogger
-) => {
+export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -900,7 +893,7 @@ export const initEnvConfig = async (
   }
 
   if (superAdminDAL) {
-    const fipsEnabled = await crypto.initialize(superAdminDAL, hsmService, kmsRootConfigDAL);
+    const fipsEnabled = await crypto.initialize(superAdminDAL);
 
     await initializePqcSupport();
 
@@ -967,22 +960,6 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
     })),
     pool: { min: parsedEnv.data.DB_POOL_MIN, max: parsedEnv.data.DB_POOL_MAX },
     replicaPool: { min: parsedEnv.data.DB_REPLICA_POOL_MIN, max: parsedEnv.data.DB_REPLICA_POOL_MAX }
-  };
-};
-
-export const getHsmConfig = (logger?: CustomLogger) => {
-  const parsedEnv = envSchema.safeParse(process.env);
-  if (!parsedEnv.success) {
-    (logger ?? console).error("Invalid environment variables. Check the error below");
-    (logger ?? console).error(parsedEnv.error.issues);
-    process.exit(-1);
-  }
-  return {
-    isHsmConfigured: parsedEnv.data.isHsmConfigured,
-    HSM_PIN: parsedEnv.data.HSM_PIN,
-    HSM_SLOT: parsedEnv.data.HSM_SLOT,
-    HSM_LIB_PATH: parsedEnv.data.HSM_LIB_PATH,
-    HSM_KEY_LABEL: parsedEnv.data.HSM_KEY_LABEL
   };
 };
 

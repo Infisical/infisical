@@ -28,7 +28,6 @@ import { ActorType } from "../auth/auth-type";
 import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderMove } from "../reminder/reminder-types";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -40,7 +39,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
+import { TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { emitSecretsModified, secretModifiedEvents } from "./secret-events";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
@@ -54,6 +53,7 @@ import {
   TFnSecretMoveResult
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
+import { prepareSecretWriteCiphers } from "./secret-write-cipher-fns";
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
@@ -1685,7 +1685,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     actorOrgId,
     permission,
     tx,
-    kmsService,
+    kmsDataKeyService,
     folderDAL,
     secretDAL,
     secretVersionDAL,
@@ -1777,12 +1777,13 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     }
   });
 
-  const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-    await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-  const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, tx });
+  const { secretManager, blindIndexer } = await prepareSecretWriteCiphers({
+    kmsDataKeyService,
+    projectId,
+    orgId: actorOrgId,
+    tx
+  });
+  const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = secretManager;
   const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
     ...secret,
     value: secret.encryptedValue

@@ -118,7 +118,7 @@ const createService = () => {
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
     } as never,
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({ decryptor: () => Buffer.from("token") })
     } as never,
     userGroupMembershipDAL: userGroupMembershipDAL as never,

@@ -5,6 +5,7 @@ import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
@@ -25,7 +26,6 @@ import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privile
 import { ActorType } from "@app/services/auth/auth-type";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
   assertFolderDeleteAllowed,
   assertFolderMoveAllowed,
@@ -114,7 +114,7 @@ type TSecretFolderServiceFactoryDep = {
     | "findFolderIdsWithSecrets"
     | "invalidateSecretCacheByProjectId"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -148,7 +148,7 @@ export const secretFolderServiceFactory = ({
   projectDAL,
   secretChangePolicyService,
   secretV2BridgeDAL,
-  kmsService,
+  kmsDataKeyService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -2246,7 +2246,7 @@ export const secretFolderServiceFactory = ({
             actorOrgId,
             tx,
             permissionService,
-            kmsService,
+            kmsDataKeyService,
             folderDAL,
             secretDAL: secretV2BridgeDAL,
             secretVersionDAL,

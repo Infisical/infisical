@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -19,7 +20,6 @@ import { OrgServiceActor } from "@app/lib/types";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -54,7 +54,6 @@ import {
 import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
@@ -73,7 +72,7 @@ type TSecretSyncServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne" | "find" | "findByFolderId" | "findByFolderIds">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOrgById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -104,7 +103,7 @@ export const secretSyncServiceFactory = ({
   secretV2BridgeDAL,
   appConnectionDAL,
   appConnectionService,
-  kmsService,
+  kmsDataKeyService,
   permissionService,
   orgDAL,
   projectBotService,
@@ -136,7 +135,7 @@ export const secretSyncServiceFactory = ({
     });
   };
 
-  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsService };
+  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsDataKeyService };
 
   // The sync worker reads its folders with every access check disabled, so this is the only place
   // the actor's read access to them is established. A sync including subfolders reads the whole
@@ -207,7 +206,7 @@ export const secretSyncServiceFactory = ({
     sourceFolderId: string;
     keySchema?: string;
   }) => {
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -225,7 +224,7 @@ export const secretSyncServiceFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService
     });
 
     try {
@@ -250,7 +249,7 @@ export const secretSyncServiceFactory = ({
             projectFolderGrantDAL,
             actorOrgId,
             orgDAL,
-            kmsService
+            kmsDataKeyService
           }
         }
       );
@@ -541,7 +540,7 @@ export const secretSyncServiceFactory = ({
           const credentials = await decryptAppConnectionCredentials({
             orgId: conn.orgId,
             encryptedCredentials: conn.encryptedCredentials,
-            kmsService,
+            kmsDataKeyService,
             projectId: conn.projectId
           });
           return { ...conn, credentials } as TAppConnection;

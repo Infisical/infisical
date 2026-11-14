@@ -147,7 +147,7 @@ describe("Service token secret ops", async () => {
   beforeAll(async () => {
     initLogger();
 
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(testSuperAdminDAL, logger);
 
     serviceToken = await createServiceToken(
       [{ secretPath: "/**", environment: seedData1.environment.slug }],

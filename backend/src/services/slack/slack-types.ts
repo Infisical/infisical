@@ -1,8 +1,7 @@
 import { TSlackIntegrations } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TOrgPermission } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
-
-import { TKmsServiceFactory } from "../kms/kms-service";
 
 export type TGetSlackInstallUrlDTO = {
   slug: string;
@@ -55,7 +54,7 @@ export type TReinstallSlackIntegrationDTO = {
 export type TSendSlackNotificationDTO = {
   orgId: string;
   notification: TNotification;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   targetChannelIds: string[];
   slackIntegration: TSlackIntegrations;
 };

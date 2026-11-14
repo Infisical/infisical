@@ -1,16 +1,14 @@
 /* eslint-disable no-await-in-loop -- batches run one after another on purpose */
 import { Knex } from "knex";
 
-import { inMemoryKeyStore } from "@app/keystore/memory";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger, logger } from "@app/lib/logger";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
-import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
+import { getMigrationEncryptionServices } from "./utils/services";
 
 // Copied rather than imported so later changes to the rotation or alert code can't change what this
 // migration did.
@@ -38,15 +36,10 @@ export async function up(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
-  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex), hsmService, kmsRootConfigDALFactory(knex));
-  const { kmsService } = await getMigrationEncryptionServices({
-    envConfig,
-    keyStore: inMemoryKeyStore(),
-    db: knex,
-    skipHsmLicenseCheck: true
-  });
-  const cipherCache = createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
+  const { kmsDataKeyService } = await getMigrationEncryptionServices({ envConfig, db: knex });
+  const cipherCache =
+    createCircularCache<Awaited<ReturnType<(typeof kmsDataKeyService)["createCipherPairWithDataKey"]>>>(25);
 
   let lastId: string | undefined;
   let created = 0;
@@ -92,7 +85,7 @@ export async function up(knex: Knex): Promise<void> {
     for (const projectId of new Set(pending.map((rotation) => rotation.projectId))) {
       let cipher = cipherCache.getItem(projectId);
       if (!cipher) {
-        cipher = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, knex);
+        cipher = await kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
         cipherCache.push(projectId, cipher);
       }
       encryptedEmptyConfigByProject.set(

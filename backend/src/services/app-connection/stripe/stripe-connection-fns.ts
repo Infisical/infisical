@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -11,7 +12,6 @@ import {
   encryptAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { StripeConnectionMethod } from "./stripe-connection-enums";
@@ -60,7 +60,7 @@ const REFRESH_LOCK_SETTINGS = { retryCount: 60, retryDelay: 250, retryJitter: 10
 
 export type TStripeConnectionAuthorizationDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -146,7 +146,10 @@ export const validateStripeConnectionCredentials = async (config: TStripeConnect
  */
 const getStoredStripeConnection = async (
   connectionId: string,
-  { appConnectionDAL, kmsService }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "kmsService">
+  {
+    appConnectionDAL,
+    kmsDataKeyService
+  }: Pick<TStripeConnectionAuthorizationDeps, "appConnectionDAL" | "kmsDataKeyService">
 ) => {
   const appConnection = await appConnectionDAL.transaction((tx) => appConnectionDAL.findById(connectionId, tx));
 
@@ -162,7 +165,7 @@ const getStoredStripeConnection = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
+    kmsDataKeyService
   })) as TStripeConnectionCredentials;
 
   return { appConnection, credentials };
@@ -211,7 +214,7 @@ const refreshStripeConnection = async (connectionId: string, deps: TStripeConnec
     credentials: { accountId, refreshToken: data.refresh_token },
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
-    kmsService: deps.kmsService
+    kmsDataKeyService: deps.kmsDataKeyService
   });
 
   try {

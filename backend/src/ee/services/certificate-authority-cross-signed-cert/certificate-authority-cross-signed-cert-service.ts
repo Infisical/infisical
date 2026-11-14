@@ -2,6 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -18,9 +19,7 @@ import {
   getCaCertChain,
   getPublicKeyFingerprint
 } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "./certificate-authority-cross-signed-cert-dal";
 import { validateCrossSignedCertificate } from "./certificate-authority-cross-signed-cert-fns";
@@ -41,7 +40,8 @@ type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
     "findOne" | "findByCaIdForUpdate" | "upsert" | "delete" | "transaction"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
 };
@@ -55,7 +55,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService,
   licenseService
 }: TCertificateAuthorityCrossSignedCertServiceFactoryDep) => {
@@ -71,12 +72,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     projectId: string,
     crossSignedCert: TCertificateAuthorityCrossSignedCerts
   ) => {
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -149,7 +146,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const subCaDepth = await certificateAuthorityDAL.findMaxSubCaDepth(ca.id);
@@ -162,12 +160,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       certificateChain
     });
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 

@@ -2,12 +2,12 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -35,7 +35,7 @@ type TSecretApprovalRequestCommitFnsFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findBySecretKeys" | "find">;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById">;
@@ -87,7 +87,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
   permissionService,
   folderDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretTagDAL,
@@ -168,13 +168,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey(
-      {
-        type: KmsDataKey.SecretManager,
-        projectId
-      },
+    const { encryptor: secretManagerEncryptor } = await dataKeysOn(
+      kmsDataKeyService,
       providedTx
-    );
+    ).createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const project = await projectDAL.findById(projectId, providedTx);
 

@@ -1,9 +1,8 @@
+import { KmsKeyUsage } from "@app/domains/platform/kms-core/ce/module";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
-
-import { KmsKeyUsage } from "../kms/kms-types";
 
 export type TCmekKeyEncryptionAlgorithm = SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
 

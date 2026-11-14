@@ -8,8 +8,13 @@ import { TTriggerWorkflowNotificationDTO } from "./types";
 export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkflowNotificationDTO) => {
   try {
     const { projectId, notification } = dto.input;
-    const { projectDAL, projectSlackConfigDAL, kmsService, projectMicrosoftTeamsConfigDAL, microsoftTeamsService } =
-      dto.dependencies;
+    const {
+      projectDAL,
+      projectSlackConfigDAL,
+      kmsDataKeyService,
+      projectMicrosoftTeamsConfigDAL,
+      microsoftTeamsService
+    } = dto.dependencies;
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -25,7 +30,7 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
         notification,
         orgId: project.orgId,
         projectSlackConfigDAL,
-        kmsService
+        kmsDataKeyService
       }),
 
       triggerMicrosoftTeamsNotification({

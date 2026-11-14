@@ -10,6 +10,7 @@ import {
   OrganizationActionScope,
   TIdentityJwtAuthsUpdate
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -43,8 +44,6 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { splitCommaSeparatedPolicyValues } from "../identity/identity-auth-policy-values";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -71,7 +70,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   licenseService: TLicenseService;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -90,7 +89,7 @@ export const identityJwtAuthServiceFactory = ({
   permissionService,
   licenseService,
   identityAccessTokenDAL,
-  kmsService,
+  kmsDataKeyService,
   orgDAL,
   identityAccessTokenService,
   eventEmitter
@@ -120,7 +119,7 @@ export const identityJwtAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
-      const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: identity.orgId
       });
@@ -519,7 +518,7 @@ export const identityJwtAuthServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(jwksUrl);
     }
 
-    const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: orgDataKeyEncryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -670,7 +669,7 @@ export const identityJwtAuthServiceFactory = ({
     };
 
     const { encryptor: orgDataKeyEncryptor, decryptor: orgDataKeyDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
+      await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: actorOrgId
       });
@@ -767,7 +766,7 @@ export const identityJwtAuthServiceFactory = ({
     }
     const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
 
-    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: orgDataKeyDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });

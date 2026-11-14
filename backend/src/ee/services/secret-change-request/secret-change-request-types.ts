@@ -8,6 +8,7 @@ import {
   TSecretApprovalRequestsSecretsV2Insert,
   TSecretFolders
 } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
@@ -23,7 +24,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -341,7 +341,7 @@ export type TSecretChangeRequestServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "lockFoldersForUpdate">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "insertMany"

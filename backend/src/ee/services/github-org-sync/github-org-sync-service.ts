@@ -7,6 +7,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
@@ -23,8 +24,6 @@ import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -377,7 +376,7 @@ export const assertGithubGroupMembersLinked = ({
 type TGithubOrgSyncServiceFactoryDep = {
   githubOrgSyncDAL: TGithubOrgSyncDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "find" | "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
@@ -407,7 +406,7 @@ export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServic
 export const githubOrgSyncServiceFactory = ({
   githubOrgSyncDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
@@ -493,7 +492,7 @@ export const githubOrgSyncServiceFactory = ({
     if (data.login.toLowerCase() !== githubOrgName.toLowerCase())
       throw new BadRequestError({ message: "Invalid GitHub organisation" });
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });
@@ -540,7 +539,7 @@ export const githubOrgSyncServiceFactory = ({
         message: `Organization ${orgPermission.orgId} GitHub organization sync config missing.`
       });
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });
@@ -975,7 +974,7 @@ export const githubOrgSyncServiceFactory = ({
       throw new BadRequestError({ message: "GitHub organization sync is not configured or not active" });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgPermission.orgId
     });

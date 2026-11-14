@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -26,8 +27,6 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -100,7 +99,7 @@ export type TInsightsServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
   orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers" | "findById">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
@@ -169,7 +168,7 @@ export const insightsServiceFactory = ({
   projectBotService,
   projectDAL,
   userDAL,
-  kmsService,
+  kmsDataKeyService,
   keyStore,
   orgDAL,
   identityOrgMembershipDAL,
@@ -541,7 +540,7 @@ export const insightsServiceFactory = ({
         const $decryptorFor = async (projectId: string) => {
           const cached = decryptors.get(projectId);
           if (cached) return cached;
-          const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
           });
@@ -633,7 +632,7 @@ export const insightsServiceFactory = ({
     }
 
     // Every project in an org shares the org data key, so one digest answers for all of them.
-    const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: dto.orgId, kmsService });
+    const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: dto.orgId, kmsDataKeyService });
     const secretValueDigest = await generateOrgLevelBlindIndex(Buffer.from(secretValue));
 
     const matches = await secretV2BridgeDAL.findSecretsWithMatchingValue({
@@ -686,7 +685,7 @@ export const insightsServiceFactory = ({
       fetcher: async () => {
         const rawGroups = await secretV2BridgeDAL.findDuplicatedSecretValues(dto.projectId);
 
-        const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId: dto.projectId
         });

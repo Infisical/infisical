@@ -2,6 +2,7 @@ import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
@@ -11,7 +12,6 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -79,7 +79,7 @@ export type TSecretApprovalBridgeCommit = Awaited<
 
 export type TSecretApprovalCommitConflict = { secretId: string; op: SecretOperations };
 
-export type TSecretManagerCipher = Awaited<ReturnType<TKmsServiceFactory["createCipherPairWithDataKey"]>>;
+export type TSecretManagerCipher = Awaited<ReturnType<TKmsDataKeyService["createCipherPairWithDataKey"]>>;
 
 type TMergedFolder = { path: string; environmentSlug: string; environmentName: string };
 

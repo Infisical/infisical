@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
 
+import { Knex } from "knex";
+
 import { ProjectType } from "@app/db/schemas";
+import { poolStoreConnection, ReadFrom } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
 import { OrganizationsProjectsModule } from "../module";
+import { OrganizationStore } from "./organization-store";
 
 describe("OrganizationsProjectsService organizations for License", () => {
   const h = setupIntegration();
@@ -72,5 +76,35 @@ describe("OrganizationsProjectsService organizations for License", () => {
 
     // Assert
     expect(used).toBe(2);
+  });
+
+  test("should read the primary and not the replica when asked for the primary", async () => {
+    // Setup
+    const { root } = await orgTree();
+    const store = new OrganizationStore(
+      poolStoreConnection(h.db, () => {
+        throw new Error("replica used");
+      })
+    );
+
+    // Action
+    const found = await store.findById(root.id, { readFrom: ReadFrom.Primary });
+
+    // Assert
+    expect(found?.id).toBe(root.id);
+  });
+
+  test("should read the replica by default", async () => {
+    // Setup
+    const { root } = await orgTree();
+    const replica = vi.fn(() => h.db as Knex);
+    const store = new OrganizationStore(poolStoreConnection(h.db, replica));
+
+    // Action
+    const found = await store.findById(root.id);
+
+    // Assert
+    expect(found?.id).toBe(root.id);
+    expect(replica).toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import * as x509 from "@peculiar/x509";
 import pLimit from "p-limit";
 
 import { TableName } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { OcspCertStatus } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-enums";
 import { getConfig } from "@app/lib/config/env";
@@ -20,11 +21,9 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { parsePemCertificateChain, revocationReasonToCrlCode } from "@app/services/certificate/certificate-fns";
 import { getCertificateOcspStatus } from "@app/services/certificate/certificate-ocsp-client";
 import { CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -52,7 +51,8 @@ type TDigiCertRevocationSyncQueueFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
@@ -65,9 +65,9 @@ export const digicertRevocationSyncQueueFactory = ({
   certificateAuthorityDAL,
   certificateDAL,
   certificateBodyDAL,
-  projectDAL,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   auditLogService,
   pkiAlertV2Queue,
   certificateAlertEventEmitter
@@ -166,8 +166,8 @@ export const digicertRevocationSyncQueueFactory = ({
     const getKmsDecryptor = async (projectId: string) => {
       const cached = kmsDecryptorsByProjectId.get(projectId);
       if (cached) return cached;
-      const kmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
+      const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
       kmsDecryptorsByProjectId.set(projectId, kmsDecryptor);
       return kmsDecryptor;
     };
@@ -210,7 +210,7 @@ export const digicertRevocationSyncQueueFactory = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       ca.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const digicertClient = createDigiCertApiClient(apiKey, baseUrl);
 

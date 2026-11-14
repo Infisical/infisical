@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { describe, expect, test, vi } from "vitest";
 
-import { buildWrappedKeyPayload, openWrappedKey } from "@app/services/kms/kms-fns";
+import { WrappedKeyPayload } from "@app/domains/platform/kms-core/ce/module";
 
 import {
   generateSessionLogKey,
@@ -15,9 +15,9 @@ vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn() } }));
 
 // The real KMS wrap is authenticated encryption; passing bytes through leaves only the label check under test.
 const passThroughKms = {
-  wrapKey: async ({ label, key }: { label: string; key: Buffer }) => buildWrappedKeyPayload(label, key),
+  wrapKey: async ({ label, key }: { label: string; key: Buffer }) => WrappedKeyPayload.build(label, key).payload,
   unwrapKey: async ({ label, wrappedKey, keyBytes }: { label: string; wrappedKey: Buffer; keyBytes: number }) =>
-    openWrappedKey({ label, payload: wrappedKey, keyBytes })
+    WrappedKeyPayload.restore(wrappedKey).open(label, keyBytes)
 } as never;
 
 describe("session log keys", () => {

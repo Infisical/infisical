@@ -7,7 +7,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import path from "path";
 
 import { seedData1 } from "@app/db/seed-data";
-import { getDatabaseCredentials, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
+import { getDatabaseCredentials, initEnvConfig } from "@app/lib/config/env";
 import { initLogger } from "@app/lib/logger";
 import { main } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
@@ -18,12 +18,9 @@ import { initDbConnection } from "@app/db";
 import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
-import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { bootstrapCheck } from "@app/server/boot-strap-check";
-import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 process.env.ALLOW_INTERNAL_IP_CONNECTIONS = "true";
@@ -33,7 +30,6 @@ export default {
   async setup() {
     const logger = initLogger();
     const databaseCredentials = getDatabaseCredentials(logger);
-    const hsmConfig = getHsmConfig(logger);
 
     const db = initDbConnection({
       dbConnectionUri: databaseCredentials.dbConnectionUri,
@@ -41,19 +37,8 @@ export default {
     });
 
     const superAdminDAL = superAdminDALFactory(db);
-    const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
 
-    const hsmModule = initializeHsmModule(hsmConfig);
-    hsmModule.initialize();
-
-    const hsmService = hsmServiceFactory({
-      hsmModule: hsmModule.getModule(),
-      envConfig: hsmConfig
-    });
-
-    await hsmService.startService();
-
-    const envCfg = await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
+    const envCfg = await initEnvConfig(superAdminDAL, logger);
 
     const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");
@@ -87,8 +72,6 @@ export default {
         logger,
         queue,
         keyStore,
-        hsmService,
-        kmsRootConfigDAL,
         superAdminDAL,
         redis,
         clickhouse: clickhouseClient,
@@ -111,10 +94,6 @@ export default {
       globalThis.testQueue = queue;
       // @ts-expect-error type
       globalThis.testSuperAdminDAL = superAdminDAL;
-      // @ts-expect-error type
-      globalThis.testKmsRootConfigDAL = kmsRootConfigDAL;
-      // @ts-expect-error type
-      globalThis.testHsmService = hsmService;
       // @ts-expect-error type
       globalThis.jwtAuthToken = crypto.jwt().sign(
         {

@@ -18,6 +18,7 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   Meter,
   PlanFeature,
@@ -87,7 +88,6 @@ import { expandInternalCa } from "../certificate-authority/certificate-authority
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -205,16 +205,8 @@ type TProjectServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    | "updateProjectSecretManagerKmsKey"
-    | "getProjectKeyBackup"
-    | "loadProjectKeyBackup"
-    | "getKmsById"
-    | "getProjectSecretManagerKmsKeyId"
-    | "deleteInternalKms"
-    | "createCipherPairWithDataKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectAccessRequestDAL: Pick<
@@ -265,7 +257,8 @@ export const projectServiceFactory = ({
   pkiAlertDAL,
   pkiSubscriberDAL,
   keyStore,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   slackIntegrationDAL,
@@ -383,7 +376,7 @@ export const projectServiceFactory = ({
           throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
         }
 
-        const kms = await kmsService.getKmsById(kmsKeyId, tx);
+        const kms = await kmsKeyService.within(sealKnexTransaction(tx)).getKmsById(kmsKeyId);
 
         if (kms.orgId !== organization.id) {
           throw new ForbiddenRequestError({
@@ -2041,7 +2034,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const secretManagerKmsKey = await kmsService.updateProjectSecretManagerKmsKey({
+    const secretManagerKmsKey = await kmsDataKeyService.updateProjectSecretManagerKmsKey({
       projectId,
       kms
     });
@@ -2076,7 +2069,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await kmsService.getProjectKeyBackup(projectId);
+    const kmsBackup = await kmsDataKeyService.getProjectKeyBackup(projectId);
     return kmsBackup;
   };
 
@@ -2106,7 +2099,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const kmsBackup = await kmsService.loadProjectKeyBackup(projectId, backup);
+    const kmsBackup = await kmsDataKeyService.loadProjectKeyBackup(projectId, backup);
     return kmsBackup;
   };
 
@@ -2120,8 +2113,8 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId, undefined, true);
-    const kmsKey = await kmsService.getKmsById(kmsKeyId);
+    const kmsKeyId = await kmsDataKeyService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKey = await kmsKeyService.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };
   };

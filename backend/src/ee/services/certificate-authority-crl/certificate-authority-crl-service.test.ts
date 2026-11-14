@@ -82,7 +82,8 @@ const buildService = ({
     certificateAuthorityCrlDAL: { find: vi.fn(async () => storedCrls) },
     certificateAuthoritySecretDAL: {},
     certificateDAL: {},
-    kmsService: {
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn(async () => "kms-1") },
+    kmsKeyService: {
       decryptWithKmsKey: vi.fn(
         async () =>
           async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) =>

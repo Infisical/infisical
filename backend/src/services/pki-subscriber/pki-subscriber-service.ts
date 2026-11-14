@@ -4,6 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -39,13 +40,11 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
@@ -88,7 +87,8 @@ type TPkiSubscriberServiceFactoryDep = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
@@ -108,7 +108,8 @@ export const pkiSubscriberServiceFactory = ({
   certificateSecretDAL,
   certificateBodyDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService,
   certificateAuthorityQueue,
   internalCaFns,
@@ -485,12 +486,8 @@ export const pkiSubscriberServiceFactory = ({
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -529,7 +526,8 @@ export const pkiSubscriberServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
@@ -645,7 +643,7 @@ export const pkiSubscriberServiceFactory = ({
       extensions
     });
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
@@ -659,7 +657,8 @@ export const pkiSubscriberServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
@@ -812,13 +811,9 @@ export const pkiSubscriberServiceFactory = ({
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({
@@ -843,7 +838,8 @@ export const pkiSubscriberServiceFactory = ({
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
         projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       certificateChain = `${caCert}\n${caCertChain}`.trim();
@@ -854,7 +850,8 @@ export const pkiSubscriberServiceFactory = ({
       projectId: cert.projectId,
       certificateSecretDAL,
       projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     return {

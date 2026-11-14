@@ -4,6 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -23,8 +24,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -64,7 +63,7 @@ type TSecretImportServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: TLicenseService;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -85,7 +84,7 @@ export const secretImportServiceFactory = ({
   licenseService,
   projectBotService,
   secretV2BridgeDAL,
-  kmsService
+  kmsDataKeyService
 }: TSecretImportServiceFactoryDep) => {
   const $annotateCrossProjectImports = async <
     T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
@@ -936,7 +935,7 @@ export const secretImportServiceFactory = ({
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -959,7 +958,7 @@ export const secretImportServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        kmsService
+        kmsDataKeyService
       });
 
       return importedSecrets;

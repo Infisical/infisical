@@ -17,7 +17,10 @@ import {
 } from "./honey-token-provider-types";
 import type { THoneyTokenServiceFactoryDep } from "./honey-token-service";
 
-export type THoneyTokenProviderHooksDep = Pick<THoneyTokenServiceFactoryDep, "kmsService" | "appConnectionDAL"> & {
+export type THoneyTokenProviderHooksDep = Pick<
+  THoneyTokenServiceFactoryDep,
+  "kmsDataKeyService" | "appConnectionDAL"
+> & {
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "findOneByTokenIdentifier" | "transaction">;
   honeyTokenConfigDAL: Pick<THoneyTokenServiceFactoryDep["honeyTokenConfigDAL"], "findOne">;
 };

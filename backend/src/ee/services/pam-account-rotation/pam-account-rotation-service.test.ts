@@ -85,7 +85,7 @@ const buildService = (
     permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
     membershipDAL: { findResourceMembershipsForActor: vi.fn() },
     membershipRoleDAL: { find: vi.fn() },
-    kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     keyStore: { acquireLock: vi.fn(async () => ({ release: vi.fn(async () => undefined) })) },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(), assertGatewayBindingInOrg },
@@ -102,7 +102,7 @@ const buildService = (
 
 describe("rotateScheduledAccount recovery probe", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   test("promotes the pending credential when it authenticates, without re-applying", async () => {
@@ -498,7 +498,7 @@ describe("sqlRotationHandler.validateTarget", () => {
 
 describe("rotation gateway binding check", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   test.each([

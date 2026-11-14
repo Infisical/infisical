@@ -151,7 +151,7 @@ const postOauthToken = (body: Record<string, string>) =>
 describe("Org scope of user tokens after root membership deactivation", () => {
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    await initEnvConfig(testSuperAdminDAL, logger);
   });
 
   afterEach(async () => {

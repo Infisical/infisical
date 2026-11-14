@@ -8,6 +8,7 @@ import {
   TSecretChangeRequests,
   TUsers
 } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
@@ -22,7 +23,6 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -83,7 +83,7 @@ type TSecretChangeRequestFnsFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
@@ -187,7 +187,7 @@ export const secretChangeRequestFnsFactory = ({
   identityDAL,
   projectDAL,
   projectEnvDAL,
-  kmsService,
+  kmsDataKeyService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
@@ -373,7 +373,7 @@ export const secretChangeRequestFnsFactory = ({
       },
       dependencies: {
         projectDAL,
-        kmsService,
+        kmsDataKeyService,
         projectSlackConfigDAL,
         microsoftTeamsService,
         projectMicrosoftTeamsConfigDAL

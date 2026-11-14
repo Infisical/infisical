@@ -11,6 +11,7 @@ import {
   TAgentVaultServiceVariableReferencesInsert,
   TMemberships
 } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -25,8 +26,6 @@ import { BadRequestError, ConflictError, InternalServerError, NotFoundError } fr
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { shake } from "@app/lib/fn";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
@@ -190,7 +189,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   >;
   agentVaultPersonalValueService: Pick<TAgentVaultPersonalValueServiceFactory, "findStatusesForOwner">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
   membershipDAL: Pick<
     TMembershipDALFactory,
@@ -238,7 +237,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultPersonalValueDAL,
     agentVaultPersonalValueService,
     permissionService,
-    kmsService,
+    kmsDataKeyService,
     licenseService,
     membershipDAL,
     membershipRoleDAL,
@@ -415,7 +414,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const summarizeCredential = (service: TAgentVaultServices): TAgentVaultCredentialSummary => {
     const config = service.credentialConfig as Record<string, string>;

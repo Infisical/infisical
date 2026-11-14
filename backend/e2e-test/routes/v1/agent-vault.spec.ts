@@ -1,21 +1,16 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
-import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
-import {
-  agentVaultRequester,
-  createAgentVaultProject,
-  deleteAgentVaultProject,
-  markAgentVaultProjectOriginal
-} from "e2e-test/testUtils/agent-vault";
-import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
-import { createIdentityActor } from "e2e-test/testUtils/identities";
-import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
-import { pollUntil } from "e2e-test/testUtils/poll";
-import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { startStandaloneKmsCore } from "@app/domains/domains";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { Meter, Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
+import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
@@ -29,16 +24,15 @@ import {
   agentVaultProxyServiceFactory
 } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
+import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import {
   agentVaultSessionInlineServiceDALFactory,
   DELETE_SECRETS_BATCH_SIZE
 } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
-import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
-import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -48,18 +42,6 @@ import { initLogger, logger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
-import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
-import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
-import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
-import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { Meter, Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
-import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
-import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -68,6 +50,19 @@ import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folde
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
+
+import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
+import {
+  agentVaultRequester,
+  createAgentVaultProject,
+  deleteAgentVaultProject,
+  markAgentVaultProjectOriginal
+} from "e2e-test/testUtils/agent-vault";
+import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createIdentityActor } from "e2e-test/testUtils/identities";
+import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
+import { pollUntil } from "e2e-test/testUtils/poll";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
 const planWith = (features: Partial<TPlanFeatures>) => Plan.restore({ ...testFeatures(), ...features });
 
@@ -305,34 +300,14 @@ const createAccessBundle = async (name: string) => {
 
 // The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
 // The spec runs in its own module graph, which is why the env config is initialized again here.
-let kmsService: TKmsServiceFactory | undefined;
+let kmsDataKeyService: TKmsDataKeyService | undefined;
 const projectCipher = async (projectId: string) => {
-  if (!kmsService) {
-    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
-    kmsService = kmsServiceFactory({
-      kmsRootConfigDAL: testKmsRootConfigDAL,
-      kmsLegacyEncryptionKeyDAL: kmsLegacyEncryptionKeyDALFactory(testDb),
-      kmsKekHistoryDAL: kmsKekHistoryDALFactory(testDb),
-      kmsDAL: kmskeyDALFactory(testDb),
-      internalKmsDAL: internalKmsDALFactory(testDb),
-      internalKmsKeyVersionDAL: internalKmsKeyVersionDALFactory(testDb),
-      orgDAL: orgDALFactory(testDb),
-      projectDAL: projectDALFactory(testDb),
-      hsmService: testHsmService,
-      keyStore: {
-        getItem: async () => null,
-        setItemWithExpiry: async () => "OK" as const,
-        deleteItem: async () => 0
-      },
-      envConfig: getConfig()
-    });
-    const hsmStatus = await isHsmActiveAndEnabled({
-      hsmService: testHsmService,
-      kmsRootConfigDAL: testKmsRootConfigDAL
-    });
-    await kmsService.startService(hsmStatus, { skipRotationState: true });
+  if (!kmsDataKeyService) {
+    await initEnvConfig(testSuperAdminDAL, logger);
+    const kmsCore = await startStandaloneKmsCore({ db: testDb, envConfig: getConfig() });
+    kmsDataKeyService = kmsCore.kmsDataKeyService;
   }
-  return kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  return kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 };
 
 describe("Agent Vault V1 Router", async () => {
@@ -560,12 +535,7 @@ describe("Agent Vault V1 Router", async () => {
           .update({ createdAt: new Date(Date.now() - 60 * 60 * 1000) });
 
         const createBundle = async (projectId: string, name: string) => {
-          const res = await injectRaw(
-            "POST",
-            "/api/v1/agent-vault/access-bundles",
-            { projectId, name },
-            org.authToken
-          );
+          const res = await injectRaw("POST", "/api/v1/agent-vault/access-bundles", { projectId, name }, org.authToken);
           expect(res.statusCode, res.payload).toBe(200);
         };
         await createBundle(original, "in-original");
@@ -803,7 +773,9 @@ describe("Agent Vault V1 Router", async () => {
       const skillId = skill.json().skill.id as string;
       try {
         const bundle = await createAccessBundle(`cross-project-link-${Date.now()}`);
-        const linked = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/skills`, { skillIds: [skillId] });
+        const linked = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/skills`, {
+          skillIds: [skillId]
+        });
         expect(linked.statusCode).toBe(404);
       } finally {
         await testDb("agent_vault_skills").where({ id: skillId }).del();
@@ -944,11 +916,9 @@ describe("Agent Vault V1 Router", async () => {
         ).toBe(200);
         const token = await createUserAccessToken({ userId, orgId: seedData1.organization.id });
         const asUser = agentVaultRequester(token, () => secondProjectId);
-        const saved = await asUser(
-          "PATCH",
-          `/api/v1/agent-vault/services/${serviceId}/personal-values`,
-          { values: [{ field: "credential-value", value: "sk-leaver" }] }
-        );
+        const saved = await asUser("PATCH", `/api/v1/agent-vault/services/${serviceId}/personal-values`, {
+          values: [{ field: "credential-value", value: "sk-leaver" }]
+        });
         expect(saved.statusCode, saved.payload).toBe(200);
 
         const left = await asUser("DELETE", `/api/v1/projects/${secondProjectId}/leave`);
@@ -1410,9 +1380,9 @@ describe("Agent Vault V1 Router", async () => {
 
       const member = await createMemberIdentity(`service-description-${Date.now()}`);
       try {
-        expect(
-          (await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode
-        ).toBe(200);
+        expect((await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode).toBe(
+          200
+        );
         const read = await member.as("GET", bundleUrl);
         expect(read.statusCode).toBe(200);
         expect((read.json() as TBundleRead).accessBundle.services[0].description).toBe(
@@ -1641,7 +1611,6 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("MCP services", async () => {
-
     const createMcpService = async (bundleId: string, name: string, serverUrl: string) => {
       const res = await inject("POST", "/api/v1/agent-vault/services", {
         accessBundleIds: [bundleId],
@@ -4651,13 +4620,22 @@ describe("Agent Vault V1 Router", async () => {
       const pending = await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true`);
       expect(pending.statusCode, pending.payload).toBe(200);
       expect(pending.json().services).toEqual([
-        expect.objectContaining({ id: loose.id, accessBundles: [], personalValues: expect.objectContaining({ isConfigured: false }) })
+        expect.objectContaining({
+          id: loose.id,
+          accessBundles: [],
+          personalValues: expect.objectContaining({ isConfigured: false })
+        })
       ]);
       // A granted-only count covers bundles the caller holds, so a service in none never adds to it.
-      expect((await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true&granted=true`)).json().totalCount).toBe(0);
+      expect(
+        (await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true&granted=true`)).json()
+          .totalCount
+      ).toBe(0);
 
       await saveToken(inject, loose.id, "sk-early");
-      expect((await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true`)).json().totalCount).toBe(0);
+      expect(
+        (await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true`)).json().totalCount
+      ).toBe(0);
       expect((await inject("GET", `${servicesUrl}/${loose.id}`)).json().service.personalValues.isConfigured).toBe(true);
     });
 
@@ -4906,13 +4884,19 @@ describe("Agent Vault V1 Router", async () => {
       const withInline = await inject("POST", "/api/v1/agent-vault/sessions", {
         accessBundle: bundle.name,
         ttl: "never",
-        services: [inline("ps-shadow-twin", "inline-twin.example.com"), inline("ps-shadow-renamed", "inline-renamed.example.com")]
+        services: [
+          inline("ps-shadow-twin", "inline-twin.example.com"),
+          inline("ps-shadow-renamed", "inline-renamed.example.com")
+        ]
       });
       expect(withInline.statusCode, withInline.payload).toBe(200);
 
       // Neither a link nor a rename waits for that session to end.
       expect((await inject("POST", bundleServicesUrl(bundle.id), { serviceIds: [loose.id] })).statusCode).toBe(200);
-      const renamed = await inject("PATCH", `${servicesUrl}/${service.id}`, { type: "http", name: "ps-shadow-renamed" });
+      const renamed = await inject("PATCH", `${servicesUrl}/${service.id}`, {
+        type: "http",
+        name: "ps-shadow-renamed"
+      });
       expect(renamed.statusCode, renamed.payload).toBe(200);
 
       const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: "ps-inline-shadow" });
@@ -5264,9 +5248,9 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a member can be added by a username that isn't an email", async () => {
       const username = `av-ldap-${crypto.randomUUID()}`;
-      const [user] = (await testDb("users")
-        .insert({ username, isAccepted: true, isGhost: false })
-        .returning("*")) as { id: string }[];
+      const [user] = (await testDb("users").insert({ username, isAccepted: true, isGhost: false }).returning("*")) as {
+        id: string;
+      }[];
       try {
         await addUserMembership({ userId: user.id, orgId: seedData1.organization.id, role: OrgMembershipRole.Member });
 
@@ -6591,11 +6575,9 @@ describe("Agent Vault V1 Router", async () => {
       const serviceId = serviceRes.json().service.id as string;
 
       // The seeded admin is the user acted for here, since it is the one user that can save its own values.
-      const setValue = await inject(
-        "PATCH",
-        `/api/v1/agent-vault/services/${serviceId}/personal-values`,
-        { values: [{ field: "credential-value", value: "admin_personal_token" }] }
-      );
+      const setValue = await inject("PATCH", `/api/v1/agent-vault/services/${serviceId}/personal-values`, {
+        values: [{ field: "credential-value", value: "admin_personal_token" }]
+      });
       expect(setValue.statusCode).toBe(200);
 
       const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `obo-resolve-${Date.now()}` });
@@ -6967,7 +6949,11 @@ describe("Agent Vault V1 Router", async () => {
       const bob = await createAgentVaultUser("obo-subjects-bob", projectId);
       const carol = await createAgentVaultUser("obo-subjects-carol", projectId);
       const outsider = await createAgentVaultUser("obo-subjects-outsider", null);
-      const group = await createProjectGroup(projectId, `obo-subjects-group-${Date.now()}`, ProjectMembershipRole.Member);
+      const group = await createProjectGroup(
+        projectId,
+        `obo-subjects-group-${Date.now()}`,
+        ProjectMembershipRole.Member
+      );
       const subjectsUrl = `${delegationUrl(bot.id)}/subjects`;
       const ours = new Set([alice.userId, bob.userId, carol.userId, group.id]);
       const available = async (query = "") => {
@@ -6977,7 +6963,12 @@ describe("Agent Vault V1 Router", async () => {
       };
       const named = (res: { json: () => { delegation: TDelegationDetail | null } }) => {
         const { delegation } = res.json();
-        return delegation && { users: delegation.users.map((row) => row.id).sort(), groups: delegation.groups.map((row) => row.id) };
+        return (
+          delegation && {
+            users: delegation.users.map((row) => row.id).sort(),
+            groups: delegation.groups.map((row) => row.id)
+          }
+        );
       };
       try {
         expect((await available()).sort()).toEqual([...ours].sort());
@@ -7505,9 +7496,8 @@ describe("Agent Vault V1 Router", async () => {
       expect(byId.json().session.services).toEqual(session.services);
       const list = await inject("GET", `${sessionsUrl}?limit=100`);
       expect(
-        (list.json().sessions as { id: string; services: TInlineSummary[] }[]).find(
-          (row) => row.id === session.id
-        )?.services
+        (list.json().sessions as { id: string; services: TInlineSummary[] }[]).find((row) => row.id === session.id)
+          ?.services
       ).toEqual(session.services);
 
       // No read returns a secret, and the rows hold them only sealed.
@@ -7678,7 +7668,9 @@ describe("Agent Vault V1 Router", async () => {
         ]
       });
       expect(memberField.statusCode).toBe(400);
-      expect(memberField.json().message).toMatch(/^Service at index 0: Services sent with a session can't leave a field/);
+      expect(memberField.json().message).toMatch(
+        /^Service at index 0: Services sent with a session can't leave a field/
+      );
     });
 
     test("only an Agent Vault admin can start a session with inline services", async () => {
@@ -7979,7 +7971,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        kmsService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
@@ -8117,7 +8109,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        kmsService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: () =>
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
         } as never,
@@ -8194,7 +8186,10 @@ describe("Agent Vault V1 Router", async () => {
       // A bundle's services are listed in name order.
       expect(viaProxy.json()).toMatchObject({
         agentVault: { proxy: "session-services-list", version: "0.44.0", trafficPolicy: "service-hosts" },
-        session: { expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/), accessBundle: bundle.name },
+        session: {
+          expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+          accessBundle: bundle.name
+        },
         services: [
           {
             name: "github",
@@ -8378,7 +8373,7 @@ describe("Agent Vault V1 Router", async () => {
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
-        kmsService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
@@ -9109,7 +9104,9 @@ describe("Agent Vault V1 Router", async () => {
       );
 
       const other = await createAccessBundle("skills-cap-other-bundle");
-      expect((await inject("POST", bundleSkillsUrl(other.id), { skillIds: [created[25].skill.id] })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(other.id), { skillIds: [created[25].skill.id] })).statusCode).toBe(
+        200
+      );
 
       expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${created[0].skill.id}`)).statusCode).toBe(200);
       expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [created[25].skill.id] })).statusCode).toBe(
@@ -9247,7 +9244,9 @@ describe("Agent Vault V1 Router", async () => {
       const { skill } = await createSkill("lost-grant-skill");
       const { skill: unreachable } = await createSkill("unreachable-skill");
       expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] })).statusCode).toBe(200);
-      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillIds: [unreachable.id] })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillIds: [unreachable.id] })).statusCode).toBe(
+        200
+      );
       const member = await createMemberIdentity("skills-lost-grant");
       try {
         const bundleMembersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
@@ -9609,7 +9608,10 @@ describe("Agent Vault V1 Router", async () => {
         trafficPolicy: "service-hosts"
       });
       expect(created.statusCode).toBe(200);
-      const { proxy, proxyToken } = created.json() as { proxy: { id: string; trafficPolicy: string }; proxyToken: string };
+      const { proxy, proxyToken } = created.json() as {
+        proxy: { id: string; trafficPolicy: string };
+        proxyToken: string;
+      };
       expect(proxy.trafficPolicy).toBe("service-hosts");
       expect((await testDb("agent_vault_proxies").where({ id: proxy.id }).first()).trafficPolicy).toBe("bundle-hosts");
       expect((await asProxy(proxyToken, "bootstrap", {})).json().config.trafficPolicy).toBe("bundle-hosts");
@@ -10427,7 +10429,7 @@ describe("Agent Vault V1 Router", async () => {
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
-          kmsService: {
+          kmsDataKeyService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
@@ -10534,7 +10536,7 @@ describe("Agent Vault V1 Router", async () => {
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
-          kmsService: {
+          kmsDataKeyService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
@@ -10807,9 +10809,7 @@ describe("Agent Vault V1 Router", async () => {
         skipped: [{ type: "machineIdentity", id: identity.id }]
       });
 
-      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(
-        seatsBefore
-      );
+      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(seatsBefore);
 
       await deleteOrgIdentity(identity.id);
     });
@@ -10935,9 +10935,9 @@ describe("Agent Vault V1 Router", async () => {
       const bundleUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}`;
       const member = await createMemberIdentity(`hooks-member-${Date.now()}`);
       try {
-        expect(
-          (await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode
-        ).toBe(200);
+        expect((await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode).toBe(
+          200
+        );
 
         const byId = await member.as("GET", `${servicesUrl}/${service.id}`);
         expect(byId.statusCode, byId.payload).toBe(200);

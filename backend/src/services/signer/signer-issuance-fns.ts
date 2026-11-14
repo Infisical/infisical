@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import * as x509 from "@peculiar/x509";
-import { Knex } from "knex";
 
+import { TCertificates } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
@@ -21,39 +22,46 @@ import {
 } from "@app/services/certificate/certificate-types";
 import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { CertKeySource, HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 type TIssueSignerCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 type TVerifyCodeSigningEkuDeps = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
+};
+
+const codeSigningEkuMissing = () =>
+  new BadRequestError({
+    message: "The issued certificate does not have the codeSigning extended key usage set."
+  });
+
+// Checked on the row signCertFromCa writes, inside its transaction: the stored usages are the ones it put in the
+// certificate's extension, so no decrypt is needed.
+const assertIssuedWithCodeSigningEku = (cert: TCertificates) => {
+  if (!cert.extendedKeyUsages?.includes(CertExtendedKeyUsage.CODE_SIGNING)) throw codeSigningEkuMissing();
 };
 
 export const verifyCodeSigningEku = async (
-  { certificateBodyDAL, projectDAL, kmsService }: TVerifyCodeSigningEkuDeps,
-  { certificateId, projectId, tx }: { certificateId: string; projectId: string; tx?: Knex }
+  { certificateBodyDAL, kmsDataKeyService, kmsKeyService }: TVerifyCodeSigningEkuDeps,
+  { certificateId, projectId }: { certificateId: string; projectId: string }
 ): Promise<void> => {
-  const certBody = await certificateBodyDAL.findOne({ certId: certificateId }, tx);
+  const certBody = await certificateBodyDAL.findOne({ certId: certificateId });
   if (!certBody?.encryptedCertificate) {
     throw new BadRequestError({
       message: "Cannot verify code-signing usage: certificate body is missing."
     });
   }
 
-  const kmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
+  const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
   const decrypted = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
   const cert = new x509.X509Certificate(decrypted);
 
@@ -63,11 +71,7 @@ export const verifyCodeSigningEku = async (
       (oid) => CertExtendedKeyUsageOIDToName[oid as string] === CertExtendedKeyUsage.CODE_SIGNING
     ) ?? false;
 
-  if (!hasCodeSigningEku) {
-    throw new BadRequestError({
-      message: "The issued certificate does not have the codeSigning extended key usage set."
-    });
-  }
+  if (!hasCodeSigningEku) throw codeSigningEkuMissing();
 };
 
 type TIssueSignerCertificateInput = {
@@ -76,21 +80,19 @@ type TIssueSignerCertificateInput = {
   commonName: string;
   certificateTtlDays: number;
   keyAlgorithm?: CertKeyAlgorithm;
-  tx?: Knex;
 };
 
 export const issueSignerCertificate = async (
   {
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
-    certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
-    kmsService
+    kmsDataKeyService,
+    kmsKeyService
   }: TIssueSignerCertificateDeps,
-  { caId, projectId, commonName, certificateTtlDays, keyAlgorithm, tx }: TIssueSignerCertificateInput
+  { caId, projectId, commonName, certificateTtlDays, keyAlgorithm }: TIssueSignerCertificateInput
 ): Promise<{ certificateId: string }> => {
-  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca || ca.projectId !== projectId) {
     throw new BadRequestError({
       message: `Certificate authority '${caId}' is not in this organization.`
@@ -135,6 +137,15 @@ export const issueSignerCertificate = async (
   });
   const csrPem = csrObj.toString("pem");
 
+  // Encrypted before signing, so the key is stored in the same transaction as the certificate.
+  const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+  const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+  const skLeafPem = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey).export({
+    format: "pem",
+    type: "pkcs8"
+  }) as string;
+  const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({ plainText: Buffer.from(skLeafPem) });
+
   const signResult = await internalCertificateAuthorityService.signCertFromCa({
     isInternal: true,
     isFromProfile: true,
@@ -143,39 +154,15 @@ export const issueSignerCertificate = async (
     commonName,
     ttl: `${certificateTtlDays}d`,
     extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
-    tx
+    onPersisted: async (newCert, tx) => {
+      assertIssuedWithCodeSigningEku(newCert);
+      await certificateSecretDAL.create({ certId: newCert.id, encryptedPrivateKey }, tx);
+    }
   });
 
   if (!signResult.certificateId) {
     throw new BadRequestError({ message: "Certificate authority did not return a certificate id." });
   }
-
-  await verifyCodeSigningEku(
-    { certificateBodyDAL, projectDAL, kmsService },
-    { certificateId: signResult.certificateId, projectId: ca.projectId, tx }
-  );
-
-  const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-    projectId: ca.projectId,
-    projectDAL,
-    kmsService
-  });
-
-  const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-
-  const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-  const skLeafPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
-  const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-    plainText: Buffer.from(skLeafPem)
-  });
-
-  await certificateSecretDAL.create(
-    {
-      certId: signResult.certificateId,
-      encryptedPrivateKey
-    },
-    tx
-  );
 
   return { certificateId: signResult.certificateId };
 };
@@ -183,11 +170,8 @@ export const issueSignerCertificate = async (
 type THsmBackedDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "updateById">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "generateKeyPair" | "sign">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
 type THsmBackedInput = {
@@ -197,7 +181,6 @@ type THsmBackedInput = {
   certificateTtlDays: number;
   hsmConnectorId: string;
   hsmKeyAlgorithm: HsmKeyAlgorithm;
-  tx?: Knex;
 };
 
 export const hsmKeyAlgorithmToCertKeyAlgorithm = (hsmAlg: HsmKeyAlgorithm): CertKeyAlgorithm => {
@@ -279,41 +262,35 @@ export const issueHsmBackedSignerCertificate = async (
       })
   });
 
-  const run = async (tx: Knex) => {
-    const issued = await deps.internalCertificateAuthorityService.signCertFromCa({
-      isInternal: true,
-      isFromProfile: true,
-      caId: ca.id,
-      csr: built.csrPem,
-      commonName: input.commonName,
-      ttl: `${input.certificateTtlDays}d`,
-      extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
-      tx
-    });
-    if (!issued.certificateId) {
-      throw new BadRequestError({ message: "Certificate authority did not return a certificate id." });
+  const issued = await deps.internalCertificateAuthorityService.signCertFromCa({
+    isInternal: true,
+    isFromProfile: true,
+    caId: ca.id,
+    csr: built.csrPem,
+    commonName: input.commonName,
+    ttl: `${input.certificateTtlDays}d`,
+    extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
+    onPersisted: async (newCert, tx) => {
+      assertIssuedWithCodeSigningEku(newCert);
+      await deps.certificateDAL.updateById(
+        newCert.id,
+        {
+          keySource: CertKeySource.Hsm,
+          hsmConnectorId: input.hsmConnectorId,
+          hsmKeyLabel: keyLabel,
+          hsmKeyId: keyId,
+          hsmPublicKeySpki: publicKeySpkiDer,
+          keyAlgorithm: hsmKeyAlgorithmToCertKeyAlgorithm(input.hsmKeyAlgorithm)
+        },
+        tx
+      );
     }
-    await verifyCodeSigningEku(
-      { certificateBodyDAL: deps.certificateBodyDAL, projectDAL: deps.projectDAL, kmsService: deps.kmsService },
-      { certificateId: issued.certificateId, projectId: ca.projectId, tx }
-    );
-    await deps.certificateDAL.updateById(
-      issued.certificateId,
-      {
-        keySource: CertKeySource.Hsm,
-        hsmConnectorId: input.hsmConnectorId,
-        hsmKeyLabel: keyLabel,
-        hsmKeyId: keyId,
-        hsmPublicKeySpki: publicKeySpkiDer,
-        keyAlgorithm: hsmKeyAlgorithmToCertKeyAlgorithm(input.hsmKeyAlgorithm)
-      },
-      tx
-    );
-    return issued.certificateId;
-  };
-  const certificateId = input.tx ? await run(input.tx) : await deps.projectDAL.transaction(run);
+  });
+  if (!issued.certificateId) {
+    throw new BadRequestError({ message: "Certificate authority did not return a certificate id." });
+  }
 
-  return { certificateId, hsmKeyLabel: keyLabel, hsmKeyId: keyId };
+  return { certificateId: issued.certificateId, hsmKeyLabel: keyLabel, hsmKeyId: keyId };
 };
 
 type THsmBackedRenewInput = {
@@ -326,7 +303,6 @@ type THsmBackedRenewInput = {
   hsmKeyId?: string | null;
   hsmKeyAlgorithm: HsmKeyAlgorithm;
   expectedPublicKeySpkiDer?: Buffer;
-  tx?: Knex;
 };
 
 type THsmBackedRenewDeps = THsmBackedDeps & {
@@ -382,41 +358,35 @@ export const renewHsmBackedSignerCertificate = async (
       })
   });
 
-  const run = async (tx: Knex) => {
-    const signResult = await deps.internalCertificateAuthorityService.signCertFromCa({
-      isInternal: true,
-      isFromProfile: true,
-      caId: ca.id,
-      csr: built.csrPem,
-      commonName: input.commonName,
-      ttl: `${input.certificateTtlDays}d`,
-      extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
-      tx
-    });
-    if (!signResult.certificateId) {
-      throw new BadRequestError({ message: "Certificate authority did not return a certificate id." });
+  const signResult = await deps.internalCertificateAuthorityService.signCertFromCa({
+    isInternal: true,
+    isFromProfile: true,
+    caId: ca.id,
+    csr: built.csrPem,
+    commonName: input.commonName,
+    ttl: `${input.certificateTtlDays}d`,
+    extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
+    onPersisted: async (newCert, tx) => {
+      assertIssuedWithCodeSigningEku(newCert);
+      await deps.certificateDAL.updateById(
+        newCert.id,
+        {
+          keySource: CertKeySource.Hsm,
+          hsmConnectorId: input.hsmConnectorId,
+          hsmKeyLabel: input.hsmKeyLabel,
+          hsmKeyId: input.hsmKeyId ?? null,
+          hsmPublicKeySpki: publicKeySpkiDer,
+          keyAlgorithm: hsmKeyAlgorithmToCertKeyAlgorithm(input.hsmKeyAlgorithm)
+        },
+        tx
+      );
     }
-    await verifyCodeSigningEku(
-      { certificateBodyDAL: deps.certificateBodyDAL, projectDAL: deps.projectDAL, kmsService: deps.kmsService },
-      { certificateId: signResult.certificateId, projectId: ca.projectId, tx }
-    );
-    await deps.certificateDAL.updateById(
-      signResult.certificateId,
-      {
-        keySource: CertKeySource.Hsm,
-        hsmConnectorId: input.hsmConnectorId,
-        hsmKeyLabel: input.hsmKeyLabel,
-        hsmKeyId: input.hsmKeyId ?? null,
-        hsmPublicKeySpki: publicKeySpkiDer,
-        keyAlgorithm: hsmKeyAlgorithmToCertKeyAlgorithm(input.hsmKeyAlgorithm)
-      },
-      tx
-    );
-    return signResult.certificateId;
-  };
-  const certificateId = input.tx ? await run(input.tx) : await deps.projectDAL.transaction(run);
+  });
+  if (!signResult.certificateId) {
+    throw new BadRequestError({ message: "Certificate authority did not return a certificate id." });
+  }
 
-  return { certificateId, hsmKeyLabel: input.hsmKeyLabel, hsmKeyId: input.hsmKeyId ?? null };
+  return { certificateId: signResult.certificateId, hsmKeyLabel: input.hsmKeyLabel, hsmKeyId: input.hsmKeyId ?? null };
 };
 
 const PUBLIC_KEY_PRECHECK_FALLBACK_CODES = [

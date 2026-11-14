@@ -1,7 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
-import { EntityNotFoundError, ExternalSystemError, RuleViolationError } from "@app/domains/lib/errors";
+import {
+  EntityNotFoundError,
+  ExternalSystemError,
+  RuleViolationError,
+  StateConflictError
+} from "@app/domains/lib/errors";
 import { isAwsError } from "@app/lib/aws/error";
 import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgres";
 
@@ -71,7 +76,8 @@ export const classifyError = (err: unknown): ErrorType => {
     return "permission";
   if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
   if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return "not_found";
-  if (err instanceof BadRequestError || err instanceof RuleViolationError) return "validation";
+  if (err instanceof BadRequestError || err instanceof RuleViolationError || err instanceof StateConflictError)
+    return "validation";
   // A varchar(n) overflow is a rejected input, so it should not inflate the db-error rate.
   if (err instanceof DatabaseError)
     return hasPostgresErrorCode(err, PostgresErrorCode.StringDataRightTruncation) ? "validation" : "db";

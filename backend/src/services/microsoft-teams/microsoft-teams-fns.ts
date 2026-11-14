@@ -4,15 +4,15 @@ import { TeamsActivityHandler, TurnContext } from "botbuilder";
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import { TMicrosoftTeamsIntegrationDALFactory } from "./microsoft-teams-integration-dal";
@@ -99,7 +99,7 @@ export const getMicrosoftTeamsAccessToken = async (
     tenantId,
     clientId,
     clientSecret,
-    kmsService,
+    kmsDataKeyService,
     microsoftTeamsIntegrationDAL,
     getBotFrameworkToken
   }: {
@@ -108,12 +108,14 @@ export const getMicrosoftTeamsAccessToken = async (
     tenantId: string;
     clientId: string;
     clientSecret: string;
-    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    kmsDataKeyService: TKmsDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     getBotFrameworkToken?: boolean;
   },
   tx?: Knex
 ) => {
+  const cipherSource = dataKeysOn(kmsDataKeyService, tx);
+
   try {
     const details = getBotFrameworkToken
       ? {
@@ -145,7 +147,7 @@ export const getMicrosoftTeamsAccessToken = async (
         integration.botAccessTokenExpiresAt &&
         integration.botAccessTokenExpiresAt > currentTime
       ) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await cipherSource.createCipherPairWithDataKey({
           orgId,
           type: KmsDataKey.Organization
         });
@@ -165,7 +167,7 @@ export const getMicrosoftTeamsAccessToken = async (
         integration.accessTokenExpiresAt &&
         integration.accessTokenExpiresAt > currentTime
       ) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await cipherSource.createCipherPairWithDataKey({
           orgId,
           type: KmsDataKey.Organization
         });
@@ -189,7 +191,7 @@ export const getMicrosoftTeamsAccessToken = async (
     );
 
     if (getBotFrameworkToken) {
-      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor } = await cipherSource.createCipherPairWithDataKey({
         orgId,
         type: KmsDataKey.Organization
       });
@@ -211,7 +213,7 @@ export const getMicrosoftTeamsAccessToken = async (
         tx
       );
     } else {
-      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor } = await cipherSource.createCipherPairWithDataKey({
         orgId,
         type: KmsDataKey.Organization
       });
@@ -255,7 +257,7 @@ export const isBotInstalledInTenant = async (
     botAppPassword,
     botId,
     orgId,
-    kmsService,
+    kmsDataKeyService,
     microsoftTeamsIntegrationDAL,
     microsoftTeamsIntegrationId
   }: {
@@ -264,7 +266,7 @@ export const isBotInstalledInTenant = async (
     botAppPassword: string;
     botId: string;
     orgId: string;
-    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    kmsDataKeyService: TKmsDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     microsoftTeamsIntegrationId: string;
   },
@@ -278,7 +280,7 @@ export const isBotInstalledInTenant = async (
         clientSecret: botAppPassword.toString(),
         getBotFrameworkToken: true,
         orgId,
-        kmsService,
+        kmsDataKeyService,
         microsoftTeamsIntegrationDAL,
         microsoftTeamsIntegrationId
       },
@@ -291,7 +293,7 @@ export const isBotInstalledInTenant = async (
         tenantId,
         clientId: botAppId.toString(),
         clientSecret: botAppPassword.toString(),
-        kmsService,
+        kmsDataKeyService,
         microsoftTeamsIntegrationDAL,
         microsoftTeamsIntegrationId
       },

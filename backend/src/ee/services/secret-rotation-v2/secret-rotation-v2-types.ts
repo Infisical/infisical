@@ -1,9 +1,9 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
@@ -554,7 +554,7 @@ export type TRotationFactory<
 > = (
   secretRotation: T,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsDataKeyService: TKmsDataKeyService,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   keyStore: Pick<TKeyStoreFactory, "acquireLock">,

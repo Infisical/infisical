@@ -2,8 +2,9 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -57,7 +58,6 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
@@ -124,7 +124,7 @@ import {
   insertMetadataForCertificateRequest
 } from "../resource-metadata/resource-metadata-fns";
 import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
-import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
+import { persistSelfSignedCertificate, prepareSelfSignedCertificate } from "./certificate-self-signed-fns";
 import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
@@ -175,10 +175,8 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   projectDAL: TProjectDALFactory;
   certificateIssuanceQueue: Pick<
     import("../certificate-authority/certificate-issuance-queue").TCertificateIssuanceQueueFactory,
@@ -353,7 +351,8 @@ export const certificateV3ServiceFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   projectDAL,
   certificateIssuanceQueue,
   certificateRequestService,
@@ -896,23 +895,37 @@ export const certificateV3ServiceFactory = ({
         flowDefaultTtl: ""
       });
 
-      const result = await certificateDAL.transaction(async (tx) => {
-        const effectiveAlgorithms = getEffectiveAlgorithms(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
+      const effectiveAlgorithms = getEffectiveAlgorithms(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
+      const preparedSelfSigned = await prepareSelfSignedCertificate({
+        certificateRequest: {
+          ...certificateRequestWithDefaults,
+          validity: { ttl: resolvedTtl }
+        },
+        policy,
+        projectId: profile.projectId,
+        customExtensions: resolvedCustomExtensions,
+        effectiveAlgorithms,
+        kmsDataKeyService,
+        kmsKeyService
+      });
+      const effectiveApiConfig = await resolveEffectiveApiConfig({
+        applicationId,
+        profileId: profile.id,
+        profileApiConfig: profile.apiConfig,
+        pkiApplicationProfileDAL,
+        apiEnrollmentConfigDAL
+      });
 
-        const processResult = await processSelfSignedCertificate({
-          certificateRequest: {
-            ...certificateRequestWithDefaults,
-            validity: { ttl: resolvedTtl }
-          },
-          policy,
+      const result = await certificateDAL.transaction(async (tx) => {
+        const processResult = await persistSelfSignedCertificate({
+          prepared: preparedSelfSigned,
+          certificateRequest: certificateRequestWithDefaults,
           profile,
           customExtensions: resolvedCustomExtensions,
           effectiveAlgorithms,
           certificateDAL,
           certificateBodyDAL,
           certificateSecretDAL,
-          kmsService,
-          projectDAL,
           tx
         });
 
@@ -963,13 +976,6 @@ export const certificateV3ServiceFactory = ({
           });
         }
 
-        const effectiveApiConfig = await resolveEffectiveApiConfig({
-          applicationId,
-          profileId: profile.id,
-          profileApiConfig: profile.apiConfig,
-          pkiApplicationProfileDAL,
-          apiEnrollmentConfigDAL
-        });
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           { apiConfig: effectiveApiConfig },
           resolvedTtl,
@@ -1115,69 +1121,22 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
       : undefined;
 
-    const {
-      certificate,
-      certificateChain,
-      issuingCaCertificate,
-      privateKey,
-      serialNumber,
-      cert,
-      certificateRequestId
-    } = await certificateDAL.transaction(async (tx) => {
-      const baseCertParams = {
-        caId: ca.id,
-        friendlyName: certificateSubject.common_name || "Certificate",
-        commonName: certificateSubject.common_name || "",
-        altNames: subjectAlternativeNames,
-        altNameEntries: certificateRequestWithDefaults.altNames,
-        basicConstraints: caBasicConstraints,
-        pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
-        ttl: resolveEffectiveTtl({
-          requestTtl: certificateRequest.validity.ttl,
-          profileDefaultTtlDays: profile.defaults?.ttlDays,
-          policyMaxValidity: policy?.validity?.max,
-          flowDefaultTtl: ""
-        }),
-        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
-        notBefore: normalizeDateForApi(certificateRequest.notBefore),
-        notAfter: normalizeDateForApi(certificateRequest.notAfter),
-        signatureAlgorithm: effectiveSignatureAlgorithm,
-        keyAlgorithm: effectiveKeyAlgorithm,
-        isFromProfile: true,
-        organization: certificateRequestWithDefaults.organization,
-        ou: certificateRequestWithDefaults.organizationalUnit,
-        country: certificateRequestWithDefaults.country,
-        state: certificateRequestWithDefaults.state,
-        locality: certificateRequestWithDefaults.locality,
-        domainComponents: certificateRequestWithDefaults.domainComponents,
-        customExtensions: resolvedCustomExtensions,
-        tx
-      };
+    const effectiveTtl = resolveEffectiveTtl({
+      requestTtl: certificateRequest.validity.ttl,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: ""
+    });
+    const effectiveApiConfig = await resolveEffectiveApiConfig({
+      applicationId,
+      profileId: profile.id,
+      profileApiConfig: profile.apiConfig,
+      pkiApplicationProfileDAL,
+      apiEnrollmentConfigDAL
+    });
 
-      const certResult = await internalCaService.issueCertFromCa({
-        ...baseCertParams,
-        internal: true as const
-      });
-
-      const certificateRecord = await certificateDAL.findById(certResult.certificateId, tx);
-      if (!certificateRecord) {
-        throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
-      }
-      const effectiveTtl = resolveEffectiveTtl({
-        requestTtl: certificateRequest.validity.ttl,
-        profileDefaultTtlDays: profile.defaults?.ttlDays,
-        policyMaxValidity: policy?.validity?.max,
-        flowDefaultTtl: ""
-      });
-
-      const effectiveApiConfig = await resolveEffectiveApiConfig({
-        applicationId,
-        profileId: profile.id,
-        profileApiConfig: profile.apiConfig,
-        pkiApplicationProfileDAL,
-        apiEnrollmentConfigDAL
-      });
+    const $recordInternalCaIssuance = async (certificateRecord: TCertificates, tx: Knex): Promise<string> => {
+      const certResult = { certificateId: certificateRecord.id };
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         { apiConfig: effectiveApiConfig },
         effectiveTtl,
@@ -1254,8 +1213,44 @@ export const certificateV3ServiceFactory = ({
         tx
       );
 
-      return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
-    });
+      return certRequestResult.id;
+    };
+
+    const persisted: { cert?: TCertificates; certificateRequestId?: string } = {};
+    const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber } =
+      await internalCaService.issueCertFromCa({
+        caId: ca.id,
+        friendlyName: certificateSubject.common_name || "Certificate",
+        commonName: certificateSubject.common_name || "",
+        altNames: subjectAlternativeNames,
+        altNameEntries: certificateRequestWithDefaults.altNames,
+        basicConstraints: caBasicConstraints,
+        pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
+        ttl: effectiveTtl,
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
+        notBefore: normalizeDateForApi(certificateRequest.notBefore),
+        notAfter: normalizeDateForApi(certificateRequest.notAfter),
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        keyAlgorithm: effectiveKeyAlgorithm,
+        isFromProfile: true,
+        organization: certificateRequestWithDefaults.organization,
+        ou: certificateRequestWithDefaults.organizationalUnit,
+        country: certificateRequestWithDefaults.country,
+        state: certificateRequestWithDefaults.state,
+        locality: certificateRequestWithDefaults.locality,
+        domainComponents: certificateRequestWithDefaults.domainComponents,
+        customExtensions: resolvedCustomExtensions,
+        internal: true as const,
+        onPersisted: async (certificateRecord, tx) => {
+          persisted.cert = certificateRecord;
+          persisted.certificateRequestId = await $recordInternalCaIssuance(certificateRecord, tx);
+        }
+      });
+    const { cert, certificateRequestId } = persisted;
+    if (!cert || !certificateRequestId) {
+      throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
+    }
 
     let finalCertificateChain = bufferToString(certificateChain);
     if (removeRootsFromChain) {
@@ -2349,7 +2344,8 @@ export const certificateV3ServiceFactory = ({
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     projectDAL,
     certificateIssuanceQueue,
     certificateRequestService,

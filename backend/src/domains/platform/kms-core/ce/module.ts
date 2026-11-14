@@ -1,0 +1,147 @@
+import type { Knex } from "knex";
+
+import { TDbClient } from "@app/db";
+import type { TDomainKeyStore } from "@app/domains/lib/key-store";
+import { TTransactionRunner } from "@app/domains/lib/transactions";
+import { CronJobName, type TCronJobFactory } from "@app/lib/cron/cron-job";
+import { crypto } from "@app/lib/crypto/cryptography";
+import type { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
+
+import { buildKmsCoreStoreAccess } from "./data-access/kms-core-stores";
+import { ProjectDataKeyCache } from "./data-access/project-data-key-cache";
+import { RootKey } from "./models/root-key";
+import { KmsDataKeyService, TKmsDataKeyService } from "./services/data-key/service";
+import { TKmsCoreHooks, TKmsCoreStores } from "./services/dependencies";
+import { KmsKeyService, TKmsKeyService } from "./services/kms-key/service";
+import { loadRootKey } from "./services/root-key/load-root-key";
+import { KmsRootKeyService, TKmsCoreEnv, TKmsRootKeyService } from "./services/root-key/service";
+
+export type { TCipherPair, TDecryptor, TEncryptor } from "./models/data-key";
+export { KmsCiphertextUndecryptableError } from "./models/kms-ciphertext-undecryptable-error";
+export { KmsKeyUsage } from "./models/kms-key";
+export type { TKmsKeyDetails, TKmsKeyRecord } from "./models/kms-key";
+export { RootKeyEncryptionStrategy } from "./models/root-key-config";
+export { WrappedKeyPayload } from "./models/wrapped-key";
+export { KmsDataKey, KmsType } from "./services/data-key/service";
+export type {
+  TKmsDataKeyService,
+  TKmsDataKeyTransaction,
+  TEncryptWithKmsDataKeyDTO,
+  TUpdateProjectSecretManagerKmsKeyDTO
+} from "./services/data-key/service";
+export type {
+  TCreateExternalKmsInput,
+  TExternalKmsConfig,
+  TExternalKmsDetails,
+  TExternalKmsHook,
+  TExternalKmsSummary,
+  TKmsCoreHooks,
+  TKmsKeyFilter,
+  TRootKeyWrapper,
+  TUpdateExternalKmsInput
+} from "./services/dependencies";
+export type { TAsyncDecryptor, TAsyncEncryptor } from "./services/helpers/key-cipher";
+export { ReadFrom } from "@app/domains/lib/data-access";
+export type { TReadOptions } from "@app/domains/lib/data-access";
+export { KmsKeyOrderBy } from "./services/kms-key/service";
+export type {
+  TGenerateKMSDTO,
+  TImportKeyMaterialDTO,
+  TKmsKeyAttributes,
+  TKmsKeyService,
+  TKmsKeyTransaction,
+  TListKmsKeysDTO,
+  TSignWithKmsDTO,
+  TVerifyWithKmsDTO
+} from "./services/kms-key/service";
+export type {
+  TCreatedRotation,
+  TEncryptionStrategyOption,
+  TKmsCoreEnv,
+  TKmsRootKeyService,
+  TRootKeyStatus,
+  TRotationHistoryEntry
+} from "./services/root-key/service";
+
+export type TKmsCoreStoreAccess = {
+  transactionRunner: TTransactionRunner<TKmsCoreStores>;
+  // Outside a transaction: the replica on the server.
+  stores: TKmsCoreStores;
+};
+
+export type TKmsCoreDeps = (
+  | {
+      db: TDbClient;
+      // Where reads outside a transaction go: the replica on the server, the same connection in a migration (never
+      // the global replica, which a migration must not read through).
+      readKnex: () => Knex;
+    }
+  // Tests pass in-memory stores instead.
+  | TKmsCoreStoreAccess
+) & {
+  env: TKmsCoreEnv;
+  originalEnv?: TLegacyKeySnapshot;
+  hooks: TKmsCoreHooks;
+  // Redis, for the project data-key cache. Left out where there is no Redis (migrations, most tests).
+  keyStore?: TDomainKeyStore;
+  isFipsEnabled?: () => boolean;
+  /**
+   * For callers inside a database migration: loads only the root key, with no promotion, labels or legacy snapshot,
+   * which historical migrations predate.
+   */
+  skipRotationState?: boolean;
+};
+
+// The root key, internal KMS keys, org and project keys, HSM and external keys (through hooks), and root key
+// rotation. Owns kms_keys, internal_kms, internal_kms_key_version, external_kms, kms_root_config,
+// kms_kek_history, kms_legacy_encryption_keys, and the key columns on organizations and projects.
+export class KmsCoreModule {
+  readonly name = "kms-core";
+
+  private constructor(
+    readonly kmsRootKeyService: TKmsRootKeyService,
+    readonly kmsKeyService: TKmsKeyService,
+    readonly kmsDataKeyService: TKmsDataKeyService
+  ) {}
+
+  // Loads the root key (bootstrapping it on a new instance) before any service exists, so none can run without it.
+  // Built after KmsCoreEeModule, which may need the HSM to unwrap it.
+  static async create(deps: TKmsCoreDeps): Promise<KmsCoreModule> {
+    const { transactionRunner, stores } = "db" in deps ? buildKmsCoreStoreAccess(deps.db, deps.readKnex) : deps;
+    const isFipsEnabled = deps.isFipsEnabled ?? (() => crypto.isFipsModeEnabled());
+    const { rootKeyWrapper, externalKms } = deps.hooks;
+
+    const rootKey: RootKey = await loadRootKey({
+      transactionRunner,
+      stores,
+      env: deps.env,
+      originalEnv: deps.originalEnv,
+      isFipsEnabled,
+      rootKeyWrapper,
+      skipRotationState: deps.skipRotationState
+    });
+
+    const kmsRootKeyService = new KmsRootKeyService(
+      transactionRunner,
+      stores,
+      rootKey,
+      deps.env,
+      isFipsEnabled,
+      rootKeyWrapper
+    );
+    const cache = deps.keyStore ? new ProjectDataKeyCache(deps.keyStore) : undefined;
+    const kmsDataKeyService = new KmsDataKeyService(transactionRunner, stores, rootKey, externalKms, cache);
+    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms, kmsDataKeyService);
+    return new KmsCoreModule(kmsRootKeyService, kmsKeyService, kmsDataKeyService);
+  }
+
+  // Registers the weekly removal of root keys past their retention.
+  start(cronJob: Pick<TCronJobFactory, "register">) {
+    cronJob.register({
+      name: CronJobName.KmsRootKeyCleanup,
+      pattern: "0 3 * * 0",
+      runHashTtlS: 60 * 60,
+      handler: () => this.kmsRootKeyService.removeInactiveKeys()
+    });
+  }
+}
