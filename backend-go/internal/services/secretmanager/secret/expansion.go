@@ -17,6 +17,14 @@ func (r AbsoluteSecretRef) CacheKey() string {
 	return r.Env + ":" + r.Path + ":" + r.Key
 }
 
+// expansionContext identifies the environment/path that a value belongs to when
+// that value was reached through an absolute reference. Relative references
+// inside such a value resolve against its own board, not the requesting one.
+type expansionContext struct {
+	env  string
+	path string
+}
+
 // ExpandOpts configures the expansion behavior.
 type ExpandOpts struct {
 	// CanAccessAbsolute checks if the actor can access an absolute reference.
@@ -149,7 +157,7 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 			continue
 		}
 
-		expanded, needed := e.expandValue(sec.Value, make(map[string]struct{}), 0)
+		expanded, needed := e.expandValue(sec.Value, make(map[string]struct{}), 0, nil)
 		sec.Value = expanded
 
 		if len(needed) == 0 && !hasReferences(expanded) {
@@ -179,7 +187,11 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 // This happens because the outer ${A} resolves to the inner expansion result,
 // where the cycle was detected and replaced with empty string. This is intentional
 // behavior matching the Node.js implementation.
-func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, depth int) (string, []AbsoluteSecretRef) {
+//
+// ctx is nil for values owned by the requesting board. It is set to the referenced
+// environment/path when expanding a value reached through an absolute reference, so
+// nested relative references resolve in that board rather than the requesting one.
+func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, depth int, ctx *expansionContext) (string, []AbsoluteSecretRef) {
 	if depth > maxExpansionDepth {
 		return value, nil
 	}
@@ -201,45 +213,92 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 		var found bool
 
 		if len(parts) == 1 {
-			// Relative reference: ${KEY}
-			found = true // Always replace relative refs (with empty if not found)
-			if sec := e.localLookup[parts[0]]; sec != nil {
-				secretID = sec.Environment + ":" + sec.SecretPath + ":" + sec.Secret.Key
+			if ctx != nil {
+				// Relative reference inside a value reached through an absolute
+				// reference: it belongs to the referenced environment/path.
+				if sec, ok := e.absoluteLookup[ctx.env+":"+ctx.path][parts[0]]; ok {
+					found = true
+					secretID = sec.Environment + ":" + sec.SecretPath + ":" + sec.Secret.Key
 
-				if _, cyclic := visited[secretID]; !cyclic {
-					visited[secretID] = struct{}{}
-					expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
-					delete(visited, secretID)
-					resolvedValue = expandedValue
-					neededRefs = append(neededRefs, moreNeeded...)
+					if _, cyclic := visited[secretID]; !cyclic {
+						visited[secretID] = struct{}{}
+						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1, ctx)
+						delete(visited, secretID)
+
+						if len(moreNeeded) > 0 {
+							// Substituting now would lose the referenced board
+							// context, so retry once those refs are fetched.
+							// If they are already settled as missing, drop them
+							// so the reference does not stay unresolved forever.
+							if unavailable, settled := e.settledUnavailableRefs(moreNeeded); settled {
+								resolvedValue = replaceRefsInValue(expandedValue, unavailable)
+							} else {
+								neededRefs = append(neededRefs, moreNeeded...)
+								continue
+							}
+						} else {
+							resolvedValue = expandedValue
+						}
+					}
+					// else: cyclic, resolvedValue stays ""
+				} else {
+					ref := AbsoluteSecretRef{Env: ctx.env, Path: ctx.path, Key: parts[0]}
+					if _, requested := e.requestedRefs[ref.CacheKey()]; requested {
+						// Already fetched and not available: missing reference.
+						found = true // resolvedValue stays ""
+					} else {
+						// Not fetched yet: request it from the referenced board
+						// and leave the reference in place for the next pass.
+						neededRefs = append(neededRefs, ref)
+						continue
+					}
 				}
-				// else: cyclic, resolvedValue stays ""
+			} else {
+				// Relative reference on the requesting board: ${KEY}
+				found = true // Always replace relative refs (with empty if not found)
+				if sec := e.localLookup[parts[0]]; sec != nil {
+					secretID = sec.Environment + ":" + sec.SecretPath + ":" + sec.Secret.Key
+
+					if _, cyclic := visited[secretID]; !cyclic {
+						visited[secretID] = struct{}{}
+						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1, nil)
+						delete(visited, secretID)
+						resolvedValue = expandedValue
+						neededRefs = append(neededRefs, moreNeeded...)
+					}
+					// else: cyclic, resolvedValue stays ""
+				}
+				// else: not found, resolvedValue stays "" (missing ref becomes empty)
 			}
-			// else: not found, resolvedValue stays "" (missing ref becomes empty)
 		} else {
 			// Absolute reference: ${env.path.KEY}
-			env := parts[0]
-			secretKey := parts[len(parts)-1]
-			pathParts := parts[1 : len(parts)-1]
-			path := "/"
-			if len(pathParts) > 0 {
-				path = "/" + strings.Join(pathParts, "/")
-			}
-
-			ref := AbsoluteSecretRef{Env: env, Path: path, Key: secretKey}
+			ref := absoluteRefFromParts(parts)
 			secretID = ref.CacheKey()
-			locationKey := env + ":" + path
+			locationKey := ref.Env + ":" + ref.Path
 
 			if secrets, ok := e.absoluteLookup[locationKey]; ok {
-				if sec, ok := secrets[secretKey]; ok {
+				if sec, ok := secrets[ref.Key]; ok {
 					found = true
 
 					if _, cyclic := visited[secretID]; !cyclic {
 						visited[secretID] = struct{}{}
-						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
+						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1, expansionContextFor(sec))
 						delete(visited, secretID)
-						resolvedValue = expandedValue
-						neededRefs = append(neededRefs, moreNeeded...)
+
+						if len(moreNeeded) > 0 {
+							// Retry once the referenced secret's own references
+							// are fetched, so they keep resolving in its board.
+							// If they are already settled as missing, drop them
+							// so the outer reference can resolve.
+							if unavailable, settled := e.settledUnavailableRefs(moreNeeded); settled {
+								resolvedValue = replaceRefsInValue(expandedValue, unavailable)
+							} else {
+								neededRefs = append(neededRefs, moreNeeded...)
+								continue
+							}
+						} else {
+							resolvedValue = expandedValue
+						}
 					}
 					// else: cyclic, resolvedValue stays ""
 				}
@@ -320,19 +379,10 @@ func (e *SecretExpander) replaceAbsoluteRefsWith(refs map[string]struct{}, repla
 		matches := interpolationRegex.FindAllStringSubmatch(sec.Value, -1)
 		for _, match := range matches {
 			syntax := match[0]
-			refKey := match[1]
-			parts := strings.Split(refKey, ".")
+			parts := strings.Split(match[1], ".")
 
 			if len(parts) > 1 {
-				env := parts[0]
-				secretKey := parts[len(parts)-1]
-				pathParts := parts[1 : len(parts)-1]
-				path := "/"
-				if len(pathParts) > 0 {
-					path = "/" + strings.Join(pathParts, "/")
-				}
-
-				ref := AbsoluteSecretRef{Env: env, Path: path, Key: secretKey}
+				ref := absoluteRefFromParts(parts)
 				if _, match := refs[ref.CacheKey()]; match {
 					sec.Value = strings.ReplaceAll(sec.Value, syntax, replacement)
 				}
@@ -343,4 +393,71 @@ func (e *SecretExpander) replaceAbsoluteRefsWith(refs map[string]struct{}, repla
 
 func hasReferences(value string) bool {
 	return interpolationRegex.MatchString(value)
+}
+
+// absoluteRefFromParts builds a reference from the dot-separated parts of ${...}.
+func absoluteRefFromParts(parts []string) AbsoluteSecretRef {
+	ref := AbsoluteSecretRef{Env: parts[0], Path: "/", Key: parts[len(parts)-1]}
+	if len(parts) > 2 {
+		ref.Path = "/" + strings.Join(parts[1:len(parts)-1], "/")
+	}
+	return ref
+}
+
+// expansionContextFor returns the board that a referenced value's own relative
+// references belong to. Imported values resolve in their source folder.
+func expansionContextFor(sec *ProcessedSecret) *expansionContext {
+	env, path := sec.Environment, sec.SecretPath
+	if sec.IsImported {
+		if sec.ImportEnvironment != "" {
+			env = sec.ImportEnvironment
+		}
+		if sec.ImportPath != "" {
+			path = sec.ImportPath
+		}
+	}
+	return &expansionContext{env: env, path: path}
+}
+
+// settledUnavailableRefs reports whether every ref has already been requested
+// (or denied) and none is available, so it is safe to replace them with "".
+func (e *SecretExpander) settledUnavailableRefs(refs []AbsoluteSecretRef) (map[string]struct{}, bool) {
+	if len(refs) == 0 {
+		return nil, false
+	}
+
+	unavailable := make(map[string]struct{}, len(refs))
+	for _, ref := range refs {
+		key := ref.CacheKey()
+		if _, denied := e.deniedRefs[key]; denied {
+			unavailable[key] = struct{}{}
+			continue
+		}
+		if _, requested := e.requestedRefs[key]; !requested {
+			return nil, false
+		}
+		if secrets, ok := e.absoluteLookup[ref.Env+":"+ref.Path]; ok {
+			if _, found := secrets[ref.Key]; found {
+				return nil, false
+			}
+		}
+		unavailable[key] = struct{}{}
+	}
+	return unavailable, true
+}
+
+// replaceRefsInValue replaces the given absolute references with "" in value.
+func replaceRefsInValue(value string, refs map[string]struct{}) string {
+	matches := interpolationRegex.FindAllStringSubmatch(value, -1)
+	for _, match := range matches {
+		parts := strings.Split(match[1], ".")
+		if len(parts) < 2 {
+			continue
+		}
+		ref := absoluteRefFromParts(parts)
+		if _, ok := refs[ref.CacheKey()]; ok {
+			value = strings.ReplaceAll(value, match[0], "")
+		}
+	}
+	return value
 }
