@@ -241,7 +241,9 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   a grant drops the bundle's services like an owner's lost grant, with no 401.
 - **Listing access bundles with `onBehalfOfUserId` or `onBehalfOfUserEmail` runs mint's delegation and user checks**
   (`agent-vault-on-behalf-of-fns.ts`, shared by both), then returns the bundles the user and the identity both reach,
-  with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints.
+  with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints. The
+  services list does the same, and its `personalValues` say only which of the user's values are set: never the
+  personal variables those values use or the user's OAuth connection, which only the user may read.
 - **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
   who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
   as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
@@ -385,9 +387,19 @@ inline services share, so reads (`withSessionServices`) return both kinds in the
   and deleting the service drops it by cascade. A named service resolves with `accessBundleId` and `accessBundleName`
   null, like an inline one; catalog names are unique per project, so the proxy's inline-first rule never has two
   candidates.
+- **A named service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
+  re-credentials one host of a wildcard service with a second service for that host. Naming the wildcard service alone
+  would drop that, so `findOverridesOfNamedServices` adds every service that a bundle in the owner's reach holding the
+  named service uses for one of its hosts, and their own overrides in turn, read live on each resolve. They resolve with
+  `isOverride`, credited to that bundle, and go out after inline services, so they only take a host no other service in
+  the session names exactly. Not when the reach is every bundle: that owner could name the wildcard service alone
+  anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or naming becomes a way
+  round a bundle's override.
 - **Names are unique across the whole `services` array**, named and inline together, refused in the schema (422) like a
   duplicate inline name. Host patterns are checked like a bundle's services: named against the bundle's and each other at
-  mint, and inline against both (`assertNoNamedServiceConflicts`).
+  mint, and inline against both (`assertNoNamedServiceConflicts`). The named check runs off the replica to fail fast,
+  then again in the mint's transaction under `AgentVaultServiceNames` on the primary, because an admin can add a
+  service to the bundle or change a host right then.
 - **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `isInline: false`); the
   service's settings belong to the services API, which a member reaches through their bundles.
 

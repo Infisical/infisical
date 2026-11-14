@@ -139,17 +139,24 @@ const GITHUB: TCatalogEntry = { id: "svc-github", name: "github", hostPattern: "
 const LINEAR: TCatalogEntry = { id: "svc-linear", name: "linear", hostPattern: "api.linear.app" };
 
 // A user who either reaches every bundle (an Admin) or holds grants to `grantedBundleIds`, in a project whose services
-// are `catalog`, each in the bundles `bundlesOf` lists.
+// are `catalog`, each in the bundles `bundlesOf` lists. `bundleServices` is what each bundle holds as the replica
+// sees it, and `bundleServicesOnPrimary` as a transaction does, when a write the replica hasn't caught up with matters.
 const buildNamingService = ({
   isAdmin,
   grantedBundleIds = [],
   catalog = [GITHUB, LINEAR],
-  bundlesOf = {}
+  bundlesOf = {},
+  bundles = [],
+  bundleServices = {},
+  bundleServicesOnPrimary = bundleServices
 }: {
   isAdmin: boolean;
   grantedBundleIds?: string[];
   catalog?: TCatalogEntry[];
   bundlesOf?: Record<string, string[]>;
+  bundles?: { id: string; name: string }[];
+  bundleServices?: Record<string, TCatalogEntry[]>;
+  bundleServicesOnPrimary?: Record<string, TCatalogEntry[]>;
 }) => {
   const insertNamed = vi.fn();
   const insertForSession = vi.fn(async ({ services }: { services: TAgentVaultInlineServiceInsert[] }) =>
@@ -167,9 +174,16 @@ const buildNamingService = ({
     agentVaultSessionInlineServiceDAL: { insertForSession },
     agentVaultSessionServiceDAL: { insertMany: insertNamed },
     agentVaultSessionInlineSkillDAL: { insertForSession: vi.fn(async () => []) },
-    agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
+    agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue(bundles) },
     agentVaultServiceDAL: {
-      findByAccessBundleId: vi.fn().mockResolvedValue([]),
+      find: vi.fn(async ({ $in }: { $in: { id: string[] } }) =>
+        catalog
+          .filter((entry) => $in.id.includes(entry.id))
+          .map((entry) => ({ type: AgentVaultServiceType.Http, description: null, ...entry }))
+      ),
+      findByAccessBundleId: vi.fn(
+        async (bundleId: string, tx?: unknown) => (tx ? bundleServicesOnPrimary : bundleServices)[bundleId] ?? []
+      ),
       findCatalogByNames: vi.fn(async ({ names }: { names: string[] }) =>
         catalog
           .filter((entry) => names.includes(entry.name))
@@ -268,6 +282,31 @@ describe("mintSession, project services named in services", () => {
     await expect(mintWith(service, ["github", inline("api.github.com", "gh-direct")])).rejects.toThrow(
       "which 'github', a service this session names, already covers"
     );
+  });
+
+  test("refuses a named service that a service just added to the bundle covers, though the replica hasn't seen it", async () => {
+    const proxy = { id: "svc-gh-proxy", name: "gh-proxy", hostPattern: "api.github.com" };
+    const { service, insertNamed } = buildNamingService({
+      isAdmin: true,
+      bundles: [{ id: "bundle-1", name: "engineering" }],
+      bundleServices: { "bundle-1": [] },
+      bundleServicesOnPrimary: { "bundle-1": [proxy] }
+    });
+
+    await expect(
+      service.mintSession({
+        projectId: PROJECT_ID,
+        ctx,
+        accessBundle: "engineering",
+        services: ["github"],
+        actorName: "Ana Silva",
+        actorEmail: null,
+        label: null
+      })
+    ).rejects.toThrow(
+      "The services 'github' and 'gh-proxy' both cover api.github.com:443, so one session can't carry both."
+    );
+    expect(insertNamed).not.toHaveBeenCalled();
   });
 });
 

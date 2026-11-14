@@ -2335,8 +2335,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     {
       projectId,
       ctx,
-      owner = ownerOrNullOf(ctx)
-    }: { projectId: string; ctx: TGetAccessBundleDTO["ctx"]; owner?: ReturnType<typeof ownerOrNullOf> },
+      owner = ownerOrNullOf(ctx),
+      isOnBehalfOf = false
+    }: {
+      projectId: string;
+      ctx: TGetAccessBundleDTO["ctx"];
+      owner?: ReturnType<typeof ownerOrNullOf>;
+      isOnBehalfOf?: boolean;
+    },
     services: TAgentVaultCatalogService[],
     accessBundleIds: string[] | null,
     visibility: ReturnType<typeof serviceVisibilityOf>
@@ -2350,17 +2356,29 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             projectId,
             owner,
             accessBundleIds,
-            includeUnlinked: true
+            includeUnlinked: true,
+            withVariableReferences: !isOnBehalfOf
           })
         : []
     ]);
-    return services.map((service) => ({
-      ...viewService(service, transformations, {
+    return services.map((service) => {
+      const view = viewService(service, transformations, {
         ...visibility,
         status: statuses.find((entry) => entry.serviceId === service.id)
-      }),
-      accessBundles: bundlesByService.get(service.id) ?? []
-    }));
+      });
+      return {
+        ...view,
+        // Another user's values say only what is set: the variables they use and the user's OAuth connection are theirs.
+        personalValues:
+          isOnBehalfOf && view.personalValues
+            ? {
+                isConfigured: view.personalValues.isConfigured,
+                fields: view.personalValues.fields.map(({ field, isSet, updatedAt }) => ({ field, isSet, updatedAt }))
+              }
+            : view.personalValues,
+        accessBundles: bundlesByService.get(service.id) ?? []
+      };
+    });
   };
 
   const $readServicesAccess = async (dto: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] }) => {
@@ -2412,7 +2430,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
     return {
       services: await $viewServices(
-        { projectId, ctx, owner },
+        { projectId, ctx, owner, isOnBehalfOf: Boolean(onBehalfOf) },
         services,
         onBehalfOf ? scopeBundleIds : accessBundleIds,
         visibility

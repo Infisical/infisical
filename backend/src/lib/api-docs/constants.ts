@@ -4822,7 +4822,7 @@ export const AGENT_VAULT = {
     granted:
       "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
     onBehalfOfUserId:
-      "List the services a session on behalf of this user could name: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+      "List the services a session on behalf of this user could name: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
       "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     orderBy: "What to sort services by: name, type, or createdAt.",
@@ -5004,11 +5004,15 @@ export const AGENT_VAULT = {
     isSet: "Whether you have set this value.",
     updatedAt: "When this value last changed, or null if you haven't set it.",
     variableReferences: "Your personal variables that this value uses.",
+    serviceVariableReferences:
+      "Your personal variables that this value uses. Left out when a machine identity lists services on a user's behalf.",
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
     value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`,
     oauth:
       "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field.",
+    serviceOauth:
+      "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field, and left out when a machine identity lists services on a user's behalf.",
     oauthStatus:
       "`connected`, `needs-reauthorization` (your login is no longer accepted, so connect again; until then your sessions can't use the service), or `needs-additional-scopes` (the MCP server asked for scopes your connection lacks; connect again to grant them).",
     oauthRequiredScopes: "Scopes the MCP server asked for that your connection lacks. Connect again to grant them.",

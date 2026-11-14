@@ -1427,40 +1427,55 @@ export const AgentVaultVariableSchema = z.object({
 
 const personalValueFieldSchema = z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.PERSONAL_VALUE.field);
 
+const personalValueVariableReferencesSchema = z
+  .object({
+    variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+    key: z.string().describe(AGENT_VAULT.VARIABLE.key)
+  })
+  .array();
+
+const personalValueOauthSchema = z
+  .object({
+    status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.PERSONAL_VALUE.oauthStatus),
+    issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+    grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
+    requiredScopes: z.string().array().describe(AGENT_VAULT.PERSONAL_VALUE.oauthRequiredScopes),
+    expiresAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthExpiresAt),
+    authorizedAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthAuthorizedAt),
+    lastError: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthLastError)
+  })
+  .nullable();
+
+const personalValueFieldStatusSchema = z.object({
+  field: personalValueFieldSchema,
+  isSet: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isSet),
+  updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
+  variableReferences: personalValueVariableReferencesSchema.describe(AGENT_VAULT.PERSONAL_VALUE.variableReferences),
+  oauth: personalValueOauthSchema.describe(AGENT_VAULT.PERSONAL_VALUE.oauth)
+});
+
 // The caller's own values for one service. Fields are listed as descriptors, so a custom header or substitution left
 // to members can join them with its id and no change to this shape.
 export const AgentVaultPersonalValuesSchema = z
   .object({
     isConfigured: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isConfigured),
-    fields: z
-      .object({
-        field: personalValueFieldSchema,
-        isSet: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isSet),
-        updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
-        variableReferences: z
-          .object({
-            variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
-            key: z.string().describe(AGENT_VAULT.VARIABLE.key)
-          })
-          .array()
-          .describe(AGENT_VAULT.PERSONAL_VALUE.variableReferences),
-        oauth: z
-          .object({
-            status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.PERSONAL_VALUE.oauthStatus),
-            issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
-            grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
-            requiredScopes: z.string().array().describe(AGENT_VAULT.PERSONAL_VALUE.oauthRequiredScopes),
-            expiresAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthExpiresAt),
-            authorizedAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthAuthorizedAt),
-            lastError: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthLastError)
-          })
-          .nullable()
-          .describe(AGENT_VAULT.PERSONAL_VALUE.oauth)
-      })
-      .array()
-      .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
+    fields: personalValueFieldStatusSchema.array().describe(AGENT_VAULT.PERSONAL_VALUE.fields)
   })
   .describe(AGENT_VAULT.PERSONAL_VALUE.personalValues);
+
+// A service list on a user's behalf says which of the user's values are set, and leaves out the variables those values
+// use and the user's OAuth connection.
+const AgentVaultServicePersonalValuesSchema = AgentVaultPersonalValuesSchema.extend({
+  fields: personalValueFieldStatusSchema
+    .extend({
+      variableReferences: personalValueVariableReferencesSchema
+        .optional()
+        .describe(AGENT_VAULT.PERSONAL_VALUE.serviceVariableReferences),
+      oauth: personalValueOauthSchema.optional().describe(AGENT_VAULT.PERSONAL_VALUE.serviceOauth)
+    })
+    .array()
+    .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
+});
 
 // A service in the project, with the access bundles it is in. Only reads carry the caller's own setup status, and only
 // an admin's carry variableReferences.
@@ -1473,7 +1488,7 @@ export const AgentVaultProjectServiceSchema = agentVaultServiceResponseSchema(
       })
       .array()
       .describe(AGENT_VAULT.SERVICE.accessBundles),
-    personalValues: AgentVaultPersonalValuesSchema.nullable().optional()
+    personalValues: AgentVaultServicePersonalValuesSchema.nullable().optional()
   },
   { optionalVariableReferences: true }
 );
