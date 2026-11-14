@@ -12,7 +12,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
-import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultReachability, intersectAccessBundleIds } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultDelegationDALFactory } from "./agent-vault-delegation-dal";
 
 export type TOnBehalfOfDeps = {
@@ -111,4 +111,36 @@ export const resolveOnBehalfOfUser = async (
   }
 
   return { user, identifier, accessBundleIds: reachability.accessBundleIds };
+};
+
+// What a session on the user's behalf could use: the bundles both the user and the caller reach. Like minting that
+// session, it checks the delegation and then the caller's own bundles before it looks the user up, so a caller granted
+// no bundle learns nothing about who is in the org. The lists that offer what such a session accepts share it.
+export const findOnBehalfOfListScope = async (
+  deps: TOnBehalfOfDeps,
+  {
+    projectId,
+    ctx,
+    onBehalfOf,
+    callerAccessBundleIds
+  }: {
+    projectId: string;
+    ctx: TGenericPermission;
+    onBehalfOf: TOnBehalfOfUser;
+    callerAccessBundleIds: string[] | null;
+  }
+) => {
+  const delegation = await findCallerDelegation(deps, { projectId, ctx });
+  if (callerAccessBundleIds?.length === 0) return { scopeIds: [] as string[], owner: null };
+
+  const { user, accessBundleIds: userAccessBundleIds } = await resolveOnBehalfOfUser(deps, {
+    projectId,
+    ctx,
+    onBehalfOf,
+    delegation
+  });
+  return {
+    scopeIds: intersectAccessBundleIds(userAccessBundleIds, callerAccessBundleIds),
+    owner: { userId: user.id }
+  };
 };

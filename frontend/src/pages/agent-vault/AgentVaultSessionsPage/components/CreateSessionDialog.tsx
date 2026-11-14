@@ -210,11 +210,12 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, ttl, services }: TDashboardSessionInput) => {
+  const onCreateNowSubmit = async ({ label, ttl, services, skills }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
         accessBundle: accessBundle?.name,
         services: services.length ? services : undefined,
+        skills: skills.length ? skills : undefined,
         ttl,
         label
       });
@@ -278,7 +279,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
         />
         <FieldDescription>
           {isCreateNow
-            ? "Optional when you pick services below."
+            ? "Optional when you pick services or skills below."
             : "The services an agent can reach with this session."}
         </FieldDescription>
       </FieldContent>

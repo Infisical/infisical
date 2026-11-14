@@ -386,6 +386,18 @@ export const replaceSkillHeaderName = (content: Buffer, name: string): Buffer | 
   return null;
 };
 
+// The name in a skill folder's SKILL.md, or null when it has none that parses, so a request holding several folders can
+// be checked for a repeated name before each folder is validated in full.
+export const skillNameOf = (files: { path: string; contentBase64: string }[]): string | null => {
+  const manifest = files.find((file) => file.path === AGENT_VAULT_SKILL_MANIFEST);
+  if (!manifest || !BASE64_RE.test(manifest.contentBase64)) return null;
+  try {
+    return parseSkillHeader(Buffer.from(manifest.contentBase64, "base64")).name;
+  } catch {
+    return null;
+  }
+};
+
 export const sha256Hex = (data: Buffer | string) => crypto.nativeCrypto.createHash("sha256").update(data).digest("hex");
 
 /**

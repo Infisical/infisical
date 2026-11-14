@@ -5130,7 +5130,11 @@ export const AGENT_VAULT = {
     offset: "How many skills to skip.",
     totalCount: "How many skills match the filters, across every page.",
     sessionSkills:
-      "The latest version of each skill on the session's access bundles that the session's owner can still reach, plus the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name.",
+      "The latest version of each skill on the session's access bundle and each project skill the session names, while the session's owner can still reach them, every skill sent with the session, and the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name. A skill sent with the session replaces a skill with the same name from its access bundle.",
+    onBehalfOfUserId:
+      "List the skills a session on behalf of this user could name: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles. Only a machine identity whose delegation covers the user can do this. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     includeBuiltin:
       "Whether to include infisical-agent-vault, the built-in skill that tells an agent how to work behind the Agent Vault proxy. Defaults to true.",
     isBuiltin:
@@ -5294,9 +5298,9 @@ export const AGENT_VAULT = {
     sessionId: "The ID of the session.",
     revokedAt: "When the session was revoked.",
     accessBundle:
-      "The name of the access bundle this session carries. Leave it out to start a session with only the services it names or sends.",
+      "The name of the access bundle this session carries. Leave it out to start a session with only the services and skills it names or sends.",
     accessBundleRead:
-      "The access bundle this session carries. Null for a session with only the services it names or sends.",
+      "The access bundle this session carries. Null for a session with only the services and skills it names or sends.",
     services:
       "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that names it.",
     serviceName:
@@ -5310,6 +5314,22 @@ export const AGENT_VAULT = {
       "The host the project service matches, for an HTTP or MCP service. Null for a database or SSH service, which has no host pattern.",
     serviceIsInline:
       "Whether the service was sent with this session (true) or is a service in the project that the session names (false).",
+    skills:
+      "The skills an agent gets in this session besides its access bundle's. Each entry is either the name of a skill in the project, up to 20, or a skill sent inline, up to 5. Names must be unique across the list. If a name repeats, the request fails with a 422 error that names it.",
+    skillName:
+      "The name of a skill in this project. An Agent Vault admin can name any of them, and a member only a skill in an access bundle granted to them. A session on behalf of a user can name only a skill in an access bundle granted to both the user and the machine identity. Each time an agent asks for the session's skills, it gets the skill's latest version, and only while the session's owner can still name it.",
+    inlineSkills:
+      "A skill sent with this session, alongside its access bundle's and the skills it names. Up to 5. Each takes the same files as a skill added to the project, with its name and description read from SKILL.md, and the files of every skill sent with the session share the 2 MB request limit. It belongs to this session only and can't be edited, and an agent gets it in place of a skill with the same name in the access bundle. Its files are deleted when the session is revoked, or within an hour after it expires.",
+    skillsRead:
+      "The skills this session names and the ones sent with it, in the order they were sent. Its access bundle's skills aren't listed here. Empty when the session names and sends no skills.",
+    skillId: "The ID of the skill in the project, or of the skill sent with this session.",
+    skillNameRead: "The name of the skill.",
+    skillDescription: "What the skill is for, from the `description` in its SKILL.md.",
+    skillIsInline:
+      "Whether the skill was sent with this session (true) or is a skill in the project that the session names (false).",
+    inlineSkillSha256: "The SHA-256 digest of the skill's files, as hex. An agent gets the files with the same digest.",
+    inlineSkillSizeBytes: "The total size of the skill's files in bytes.",
+    inlineSkillFileCount: "How many files the skill has.",
     stats:
       "How many requests went through this session, as counted by the proxy when it uploads session logs. Null when no logs were uploaded for the session, for example while session logs are off.",
     statsRequests: "Every request the proxy recorded for this session, whatever its decision.",

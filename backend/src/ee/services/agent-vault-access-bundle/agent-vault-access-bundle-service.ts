@@ -31,11 +31,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import {
-  findCallerDelegation,
-  resolveOnBehalfOfUser,
-  TOnBehalfOfDeps
-} from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import { findOnBehalfOfListScope, TOnBehalfOfDeps } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
 import {
   checkOauthClaimUnderLock,
@@ -97,7 +93,6 @@ import { ownerOrNullOf } from "../agent-vault/agent-vault-owner-fns";
 import {
   getAgentVaultGrantedReachability,
   getAgentVaultReachability,
-  intersectAccessBundleIds,
   serviceIdsReachedThrough,
   TAgentVaultPermission
 } from "../agent-vault/agent-vault-permission";
@@ -858,35 +853,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return { bundle, ...reachability };
   };
 
-  // What a session on the user's behalf could use: the bundles both the user and the caller reach, counted against
-  // the user's personal values. Like minting that session, it checks the delegation and then the caller's own bundles
-  // before it looks the user up, so a caller granted no bundle learns nothing about who is in the org.
-  const $onBehalfOfListScope = async ({
-    projectId,
-    ctx,
-    onBehalfOf,
-    callerAccessBundleIds
-  }: {
-    projectId: string;
-    ctx: TListAccessBundlesDTO["ctx"];
-    onBehalfOf: NonNullable<TListAccessBundlesDTO["onBehalfOf"]>;
-    callerAccessBundleIds: string[] | null;
-  }) => {
-    const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
-    if (callerAccessBundleIds?.length === 0) {
-      return { scopeIds: [] as string[], excludeIds: [] as string[], owner: null };
-    }
-
-    const { user, accessBundleIds: userAccessBundleIds } = await resolveOnBehalfOfUser(
+  // What a session on the user's behalf could use, counted against the user's personal values.
+  const $onBehalfOfListScope = async (scope: Parameters<typeof findOnBehalfOfListScope>[1]) => ({
+    ...(await findOnBehalfOfListScope(
       { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
-      { projectId, ctx, onBehalfOf, delegation }
-    );
-    return {
-      scopeIds: intersectAccessBundleIds(userAccessBundleIds, callerAccessBundleIds),
-      excludeIds: [] as string[],
-      owner: { userId: user.id }
-    };
-  };
+      scope
+    )),
+    excludeIds: [] as string[]
+  });
 
   // Setup is counted over every bundle the caller reaches, since an admin can start a session on one they were never
   // granted.

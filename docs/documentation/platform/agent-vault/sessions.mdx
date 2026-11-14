@@ -7,13 +7,15 @@ A session is a time-bound grant in an [Agent Vault project](/documentation/platf
 
 Every session expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
+A session also gives the agent [skills](/documentation/platform/agent-vault/skills): its access bundle's, skills in the project that you name, and skills you send with the session. The CLI installs them when the agent starts.
+
 A session only works through a proxy in the same project as the session.
 
 ## Create a session
 
 Anyone granted at least one access bundle in a project can create a session in that project. Admins of the project can create one with any of its access bundles.
 
-Instead of an access bundle, or alongside it, you can give a session the services it needs by name. Admins of the project can name any of its services. Anyone else can name only the services in the access bundles granted to them, directly or through a group. If one of those access bundles also holds a [more specific service](/documentation/platform/agent-vault/http-apis#host-conflicts) for a host that a named service covers, such as `api.github.com` beside `*.github.com`, the session uses that more specific service for the host, as a session with the access bundle would.
+Instead of an access bundle, or alongside it, you can give a session the services and skills it needs by name. Admins of the project can name any of its services and skills. Anyone else can name only the services and skills in the access bundles granted to them, directly or through a group. If one of those access bundles also holds a [more specific service](/documentation/platform/agent-vault/http-apis#host-conflicts) for a host that a named service covers, such as `api.github.com` beside `*.github.com`, the session uses that more specific service for the host, as a session with the access bundle would.
 
 <Tip>
   If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli), [the API](/documentation/platform/agent-vault/sessions-api), [the Python SDK](/sdks/languages/python#agent_vault-sessions), or [the Node.js SDK](/sdks/languages/node#agentvault-sessions). A machine identity can also create sessions [on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so that each agent uses the personal values of the person it runs for and gets no more access than that person.
@@ -29,10 +31,10 @@ Instead of an access bundle, or alongside it, you can give a session the service
         Select **Your Own Sandbox**, then select the **Create Now** tab.
       </Step>
       <Step>
-        Pick the **Access Bundle** the agent should use, the **Services** it should reach, or both. Optionally enter a **Label** that says what the session is for, set a duration under **Expires**, then select **Create Session**.
+        Pick the **Access Bundle** the agent should use, the **Services** it should reach, the **Skills** it should get, or any mix of them. Optionally enter a **Label** that says what the session is for, set a duration under **Expires**, then select **Create Session**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Now tab of the Your Own Sandbox dialog, with the on-call access bundle and the vercel service picked, Incident bot as the label, and a seven day expiry" />
+          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Now tab of the Your Own Sandbox dialog, with the on-call access bundle, the vercel service and the triage-notes skill picked, Incident bot as the label, and a seven day expiry" />
         </Frame>
       </Step>
       <Step>
@@ -81,7 +83,7 @@ Instead of an access bundle, or alongside it, you can give a session the service
       -d '{"projectId": "<project-id>", "accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
     ```
 
-    To give the session services by name, instead of an access bundle or alongside one, list their names in `services`, as in `"services": ["github", "linear"]`.
+    To give the session services by name, instead of an access bundle or alongside one, list their names in `services`, as in `"services": ["github", "linear"]`. To give it skills from the project, list their names in `skills`, as in `"skills": ["code-review"]`. You can also [send skills with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session).
 
     The response includes the session token.
   </Tab>
@@ -124,7 +126,7 @@ The **Sessions** page shows each session as **Active**, **Revoked**, or **Expire
 
 ## Access changes
 
-The access bundle, the services you name, and any inline services are chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). Here's how common access changes affect a session:
+The access bundle, the services and skills you name, and any inline services and skills are chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). Here's how common access changes affect a session:
 
 - If someone no longer has any grant on an access bundle, directly or through a group, their sessions for that bundle stop getting credentials
 - If someone still has another grant on the bundle, such as through a group, revoking one grant doesn't affect their sessions
@@ -134,6 +136,8 @@ The access bundle, the services you name, and any inline services are chosen whe
 - If someone named a service when they created a session, and no access bundle granted to them holds the service anymore, the session stops getting that service's credential (if they're an admin of the project, the session keeps the service)
 - If you remove someone from the project, the proxy refuses every request on their sessions
 - If the user or machine identity that created a session loses the **Admin** role in the project, the session stops getting credentials for its [inline services](/documentation/platform/agent-vault/inline-services)
+- If someone named a skill when they created a session, and no access bundle granted to them holds the skill anymore, agents that start with the session afterwards don't get the skill (if they're an admin of the project, the session keeps the skill)
+- If you delete a skill, agents that start with a session that names the skill don't get it anymore
 
 None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
 

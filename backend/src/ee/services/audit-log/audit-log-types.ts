@@ -6994,9 +6994,19 @@ interface AgentVaultSkillsDeliveredEvent {
   type: EventType.AGENT_VAULT_SKILLS_DELIVERED;
   metadata: {
     sessionId: string;
-    accessBundleId: string;
-    accessBundleName: string;
-    skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // The session's access bundle, when any skill delivered came through it.
+    accessBundleId: string | null;
+    accessBundleName: string | null;
+    skills: {
+      skillId: string;
+      skillName: string;
+      version: number;
+      sha256: string;
+      // Null for a skill the session names or was sent with rather than one it got through its access bundle.
+      accessBundleId: string | null;
+      accessBundleName: string | null;
+      isInline: boolean;
+    }[];
     // Set when the machine identity in the actor started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;
@@ -7086,6 +7096,17 @@ interface AgentVaultSessionMintEvent {
     expiresAt: string | null;
     // Set when the session names project services, in the order it named them.
     namedServices?: { serviceId: string; name: string }[];
+    // Set when the session names project skills, in the order it named them.
+    namedSkills?: { skillId: string; name: string }[];
+    // Set when skills were sent with the session. Never their files.
+    skills?: {
+      skillId: string;
+      name: string;
+      description: string;
+      sha256: string;
+      sizeBytes: number;
+      fileCount: number;
+    }[];
     // Set when an admin sent services inline with the session. Never their values.
     services?: {
       serviceId: string;

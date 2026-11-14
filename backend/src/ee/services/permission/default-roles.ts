@@ -823,7 +823,8 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultSessionActions.ReadAny,
       ProjectPermissionAgentVaultSessionActions.EditAny,
       ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills
     ],
     ProjectPermissionSub.AgentVaultSessions
   );
@@ -947,7 +948,8 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
       ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionAgentVaultSessionActions.Revoke
+      ProjectPermissionAgentVaultSessionActions.Revoke,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills
     ],
     ProjectPermissionSub.AgentVaultSessions
   );

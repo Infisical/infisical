@@ -104,8 +104,10 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
     const query = db(table)
       .join(TableName.Project, `${table}.projectId`, `${TableName.Project}.id`)
       .where(`${table}.id`, id);
-    // A service sent with a session belongs to that session, never to the services routes.
-    if (table === TableName.AgentVaultService) void query.whereNull(`${table}.sessionId`);
+    // A service or skill sent with a session belongs to that session, never to the services or skills routes.
+    if (table === TableName.AgentVaultService || table === TableName.AgentVaultSkill) {
+      void query.whereNull(`${table}.sessionId`);
+    }
     const row = (await query
       .where(`${TableName.Project}.orgId`, ctx.actorOrgId)
       .where(`${TableName.Project}.type`, ProjectType.AgentVault)

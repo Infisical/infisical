@@ -101,6 +101,7 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 - In `onBehalfOf`, set either `userEmail` or `userId`, not both
 - In `accessBundle`, name a bundle that both the user and the machine identity can use
 - In `services`, name services instead of an access bundle or alongside one, as [What the session can reach](#what-the-session-can-reach) describes
+- In `skills`, name skills or [send skills with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session), as [What the session can reach](#what-the-session-can-reach) describes
 - `ttl` defaults to `1h`, instead of the `7d` default for other sessions
 
 Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
@@ -131,6 +132,17 @@ curl "https://app.infisical.com/api/v1/agent-vault/services?projectId=<project-i
 
 The response lists only the services in an access bundle that both the user and the machine identity can use, which are the services a session on the user's behalf can name. For each service, `personalValues` shows whether the user has set up their personal values for it. Add `requiresSetup=false` to list only the services the user has set up.
 
+### Find the skills a session can name
+
+To choose skills to name for the user, call the [List skills](/api-reference/endpoints/agent-vault-skills/list) endpoint as the machine identity with the project's ID, and name the user in `onBehalfOfUserEmail` or `onBehalfOfUserId`:
+
+```bash
+curl "https://app.infisical.com/api/v1/agent-vault/skills?projectId=<project-id>&onBehalfOfUserEmail=<user-email>" \
+  -H "Authorization: Bearer <access-token>"
+```
+
+The response lists only the skills in an access bundle that both the user and the machine identity can use, which are the skills a session on the user's behalf can name.
+
 ## What the session can reach
 
 A session created on behalf of a user can use an access bundle only if both the user and the machine identity can use the bundle, and the session uses the user's personal values:
@@ -139,7 +151,7 @@ A session created on behalf of a user can use an access bundle only if both the 
 - The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an admin of the project, every bundle)
 - The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
-If you name services in `services`, each service has to be in an access bundle that both the user and the machine identity can use. If both are admins of the project, you can name any of its services.
+If you name services in `services` or skills in `skills`, each one has to be in an access bundle that both the user and the machine identity can use. If both are admins of the project, you can name any of its services and skills. Skills you send with the session don't need to be in an access bundle.
 
 If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, Infisical shows the bundle in two places:
 
@@ -161,7 +173,7 @@ Infisical checks the delegation again each time the proxy polls, once every [pol
 
 If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
 
-If the user or the machine identity can no longer use the access bundle, the session stops getting credentials for the bundle, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes. If you named services, the session also stops getting a service's credential once no access bundle that both the user and the machine identity can use holds the service.
+If the user or the machine identity can no longer use the access bundle, the session stops getting credentials for the bundle, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes. If you named services, the session also stops getting a service's credential once no access bundle that both the user and the machine identity can use holds the service. The same goes for a skill you named: agents that start with the session afterwards don't get it.
 
 ## Track sessions created on behalf of users
 
@@ -182,6 +194,9 @@ When the machine identity creates the session, Infisical writes an audit event w
   </Accordion>
   <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to this machine identity&quot;">
     The access bundle isn't granted to the machine identity, or no access bundle has that name. [Grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity, or name a bundle the machine identity already has.
+  </Accordion>
+  <Accordion title="Creating the session fails with &quot;No access bundle in this project is granted to this machine identity&quot;">
+    The machine identity has no grant on any access bundle in the project. A session on a user's behalf needs the machine identity to have a grant on at least one access bundle, even if the session sends only inline skills. [Grant the machine identity an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles).
   </Accordion>
   <Accordion title="Creating the session fails with &quot;This machine identity can't start sessions on behalf of ...&quot;">
     The delegation doesn't cover the user, or no active member of your organization has that email or ID. Check the email or ID you sent, then check the users and groups in the machine identity's delegation.

@@ -20,6 +20,7 @@ export * from "./agent-vault-session-access-bundles";
 export * from "./agent-vault-session-inline-services";
 export * from "./agent-vault-session-log-configs";
 export * from "./agent-vault-session-services";
+export * from "./agent-vault-session-skills";
 export * from "./agent-vault-session-stats";
 export * from "./agent-vault-sessions";
 export * from "./agent-vault-skill-versions";

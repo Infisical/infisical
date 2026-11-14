@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
-import { TriangleAlertIcon } from "lucide-react";
+import { BookOpenTextIcon, TriangleAlertIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
@@ -32,12 +32,14 @@ import { useDebounce } from "@app/hooks";
 import {
   useGetAgentVaultAccessBundle,
   useListAgentVaultServices,
+  useListAgentVaultSkills,
   useListAllAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultProjectService,
-  TAgentVaultService
+  TAgentVaultService,
+  TAgentVaultSkill
 } from "@app/hooks/api/agentVault/types";
 
 import { sessionLabelSchema } from "./sessionLabelSchema";
@@ -55,9 +57,11 @@ const TTL_PRESETS = [
 ];
 const DEFAULT_TTL_PRESET = "7d";
 
-// The most of the project's services the API takes on one session.
+// The most of the project's services and skills the API takes on one session.
 const MAX_NAMED_SERVICES = 50;
 const SERVICE_PICKER_LIMIT = 50;
+const MAX_NAMED_SKILLS = 20;
+const SKILL_PICKER_LIMIT = 50;
 
 const MIN_TTL_MS = 60 * 1000;
 // Mirrors the API's ceiling: past it the expiry overflows and the request fails with a 500.
@@ -80,6 +84,7 @@ const getCustomTtlError = (value: string) => {
 const schema = z
   .object({
     services: z.custom<TAgentVaultProjectService[]>(),
+    skills: z.custom<TAgentVaultSkill[]>(),
     label: sessionLabelSchema,
     ttlPreset: z.string(),
     customTtl: z.string()
@@ -94,6 +99,15 @@ const schema = z
         } to continue.`
       });
     }
+    if (data.skills.length > MAX_NAMED_SKILLS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["skills"],
+        message: `A session can name up to ${MAX_NAMED_SKILLS} skills. Remove ${
+          data.skills.length - MAX_NAMED_SKILLS
+        } to continue.`
+      });
+    }
     if (data.ttlPreset === CUSTOM_TTL) {
       const error = getCustomTtlError(data.customTtl);
       if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["customTtl"], message: error });
@@ -102,7 +116,12 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export type TDashboardSessionInput = { label?: string; ttl: string; services: string[] };
+export type TDashboardSessionInput = {
+  label?: string;
+  ttl: string;
+  services: string[];
+  skills: string[];
+};
 
 type Props = {
   formId: string;
@@ -116,7 +135,13 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
 
   const { control, handleSubmit, watch, setError } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { services: [], label: "", ttlPreset: DEFAULT_TTL_PRESET, customTtl: "" }
+    defaultValues: {
+      services: [],
+      skills: [],
+      label: "",
+      ttlPreset: DEFAULT_TTL_PRESET,
+      customTtl: ""
+    }
   });
   const ttlPreset = watch("ttlPreset");
   const selectedServices = watch("services");
@@ -132,6 +157,17 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
       orderBy: "name",
       orderDirection: "asc",
       limit: SERVICE_PICKER_LIMIT
+    }
+  );
+
+  // The same for skills: an admin can name any of them, and a member only those in their bundles.
+  const [skillSearch, setSkillSearch] = useState("");
+  const [debouncedSkillSearch] = useDebounce(skillSearch);
+  const { data: nameableSkills, isFetching: isSearchingSkills } = useListAgentVaultSkills(
+    projectId,
+    {
+      search: debouncedSkillSearch.trim() || undefined,
+      limit: SKILL_PICKER_LIMIT
     }
   );
 
@@ -164,14 +200,17 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   return (
     <form
       id={formId}
-      onSubmit={handleSubmit(({ services, label, ttlPreset: preset, customTtl }) => {
+      onSubmit={handleSubmit(({ services, skills, label, ttlPreset: preset, customTtl }) => {
         // The bundle is picked outside this form, so this check can't live in the schema.
-        if (!accessBundle && !services.length) {
-          setError("services", { message: "Pick an access bundle or at least one service." });
+        if (!accessBundle && !services.length && !skills.length) {
+          setError("services", {
+            message: "Pick an access bundle, or at least one service or skill."
+          });
           return undefined;
         }
         return onSubmit({
           services: services.map((service) => service.name),
+          skills: skills.map((skill) => skill.name),
           label: label || undefined,
           ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
         });
@@ -226,88 +265,135 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
       />
       <Controller
         control={control}
-        name="label"
+        name="skills"
         render={({ field, fieldState }) => (
           <Field>
-            <FieldLabel htmlFor="agent-vault-session-label">
-              Label <span className="text-muted">(optional)</span>
-            </FieldLabel>
+            <FieldLabel htmlFor="agent-vault-session-skills">Skills</FieldLabel>
             <FieldContent>
-              <Input
-                {...field}
-                id="agent-vault-session-label"
-                placeholder="Nightly deploy"
+              <Combobox<TAgentVaultSkill>
+                id="agent-vault-session-skills"
+                multiple
+                options={nameableSkills?.skills ?? []}
+                value={field.value}
+                isLoading={isSearchingSkills}
+                onSearchChange={setSkillSearch}
+                includeMissingSelectedOptions
+                getOptionValue={(skill) => skill.id}
+                getOptionLabel={(skill) => skill.name}
+                getOptionKeywords={(skill) => [skill.description]}
+                renderOption={(skill) => (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm">{skill.name}</span>
+                      <span className="truncate text-xs text-muted">{skill.description}</span>
+                    </div>
+                  </div>
+                )}
+                placeholder="Pick skills"
+                searchAriaLabel="Search skills"
+                emptyMessage={
+                  skillSearch ? "No skills match your search" : "No skills you can use yet"
+                }
+                modal
                 isError={Boolean(fieldState.error)}
+                onValueChange={field.onChange}
               />
-              <FieldDescription>Describes what this session is for.</FieldDescription>
+              <FieldDescription>
+                The project&apos;s skills an agent gets with this session, beside its access
+                bundle&apos;s.
+              </FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
           </Field>
         )}
       />
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_10rem]">
+        <Controller
+          control={control}
+          name="label"
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel htmlFor="agent-vault-session-label">
+                Label <span className="text-muted">(optional)</span>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  id="agent-vault-session-label"
+                  placeholder="Nightly deploy"
+                  isError={Boolean(fieldState.error)}
+                />
+                <FieldDescription>Describes what this session is for.</FieldDescription>
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
 
-      <Field>
-        <FieldLabel>Expires</FieldLabel>
-        <FieldContent>
-          <Controller
-            control={control}
-            name="ttlPreset"
-            render={({ field }) => (
-              <Select
-                value={field.value}
-                onValueChange={(value) => {
-                  shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
-                  field.onChange(value);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  onCloseAutoFocus={(e) => {
-                    if (!shouldFocusCustomTtlRef.current) return;
-                    shouldFocusCustomTtlRef.current = false;
-                    e.preventDefault();
-                    customTtlInputRef.current?.focus();
-                  }}
-                >
-                  {TTL_PRESETS.map((preset) => (
-                    <SelectItem key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {ttlPreset === CUSTOM_TTL && (
+        <Field>
+          <FieldLabel>Expires</FieldLabel>
+          <FieldContent>
             <Controller
               control={control}
-              name="customTtl"
-              render={({ field, fieldState }) => (
-                <>
-                  <Input
-                    {...field}
-                    ref={(el) => {
-                      field.ref(el);
-                      customTtlInputRef.current = el;
+              name="ttlPreset"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
+                    field.onChange(value);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    onCloseAutoFocus={(e) => {
+                      if (!shouldFocusCustomTtlRef.current) return;
+                      shouldFocusCustomTtlRef.current = false;
+                      e.preventDefault();
+                      customTtlInputRef.current?.focus();
                     }}
-                    className="mt-2"
-                    placeholder="90m"
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </>
+                  >
+                    {TTL_PRESETS.map((preset) => (
+                      <SelectItem key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             />
-          )}
-          {ttlPreset === NEVER_TTL && (
-            <FieldDescription>This session runs until someone revokes it.</FieldDescription>
-          )}
-        </FieldContent>
-      </Field>
+            {ttlPreset === CUSTOM_TTL && (
+              <Controller
+                control={control}
+                name="customTtl"
+                render={({ field, fieldState }) => (
+                  <>
+                    <Input
+                      {...field}
+                      ref={(el) => {
+                        field.ref(el);
+                        customTtlInputRef.current = el;
+                      }}
+                      className="mt-2"
+                      placeholder="90m"
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </>
+                )}
+              />
+            )}
+            {ttlPreset === NEVER_TTL && (
+              <FieldDescription>This session runs until someone revokes it.</FieldDescription>
+            )}
+          </FieldContent>
+        </Field>
+      </div>
 
       {/* A warning, not a block: the session works for every other service, and picks up values
           set up later on the proxy's next poll. */}

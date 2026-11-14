@@ -9,6 +9,9 @@ export type TAgentVaultSkillVersionDALFactory = ReturnType<typeof agentVaultSkil
 
 export type TAgentVaultSkillVersionRow = Omit<TAgentVaultSkillVersions, "encryptedFiles">;
 
+// A version with its files. Only an inline skill's version loses them, when its session ends.
+export type TAgentVaultSkillVersionFilesRow = TAgentVaultSkillVersionRow & { encryptedFiles: Buffer };
+
 const VERSION_COLUMNS = ["id", "skillId", "version", "sha256", "sizeBytes", "fileCount", "createdAt"] as const;
 
 export const agentVaultSkillVersionDALFactory = (db: TDbClient) => {
@@ -41,9 +44,12 @@ export const agentVaultSkillVersionDALFactory = (db: TDbClient) => {
   const findByVersion = async (
     { skillId, version }: { skillId: string; version: number },
     tx?: Knex
-  ): Promise<TAgentVaultSkillVersions | undefined> => {
+  ): Promise<TAgentVaultSkillVersionFilesRow | undefined> => {
     try {
-      return await (tx || db)(TableName.AgentVaultSkillVersion).where({ skillId, version }).first();
+      return (await (tx || db)(TableName.AgentVaultSkillVersion)
+        .where({ skillId, version })
+        .whereNotNull("encryptedFiles")
+        .first()) as TAgentVaultSkillVersionFilesRow | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault skill version" });
     }

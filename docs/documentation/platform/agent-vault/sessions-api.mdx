@@ -56,8 +56,9 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 ```
 
 - `projectId` is the ID of the Agent Vault project that the access bundle is in
-- `accessBundle` is the name of the access bundle the session carries (you can leave it out if you pass `services`)
+- `accessBundle` is the name of the access bundle the session carries (you can leave it out if you pass `services` or `skills`)
 - `services` is optional and lists services for the session, instead of an access bundle or alongside one: the names of services in the project, such as `["github", "linear"]`, or, if the machine identity is an admin of the project, [inline services](/documentation/platform/agent-vault/inline-services)
+- `skills` is optional and lists [skills](/documentation/platform/agent-vault/skills) the agent gets besides the access bundle's: the names of skills in the project, such as `["code-review"]`, or [skills sent with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session)
 - `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
 - `label` is optional and describes what the session is for, in up to 128 characters (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session))
 
@@ -156,6 +157,12 @@ In your Agent Vault project, go to **Sessions** and select **All Sessions**. Fin
   </Accordion>
   <Accordion title="Creating the session fails with 422 and &quot;More than one service in this session is named ...&quot;">
     Two entries in `services` have the same name. This happens if you list a service twice, or if you list a service from the project and an inline service with the same name. Remove one of the two entries, or give the inline service a different name.
+  </Accordion>
+  <Accordion title="Creating the session fails with &quot;You can't name a skill called ...&quot;">
+    No access bundle granted to the machine identity holds the skill, or no skill in the project has that name. Check the name on the project's **Skills** page, and [grant the machine identity](#step-1-set-up-a-machine-identity) an access bundle that holds the skill.
+  </Accordion>
+  <Accordion title="Creating the session fails with 422 and &quot;More than one skill in this session is named ...&quot;">
+    Two entries in `skills` have the same name. This happens if you list a skill twice, or if you list a skill from the project and send a skill whose `SKILL.md` has the same `name`. Remove one of the two entries, or rename the skill you send.
   </Accordion>
   <Accordion title="Creating or revoking a session fails with 401 after your code has run for a while">
     The machine identity's access token expired. [Log in again](#step-2-log-in-as-the-machine-identity) to get a new access token. Sessions you already created keep working, because a session doesn't depend on the access token that created it.

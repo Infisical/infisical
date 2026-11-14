@@ -22,6 +22,7 @@ export const agentVaultSkillBundleDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultSkill}.id`
         )
         .where(`${TableName.AgentVaultAccessBundleSkill}.accessBundleId`, accessBundleId)
+        .whereNull(`${TableName.AgentVaultSkill}.sessionId`)
         .select(
           db.ref("id").withSchema(TableName.AgentVaultSkill),
           db.ref("name").withSchema(TableName.AgentVaultSkill),
@@ -133,5 +134,25 @@ export const agentVaultSkillBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findSkillsForBundle, isSkillReachable, findBundlesForSkill, findBundlesForSkills, countForBundle };
+  const findSkillIdsInBundles = async (accessBundleIds: string[], tx?: Knex): Promise<string[]> => {
+    if (!accessBundleIds.length) return [];
+    try {
+      const rows = (await (tx || db)(TableName.AgentVaultAccessBundleSkill)
+        .whereIn("accessBundleId", accessBundleIds)
+        .distinct("skillId")) as { skillId: string }[];
+      return rows.map((row) => row.skillId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault skills in access bundles" });
+    }
+  };
+
+  return {
+    ...orm,
+    findSkillsForBundle,
+    isSkillReachable,
+    findBundlesForSkill,
+    findBundlesForSkills,
+    countForBundle,
+    findSkillIdsInBundles
+  };
 };

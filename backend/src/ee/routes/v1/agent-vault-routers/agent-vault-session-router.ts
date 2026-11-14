@@ -9,6 +9,7 @@ import {
   AGENT_VAULT_SESSION_MAX_TTL_MS,
   AGENT_VAULT_SESSION_TTL_NEVER
 } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -42,7 +43,9 @@ import {
   AgentVaultSessionActorSchema,
   AgentVaultSessionOnBehalfOfSchema,
   AgentVaultSessionServiceSchema,
-  AgentVaultSessionServicesInputSchema
+  AgentVaultSessionServicesInputSchema,
+  AgentVaultSessionSkillSchema,
+  AgentVaultSessionSkillsInputSchema
 } from "./agent-vault-schemas";
 
 const SessionAccessBundleSchema = z.object({
@@ -63,6 +66,8 @@ const SessionSchema = z.object({
 
 const SessionServicesSchema = AgentVaultSessionServiceSchema.array().describe(AGENT_VAULT.SESSION.servicesRead);
 
+const SessionSkillsSchema = AgentVaultSessionSkillSchema.array().describe(AGENT_VAULT.SESSION.skillsRead);
+
 const SessionStatsSchema = z.object({
   requests: z.number().describe(AGENT_VAULT.SESSION.statsRequests),
   brokered: z.number().nullable().describe(AGENT_VAULT.SESSION.statsBrokered)
@@ -71,6 +76,7 @@ const SessionStatsSchema = z.object({
 const SessionWithAccessBundleSchema = SessionSchema.extend({
   accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
   services: SessionServicesSchema,
+  skills: SessionSkillsSchema,
   stats: SessionStatsSchema.nullable().describe(AGENT_VAULT.SESSION.stats)
 });
 
@@ -88,8 +94,9 @@ const mapLegacyAccessBundles = (body: unknown) => {
   return accessBundles.length ? { ...rest, accessBundle: accessBundles[0] as unknown } : rest;
 };
 
-// Whole-body examples, so the docs show the usual session, one access bundle and no services of its own, rather
-// than one generated from every optional field. Responses always carry services, so the examples show it empty.
+// Whole-body examples, so the docs show the usual session, one access bundle and no services or skills of its own,
+// rather than one generated from every optional field. Responses always carry services and skills, so the examples
+// show them empty.
 const EXAMPLE_PROJECT_ID = "5f2c8a7e-1b3d-4e6f-9a0c-8d7b6e5f4a3c";
 
 const EXAMPLE_ACCESS_BUNDLE = { id: "3c90c3cc-0d44-4b50-8888-8dd25736052a", name: "prod-deploy" };
@@ -105,6 +112,7 @@ const EXAMPLE_SESSION = {
   createdAt: "2026-10-31T18:00:00.000Z",
   accessBundle: EXAMPLE_ACCESS_BUNDLE,
   services: [],
+  skills: [],
   stats: { requests: 1284, brokered: 1102 }
 };
 
@@ -197,12 +205,14 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
   server.route({
     method: "POST",
     url: "/",
+    // Skills sent with the session carry their files, so the body may be as large as a skill upload's.
     config: { rateLimit: writeLimit },
+    bodyLimit: AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT,
     schema: {
       hide: false,
       operationId: "createAgentVaultSession",
       description:
-        "Create an Agent Vault session with an access bundle you can reach, the project's services you can reach named one by one, services of its own (Agent Vault admins), or any mix of them, for yourself or, as a machine identity with a delegation, on behalf of a user",
+        "Create an Agent Vault session with an access bundle you can reach, the project's services and skills you can reach named one by one, services (Agent Vault admins) and skills of its own, or any mix of them, for yourself or, as a machine identity with a delegation, on behalf of a user",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.preprocess(
         mapLegacyAccessBundles,
@@ -212,8 +222,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             accessBundle: slugSchema({ max: 64, field: "Access bundle" })
               .optional()
               .describe(AGENT_VAULT.SESSION.accessBundle),
-            // Optional rather than defaulted, so the docs' request example leaves it out instead of showing an empty list.
+            // Optional rather than defaulted, so the docs' request example leaves them out instead of showing empty lists.
             services: AgentVaultSessionServicesInputSchema.optional(),
+            skills: AgentVaultSessionSkillsInputSchema.optional(),
             // Optional rather than defaulted: the default depends on whether the session is on a user's behalf.
             ttl: z
               .string()
@@ -271,6 +282,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             docsExample({
               projectId: EXAMPLE_PROJECT_ID,
               services: ["github", "linear"],
+              skills: ["code-review"],
               ttl: "8h",
               label: EXAMPLE_SESSION.label
             })
@@ -287,7 +299,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
               createdAt: z.date(),
               accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
-              services: SessionServicesSchema
+              services: SessionServicesSchema,
+              skills: SessionSkillsSchema
             })
           })
           .describe(
@@ -300,7 +313,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 expiresAt: EXAMPLE_SESSION.expiresAt,
                 createdAt: EXAMPLE_SESSION.createdAt,
                 accessBundle: EXAMPLE_ACCESS_BUNDLE,
-                services: []
+                services: [],
+                skills: []
               }
             })
           )
@@ -330,6 +344,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       });
       const namedServices = session.services.filter((service) => !service.isInline);
       const inlineServices = session.services.flatMap((service) => (service.isInline ? [service] : []));
+      const namedSkills = session.skills.filter((skill) => !skill.isInline);
+      const inlineSkills = session.skills.flatMap((skill) => (skill.isInline ? [skill] : []));
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -368,6 +384,19 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 };
               })
             }),
+            ...(namedSkills.length > 0 && {
+              namedSkills: namedSkills.map((skill) => ({ skillId: skill.id, name: skill.name }))
+            }),
+            ...(inlineSkills.length > 0 && {
+              skills: inlineSkills.map((skill) => ({
+                skillId: skill.id,
+                name: skill.name,
+                description: skill.description,
+                sha256: skill.sha256,
+                sizeBytes: skill.sizeBytes,
+                fileCount: skill.fileCount
+              }))
+            }),
             ...(onBehalfOf && {
               onBehalfOfUserId: onBehalfOf.userId,
               onBehalfOfUserName: onBehalfOf.username,
@@ -384,6 +413,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           accessBundleId: session.accessBundle?.id ?? null,
           inlineServiceCount: inlineServices.length,
           namedServiceCount: namedServices.length,
+          inlineSkillCount: inlineSkills.length,
+          namedSkillCount: namedSkills.length,
           ttlSeconds,
           isOnBehalfOfUser: Boolean(onBehalfOf)
         }
