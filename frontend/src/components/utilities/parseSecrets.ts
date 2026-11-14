@@ -180,6 +180,13 @@ export function parseCsvToMatrix(src: ArrayBuffer | string): {
   let cells: string[] = [];
   let currentCell = "";
   let inQuote = false;
+  let wasQuoted = false;
+
+  const pushCell = () => {
+    cells.push(wasQuoted ? currentCell : currentCell.trim());
+    currentCell = "";
+    wasQuoted = false;
+  };
 
   for (let i = 0; i < normalized.length; i += 1) {
     const char = normalized[i];
@@ -191,24 +198,23 @@ export function parseCsvToMatrix(src: ArrayBuffer | string): {
         i += 1;
       } else {
         inQuote = !inQuote;
+        wasQuoted = true;
       }
     } else if (char === separator && !inQuote) {
-      cells.push(currentCell.trim());
-      currentCell = "";
+      pushCell();
     } else if (char === "\n" && !inQuote) {
-      cells.push(currentCell.trim());
+      pushCell();
       if (cells.some((c) => c !== "")) {
         matrix.push(cells);
       }
       cells = [];
-      currentCell = "";
     } else {
       currentCell += char;
     }
   }
 
   if (currentCell.length > 0 || cells.length > 0) {
-    cells.push(currentCell.trim());
+    pushCell();
     if (cells.some((c) => c !== "")) {
       matrix.push(cells);
     }
