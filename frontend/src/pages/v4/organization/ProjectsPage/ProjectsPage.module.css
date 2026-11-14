@@ -1,26 +1,28 @@
 .productCard {
-  overflow: clip;
   transition: background-color calc(var(--cipher-duration-slow) * 2) var(--cipher-ease-fade);
 }
 .productCard.productCard[data-stretched-link]:hover {
-  background-color: var(--cipher-sidebar-hover);
+  background-color: color-mix(
+    in oklab,
+    var(--cipher-mix-ink) var(--cipher-hover-mix),
+    var(--cipher-tint)
+  );
   background-image: none;
 }
-.productCard > :global([data-slot="card-footer"]) {
-  position: relative;
-  background: var(--cipher-tint);
+.productCard > :global([data-slot="card-inset"]) {
+  transition: border-color calc(var(--cipher-duration-slow) * 2) var(--cipher-ease-fade);
 }
-.productCard:is(:hover, :focus-within) > :global([data-slot="card-footer"]) {
-  border-top-color: var(--cipher-line);
+.productCard:is(:hover, :focus-within) > :global([data-slot="card-inset"]) {
+  border-color: var(--cipher-line);
+}
+.productCard > :global([data-slot="card-footer"]) {
+  padding-inline: calc(var(--cipher-size-control-border) + var(--cipher-space-surface-inset));
 }
 .productTitle {
   color: var(--cipher-hue-icon);
 }
 .productTitle a {
   color: inherit;
-}
-.productIcon {
-  color: color-mix(in oklab, var(--cipher-hue-icon) 55%, transparent);
 }
 .setUp {
   display: inline-flex;

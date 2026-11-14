@@ -9,6 +9,7 @@ import { Item } from "@infisical/cipher/ui/item";
 import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { SmallText } from "@infisical/cipher/ui/text";
 import { TooltipProvider, TooltipText } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 import { ArrowRightIcon } from "lucide-react";
@@ -132,23 +133,21 @@ export const ProjectsPage = () => {
               <Card
                 key={product.type}
                 {...hueScope(product.hue)}
+                variant="framed"
+                footerPlacement="frame"
                 className={cn(styles.productCard, blocked.has(product.type) && styles.blocked)}
                 backdrop={<Halftone seed={product.type} />}
                 title={
-                  <Inline gap={8} align="center" className={styles.productTitle}>
-                    <Icon
-                      name={product.icon}
-                      size={18}
-                      motion="draw"
-                      className={styles.productIcon}
-                    />
-                    <CardLink disabled={blocked.has(product.type)} link={link}>
-                      {product.label}
-                    </CardLink>
-                    {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
-                  </Inline>
+                  <Stack gap={8} className={styles.productTitle}>
+                    <Icon name={product.icon} size={24} motion="draw" />
+                    <Inline gap={8} align="center">
+                      <CardLink disabled={blocked.has(product.type)} link={link}>
+                        {product.label}
+                      </CardLink>
+                      {product.type === ProjectType.AgentVault && <Badge size="sm">Preview</Badge>}
+                    </Inline>
+                  </Stack>
                 }
-                description={product.blurb}
                 footer={
                   stats ? (
                     <ProductStats
@@ -159,7 +158,9 @@ export const ProjectsPage = () => {
                     <Skeleton width={240} height={12} />
                   )
                 }
-              />
+              >
+                <SmallText>{product.blurb}</SmallText>
+              </Card>
             );
             return blocked.has(product.type) ? (
               <TooltipText
