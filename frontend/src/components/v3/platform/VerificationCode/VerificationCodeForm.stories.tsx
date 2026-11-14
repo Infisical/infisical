@@ -127,8 +127,8 @@ const InteractiveExample = ({ initialFields = 6 }: { initialFields?: number }) =
       <div className="space-y-3 text-sm text-label">
         <p>
           Interactive demo. Type {fields === 6 ? "123456" : "abcdefgh"} to succeed, or any other
-          complete code to try the error and retry flow. The first complete code submits
-          automatically. No requests are sent.
+          complete code to try the error and retry flow. Complete codes submit automatically. No
+          requests are sent.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => setFields(fields === 6 ? 8 : 6)}>
