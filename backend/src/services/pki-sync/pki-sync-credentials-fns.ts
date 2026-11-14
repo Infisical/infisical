@@ -1,4 +1,4 @@
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -18,7 +18,7 @@ export const encryptPkiSyncCredentials = async ({
   orgId: string;
   projectId: string | null | undefined;
   credentials: TPkiSyncCredentials;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }): Promise<Buffer> => {
   const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
@@ -37,7 +37,7 @@ const decryptPkiSyncCredentials = async ({
   orgId: string;
   projectId: string | null | undefined;
   encryptedCredentials: Buffer;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }): Promise<TPkiSyncCredentials> => {
   const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
@@ -56,7 +56,7 @@ export const hydratePkiSyncCredentials = async ({
   pkiSync: TPkiSyncRaw;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }): Promise<TPkiSyncWithCredentials> => {
   const {
     connection: { id: connectionId, orgId, projectId: appConnectionProjectId }

@@ -1,4 +1,4 @@
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
@@ -11,7 +11,7 @@ import { TBitbucketDataSourceCredentials, TBitbucketPushEvent } from "./bitbucke
 export const bitbucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const handlePushEvent = async (
     payload: TBitbucketPushEvent & { dataSourceId: string; receivedSignature: string; bodyString: string }

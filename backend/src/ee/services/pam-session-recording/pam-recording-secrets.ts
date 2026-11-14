@@ -1,4 +1,4 @@
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
@@ -17,7 +17,7 @@ export const generateSessionRecordingSecrets = async ({
 }: {
   projectId: string;
   sessionId: string;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const sessionKey = crypto.randomBytes(SESSION_KEY_LENGTH);
   const uploadToken = crypto.randomBytes(UPLOAD_TOKEN_LENGTH);
@@ -53,7 +53,7 @@ export const decryptSessionKey = async ({
   projectId: string;
   sessionId: string;
   encryptedSessionKey: Buffer;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,

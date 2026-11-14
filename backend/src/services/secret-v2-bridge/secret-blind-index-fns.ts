@@ -1,4 +1,4 @@
-import { KmsDataKey, TCipherPair, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 export type TSecretValueBlindIndexes = {
   secretValueBlindIndex: string;
@@ -15,7 +15,7 @@ export type TCreateSecretBlindIndexerDTO = {
   // The project's SecretManager cipher pair the caller already holds, so it is not resolved a second time.
   projectCipher: TCipherPair;
   orgId: string;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TCreateOrgSecretBlindIndexerDTO = Omit<TCreateSecretBlindIndexerDTO, "projectCipher">;

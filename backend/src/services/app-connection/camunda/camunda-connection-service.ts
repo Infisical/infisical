@@ -1,4 +1,4 @@
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -17,7 +17,7 @@ type TGetAppConnectionFunc = (
 const listCamundaClusters = async (
   appConnection: TCamundaConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const accessToken = await getCamundaConnectionAccessToken(appConnection, appConnectionDAL, kmsDataKeyService);
 
@@ -34,7 +34,7 @@ const listCamundaClusters = async (
 export const camundaConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const listClusters = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Camunda, connectionId, actor);

@@ -23,11 +23,11 @@ describe("KMS wire format on Postgres", () => {
     const { orgDataKey, projectDataKey, cmek } = fixture.vectors;
 
     // Action
-    const org = await module.dataKeyService.createCipherPairWithDataKey({
+    const org = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgDataKey.orgId
     });
-    const project = await module.dataKeyService.createCipherPairWithDataKey({
+    const project = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: projectDataKey.projectId
     });

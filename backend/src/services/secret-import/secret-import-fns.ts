@@ -1,7 +1,7 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -285,7 +285,7 @@ export const fnSecretsV2FromImports = async ({
   personalOverridesBehavior?: PersonalOverridesBehavior;
   projectId?: string;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   actorOrgId: string;
   abortSignal?: AbortSignal;
 }) => {

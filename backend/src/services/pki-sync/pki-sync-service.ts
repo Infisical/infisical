@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType, TCertificateSyncs } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -152,7 +152,7 @@ type TPkiSyncServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiSyncHealthCheckQueue: Pick<
     TPkiSyncHealthCheckQueueFactory,

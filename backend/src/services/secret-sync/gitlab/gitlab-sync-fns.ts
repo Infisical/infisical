@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { GitbeakerRequestError } from "@gitbeaker/rest";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { GitLabConnectionMethod, TGitLabConnection } from "@app/services/app-connection/gitlab";
 import { getGitLabClient, refreshGitLabToken } from "@app/services/app-connection/gitlab/gitlab-connection-fns";
@@ -33,13 +33,13 @@ interface TGitLabVariableUpdate extends Omit<TGitLabVariablePayload, "key"> {}
 
 type TGitLabSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 const getValidAccessToken = async (
   connection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<string> => {
   if (
     connection.method === GitLabConnectionMethod.OAuth &&

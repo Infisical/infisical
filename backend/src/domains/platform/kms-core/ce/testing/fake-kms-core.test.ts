@@ -11,7 +11,7 @@ describe("FakeKmsCore", () => {
     const kms = new FakeKmsCore();
 
     // Action
-    const { encryptor, decryptor } = await kms.dataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kms.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: "project-1"
     });
@@ -25,17 +25,23 @@ describe("FakeKmsCore", () => {
     const kms = new FakeKmsCore();
 
     // Action
-    const cipherText = kms.rootKeyService.encryptWithRootKey()(Buffer.from("secret"));
+    const cipherText = kms.kmsRootKeyService.encryptWithRootKey()(Buffer.from("secret"));
 
     // Assert
-    expect(kms.rootKeyService.decryptWithRootKey()(cipherText).toString()).toBe("secret");
+    expect(kms.kmsRootKeyService.decryptWithRootKey()(cipherText).toString()).toBe("secret");
   });
 
   test("should give a different org a different data key", async () => {
     // Setup
     const kms = new FakeKmsCore();
-    const a = await kms.dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: "org-a" });
-    const b = await kms.dataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: "org-b" });
+    const a = await kms.kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: "org-a"
+    });
+    const b = await kms.kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: "org-b"
+    });
 
     // Action
     const blob = a.encryptor({ plainText: Buffer.from("x") }).cipherTextBlob;

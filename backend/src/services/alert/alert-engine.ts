@@ -1,7 +1,7 @@
 import pLimit from "p-limit";
 
 import { TAlertChannels, TAlerts } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -51,7 +51,7 @@ export type TAlertEngineDep = {
   >;
   alertProviderRegistry: TAlertProviderRegistry;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 

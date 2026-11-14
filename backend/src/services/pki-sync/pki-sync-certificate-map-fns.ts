@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TCertificates } from "@app/db/schemas";
-import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -32,7 +32,7 @@ type TBuildCertificateMapDeps = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findCertificateIdsByPkiSyncId">;
   projectDAL: TProjectDALFactory;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
 

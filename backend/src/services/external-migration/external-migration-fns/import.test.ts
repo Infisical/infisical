@@ -14,7 +14,7 @@ const ORG_ID = "00000000-0000-4000-8000-000000000001";
 
 const build = ({ existingSecretKeys = [] as string[] }) => {
   const kms = new FakeKmsCore();
-  const withSpy = vi.spyOn(kms.dataKeyService, "within");
+  const withSpy = vi.spyOn(kms.kmsDataKeyService, "within");
 
   const committedProjects: string[] = [];
   const transaction = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => {
@@ -44,7 +44,7 @@ const build = ({ existingSecretKeys = [] as string[] }) => {
       create: vi.fn(async (env: { slug: string }) => ({ id: nextId(), slug: env.slug })),
       find: vi.fn()
     },
-    kmsDataKeyService: kms.dataKeyService,
+    kmsDataKeyService: kms.kmsDataKeyService,
     secretDAL: {
       findBySecretKeys: vi.fn().mockResolvedValue(existingSecretKeys.map((key) => ({ key }))),
       insertMany: vi.fn(async (rows: { key: string }[]) => rows.map((row) => ({ ...row, id: nextId() }))),

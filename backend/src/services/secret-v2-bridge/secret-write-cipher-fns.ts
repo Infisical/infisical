@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { KmsDataKey, ReadFrom, TDataKeyService, TReadOptions } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, ReadFrom, TKmsDataKeyService, TReadOptions } from "@app/domains/platform/kms-core/ce/module";
 
 import { buildSecretBlindIndexer } from "./secret-blind-index-fns";
 import { TSecretWriteCiphers } from "./secret-v2-bridge-types";
@@ -17,7 +17,7 @@ export const prepareSecretWriteCiphers = async ({
   readOptions,
   tx
 }: {
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   projectId: string;
   orgId: string;
   readOptions?: TReadOptions;

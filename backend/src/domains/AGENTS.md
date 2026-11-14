@@ -257,7 +257,7 @@ roll back together: a project created with its first secrets, a secret change an
 its keys. Fetching keys before the transaction instead leaves orphan keys or projects when the transaction fails, and
 cannot see a project the transaction has just created.
 
-- `dataKeyService.within(tx)` returns `TDataKeyTransaction` (cipher pairs, first use included, the project's KMS key
+- `kmsDataKeyService.within(tx)` returns `TKmsDataKeyTransaction` (cipher pairs, first use included, the project's KMS key
   id, the certificate key id, `deleteProjectKeys`); `kmsKeyService.within(tx)` returns `TKmsKeyTransaction` (encrypt,
   decrypt, `getKmsById`). Root key, rotation and external KMS management never join.
 - First use creates the org or project key under KMS Core's frozen advisory locks, held until the caller commits.

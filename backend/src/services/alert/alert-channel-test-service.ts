@@ -1,4 +1,4 @@
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -23,7 +23,7 @@ export type TAlertChannelTestServiceFactoryDep = {
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
   alertChannelService: Pick<TAlertChannelServiceFactory, "validateRecipients" | "assertRecipientTypesAllowed">;
   alertProviderRegistry: TAlertProviderRegistry;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
 };

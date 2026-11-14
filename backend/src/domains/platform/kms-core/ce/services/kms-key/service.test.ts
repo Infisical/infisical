@@ -7,7 +7,7 @@ import { DataKey, TCipherPair } from "../../models/data-key";
 import { KmsKey, KmsKeyUsage } from "../../models/kms-key";
 import { RootKey } from "../../models/root-key";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
-import { TDataKeyService } from "../data-key/service";
+import { TKmsDataKeyService } from "../data-key/service";
 import {
   TCreateExternalKmsInput,
   TExternalKmsDetails,
@@ -32,13 +32,13 @@ const setup = (options: { withHook?: boolean } = {}) => {
   const createdWith: TCipherPair[] = [];
   const seenCiphers: TCipherPair[] = [];
 
-  const dataKeyService = {
+  const kmsDataKeyService = {
     createCipherPairWithDataKey: async () => {
       const cipher = orgDataKey.toCipherPair();
       createdWith.push(cipher);
       return cipher;
     }
-  } as unknown as TDataKeyService;
+  } as unknown as TKmsDataKeyService;
 
   const encrypt = vi.fn(async (_ref: unknown, _cipher: TCipherPair, plainText: Buffer) =>
     Buffer.concat([Buffer.from("ext:"), plainText])
@@ -74,7 +74,7 @@ const setup = (options: { withHook?: boolean } = {}) => {
     memory.stores,
     rootKey,
     options.withHook === false ? undefined : hook,
-    dataKeyService
+    kmsDataKeyService
   );
 
   const seedOrgKey = async (orgId: string) => {

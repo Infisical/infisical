@@ -1,6 +1,6 @@
 import { AccessScope } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -60,7 +60,7 @@ type TProjectCleanupQueueFactoryDep = {
   >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "deleteById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;

@@ -1,6 +1,6 @@
 import { authenticator } from "otplib";
 
-import { TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -19,7 +19,7 @@ import {
 type TTotpServiceFactoryDep = {
   userDAL: TUserDALFactory;
   totpConfigDAL: TTotpConfigDALFactory;
-  kmsRootKeyService: TRootKeyService;
+  kmsRootKeyService: TKmsRootKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   userService: Pick<TUserServiceFactory, "resolveMfaMethodAfterRemoval">;
 };

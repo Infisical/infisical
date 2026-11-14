@@ -1,4 +1,4 @@
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -15,7 +15,7 @@ import { TAzureEntraIdScimSyncWithCredentials } from "./azure-entra-id-scim-sync
 
 type TAzureEntraIdScimSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export const AzureEntraIdScimSyncFns = {

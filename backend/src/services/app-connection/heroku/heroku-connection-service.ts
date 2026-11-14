@@ -1,4 +1,4 @@
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -16,7 +16,7 @@ type TGetAppConnectionFunc = (
 export const herokuConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Heroku, connectionId, actor);

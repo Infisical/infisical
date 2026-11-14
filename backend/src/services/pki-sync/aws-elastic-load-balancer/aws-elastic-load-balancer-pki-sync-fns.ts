@@ -10,7 +10,7 @@ import {
 import { z } from "zod";
 
 import { TCertificateSyncs } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { delay } from "@app/lib/delay";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -58,7 +58,7 @@ const { withRateLimitRetry, executeWithConcurrencyLimit } = awsConnectionQueue;
 
 type TAwsElasticLoadBalancerPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"
@@ -75,7 +75,7 @@ const getAwsElbClient = async (
   connectionId: string,
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<ElasticLoadBalancingV2Client> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -119,7 +119,7 @@ const getAwsAcmClient = async (
   connectionId: string,
   region: AWSRegion,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<ACMClient> => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 

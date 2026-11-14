@@ -7,7 +7,7 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
-import { RootKeyEncryptionStrategy, TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { RootKeyEncryptionStrategy, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   InstanceFeature,
   Meter,
@@ -104,7 +104,7 @@ type TSuperAdminServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  kmsRootKeyService: TRootKeyService;
+  kmsRootKeyService: TKmsRootKeyService;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: TLicenseService;

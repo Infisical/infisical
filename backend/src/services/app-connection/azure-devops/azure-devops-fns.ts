@@ -1,7 +1,7 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -41,7 +41,7 @@ export const getAzureDevopsConnectionListItem = () => {
 export const getAzureDevopsConnection = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 

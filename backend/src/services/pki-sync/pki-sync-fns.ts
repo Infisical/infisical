@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z, ZodSchema } from "zod";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -238,7 +238,7 @@ export const PkiSyncFns = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-      kmsDataKeyService: TDataKeyService;
+      kmsDataKeyService: TKmsDataKeyService;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
     }
@@ -320,7 +320,7 @@ export const PkiSyncFns = {
     certificateMap: TCertificateMap,
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-      kmsDataKeyService: TDataKeyService;
+      kmsDataKeyService: TKmsDataKeyService;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
@@ -586,7 +586,7 @@ export const PkiSyncFns = {
     certificateNames: string[],
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-      kmsDataKeyService: TDataKeyService;
+      kmsDataKeyService: TKmsDataKeyService;
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;
       certificateMap: TCertificateMap;

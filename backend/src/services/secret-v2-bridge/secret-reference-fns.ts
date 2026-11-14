@@ -3,7 +3,7 @@ import path from "node:path";
 import { Knex } from "knex";
 import RE2 from "re2";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { ClientClosedRequestError, ForbiddenRequestError, throwIfClientDisconnected } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -105,7 +105,7 @@ type TInterpolateSecretArg = {
   orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   projectDAL?: Pick<TProjectDALFactory, "find">;
-  kmsDataKeyService?: TDataKeyService;
+  kmsDataKeyService?: TKmsDataKeyService;
   // Optional raw DAL for cross-project secret fetching. This is only distinct from
   // secretDAL when the caller wraps secretDAL with import-aware behavior for
   // same-project relative references; cross-project reads must stay raw so source

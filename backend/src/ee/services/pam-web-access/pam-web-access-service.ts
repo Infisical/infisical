@@ -2,7 +2,7 @@ import net from "node:net";
 
 import type WebSocket from "ws";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -85,7 +85,7 @@ type TPamWebAccessServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "runWithPoolFailover" | "assertGatewayBindingInOrg"
   >;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,

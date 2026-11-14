@@ -1,5 +1,5 @@
 import { TAuditLogs, TAuditLogStreams } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 import { AuditLogStreamProduct } from "./audit-log-stream-enums";
 import { TAuditLogStreamFilters } from "./audit-log-stream-schemas";
@@ -40,7 +40,7 @@ export const encryptLogStreamCredentials = async ({
 }: {
   orgId: string;
   credentials: TAuditLogStreamCredentials;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
@@ -61,7 +61,7 @@ export const decryptLogStreamCredentials = async ({
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
@@ -96,7 +96,7 @@ export const auditLogMatchesStreamFilter = (
   return products.includes(product);
 };
 
-export const decryptLogStream = async (logStream: TAuditLogStreams, kmsDataKeyService: TDataKeyService) => {
+export const decryptLogStream = async (logStream: TAuditLogStreams, kmsDataKeyService: TKmsDataKeyService) => {
   return {
     ...logStream,
     credentials: await decryptLogStreamCredentials({

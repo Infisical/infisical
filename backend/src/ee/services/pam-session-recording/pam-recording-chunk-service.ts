@@ -1,6 +1,6 @@
 import RE2 from "re2";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -31,7 +31,7 @@ type TPamSessionChunkServiceFactoryDep = {
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 

@@ -4,7 +4,7 @@ import { TeamsActivityHandler, TurnContext } from "botbuilder";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
@@ -108,7 +108,7 @@ export const getMicrosoftTeamsAccessToken = async (
     tenantId: string;
     clientId: string;
     clientSecret: string;
-    kmsDataKeyService: TDataKeyService;
+    kmsDataKeyService: TKmsDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     getBotFrameworkToken?: boolean;
   },
@@ -266,7 +266,7 @@ export const isBotInstalledInTenant = async (
     botAppPassword: string;
     botId: string;
     orgId: string;
-    kmsDataKeyService: TDataKeyService;
+    kmsDataKeyService: TKmsDataKeyService;
     microsoftTeamsIntegrationDAL: Pick<TMicrosoftTeamsIntegrationDALFactory, "findOne" | "update">;
     microsoftTeamsIntegrationId: string;
   },

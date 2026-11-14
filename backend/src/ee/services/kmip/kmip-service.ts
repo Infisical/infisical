@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -71,7 +71,7 @@ type TKmipServiceFactoryDep = {
   kmipClientCertificateDAL: TKmipClientCertificateDALFactory;
   kmipOrgServerCertificateDAL: TKmipOrgServerCertificateDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmipOrgConfigDAL: TKmipOrgConfigDALFactory;
   licenseService: TLicenseService;
 };

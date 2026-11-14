@@ -1,6 +1,6 @@
 import { AxiosError, AxiosRequestConfig } from "axios";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
@@ -142,7 +142,7 @@ const authorizeDatabricksConnection = async (config: TDatabricksRequestConfig, d
 export const getDatabricksConnectionAccessToken = async (
   { id, orgId, credentials, projectId, gatewayId, gatewayPoolId }: TDatabricksConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService,
+  kmsDataKeyService: TKmsDataKeyService,
   deps: TDatabricksGatewayDeps = {}
 ) => {
   // checked before the cached token is returned, since a caller without gateway support goes on to call the workspace

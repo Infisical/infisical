@@ -1,4 +1,4 @@
-import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -69,7 +69,7 @@ export const prepareSelfSignedCertificate = async ({
   } | null;
   projectId: string;
   effectiveAlgorithms: TEffectiveAlgorithms;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   existingKeyPair?: CryptoKeyPair;
   customExtensions?: TResolvedCustomExtension[];

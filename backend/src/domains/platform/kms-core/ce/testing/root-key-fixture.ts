@@ -2,7 +2,7 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 
 import { TRootKeyWrapper } from "../services/dependencies";
 import { loadRootKey, TLoadRootKeyDeps } from "../services/root-key/load-root-key";
-import { RootKeyService, TKmsCoreEnv } from "../services/root-key/service";
+import { KmsRootKeyService, TKmsCoreEnv } from "../services/root-key/service";
 import { InMemoryKmsCoreStores } from "./in-memory-kms-core-stores";
 
 // The throwaway key the integration template database was wrapped with. Test data, never a default.
@@ -53,6 +53,6 @@ export const bootRootKeyService = async ({
     rootKeyWrapper
   };
   const rootKey = await loadRootKey(deps);
-  const service = new RootKeyService(memory.transactionRunner, rootKey, env, isFipsEnabled, rootKeyWrapper);
+  const service = new KmsRootKeyService(memory.transactionRunner, rootKey, env, isFipsEnabled, rootKeyWrapper);
   return { memory, service, rootKey };
 };

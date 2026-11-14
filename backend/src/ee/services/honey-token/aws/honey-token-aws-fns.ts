@@ -10,7 +10,7 @@ import {
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
@@ -43,7 +43,7 @@ import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredent
 
 type TConfigProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
@@ -76,7 +76,7 @@ export const verifyAwsStackDeployment = async ({
   stackName: string;
   awsRegion: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }): Promise<{ deployed: boolean; status: string | null }> => {
   try {
     const appConnection = await appConnectionDAL.findById(connectionId);

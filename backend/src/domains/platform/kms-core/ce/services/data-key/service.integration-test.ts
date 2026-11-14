@@ -5,14 +5,14 @@ import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { RootKey } from "../../models/root-key";
 import { ReadFrom } from "../helpers/read-options";
-import { DataKeyService, KmsDataKey, KmsType } from "./service";
+import { KmsDataKeyService, KmsDataKey, KmsType } from "./service";
 
-describe("DataKeyService on Postgres", () => {
+describe("KmsDataKeyService on Postgres", () => {
   const h = setupIntegration();
 
   const newService = () => {
     const { transactionRunner, stores } = buildKmsCoreStoreAccess(h.db, () => h.db);
-    return new DataKeyService(transactionRunner, stores, RootKey.generate(), undefined);
+    return new KmsDataKeyService(transactionRunner, stores, RootKey.generate(), undefined);
   };
 
   // Polls until another connection is queued on the advisory lock, which proves it asked for the same id.

@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 import * as crypto from "crypto";
 
 import { TCertificateSyncs } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -53,7 +53,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
 
 type TAzureKeyVaultPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"

@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { OrganizationActionScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
-import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -32,7 +32,7 @@ type TCertManagerExportServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };

@@ -2,10 +2,10 @@ import { InstanceEncryptionKey } from "../models/instance-encryption-key";
 import { RootKey } from "../models/root-key";
 import { RootKeyConfig, RootKeyEncryptionStrategy } from "../models/root-key-config";
 import { KmsCoreModule } from "../module";
-import { TDataKeyService } from "../services/data-key/service";
+import { TKmsDataKeyService } from "../services/data-key/service";
 import { TKmsCoreHooks } from "../services/dependencies";
 import { TKmsKeyService } from "../services/kms-key/service";
-import { TRootKeyService } from "../services/root-key/service";
+import { TKmsRootKeyService } from "../services/root-key/service";
 import { InMemoryKmsCoreStores } from "./in-memory-kms-core-stores";
 import { rootKeyTestEnv } from "./root-key-fixture";
 
@@ -31,11 +31,11 @@ const delegate = <T extends object>(service: Promise<T>, methods: TAsync<T>[]): 
 export class FakeKmsCore {
   readonly memory = new InMemoryKmsCoreStores();
 
-  readonly dataKeyService: TDataKeyService;
+  readonly kmsDataKeyService: TKmsDataKeyService;
 
   readonly kmsKeyService: TKmsKeyService;
 
-  readonly rootKeyService: TRootKeyService;
+  readonly kmsRootKeyService: TKmsRootKeyService;
 
   private readonly rootKey = RootKey.generate();
 
@@ -58,8 +58,8 @@ export class FakeKmsCore {
       })
     );
 
-    const dataKeys = delegate<TDataKeyService>(
-      module.then((m) => m.dataKeyService),
+    const dataKeys = delegate<TKmsDataKeyService>(
+      module.then((m) => m.kmsDataKeyService),
       [
         "createCipherPairWithDataKey",
         "getProjectSecretManagerKmsKeyId",
@@ -72,7 +72,7 @@ export class FakeKmsCore {
         "deleteProjectKeys"
       ]
     );
-    this.dataKeyService = { ...dataKeys, within: () => dataKeys };
+    this.kmsDataKeyService = { ...dataKeys, within: () => dataKeys };
 
     const kmsKeys = delegate<TKmsKeyService>(
       module.then((m) => m.kmsKeyService),
@@ -109,9 +109,9 @@ export class FakeKmsCore {
     );
     this.kmsKeyService = { ...kmsKeys, within: () => kmsKeys };
 
-    this.rootKeyService = {
-      ...delegate<TRootKeyService>(
-        module.then((m) => m.rootKeyService),
+    this.kmsRootKeyService = {
+      ...delegate<TKmsRootKeyService>(
+        module.then((m) => m.kmsRootKeyService),
         [
           "listEncryptionStrategies",
           "updateEncryptionStrategy",

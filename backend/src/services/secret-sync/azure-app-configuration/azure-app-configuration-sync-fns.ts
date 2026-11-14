@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import https from "https";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -16,7 +16,7 @@ import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configura
 
 type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 

@@ -9,7 +9,7 @@ import { OrderByDirection } from "@app/lib/types";
 import { KeyMaterial } from "../../models/key-material";
 import { KmsKey, KmsKeyUsage, TKmsKeyDetails, TKmsKeyRecord } from "../../models/kms-key";
 import { RootKey } from "../../models/root-key";
-import { KmsDataKey, TDataKeyService } from "../data-key/service";
+import { KmsDataKey, TKmsDataKeyService } from "../data-key/service";
 import {
   TExternalKmsDetails,
   TExternalKmsHook,
@@ -173,7 +173,7 @@ export class KmsKeyService implements TKmsKeyService {
     private readonly stores: TKmsCoreStores,
     private readonly rootKey: RootKey,
     private readonly externalKms: TExternalKmsHook | undefined,
-    private readonly dataKeyService: TDataKeyService,
+    private readonly kmsDataKeyService: TKmsDataKeyService,
     // Set for a service bound to a caller's transaction.
     private readonly isJoined = false
   ) {}
@@ -182,7 +182,7 @@ export class KmsKeyService implements TKmsKeyService {
     const runner = this.transactionRunner.within(tx);
     const joined = <T>(work: (service: KmsKeyService) => Promise<T>) =>
       runner.run(({ stores }) =>
-        work(new KmsKeyService(runner, stores, this.rootKey, this.externalKms, this.dataKeyService, true))
+        work(new KmsKeyService(runner, stores, this.rootKey, this.externalKms, this.kmsDataKeyService, true))
       );
     return {
       encryptWithKmsKey: (input) => joined((service) => service.encryptWithKmsKey(input)),
@@ -382,7 +382,7 @@ export class KmsKeyService implements TKmsKeyService {
 
   async createExternalKms(input: TCreateExternalKmsInput) {
     const provider = requireExternalKms(this.externalKms);
-    const cipher = await this.dataKeyService.createCipherPairWithDataKey({
+    const cipher = await this.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: input.orgId
     });

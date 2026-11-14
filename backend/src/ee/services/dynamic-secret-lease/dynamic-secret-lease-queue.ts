@@ -1,5 +1,5 @@
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { applyJitter } from "@app/lib/delay";
 import { DisableRotationErrors, NotFoundError } from "@app/lib/errors";
@@ -33,7 +33,7 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findById" | "findSecretPathByFolderIds">;
 };
 

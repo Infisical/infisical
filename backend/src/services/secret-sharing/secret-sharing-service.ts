@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { OrganizationActionScope, OrgMembershipStatus, TOrganizations, TSecretSharing } from "@app/db/schemas";
-import { TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -43,7 +43,7 @@ type TSecretSharingServiceFactoryDep = {
   orgAssetDAL: TOrgAssetDALFactory;
   orgDAL: TOrgDALFactory;
   userDAL: TUserDALFactory;
-  kmsRootKeyService: TRootKeyService;
+  kmsRootKeyService: TKmsRootKeyService;
   smtpService: TSmtpService;
   licenseService: TLicenseService;
   identityDAL: Pick<TIdentityDALFactory, "findById">;

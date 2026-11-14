@@ -2,7 +2,7 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -119,7 +119,7 @@ const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
 export type TAppConnectionCredentialRotationServiceFactoryDep = {
   appConnectionCredentialRotationDAL: TAppConnectionCredentialRotationDALFactory;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "transaction">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   queueService: TQueueServiceFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;

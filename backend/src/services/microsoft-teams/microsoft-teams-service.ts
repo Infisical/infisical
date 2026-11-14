@@ -10,7 +10,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
-import { KmsDataKey, TDataKeyService, TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
@@ -67,8 +67,8 @@ type TMicrosoftTeamsServiceFactoryDep = {
     | "update"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsDataKeyService: TDataKeyService;
-  kmsRootKeyService: TRootKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsRootKeyService: TKmsRootKeyService;
   workflowIntegrationDAL: Pick<
     TWorkflowIntegrationDALFactory,
     "transaction" | "create" | "updateById" | "deleteById" | "update" | "findOne"

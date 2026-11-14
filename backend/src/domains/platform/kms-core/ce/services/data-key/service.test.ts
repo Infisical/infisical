@@ -9,7 +9,7 @@ import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { TInMemoryProjectRow } from "../../testing/in-memory-platform-rows";
 import { TExternalKmsHook, TKmsCoreStores, TProjectKeyStore } from "../dependencies";
 import { ReadFrom } from "../helpers/read-options";
-import { DataKeyService, KmsDataKey, KmsType } from "./service";
+import { KmsDataKeyService, KmsDataKey, KmsType } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -32,7 +32,7 @@ const build = (externalKms?: TExternalKmsHook) => {
   const mem = new InMemoryKmsCoreStores();
   mem.platformRows.addProject("project-1", "org-1");
   const rootKey = RootKey.generate();
-  const service = new DataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms);
+  const service = new KmsDataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms);
   return { mem, rootKey, service };
 };
 
@@ -42,7 +42,7 @@ const buildCached = (externalKms?: TExternalKmsHook) => {
   const rootKey = RootKey.generate();
   const keyStore = new InMemoryKeyStore();
   const cache = new ProjectDataKeyCache(keyStore);
-  const service = new DataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms, cache);
+  const service = new KmsDataKeyService(mem.transactionRunner, mem.stores, rootKey, externalKms, cache);
   return { mem, rootKey, keyStore, cache, service };
 };
 
@@ -67,7 +67,7 @@ const withLaggingReplica = (mem: InMemoryKmsCoreStores, projectId: string) => {
   const projectKeyStore = Object.create(mem.projectKeyStore) as TProjectKeyStore;
   projectKeyStore.find = async (id: string) => (id === projectId ? null : mem.projectKeyStore.find(id));
   const replica: TKmsCoreStores = { ...mem.stores, projectKeyStore };
-  return new DataKeyService(mem.transactionRunner, replica, RootKey.generate(), undefined);
+  return new KmsDataKeyService(mem.transactionRunner, replica, RootKey.generate(), undefined);
 };
 
 const setProjectRow = (mem: InMemoryKmsCoreStores, projectId: string, patch: Partial<TInMemoryProjectRow>) => {
@@ -78,13 +78,13 @@ const setProjectRow = (mem: InMemoryKmsCoreStores, projectId: string, patch: Par
 
 const keysOf = (mem: InMemoryKmsCoreStores, orgId: string) => mem.kmsKeyStore.find({ orgId });
 
-const projectCipher = (service: DataKeyService, projectId = "project-1") =>
+const projectCipher = (service: KmsDataKeyService, projectId = "project-1") =>
   service.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
 const seal = (cipher: Awaited<ReturnType<typeof projectCipher>>, text: string) =>
   cipher.encryptor({ plainText: Buffer.from(text) }).cipherTextBlob;
 
-describe("DataKeyService.createCipherPairWithDataKey", () => {
+describe("KmsDataKeyService.createCipherPairWithDataKey", () => {
   test("should create the org key and data key once for concurrent first callers", async () => {
     // Setup
     const { mem, service } = build();
@@ -224,7 +224,7 @@ describe("DataKeyService.createCipherPairWithDataKey", () => {
   });
 });
 
-describe("DataKeyService.getProjectSecretManagerKmsKeyId", () => {
+describe("KmsDataKeyService.getProjectSecretManagerKmsKeyId", () => {
   test("should create the project key on first use and return it afterwards", async () => {
     // Setup
     const { mem, service } = build();
@@ -239,7 +239,7 @@ describe("DataKeyService.getProjectSecretManagerKmsKeyId", () => {
   });
 });
 
-describe("DataKeyService.getProjectCertificateKmsKeyId", () => {
+describe("KmsDataKeyService.getProjectCertificateKmsKeyId", () => {
   test("should create the project certificate key on first use and return it afterwards", async () => {
     // Setup
     const { mem, service } = build();
@@ -285,7 +285,7 @@ describe("DataKeyService.getProjectCertificateKmsKeyId", () => {
   });
 });
 
-describe("DataKeyService.wrapKey and unwrapKey", () => {
+describe("KmsDataKeyService.wrapKey and unwrapKey", () => {
   test("should unwrap a key for the label it was wrapped with", async () => {
     // Setup
     const { service } = build();
@@ -312,7 +312,7 @@ describe("DataKeyService.wrapKey and unwrapKey", () => {
   });
 });
 
-describe("DataKeyService.updateProjectSecretManagerKmsKey", () => {
+describe("KmsDataKeyService.updateProjectSecretManagerKmsKey", () => {
   test("should leave a project on its internal key when asked to switch to an internal key", async () => {
     // Setup
     const { service } = build();
@@ -472,7 +472,7 @@ describe("DataKeyService.updateProjectSecretManagerKmsKey", () => {
   });
 });
 
-describe("DataKeyService project key backup", () => {
+describe("KmsDataKeyService project key backup", () => {
   test("should restore a backup into a new key that decrypts the project's data", async () => {
     // Setup
     const { service } = build();
@@ -537,7 +537,7 @@ describe("DataKeyService project key backup", () => {
   });
 });
 
-describe("DataKeyService.deleteProjectKeys", () => {
+describe("KmsDataKeyService.deleteProjectKeys", () => {
   test("should refuse a key of another org and keep it", async () => {
     // Setup
     const { mem, service } = build();
@@ -610,7 +610,7 @@ describe("DataKeyService.deleteProjectKeys", () => {
   });
 });
 
-describe("DataKeyService project data key cache", () => {
+describe("KmsDataKeyService project data key cache", () => {
   test("should serve a second cipher pair from the cache without reading the project or using the primary", async () => {
     // Setup
     const { mem, service } = buildCached();
@@ -870,7 +870,7 @@ describe("DataKeyService project data key cache", () => {
   });
 });
 
-describe("DataKeyService.within", () => {
+describe("KmsDataKeyService.within", () => {
   test("should return the winner's certificate key and delete the reserved key it inserted when its claim is lost", async () => {
     // Setup
     const { mem, service } = build();

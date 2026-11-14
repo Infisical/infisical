@@ -1,5 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService, TDataKeyTransaction } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService, TKmsDataKeyTransaction } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
@@ -353,7 +353,7 @@ import {
 import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
-export type TCipherPairSource = Pick<TDataKeyTransaction, "createCipherPairWithDataKey">;
+export type TCipherPairSource = Pick<TKmsDataKeyTransaction, "createCipherPairWithDataKey">;
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
@@ -660,7 +660,7 @@ export const validateAppConnectionCredentials = async (
   deps: {
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
     gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-    kmsDataKeyService: TDataKeyService;
+    kmsDataKeyService: TKmsDataKeyService;
     keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
     oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     actorId?: string;

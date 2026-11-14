@@ -5,7 +5,7 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { RootKey } from "../../models/root-key";
-import { TDataKeyService } from "../data-key/service";
+import { TKmsDataKeyService } from "../data-key/service";
 import { KmsKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -22,7 +22,7 @@ describe("KmsKeyService on Postgres", () => {
       stores,
       RootKey.generate(),
       undefined,
-      {} as unknown as TDataKeyService
+      {} as unknown as TKmsDataKeyService
     );
   };
 

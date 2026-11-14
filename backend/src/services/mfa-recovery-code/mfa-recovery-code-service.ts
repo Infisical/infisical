@@ -1,4 +1,4 @@
-import { TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TUserDALFactory } from "../user/user-dal";
@@ -14,7 +14,7 @@ import {
 type TMfaRecoveryCodeServiceFactoryDep = {
   mfaRecoveryCodeDAL: TMfaRecoveryCodeDALFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
-  kmsRootKeyService: TRootKeyService;
+  kmsRootKeyService: TKmsRootKeyService;
 };
 
 export type TMfaRecoveryCodeServiceFactory = ReturnType<typeof mfaRecoveryCodeServiceFactory>;

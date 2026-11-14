@@ -4,18 +4,18 @@ import { sealKnexTransaction } from "@app/domains/lib/transactions";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { RootKey } from "../../models/root-key";
-import { DataKeyService, KmsDataKey } from "./service";
+import { KmsDataKeyService, KmsDataKey } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
-describe("DataKeyService.within on Postgres", () => {
+describe("KmsDataKeyService.within on Postgres", () => {
   const h = setupIntegration();
 
   const newService = (rootKey = RootKey.generate()) => {
     const { transactionRunner, stores } = buildKmsCoreStoreAccess(h.db, () => h.db);
-    return new DataKeyService(transactionRunner, stores, rootKey, undefined);
+    return new KmsDataKeyService(transactionRunner, stores, rootKey, undefined);
   };
 
   const kmsKeyCount = async (orgId: string) => {

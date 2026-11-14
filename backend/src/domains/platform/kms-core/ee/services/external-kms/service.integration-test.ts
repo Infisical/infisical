@@ -111,26 +111,26 @@ describe("External KMS keys on Postgres", () => {
       name: "project-key",
       provider: awsInputs
     });
-    const cipher = await module.dataKeyService.createCipherPairWithDataKey({
+    const cipher = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: tn.project.id
     });
     const blob = cipher.encryptor({ plainText: Buffer.from("portable") }).cipherTextBlob;
 
     // Action
-    await module.dataKeyService.updateProjectSecretManagerKmsKey({
+    await module.kmsDataKeyService.updateProjectSecretManagerKmsKey({
       projectId: tn.project.id,
       kms: { type: KmsType.External, kmsId: external.id }
     });
-    const onExternal = await module.dataKeyService.createCipherPairWithDataKey({
+    const onExternal = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: tn.project.id
     });
-    await module.dataKeyService.updateProjectSecretManagerKmsKey({
+    await module.kmsDataKeyService.updateProjectSecretManagerKmsKey({
       projectId: tn.project.id,
       kms: { type: KmsType.Internal }
     });
-    const backOnInternal = await module.dataKeyService.createCipherPairWithDataKey({
+    const backOnInternal = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: tn.project.id
     });
@@ -158,11 +158,11 @@ describe("External KMS keys on Postgres", () => {
     };
 
     // Action
-    await module.dataKeyService.updateProjectSecretManagerKmsKey({
+    await module.kmsDataKeyService.updateProjectSecretManagerKmsKey({
       projectId: tn.project.id,
       kms: { type: KmsType.External, kmsId: external.id }
     });
-    await module.dataKeyService.createCipherPairWithDataKey({
+    await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: tn.project.id
     });

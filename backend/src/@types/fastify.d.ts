@@ -3,7 +3,7 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
-import { TDataKeyService, TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
@@ -423,8 +423,8 @@ declare module "fastify" {
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
     licenseService: TLicenseService;
-    kmsDataKeyService: TDataKeyService;
-    kmsRootKeyService: TRootKeyService;
+    kmsDataKeyService: TKmsDataKeyService;
+    kmsRootKeyService: TKmsRootKeyService;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;

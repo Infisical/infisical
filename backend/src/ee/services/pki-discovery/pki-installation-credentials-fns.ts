@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 const PkiInstallationCredentialsSchema = z.object({
   keystorePassword: z.string().optional()
@@ -15,7 +15,7 @@ export const encryptPkiInstallationCredentials = async ({
 }: {
   projectId: string;
   credentials: TPkiInstallationCredentials;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
@@ -30,7 +30,7 @@ export const createPkiInstallationCredentialsDecryptor = async ({
   kmsDataKeyService
 }: {
   projectId: string;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,

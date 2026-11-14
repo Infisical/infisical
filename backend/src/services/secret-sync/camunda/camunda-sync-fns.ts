@@ -1,4 +1,4 @@
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getCamundaConnectionAccessToken } from "@app/services/app-connection/camunda/camunda-connection-fns";
@@ -18,7 +18,7 @@ import { TSecretSyncPayload } from "../secret-sync-payload";
 
 type TCamundaSecretSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 const getCamundaSecrets = async ({ accessToken, clusterUUID }: TCamundaListSecrets) => {

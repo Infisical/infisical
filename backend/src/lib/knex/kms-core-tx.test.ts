@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 
-import { KmsDataKey, ReadFrom, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, ReadFrom, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 import { dataKeysOn } from "./kms-core-tx";
 
@@ -12,7 +12,7 @@ const makeService = () => {
     createCipherPairWithDataKey: vi.fn().mockResolvedValue("pool"),
     within: vi.fn().mockReturnValue(joined)
   };
-  return { service, joined, kmsDataKeyService: service as unknown as TDataKeyService };
+  return { service, joined, kmsDataKeyService: service as unknown as TKmsDataKeyService };
 };
 
 describe("dataKeysOn", () => {

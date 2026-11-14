@@ -4,7 +4,7 @@ import { retry } from "@octokit/plugin-retry";
 import { Octokit } from "@octokit/rest";
 
 import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -42,7 +42,7 @@ const getIntegrationSecretsV2 = async (
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">,
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
-  kmsDataKeyService: TDataKeyService,
+  kmsDataKeyService: TKmsDataKeyService,
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">,
   orgDAL: Pick<TOrgDALFactory, "findOrgById">
 ) => {
@@ -315,7 +315,7 @@ export const deleteIntegrationSecrets = async ({
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath" | "findBySecretPath">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   actorOrgId: string;

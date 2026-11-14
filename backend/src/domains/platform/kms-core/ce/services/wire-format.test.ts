@@ -29,11 +29,11 @@ describe("KMS wire format (legacy fixtures)", () => {
     const { orgDataKey, projectDataKey } = fixture.vectors;
 
     // Action
-    const org = await module.dataKeyService.createCipherPairWithDataKey({
+    const org = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgDataKey.orgId
     });
-    const project = await module.dataKeyService.createCipherPairWithDataKey({
+    const project = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: projectDataKey.projectId
     });
@@ -80,13 +80,13 @@ describe("KMS wire format (legacy fixtures)", () => {
     const { wrappedKey, rootKey, inputKey } = fixture.vectors;
 
     // Action
-    const unwrapped = await module.dataKeyService.unwrapKey({
+    const unwrapped = await module.kmsDataKeyService.unwrapKey({
       projectId: wrappedKey.projectId,
       label: wrappedKey.label,
       wrappedKey: b64(wrappedKey.wrapped),
       keyBytes: 32
     });
-    const rootPlain = module.rootKeyService.decryptWithRootKey()(b64(rootKey.cipherTextBlob));
+    const rootPlain = module.kmsRootKeyService.decryptWithRootKey()(b64(rootKey.cipherTextBlob));
     const inputPlain = DataKey.fromBytes(b64(inputKey.key)).decrypt(b64(inputKey.cipherTextBlob));
 
     // Assert
@@ -101,7 +101,7 @@ describe("KMS wire format (legacy fixtures)", () => {
     const { wrappedKey } = fixture.vectors;
 
     // Action
-    const unwrapped = await module.dataKeyService.unwrapKey({
+    const unwrapped = await module.kmsDataKeyService.unwrapKey({
       projectId: wrappedKey.projectId,
       label: "another-session|v1",
       wrappedKey: b64(wrappedKey.wrapped),
@@ -117,7 +117,7 @@ describe("KMS wire format (legacy fixtures)", () => {
     const { module, fixture } = await startOnFixture();
 
     // Action
-    const cookieKey = module.rootKeyService.getCookieSigningKey();
+    const cookieKey = module.kmsRootKeyService.getCookieSigningKey();
 
     // Assert
     expect(cookieKey).toBe(fixture.vectors.cookieSigningKey);
@@ -129,8 +129,8 @@ describe("KMS wire format (legacy fixtures)", () => {
     const { backup, projectDataKey } = fixture.vectors;
 
     // Action
-    await module.dataKeyService.loadProjectKeyBackup(backup.projectId, backup.secretManager);
-    const project = await module.dataKeyService.createCipherPairWithDataKey({
+    await module.kmsDataKeyService.loadProjectKeyBackup(backup.projectId, backup.secretManager);
+    const project = await module.kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: backup.projectId
     });
@@ -149,7 +149,7 @@ describe("KMS wire format (legacy fixtures)", () => {
     const tampered = `${backup.secretManager.slice(0, -1)}${backup.secretManager.endsWith("0") ? "1" : "0"}`;
 
     // Action
-    const result = module.dataKeyService.loadProjectKeyBackup(backup.projectId, tampered);
+    const result = module.kmsDataKeyService.loadProjectKeyBackup(backup.projectId, tampered);
 
     // Assert
     await expect(result).rejects.toThrow("Invalid backup");

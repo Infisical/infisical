@@ -2,7 +2,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { TCertificates } from "@app/db/schemas";
-import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
@@ -28,13 +28,13 @@ type TIssueSignerCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
 
 type TVerifyCodeSigningEkuDeps = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
 

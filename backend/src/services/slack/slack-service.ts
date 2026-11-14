@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { InstallProvider } from "@slack/oauth";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService, TRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -35,8 +35,8 @@ type TSlackServiceFactoryDep = {
     | "findWithWorkflowIntegrationDetails"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsDataKeyService: TDataKeyService;
-  kmsRootKeyService: TRootKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsRootKeyService: TKmsRootKeyService;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "transaction" | "create" | "updateById" | "deleteById">;
 };
 

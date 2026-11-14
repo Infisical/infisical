@@ -14,7 +14,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
   PlanLimit,
@@ -116,7 +116,7 @@ type TSamlConfigServiceFactoryDep = {
   usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"

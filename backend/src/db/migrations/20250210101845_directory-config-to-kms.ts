@@ -2,7 +2,7 @@
    run everywhere, and on a fresh install runs against empty tables before a rotation is possible. */
 import { Knex } from "knex";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
@@ -14,7 +14,7 @@ import { createCircularCache } from "./utils/ring-buffer";
 import { getMigrationEncryptionServices } from "./utils/services";
 
 const BATCH_SIZE = 500;
-const reencryptSamlConfig = async (knex: Knex, kmsDataKeyService: TDataKeyService) => {
+const reencryptSamlConfig = async (knex: Knex, kmsDataKeyService: TKmsDataKeyService) => {
   const hasEncryptedEntrypointColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlEntryPoint");
   const hasEncryptedIssuerColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlIssuer");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlCertificate");
@@ -153,7 +153,7 @@ const reencryptSamlConfig = async (knex: Knex, kmsDataKeyService: TDataKeyServic
   }
 };
 
-const reencryptLdapConfig = async (knex: Knex, kmsDataKeyService: TDataKeyService) => {
+const reencryptLdapConfig = async (knex: Knex, kmsDataKeyService: TKmsDataKeyService) => {
   const hasEncryptedLdapBindDNColum = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindDN");
   const hasEncryptedLdapBindPassColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindPass");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapCaCertificate");
@@ -310,7 +310,7 @@ const reencryptLdapConfig = async (knex: Knex, kmsDataKeyService: TDataKeyServic
   }
 };
 
-const reencryptOidcConfig = async (knex: Knex, kmsDataKeyService: TDataKeyService) => {
+const reencryptOidcConfig = async (knex: Knex, kmsDataKeyService: TKmsDataKeyService) => {
   const hasEncryptedOidcClientIdColumn = await knex.schema.hasColumn(TableName.OidcConfig, "encryptedOidcClientId");
   const hasEncryptedOidcClientSecretColumn = await knex.schema.hasColumn(
     TableName.OidcConfig,

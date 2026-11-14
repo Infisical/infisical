@@ -1,4 +1,4 @@
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   TProjectSlackConfigDALFactory,
   TProjectSlackConfigWithIntegrations
@@ -17,7 +17,7 @@ const handleSlackNotification = async ({
   slackConfig: TProjectSlackConfigWithIntegrations;
   notification: TNotification;
   orgId: string;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }): Promise<void> => {
   let targetChannelIds: string[] = [];
   let isEnabled = false;
@@ -67,7 +67,7 @@ export const triggerSlackNotification = async ({
   notification: TNotification;
   orgId: string;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }): Promise<void> => {
   try {
     const config = await projectSlackConfigDAL.getIntegrationDetailsByProject(projectId);

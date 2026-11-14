@@ -2,7 +2,7 @@
 import { GitbeakerRequestError, GitbeakerRetryError, Gitlab } from "@gitbeaker/rest";
 import { AxiosError, HttpStatusCode } from "axios";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, RateLimitError } from "@app/lib/errors";
@@ -29,7 +29,7 @@ interface GitLabOAuthTokenResponse {
 type TNavigationParams = {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export const getGitLabConnectionListItem = () => {
@@ -72,7 +72,7 @@ export const refreshGitLabToken = async (
   orgId: string,
   projectId: string | undefined | null,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService,
+  kmsDataKeyService: TKmsDataKeyService,
   instanceUrl?: string
 ): Promise<string> => {
   const {
@@ -285,7 +285,7 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
 export const getGitLabConnectionClient = async (
   appConnection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   let { accessToken } = appConnection.credentials;
 
@@ -350,7 +350,7 @@ export const listGitLabProjects = async ({
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   search?: string;
   limit?: number;
 }): Promise<TGitLabProject[]> => {
@@ -409,7 +409,7 @@ export const listGitLabGroups = async ({
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   search?: string;
   limit?: number;
 }): Promise<TGitLabGroup[]> => {

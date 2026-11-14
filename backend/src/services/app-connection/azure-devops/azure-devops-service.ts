@@ -2,7 +2,7 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError } from "axios";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -65,7 +65,7 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
 const listAzureDevOpsProjects = async (
   appConnection: TAzureDevOpsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<TAzureDevOpsProject[]> => {
   const accessToken = await getAzureDevopsConnection(appConnection.id, appConnectionDAL, kmsDataKeyService);
 
@@ -104,7 +104,7 @@ const listAzureDevOpsProjects = async (
 export const azureDevOpsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.AzureDevOps, connectionId, actor);

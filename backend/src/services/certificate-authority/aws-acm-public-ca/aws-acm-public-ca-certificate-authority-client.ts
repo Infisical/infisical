@@ -1,6 +1,6 @@
 import { ACMClient } from "@aws-sdk/client-acm";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -19,7 +19,7 @@ export const createAcmClient = async ({
   appConnectionId: string;
   region: AWSRegion;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -44,7 +44,7 @@ export const resolveDnsAwsConnection = async ({
 }: {
   dnsAppConnectionId: string;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const dnsAppConnection = await appConnectionDAL.findById(dnsAppConnectionId);
   if (!dnsAppConnection) {

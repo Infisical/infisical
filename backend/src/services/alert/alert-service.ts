@@ -2,7 +2,7 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TableName, TAlertChannels, TAlerts, TAlertsInsert } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -70,7 +70,7 @@ export type TAlertServiceFactoryDep = {
     | "getDetailsForChannels"
     | "filterRecipientsInScope"
   >;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   alertProviderRegistry: TAlertProviderRegistry;
   alertHistoryDAL: Pick<TAlertHistoryDALFactory, "findLatestByAlertIds">;
 };

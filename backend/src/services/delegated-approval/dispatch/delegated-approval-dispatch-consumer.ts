@@ -1,7 +1,7 @@
 import { UnrecoverableError } from "bullmq";
 
 import { ProjectType } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -70,7 +70,7 @@ type TDelegatedApprovalDispatchConsumerDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "update">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TDelegatedApprovalDispatchConsumer = ReturnType<typeof delegatedApprovalDispatchConsumerFactory>;

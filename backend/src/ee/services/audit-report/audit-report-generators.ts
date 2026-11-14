@@ -1,7 +1,7 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -33,7 +33,7 @@ export type TAuditReportGeneratorDALs = {
   auditLogDAL: Pick<TAuditLogDALFactory, "find">;
   clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "find">;
   secretValidationRuleDAL: Pick<TSecretValidationRuleDALFactory, "find">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TReportGenerationContext = {

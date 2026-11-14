@@ -6,7 +6,7 @@ import { KMS_ROOT_CONFIG_UUID, RootKeyConfig, RootKeyEncryptionStrategy } from "
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { fakeHsm, ROOT_KEY_TEST_ENCRYPTION_KEY, rootKeyTestEnv } from "../../testing/root-key-fixture";
 import { loadRootKey, TLoadRootKeyDeps } from "./load-root-key";
-import { RootKeyService } from "./service";
+import { KmsRootKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -25,7 +25,7 @@ const depsFor = (memory: InMemoryKmsCoreStores, overrides: Partial<TLoadRootKeyD
 });
 
 const serviceFor = (memory: InMemoryKmsCoreStores, rootKey: RootKey, env = rootKeyTestEnv()) =>
-  new RootKeyService(memory.transactionRunner, rootKey, env, () => false, undefined);
+  new KmsRootKeyService(memory.transactionRunner, rootKey, env, () => false, undefined);
 
 describe("loadRootKey", () => {
   afterEach(() => {

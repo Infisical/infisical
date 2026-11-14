@@ -1,5 +1,5 @@
 import { TDelegatedApprovalRequests } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
@@ -18,7 +18,7 @@ export type TDelegatedApprovalCallbackServiceFactoryDep = {
     | "updateWithDetails"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "transaction" | "findByIdForUpdate" | "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   eventEmitter: Pick<TEventEmitter, "emit">;
 };
 

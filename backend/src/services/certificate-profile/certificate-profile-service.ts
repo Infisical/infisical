@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -219,7 +219,7 @@ const validateExternalConfigs = async (
 
 export const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
-  kmsDataKeyService: TDataKeyService,
+  kmsDataKeyService: TKmsDataKeyService,
   kmsKeyService: TKmsKeyService
 ) => {
   try {
@@ -246,7 +246,7 @@ export const generateAndEncryptAcmeEabSecret = async (
 export const validateAndEncryptPemCaChain = async (
   caChain: string,
   projectId: string,
-  kmsDataKeyService: TDataKeyService,
+  kmsDataKeyService: TKmsDataKeyService,
   kmsKeyService: TKmsKeyService
 ) => {
   try {
@@ -279,7 +279,7 @@ export const validateAndEncryptPemCaChain = async (
 export const decryptCaChain = async (
   encryptedCaChain: Buffer,
   projectId: string,
-  kmsDataKeyService: TDataKeyService,
+  kmsDataKeyService: TKmsDataKeyService,
   kmsKeyService: TKmsKeyService
 ): Promise<string> => {
   try {
@@ -327,7 +327,7 @@ type TCertificateProfileServiceFactoryDep = {
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;

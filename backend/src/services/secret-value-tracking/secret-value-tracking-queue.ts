@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -22,7 +22,7 @@ const PAUSE_BETWEEN_BATCHES_MS = 100;
 const NO_PROGRESS = { projectsTotal: 0, projectsDone: 0, secretsProcessed: 0 };
 
 type TProjectCipher = Pick<
-  Awaited<ReturnType<TDataKeyService["createCipherPairWithDataKey"]>>,
+  Awaited<ReturnType<TKmsDataKeyService["createCipherPairWithDataKey"]>>,
   "decryptor" | "generateSecretBlindIndex"
 >;
 
@@ -41,7 +41,7 @@ type TSecretValueTrackingQueueFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "updateById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findSecretsInFolderAfter" | "batchSetBlindIndexes">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 // A payload with no scope predates the org-wide walk. Reading it as project scope is what lets a job

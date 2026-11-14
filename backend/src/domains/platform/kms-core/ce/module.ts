@@ -10,11 +10,11 @@ import type { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { buildKmsCoreStoreAccess } from "./data-access/kms-core-stores";
 import { ProjectDataKeyCache } from "./data-access/project-data-key-cache";
 import { RootKey } from "./models/root-key";
-import { DataKeyService, TDataKeyService } from "./services/data-key/service";
+import { KmsDataKeyService, TKmsDataKeyService } from "./services/data-key/service";
 import { TKmsCoreHooks, TKmsCoreStores } from "./services/dependencies";
 import { KmsKeyService, TKmsKeyService } from "./services/kms-key/service";
 import { loadRootKey } from "./services/root-key/load-root-key";
-import { RootKeyService, TKmsCoreEnv, TRootKeyService } from "./services/root-key/service";
+import { KmsRootKeyService, TKmsCoreEnv, TKmsRootKeyService } from "./services/root-key/service";
 
 export type { TCipherPair, TDecryptor, TEncryptor } from "./models/data-key";
 export { KmsCiphertextUndecryptableError } from "./models/kms-ciphertext-undecryptable-error";
@@ -24,8 +24,8 @@ export { RootKeyEncryptionStrategy } from "./models/root-key-config";
 export { WrappedKeyPayload } from "./models/wrapped-key";
 export { KmsDataKey, KmsType } from "./services/data-key/service";
 export type {
-  TDataKeyService,
-  TDataKeyTransaction,
+  TKmsDataKeyService,
+  TKmsDataKeyTransaction,
   TEncryptWithKmsDataKeyDTO,
   TUpdateProjectSecretManagerKmsKeyDTO
 } from "./services/data-key/service";
@@ -58,7 +58,7 @@ export type {
   TCreatedRotation,
   TEncryptionStrategyOption,
   TKmsCoreEnv,
-  TRootKeyService,
+  TKmsRootKeyService,
   TRootKeyStatus,
   TRotationHistoryEntry
 } from "./services/root-key/service";
@@ -99,9 +99,9 @@ export class KmsCoreModule {
   readonly name = "kms-core";
 
   private constructor(
-    readonly rootKeyService: TRootKeyService,
+    readonly kmsRootKeyService: TKmsRootKeyService,
     readonly kmsKeyService: TKmsKeyService,
-    readonly dataKeyService: TDataKeyService
+    readonly kmsDataKeyService: TKmsDataKeyService
   ) {}
 
   // Loads the root key (bootstrapping it on a new instance) before any service exists, so none can run without it.
@@ -121,11 +121,17 @@ export class KmsCoreModule {
       skipRotationState: deps.skipRotationState
     });
 
-    const rootKeyService = new RootKeyService(transactionRunner, rootKey, deps.env, isFipsEnabled, rootKeyWrapper);
+    const kmsRootKeyService = new KmsRootKeyService(
+      transactionRunner,
+      rootKey,
+      deps.env,
+      isFipsEnabled,
+      rootKeyWrapper
+    );
     const cache = deps.keyStore ? new ProjectDataKeyCache(deps.keyStore) : undefined;
-    const dataKeyService = new DataKeyService(transactionRunner, stores, rootKey, externalKms, cache);
-    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms, dataKeyService);
-    return new KmsCoreModule(rootKeyService, kmsKeyService, dataKeyService);
+    const kmsDataKeyService = new KmsDataKeyService(transactionRunner, stores, rootKey, externalKms, cache);
+    const kmsKeyService = new KmsKeyService(transactionRunner, stores, rootKey, externalKms, kmsDataKeyService);
+    return new KmsCoreModule(kmsRootKeyService, kmsKeyService, kmsDataKeyService);
   }
 
   // Registers the weekly removal of root keys past their retention.
@@ -134,7 +140,7 @@ export class KmsCoreModule {
       name: CronJobName.KmsRootKeyCleanup,
       pattern: "0 3 * * 0",
       runHashTtlS: 60 * 60,
-      handler: () => this.rootKeyService.removeInactiveKeys()
+      handler: () => this.kmsRootKeyService.removeInactiveKeys()
     });
   }
 }

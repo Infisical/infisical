@@ -1,10 +1,10 @@
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 export type TAlertEncryptor = (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
 export type TAlertDecryptor = (data: { cipherTextBlob: Buffer }) => Buffer;
 
 export const getAlertChannelCipher = (
-  kmsDataKeyService: TDataKeyService,
+  kmsDataKeyService: TKmsDataKeyService,
   scope: { orgId: string; projectId?: string | null }
 ) =>
   kmsDataKeyService.createCipherPairWithDataKey(

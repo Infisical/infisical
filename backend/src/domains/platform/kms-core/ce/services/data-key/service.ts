@@ -33,7 +33,7 @@ export type TUpdateProjectSecretManagerKmsKeyDTO = {
   kms: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string };
 };
 
-export type TDataKeyService = {
+export type TKmsDataKeyService = {
   createCipherPairWithDataKey(context: TEncryptWithKmsDataKeyDTO, options?: TReadOptions): Promise<TCipherPair>;
   getProjectSecretManagerKmsKeyId(projectId: string, options?: TReadOptions): Promise<string>;
   getProjectCertificateKmsKeyId(projectId: string, options?: TReadOptions): Promise<string>;
@@ -43,7 +43,7 @@ export type TDataKeyService = {
   getProjectKeyBackup(projectId: string): Promise<{ secretManager: string }>;
   loadProjectKeyBackup(projectId: string, backup: string): Promise<{ secretManagerKmsKey: TKmsKeyDetails }>;
   deleteProjectKeys(input: { orgId: string; kmsKeyIds: string[] }): Promise<void>;
-  within(tx: TTransaction): TDataKeyTransaction;
+  within(tx: TTransaction): TKmsDataKeyTransaction;
 };
 
 /**
@@ -51,7 +51,7 @@ export type TDataKeyService = {
  * org and project locks, held until the caller commits, and an external key's provider is called inside it. Any
  * error leaves the caller's transaction unusable: roll it back.
  */
-export type TDataKeyTransaction = {
+export type TKmsDataKeyTransaction = {
   createCipherPairWithDataKey(context: TEncryptWithKmsDataKeyDTO): Promise<TCipherPair>;
   getProjectSecretManagerKmsKeyId(projectId: string): Promise<string>;
   getProjectCertificateKmsKeyId(projectId: string): Promise<string>;
@@ -91,7 +91,7 @@ const assertClaimed = (claimed: boolean, what: string) => {
  * internal and external keys, and backups. Every first-use creation runs under the frozen locks and writes a column
  * only while it is empty.
  */
-export class DataKeyService implements TDataKeyService {
+export class KmsDataKeyService implements TKmsDataKeyService {
   // `cache` is left out for a service bound to a caller's transaction, and for migrations.
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
@@ -103,10 +103,10 @@ export class DataKeyService implements TDataKeyService {
 
   // Every read and write goes through the caller's transaction, through a service built on its stores and without
   // the cache.
-  within(tx: TTransaction): TDataKeyTransaction {
+  within(tx: TTransaction): TKmsDataKeyTransaction {
     const runner = this.transactionRunner.within(tx);
-    const joined = <T>(work: (service: DataKeyService) => Promise<T>) =>
-      runner.run(({ stores }) => work(new DataKeyService(runner, stores, this.rootKey, this.externalKms)));
+    const joined = <T>(work: (service: KmsDataKeyService) => Promise<T>) =>
+      runner.run(({ stores }) => work(new KmsDataKeyService(runner, stores, this.rootKey, this.externalKms)));
     return {
       createCipherPairWithDataKey: (context) => joined((service) => service.createCipherPairWithDataKey(context)),
       getProjectSecretManagerKmsKeyId: (projectId) =>

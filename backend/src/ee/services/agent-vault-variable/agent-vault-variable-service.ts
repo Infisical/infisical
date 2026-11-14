@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -39,7 +39,7 @@ type TAgentVaultVariableServiceFactoryDep = {
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "delete">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 const AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT = 20;

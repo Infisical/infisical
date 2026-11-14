@@ -1,4 +1,4 @@
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { HerokuConnectionMethod, THerokuConnection } from "@app/services/app-connection/heroku";
@@ -17,13 +17,13 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 type THerokuSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 const getValidAuthToken = async (
   connection: THerokuConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<string> => {
   if (
     connection.method === HerokuConnectionMethod.OAuth &&

@@ -1,5 +1,5 @@
 import { TSlackIntegrations } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TOrgPermission } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 
@@ -54,7 +54,7 @@ export type TReinstallSlackIntegrationDTO = {
 export type TSendSlackNotificationDTO = {
   orgId: string;
   notification: TNotification;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   targetChannelIds: string[];
   slackIntegration: TSlackIntegrations;
 };

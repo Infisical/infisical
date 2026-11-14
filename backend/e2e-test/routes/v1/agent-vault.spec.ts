@@ -6,7 +6,7 @@ import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRol
 import { seedData1 } from "@app/db/seed-data";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { startStandaloneKmsCore } from "@app/domains/domains";
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
@@ -300,12 +300,12 @@ const createAccessBundle = async (name: string) => {
 
 // The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
 // The spec runs in its own module graph, which is why the env config is initialized again here.
-let kmsDataKeyService: TDataKeyService | undefined;
+let kmsDataKeyService: TKmsDataKeyService | undefined;
 const projectCipher = async (projectId: string) => {
   if (!kmsDataKeyService) {
     await initEnvConfig(testSuperAdminDAL, logger);
     const kmsCore = await startStandaloneKmsCore({ db: testDb, envConfig: getConfig() });
-    kmsDataKeyService = kmsCore.dataKeyService;
+    kmsDataKeyService = kmsCore.kmsDataKeyService;
   }
   return kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 };

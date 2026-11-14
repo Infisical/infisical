@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -98,7 +98,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
   objectStorage: Pick<TObjectStorageServiceFactory, "at">;

@@ -42,7 +42,7 @@ export type TCreatedRotation = {
   removesExpiringKey?: { label: string | null; lastResolvedAt: Date | null };
 };
 
-export type TRootKeyService = {
+export type TKmsRootKeyService = {
   encryptWithRootKey(): (plainText: Buffer) => Buffer<ArrayBuffer>;
   decryptWithRootKey(): (cipherText: Buffer) => Buffer<ArrayBuffer>;
   getCookieSigningKey(): string;
@@ -59,7 +59,7 @@ export type TRootKeyService = {
   removeInactiveKeys(): Promise<void>;
 };
 
-export class RootKeyService implements TRootKeyService {
+export class KmsRootKeyService implements TKmsRootKeyService {
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
     private readonly rootKey: RootKey,

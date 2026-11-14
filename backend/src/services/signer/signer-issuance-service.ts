@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
 import { TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
-import { TDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
@@ -83,7 +83,7 @@ type TSignerIssuanceServiceDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
   certificateIssuanceQueue: Pick<
     TCertificateIssuanceQueueFactory,

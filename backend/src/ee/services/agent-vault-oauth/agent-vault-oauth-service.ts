@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { ForbiddenError } from "@casl/ability";
 
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -98,7 +98,7 @@ type TAgentVaultOauthServiceFactoryDep = {
     TKeyStoreFactory,
     "getItemPrimary" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem" | "ttl" | "acquireLock"
   >;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
     | "findByIdInProject"
@@ -118,7 +118,7 @@ type TAgentVaultOauthServiceFactoryDep = {
 
 export type TAgentVaultOauthServiceFactory = ReturnType<typeof agentVaultOauthServiceFactory>;
 
-type TProjectCipher = Awaited<ReturnType<TDataKeyService["createCipherPairWithDataKey"]>>;
+type TProjectCipher = Awaited<ReturnType<TKmsDataKeyService["createCipherPairWithDataKey"]>>;
 
 type TLoadedOauthService = {
   // The row the tokens were read from, which every write is made against.

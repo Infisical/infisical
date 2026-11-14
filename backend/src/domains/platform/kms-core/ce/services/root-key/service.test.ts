@@ -10,7 +10,7 @@ import {
 } from "../../models/root-key-config";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { bootRootKeyService, fakeHsm, rootKeyTestEnv } from "../../testing/root-key-fixture";
-import { RootKeyService } from "./service";
+import { KmsRootKeyService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -47,7 +47,7 @@ const buildCleanup = async ({
   if (snapshot) {
     vi.spyOn(memory.rootKeyConfigStore, "findAll").mockResolvedValue([RootKeyConfig.restore(snapshot)]);
   }
-  const service = new RootKeyService(
+  const service = new KmsRootKeyService(
     memory.transactionRunner,
     RootKey.generate(),
     rootKeyTestEnv({ KMS_ROOT_KEY_RETENTION_DAYS: RETENTION_DAYS }),
@@ -57,7 +57,7 @@ const buildCleanup = async ({
   return { service, isRetained: async () => Boolean(await memory.rootKeyConfigStore.findById(RETAINED_ID)) };
 };
 
-describe("RootKeyService root key", () => {
+describe("KmsRootKeyService root key", () => {
   test("should encrypt and decrypt with the root key it was built with", async () => {
     // Setup
     const { service } = await bootRootKeyService();
@@ -81,7 +81,7 @@ describe("RootKeyService root key", () => {
   });
 });
 
-describe("RootKeyService.updateEncryptionStrategy", () => {
+describe("KmsRootKeyService.updateEncryptionStrategy", () => {
   test("should refuse a change while a rotation is staged and change nothing", async () => {
     // Setup
     const configured = { value: false };
@@ -180,7 +180,7 @@ describe("RootKeyService.updateEncryptionStrategy", () => {
   });
 });
 
-describe("RootKeyService.listEncryptionStrategies", () => {
+describe("KmsRootKeyService.listEncryptionStrategies", () => {
   test("should offer software as the enabled strategy when only an encryption key is set", async () => {
     // Setup
     const { service } = await bootRootKeyService();
@@ -209,7 +209,7 @@ describe("RootKeyService.listEncryptionStrategies", () => {
   test("should refuse when there is no root config", async () => {
     // Setup
     const memory = new InMemoryKmsCoreStores();
-    const service = new RootKeyService(
+    const service = new KmsRootKeyService(
       memory.transactionRunner,
       RootKey.generate(),
       rootKeyTestEnv(),
@@ -226,7 +226,7 @@ describe("RootKeyService.listEncryptionStrategies", () => {
   });
 });
 
-describe("RootKeyService.createRotation", () => {
+describe("KmsRootKeyService.createRotation", () => {
   test("should stage a key, return its value once and leave the active key untouched", async () => {
     // Setup
     const { service, memory } = await bootRootKeyService();
@@ -311,7 +311,7 @@ describe("RootKeyService.createRotation", () => {
   });
 });
 
-describe("RootKeyService.deleteStagedKey", () => {
+describe("KmsRootKeyService.deleteStagedKey", () => {
   test("should discard the staged key when the label matches", async () => {
     // Setup
     const { service } = await bootRootKeyService();
@@ -350,7 +350,7 @@ describe("RootKeyService.deleteStagedKey", () => {
   });
 });
 
-describe("RootKeyService.getRootKey and listRotations", () => {
+describe("KmsRootKeyService.getRootKey and listRotations", () => {
   test("should report the active key, and the retained key as expiring", async () => {
     // Setup
     const { service, memory } = await bootRootKeyService();
@@ -384,7 +384,7 @@ describe("RootKeyService.getRootKey and listRotations", () => {
   });
 });
 
-describe("RootKeyService.removeInactiveKeys", () => {
+describe("KmsRootKeyService.removeInactiveKeys", () => {
   test("should remove a retained key nothing has been seen using", async () => {
     // Setup
     const { service, isRetained } = await buildCleanup({ stored: retainedRow() });
@@ -491,7 +491,7 @@ describe("RootKeyService.removeInactiveKeys", () => {
   });
 });
 
-describe("RootKeyService.deleteExpiringKey", () => {
+describe("KmsRootKeyService.deleteExpiringKey", () => {
   // force overrides the straggler check only. Left overridable, an admin acting on a stale view would destroy a
   // key a second admin rotated in after that view was read, which is not recoverable.
   test("should refuse a label that is not the key currently retained, even with force", async () => {

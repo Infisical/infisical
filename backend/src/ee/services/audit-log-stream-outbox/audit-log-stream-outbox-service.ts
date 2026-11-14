@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TAuditLogs } from "@app/db/schemas";
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -77,7 +77,7 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
   auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectTypesByIds">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
   eventEmitter: TEventEmitter;

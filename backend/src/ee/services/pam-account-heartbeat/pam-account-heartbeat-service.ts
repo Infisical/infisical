@@ -1,4 +1,4 @@
-import { KmsDataKey, TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { testBuiltConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -47,7 +47,7 @@ type TPamAccountHeartbeatServiceFactoryDep = {
   pamAccountDAL: TPamAccountDALFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
   permissionService: TPermissionServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;

@@ -664,7 +664,7 @@ export const registerRoutes = async (
   });
   domains.license.start();
   const { usageMeteringService, licenseService } = domains.license;
-  const { dataKeyService: kmsDataKeyService, kmsKeyService, rootKeyService: kmsRootKeyService } = domains.kmsCore;
+  const { kmsDataKeyService, kmsKeyService, kmsRootKeyService } = domains.kmsCore;
   const { organizationsProjectsService } = domains.organizationsProjects;
   const { certManagerService } = domains.certManager;
 

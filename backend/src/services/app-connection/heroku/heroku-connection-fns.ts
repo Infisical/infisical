@@ -1,6 +1,6 @@
 import { AxiosError, AxiosResponse } from "axios";
 
-import { TDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
@@ -38,7 +38,7 @@ export const refreshHerokuToken = async (
   orgId: string,
   projectId: string | null | undefined,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsDataKeyService: TDataKeyService
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<string> => {
   const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = getConfig();
 
@@ -176,7 +176,7 @@ export const listHerokuApps = async ({
 }: {
   appConnection: THerokuConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TDataKeyService;
+  kmsDataKeyService: TKmsDataKeyService;
 }): Promise<THerokuApp[]> => {
   let authCredential = appConnection.credentials.authToken;
   if (

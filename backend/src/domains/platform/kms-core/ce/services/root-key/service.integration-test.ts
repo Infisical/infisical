@@ -6,14 +6,14 @@ import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { KMS_ROOT_CONFIG_UUID } from "../../models/root-key-config";
 import { rootKeyTestEnv } from "../../testing/root-key-fixture";
 import { loadRootKey } from "./load-root-key";
-import { RootKeyService, TKmsCoreEnv } from "./service";
+import { KmsRootKeyService, TKmsCoreEnv } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
 // Root key state is instance-wide, so each test gets a private database.
-describe("RootKeyService on Postgres", () => {
+describe("KmsRootKeyService on Postgres", () => {
   const h = setupIntegration({ freshDatabase: true });
 
   afterEach(() => {
@@ -31,7 +31,7 @@ describe("RootKeyService on Postgres", () => {
     const env = rootKeyTestEnv(overrides);
     const deps = { ...access, env, isFipsEnabled: () => false, rootKeyWrapper: undefined };
     const rootKey = await loadRootKey(deps);
-    const service = new RootKeyService(access.transactionRunner, rootKey, env, () => false, undefined);
+    const service = new KmsRootKeyService(access.transactionRunner, rootKey, env, () => false, undefined);
     return { service, rootKey };
   };
 
