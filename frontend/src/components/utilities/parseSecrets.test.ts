@@ -1,7 +1,59 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { parseDotEnv, parsePastedSecrets, parseYaml } from "./parseSecrets";
+import { parseCsvToMatrix, parseDotEnv, parsePastedSecrets, parseYaml } from "./parseSecrets";
+
+describe("parseCsvToMatrix", () => {
+  it.each([",", ";", "\t", "|"])(
+    "preserves quoted whitespace with the %j delimiter",
+    (delimiter) => {
+      const csv = [
+        ["key", "value", "comment"].join(delimiter),
+        ["PADDED", '"  value  "', '"  comment  "'].join(delimiter),
+        ["SPACES", '"   "', '" "'].join(delimiter)
+      ].join("\r\n");
+
+      assert.deepEqual(parseCsvToMatrix(csv), {
+        delimiter,
+        matrix: [
+          ["key", "value", "comment"],
+          ["PADDED", "  value  ", "  comment  "],
+          ["SPACES", "   ", " "]
+        ]
+      });
+    }
+  );
+
+  it("preserves quoted tabs, line breaks, delimiters and escaped quotes", () => {
+    const csv = 'key,value\nMULTILINE,"\n  first, second\n\tthird ""line""  \n"\n';
+
+    assert.deepEqual(parseCsvToMatrix(csv).matrix, [
+      ["key", "value"],
+      ["MULTILINE", '\n  first, second\n\tthird "line"  \n']
+    ]);
+  });
+
+  it("decodes quoted whitespace from an uploaded UTF-8 buffer", () => {
+    const csv = new TextEncoder().encode('key,value\nPADDED,"  café  "').buffer;
+
+    assert.deepEqual(parseCsvToMatrix(csv).matrix, [
+      ["key", "value"],
+      ["PADDED", "  café  "]
+    ]);
+  });
+
+  it("keeps trimming unquoted cells and skipping empty records", () => {
+    const csv = ' key , value \n\n UNQUOTED , trimmed \n"QUOTED", trimmed \nEMPTY,""\n,\nFINAL,\n';
+
+    assert.deepEqual(parseCsvToMatrix(csv).matrix, [
+      ["key", "value"],
+      ["UNQUOTED", "trimmed"],
+      ["QUOTED", "trimmed"],
+      ["EMPTY", ""],
+      ["FINAL", ""]
+    ]);
+  });
+});
 
 describe("parseYaml", () => {
   it("keeps line breaks in literal block scalars", () => {
