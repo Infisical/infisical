@@ -138,7 +138,7 @@ export const ProjectsPage = () => {
                 className={cn(styles.productCard, blocked.has(product.type) && styles.blocked)}
                 backdrop={<Halftone seed={product.type} />}
                 title={
-                  <Stack gap={8} className={styles.productTitle}>
+                  <Stack gap={12} className={styles.productTitle}>
                     <Icon name={product.icon} size={24} motion="draw" />
                     <Inline gap={8} align="center">
                       <CardLink disabled={blocked.has(product.type)} link={link}>
