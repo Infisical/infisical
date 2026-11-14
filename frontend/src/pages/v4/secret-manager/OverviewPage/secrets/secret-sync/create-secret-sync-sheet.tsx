@@ -32,9 +32,8 @@ import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import slugify from "@sindresorhus/slugify";
-import { ArrowLeftRightIcon, ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 
 import {
   getSecretSyncDestinationConfig,
@@ -404,60 +403,17 @@ const stateCell = (state: SyncState) =>
     </span>
   );
 
-function BehaviorLabel({
-  variant,
-  sentence,
-  destinationName,
-  destinationImage
-}: {
-  variant: Variant;
-  sentence: string;
-  destinationName: string;
-  destinationImage?: string;
-}) {
-  const winner = variant === "prioritize-destination" ? destinationName : "Infisical";
-  const verdict = variant === "overwrite" ? `Overwrite ${destinationName}` : `${winner} wins`;
-  return (
-    <Tooltip content={sentence}>
-      <span className={styles.behaviorLabel} role="img" aria-label={sentence}>
-        <span className={styles.behaviorMarks} aria-hidden="true">
-          <Icon name="vault" size={14} />
-          <Icon icon={variant === "overwrite" ? ArrowRightIcon : ArrowLeftRightIcon} size={12} />
-          <ProviderLogo image={destinationImage} size={14} />
-        </span>
-        <span className={styles.behaviorVerdict}>{verdict}</span>
-      </span>
-    </Tooltip>
-  );
-}
-
 function InitialSyncExample({
   rows,
   title,
-  variant,
-  destinationName,
-  destinationImage
+  destinationName
 }: {
   rows: ExampleRow[];
   title: string;
-  variant: Variant;
   destinationName: string;
-  destinationImage?: string;
 }) {
   return (
-    <Card
-      variant="framed"
-      size="sm"
-      flush
-      title={
-        <BehaviorLabel
-          variant={variant}
-          sentence={title}
-          destinationName={destinationName}
-          destinationImage={destinationImage}
-        />
-      }
-    >
+    <Card variant="framed" size="sm" flush title={<span title={title}>{title}</span>}>
       <DataTable
         label="What the first sync does to each secret"
         rows={[...rows].sort((a, b) => Number(isUnchanged(a)) - Number(isUnchanged(b)))}
@@ -637,9 +593,7 @@ export function InitialSyncFields() {
                 <InitialSyncExample
                   rows={EXAMPLE[variantOf(field.value)]}
                   title={behaviorCopy(field.value, destinationName).title}
-                  variant={variantOf(field.value)}
                   destinationName={destinationName}
-                  destinationImage={SECRET_SYNC_MAP[destination].image}
                 />
               </Stack>
             )}
