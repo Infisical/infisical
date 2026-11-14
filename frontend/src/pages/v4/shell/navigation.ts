@@ -1,4 +1,3 @@
-import { hueScope } from "@infisical/cipher/lib/hue";
 import type { IconName } from "@infisical/cipher/ui/icon";
 
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -26,6 +25,9 @@ export type ShellNavItem = {
 
 export type ShellNavSection = { label?: string; items: readonly ShellNavItem[] };
 
+export const SECRETS_HUE = 113.8;
+export const ORG_HUE = 250;
+
 export const products = [
   {
     type: ProjectType.SecretManager,
@@ -34,7 +36,7 @@ export const products = [
     label: "Secrets Management",
     icon: "key",
     blurb: "Store, sync, and rotate secrets across environments.",
-    hue: 113.8
+    hue: SECRETS_HUE
   },
   {
     type: ProjectType.CertificateManager,
@@ -96,8 +98,10 @@ export type ShellProduct = (typeof products)[number];
 export const productOf = (type: ProjectType) =>
   products.find((product) => product.type === type) ?? products[0];
 
-export const hueScopeOf = (product: ShellProduct | undefined) =>
-  product ? hueScope(product.hue, "pop") : hueScope(250);
+export const hueOf = (product: ShellProduct | undefined) =>
+  product
+    ? { hue: product.hue, level: "pop" as const }
+    : { hue: ORG_HUE, level: "subtle" as const };
 
 export const productHome = (product: ShellProduct) => {
   if (product.type === ProjectType.CertificateManager) return "/cert-manager/overview";
