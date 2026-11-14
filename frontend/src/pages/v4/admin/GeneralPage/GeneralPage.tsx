@@ -301,7 +301,7 @@ export const GeneralPage = () => {
       <PageHeader title="General" />
       <SignUpCard key={`${config.allowSignUp}:${config.allowedSignUpDomain}`} config={config} />
       <DefaultOrganizationCard key={config.defaultAuthOrgId ?? ""} config={config} />
-      <TrustLdapEmailsCard key={String(config.trustLdapEmails)} config={config} />
+      <TrustLdapEmailsCard config={config} />
       <NoticesCard
         key={JSON.stringify([config.authConsentContent, config.pageFrameContent])}
         config={config}
