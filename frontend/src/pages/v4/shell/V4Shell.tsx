@@ -3,7 +3,7 @@ import type { BreadcrumbCrumb } from "@infisical/cipher/ui/breadcrumb";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Loader } from "@infisical/cipher/ui/loader";
-import { Sidebar, type SidebarLevel, type SidebarSection } from "@infisical/cipher/ui/sidebar";
+import { Sidebar } from "@infisical/cipher/ui/sidebar";
 import { AppInset, AppShell, PageGutter, TopBar } from "@infisical/cipher/ui/top-bar";
 import {
   type LinkOptions,
@@ -21,6 +21,7 @@ import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
+import { shellTrail, type V4ShellLevel } from "./levels";
 import { resolveShellLocation, type ShellLocation } from "./location";
 import {
   hueScopeOf,
@@ -28,17 +29,14 @@ import {
   products,
   productHome,
   productOf,
-  productSections,
   projectBase,
-  projectHome,
-  settingsSections,
-  type ShellNavSection
+  projectHome
 } from "./navigation";
 import { ProjectGate } from "./project-gate";
 
 import styles from "./shell.module.css";
 
-export const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) => void) => {
+const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) => void) => {
   const anchor = (event.target as HTMLElement).closest("a");
   if (
     !anchor ||
@@ -60,7 +58,7 @@ export const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: st
 };
 
 export type V4ShellNav = {
-  levels?: readonly SidebarLevel[];
+  levels?: readonly V4ShellLevel[];
   current?: string;
   crumbs: readonly BreadcrumbCrumb[];
 };
@@ -92,85 +90,19 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
         session.organization.isSubOrganization
       );
   const go = (href: string) => navigate({ href: resolve(href) });
-  const toSidebar = (
-    level: string,
-    sections: readonly ShellNavSection[],
-    opens: Record<string, string> = {}
-  ): readonly SidebarSection[] =>
-    sections.map((section) => ({
-      label: section.label,
-      items: section.items.map((item) => ({
-        id: `${level}:${item.id}`,
-        label: item.label,
-        icon: item.icon,
-        count: item.count,
-        ...(opens[item.id]
-          ? { level: opens[item.id] }
-          : {
-              link: {
-                to: resolve(`${base}${item.path}`),
-                search: item.search,
-                activeOptions: {
-                  exact: item.id === "home" || item.id === "projects",
-                  includeSearch: Boolean(item.search)
-                }
-              } as LinkOptions
-            })
-      }))
-    }));
-
   const product = at.product ? productOf(at.product) : undefined;
   const sidebarCurrent = at.current ?? (at.projectId ? at.sections[0]?.items[0] : undefined);
   const project = session.projects.find((entry) => entry.id === at.projectId);
-  const levels: SidebarLevel[] = [
-    {
-      id: "org",
-      label: organization.name,
-      sections: toSidebar("org", orgSections(session.organization.isSubOrganization), {
-        settings: "settings"
-      })
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      parent: "org",
-      sections: toSidebar("settings", settingsSections(session.organization.isSubOrganization))
-    }
-  ];
-  if (product && (at.level === "product" || at.projectId)) {
-    levels.push({
-      id: "product",
-      label: product.label,
-      parent: "org",
-      sections: toSidebar("product", productSections(product))
-    });
-  }
-  const settingsOpens: Record<string, string> = at.settings ? { settings: "project-settings" } : {};
-  if (at.projectId) {
-    levels.push({
-      id: at.level,
-      label: project?.name ?? at.projectId,
-      parent: "product",
-      sections: toSidebar(at.level, at.sections, settingsOpens)
-    });
-  } else if (at.level === "pki" || at.level === "scanning" || at.level === "pam") {
-    levels.push({
-      id: at.level,
-      label: product?.label ?? at.level,
-      parent: "org",
-      sections: toSidebar(at.level, at.sections, settingsOpens)
-    });
-  }
-  if (at.settings) {
-    levels.push({
-      id: "project-settings",
-      label: "Settings",
-      parent: at.level,
-      sections: toSidebar("project-settings", at.settings)
-    });
-  }
-  if (nav?.levels) levels.push(...nav.levels);
-  const currentLevel = at.inSettings ? "project-settings" : at.level;
+  const trail = shellTrail({
+    at,
+    orgName: organization.name,
+    projectName: project?.name,
+    isSubOrganization: session.organization.isSubOrganization,
+    nested: nav?.levels,
+    linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions
+  });
+  const shown = trail[trail.length - 1];
+  const parent = trail[trail.length - 2];
 
   const orgCrumb: BreadcrumbCrumb = {
     label: organization.name,
@@ -288,8 +220,15 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
       />
       <Sidebar
         label="Main"
-        levels={levels}
-        current={nav ? nav.current : sidebarCurrent && `${currentLevel}:${sidebarCurrent.id}`}
+        sections={shown.sections}
+        scope={
+          parent && {
+            id: shown.id,
+            back: { id: parent.id, label: parent.label, link: parent.landing },
+            sections: shown.sections
+          }
+        }
+        current={nav ? nav.current : sidebarCurrent && `${shown.id}:${sidebarCurrent.id}`}
         help={chrome.help}
         announcements={chrome.announcements}
       />
