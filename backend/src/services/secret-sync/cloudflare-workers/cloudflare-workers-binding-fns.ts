@@ -137,3 +137,32 @@ export const planSyncBindings = (
 
   return { written, dropped };
 };
+
+// The bindings a removal deletes, under the same rules as $getManagedBindings in cloudflare-workers-fns.ts.
+export const planRemovedBindings = (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  secretMap: TSecretMap,
+  baseBindings: Array<{ type: string; name: string }>
+) => {
+  const managedTypes = $getManagedTypes(secretSync);
+  const secretMapKeys = new Set(Object.keys(secretMap));
+
+  return baseBindings
+    .filter(
+      (binding) =>
+        managedTypes.has(binding.type) &&
+        secretMapKeys.has(binding.name) &&
+        $isManagedBySchema(secretSync, binding.name)
+    )
+    .map(({ name }) => name);
+};
+
+// The merge patch Cloudflare applies to a version's or a Preview deployment's bindings: an entry creates or
+// replaces that binding, and null deletes it.
+export const toEnvPatch = ({ written, dropped }: TBindingPlan) => {
+  // Null-prototype object so secret names like "__proto__" are sent as regular keys.
+  const env = Object.create(null) as Record<string, unknown>;
+  for (const { name, ...binding } of written) env[name] = binding;
+  for (const name of dropped) env[name] = null;
+  return env;
+};
