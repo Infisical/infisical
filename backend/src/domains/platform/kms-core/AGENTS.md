@@ -43,8 +43,9 @@ name. The `kms` prefix keeps a deps list readable next to DALs and other service
   `kms-project-data-key`). Pods of the previous release take these exact ids during a deploy. The generic
   `TStoreLocks` hashes differently, so `buildKmsCoreStoreAccess` gives the runner `PostgresKmsCoreLocks` and ignores
   the generic locks. Take them in the order root key, org, project; key before data key.
-- **Root key state reads through `run`** (the primary): a lagging replica could miss the key this pod holds, or show
-  a superseded view to promote against. Boot bookkeeping re-reads a row under the root key lock before saving it.
+- **Root key state reads the primary** (`{ readFrom: ReadFrom.Primary }`, or inside `run` where a lock is taken): a
+  lagging replica could miss the key this pod holds, or show a superseded view to promote against. Boot bookkeeping
+  re-reads a row under the root key lock before saving it.
 
 ## Project data-key cache
 

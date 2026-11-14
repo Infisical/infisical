@@ -1,3 +1,4 @@
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { ExternalSystemError } from "@app/domains/lib/errors";
 import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { setLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
@@ -29,10 +30,10 @@ export type TLoadRootKeyDeps = {
   skipRotationState?: boolean;
 };
 
-// Root key state is read through the runner, which hits the primary: a lagging replica could miss the key this pod
-// holds, or show a superseded view to promote against.
-const readRing = (deps: TLoadRootKeyDeps) =>
-  deps.transactionRunner.run(async ({ stores }) => RootKeyRing.of(await stores.rootKeyConfigStore.findAll()));
+// Root key state is read from the primary: a lagging replica could miss the key this pod holds, or show a superseded
+// view to promote against.
+const readRing = async (deps: TLoadRootKeyDeps) =>
+  RootKeyRing.of(await deps.stores.rootKeyConfigStore.findAll({ readFrom: ReadFrom.Primary }));
 
 // Re-reads the row under the root key lock, so a stale copy never overwrites a promotion another pod just made.
 const updateRow = (deps: TLoadRootKeyDeps, id: string, change: (row: RootKeyConfig) => boolean) =>
@@ -182,7 +183,7 @@ const resolveRootKey = async (deps: TLoadRootKeyDeps, isHsmConfigured: boolean):
 // Snapshots the legacy tier's env keys under the root key, which survives an env key rotation.
 const ensureLegacyKeyMaterial = async (deps: TLoadRootKeyDeps, rootKey: RootKey) => {
   const { transactionRunner, env, originalEnv } = deps;
-  const findExisting = () => transactionRunner.run(({ stores }) => stores.legacyEncryptionKeyStore.find());
+  const findExisting = () => deps.stores.legacyEncryptionKeyStore.find({ readFrom: ReadFrom.Primary });
 
   const existing = await findExisting();
   if (existing) {
@@ -213,11 +214,9 @@ const ensureKekHistory = async (deps: TLoadRootKeyDeps) => {
   const label = currentKekLabel(env);
   if (!label) return;
 
-  const { hasCurrent, active } = await transactionRunner.run(async ({ stores }) => ({
-    hasCurrent: Boolean(await stores.kekHistoryStore.findCurrent()),
-    active: await stores.rootKeyConfigStore.findById(KMS_ROOT_CONFIG_UUID)
-  }));
-  if (hasCurrent) return;
+  const current = await deps.stores.kekHistoryStore.findCurrent({ readFrom: ReadFrom.Primary });
+  if (current) return;
+  const active = await deps.stores.rootKeyConfigStore.findById(KMS_ROOT_CONFIG_UUID, { readFrom: ReadFrom.Primary });
 
   await transactionRunner
     .run(async ({ stores }) => {
@@ -239,10 +238,10 @@ const ensureKekHistory = async (deps: TLoadRootKeyDeps) => {
 // The one place a pod learns the root key: resolved from the stored configs (or bootstrapped on an empty
 // instance), with the rotation bookkeeping a boot owns.
 export const loadRootKey = async (deps: TLoadRootKeyDeps): Promise<RootKey> => {
-  const { transactionRunner, env, isFipsEnabled, rootKeyWrapper, skipRotationState = false } = deps;
+  const { env, isFipsEnabled, rootKeyWrapper, skipRotationState = false } = deps;
 
-  const active = await transactionRunner
-    .run(({ stores }) => stores.rootKeyConfigStore.findById(KMS_ROOT_CONFIG_UUID))
+  const active = await deps.stores.rootKeyConfigStore
+    .findById(KMS_ROOT_CONFIG_UUID, { readFrom: ReadFrom.Primary })
     .catch(() => null);
   const strategy = active?.strategy ?? null;
   const isHsmConfigured = rootKeyWrapper ? await rootKeyWrapper.isConfigured() : false;

@@ -41,8 +41,8 @@ export type {
   TUpdateExternalKmsInput
 } from "./services/dependencies";
 export type { TAsyncDecryptor, TAsyncEncryptor } from "./services/helpers/key-cipher";
-export { ReadFrom } from "./services/helpers/read-options";
-export type { TReadOptions } from "./services/helpers/read-options";
+export { ReadFrom } from "@app/domains/lib/data-access";
+export type { TReadOptions } from "@app/domains/lib/data-access";
 export { KmsKeyOrderBy } from "./services/kms-key/service";
 export type {
   TGenerateKMSDTO,
@@ -123,6 +123,7 @@ export class KmsCoreModule {
 
     const kmsRootKeyService = new KmsRootKeyService(
       transactionRunner,
+      stores,
       rootKey,
       deps.env,
       isFipsEnabled,

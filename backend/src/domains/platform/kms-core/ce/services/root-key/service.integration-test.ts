@@ -31,7 +31,14 @@ describe("KmsRootKeyService on Postgres", () => {
     const env = rootKeyTestEnv(overrides);
     const deps = { ...access, env, isFipsEnabled: () => false, rootKeyWrapper: undefined };
     const rootKey = await loadRootKey(deps);
-    const service = new KmsRootKeyService(access.transactionRunner, rootKey, env, () => false, undefined);
+    const service = new KmsRootKeyService(
+      access.transactionRunner,
+      access.stores,
+      rootKey,
+      env,
+      () => false,
+      undefined
+    );
     return { service, rootKey };
   };
 

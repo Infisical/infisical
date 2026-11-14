@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { EntityNotFoundError } from "@app/domains/lib/errors";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
@@ -29,7 +30,6 @@ import {
   TAsyncDecryptor,
   TAsyncEncryptor
 } from "../helpers/key-cipher";
-import { ReadFrom, TReadOptions } from "../helpers/read-options";
 
 export type { TKmsKeyDetails } from "../../models/kms-key";
 
@@ -270,15 +270,12 @@ export class KmsKeyService implements TKmsKeyService {
 
   // Reads the primary: a lagging replica could still show a key that was just unpublished or disabled.
   async findPublishedKeyById(kmsId: string) {
-    const key = await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.findPublishedById(kmsId));
+    const key = await this.stores.kmsKeyStore.findPublishedById(kmsId, { readFrom: ReadFrom.Primary });
     return key?.details();
   }
 
   async findKeys(filter: TKmsKeyFilter, options?: TReadOptions) {
-    const keys =
-      options?.readFrom === ReadFrom.Primary
-        ? await this.transactionRunner.run(({ stores }) => stores.kmsKeyStore.find(filter))
-        : await this.stores.kmsKeyStore.find(filter);
+    const keys = await this.stores.kmsKeyStore.find(filter, options);
     return keys.map((key) => key.details());
   }
 
@@ -354,12 +351,12 @@ export class KmsKeyService implements TKmsKeyService {
   }
 
   async getPublicKey({ kmsId }: { kmsId: string }, options?: TReadOptions) {
-    const key = await this.loadKey(kmsId, options);
+    const key = await requireKey(this.stores.kmsKeyStore, kmsId, options);
     return key.publicKey(this.rootKey);
   }
 
   async signWithKmsKey({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">, options?: TReadOptions) {
-    const key = await this.loadKey(kmsId, options);
+    const key = await requireKey(this.stores.kmsKeyStore, kmsId, options);
     return ({ data, signingAlgorithm, isDigest }: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm" | "isDigest">) =>
       key.sign(this.rootKey, { data, signingAlgorithm, isDigest });
   }
@@ -428,13 +425,6 @@ export class KmsKeyService implements TKmsKeyService {
   private async insertKey(key: KmsKey): Promise<TKmsKeyRecord> {
     await this.stores.kmsKeyStore.insert(key);
     return key.toJSON();
-  }
-
-  private async loadKey(kmsId: string, options?: TReadOptions) {
-    if (options?.readFrom === ReadFrom.Primary) {
-      return this.transactionRunner.run(({ stores }) => requireKey(stores.kmsKeyStore, kmsId));
-    }
-    return requireKey(this.stores.kmsKeyStore, kmsId);
   }
 
   private async externalKeyCipher(kmsId: string) {

@@ -1,3 +1,4 @@
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 
 import { ProjectDataKeyCache, projectDataKeyCacheKey } from "../../data-access/project-data-key-cache";
@@ -8,7 +9,6 @@ import { RootKey } from "../../models/root-key";
 import { InMemoryKmsCoreStores } from "../../testing/in-memory-kms-core-stores";
 import { TInMemoryProjectRow } from "../../testing/in-memory-platform-rows";
 import { TExternalKmsHook, TKmsCoreStores, TProjectKeyStore } from "../dependencies";
-import { ReadFrom } from "../helpers/read-options";
 import { KmsDataKeyService, KmsDataKey, KmsType } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -65,7 +65,8 @@ const externalKeyIn = async (mem: InMemoryKmsCoreStores) => {
 // A replica that has not caught up with a project committed a moment ago.
 const withLaggingReplica = (mem: InMemoryKmsCoreStores, projectId: string) => {
   const projectKeyStore = Object.create(mem.projectKeyStore) as TProjectKeyStore;
-  projectKeyStore.find = async (id: string) => (id === projectId ? null : mem.projectKeyStore.find(id));
+  projectKeyStore.find = async (id: string, options?: TReadOptions) =>
+    id === projectId && options?.readFrom !== ReadFrom.Primary ? null : mem.stores.projectKeyStore.find(id, options);
   const replica: TKmsCoreStores = { ...mem.stores, projectKeyStore };
   return new KmsDataKeyService(mem.transactionRunner, replica, RootKey.generate(), undefined);
 };
@@ -186,13 +187,15 @@ describe("KmsDataKeyService.createCipherPairWithDataKey", () => {
     const first = await projectCipher(service);
     const current = (await mem.projectKeyStore.find("project-1")) as ProjectKey;
     const stale = ProjectKey.restore({ ...current.toJSON(), kmsKeyId: "a-key-that-was-deleted" });
-    const find = vi.spyOn(mem.projectKeyStore, "find").mockResolvedValueOnce(stale);
+    const find = vi.spyOn(mem.stores.projectKeyStore, "find").mockResolvedValueOnce(stale);
 
     // Action
     const second = await projectCipher(service);
 
     // Assert
     expect(find).toHaveBeenCalledTimes(2);
+    expect(find.mock.calls[0][1]).toBeUndefined();
+    expect(find.mock.calls[1][1]).toEqual({ readFrom: ReadFrom.Primary });
     expect(second.decryptor({ cipherTextBlob: seal(first, "v") }).toString()).toBe("v");
   });
 
@@ -213,7 +216,7 @@ describe("KmsDataKeyService.createCipherPairWithDataKey", () => {
     // Setup
     const { mem, service } = build();
     const first = await projectCipher(service);
-    const find = vi.spyOn(mem.projectKeyStore, "find");
+    const find = vi.spyOn(mem.stores.projectKeyStore, "find");
 
     // Action
     const second = await projectCipher(service);
@@ -259,7 +262,7 @@ describe("KmsDataKeyService.getProjectCertificateKmsKeyId", () => {
     const winner = KmsKey.createReserved({ orgId: "org-1", rootKey: RootKey.generate() });
     await mem.kmsKeyStore.insert(winner);
     const find = mem.projectKeyStore.find.bind(mem.projectKeyStore);
-    vi.spyOn(mem.projectKeyStore, "find").mockImplementationOnce(async (projectId) => {
+    vi.spyOn(mem.stores.projectKeyStore, "find").mockImplementationOnce(async (projectId) => {
       const read = await find(projectId);
       setProjectRow(mem, "project-1", { kmsCertificateKeyId: winner.id });
       return read;
@@ -356,6 +359,25 @@ describe("KmsDataKeyService.updateProjectSecretManagerKmsKey", () => {
     expect(await mem.kmsKeyStore.findById(oldKeyId)).toBeNull();
     const after = await projectCipher(service);
     expect(after.decryptor({ cipherTextBlob: blob }).toString()).toBe("kept");
+  });
+
+  test("should read the org cipher for an external key switch from the primary", async () => {
+    // Setup
+    const { mem, service } = build(fakeExternalKms());
+    await service.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: "org-1" });
+    const external = await externalKeyIn(mem);
+    const orgFind = vi.spyOn(mem.stores.organizationKeyStore, "find");
+    const keyFind = vi.spyOn(mem.stores.kmsKeyStore, "findById");
+
+    // Action
+    await service.updateProjectSecretManagerKmsKey({
+      projectId: "project-1",
+      kms: { type: KmsType.External, kmsId: external.id }
+    });
+
+    // Assert
+    expect(orgFind).toHaveBeenCalledWith("org-1", { readFrom: ReadFrom.Primary });
+    expect(keyFind).toHaveBeenCalledWith(expect.any(String), { readFrom: ReadFrom.Primary });
   });
 
   test("should switch an external project back to a new internal key and keep the data readable", async () => {
@@ -457,7 +479,7 @@ describe("KmsDataKeyService.updateProjectSecretManagerKmsKey", () => {
       encryptedProviderInputs: Buffer.from("inputs")
     });
     await mem.kmsKeyStore.insert(external);
-    vi.spyOn(mem.projectKeyStore, "switchKey").mockResolvedValueOnce(false);
+    vi.spyOn(mem.stores.projectKeyStore, "switchKey").mockResolvedValueOnce(false);
 
     // Action
     const result = service.updateProjectSecretManagerKmsKey({
@@ -611,32 +633,32 @@ describe("KmsDataKeyService.deleteProjectKeys", () => {
 });
 
 describe("KmsDataKeyService project data key cache", () => {
-  test("should serve a second cipher pair from the cache without reading the project or using the primary", async () => {
+  test("should serve a second cipher pair from the cache without reading the project", async () => {
     // Setup
     const { mem, service } = buildCached();
     const first = await projectCipher(service);
-    const find = vi.spyOn(mem.projectKeyStore, "find");
-    const run = vi.spyOn(mem.transactionRunner, "run");
+    const find = vi.spyOn(mem.stores.projectKeyStore, "find");
 
     // Action
     const second = await projectCipher(service);
 
     // Assert
     expect(find).not.toHaveBeenCalled();
-    expect(run).not.toHaveBeenCalled();
     expect(second.decryptor({ cipherTextBlob: seal(first, "v") }).toString()).toBe("v");
   });
 
   test("should fill a miss from the primary and write the project's current entry", async () => {
     // Setup
     const { mem, keyStore, service } = buildCached();
-    const run = vi.spyOn(mem.transactionRunner, "run");
+    const find = vi.spyOn(mem.stores.projectKeyStore, "find");
 
     // Action
     await projectCipher(service);
 
     // Assert
-    expect(run).toHaveBeenCalled();
+    expect(find).toHaveBeenCalled();
+    expect(find.mock.calls[0][1]).toEqual({ readFrom: ReadFrom.Primary });
+    expect(find.mock.calls.at(-1)?.[1]).toEqual({ readFrom: ReadFrom.Primary });
     const project = mem.platformRows.projects.get("project-1");
     expect(await cachedEntry(keyStore)).toEqual({
       kmsSecretManagerKeyId: project?.kmsSecretManagerKeyId,
@@ -695,7 +717,7 @@ describe("KmsDataKeyService project data key cache", () => {
         orgId: "org-1"
       })
     );
-    const find = vi.spyOn(mem.projectKeyStore, "find");
+    const find = vi.spyOn(mem.stores.projectKeyStore, "find");
 
     // Action
     const healed = await projectCipher(service);
@@ -794,7 +816,7 @@ describe("KmsDataKeyService project data key cache", () => {
     await service.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: "org-1" });
     await projectCipher(service);
     const external = await externalKeyIn(mem);
-    vi.spyOn(mem.projectKeyStore, "switchKey").mockResolvedValueOnce(false);
+    vi.spyOn(mem.stores.projectKeyStore, "switchKey").mockResolvedValueOnce(false);
     const evict = vi.spyOn(cache, "evict");
 
     // Action
@@ -876,7 +898,7 @@ describe("KmsDataKeyService.within", () => {
     const { mem, service } = build();
     const winner = KmsKey.createReserved({ orgId: "org-1", rootKey: RootKey.generate() });
     await mem.kmsKeyStore.insert(winner);
-    vi.spyOn(mem.projectKeyStore, "claimCertificateKey").mockImplementationOnce(async () => {
+    vi.spyOn(mem.stores.projectKeyStore, "claimCertificateKey").mockImplementationOnce(async () => {
       setProjectRow(mem, "project-1", { kmsCertificateKeyId: winner.id });
       return false;
     });

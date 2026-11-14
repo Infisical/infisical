@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { ProjectType, TableName, TKmsKeys } from "@app/db/schemas";
-import { toCount } from "@app/domains/lib/data-access";
+import { toCount, TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 
@@ -59,22 +59,25 @@ const toModel = (row: TKmsKeyRow): KmsKey =>
 
 // Owns kms_keys, internal_kms and external_kms: one KmsKey is stored across them.
 export class KmsKeyStore implements TKmsKeyStore {
-  // A source, not a handle: replicaNode() picks a replica per call, and the stores bundle passes its transaction.
-  constructor(private readonly knex: () => Knex) {}
+  constructor(private readonly connection: TStoreConnection) {}
 
-  async findById(id: string): Promise<KmsKey | null> {
-    const [key] = await this.find({ id });
+  async findById(id: string, options?: TReadOptions): Promise<KmsKey | null> {
+    const [key] = await this.find({ id }, options);
     return key ?? null;
   }
 
-  async find(filter: TKmsKeyFilter): Promise<KmsKey[]> {
+  find(filter: TKmsKeyFilter, options?: TReadOptions): Promise<KmsKey[]> {
+    return KmsKeyStore.findWith(this.connection.reader(options), filter);
+  }
+
+  private static async findWith(knex: Knex, filter: TKmsKeyFilter): Promise<KmsKey[]> {
     // A malformed id cannot match a uuid column, and Postgres would raise instead of returning nothing.
     const single = [filter.id, filter.orgId].filter((value) => value !== undefined);
     const ids = filter.ids?.filter((id) => UUID_PATTERN.test(id));
     if (single.some((value) => !UUID_PATTERN.test(value)) || (ids && !ids.length)) return [];
 
     try {
-      const query = this.withMaterial();
+      const query = KmsKeyStore.withMaterial(knex);
       if (filter.id !== undefined) void query.where(`${TableName.KmsKey}.id`, filter.id);
       if (ids) void query.whereIn(`${TableName.KmsKey}.id`, ids);
       if (filter.orgId !== undefined) void query.where(`${TableName.KmsKey}.orgId`, filter.orgId);
@@ -94,19 +97,21 @@ export class KmsKeyStore implements TKmsKeyStore {
 
   async findForUpdate(id: string): Promise<KmsKey | null> {
     await this.lockRows(id, "Find KMS key for update");
-    return this.findById(id);
+    const [key] = await KmsKeyStore.findWith(this.connection.writer(), { id });
+    return key ?? null;
   }
 
   async findForRotation(id: string): Promise<KmsKey | null> {
     await this.lockRows(id, "Find KMS key for rotation");
-    return this.findById(id);
+    const [key] = await KmsKeyStore.findWith(this.connection.writer(), { id });
+    return key ?? null;
   }
 
   // Reads projects, which no domain owns yet: a project pending deletion stops publishing, like a deleted one.
-  async findPublishedById(id: string): Promise<KmsKey | null> {
+  async findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | null> {
     if (!UUID_PATTERN.test(id)) return null;
     try {
-      const row = (await this.withMaterial()
+      const row = (await KmsKeyStore.withMaterial(this.connection.reader(options))
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.KmsKey}.projectId`)
         .where(`${TableName.KmsKey}.id`, id)
         .where(`${TableName.KmsKey}.isPublicKeyPublished`, true)
@@ -118,16 +123,12 @@ export class KmsKeyStore implements TKmsKeyStore {
     }
   }
 
-  async listProjectKeys({
-    projectId,
-    offset,
-    limit,
-    orderBy,
-    orderDirection,
-    search
-  }: TKmsKeyPageQuery): Promise<{ keys: KmsKey[]; totalCount: number }> {
+  async listProjectKeys(
+    { projectId, offset, limit, orderBy, orderDirection, search }: TKmsKeyPageQuery,
+    options?: TReadOptions
+  ): Promise<{ keys: KmsKey[]; totalCount: number }> {
     try {
-      const knex = this.knex();
+      const knex = this.connection.reader(options);
       const filtered = knex(TableName.KmsKey)
         .where(`${TableName.KmsKey}.projectId`, projectId)
         .where((qb) => {
@@ -169,9 +170,10 @@ export class KmsKeyStore implements TKmsKeyStore {
   }
 
   // Reads projects, which no domain owns yet, to count a product's keys for org stats.
-  async countProjectKeysInOrg(orgId: string, projectType: ProjectType): Promise<number> {
+  async countProjectKeysInOrg(orgId: string, projectType: ProjectType, options?: TReadOptions): Promise<number> {
     try {
-      const result = (await this.knex()(TableName.KmsKey)
+      const result = (await this.connection
+        .reader(options)(TableName.KmsKey)
         .join(TableName.Project, `${TableName.KmsKey}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
@@ -187,7 +189,7 @@ export class KmsKeyStore implements TKmsKeyStore {
   async insert(key: KmsKey): Promise<void> {
     try {
       const record = key.toJSON();
-      const knex = this.knex();
+      const knex = this.connection.writer();
       await knex(TableName.KmsKey).insert({
         id: record.id,
         name: record.name,
@@ -227,7 +229,7 @@ export class KmsKeyStore implements TKmsKeyStore {
   async save(key: KmsKey): Promise<void> {
     try {
       const record = key.toJSON();
-      const knex = this.knex();
+      const knex = this.connection.writer();
       await knex(TableName.KmsKey)
         .where({ id: record.id })
         .update({
@@ -257,7 +259,7 @@ export class KmsKeyStore implements TKmsKeyStore {
   async delete(id: string): Promise<void> {
     if (!UUID_PATTERN.test(id)) return;
     try {
-      await this.knex()(TableName.KmsKey).where({ id }).delete();
+      await this.connection.writer()(TableName.KmsKey).where({ id }).delete();
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete KMS key" });
     }
@@ -267,7 +269,7 @@ export class KmsKeyStore implements TKmsKeyStore {
     const valid = ids.filter((id) => UUID_PATTERN.test(id));
     if (!valid.length) return 0;
     try {
-      return await this.knex()(TableName.KmsKey).whereIn("id", valid).delete();
+      return await this.connection.writer()(TableName.KmsKey).whereIn("id", valid).delete();
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete KMS keys" });
     }
@@ -278,7 +280,7 @@ export class KmsKeyStore implements TKmsKeyStore {
   private async lockRows(id: string, name: string): Promise<void> {
     if (!UUID_PATTERN.test(id)) return;
     try {
-      const knex = this.knex();
+      const knex = this.connection.writer();
       await knex(TableName.KmsKey).where({ id }).forUpdate().first("id");
       await knex(TableName.InternalKms).where({ kmsKeyId: id }).forUpdate().first("id");
     } catch (error) {
@@ -286,8 +288,7 @@ export class KmsKeyStore implements TKmsKeyStore {
     }
   }
 
-  private withMaterial() {
-    const knex = this.knex();
+  private static withMaterial(knex: Knex) {
     return knex(TableName.KmsKey)
       .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
       .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)

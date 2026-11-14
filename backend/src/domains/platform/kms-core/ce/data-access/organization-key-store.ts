@@ -1,6 +1,5 @@
-import { Knex } from "knex";
-
 import { TableName } from "@app/db/schemas";
+import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
 import { OrganizationKey } from "../models/organization-key";
@@ -8,11 +7,12 @@ import { TOrganizationKeyStore } from "../services/dependencies";
 
 // The key columns on organizations, which no domain owns yet; KMS Core writes only these columns.
 export class OrganizationKeyStore implements TOrganizationKeyStore {
-  constructor(private readonly knex: () => Knex) {}
+  constructor(private readonly connection: TStoreConnection) {}
 
-  async find(orgId: string): Promise<OrganizationKey | null> {
+  async find(orgId: string, options?: TReadOptions): Promise<OrganizationKey | null> {
     try {
-      const row = await this.knex()(TableName.Organization)
+      const row = await this.connection
+        .reader(options)(TableName.Organization)
         .where({ id: orgId })
         .first("id", "kmsDefaultKeyId", "kmsEncryptedDataKey");
       if (!row) return null;
@@ -36,9 +36,12 @@ export class OrganizationKeyStore implements TOrganizationKeyStore {
     return this.claim(orgId, "kmsEncryptedDataKey", encryptedDataKey);
   }
 
-  async referencesKey(kmsKeyId: string): Promise<boolean> {
+  async referencesKey(kmsKeyId: string, options?: TReadOptions): Promise<boolean> {
     try {
-      const org = await this.knex()(TableName.Organization).where({ kmsDefaultKeyId: kmsKeyId }).first("id");
+      const org = await this.connection
+        .reader(options)(TableName.Organization)
+        .where({ kmsDefaultKeyId: kmsKeyId })
+        .first("id");
       return Boolean(org);
     } catch (error) {
       throw new DatabaseError({ error, name: "Check org KMS key references" });
@@ -52,7 +55,8 @@ export class OrganizationKeyStore implements TOrganizationKeyStore {
   ): Promise<boolean> {
     try {
       if (value === null) throw new Error(`The organization key has no ${column} to claim`);
-      const updated = await this.knex()(TableName.Organization)
+      const updated = await this.connection
+        .writer()(TableName.Organization)
         .where({ id: orgId })
         .whereNull(column)
         .update({ [column]: value } as never);

@@ -1,6 +1,5 @@
-import { Knex } from "knex";
-
 import { TableName, TKmsRootConfig } from "@app/db/schemas";
+import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
 import { KMS_ROOT_CONFIG_UUID, RootKeyConfig } from "../models/root-key-config";
@@ -20,11 +19,11 @@ const toModel = (row: TKmsRootConfig) =>
   });
 
 export class RootKeyConfigStore implements TRootKeyConfigStore {
-  constructor(private readonly knex: () => Knex) {}
+  constructor(private readonly connection: TStoreConnection) {}
 
-  async findById(id: string): Promise<RootKeyConfig | null> {
+  async findById(id: string, options?: TReadOptions): Promise<RootKeyConfig | null> {
     try {
-      const row = (await this.knex()(TableName.KmsServerRootConfig).where({ id }).first("*")) as
+      const row = (await this.connection.reader(options)(TableName.KmsServerRootConfig).where({ id }).first("*")) as
         | TKmsRootConfig
         | undefined;
       return row ? toModel(row) : null;
@@ -33,9 +32,11 @@ export class RootKeyConfigStore implements TRootKeyConfigStore {
     }
   }
 
-  async findAll(): Promise<RootKeyConfig[]> {
+  async findAll(options?: TReadOptions): Promise<RootKeyConfig[]> {
     try {
-      const rows = (await this.knex()(TableName.KmsServerRootConfig).select("*")) as TKmsRootConfig[];
+      const rows = (await this.connection
+        .reader(options)(TableName.KmsServerRootConfig)
+        .select("*")) as TKmsRootConfig[];
       return rows.map(toModel);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find root key configs" });
@@ -46,14 +47,16 @@ export class RootKeyConfigStore implements TRootKeyConfigStore {
     const record = config.toJSON();
     try {
       // Null columns are left out: migrations that predate the rotation columns bootstrap through this insert.
-      await this.knex()(TableName.KmsServerRootConfig).insert({
-        id: record.id,
-        encryptedRootKey: record.encryptedRootKey,
-        encryptionStrategy: record.encryptionStrategy,
-        ...(record.kekLabel != null ? { kekLabel: record.kekLabel } : {}),
-        ...(record.activatedAt != null ? { activatedAt: record.activatedAt } : {}),
-        ...(record.supersededAt != null ? { supersededAt: record.supersededAt } : {})
-      } as never);
+      await this.connection
+        .writer()(TableName.KmsServerRootConfig)
+        .insert({
+          id: record.id,
+          encryptedRootKey: record.encryptedRootKey,
+          encryptionStrategy: record.encryptionStrategy,
+          ...(record.kekLabel != null ? { kekLabel: record.kekLabel } : {}),
+          ...(record.activatedAt != null ? { activatedAt: record.activatedAt } : {}),
+          ...(record.supersededAt != null ? { supersededAt: record.supersededAt } : {})
+        } as never);
     } catch (error) {
       throw new DatabaseError({ error, name: "Insert root key config" });
     }
@@ -62,7 +65,8 @@ export class RootKeyConfigStore implements TRootKeyConfigStore {
   async save(config: RootKeyConfig): Promise<void> {
     const record = config.toJSON();
     try {
-      await this.knex()(TableName.KmsServerRootConfig)
+      await this.connection
+        .writer()(TableName.KmsServerRootConfig)
         .where({ id: record.id })
         .update({
           encryptedRootKey: record.encryptedRootKey,
@@ -79,7 +83,7 @@ export class RootKeyConfigStore implements TRootKeyConfigStore {
 
   async delete(id: string): Promise<boolean> {
     try {
-      return (await this.knex()(TableName.KmsServerRootConfig).where({ id }).delete()) > 0;
+      return (await this.connection.writer()(TableName.KmsServerRootConfig).where({ id }).delete()) > 0;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete root key config" });
     }
@@ -87,7 +91,8 @@ export class RootKeyConfigStore implements TRootKeyConfigStore {
 
   async deleteAllStaged(): Promise<void> {
     try {
-      await this.knex()(TableName.KmsServerRootConfig)
+      await this.connection
+        .writer()(TableName.KmsServerRootConfig)
         .whereNull("activatedAt")
         .whereNot("id", KMS_ROOT_CONFIG_UUID)
         .delete();

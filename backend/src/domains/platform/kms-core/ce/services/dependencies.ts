@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { TReadOptions } from "@app/domains/lib/data-access";
 import { OrderByDirection } from "@app/lib/types";
 
 import { TCipherPair } from "../models/data-key";
@@ -45,18 +46,19 @@ export type TKmsKeyPageQuery = {
 
 // Owns kms_keys, internal_kms and external_kms: one KmsKey is stored across them.
 export type TKmsKeyStore = {
-  findById(id: string): Promise<KmsKey | null>;
+  findById(id: string, options?: TReadOptions): Promise<KmsKey | null>;
   // A filter applies whenever its field is set, including to an empty string.
-  find(filter: TKmsKeyFilter): Promise<KmsKey[]>;
+  find(filter: TKmsKeyFilter, options?: TReadOptions): Promise<KmsKey[]>;
   // Both take the kms_keys row lock and then the internal_kms one, in that order: save() writes both tables, so a
-  // rename racing a rotation would otherwise write back the material the rotation replaced.
+  // rename racing a rotation would otherwise write back the material the rotation replaced. They read the primary
+  // and take no options.
   findForUpdate(id: string): Promise<KmsKey | null>;
   findForRotation(id: string): Promise<KmsKey | null>;
   // A published key whose project is not pending deletion.
-  findPublishedById(id: string): Promise<KmsKey | null>;
+  findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | null>;
   // Customer keys of a project (not reserved, with internal material), one page and the total.
-  listProjectKeys(query: TKmsKeyPageQuery): Promise<{ keys: KmsKey[]; totalCount: number }>;
-  countProjectKeysInOrg(orgId: string, projectType: ProjectType): Promise<number>;
+  listProjectKeys(query: TKmsKeyPageQuery, options?: TReadOptions): Promise<{ keys: KmsKey[]; totalCount: number }>;
+  countProjectKeysInOrg(orgId: string, projectType: ProjectType, options?: TReadOptions): Promise<number>;
   insert(key: KmsKey): Promise<void>;
   // Writes the key's current state: kms_keys attributes, internal_kms material and version, external_kms inputs.
   save(key: KmsKey): Promise<void>;
@@ -67,13 +69,13 @@ export type TKmsKeyStore = {
 
 export type TKmsKeyVersionStore = {
   insert(version: KmsKeyVersion): Promise<void>;
-  listByInternalKmsId(internalKmsId: string): Promise<KmsKeyVersion[]>;
+  listByInternalKmsId(internalKmsId: string, options?: TReadOptions): Promise<KmsKeyVersion[]>;
 };
 
 // Owns kms_root_config: at most the active, a staged and a retained row.
 export type TRootKeyConfigStore = {
-  findById(id: string): Promise<RootKeyConfig | null>;
-  findAll(): Promise<RootKeyConfig[]>;
+  findById(id: string, options?: TReadOptions): Promise<RootKeyConfig | null>;
+  findAll(options?: TReadOptions): Promise<RootKeyConfig[]>;
   insert(config: RootKeyConfig): Promise<void>;
   save(config: RootKeyConfig): Promise<void>;
   // False when the row was already gone.
@@ -85,16 +87,16 @@ export type TRootKeyConfigStore = {
 // Owns kms_kek_history. Never read unbounded: the history is never pruned.
 export type TKekHistoryStore = {
   // Newest first.
-  findPage(page: { offset: number; limit: number }): Promise<KekHistoryEntry[]>;
-  count(): Promise<number>;
-  findActiveByLabel(kekLabel: string): Promise<KekHistoryEntry | null>;
-  findCurrent(): Promise<KekHistoryEntry | null>;
+  findPage(page: { offset: number; limit: number }, options?: TReadOptions): Promise<KekHistoryEntry[]>;
+  count(options?: TReadOptions): Promise<number>;
+  findActiveByLabel(kekLabel: string, options?: TReadOptions): Promise<KekHistoryEntry | null>;
+  findCurrent(options?: TReadOptions): Promise<KekHistoryEntry | null>;
   insert(entry: KekHistoryEntry): Promise<void>;
   save(entry: KekHistoryEntry): Promise<void>;
 };
 
 export type TLegacyEncryptionKeyStore = {
-  find(): Promise<LegacyEncryptionKey | null>;
+  find(options?: TReadOptions): Promise<LegacyEncryptionKey | null>;
   // A concurrent insert of the same fixed id is ignored, not an error.
   insert(key: LegacyEncryptionKey): Promise<void>;
 };
@@ -102,15 +104,15 @@ export type TLegacyEncryptionKeyStore = {
 // The key columns on organizations, which no domain owns yet. Each claim writes only while the column is empty and
 // reports whether it did, so a second writer (a pod of the previous release) never overwrites the first.
 export type TOrganizationKeyStore = {
-  find(orgId: string): Promise<OrganizationKey | null>;
+  find(orgId: string, options?: TReadOptions): Promise<OrganizationKey | null>;
   claimKmsKey(key: OrganizationKey): Promise<boolean>;
   claimDataKey(key: OrganizationKey): Promise<boolean>;
-  referencesKey(kmsKeyId: string): Promise<boolean>;
+  referencesKey(kmsKeyId: string, options?: TReadOptions): Promise<boolean>;
 };
 
 // The key columns on projects, which no domain owns yet. A project scheduled for deletion is not found.
 export type TProjectKeyStore = {
-  find(projectId: string): Promise<ProjectKey | null>;
+  find(projectId: string, options?: TReadOptions): Promise<ProjectKey | null>;
   claimKmsKey(key: ProjectKey): Promise<boolean>;
   claimDataKey(key: ProjectKey): Promise<boolean>;
   claimCertificateKey(key: ProjectKey): Promise<boolean>;
@@ -119,7 +121,7 @@ export type TProjectKeyStore = {
   // Unconditional write of the key and data key, for a restore from backup.
   save(key: ProjectKey): Promise<void>;
   // Includes projects scheduled for deletion.
-  referencesKey(kmsKeyId: string): Promise<boolean>;
+  referencesKey(kmsKeyId: string, options?: TReadOptions): Promise<boolean>;
 };
 
 // A project's wrapped data key in Redis, so the hot path skips the project row. Holds only what the database holds

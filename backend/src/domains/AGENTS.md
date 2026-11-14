@@ -122,12 +122,23 @@ rule about it shows up.
 
 ### Stores and caches
 
-- Take a connection source, not a handle: `constructor(private readonly knex: () => Knex)`. The module passes
-  `() => db.replicaNode()` for the instance the service reads through outside a transaction, and `() => trx`
-  for the ones in the stores bundle (`OrganizationsProjectsModule`). `replicaNode()` picks a replica per call, which is
-  why it's a function.
-- Reads outside `run` go to a replica and can lag. A read that must see a write just made, or that guards a
-  write, goes through `run` (or `within(tx)`) so it runs on the primary.
+- Take a connection, not a handle: `constructor(private readonly connection: TStoreConnection)`
+  (`lib/data-access/`). The module builds the stores a service reads through outside a transaction on
+  `poolStoreConnection(db)` and the stores bundle on `singleStoreConnection(trx)` (`OrganizationsProjectsModule`).
+  Migrations use `singleStoreConnection` on their own connection, never the global replica.
+- Every fetch (`find*`, `get*`, `list*`, `count*`, `references*`, `is*`) takes a separate trailing
+  `options?: TReadOptions`, also when it already takes an object (`listProjectKeys(query, options)`), declared the
+  same way on the store type, and queries through `this.connection.reader(options)`. A subquery or helper it uses
+  runs on the same reader. Writes, claims, deletes and lock-taking reads (`forUpdate`) use `this.connection.writer()`
+  and take no options: they always run on the primary.
+- Outside a transaction reads go to a replica and can lag. A read that must see a write just made passes
+  `{ readFrom: ReadFrom.Primary }`, written inline: there is no shared constant. A read that guards a write goes
+  through `run` (or `within(tx)`), so it runs on the transaction under its lock.
+- Inside `run` and `within(tx)` the stores are bound to the transaction, so `readFrom` changes nothing: every read sees
+  the transaction, uncommitted rows included. Never read `this.stores` inside `run`: it is the replica, not the
+  transaction.
+- Only stores take read options. A service method takes `options?: TReadOptions` only where a caller needs it, and
+  passes it on. In-memory stores accept the options and ignore them.
 - Convert counts with `toCount` (`lib/data-access/`): Postgres returns `count(*)` as a string.
 - Wrap each query in `try/catch` and rethrow `DatabaseError` from `@app/lib/errors` with a `name` saying what
   failed. It's the one class from that file a domain uses.

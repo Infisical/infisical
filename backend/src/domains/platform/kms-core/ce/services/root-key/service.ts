@@ -1,3 +1,4 @@
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, StateConflictError } from "@app/domains/lib/errors";
 import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -62,6 +63,7 @@ export type TKmsRootKeyService = {
 export class KmsRootKeyService implements TKmsRootKeyService {
   constructor(
     private readonly transactionRunner: TTransactionRunner<TKmsCoreStores>,
+    private readonly stores: TKmsCoreStores,
     private readonly rootKey: RootKey,
     private readonly env: TKmsCoreEnv,
     private readonly isFipsEnabled: () => boolean,
@@ -133,9 +135,9 @@ export class KmsRootKeyService implements TKmsRootKeyService {
   }
 
   async listRotations({ offset, limit }: { offset: number; limit: number }) {
-    const [rows, totalCount] = await this.transactionRunner.run(({ stores }) =>
-      Promise.all([stores.kekHistoryStore.findPage({ offset, limit }), stores.kekHistoryStore.count()])
-    );
+    const options = { readFrom: ReadFrom.Primary };
+    const rows = await this.stores.kekHistoryStore.findPage({ offset, limit }, options);
+    const totalCount = await this.stores.kekHistoryStore.count(options);
     const rotations: TRotationHistoryEntry[] = rows.map((row) => {
       const record = row.toJSON();
       return {
@@ -277,8 +279,8 @@ export class KmsRootKeyService implements TKmsRootKeyService {
     }
   }
 
-  // Reads inside a run so the primary answers: a lagging replica could show a superseded view.
-  private readRing() {
-    return this.transactionRunner.run(async ({ stores }) => RootKeyRing.of(await stores.rootKeyConfigStore.findAll()));
+  // Reads the primary: a lagging replica could show a superseded view.
+  private async readRing() {
+    return RootKeyRing.of(await this.stores.rootKeyConfigStore.findAll({ readFrom: ReadFrom.Primary }));
   }
 }

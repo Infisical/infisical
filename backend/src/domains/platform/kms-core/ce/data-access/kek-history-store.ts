@@ -1,6 +1,5 @@
-import { Knex } from "knex";
-
 import { TableName, TKmsKekHistory } from "@app/db/schemas";
+import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
 import { KekHistoryEntry } from "../models/kek-history-entry";
@@ -18,11 +17,15 @@ const toModel = (row: TKmsKekHistory) =>
   });
 
 export class KekHistoryStore implements TKekHistoryStore {
-  constructor(private readonly knex: () => Knex) {}
+  constructor(private readonly connection: TStoreConnection) {}
 
-  async findPage({ offset, limit }: { offset: number; limit: number }): Promise<KekHistoryEntry[]> {
+  async findPage(
+    { offset, limit }: { offset: number; limit: number },
+    options?: TReadOptions
+  ): Promise<KekHistoryEntry[]> {
     try {
-      const rows = (await this.knex()(TableName.KmsKekHistory)
+      const rows = (await this.connection
+        .reader(options)(TableName.KmsKekHistory)
         .select("*")
         .orderBy("activatedAt", "desc")
         .offset(offset)
@@ -33,29 +36,34 @@ export class KekHistoryStore implements TKekHistoryStore {
     }
   }
 
-  async count(): Promise<number> {
+  async count(options?: TReadOptions): Promise<number> {
     try {
-      const [{ count }] = await this.knex()(TableName.KmsKekHistory).count<{ count: string | number }[]>("* as count");
+      const [{ count }] = await this.connection
+        .reader(options)(TableName.KmsKekHistory)
+        .count<{ count: string | number }[]>("* as count");
       return Number(count);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count KEK history" });
     }
   }
 
-  async findActiveByLabel(kekLabel: string): Promise<KekHistoryEntry | null> {
+  async findActiveByLabel(kekLabel: string, options?: TReadOptions): Promise<KekHistoryEntry | null> {
     try {
-      const row = (await this.knex()(TableName.KmsKekHistory).where({ kekLabel }).whereNull("retiredAt").first("*")) as
-        | TKmsKekHistory
-        | undefined;
+      const row = (await this.connection
+        .reader(options)(TableName.KmsKekHistory)
+        .where({ kekLabel })
+        .whereNull("retiredAt")
+        .first("*")) as TKmsKekHistory | undefined;
       return row ? toModel(row) : null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find active KEK history by label" });
     }
   }
 
-  async findCurrent(): Promise<KekHistoryEntry | null> {
+  async findCurrent(options?: TReadOptions): Promise<KekHistoryEntry | null> {
     try {
-      const row = (await this.knex()(TableName.KmsKekHistory)
+      const row = (await this.connection
+        .reader(options)(TableName.KmsKekHistory)
         .whereNull("supersededAt")
         .orderBy("activatedAt", "desc")
         .first("*")) as TKmsKekHistory | undefined;
@@ -68,11 +76,13 @@ export class KekHistoryStore implements TKekHistoryStore {
   async insert(entry: KekHistoryEntry): Promise<void> {
     const record = entry.toJSON();
     try {
-      await this.knex()(TableName.KmsKekHistory).insert({
-        id: record.id,
-        kekLabel: record.kekLabel,
-        activatedAt: record.activatedAt
-      } as never);
+      await this.connection
+        .writer()(TableName.KmsKekHistory)
+        .insert({
+          id: record.id,
+          kekLabel: record.kekLabel,
+          activatedAt: record.activatedAt
+        } as never);
     } catch (error) {
       throw new DatabaseError({ error, name: "Insert KEK history entry" });
     }
@@ -81,7 +91,8 @@ export class KekHistoryStore implements TKekHistoryStore {
   async save(entry: KekHistoryEntry): Promise<void> {
     const record = entry.toJSON();
     try {
-      await this.knex()(TableName.KmsKekHistory)
+      await this.connection
+        .writer()(TableName.KmsKekHistory)
         .where({ id: record.id })
         .update({ supersededAt: record.supersededAt, retiredAt: record.retiredAt });
     } catch (error) {

@@ -1,3 +1,4 @@
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 
 import { KekHistoryEntry } from "../../models/kek-history-entry";
@@ -49,6 +50,7 @@ const buildCleanup = async ({
   }
   const service = new KmsRootKeyService(
     memory.transactionRunner,
+    memory.stores,
     RootKey.generate(),
     rootKeyTestEnv({ KMS_ROOT_KEY_RETENTION_DAYS: RETENTION_DAYS }),
     () => false,
@@ -211,6 +213,7 @@ describe("KmsRootKeyService.listEncryptionStrategies", () => {
     const memory = new InMemoryKmsCoreStores();
     const service = new KmsRootKeyService(
       memory.transactionRunner,
+      memory.stores,
       RootKey.generate(),
       rootKeyTestEnv(),
       () => false,
@@ -223,6 +226,25 @@ describe("KmsRootKeyService.listEncryptionStrategies", () => {
     // Assert
     await expect(result).rejects.toBeInstanceOf(EntityNotFoundError);
     await expect(result).rejects.toThrow("KMS root configuration not found");
+  });
+});
+
+describe("KmsRootKeyService reads", () => {
+  test("should read the root key ring and the rotation history from the primary", async () => {
+    // Setup
+    const { service, memory } = await bootRootKeyService();
+    const findAll = vi.spyOn(memory.rootKeyConfigStore, "findAll");
+    const findPage = vi.spyOn(memory.kekHistoryStore, "findPage");
+    const count = vi.spyOn(memory.kekHistoryStore, "count");
+
+    // Action
+    await service.getRootKey();
+    await service.listRotations({ offset: 0, limit: 10 });
+
+    // Assert
+    expect(findAll).toHaveBeenCalledWith({ readFrom: ReadFrom.Primary });
+    expect(findPage).toHaveBeenCalledWith({ offset: 0, limit: 10 }, { readFrom: ReadFrom.Primary });
+    expect(count).toHaveBeenCalledWith({ readFrom: ReadFrom.Primary });
   });
 });
 

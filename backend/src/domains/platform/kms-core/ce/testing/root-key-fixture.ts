@@ -53,6 +53,13 @@ export const bootRootKeyService = async ({
     rootKeyWrapper
   };
   const rootKey = await loadRootKey(deps);
-  const service = new KmsRootKeyService(memory.transactionRunner, rootKey, env, isFipsEnabled, rootKeyWrapper);
+  const service = new KmsRootKeyService(
+    memory.transactionRunner,
+    memory.stores,
+    rootKey,
+    env,
+    isFipsEnabled,
+    rootKeyWrapper
+  );
   return { memory, service, rootKey };
 };

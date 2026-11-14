@@ -1,8 +1,10 @@
 import { Knex } from "knex";
 import { onTestFinished } from "vitest";
 
-import { TableName } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
+import { poolStoreConnection, ReadFrom, singleStoreConnection } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { OrderByDirection } from "@app/lib/types";
 
 import { KmsKey } from "../models/kms-key";
 import {
@@ -18,8 +20,8 @@ describe("KmsKeyStore on Postgres", () => {
   const h = setupIntegration();
 
   const postgresFixture = async (): Promise<TKmsKeyStoreFixture> => ({
-    keyStore: new KmsKeyStore(() => h.db),
-    versionStore: new KmsKeyVersionStore(() => h.db),
+    keyStore: new KmsKeyStore(poolStoreConnection(h.db)),
+    versionStore: new KmsKeyVersionStore(poolStoreConnection(h.db)),
     newOrg: async () => (await h.factories.organization()).id,
     newProject: async (orgId, { type, pendingDeletion } = {}) =>
       (
@@ -32,6 +34,51 @@ describe("KmsKeyStore on Postgres", () => {
   });
 
   describeKmsKeyStoreContract("postgres", postgresFixture);
+
+  describe("read routing", () => {
+    const unreachableReplica = () => {
+      throw new Error("replica used");
+    };
+
+    test("should not touch the replica for a read from the primary or a lock-taking read", async () => {
+      const tn = await h.newTenant();
+      const key = newInternalKey(tn.org.id, { projectId: tn.project.id });
+      await new KmsKeyStore(poolStoreConnection(h.db)).insert(key);
+      const store = new KmsKeyStore(poolStoreConnection(h.db, unreachableReplica));
+      const primary = { readFrom: ReadFrom.Primary };
+
+      const byId = await store.findById(key.id, primary);
+      const filtered = await store.find({ orgId: tn.org.id }, primary);
+      const page = await store.listProjectKeys(
+        { projectId: tn.project.id, offset: 0, orderBy: "name", orderDirection: OrderByDirection.ASC },
+        primary
+      );
+      const count = await store.countProjectKeysInOrg(tn.org.id, ProjectType.SecretManager, primary);
+      const published = await store.findPublishedById(key.id, primary);
+      const forUpdate = await store.findForUpdate(key.id);
+      const forRotation = await store.findForRotation(key.id);
+
+      expect(byId?.id).toBe(key.id);
+      expect(filtered.map((found) => found.id)).toContain(key.id);
+      expect(page.totalCount).toBe(1);
+      expect(count).toBeGreaterThanOrEqual(0);
+      expect(published).toBeNull();
+      expect(forUpdate?.id).toBe(key.id);
+      expect(forRotation?.id).toBe(key.id);
+    });
+
+    test("should read from the replica by default", async () => {
+      const tn = await h.newTenant();
+      const key = newInternalKey(tn.org.id, { projectId: tn.project.id });
+      await new KmsKeyStore(poolStoreConnection(h.db)).insert(key);
+      const replica = vi.fn(() => h.db);
+      const store = new KmsKeyStore(poolStoreConnection(h.db, replica));
+
+      await store.findById(key.id);
+
+      expect(replica).toHaveBeenCalled();
+    });
+  });
 
   const BLOCKED_WRITER_TIMEOUT_MS = 10_000;
 
@@ -56,13 +103,16 @@ describe("KmsKeyStore on Postgres", () => {
     const race = async (first: "findForRotation" | "findForUpdate", second: "findForRotation" | "findForUpdate") => {
       const tn = await h.newTenant();
       const key = newInternalKey(tn.org.id, { projectId: tn.project.id });
-      await new KmsKeyStore(() => h.db).insert(key);
+      await new KmsKeyStore(poolStoreConnection(h.db)).insert(key);
       const holder = await h.db.transaction();
       const waiter = await h.db.transaction();
       onTestFinished(async () => {
         await Promise.all([holder, waiter].map(async (trx) => (trx.isCompleted() ? undefined : trx.rollback())));
       });
-      const stores = (trx: Knex) => ({ keys: new KmsKeyStore(() => trx), versions: new KmsKeyVersionStore(() => trx) });
+      const stores = (trx: Knex) => ({
+        keys: new KmsKeyStore(singleStoreConnection(trx)),
+        versions: new KmsKeyVersionStore(singleStoreConnection(trx))
+      });
 
       const firstWork = async (loaded: KmsKey, trx: Knex) => {
         if (first === "findForRotation") await stores(trx).versions.insert(loaded.rotate(rootKeyForTests));
@@ -90,7 +140,7 @@ describe("KmsKeyStore on Postgres", () => {
       const id = await race("findForRotation", "findForUpdate");
 
       // Action
-      const stored = await new KmsKeyStore(() => h.db).findById(id);
+      const stored = await new KmsKeyStore(poolStoreConnection(h.db)).findById(id);
 
       // Assert
       expect(stored?.toJSON()).toMatchObject({ isDisabled: true, internal: { version: 2 } });
@@ -101,7 +151,7 @@ describe("KmsKeyStore on Postgres", () => {
       const id = await race("findForUpdate", "findForRotation");
 
       // Action
-      const stored = await new KmsKeyStore(() => h.db).findById(id);
+      const stored = await new KmsKeyStore(poolStoreConnection(h.db)).findById(id);
       const versions = await h
         .db(TableName.InternalKmsKeyVersion)
         .where({ internalKmsId: stored?.toJSON().internal?.id });

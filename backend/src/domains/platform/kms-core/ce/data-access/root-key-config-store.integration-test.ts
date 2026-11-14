@@ -1,4 +1,5 @@
 import { TableName } from "@app/db/schemas";
+import { poolStoreConnection } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
 import { describeRootKeyConfigStoreContract } from "../testing/root-key-config-store-contract";
@@ -9,5 +10,5 @@ const h = setupIntegration({ freshDatabase: true });
 
 describeRootKeyConfigStoreContract("RootKeyConfigStore", async () => {
   await h.db(TableName.KmsServerRootConfig).delete();
-  return { store: new RootKeyConfigStore(() => h.db) };
+  return { store: new RootKeyConfigStore(poolStoreConnection(h.db)) };
 });

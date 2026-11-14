@@ -1,3 +1,4 @@
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
@@ -15,7 +16,6 @@ import {
   TExternalKmsSummary,
   TUpdateExternalKmsInput
 } from "../dependencies";
-import { ReadFrom } from "../helpers/read-options";
 import { KmsKeyService } from "./service";
 
 const fakeDetails = (kmsId: string, orgId: string): TExternalKmsDetails =>
@@ -422,15 +422,17 @@ describe("KmsKeyService reads", () => {
 
   test("should find keys by filter on the replica and on the primary", async () => {
     // Setup
-    const { service } = setup();
+    const { service, memory } = setup();
     const org = orgId();
     const key = await service.generateKmsKey(customerKey(org, "p1", "findme"));
+    const find = vi.spyOn(memory.stores.kmsKeyStore, "find");
 
     // Action
     const replica = await service.findKeys({ orgId: org, name: "findme" });
     const primary = await service.findKeys({ orgId: org, name: "findme" }, { readFrom: ReadFrom.Primary });
 
     // Assert
+    expect(find.mock.calls.map(([, options]) => options)).toEqual([undefined, { readFrom: ReadFrom.Primary }]);
     expect(replica.map((found) => found.id)).toEqual([key.id]);
     expect(primary.map((found) => found.id)).toEqual([key.id]);
   });
@@ -460,6 +462,7 @@ describe("KmsKeyService reads", () => {
       keyUsage: KmsKeyUsage.SIGN_VERIFY,
       encryptionAlgorithm: AsymmetricKeyAlgorithm.ED25519
     });
+    const findPublished = vi.spyOn(memory.stores.kmsKeyStore, "findPublishedById");
 
     // Action
     const before = await service.findPublishedKeyById(key.id);
@@ -467,6 +470,9 @@ describe("KmsKeyService reads", () => {
     const published = await service.findPublishedKeyById(key.id);
 
     // Assert
+    expect(findPublished).toHaveBeenCalledTimes(2);
+    expect(findPublished).toHaveBeenNthCalledWith(1, key.id, { readFrom: ReadFrom.Primary });
+    expect(findPublished).toHaveBeenNthCalledWith(2, key.id, { readFrom: ReadFrom.Primary });
     expect(before).toBeUndefined();
     expect(published?.id).toBe(key.id);
   });
@@ -546,13 +552,14 @@ describe("KmsKeyService cryptography", () => {
 
   test("should sign, verify and publish the public key of a sign-verify key", async () => {
     // Setup
-    const { service } = setup();
+    const { service, memory } = setup();
     const key = await service.generateKmsKey({
       ...customerKey(orgId(), "p1"),
       keyUsage: KmsKeyUsage.SIGN_VERIFY,
       encryptionAlgorithm: AsymmetricKeyAlgorithm.ED25519
     });
     const data = Buffer.from("payload");
+    const findById = vi.spyOn(memory.stores.kmsKeyStore, "findById");
 
     // Action
     const sign = await service.signWithKmsKey({ kmsId: key.id }, { readFrom: ReadFrom.Primary });
@@ -563,6 +570,9 @@ describe("KmsKeyService cryptography", () => {
     const publicKey = await service.getPublicKey({ kmsId: key.id }, { readFrom: ReadFrom.Primary });
 
     // Assert
+    expect(findById).toHaveBeenNthCalledWith(1, key.id, { readFrom: ReadFrom.Primary });
+    expect(findById).toHaveBeenNthCalledWith(2, key.id, undefined);
+    expect(findById).toHaveBeenNthCalledWith(3, key.id, { readFrom: ReadFrom.Primary });
     expect(valid.signatureValid).toBe(true);
     expect(tampered.signatureValid).toBe(false);
     expect(publicKey.length).toBeGreaterThan(0);

@@ -1,3 +1,4 @@
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, StateConflictError } from "@app/domains/lib/errors";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { logger } from "@app/lib/logger";
@@ -12,7 +13,6 @@ import { RootKey } from "../../models/root-key";
 import { WrappedKeyPayload } from "../../models/wrapped-key";
 import { TExternalKmsHook, TKmsCoreStores, TProjectDataKeyCache } from "../dependencies";
 import { keyEncryptor, openDataKey, requireKey, sealDataKey } from "../helpers/key-cipher";
-import { ReadFrom, TReadOptions } from "../helpers/read-options";
 
 export enum KmsDataKey {
   Organization,
@@ -58,21 +58,23 @@ export type TKmsDataKeyTransaction = {
   deleteProjectKeys(input: { orgId: string; kmsKeyIds: string[] }): Promise<void>;
 };
 
-const PRIMARY: TReadOptions = { readFrom: ReadFrom.Primary };
-
 const orgNotFound = (orgId: string) =>
   new EntityNotFoundError({ message: `Organization with ID '${orgId}' not found` });
 const projectNotFound = (projectId: string) =>
   new EntityNotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-const findOrgKey = async (stores: TKmsCoreStores, orgId: string): Promise<OrganizationKey> => {
-  const orgKey = await stores.organizationKeyStore.find(orgId);
+const findOrgKey = async (stores: TKmsCoreStores, orgId: string, options?: TReadOptions): Promise<OrganizationKey> => {
+  const orgKey = await stores.organizationKeyStore.find(orgId, options);
   if (!orgKey) throw orgNotFound(orgId);
   return orgKey;
 };
 
-const findProjectKeyIn = async (stores: TKmsCoreStores, projectId: string): Promise<ProjectKey> => {
-  const projectKey = await stores.projectKeyStore.find(projectId);
+const findProjectKeyIn = async (
+  stores: TKmsCoreStores,
+  projectId: string,
+  options?: TReadOptions
+): Promise<ProjectKey> => {
+  const projectKey = await stores.projectKeyStore.find(projectId, options);
   if (!projectKey) throw projectNotFound(projectId);
   return projectKey;
 };
@@ -148,7 +150,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     });
     if (claimed) return key.id;
 
-    const winner = await this.findProjectKey(projectId, PRIMARY);
+    const winner = await this.findProjectKey(projectId, { readFrom: ReadFrom.Primary });
     if (!winner.certificateKmsKeyId) throw projectNotFound(projectId);
     return winner.certificateKmsKeyId;
   }
@@ -188,8 +190,10 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     projectId,
     kms
   }: TUpdateProjectSecretManagerKmsKeyDTO): Promise<TKmsKeyDetails> {
-    const found = await this.findProjectKey(projectId, PRIMARY);
-    const { projectKey: keyed, kmsKey: currentKey } = await this.ensureProjectKmsKey(found, PRIMARY);
+    const found = await this.findProjectKey(projectId, { readFrom: ReadFrom.Primary });
+    const { projectKey: keyed, kmsKey: currentKey } = await this.ensureProjectKmsKey(found, {
+      readFrom: ReadFrom.Primary
+    });
 
     if (kms.type === KmsType.Internal && currentKey.isReserved) {
       return { ...currentKey.details(), isExternal: false };
@@ -198,7 +202,7 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     let target: KmsKey;
     let isNewKey = false;
     if (kms.type === KmsType.External) {
-      target = await this.readKey(kms.kmsId, PRIMARY);
+      target = await this.readKey(kms.kmsId, { readFrom: ReadFrom.Primary });
       target.assertInOrg(keyed.orgId);
     } else {
       target = KmsKey.createReserved({ orgId: keyed.orgId, rootKey: this.rootKey });
@@ -208,7 +212,9 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     const { projectKey, dataKey } = await this.openProjectDataKey(keyed, currentKey);
     // An external target is sealed with the org data key, which a replica may not have yet for a new org key. Only
     // the reads run on the primary: the provider call happens after the short run returns.
-    const encrypt = await this.read(PRIMARY, (stores) => keyEncryptor(stores, this.rootKey, this.externalKms, target));
+    const encrypt = await keyEncryptor(this.stores, this.rootKey, this.externalKms, target, {
+      readFrom: ReadFrom.Primary
+    });
     const { cipherTextBlob: sealed } = await encrypt({ plainText: dataKey.exportForWrapping() });
 
     return this.transactionRunner.run(async ({ stores, tx }) => {
@@ -240,9 +246,9 @@ export class KmsDataKeyService implements TKmsDataKeyService {
 
   // Points the project at a new internal key holding the backed-up data key.
   async loadProjectKeyBackup(projectId: string, backup: string): Promise<{ secretManagerKmsKey: TKmsKeyDetails }> {
-    const projectKey = await this.findProjectKey(projectId, PRIMARY);
+    const projectKey = await this.findProjectKey(projectId, { readFrom: ReadFrom.Primary });
     const parsed = ProjectKeyBackup.parse(backup, projectId);
-    const backupKey = await this.readKey(parsed.kmsKeyId, PRIMARY);
+    const backupKey = await this.readKey(parsed.kmsKeyId, { readFrom: ReadFrom.Primary });
     projectKey.assertRestorable(parsed, backupKey.orgId);
 
     const dataKey = await openDataKey(this.stores, this.rootKey, this.externalKms, backupKey, parsed.encryptedDataKey);
@@ -309,12 +315,12 @@ export class KmsDataKeyService implements TKmsDataKeyService {
       }
     }
 
-    const { projectKey, dataKey } = await this.resolveProjectKey(projectId, PRIMARY);
+    const { projectKey, dataKey } = await this.resolveProjectKey(projectId, { readFrom: ReadFrom.Primary });
     const material = projectKey.material();
     await cache.set(projectId, material);
     // A key switch can commit and evict between the read above and the write: read the row again after writing, and
     // drop the entry if it no longer matches, so this refill cannot undo that eviction.
-    const current = await this.findProjectKey(projectId, PRIMARY);
+    const current = await this.findProjectKey(projectId, { readFrom: ReadFrom.Primary });
     if (!current.hasDataKey() || !current.material().equals(material)) {
       await cache.evict(projectId).catch((err: unknown) => {
         logger.warn({ err, projectId }, `KMS: failed to drop a stale project data key entry [projectId=${projectId}]`);
@@ -323,18 +329,12 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     return dataKey;
   }
 
-  // Reads on the primary go through a short run, so the connection is back before any provider call.
-  private read<T>(options: TReadOptions | undefined, work: (stores: TKmsCoreStores) => Promise<T>): Promise<T> {
-    if (options?.readFrom === ReadFrom.Primary) return this.transactionRunner.run(({ stores }) => work(stores));
-    return work(this.stores);
-  }
-
   private readKey(kmsKeyId: string, options?: TReadOptions): Promise<KmsKey> {
-    return this.read(options, (stores) => requireKey(stores.kmsKeyStore, kmsKeyId));
+    return requireKey(this.stores.kmsKeyStore, kmsKeyId, options);
   }
 
   private findProjectKey(projectId: string, options?: TReadOptions): Promise<ProjectKey> {
-    return this.read(options, (stores) => findProjectKeyIn(stores, projectId));
+    return findProjectKeyIn(this.stores, projectId, options);
   }
 
   // The org's KMS key, created on first use. The row and the key it names are read together.
@@ -342,12 +342,9 @@ export class KmsDataKeyService implements TKmsDataKeyService {
     orgId: string,
     options?: TReadOptions
   ): Promise<{ orgKey: OrganizationKey; kmsKey: KmsKey }> {
-    const found = await this.read(options, async (stores) => {
-      const orgKey = await findOrgKey(stores, orgId);
-      const kmsKeyId = orgKey.currentKmsKeyId;
-      return { orgKey, kmsKey: kmsKeyId ? await requireKey(stores.kmsKeyStore, kmsKeyId) : null };
-    });
-    if (found.kmsKey) return { orgKey: found.orgKey, kmsKey: found.kmsKey };
+    const foundOrgKey = await findOrgKey(this.stores, orgId, options);
+    const foundKmsKeyId = foundOrgKey.currentKmsKeyId;
+    if (foundKmsKeyId) return { orgKey: foundOrgKey, kmsKey: await this.readKey(foundKmsKeyId, options) };
 
     return this.transactionRunner.run(async ({ stores }) => {
       await stores.locks.orgKey(orgId);
@@ -391,9 +388,9 @@ export class KmsDataKeyService implements TKmsDataKeyService {
       return await this.openProject(found, options);
     } catch (error) {
       if (!(error instanceof EntityNotFoundError)) throw error;
-      const current = await this.findProjectKey(projectId, PRIMARY);
+      const current = await this.findProjectKey(projectId, { readFrom: ReadFrom.Primary });
       if (current.currentKmsKeyId === found.currentKmsKeyId) throw error;
-      return this.openProject(current, PRIMARY);
+      return this.openProject(current, { readFrom: ReadFrom.Primary });
     }
   }
 

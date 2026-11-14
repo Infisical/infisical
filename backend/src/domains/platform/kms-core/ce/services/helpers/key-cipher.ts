@@ -1,3 +1,4 @@
+import { TReadOptions } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 
 import { DataKey, TCipherPair } from "../../models/data-key";
@@ -12,8 +13,8 @@ type TKeyCipherStores = Pick<TKmsCoreStores, "kmsKeyStore" | "kmsKeyVersionStore
 
 export const notFoundKey = (kmsId: string) => new EntityNotFoundError({ message: `KMS with ID '${kmsId}' not found` });
 
-export const requireKey = async (kmsKeyStore: TKmsKeyStore, kmsId: string): Promise<KmsKey> => {
-  const key = await kmsKeyStore.findById(kmsId);
+export const requireKey = async (kmsKeyStore: TKmsKeyStore, kmsId: string, options?: TReadOptions): Promise<KmsKey> => {
+  const key = await kmsKeyStore.findById(kmsId, options);
   if (!key) throw notFoundKey(kmsId);
   return key;
 };
@@ -26,10 +27,15 @@ export const requireExternalKms = (externalKms: TExternalKmsHook | undefined): T
 };
 
 // Archived versions load only on the first ciphertext the current material cannot open.
-const internalDecryptor = (stores: TKeyCipherStores, rootKey: RootKey, key: KmsKey): TAsyncDecryptor => {
+const internalDecryptor = (
+  stores: TKeyCipherStores,
+  rootKey: RootKey,
+  key: KmsKey,
+  options?: TReadOptions
+): TAsyncDecryptor => {
   const internalKmsId = key.toJSON().internal?.id;
   return key.decryptor(rootKey, () =>
-    internalKmsId ? stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId) : Promise.resolve([])
+    internalKmsId ? stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId, options) : Promise.resolve([])
   );
 };
 
@@ -37,13 +43,19 @@ const internalDecryptor = (stores: TKeyCipherStores, rootKey: RootKey, key: KmsK
 export const existingOrgCipher = async (
   stores: TKeyCipherStores,
   rootKey: RootKey,
-  orgId: string
+  orgId: string,
+  options?: TReadOptions
 ): Promise<TCipherPair> => {
-  const orgKey = await stores.organizationKeyStore.find(orgId);
+  const orgKey = await stores.organizationKeyStore.find(orgId, options);
   if (!orgKey) throw new RuleViolationError({ message: "Invalid organization KMS" });
   const material = orgKey.material();
-  const kmsKey = await requireKey(stores.kmsKeyStore, material.kmsKeyId);
-  const dataKey = await internalDecryptor(stores, rootKey, kmsKey)({ cipherTextBlob: material.encryptedDataKey });
+  const kmsKey = await requireKey(stores.kmsKeyStore, material.kmsKeyId, options);
+  const dataKey = await internalDecryptor(
+    stores,
+    rootKey,
+    kmsKey,
+    options
+  )({ cipherTextBlob: material.encryptedDataKey });
   return DataKey.fromBytes(dataKey).toCipherPair();
 };
 
@@ -52,7 +64,8 @@ export const keyEncryptor = async (
   stores: TKeyCipherStores,
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
-  key: KmsKey
+  key: KmsKey,
+  options?: TReadOptions
 ): Promise<TAsyncEncryptor> => {
   const ref = key.externalRef();
   if (!ref) {
@@ -60,7 +73,7 @@ export const keyEncryptor = async (
     return ({ plainText }) => Promise.resolve(encrypt({ plainText }));
   }
   const provider = requireExternalKms(externalKms);
-  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId);
+  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId, options);
   return async ({ plainText }) => ({ cipherTextBlob: await provider.encrypt(ref, orgCipher, plainText) });
 };
 
@@ -70,17 +83,18 @@ export const keyDecryptor = async (
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
   key: KmsKey,
-  { loadArchivedNow = false }: { loadArchivedNow?: boolean } = {}
+  { loadArchivedNow = false }: { loadArchivedNow?: boolean } = {},
+  options?: TReadOptions
 ): Promise<TAsyncDecryptor> => {
   const ref = key.externalRef();
   if (!ref && loadArchivedNow) {
     const internalKmsId = key.toJSON().internal?.id;
-    const archived = internalKmsId ? await stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId) : [];
+    const archived = internalKmsId ? await stores.kmsKeyVersionStore.listByInternalKmsId(internalKmsId, options) : [];
     return key.decryptor(rootKey, () => Promise.resolve(archived));
   }
-  if (!ref) return internalDecryptor(stores, rootKey, key);
+  if (!ref) return internalDecryptor(stores, rootKey, key, options);
   const provider = requireExternalKms(externalKms);
-  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId);
+  const orgCipher = await existingOrgCipher(stores, rootKey, key.orgId, options);
   return ({ cipherTextBlob }) => provider.decrypt(ref, orgCipher, cipherTextBlob);
 };
 
@@ -90,9 +104,10 @@ export const openDataKey = async (
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
   key: KmsKey,
-  encryptedDataKey: Buffer
+  encryptedDataKey: Buffer,
+  options?: TReadOptions
 ): Promise<DataKey> => {
-  const decrypt = await keyDecryptor(stores, rootKey, externalKms, key);
+  const decrypt = await keyDecryptor(stores, rootKey, externalKms, key, {}, options);
   const bytes = await decrypt({ cipherTextBlob: encryptedDataKey });
   return DataKey.fromBytes(bytes);
 };
@@ -102,9 +117,10 @@ export const sealDataKey = async (
   rootKey: RootKey,
   externalKms: TExternalKmsHook | undefined,
   key: KmsKey,
-  dataKey: DataKey
+  dataKey: DataKey,
+  options?: TReadOptions
 ): Promise<Buffer> => {
-  const encrypt = await keyEncryptor(stores, rootKey, externalKms, key);
+  const encrypt = await keyEncryptor(stores, rootKey, externalKms, key, options);
   const { cipherTextBlob } = await encrypt({ plainText: dataKey.exportForWrapping() });
   return cipherTextBlob;
 };

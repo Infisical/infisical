@@ -1,10 +1,10 @@
 import { TableName } from "@app/db/schemas";
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 
 import { buildKmsCoreStoreAccess } from "../../data-access/kms-core-stores";
 import { RootKey } from "../../models/root-key";
-import { ReadFrom } from "../helpers/read-options";
 import { KmsDataKeyService, KmsDataKey, KmsType } from "./service";
 
 describe("KmsDataKeyService on Postgres", () => {

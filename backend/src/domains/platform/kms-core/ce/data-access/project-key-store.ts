@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
+import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
 import { ProjectKey } from "../models/project-key";
@@ -12,15 +13,15 @@ export class ProjectKeyStore implements TProjectKeyStore {
   // it has been seen it stays, so the schema is asked only until then.
   private static deleteAfterColumnSeen = false;
 
-  constructor(private readonly knex: () => Knex) {}
+  constructor(private readonly connection: TStoreConnection) {}
 
   static resetColumnProbe(): void {
     ProjectKeyStore.deleteAfterColumnSeen = false;
   }
 
-  async find(projectId: string): Promise<ProjectKey | null> {
+  async find(projectId: string, options?: TReadOptions): Promise<ProjectKey | null> {
     try {
-      const knex = this.knex();
+      const knex = this.connection.reader(options);
       const query = knex(TableName.Project).where({ id: projectId });
       if (await ProjectKeyStore.hasDeleteAfterColumn(knex)) void query.whereNull("deleteAfter");
       const row = await query.first(
@@ -61,7 +62,8 @@ export class ProjectKeyStore implements TProjectKeyStore {
   async switchKey(key: ProjectKey, expectedKmsKeyId: string): Promise<boolean> {
     try {
       const { projectId, kmsKeyId, encryptedDataKey } = key.toJSON();
-      const updated = await this.knex()(TableName.Project)
+      const updated = await this.connection
+        .writer()(TableName.Project)
         .where({ id: projectId, kmsSecretManagerKeyId: expectedKmsKeyId })
         .update({ kmsSecretManagerKeyId: kmsKeyId, kmsSecretManagerEncryptedDataKey: encryptedDataKey });
       return updated > 0;
@@ -73,7 +75,8 @@ export class ProjectKeyStore implements TProjectKeyStore {
   async save(key: ProjectKey): Promise<void> {
     try {
       const { projectId, kmsKeyId, encryptedDataKey } = key.toJSON();
-      await this.knex()(TableName.Project)
+      await this.connection
+        .writer()(TableName.Project)
         .where({ id: projectId })
         .update({ kmsSecretManagerKeyId: kmsKeyId, kmsSecretManagerEncryptedDataKey: encryptedDataKey });
     } catch (error) {
@@ -81,9 +84,10 @@ export class ProjectKeyStore implements TProjectKeyStore {
     }
   }
 
-  async referencesKey(kmsKeyId: string): Promise<boolean> {
+  async referencesKey(kmsKeyId: string, options?: TReadOptions): Promise<boolean> {
     try {
-      const project = await this.knex()(TableName.Project)
+      const project = await this.connection
+        .reader(options)(TableName.Project)
         .where((qb) => {
           void qb.where({ kmsSecretManagerKeyId: kmsKeyId }).orWhere({ kmsCertificateKeyId: kmsKeyId });
         })
@@ -108,7 +112,8 @@ export class ProjectKeyStore implements TProjectKeyStore {
   ): Promise<boolean> {
     try {
       if (value === null) throw new Error(`The project key has no ${column} to claim`);
-      const updated = await this.knex()(TableName.Project)
+      const updated = await this.connection
+        .writer()(TableName.Project)
         .where({ id: projectId })
         .whereNull(column)
         .update({ [column]: value } as never);

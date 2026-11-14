@@ -1,3 +1,4 @@
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { RuleViolationError } from "@app/domains/lib/errors";
 import { getLegacyDecryptionCandidates, resetLegacyKeyMaterial } from "@app/lib/crypto/legacy-key";
 
@@ -25,11 +26,30 @@ const depsFor = (memory: InMemoryKmsCoreStores, overrides: Partial<TLoadRootKeyD
 });
 
 const serviceFor = (memory: InMemoryKmsCoreStores, rootKey: RootKey, env = rootKeyTestEnv()) =>
-  new KmsRootKeyService(memory.transactionRunner, rootKey, env, () => false, undefined);
+  new KmsRootKeyService(memory.transactionRunner, memory.stores, rootKey, env, () => false, undefined);
 
 describe("loadRootKey", () => {
   afterEach(() => {
     resetLegacyKeyMaterial();
+  });
+
+  test("should read the stored root key state from the primary", async () => {
+    // Setup
+    const memory = new InMemoryKmsCoreStores();
+    await loadRootKey(depsFor(memory));
+    const findAll = vi.spyOn(memory.stores.rootKeyConfigStore, "findAll");
+    const findById = vi.spyOn(memory.stores.rootKeyConfigStore, "findById");
+    const legacy = vi.spyOn(memory.stores.legacyEncryptionKeyStore, "find");
+    const current = vi.spyOn(memory.stores.kekHistoryStore, "findCurrent");
+
+    // Action
+    await loadRootKey(depsFor(memory));
+
+    // Assert
+    expect(findAll).toHaveBeenCalledWith({ readFrom: ReadFrom.Primary });
+    expect(findById).toHaveBeenCalledWith(KMS_ROOT_CONFIG_UUID, { readFrom: ReadFrom.Primary });
+    expect(legacy.mock.calls.every(([options]) => options?.readFrom === ReadFrom.Primary)).toBe(true);
+    expect(current).toHaveBeenCalledWith({ readFrom: ReadFrom.Primary });
   });
 
   test("should bootstrap one software root config on an empty instance", async () => {

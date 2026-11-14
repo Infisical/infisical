@@ -1,3 +1,4 @@
+import { poolStoreConnection } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 
 import { TKmsKeyStoreFixture } from "../testing/kms-key-store-contract";
@@ -9,8 +10,8 @@ describe("KmsKeyVersionStore on Postgres", () => {
   const h = setupIntegration();
 
   const postgresFixture = async (): Promise<TKmsKeyStoreFixture> => ({
-    keyStore: new KmsKeyStore(() => h.db),
-    versionStore: new KmsKeyVersionStore(() => h.db),
+    keyStore: new KmsKeyStore(poolStoreConnection(h.db)),
+    versionStore: new KmsKeyVersionStore(poolStoreConnection(h.db)),
     newOrg: async () => (await h.factories.organization()).id,
     newProject: async (orgId) => (await h.factories.project({ orgId })).project.id
   });
