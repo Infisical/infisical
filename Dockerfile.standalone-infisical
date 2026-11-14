@@ -168,10 +168,13 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     unixodbc \
     freetds-bin \
+    tdsodbc \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure ODBC
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN DRIVER="$(dpkg-query -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" && \
+    test -f "$DRIVER" && \
+    printf '[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nFileUsage = 1\n' "$DRIVER" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
 RUN rm -rf ./node_modules ./e2e-test ./src
@@ -215,6 +218,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     unixodbc \
     freetds-bin \
+    tdsodbc \
     # the ECS container health check shells out to wget; dropping it fails the
     # probe with exit 127 even while the server is serving /api/status fine
     wget \
@@ -274,7 +278,9 @@ COPY --from=openssl-pqc-builder /opt/openssl-pqc /opt/openssl-pqc
 WORKDIR /
 
 # Configure ODBC in production
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN DRIVER="$(dpkg-query -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" && \
+    test -f "$DRIVER" && \
+    printf '[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nFileUsage = 1\n' "$DRIVER" > /etc/odbcinst.ini
 
 # Setup user permissions
 RUN groupadd --system --gid 1001 nodejs \

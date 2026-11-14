@@ -112,7 +112,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure ODBC
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN DRIVER="$(dpkg-query -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" && \
+    test -f "$DRIVER" && \
+    printf '[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nFileUsage = 1\n' "$DRIVER" > /etc/odbcinst.ini
 
 COPY backend/package*.json ./
 RUN npm ci
@@ -154,7 +156,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure ODBC
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN DRIVER="$(dpkg-query -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" && \
+    test -f "$DRIVER" && \
+    printf '[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nFileUsage = 1\n' "$DRIVER" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
 RUN rm -rf ./node_modules ./e2e-test ./src
@@ -238,7 +242,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
     ldconfig
 
 # Configure ODBC in production
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN DRIVER="$(dpkg-query -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" && \
+    test -f "$DRIVER" && \
+    printf '[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nFileUsage = 1\n' "$DRIVER" > /etc/odbcinst.ini
 
 WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
