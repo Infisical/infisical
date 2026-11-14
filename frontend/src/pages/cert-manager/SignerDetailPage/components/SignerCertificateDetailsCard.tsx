@@ -21,7 +21,7 @@ import {
   TSigner
 } from "@app/hooks/api/signers";
 
-const NotSet = () => <span className="text-muted">—</span>;
+const NotSet = () => <span className="text-muted">-</span>;
 
 type Props = {
   signer: TSigner;

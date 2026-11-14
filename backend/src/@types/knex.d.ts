@@ -521,6 +521,9 @@ import {
   TPkiSignerCertificateIssuanceJobs,
   TPkiSignerCertificateIssuanceJobsInsert,
   TPkiSignerCertificateIssuanceJobsUpdate,
+  TPkiSignerCertificateRevocations,
+  TPkiSignerCertificateRevocationsInsert,
+  TPkiSignerCertificateRevocationsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -1121,6 +1124,11 @@ declare module "knex/types/tables" {
       TPkiSignerCertificateIssuanceJobs,
       TPkiSignerCertificateIssuanceJobsInsert,
       TPkiSignerCertificateIssuanceJobsUpdate
+    >;
+    [TableName.PkiSignerCertificateRevocations]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateRevocations,
+      TPkiSignerCertificateRevocationsInsert,
+      TPkiSignerCertificateRevocationsUpdate
     >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,

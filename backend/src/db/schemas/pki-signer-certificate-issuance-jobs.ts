@@ -34,8 +34,7 @@ export const PkiSignerCertificateIssuanceJobsSchema = z.object({
   hsmKeyLabel: z.string().nullable().optional(),
   hsmPublicKeySpki: zodBuffer.nullable().optional(),
   hsmKeyId: z.string().nullable().optional(),
-  isCancelledByRevoke: z.boolean().default(false),
-  isAutoRenewal: z.boolean().default(false)
+  cancelReason: z.string().nullable().optional()
 });
 
 export type TPkiSignerCertificateIssuanceJobs = z.infer<typeof PkiSignerCertificateIssuanceJobsSchema>;

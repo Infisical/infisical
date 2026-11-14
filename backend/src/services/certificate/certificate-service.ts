@@ -666,6 +666,7 @@ export const certificateServiceFactory = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
+    // Check if the CA type supports revocation
     const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
     if (!caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES)) {
       throw new BadRequestError({
@@ -676,17 +677,23 @@ export const certificateServiceFactory = ({
     return ca;
   };
 
+  const $findOwnedCertificateWithCa = async (certificateId: string) => {
+    const cert = await certificateDAL.findById(certificateId);
+    if (!cert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+    return { cert, ca: await $getRevocableCertificateCa(cert) };
+  };
+
   const $submitCertificateRevocation = async ({
     cert,
     ca,
-    revocationReason,
-    allowPendingApproval = false
+    revocationReason
   }: {
     cert: TCertificates;
     ca: Awaited<ReturnType<typeof $getRevocableCertificateCa>>;
     revocationReason: CrlReason;
-    allowPendingApproval?: boolean;
-  }): Promise<number | undefined> => {
+  }) => {
     if (cert.status === CertStatus.REVOKED) {
       throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
     }
@@ -728,11 +735,10 @@ export const certificateServiceFactory = ({
       ca.externalCa?.type === CaType.GODADDY ||
       ca.externalCa?.type === CaType.ADCS
     ) {
-      return certificateAuthorityService.revokeCertificate({
+      await certificateAuthorityService.revokeCertificate({
         caId: ca.id,
         serialNumber: cert.serialNumber,
-        reason: revocationReason,
-        allowPendingApproval
+        reason: revocationReason
       });
     }
   };
@@ -786,30 +792,15 @@ export const certificateServiceFactory = ({
     usageMeteringService.emit(orgId, Meter.ActiveCerts);
     usageMeteringService.emit(orgId, Meter.WildcardCerts);
 
-    try {
-      await triggerAutoSyncForCertificate(cert.id, {
-        certificateSyncDAL,
-        pkiSyncDAL,
-        pkiSyncQueue
-      });
-      if (cert.applicationId && !cert.deletedAt) {
-        await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
-      }
-    } catch (err) {
-      logger.error(err, `certificate revocation: queueing PKI syncs failed [certificateId=${cert.id}] [caId=${ca.id}]`);
-    }
+    // Trigger auto sync for PKI syncs connected to this certificate
+    await triggerAutoSyncForCertificate(cert.id, {
+      certificateSyncDAL,
+      pkiSyncDAL,
+      pkiSyncQueue
+    });
 
-    if (!cert.deletedAt) {
-      try {
-        await pkiAlertV2Queue?.queueCertificateEvent({
-          certificateId: cert.id,
-          projectId: ca.projectId,
-          eventType: PkiAlertEventType.REVOCATION,
-          applicationId: cert.applicationId ?? null
-        });
-      } catch {
-        logger.debug("Failed to queue PKI revocation alert event");
-      }
+    if (cert.applicationId && !cert.deletedAt) {
+      await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
     let crlWarning: string | undefined;
@@ -831,33 +822,33 @@ export const certificateServiceFactory = ({
       if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
     }
 
+    if (!cert.deletedAt) {
+      try {
+        await pkiAlertV2Queue?.queueCertificateEvent({
+          certificateId: cert.id,
+          projectId: ca.projectId,
+          eventType: PkiAlertEventType.REVOCATION,
+          applicationId: cert.applicationId ?? null
+        });
+      } catch {
+        logger.debug("Failed to queue PKI revocation alert event");
+      }
+    }
+
     return { revokedAt, crlWarning };
   };
 
   const revokeOwnedCertificate = async ({
     certificateId,
     revocationReason,
-    orgId,
-    allowPendingApproval
+    orgId
   }: {
     certificateId: string;
     revocationReason: CrlReason;
     orgId: string;
-    allowPendingApproval?: boolean;
   }) => {
-    const cert = await certificateDAL.findById(certificateId);
-    if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
-    const ca = await $getRevocableCertificateCa(cert);
-    const pendingRequestId = await $submitCertificateRevocation({
-      cert,
-      ca,
-      revocationReason,
-      allowPendingApproval
-    });
-    if (pendingRequestId) return { cert, pendingRequestId };
+    const { cert, ca } = await $findOwnedCertificateWithCa(certificateId);
+    await $submitCertificateRevocation({ cert, ca, revocationReason });
     const { revokedAt, crlWarning } = await $recordCertificateRevocation({ cert, ca, revocationReason, orgId });
     return { cert, revokedAt, crlWarning };
   };
@@ -871,11 +862,7 @@ export const certificateServiceFactory = ({
     revocationReason: CrlReason;
     orgId: string;
   }) => {
-    const cert = await certificateDAL.findById(certificateId);
-    if (!cert) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-    const ca = await $getRevocableCertificateCa(cert);
+    const { cert, ca } = await $findOwnedCertificateWithCa(certificateId);
     return $recordCertificateRevocation({ cert, ca, revocationReason, orgId });
   };
 
@@ -933,9 +920,6 @@ export const certificateServiceFactory = ({
       resourceMetadataDAL
     });
 
-    if (cert.status === CertStatus.REVOKED) {
-      throw new BadRequestError({ message: `Certificate '${getCertificateDisplayName(cert)}' is already revoked.` });
-    }
     const signerUsingCertificate = await signerDAL.findOne({ certificateId: cert.id });
     if (signerUsingCertificate) {
       throw new BadRequestError({

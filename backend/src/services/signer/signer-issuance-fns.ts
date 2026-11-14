@@ -2,13 +2,14 @@
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
+import { TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
 import { BadRequestError } from "@app/lib/errors";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -17,20 +18,14 @@ import { TCertificateSecretDALFactory } from "@app/services/certificate/certific
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
-  CertKeyAlgorithm,
-  CertStatus
+  CertKeyAlgorithm
 } from "@app/services/certificate/certificate-types";
 import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
-import { CertKeySource, HsmKeyAlgorithm, SignerStatus } from "@app/services/signer/signer-enums";
-
-export const isRevokeUnfinished = (
-  signer: { status: string } | null | undefined,
-  certificate: { status: string } | null | undefined
-) => signer?.status === SignerStatus.Revoked && Boolean(certificate) && certificate?.status !== CertStatus.REVOKED;
+import { CertKeySource, DigiCertLifecycleMode, HsmKeyAlgorithm, SignerStatus } from "@app/services/signer/signer-enums";
 
 export const assertDigiCertCodeSigningKey = ({ isHsm, keyAlgorithm }: { isHsm: boolean; keyAlgorithm: string }) => {
   if (!isHsm) {
@@ -529,3 +524,42 @@ export const assertHsmKeyMatchesCertificate = async (
   }
   return { hsmKeyId: signed.keyId };
 };
+
+export const IN_FLIGHT_ATTEMPT_MS = 5 * 60_000;
+
+export type TDigiCertExternalOrderRef = {
+  digicert?: {
+    orderId?: number;
+    certificateId?: number | null;
+    lastStatus?: string;
+    lastCheckedAt?: string;
+    lifecycle?: { mode: DigiCertLifecycleMode; previousOrderId: number };
+    revocationRequestId?: number;
+  };
+};
+
+type TJobWithOrderRef = Pick<TPkiSignerCertificateIssuanceJobs, "externalOrderRef">;
+
+export const getJobDigiCertRef = (job: TJobWithOrderRef) =>
+  (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert;
+
+export const getSignerJobDigiCertOrderId = (job: TJobWithOrderRef) => {
+  const digicert = getJobDigiCertRef(job);
+  if (digicert?.orderId) return digicert.orderId;
+  return digicert?.lifecycle?.mode === DigiCertLifecycleMode.Reissue ? digicert.lifecycle.previousOrderId : undefined;
+};
+
+export const isAttemptInFlight = (lastAttemptAt: Date | null | undefined, now: number) =>
+  Boolean(lastAttemptAt) && now - new Date(lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
+
+export const isDigiCertPlacementInFlight = (
+  job: Pick<TPkiSignerCertificateIssuanceJobs, "externalOrderRef" | "caType" | "lastAttemptAt">,
+  now: number
+) => job.caType === CaType.DIGICERT && !getJobDigiCertRef(job)?.orderId && isAttemptInFlight(job.lastAttemptAt, now);
+
+export const buildAttachedCertificatePatch = (lockedStatus: string | undefined, certificateId: string) => ({
+  certificateId,
+  status: lockedStatus === SignerStatus.Disabled ? SignerStatus.Disabled : SignerStatus.Active,
+  certificateFailureReason: null,
+  nextAutoRenewalAt: null
+});

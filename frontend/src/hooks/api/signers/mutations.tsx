@@ -35,7 +35,9 @@ import {
   TUpdateSignerGroupRoleDTO,
   TUpdateSignerIdentityRoleDTO,
   TUpdateSignerPolicyDTO,
-  TUpdateSignerUserRoleDTO
+  TUpdateSignerUserRoleDTO,
+  getOpenCertificateRequest,
+  getPendingRevocationRequestId
 } from "./types";
 
 const invalidateInventoryCertificates = (
@@ -214,10 +216,11 @@ export const useRevokeSignerCertificate = () => {
         });
         return;
       }
-      if (signer.pendingRevocation) {
+      const pendingRevocationRequestId = getPendingRevocationRequestId(signer);
+      if (pendingRevocationRequestId) {
         createNotification({
           title: "Revocation waiting for approval",
-          text: `DigiCert request #${signer.pendingRevocation.requestId} needs an administrator to approve it in CertCentral. The signer can't sign while it waits.`,
+          text: `DigiCert request #${pendingRevocationRequestId} needs an administrator to approve it in CertCentral. The signer can't sign while it waits.`,
           type: "info"
         });
         return;
@@ -277,11 +280,9 @@ export const useCheckSignerIssuance = () => {
       queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
-      const stillPending =
-        signer.status === SignerStatus.Pending || Boolean(signer.pendingCertificateRequest);
-      const pendingOrder =
-        signer.pendingCertificateRequest?.externalOrder ??
-        (signer.certificateId ? null : signer.externalOrder);
+      const openRequest = getOpenCertificateRequest(signer);
+      const stillPending = signer.status === SignerStatus.Pending || Boolean(openRequest);
+      const pendingOrder = openRequest?.externalOrder;
       let text = "Issuance status updated";
       if (stillPending) {
         text = pendingOrder

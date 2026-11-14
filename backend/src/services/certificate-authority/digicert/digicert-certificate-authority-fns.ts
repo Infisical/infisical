@@ -33,7 +33,7 @@ import { CaStatus, CaType } from "../certificate-authority-enums";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
-  DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS,
+  DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS,
   createDigiCertApiClient,
   TDigiCertApiClient
 } from "./digicert-api-client";
@@ -962,9 +962,11 @@ export const DigiCertCertificateAuthorityFns = ({
       appConnectionDAL,
       kmsService
     );
-    const client = createDigiCertApiClient(apiKey, baseUrl, {
-      requestTimeoutMs: DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS
-    });
+    const client = createDigiCertApiClient(
+      apiKey,
+      baseUrl,
+      allowPendingApproval ? { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS } : undefined
+    );
 
     let digicertCertificateId = storedDigiCertCertificateId;
     if (!digicertCertificateId) {
@@ -983,24 +985,22 @@ export const DigiCertCertificateAuthorityFns = ({
 
     try {
       const comments = `Revoked via Infisical. Reason: ${reason}`;
+      const revokeOptions = { skipApproval: allowPendingApproval };
       const revocationRequest = digicertCertificateId
-        ? await client.revokeCertificate(digicertCertificateId, comments)
-        : await client.revokeOrder(orderId, comments);
-      if (revocationRequest?.status === DigiCertRevocationRequestStatus.Rejected) {
-        throw new BadRequestError({
-          message: `DigiCert rejected the revocation request for order #${orderId}, so the certificate is still valid. Check the request in CertCentral.`
-        });
-      }
-      if (revocationRequest?.status && revocationRequest.status !== DigiCertRevocationRequestStatus.Approved) {
-        if (allowPendingApproval && revocationRequest.id) {
+        ? await client.revokeCertificate(digicertCertificateId, comments, revokeOptions)
+        : await client.revokeOrder(orderId, comments, revokeOptions);
+      if (allowPendingApproval && revocationRequest) {
+        if (revocationRequest.status === DigiCertRevocationRequestStatus.Rejected) {
+          throw new BadRequestError({
+            message: `DigiCert rejected the revocation request for order #${orderId}, so the certificate is still valid. Check the request in CertCentral.`
+          });
+        }
+        if (revocationRequest.status !== DigiCertRevocationRequestStatus.Approved) {
           logger.info(
             `DigiCert revocation waiting for approval [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [requestId=${revocationRequest.id}]`
           );
           return revocationRequest.id;
         }
-        throw new BadRequestError({
-          message: `DigiCert needs an administrator to approve this revocation, so the certificate is still valid. Approve the request for order #${orderId} in CertCentral, then revoke again.`
-        });
       }
     } catch (err) {
       const message = (err as Error)?.message ?? "";
@@ -1019,7 +1019,7 @@ export const DigiCertCertificateAuthorityFns = ({
   };
 
   const getRevocationRequestStatus = async ({ caId, requestId }: { caId: string; requestId: number }) => {
-    const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs: DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS });
+    const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
     const request = await client.getRequest(requestId);
     return request.status;
   };

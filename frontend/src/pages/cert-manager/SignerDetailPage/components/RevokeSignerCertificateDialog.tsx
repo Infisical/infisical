@@ -22,8 +22,9 @@ import { CaType } from "@app/hooks/api/ca/enums";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
 import {
-  getNextDigicertOrderId,
   TSigner,
+  getNextDigicertOrderId,
+  getOpenCertificateRequest,
   useRevokeSignerCertificate
 } from "@app/hooks/api/signers";
 
@@ -57,9 +58,10 @@ export const RevokeSignerCertificateDialog = ({ signer, isOpen, onOpenChange }: 
         <DialogHeader>
           <DialogTitle>Revoke Certificate for {signer.name}</DialogTitle>
           <DialogDescription>
-            The signer stops signing right away. To sign again, reissue the certificate with a new
-            key from Edit Settings. Signatures made before the revocation may stop validating.
-            {signer.pendingCertificateRequest && (
+            The signer stops signing right away. To sign again, use Reissue Certificate, which
+            issues the certificate with a new key. Signatures made before the revocation may stop
+            validating.
+            {getOpenCertificateRequest(signer) && (
               <span className="mt-2 block">
                 {openDigicertOrderId
                   ? `This also cancels the pending certificate request, including DigiCert order #${openDigicertOrderId}.`
@@ -70,9 +72,8 @@ export const RevokeSignerCertificateDialog = ({ signer, isOpen, onOpenChange }: 
               <span className="mt-2 block font-medium text-warning">
                 If your CertCentral account requires approval for revocations, the certificate stays
                 valid until an administrator approves the request in CertCentral. The signer
-                can&apos;t sign in the meantime. Other open certificate requests are canceled once
-                it&apos;s approved, and the signer goes back to its earlier status if it&apos;s
-                rejected.
+                can&apos;t sign in the meantime, and goes back to its earlier status if the request
+                is rejected.
               </span>
             )}
           </DialogDescription>

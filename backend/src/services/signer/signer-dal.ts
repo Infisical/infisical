@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiSigners } from "@app/db/schemas";
+import { TableName, TPkiSigners, TPkiSignersUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -23,6 +23,7 @@ export type TSignerWithCertificate = TPkiSigners & {
   certificateCaId: string | null;
   caType: CaType | null;
   approvalPolicyName: string | null;
+  hasOpenCertificateRequest: boolean;
 };
 
 export type TSignerWithCertificateSummary = TPkiSigners & {
@@ -38,6 +39,18 @@ export type TSignerDALFactory = ReturnType<typeof signerDALFactory>;
 
 export const signerDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PkiSigners);
+
+  const selectHasOpenCertificateRequest = () =>
+    db.raw(`exists (select 1 from ?? where ??.?? = ??.?? and ??.?? = ?) as "hasOpenCertificateRequest"`, [
+      TableName.PkiSignerCertificateIssuanceJobs,
+      TableName.PkiSignerCertificateIssuanceJobs,
+      "signerId",
+      TableName.PkiSigners,
+      "id",
+      TableName.PkiSignerCertificateIssuanceJobs,
+      "status",
+      SignerIssuanceJobStatus.Pending
+    ]);
 
   const findByIdWithCertificate = async (signerId: string, tx?: Knex): Promise<TSignerWithCertificate | undefined> => {
     try {
@@ -81,7 +94,8 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("externalMetadata").withSchema(TableName.Certificate).as("certificateExternalMetadata"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
-          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
+          db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName"),
+          selectHasOpenCertificateRequest()
         )
         .where(`${TableName.PkiSigners}.id`, signerId)
         .first();
@@ -122,16 +136,7 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName"),
-          db.raw(`exists (select 1 from ?? where ??.?? = ??.?? and ??.?? = ?) as "hasOpenCertificateRequest"`, [
-            TableName.PkiSignerCertificateIssuanceJobs,
-            TableName.PkiSignerCertificateIssuanceJobs,
-            "signerId",
-            TableName.PkiSigners,
-            "id",
-            TableName.PkiSignerCertificateIssuanceJobs,
-            "status",
-            SignerIssuanceJobStatus.Pending
-          ])
+          selectHasOpenCertificateRequest()
         )
         .where(`${TableName.PkiSigners}.projectId`, projectId);
 
@@ -226,21 +231,20 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateUnlessRevoked: typeof orm.updateById = async (id, data, tx) => {
-    if (data.status === undefined || data.status === SignerStatus.Revoked) return orm.updateById(id, data, tx);
-    const [updated] = await orm.update({ id, $notEqual: { status: SignerStatus.Revoked } }, data, tx);
-    if (updated) return updated;
-    return (await (tx || db)(TableName.PkiSigners).where({ id }).first()) as TPkiSigners;
-  };
-
-  const findWithPendingRevocation = async (): Promise<TPkiSigners[]> => {
+  const updateUnlessRevoked = async (
+    id: string,
+    data: TPkiSignersUpdate,
+    tx?: Knex
+  ): Promise<TPkiSigners | undefined> => {
     try {
-      return (await db
-        .replicaNode()(TableName.PkiSigners)
-        .whereNotNull("pendingRevocation")
-        .where({ status: SignerStatus.Revoked })) as TPkiSigners[];
+      const [updated] = (await (tx || db)(TableName.PkiSigners)
+        .where({ id })
+        .whereNotIn("status", [SignerStatus.Revoked, SignerStatus.RevocationPending])
+        .update({ ...data, updatedAt: new Date() } as Record<string, unknown>)
+        .returning("*")) as TPkiSigners[];
+      return updated;
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindSignersWithPendingRevocation" });
+      throw new DatabaseError({ error, name: "UpdateSignerUnlessRevoked" });
     }
   };
 
@@ -270,7 +274,6 @@ export const signerDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     updateUnlessRevoked,
-    findWithPendingRevocation,
     findByIdWithCertificate,
     findByStatusWithCertificate,
     findByProjectId,

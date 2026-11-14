@@ -351,6 +351,7 @@ export enum TableName {
   // Code Signing
   PkiSigners = "pki_signers",
   PkiSignerCertificateIssuanceJobs = "pki_signer_certificate_issuance_jobs",
+  PkiSignerCertificateRevocations = "pki_signer_certificate_revocations",
   PkiSigningOperations = "pki_signing_operations",
 
   CaSigningConfig = "ca_signing_configs",

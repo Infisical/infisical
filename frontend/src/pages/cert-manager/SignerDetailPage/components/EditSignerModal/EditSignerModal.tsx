@@ -24,9 +24,9 @@ import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
   SignerKeyAlgorithm,
-  isSignerRevokeUnfinished,
   SignerStatus,
   TSigner,
+  getOpenCertificateRequest,
   useImportSignerCertificate,
   useReissueSignerCertificate,
   useUpdateSigner
@@ -195,9 +195,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     externalOrderMode: watchedExternalOrderMode
   });
   const adcsTemplateChanged = isAdcs && (watchedAdcsTemplate?.trim() ?? "") !== signerAdcsTemplate;
-  const isRevocationPending = Boolean(signer.pendingRevocation);
-  const isRevokeUnfinished = isSignerRevokeUnfinished(signer);
-  const isNameOnly = isRevocationPending || isRevokeUnfinished;
+  const isNameOnly = signer.status === SignerStatus.RevocationPending;
   const isCertificateRevoked =
     !isNameOnly &&
     (signer.status === SignerStatus.Revoked || signer.certificateStatus === CertStatus.REVOKED);
@@ -205,8 +203,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const step = Math.min(selectedStep, visibleSteps.length - 1);
   const shouldReissue =
     !isNameOnly &&
-    (isCertificateRevoked ||
-      caSwap ||
+    (caSwap ||
       subjectChanged ||
       keySourceChanged ||
       keyAlgorithmChanged ||
@@ -214,18 +211,17 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       adcsTemplateChanged);
 
   const getFooterHint = () => {
-    if (isRevocationPending) {
-      return "This signer's revocation is waiting for approval, so only its name and description can change.";
-    }
-    if (isRevokeUnfinished)
-      return "The revoke didn't finish. Revoke the certificate again, then reissue it.";
+    if (isNameOnly)
+      return "This signer is being revoked, so only its name and description can change.";
     if (usingExistingCertificate)
       return "Saving switches the signer to the certificate already issued in this order.";
     if (isCertificateRevoked) {
-      return "The certificate was revoked. Saving reissues it with a new key, and the signer can sign again once it's issued.";
+      return shouldReissue
+        ? "The certificate was revoked. Saving reissues it with a new key, and the signer can sign again once it's issued."
+        : "The certificate was revoked. Saving keeps the signer revoked. To sign again, use Reissue Certificate.";
     }
     if (!shouldReissue) return "";
-    return signer.pendingCertificateRequest
+    return getOpenCertificateRequest(signer)
       ? "Saving cancels the renewal in progress and reissues the certificate immediately."
       : "Saving reissues the certificate immediately. The signer switches to the new certificate.";
   };
@@ -452,6 +448,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
               {step === 2 && (
                 <SignerKeyStep
                   control={certificateForm.control}
+                  canUseExistingCertificate={!isCertificateRevoked}
                   requiresHsm={requiresHsm}
                   minRsaKeyBits={minRsaKeyBits}
                   hsmConnectorOptions={hsmConnectorOptions}

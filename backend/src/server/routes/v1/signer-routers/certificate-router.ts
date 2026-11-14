@@ -15,7 +15,8 @@ import {
   SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
-  SignerKeyAlgorithm
+  SignerKeyAlgorithm,
+  SignerRevocationResponseSchema
 } from "./schemas";
 
 const PERMANENT_REVOCATION_REASONS = Object.values(CrlReason).filter(
@@ -108,7 +109,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       operationId: "renewSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
       description:
-        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source. An internal CA issues the new certificate right away, and the response holds it. An external CA such as DigiCert issues it later, so the response still holds the current certificate. Get the signer to check: while the request is open, `pendingCertificateRequest` is set. Once it's empty, the renewal finished: if `certificateId` changed, the renewed certificate is attached, and if `certificateFailureReason` is set instead, the renewal failed and the signer keeps its current certificate. If the signer is revoked first, its status is `revoked` and the renewal is canceled.",
+        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source. External CAs such as DigiCert issue it later: get the signer until `certificateRequest.status` is `completed`, `failed`, or `cancelled`.",
       params: SignerIdParamsSchema,
       response: { 200: PkiSignersSchema }
     },
@@ -151,13 +152,14 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       operationId: "revokeSignerCertificate",
       tags: [ApiDocsTags.PkiSigners],
       description:
-        "Revoke the signer's certificate, which stops the signer from signing right away. To sign again, reissue the certificate with a new key. If the CA's account requires approval for revocations (DigiCert), the signer is Revoked with `pendingRevocation` set until the request is approved. If it's rejected, the signer goes back to its earlier status.",
+        "Revoke the signer's certificate, which stops the signer from signing right away and cancels any certificate request in progress. While the CA processes the revoke, the signer's status is `revocation_pending`, and when DigiCert requires approval, it stays there until the request is approved (`revoked`) or rejected. If the CA refuses the revoke, the certificate stays valid, the signer goes back to `active` (or stays `disabled`), the signer's admins get an in-app notification, and a canceled renewal must be started again. To sign again after a revoke, reissue the certificate with a new key.",
       params: SignerIdParamsSchema,
       body: z.object({
         revocationReason: z.enum(PERMANENT_REVOCATION_REASONS).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
       response: {
         200: PkiSignersSchema.extend({
+          revocation: SignerRevocationResponseSchema,
           crlWarning: z
             .string()
             .optional()
@@ -189,6 +191,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             certificateCommonName: commonName,
             serialNumber,
             revocationReason: req.body.revocationReason,
+            status: signer.status,
             digicertRevocationRequestId: pendingRevocationRequestId
           }
         }

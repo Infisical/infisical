@@ -6,17 +6,21 @@ import { TableName, TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { SignerIssuanceJobStatus } from "./signer-enums";
+import {
+  POLLED_SIGNER_ISSUANCE_JOB_STATUSES,
+  SignerIssuanceJobCancelReason,
+  SignerIssuanceJobStatus
+} from "./signer-enums";
 
 export type TSignerIssuanceJobDALFactory = ReturnType<typeof signerIssuanceJobDALFactory>;
 
 export const signerIssuanceJobDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PkiSignerCertificateIssuanceJobs);
 
-  const findDuePending = async (now: Date, limit: number, tx?: Knex): Promise<TPkiSignerCertificateIssuanceJobs[]> => {
+  const findDuePolled = async (now: Date, limit: number, tx?: Knex): Promise<TPkiSignerCertificateIssuanceJobs[]> => {
     try {
       return (await (tx || db.replicaNode())(TableName.PkiSignerCertificateIssuanceJobs)
-        .where({ status: SignerIssuanceJobStatus.Pending })
+        .whereIn("status", POLLED_SIGNER_ISSUANCE_JOB_STATUSES)
         .andWhere("nextPollAt", "<=", now)
         .orderBy("nextPollAt", "asc")
         .limit(limit)) as TPkiSignerCertificateIssuanceJobs[];
@@ -38,40 +42,34 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  const cancelOpenForSigner = async (signerId: string, reason: string, tx?: Knex) => {
-    try {
-      await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
-        .where({ signerId, status: SignerIssuanceJobStatus.Pending, isCancelledByRevoke: false })
-        .update({
-          status: SignerIssuanceJobStatus.Failed,
-          failureReason: reason.slice(0, 1000),
-          updatedAt: new Date()
-        } as Record<string, unknown>);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "CancelOpenSignerIssuanceJobs" });
-    }
-  };
-
-  const cancelPendingByIds = async (
-    jobIds: string[],
-    reason: string,
-    { isCancelledByRevoke = false }: { isCancelledByRevoke?: boolean } = {},
-    tx?: Knex
+  const closePending = async (
+    {
+      jobIds,
+      status,
+      cancelReason,
+      reason
+    }: {
+      jobIds: string[];
+      status: SignerIssuanceJobStatus.Cancelling | SignerIssuanceJobStatus.Cancelled;
+      cancelReason: SignerIssuanceJobCancelReason;
+      reason: string;
+    },
+    tx: Knex
   ) => {
     if (!jobIds.length) return;
     try {
-      await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
+      await tx(TableName.PkiSignerCertificateIssuanceJobs)
         .whereIn("id", jobIds)
-        .andWhere({ status: SignerIssuanceJobStatus.Pending })
-        .whereNull("certificateId")
+        .where({ status: SignerIssuanceJobStatus.Pending })
         .update({
-          status: SignerIssuanceJobStatus.Failed,
+          status,
+          cancelReason,
           failureReason: reason.slice(0, 1000),
-          ...(isCancelledByRevoke ? { isCancelledByRevoke } : {}),
+          nextPollAt: new Date(),
           updatedAt: new Date()
         } as Record<string, unknown>);
     } catch (error) {
-      throw new DatabaseError({ error, name: "CancelPendingSignerIssuanceJobsByIds" });
+      throw new DatabaseError({ error, name: "ClosePendingSignerIssuanceJobs" });
     }
   };
 
@@ -105,7 +103,8 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
   ): Promise<TPkiSignerCertificateIssuanceJobs | null> => {
     try {
       const [row] = await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
-        .where({ id: jobId, status: SignerIssuanceJobStatus.Pending, attempts: expectedAttempts })
+        .where({ id: jobId, attempts: expectedAttempts })
+        .whereIn("status", POLLED_SIGNER_ISSUANCE_JOB_STATUSES)
         .update({
           attempts: expectedAttempts + 1,
           lastAttemptAt,
@@ -135,10 +134,9 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
-    findDuePending,
+    findDuePolled,
     findPendingForSignerForUpdate,
-    cancelOpenForSigner,
-    cancelPendingByIds,
+    closePending,
     completeIfPending,
     claimForAttempt,
     findLatestForSigner

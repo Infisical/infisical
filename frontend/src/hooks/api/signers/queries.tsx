@@ -21,7 +21,8 @@ import {
   TListSigningOperationsResponse,
   TSigner,
   TSignerPolicy,
-  TSigningOperationDetail
+  TSigningOperationDetail,
+  getOpenCertificateRequest
 } from "./types";
 
 const SIGNER_LIST_POLL_MS = 4000;
@@ -105,7 +106,7 @@ export const useListSigners = (dto: TListSignersDTO) => {
             (s) =>
               s.status === SignerStatus.Pending ||
               s.hasOpenCertificateRequest ||
-              Boolean(s.pendingRevocation)
+              s.status === SignerStatus.RevocationPending
           )
         )
       )
@@ -124,8 +125,8 @@ export const useGetSigner = (signerId: string) => {
     refetchInterval: (query) =>
       getPollInterval(
         query.state.data?.status === SignerStatus.Pending ||
-          Boolean(query.state.data?.pendingCertificateRequest) ||
-          Boolean(query.state.data?.pendingRevocation)
+          Boolean(query.state.data && getOpenCertificateRequest(query.state.data)) ||
+          query.state.data?.status === SignerStatus.RevocationPending
       )
   });
 };

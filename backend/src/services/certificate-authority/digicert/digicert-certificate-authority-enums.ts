@@ -28,11 +28,6 @@ export enum DigiCertRevocationRequestStatus {
   Rejected = "rejected"
 }
 
-export enum DigiCertLifecycleMode {
-  Renew = "renew",
-  Reissue = "reissue"
-}
-
 export enum CodeSigningOrderStatus {
   Pending = "pending",
   NeedsApproval = "needs_approval",

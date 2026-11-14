@@ -9,7 +9,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertKeySource } from "@app/services/signer/signer-enums";
+import { CertKeySource, SIGNER_CERTIFICATE_REQUEST_STATUSES } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
@@ -18,7 +18,8 @@ import {
   SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
-  SignerKeyAlgorithm
+  SignerKeyAlgorithm,
+  SignerRevocationResponseSchema
 } from "./schemas";
 
 const ExternalOrderResponseSchema = z.object({
@@ -41,7 +42,16 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   caType: z.nativeEnum(CaType).nullable().optional(),
   approvalPolicyName: z.string().nullable().optional(),
   externalOrder: ExternalOrderResponseSchema.nullable().optional(),
-  pendingCertificateRequest: z.object({ externalOrder: ExternalOrderResponseSchema.nullable() }).nullable().optional()
+  hasOpenCertificateRequest: z.boolean().optional(),
+  certificateRequest: z
+    .object({
+      status: z.enum(SIGNER_CERTIFICATE_REQUEST_STATUSES),
+      failureReason: z.string().nullable(),
+      externalOrder: ExternalOrderResponseSchema.nullable()
+    })
+    .nullable()
+    .optional(),
+  revocation: SignerRevocationResponseSchema
 });
 
 export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) => {

@@ -20,7 +20,7 @@ import {
 export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
 
 const ORDER_REQUEST_TIMEOUT_MS = 2 * 60_000;
-export const DIGICERT_REVOCATION_REQUEST_TIMEOUT_MS = 20_000;
+export const DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS = 20_000;
 
 type TDigiCertRevocationRequest = { id: number; status: DigiCertRevocationRequestStatus };
 
@@ -59,7 +59,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
       const { data } = await request.post<TResp>(
         `${baseURL}/order/certificate/${encodeURIComponent(productSlug)}`,
         body,
-        { headers, timeout: ORDER_REQUEST_TIMEOUT_MS }
+        { headers, timeout: ORDER_REQUEST_TIMEOUT_MS, "axios-retry": { retries: 0 } }
       );
       return data;
     }, `order placement for product ${productSlug}`);
@@ -71,7 +71,8 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
     wrap(async () => {
       const { data } = await request.post<TResp>(`${baseURL}/order/certificate/${orderId}/reissue`, body, {
         headers,
-        timeout: ORDER_REQUEST_TIMEOUT_MS
+        timeout: ORDER_REQUEST_TIMEOUT_MS,
+        "axios-retry": { retries: 0 }
       });
       return data;
     }, `order reissue for ${orderId}`);
@@ -131,11 +132,11 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
       }
     }, `alternate order lookup for ${alternativeOrderId}`);
 
-  const revokeOrder = async (orderId: number, comments: string) =>
+  const revokeOrder = async (orderId: number, comments: string, { skipApproval = false } = {}) =>
     wrap(async () => {
       const { data } = await request.put<TDigiCertRevocationRequest | "">(
         `${baseURL}/order/certificate/${orderId}/revoke`,
-        { comments, skip_approval: true },
+        skipApproval ? { comments, skip_approval: true } : { comments },
         { headers, ...boundedRequestConfig }
       );
       return typeof data === "object" ? data : null;
@@ -150,11 +151,11 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
       );
     }, `reissue cancellation for order ${orderId}`);
 
-  const revokeCertificate = async (certificateId: number, comments: string) =>
+  const revokeCertificate = async (certificateId: number, comments: string, { skipApproval = false } = {}) =>
     wrap(async () => {
       const { data } = await request.put<TDigiCertRevocationRequest | "">(
         `${baseURL}/certificate/${certificateId}/revoke`,
-        { comments, skip_approval: true },
+        skipApproval ? { comments, skip_approval: true } : { comments },
         { headers, ...boundedRequestConfig }
       );
       return typeof data === "object" ? data : null;

@@ -952,6 +952,7 @@ export enum EventType {
   REISSUE_PKI_SIGNER_CERTIFICATE = "reissue-pki-signer-certificate",
   RENEW_PKI_SIGNER_CERTIFICATE = "renew-pki-signer-certificate",
   REVOKE_PKI_SIGNER_CERTIFICATE = "revoke-pki-signer-certificate",
+  PKI_SIGNER_CERTIFICATE_REVOCATION_DECIDED = "pki-signer-certificate-revocation-decided",
   IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
@@ -5292,7 +5293,23 @@ interface RevokePkiSignerCertificateEvent {
     certificateCommonName: string;
     serialNumber: string;
     revocationReason: CrlReason;
+    status: string;
     digicertRevocationRequestId?: number;
+  };
+}
+
+interface PkiSignerCertificateRevocationDecidedEvent {
+  type: EventType.PKI_SIGNER_CERTIFICATE_REVOCATION_DECIDED;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    certificateCommonName: string;
+    serialNumber: string;
+    revocationReason: CrlReason;
+    digicertRevocationRequestId?: number;
+    decision: string;
+    status: string;
   };
 }
 
@@ -9058,6 +9075,7 @@ export type Event =
   | ReissuePkiSignerCertificateEvent
   | RenewPkiSignerCertificateEvent
   | RevokePkiSignerCertificateEvent
+  | PkiSignerCertificateRevocationDecidedEvent
   | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent

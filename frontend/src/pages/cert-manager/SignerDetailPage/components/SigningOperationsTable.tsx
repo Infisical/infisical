@@ -30,15 +30,15 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
-  getSigningOperationStatusBadgeVariant,
-  isSignerRevokeUnfinished,
   SIGNER_TABLE_PAGE_SIZE,
   SignerStatus,
   SigningActorType,
-  signingAlgorithmLabels,
-  signingOperationStatusLabels,
   TSigner,
   TSigningOperation,
+  getSignerRevocationNote,
+  getSigningOperationStatusBadgeVariant,
+  signingAlgorithmLabels,
+  signingOperationStatusLabels,
   useListSigningOperations
 } from "@app/hooks/api/signers";
 
@@ -61,19 +61,6 @@ const getActorDisplayName = (actorType: SigningActorType, actorName?: string | n
     default:
       return "Unknown";
   }
-};
-
-const getEmptyStateMessage = (signer: TSigner) => {
-  if (signer.pendingRevocation) {
-    return "This signer can't sign while its revocation waits for approval in CertCentral.";
-  }
-  if (isSignerRevokeUnfinished(signer)) {
-    return "This signer's revoke didn't finish. Revoke the certificate again, then reissue it to sign again.";
-  }
-  if (signer.status === SignerStatus.Revoked) {
-    return "This signer's certificate was revoked. Reissue it with a new key from Edit Settings to sign again.";
-  }
-  return "Set up a signing tool on your machine to start signing with this Signer.";
 };
 
 export const SigningOperationsTable = ({ signer, signerId }: Props) => {
@@ -124,13 +111,14 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
         <CardHeader>
           <CardTitle>Signing History</CardTitle>
           <CardDescription>Trail of signing operations on this signer.</CardDescription>
-          {signer.status !== SignerStatus.Revoked && (
-            <CardAction>
-              <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
-                Set up signing
-              </Button>
-            </CardAction>
-          )}
+          {signer.status !== SignerStatus.Revoked &&
+            signer.status !== SignerStatus.RevocationPending && (
+              <CardAction>
+                <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
+                  Set up signing
+                </Button>
+              </CardAction>
+            )}
         </CardHeader>
         <CardContent>
           {(isLoading || operations.length > 0) && (
@@ -209,7 +197,10 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
             <Empty className="border border-solid">
               <EmptyHeader>
                 <EmptyTitle>No signing activity yet</EmptyTitle>
-                <EmptyDescription>{getEmptyStateMessage(signer)}</EmptyDescription>
+                <EmptyDescription>
+                  {getSignerRevocationNote(signer, { isDetailed: true }) ??
+                    "Set up a signing tool on your machine to start signing with this Signer."}
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}

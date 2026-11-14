@@ -26,7 +26,8 @@ export enum NotificationType {
   CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
   AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended",
   NATIVE_INTEGRATION_DEPRECATED = "native-integration-deprecated",
-  LEGACY_PKI_DEPRECATED = "legacy-pki-deprecated"
+  LEGACY_PKI_DEPRECATED = "legacy-pki-deprecated",
+  SIGNER_REVOKE_REFUSED = "signer-revoke-refused"
 }
 
 export interface TCreateUserNotificationDTO {

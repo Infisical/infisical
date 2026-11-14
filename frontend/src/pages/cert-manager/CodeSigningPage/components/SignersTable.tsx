@@ -45,12 +45,12 @@ import {
   hasFailedRenewal,
   SIGNER_TABLE_PAGE_SIZE,
   SignerStatus,
-  getSignerStatusLabel,
   signerStatusLabels,
   useListSigners
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { SignerRequestFailedBadge } from "../../components/SignerBadges";
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
 type Props = {
@@ -186,26 +186,10 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                       ) : (
                         <span className="inline-flex items-center gap-1.5">
                           <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                            {getSignerStatusLabel(signer)}
+                            {signerStatusLabels[signer.status]}
                           </Badge>
                           {hasFailedRenewal(signer) && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-help">
-                                  <Badge variant="warning">
-                                    <AlertTriangleIcon />
-                                    Request Failed
-                                  </Badge>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="top"
-                                align="start"
-                                className="max-w-[320px] text-pretty break-words"
-                              >
-                                {signer.certificateFailureReason}
-                              </TooltipContent>
-                            </Tooltip>
+                            <SignerRequestFailedBadge reason={signer.certificateFailureReason} />
                           )}
                         </span>
                       )}

@@ -55,18 +55,6 @@ export const SignerExternalCaConfigSchema = z.discriminatedUnion("caType", [
 
 export type TSignerExternalCaConfig = z.infer<typeof SignerExternalCaConfigSchema>;
 
-export const SignerPendingRevocationSchema = z.object({
-  caType: z.literal(CaType.DIGICERT),
-  requestId: z.number().int(),
-  certificateId: z.string(),
-  revocationReason: z.nativeEnum(CrlReason),
-  previousStatus: z.nativeEnum(SignerStatus),
-  hasCancelledRequest: z.boolean(),
-  requestedAt: z.string()
-});
-
-export type TSignerPendingRevocation = z.infer<typeof SignerPendingRevocationSchema>;
-
 export type TCreateSignerDTO = {
   name: string;
   description?: string;
