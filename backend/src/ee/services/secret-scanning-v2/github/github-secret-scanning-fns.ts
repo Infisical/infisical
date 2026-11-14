@@ -273,21 +273,17 @@ const scanGitHubFilesAndGetFindings = async (
     const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
     const endLine =
       finding.StartLine === finding.EndLine ? startLine : convertPatchLineToFileLineNumber(patch, finding.EndLine);
-    const startColumn = finding.StartColumn - 1; // subtract 1 for +
-    const endColumn = finding.EndColumn - 1; // subtract 1 for +
 
     return {
       ...finding,
       StartLine: startLine,
       EndLine: endLine,
-      StartColumn: startColumn,
-      EndColumn: endColumn,
       File: filename,
       Commit: commit.sha,
       Author: commit.authorName,
       Email: commit.authorEmail,
       Message: commit.message,
-      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${startColumn}`,
+      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${finding.StartColumn}`,
       Date: commit.date,
       Attributes: {
         ...finding.Attributes,
@@ -684,8 +680,12 @@ export const getPullRequestScanCheckRunResult = ({
         .join("\n")}`
     : "";
 
+  // Each row is a location, so a secret found in several places of the pull request counts once.
+  const countSecrets = (rows: typeof allFindings) => new Set(rows.map(({ id }, index) => id ?? index)).size;
+
   const findings = allFindings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
-  const skippedCount = allFindings.length - findings.length;
+  const secretCount = countSecrets(findings);
+  const skippedCount = countSecrets(allFindings) - secretCount;
 
   if (!findings.length && skippedCount) {
     return {
@@ -721,7 +721,7 @@ export const getPullRequestScanCheckRunResult = ({
   }
 
   const intro = [
-    `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
+    `Found ${secretCount} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
     "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
     skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
     truncationAlert
@@ -776,7 +776,7 @@ export const getPullRequestScanCheckRunResult = ({
 
   return {
     conclusion: "failure",
-    title: `${findings.length} secret(s) found`,
+    title: `${secretCount} secret(s) found`,
     summary,
     findings,
     oversizedFiles,
@@ -897,7 +897,10 @@ export const createPullRequestScanReport = ({
       }
     },
     getCompletedScanMetadata: ({ findings }) =>
-      ({ ...metadata, findingIds: findings.map((finding) => finding.id) }) satisfies TGitHubPullRequestScanMetadata,
+      ({
+        ...metadata,
+        findingIds: [...new Set(findings.map((finding) => finding.id))]
+      }) satisfies TGitHubPullRequestScanMetadata,
     // Judged on every finding in the pull request's commits, including ones an earlier push scan saved first.
     complete: ({ findings, details }) =>
       tryCompletePullRequestCheckRun({
@@ -1205,7 +1208,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     const { pullRequestNumber, findingIds = [] } = metadata.data;
 
     const findings = findingIds.length
-      ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx: primary })
+      ? await secretScanningV2DAL.findings.findByIdsOrLocationIds(resource.id, findingIds, primary)
       : [];
     const findingsToSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
 
@@ -1230,7 +1233,14 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
             },
             event: {
               type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-              metadata: { findingId: finding.id, status: action, triageComment }
+              metadata: {
+                findingId: finding.id,
+                findingRule: finding.rule,
+                resourceId: resource.id,
+                resourceName: resource.name,
+                status: action,
+                triageComment
+              }
             }
           })
         )

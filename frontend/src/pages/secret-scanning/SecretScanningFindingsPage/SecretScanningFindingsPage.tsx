@@ -13,7 +13,7 @@ import { SecretScanningFindingsTable } from "../components/findings";
 
 export const SecretScanningFindingsPage = () => {
   const { t } = useTranslation();
-  const { status, dataSourceId, resourceId } = useSearch({
+  const { status, dataSourceId, resourceId, scanId } = useSearch({
     from: ROUTE_PATHS.SecretScanning.FindingsPage.id
   });
 
@@ -35,11 +35,12 @@ export const SecretScanningFindingsPage = () => {
               />
               <SecretScanningFindingsTable
                 // filters are only read from the URL on mount, so a navigation that changes them needs a fresh table
-                key={`${status ?? ""}:${dataSourceId ?? ""}:${resourceId ?? ""}`}
+                key={`${status ?? ""}:${dataSourceId ?? ""}:${resourceId ?? ""}:${scanId ?? ""}`}
                 description="Review and triage leaked secrets."
                 initialStatus={status}
                 initialDataSourceId={dataSourceId}
                 initialResourceId={resourceId}
+                initialScanId={scanId}
               />
             </div>
           </div>

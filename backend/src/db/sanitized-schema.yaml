@@ -1185,6 +1185,18 @@ tables:
       - isScanNewCommitsEnabled
       - isDiscoveryEnabled
 
+  - name: secret_scanning_finding_locations
+    source: public.secret_scanning_finding_locations
+    columns:
+      - id
+      - findingId
+      - resourceId
+      - scanId
+      - fingerprint
+      - rule
+      - details
+      - createdAt
+
   - name: secret_scanning_findings
     source: public.secret_scanning_findings
     columns:
@@ -1201,6 +1213,7 @@ tables:
       - fingerprint
       - details
       - scanId
+      - lastDetectedAt
       - createdAt
       - updatedAt
 

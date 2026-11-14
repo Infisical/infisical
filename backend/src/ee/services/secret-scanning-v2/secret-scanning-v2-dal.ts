@@ -15,6 +15,11 @@ import {
   SecretScanningScanStatus,
   SecretScanningScanType
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  TFindingLocationRow,
+  TSecretScanningScannedLocation
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray, sanitizeSqlLikeString } from "@app/lib/fn";
 import {
@@ -33,6 +38,7 @@ export type TListSecretScanningFindingsFilter = {
   status?: SecretScanningFindingStatus;
   dataSourceId?: string;
   resourceId?: string;
+  scanId?: string;
   orderBy: SecretScanningFindingOrderBy;
   orderDirection: OrderByDirection;
   offset: number;
@@ -152,6 +158,13 @@ const expandSecretScanningDataSource = <
   };
 };
 
+// A row with no value groups only with its own place, so it's a finding of its own. A fingerprint contains colons and a
+// blind index is hex, so the two keys can't collide.
+const valueKeyOf = ({
+  secretFindingBlindIndex,
+  fingerprint
+}: Pick<TFindingLocationRow, "secretFindingBlindIndex" | "fingerprint">) => secretFindingBlindIndex ?? fingerprint;
+
 export const secretScanningV2DALFactory = (db: TDbClient) => {
   const dataSourceOrm = ormify(db, TableName.SecretScanningDataSource);
   const resourceOrm = ormify(db, TableName.SecretScanningResource);
@@ -164,19 +177,177 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   // the inserts to prevent the worker from exiting and failing the scan.
   const FINDINGS_UPSERT_CHUNK_SIZE = 1000;
 
-  const upsertFindings: typeof findingOrm.upsert = async (data, onConflictField, tx, mergeColumns) => {
-    const upsertInChunks = async (trx: Knex) => {
-      const upserted: TSecretScanningFindings[] = [];
-      for (const chunk of chunkArray(data, FINDINGS_UPSERT_CHUNK_SIZE)) {
+  /**
+   * Saves what a scan found in one resource. A finding is one secret value in the resource, and each place it was
+   * found is a location of it. A location the resource already has is left as it is, so rescanning history changes
+   * nothing. A new location creates its value's finding, or reopens it if it was resolved, since the value turning up
+   * somewhere new after it was resolved is a regression. False positives and ignored findings only gain the location.
+   *
+   * Returns every row's finding, including rows an earlier scan saved, and the findings this call reopened.
+   */
+  const persistFindingLocations = async (
+    { resourceId, scanId, rows }: { resourceId: string; scanId: string; rows: TFindingLocationRow[] },
+    tx: Knex
+  ) => {
+    try {
+      // A diff scan can overlap a full scan of the same resource. Without this, both could miss a value's finding and each
+      // create one, splitting the value in two, since nothing else keeps one finding per value; or both could take one
+      // location as new, and the second would fail on the locations' unique index.
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingLocations(resourceId)]);
+
+      const findingIdByFingerprint = new Map<string, string>();
+
+      for (const chunk of chunkArray(
+        [...new Set(rows.map(({ fingerprint }) => fingerprint))],
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
         // eslint-disable-next-line no-await-in-loop
-        upserted.push(...(await findingOrm.upsert(chunk, onConflictField, trx, mergeColumns)));
+        const locations = await tx(TableName.SecretScanningFindingLocation)
+          .where({ resourceId })
+          .whereIn("fingerprint", chunk)
+          .select("fingerprint", "findingId");
+
+        locations.forEach(({ fingerprint, findingId }) => findingIdByFingerprint.set(fingerprint, findingId));
       }
-      return upserted;
-    };
 
-    if (data.length <= FINDINGS_UPSERT_CHUNK_SIZE) return findingOrm.upsert(data, onConflictField, tx, mergeColumns);
+      const newRowByFingerprint = new Map<string, TFindingLocationRow>();
+      rows.forEach((row) => {
+        if (!findingIdByFingerprint.has(row.fingerprint) && !newRowByFingerprint.has(row.fingerprint)) {
+          newRowByFingerprint.set(row.fingerprint, row);
+        }
+      });
+      const newRows = [...newRowByFingerprint.values()];
 
-    return tx ? upsertInChunks(tx) : db.transaction(upsertInChunks);
+      // a value's first new row gives a new finding its rule, severity and first location
+      const newRowByValue = new Map<string, TFindingLocationRow>();
+      newRows.forEach((row) => {
+        if (!newRowByValue.has(valueKeyOf(row))) newRowByValue.set(valueKeyOf(row), row);
+      });
+
+      // The release before this one saves a finding per location, so after a rollback a value can have several
+      // findings; the oldest one takes the new locations.
+      const findingByValue = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
+      for (const chunk of chunkArray(
+        [...newRowByValue.values()].flatMap(({ secretFindingBlindIndex }) =>
+          secretFindingBlindIndex ? [secretFindingBlindIndex] : []
+        ),
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
+        // eslint-disable-next-line no-await-in-loop
+        const findings = await tx(TableName.SecretScanningFinding)
+          .where({ resourceId })
+          .whereIn("secretFindingBlindIndex", chunk)
+          .orderBy("createdAt")
+          .orderBy("id")
+          .select("id", "status", "secretFindingBlindIndex");
+
+        findings.forEach(({ id, status, secretFindingBlindIndex }) => {
+          if (!findingByValue.has(secretFindingBlindIndex as string)) {
+            findingByValue.set(secretFindingBlindIndex as string, { id, status });
+          }
+        });
+      }
+
+      const now = new Date();
+
+      for (const chunk of chunkArray(
+        [...newRowByValue.values()].filter((row) => !findingByValue.has(valueKeyOf(row))),
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
+        // eslint-disable-next-line no-await-in-loop
+        const created = await tx(TableName.SecretScanningFinding)
+          .insert(
+            // the first location is kept on the finding too, for the release before locations existed
+            chunk.map(({ secretFindingBlindIndex, rule, severity, fingerprint, details }) => ({
+              resourceId,
+              secretFindingBlindIndex,
+              rule,
+              severity,
+              lastDetectedAt: now,
+              scanId,
+              fingerprint,
+              details
+            }))
+          )
+          .returning(["id", "status", "secretFindingBlindIndex", "fingerprint"]);
+
+        created.forEach(({ id, status, secretFindingBlindIndex, fingerprint }) =>
+          findingByValue.set(valueKeyOf({ secretFindingBlindIndex: secretFindingBlindIndex ?? null, fingerprint }), {
+            id,
+            status
+          })
+        );
+      }
+
+      const reopenedFindings: Pick<TSecretScanningFindings, "id" | "rule">[] = [];
+
+      for (const chunk of chunkArray(
+        [...findingByValue.values()].map(({ id }) => id),
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
+        // Triage doesn't take the advisory lock, so a status read above can predate one. This update locks the findings
+        // until commit, so the status it returns is the one the pull request check has to see.
+        // eslint-disable-next-line no-await-in-loop
+        const locked = await tx(TableName.SecretScanningFinding)
+          .whereIn("id", chunk)
+          .update({ lastDetectedAt: now })
+          .returning(["id", "status"]);
+
+        const statusById = new Map(locked.map(({ id, status }) => [id, status]));
+        findingByValue.forEach((finding, value) => {
+          const status = statusById.get(finding.id);
+          if (status) findingByValue.set(value, { ...finding, status });
+        });
+
+        // eslint-disable-next-line no-await-in-loop
+        const reopened = await tx(TableName.SecretScanningFinding)
+          .whereIn("id", chunk)
+          .where("status", SecretScanningFindingStatus.Resolved)
+          .update({ status: SecretScanningFindingStatus.Unresolved, resolvedAt: null })
+          .returning(["id", "rule"]);
+
+        reopenedFindings.push(...reopened);
+      }
+
+      for (const chunk of chunkArray(newRows, FINDINGS_UPSERT_CHUNK_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop
+        await tx(TableName.SecretScanningFindingLocation).insert(
+          chunk.map(({ fingerprint, rule, details, secretFindingBlindIndex }) => ({
+            findingId: findingByValue.get(valueKeyOf({ secretFindingBlindIndex, fingerprint }))!.id,
+            resourceId,
+            scanId,
+            fingerprint,
+            rule,
+            details
+          }))
+        );
+      }
+
+      // A location saved before may belong to a finding from before blind indexes existed, so it's found by its id.
+      const findingById = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
+      for (const chunk of chunkArray([...new Set(findingIdByFingerprint.values())], FINDINGS_UPSERT_CHUNK_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop
+        const findings = await tx(TableName.SecretScanningFinding).whereIn("id", chunk).select("id", "status");
+
+        findings.forEach((finding) => findingById.set(finding.id, finding));
+      }
+
+      const reopenedIds = new Set(reopenedFindings.map(({ id }) => id));
+
+      const scannedLocations: TSecretScanningScannedLocation[] = rows.map(({ fingerprint, rule, details, ...row }) => {
+        const existingFindingId = findingIdByFingerprint.get(fingerprint);
+        const finding = existingFindingId
+          ? findingById.get(existingFindingId)!
+          : findingByValue.get(valueKeyOf({ secretFindingBlindIndex: row.secretFindingBlindIndex, fingerprint }))!;
+        const status = reopenedIds.has(finding.id) ? SecretScanningFindingStatus.Unresolved : finding.status;
+
+        return { id: finding.id, status, fingerprint, rule, details };
+      });
+
+      return { scannedLocations, reopenedFindings };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Persist Locations - Secret Scanning Finding" });
+    }
   };
 
   const findDataSource = async (filter: Parameters<(typeof dataSourceOrm)["find"]>[0], tx?: Knex) => {
@@ -268,24 +439,12 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningScan}.resourceId`,
           `${TableName.SecretScanningResource}.id`
         )
-        .leftJoin(
-          TableName.SecretScanningFinding,
-          `${TableName.SecretScanningFinding}.scanId`,
-          `${TableName.SecretScanningScan}.id`
-        )
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
-            .orWhereNull(`${TableName.SecretScanningFinding}.status`);
-        })
         .select(
           db.ref("id").withSchema(TableName.SecretScanningScan).as("scanId"),
           db.ref("status").withSchema(TableName.SecretScanningScan).as("scanStatus"),
           db.ref("statusMessage").withSchema(TableName.SecretScanningScan).as("scanStatusMessage"),
           db.ref("createdAt").withSchema(TableName.SecretScanningScan).as("scanCreatedAt"),
-          db.ref("startedAt").withSchema(TableName.SecretScanningScan).as("scanStartedAt"),
-          db.ref("status").withSchema(TableName.SecretScanningFinding).as("findingStatus"),
-          db.ref("id").withSchema(TableName.SecretScanningFinding).as("findingId")
+          db.ref("startedAt").withSchema(TableName.SecretScanningScan).as("scanStartedAt")
         );
 
       if (!dataSources.length) return [];
@@ -305,32 +464,39 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
               status: scanStatus,
               statusMessage: scanStatusMessage
             })
-          },
-          {
-            key: "findingId",
-            label: "findings" as const,
-            mapper: ({ findingId }) => ({
-              id: findingId
-            })
           }
         ]
       });
 
-      // counted separately because the join above drops resources whose findings are all resolved
-      const resourceCounts = await (tx || db.replicaNode())(TableName.SecretScanningResource)
-        .whereIn(
-          "dataSourceId",
-          results.map(({ id }) => id)
-        )
-        .groupBy("dataSourceId")
-        .select("dataSourceId")
-        .count({ count: "*" });
+      const dataSourceIds = results.map(({ id }) => id);
+
+      const [resourceCounts, unresolvedFindingCounts] = await Promise.all([
+        (tx || db.replicaNode())(TableName.SecretScanningResource)
+          .whereIn("dataSourceId", dataSourceIds)
+          .groupBy("dataSourceId")
+          .select("dataSourceId")
+          .count({ count: "*" }),
+        (tx || db.replicaNode())(TableName.SecretScanningFinding)
+          .join(
+            TableName.SecretScanningResource,
+            `${TableName.SecretScanningResource}.id`,
+            `${TableName.SecretScanningFinding}.resourceId`
+          )
+          .whereIn(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceIds)
+          .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
+          .groupBy(`${TableName.SecretScanningResource}.dataSourceId`)
+          .select(`${TableName.SecretScanningResource}.dataSourceId`)
+          .count({ count: "*" })
+      ]);
 
       const resourceCountByDataSourceId = new Map(
         resourceCounts.map(({ dataSourceId, count }) => [dataSourceId, Number(count)])
       );
+      const unresolvedFindingCountByDataSourceId = new Map(
+        unresolvedFindingCounts.map(({ dataSourceId, count }) => [dataSourceId as string, Number(count)])
+      );
 
-      return results.map(({ scans, findings, ...dataSource }) => {
+      return results.map(({ scans, ...dataSource }) => {
         const lastScan =
           scans && scans.length
             ? scans.reduce((latest, current) => {
@@ -349,7 +515,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           lastScanStatus: lastScan?.status ?? null,
           lastScanStatusMessage: lastScan?.statusMessage ?? null,
           lastScannedAt,
-          unresolvedFindings: scans.length ? findings.length : null,
+          unresolvedFindings: scans.length ? (unresolvedFindingCountByDataSourceId.get(dataSource.id) ?? 0) : null,
           resourceCount: resourceCountByDataSourceId.get(dataSource.id) ?? 0
         };
       });
@@ -461,9 +627,14 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         )
         .where(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceId)
         .leftJoin(
-          TableName.SecretScanningFinding,
-          `${TableName.SecretScanningFinding}.scanId`,
+          TableName.SecretScanningFindingLocation,
+          `${TableName.SecretScanningFindingLocation}.scanId`,
           `${TableName.SecretScanningScan}.id`
+        )
+        .leftJoin(
+          TableName.SecretScanningFinding,
+          `${TableName.SecretScanningFinding}.id`,
+          `${TableName.SecretScanningFindingLocation}.findingId`
         )
         .select(selectAllTableCols(TableName.SecretScanningScan))
         .select(
@@ -629,7 +800,12 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         db.ref("id").withSchema(TableName.SecretScanningDataSource).as("dataSourceId"),
         db.ref("name").withSchema(TableName.SecretScanningDataSource).as("dataSourceName"),
         db.ref("type").withSchema(TableName.SecretScanningDataSource).as("dataSourceType"),
-        db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName")
+        db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName"),
+        db.raw(`(SELECT count(*)::int FROM ?? WHERE ?? = ??) AS "locationCount"`, [
+          TableName.SecretScanningFindingLocation,
+          `${TableName.SecretScanningFindingLocation}.findingId`,
+          `${TableName.SecretScanningFinding}.id`
+        ])
       );
 
   const applyFindingFilters = <Q extends Knex.QueryBuilder>(
@@ -638,13 +814,27 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     {
       status,
       dataSourceId,
-      resourceId
-    }: Pick<TListSecretScanningFindingsFilter, "status" | "dataSourceId" | "resourceId">
+      resourceId,
+      scanId
+    }: Pick<TListSecretScanningFindingsFilter, "status" | "dataSourceId" | "resourceId" | "scanId">
   ) => {
     void query.where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
     if (status) void query.where(`${TableName.SecretScanningFinding}.status`, status);
     if (dataSourceId) void query.where(`${TableName.SecretScanningDataSource}.id`, dataSourceId);
     if (resourceId) void query.where(`${TableName.SecretScanningFinding}.resourceId`, resourceId);
+    // the findings the scan found a new location of
+    if (scanId) {
+      void query.whereExists((subQuery) => {
+        void subQuery
+          .select(db.raw("1"))
+          .from(TableName.SecretScanningFindingLocation)
+          .whereRaw("?? = ??", [
+            `${TableName.SecretScanningFindingLocation}.findingId`,
+            `${TableName.SecretScanningFinding}.id`
+          ])
+          .where(`${TableName.SecretScanningFindingLocation}.scanId`, scanId);
+      });
+    }
     return query;
   };
 
@@ -675,8 +865,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         );
         break;
       case SecretScanningFindingOrderBy.CreatedAt:
-      default:
         void query.orderBy(`${TableName.SecretScanningFinding}.createdAt`, direction);
+        break;
+      case SecretScanningFindingOrderBy.LastDetectedAt:
+      default:
+        void query.orderBy(`${TableName.SecretScanningFinding}.lastDetectedAt`, direction);
     }
 
     // a unique tiebreaker keeps rows from repeating or vanishing across pages when sort values tie
@@ -704,7 +897,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
       const [findings, countResult] = await Promise.all([findingsQuery, countQuery]);
 
-      return { findings, totalCount: Number(countResult?.count ?? 0) };
+      return {
+        findings: findings as ((typeof findings)[number] & { locationCount: number })[],
+        totalCount: Number(countResult?.count ?? 0)
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By Project ID - Secret Scanning Finding" });
     }
@@ -716,7 +912,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .where(`${TableName.SecretScanningFinding}.id`, findingId)
         .first();
 
-      return finding;
+      return finding as (typeof finding & { locationCount: number }) | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By ID - Secret Scanning Finding" });
     }
@@ -741,10 +937,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Counts the findings this scan was the first to discover, which is the number the scan's own
-   * detail view shows. It is read back from the database rather than accumulated in the handler
-   * because a full scan persists its findings batch by batch and can be retried or resumed by
-   * another worker: whatever an in-memory counter holds covers only the batches that one attempt
+   * Counts the locations this scan was the first to find, and the findings they belong to. A finding still unresolved
+   * is a leak to notify about: one new, one reopened, or a new location of an open one. It is read back from the
+   * database rather than accumulated in the handler because a full scan persists its findings batch by batch and can be
+   * retried or resumed by another worker: whatever an in-memory counter holds covers only the batches that one attempt
    * happened to run.
    *
    * Read from the primary, not a replica: the caller counts immediately after writing the last
@@ -752,11 +948,66 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
    */
   const countFindingsByScanId = async (scanId: string, tx?: Knex) => {
     try {
-      const [result] = await (tx || db)(TableName.SecretScanningFinding).where({ scanId }).count({ count: "*" });
+      const [result] = (await (tx || db)(TableName.SecretScanningFindingLocation)
+        .join(
+          TableName.SecretScanningFinding,
+          `${TableName.SecretScanningFinding}.id`,
+          `${TableName.SecretScanningFindingLocation}.findingId`
+        )
+        .where(`${TableName.SecretScanningFindingLocation}.scanId`, scanId)
+        .select(
+          db.raw("count(*) AS locations"),
+          db.raw("count(DISTINCT ??) AS findings", [`${TableName.SecretScanningFinding}.id`]),
+          db.raw("count(DISTINCT ??) FILTER (WHERE ?? = ?) AS unresolved", [
+            `${TableName.SecretScanningFinding}.id`,
+            `${TableName.SecretScanningFinding}.status`,
+            SecretScanningFindingStatus.Unresolved
+          ])
+        )) as { locations: string; findings: string; unresolved: string }[];
 
-      return Number(result?.count ?? 0);
+      return {
+        locations: Number(result?.locations ?? 0),
+        findings: Number(result?.findings ?? 0),
+        unresolvedFindings: Number(result?.unresolved ?? 0)
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Count By Scan ID - Secret Scanning Finding" });
+    }
+  };
+
+  // A pull request check that ran before findings were merged saved ids of findings that are now locations of another
+  // finding, under the same ids.
+  const findFindingsByIdsOrLocationIds = async (resourceId: string, ids: string[], tx?: Knex) => {
+    try {
+      return await (tx || db.replicaNode())(TableName.SecretScanningFinding)
+        .where({ resourceId })
+        .where((qb) => {
+          void qb.whereIn("id", ids).orWhereIn("id", (subQuery) => {
+            void subQuery.select("findingId").from(TableName.SecretScanningFindingLocation).whereIn("id", ids);
+          });
+        });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By IDs Or Location IDs - Secret Scanning Finding" });
+    }
+  };
+
+  // Ordered newest first, which is the order a finding's locations are shown in.
+  const findLocationsByFindingId = async (
+    findingId: string,
+    { offset, limit }: { offset: number; limit: number },
+    tx?: Knex
+  ) => {
+    try {
+      const baseQuery = (tx || db.replicaNode())(TableName.SecretScanningFindingLocation).where({ findingId });
+
+      const [locations, countResult] = await Promise.all([
+        baseQuery.clone().orderBy("createdAt", "desc").orderBy("id", "desc").offset(offset).limit(limit),
+        baseQuery.clone().count({ count: "*" }).first()
+      ]);
+
+      return { locations, totalCount: Number(countResult?.count ?? 0) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By Finding ID - Secret Scanning Finding Location" });
     }
   };
 
@@ -788,11 +1039,15 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     },
     findings: {
       ...findingOrm,
-      upsert: upsertFindings,
+      persistLocations: persistFindingLocations,
+      findByIdsOrLocationIds: findFindingsByIdsOrLocationIds,
       countByScanId: countFindingsByScanId,
       findByProjectId: findFindingsByProjectId,
       findByIdWithDetails: findFindingByIdWithDetails,
       countByProjectId: countFindingsByProjectId
+    },
+    locations: {
+      findByFindingId: findLocationsByFindingId
     },
     configs: configOrm
   };

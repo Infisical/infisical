@@ -4325,10 +4325,18 @@ export const SecretScanningFindings = {
     status: "Only return findings with this status.",
     dataSourceId: "Only return findings detected in this Data Source.",
     resourceId: "Only return findings detected in this resource, such as a repository or project.",
-    orderBy: "The field to sort findings by.",
+    scanId: "Only return findings this scan found in a new location.",
+    orderBy: "The field to sort findings by. Sorting by `author` is deprecated and uses the first location's author.",
     orderDirection: "The direction to sort findings in.",
     offset: "The number of findings to skip, for pagination.",
     limit: "The maximum number of findings to return, from 1 to 100."
+  },
+  DEPRECATED_FIRST_LOCATION:
+    "Deprecated: describes only the first place the secret was found. Use the finding's locations instead.",
+  LIST_LOCATIONS: {
+    findingId: "The ID of the Secret Scanning Finding to list the locations of.",
+    offset: "The number of locations to skip, for pagination.",
+    limit: "The maximum number of locations to return, from 1 to 100."
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",

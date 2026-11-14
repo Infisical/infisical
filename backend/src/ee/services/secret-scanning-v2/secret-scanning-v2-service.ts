@@ -36,6 +36,7 @@ import {
   TFindSecretScanningDataSourceByIdDTO,
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
+  TListSecretScanningFindingLocationsDTO,
   TRemoveSecretScanningResourceDTO,
   TSecretScanningDataSource,
   TSecretScanningDataSourceCredentials,
@@ -43,6 +44,7 @@ import {
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
+  TSecretScanningFindingLocation,
   TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
@@ -1250,14 +1252,6 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1282,14 +1276,6 @@ export const secretScanningV2ServiceFactory = ({
     filter: TListSecretScanningFindingsFilter,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -1309,18 +1295,12 @@ export const secretScanningV2ServiceFactory = ({
     return { findings: findings as TSecretScanningFinding[], totalCount };
   };
 
-  const updateSecretScanningFindingById = async (
-    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+  // Reading findings doesn't check the plan, so an org that downgrades can still see what was found.
+  const findSecretScanningFindingWithPermission = async (
+    findingId: string,
+    action: ProjectPermissionSecretScanningFindingActions,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.has(PlanFeature.SecretScanning))
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
     const finding = await secretScanningV2DAL.findings.findByIdWithDetails(findingId);
 
     if (!finding)
@@ -1337,9 +1317,45 @@ export const secretScanningV2ServiceFactory = ({
       projectId: finding.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.SecretScanningFindings);
+
+    return finding;
+  };
+
+  const listSecretScanningFindingLocations = async (
+    { findingId, offset, limit }: TListSecretScanningFindingLocationsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
+      ProjectPermissionSecretScanningFindingActions.Read,
+      actor
+    );
+
+    const { locations, totalCount } = await secretScanningV2DAL.locations.findByFindingId(findingId, {
+      offset,
+      limit
+    });
+
+    return { locations: locations as TSecretScanningFindingLocation[], totalCount, finding };
+  };
+
+  const updateSecretScanningFindingById = async (
+    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.has(PlanFeature.SecretScanning))
+      throw new BadRequestError({
+        message:
+          "Failed to update Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
       ProjectPermissionSecretScanningFindingActions.Update,
-      ProjectPermissionSub.SecretScanningFindings
+      actor
     );
 
     const isStatusChange = status !== undefined && status !== finding.status;
@@ -1487,6 +1503,7 @@ export const secretScanningV2ServiceFactory = ({
     listSecretScanningScansWithDetailsByDataSourceId,
     getSecretScanningUnresolvedFindingsCountByProjectId,
     listSecretScanningFindingsByProjectId,
+    listSecretScanningFindingLocations,
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,

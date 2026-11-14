@@ -326,3 +326,12 @@ describe("convertPatchLineToFileLineNumber", () => {
     expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "secret"))).toBe(5);
   });
 });
+
+describe("replaceNonChangesWithNewlines", () => {
+  // Diff scans use the scanner's columns as they are, so a leak gets the same fingerprint as in a full scan.
+  test("keeps an added line exactly as it is in the file, so the scanner reports the file's columns", () => {
+    const patch = '@@ -1,1 +1,2 @@\n line one\n+  token = "secret"';
+
+    expect(replaceNonChangesWithNewlines(patch).split("\n")).toEqual(["", "", '  token = "secret"']);
+  });
+});
