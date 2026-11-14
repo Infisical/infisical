@@ -101,7 +101,8 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
           }
         />
         <p className="px-1.5 text-xs text-muted">
-          The AI can only read from these connections, for example to look up a Jira ticket.
+          The AI can read from these connections and the ones your request form fields use, for
+          example to look up a Jira ticket.
         </p>
         {hasUnavailable && (
           <p className="px-1.5 text-xs text-muted">

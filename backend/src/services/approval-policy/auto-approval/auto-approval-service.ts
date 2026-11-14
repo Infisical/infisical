@@ -14,6 +14,7 @@ import {
   listAppConnectionAiTools
 } from "@app/services/app-connection/app-connection-ai-tools";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -591,6 +592,17 @@ export const autoApprovalServiceFactory = ({
         return { approve: false, reason: error, model: "", toolCalls: [], error } satisfies TAiJudgeResult;
       }
 
+      // The connections the request form fields read from are context too, so the AI can open a linked record
+      const inputConnections = (
+        await Promise.all(
+          [...new Set(stored.inputs.map((input) => input.connectionId))]
+            .filter((connectionId) => !condition.contextConnectionIds.includes(connectionId))
+            .map(loadConnection)
+        )
+      ).filter((connection): connection is TAppConnection =>
+        Boolean(connection && AI_CONTEXT_APPS.includes(connection.app as AppConnection))
+      );
+
       const inputs = await Promise.all(
         parsedInputs.map(async (input) => ({
           label: input.label,
@@ -611,7 +623,10 @@ export const autoApprovalServiceFactory = ({
           details: ctx.request?.details ?? null,
           inputs
         },
-        tools: buildAppConnectionAiTools(contextConnections as TAppConnection[], providerDeps),
+        tools: buildAppConnectionAiTools(
+          [...(contextConnections as TAppConnection[]), ...inputConnections],
+          providerDeps
+        ),
         deadline: aiDeadline
       });
     };
