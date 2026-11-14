@@ -64,17 +64,21 @@ const EventClassesCard = ({ projectId, projectType, canEdit }: Scope & { canEdit
   const update = adapter.useUpdateProjectSettings();
   const newPrivileges =
     settings?.shouldUseNewPrivilegeSystem ?? org?.shouldUseNewPrivilegeSystem ?? false;
+  const storedFlags = CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) =>
+    eventClass === AuditLogEventClass.Authorization && !newPrivileges
+      ? false
+      : (settings?.eventClasses.find((entry) => entry.eventClass === eventClass)?.isEnabled ??
+        AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
+  )
+    .map(Number)
+    .join("");
   const stored = useMemo(
     () =>
-      CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
+      CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES.map((eventClass, index) => ({
         eventClass,
-        isEnabled:
-          eventClass === AuditLogEventClass.Authorization && !newPrivileges
-            ? false
-            : (settings?.eventClasses.find((entry) => entry.eventClass === eventClass)?.isEnabled ??
-              AUDIT_LOG_EVENT_CLASS_DEFAULTS[eventClass])
+        isEnabled: storedFlags[index] === "1"
       })),
-    [settings?.eventClasses, newPrivileges]
+    [storedFlags]
   );
   const { value, save, status, pending } = useAutosave({
     value: stored,
