@@ -136,7 +136,7 @@ export const ProjectsPage = () => {
                 variant="framed"
                 footerPlacement="frame"
                 className={cn(styles.productCard, blocked.has(product.type) && styles.blocked)}
-                backdrop={<Halftone seed={product.type} bounds="header" ambient />}
+                backdrop={<Halftone seed={product.type} ambient />}
                 title={
                   <Stack gap={12} className={styles.productTitle}>
                     <Icon name={product.icon} size={24} motion="draw" />
