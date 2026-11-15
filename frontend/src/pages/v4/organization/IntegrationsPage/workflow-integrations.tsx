@@ -21,9 +21,10 @@ import {
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { Meta } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { PencilIcon } from "lucide-react";
 
 import {
@@ -179,10 +180,14 @@ export const WorkflowIntegrationsTab = () => {
       grow: true,
       text: (row) => (row.description ? `${row.slug}: ${row.description}` : row.slug),
       render: (row) => (
-        <Stack gap={2}>
+        <Inline gap={4} align="center" wrap={false}>
           <span className="truncate">{row.slug}</span>
-          {row.description && <Meta mono={false}>{row.description}</Meta>}
-        </Stack>
+          {row.description && (
+            <Tooltip content={row.description}>
+              <Icon name="info" size={14} aria-label="Description" className="shrink-0" />
+            </Tooltip>
+          )}
+        </Inline>
       )
     },
     {

@@ -210,7 +210,7 @@ const useConnectionColumns = (connections: TAppConnection[], scope: AppConnectio
           <span className="truncate">{row.name}</span>
           {row.description && (
             <Tooltip content={row.description}>
-              <Icon name="info" size={14} aria-label="Description" />
+              <Icon name="info" size={14} aria-label="Description" className="shrink-0" />
             </Tooltip>
           )}
         </Inline>
