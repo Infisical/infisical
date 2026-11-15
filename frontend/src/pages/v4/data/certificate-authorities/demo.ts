@@ -33,6 +33,7 @@ import {
   partnerRootPem,
   rootPem
 } from "./demo-pems";
+import { demoCreatedCas } from "./demo-store";
 
 const projectId = "internal-pki";
 const ready = <T>(data: T) => ({ data, isPending: false, error: null });
@@ -558,6 +559,7 @@ export const certificateAuthoritiesDemo: CertificateAuthoritiesAdapter = {
       projectId,
       enableDirectIssuance: true
     } as TUnifiedCertificateAuthority;
+    demoCreatedCas.update((entries) => [...entries, created]);
     if (created.type !== CaType.INTERNAL) {
       cas.update((entries) => [...entries, created]);
       return created;
