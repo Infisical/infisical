@@ -43,6 +43,7 @@ import { Switch } from "@infisical/cipher/ui/switch";
 import { Text } from "@infisical/cipher/ui/text";
 import { formatDistanceToNow } from "date-fns";
 
+import { CertificateApprovalPoliciesUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
@@ -73,6 +74,7 @@ import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
+import { useUpgradeGate } from "../../license/useUpgradeGate";
 import { orgHref, useGo } from "../../links";
 import { useProfileCreation, useProfileOptions } from "../ApplicationsPage/application-dialogs";
 import { PolicySheet } from "../ApprovalsPage/policy-sheet";
@@ -473,10 +475,12 @@ const ProfilesCard = ({
 };
 
 const PoliciesCard = ({
+  orgId,
   projectId,
   application,
   access
 }: {
+  orgId: string;
   projectId: string;
   application: TPkiApplication;
   access: PkiApplicationPermission;
@@ -484,10 +488,14 @@ const PoliciesCard = ({
   const adapter = useV4Adapter("pkiApplications");
   const remove = adapter.useDeletePolicy();
   const { data, isPending } = adapter.useApplicationPolicies(application.id);
+  const { data: subscription } = useV4Adapter("pkiPolicies").useSubscription(orgId);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TApprovalPolicy>();
   const [deleting, setDeleting] = useState<TApprovalPolicy>();
   const can = (action: PkiApplicationResourceActions) =>
     appCan(access, action, PkiApplicationResourceSub.ApprovalPolicies);
+  const canCreate = can(PkiApplicationResourceActions.Create);
   const canEdit = can(PkiApplicationResourceActions.Edit);
   const canDelete = can(PkiApplicationResourceActions.Delete);
   const policies = [...(data ?? [])].sort(
@@ -557,6 +565,25 @@ const PoliciesCard = ({
         flush
         title="Approval policies"
         badges={<DocumentationLink href={APPLICATION_DOCS.approvals} subject="Approval policies" />}
+        action={
+          <Button
+            variant="outline"
+            icon="plus"
+            disabledReason={canCreate ? undefined : RESTRICTED}
+            onClick={() => {
+              if (!subscription?.pkiApprovals) {
+                openUpgradeGate({
+                  intent: CertificateApprovalPoliciesUpgradeIntent,
+                  paywallKey: "cert-manager.application-settings"
+                });
+                return;
+              }
+              setCreating(true);
+            }}
+          >
+            Create policy
+          </Button>
+        }
       >
         <DataTable
           label="Approval policies"
@@ -612,9 +639,14 @@ const PoliciesCard = ({
       <PolicySheet
         projectId={projectId}
         policy={editing}
+        creating={creating}
         application={{ id: application.id, name: application.name }}
-        onClose={() => setEditing(undefined)}
+        onClose={() => {
+          setEditing(undefined);
+          setCreating(false);
+        }}
       />
+      {upgradeGate}
       <ConfirmDelete
         open={Boolean(deleting)}
         title={`Delete ${deleting?.name ?? "policy"}?`}
@@ -997,7 +1029,7 @@ export const SettingsTab = ({
 }) => (
   <Stack gap={24}>
     <ProfilesCard orgId={orgId} projectId={projectId} application={application} access={access} />
-    <PoliciesCard projectId={projectId} application={application} access={access} />
+    <PoliciesCard orgId={orgId} projectId={projectId} application={application} access={access} />
     <AlertsCard projectId={projectId} application={application} access={access} />
     <LegacyAlertsCard application={application} access={access} />
   </Stack>

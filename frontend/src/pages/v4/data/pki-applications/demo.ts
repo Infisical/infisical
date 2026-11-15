@@ -516,6 +516,28 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
     );
     return { syncId };
   }),
+  useCreatePolicy: fixtureMutation(({ policyType, scope, scopeId, ...dto }) => {
+    const created = {
+      id: `pol-${crypto.randomUUID()}`,
+      projectId: DEMO_PROJECT_ID,
+      name: dto.name,
+      maxRequestTtl: dto.maxRequestTtl ?? null,
+      type: policyType,
+      conditions: { version: 1, conditions: dto.conditions },
+      constraints: { version: 1, constraints: dto.constraints },
+      steps: dto.steps,
+      bypassForMachineIdentities: dto.bypassForMachineIdentities ?? false,
+      enforcementLevel: EnforcementLevel.Hard,
+      bypassers: [],
+      scopeType: scope,
+      scopeId,
+      createdAt: now(),
+      updatedAt: now()
+    } as TApprovalPolicy;
+    policyApplication[created.id] = scopeId;
+    policies.update((current) => [created, ...current]);
+    return created;
+  }),
   useDeletePolicy: fixtureMutation(({ policyId }) => {
     policies.update((current) => current.filter((entry) => entry.id !== policyId));
     return policyId;

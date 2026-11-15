@@ -14,7 +14,7 @@ export const Route = createFileRoute(
 )({
   staticData: {
     readiness: "partial",
-    missing: ["Create approval policies", "Create and edit application alerts"]
+    missing: ["Create and edit application alerts"]
   },
   component: ApplicationDetailsByIDPage,
   validateSearch: zodValidator(SearchSchema),

@@ -293,5 +293,5 @@ export const pkiPoliciesDemo: PkiPoliciesAdapter = {
         { id: "Machine", name: "Machine" }
       ]
     }),
-  useSubscription: () => ok({ pkiPqc: true } as SubscriptionPlan)
+  useSubscription: () => ok({ pkiPqc: true, pkiApprovals: true } as SubscriptionPlan)
 };

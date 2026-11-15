@@ -16,6 +16,10 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useNavigate } from "@tanstack/react-router";
 
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { CertificateRequestStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificateRequestListItem } from "@app/hooks/api/certificates/types";
 import {
@@ -24,6 +28,7 @@ import {
   type TPkiApplication
 } from "@app/hooks/api/pkiApplications/types";
 
+import { useProjectPermission } from "../../access/permissions";
 import { formatDate, formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
@@ -119,17 +124,21 @@ const RequestStatus = ({
 
 export const RequestsTab = ({
   orgId,
+  projectId,
   application,
   access
 }: {
   orgId: string;
+  projectId: string;
   application?: TPkiApplication;
   access?: PkiApplicationPermission;
 }) => {
   const [requesting, setRequesting] = useState(false);
-  const canRequest =
-    access &&
-    appCan(access, PkiApplicationResourceActions.Create, PkiApplicationResourceSub.Certificates);
+  const { permission } = useProjectPermission(projectId);
+  const canRequest = access
+    ? appCan(access, PkiApplicationResourceActions.Create, PkiApplicationResourceSub.Certificates)
+    : !application &&
+      permission.can(ProjectPermissionCertificateActions.Create, ProjectPermissionSub.Certificates);
   const navigate = useNavigate();
   const adapter = useV4Adapter("pkiApplications");
   const cancel = adapter.useCancelCertificateRequest();
@@ -264,22 +273,20 @@ export const RequestsTab = ({
           />
         }
         actions={
-          application && (
-            <Button
-              variant="primary"
-              icon="plus"
-              disabledReason={canRequest ? undefined : RESTRICTED}
-              onClick={() => setRequesting(true)}
-            >
-              Request certificate
-            </Button>
-          )
+          <Button
+            variant="primary"
+            icon="plus"
+            disabledReason={canRequest ? undefined : RESTRICTED}
+            onClick={() => setRequesting(true)}
+          >
+            Request certificate
+          </Button>
         }
       />
-      {requesting && application && (
+      {requesting && (
         <RequestCertificateSheet
-          applicationId={application.id}
-          applicationName={application.name}
+          applicationId={application?.id}
+          applicationName={application?.name}
           onClose={() => setRequesting(false)}
         />
       )}

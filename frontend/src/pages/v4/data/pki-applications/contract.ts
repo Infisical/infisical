@@ -4,6 +4,7 @@ import type { ResourceMembership } from "@app/helpers/resourcePermissions";
 import type { TAlert, TListAlertsDTO, TUpdateAlertDTO } from "@app/hooks/api/alerts/types";
 import type {
   TApprovalPolicy,
+  TCreateApprovalPolicyDTO,
   TDeleteApprovalPolicyDTO
 } from "@app/hooks/api/approvalPolicies/types";
 import type {
@@ -99,6 +100,7 @@ export type PkiApplicationsAdapter = PkiApplicationsEnrollmentAdapter & {
     TTriggerCertificateRequestValidationResponse
   >;
   useTriggerSync: V4Mutation<TTriggerPkiSyncSyncCertificatesDTO, unknown>;
+  useCreatePolicy: V4Mutation<TCreateApprovalPolicyDTO, TApprovalPolicy>;
   useDeletePolicy: V4Mutation<TDeleteApprovalPolicyDTO, string>;
   useUpdateAlert: V4Mutation<TUpdateAlertDTO, TAlert>;
   useDeleteAlert: V4Mutation<{ alertId: string }, unknown>;

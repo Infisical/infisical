@@ -37,6 +37,7 @@ import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref } from "../../links";
+import { useCaCreation } from "./ca-creation";
 import {
   extensionLabel,
   extensionPlaceholder,
@@ -387,7 +388,8 @@ const IssuerFields = ({
   authorities,
   policies,
   canCreatePolicy,
-  onCreatePolicy
+  onCreatePolicy,
+  caCreation
 }: {
   draft: ProfileDraft;
   errors: ProfileErrors;
@@ -397,6 +399,7 @@ const IssuerFields = ({
   policies: TCertificatePolicy[];
   canCreatePolicy: boolean;
   onCreatePolicy: () => void;
+  caCreation: ReturnType<typeof useCaCreation>["creation"];
 }) => {
   const adapter = useV4Adapter("pkiPolicies");
   const { isAzureAdcs, isAdcs, externalAdcs } = issuerTraitsOf(draft, authorities);
@@ -469,6 +472,7 @@ const IssuerFields = ({
             onChange={(caId) =>
               set(caId === draft.caId ? { caId } : { caId, template: "" }, "caId")
             }
+            creation={caCreation}
           />
         </Field>
       )}
@@ -814,7 +818,12 @@ export const CertificateProfileSheet = ({
   const create = adapter.useCreateProfile();
   const update = adapter.useUpdateProfile();
   const { permission } = useProjectPermission(projectId);
-  const { data: authorities = [] } = useV4Adapter("certificates").useCertificateAuthorities();
+  const { data: listedAuthorities = [] } = useV4Adapter("certificates").useCertificateAuthorities();
+  const [createdAuthorities, setCreatedAuthorities] = useState<TUnifiedCertificateAuthority[]>([]);
+  const authorities = [
+    ...listedAuthorities,
+    ...createdAuthorities.filter((ca) => !listedAuthorities.some((listed) => listed.id === ca.id))
+  ];
   const { data: policyList } = adapter.usePolicies({ limit: 100, offset: 0 });
   const isEdit = mode === "edit" && Boolean(profile);
   const [initial] = useState(() =>
@@ -848,6 +857,10 @@ export const CertificateProfileSheet = ({
     setDraft((current) => ({ ...current, ...patch }));
     if (clear) setErrors((current) => ({ ...current, [clear]: undefined }));
   };
+  const caCreation = useCaCreation(projectId, (ca) => {
+    setCreatedAuthorities((current) => [...current, ca]);
+    set({ caId: ca.id, template: "" }, "caId");
+  });
   const setDefaults = (patch: Partial<ProfileDefaultsDraft>) =>
     setDraft((current) => ({ ...current, defaults: { ...current.defaults, ...patch } }));
   const report = (next: ProfileErrors) => {
@@ -995,6 +1008,7 @@ export const CertificateProfileSheet = ({
         policies={policyList?.certificatePolicies ?? []}
         canCreatePolicy={canCreatePolicy}
         onCreatePolicy={() => setCreatingPolicy(true)}
+        caCreation={caCreation.creation}
       />
     )
   };
@@ -1052,6 +1066,7 @@ export const CertificateProfileSheet = ({
           onClose={() => setCreatingPolicy(false)}
         />
       )}
+      {caCreation.sheets}
       <DiscardChangesAlertDialog
         {...discardDialogProps}
         description="Your unsaved profile changes will be lost."
