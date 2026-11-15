@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import slugify from "@sindresorhus/slugify";
 
 import {
   displayHostPattern,
@@ -10,10 +11,13 @@ import {
   UNCHANGED_SECRET
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
-import type {
-  AgentVaultHttpTemplate,
-  AgentVaultMcpTemplate,
-  AgentVaultTemplate
+import {
+  type AgentVaultHttpTemplate,
+  type AgentVaultMcpTemplate,
+  type AgentVaultTemplate,
+  findMcpTemplateForHostPattern,
+  findTemplateForHostPattern,
+  lastPathSegment
 } from "@app/helpers/agentVaultTemplates";
 import {
   AGENT_VAULT_NATIVE_DEFAULT_PORTS,
@@ -252,4 +256,33 @@ export const formFromTemplate = (
   if (serviceType === AgentVaultServiceType.Mcp)
     return mcpFormFromTemplate(picked?.serviceType === AgentVaultServiceType.Mcp ? picked : null);
   return httpFormFromTemplate(picked?.serviceType === AgentVaultServiceType.Http ? picked : null);
+};
+
+const requestName = (hostPattern: string) =>
+  slugify(hostPattern.replace(/:\d+$/, ""), { lowercase: true }).slice(0, 64).replace(/-+$/, "");
+
+export const formFromRequest = (
+  serviceType: AgentVaultServiceType,
+  hostPattern: string,
+  path = ""
+): { template: AgentVaultTemplate | null; form: TServiceForm } => {
+  if (serviceType === AgentVaultServiceType.Mcp) {
+    const picked = findMcpTemplateForHostPattern(hostPattern) ?? null;
+    if (picked) return { template: picked, form: mcpFormFromTemplate(picked) };
+    return {
+      template: null,
+      form: {
+        ...mcpFormFromTemplate(null),
+        name: requestName(hostPattern),
+        serverUrl: `https://${hostPattern}${path.split("?")[0]}`,
+        transport:
+          lastPathSegment(path) === "sse"
+            ? AgentVaultMcpTransport.Sse
+            : AgentVaultMcpTransport.StreamableHttp
+      }
+    };
+  }
+  const picked = findTemplateForHostPattern(hostPattern) ?? null;
+  const form = { ...httpFormFromTemplate(picked), hosts: [hostPattern], hostDraft: "" };
+  return { template: picked, form: picked ? form : { ...form, name: requestName(hostPattern) } };
 };

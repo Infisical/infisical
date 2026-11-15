@@ -56,7 +56,10 @@ import {
   TRANSPORT_LABELS,
   UNCHANGED_SECRET
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
-import type { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
+import {
+  type AgentVaultTemplate,
+  guessServiceTypeForRequest
+} from "@app/helpers/agentVaultTemplates";
 import { findVariableReferences, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultCredentialType,
@@ -79,6 +82,7 @@ import { serverMessage } from "./oauth";
 import {
   blankFormOf,
   formFromService,
+  formFromRequest,
   formFromTemplate,
   type TServiceErrors,
   type TServiceFormApi
@@ -176,26 +180,40 @@ export const ServiceSheet = ({
   projectId,
   accessBundleId,
   service,
+  request,
   onOpenChange
 }: {
   projectId: string;
   accessBundleId?: string;
   service?: TAgentVaultService;
+  request?: { host: string; path?: string };
   onOpenChange: (open: boolean) => void;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
   const create = resources.useCreateService(projectId);
   const update = resources.useUpdateService(projectId);
   const isCreate = !service;
-  const initial = useMemo(
-    () => (service ? formFromService(service) : blankFormOf(AgentVaultServiceType.Http)),
-    [service]
+  const fromRequest = isCreate ? request : undefined;
+  const [prefilled] = useState(
+    () =>
+      fromRequest &&
+      formFromRequest(
+        guessServiceTypeForRequest(fromRequest.host, fromRequest.path),
+        fromRequest.host,
+        fromRequest.path
+      )
   );
+  const initial = useMemo(() => {
+    if (service) return formFromService(service);
+    return prefilled ? prefilled.form : blankFormOf(AgentVaultServiceType.Http);
+  }, [service, prefilled]);
   const [form, setForm] = useState<TServiceForm>(initial);
   const [errors, setErrors] = useState<TServiceErrors>({});
   const [step, setStep] = useState(0);
-  const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
-  const [picked, setPicked] = useState(!isCreate);
+  const [template, setTemplate] = useState<AgentVaultTemplate | null>(prefilled?.template ?? null);
+  const [picked, setPicked] = useState(!isCreate || Boolean(prefilled));
+  const [switchingTo, setSwitchingTo] = useState<AgentVaultServiceType | null>(null);
+  const hasTemplateStep = isCreate && !prefilled;
   const [discarding, setDiscarding] = useState(false);
   const [notice, setNotice] = useState<TMembersClearedNotice | null>(null);
   const [saving, setSaving] = useState(false);
@@ -231,7 +249,7 @@ export const ServiceSheet = ({
     [service, missing]
   );
 
-  const dirty = (isCreate && picked) || JSON.stringify(form) !== JSON.stringify(initial);
+  const dirty = (hasTemplateStep && picked) || JSON.stringify(form) !== JSON.stringify(initial);
 
   const set = useCallback(<K extends keyof TServiceForm>(key: K, value: TServiceForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -314,7 +332,7 @@ export const ServiceSheet = ({
   };
 
   const stepKeys = [
-    ...(isCreate ? [ServiceStep.Template] : []),
+    ...(hasTemplateStep ? [ServiceStep.Template] : []),
     ServiceStep.Details,
     ServiceStep.Credential,
     ...(isMcp ? [ServiceStep.Tools] : []),
@@ -922,13 +940,46 @@ export const ServiceSheet = ({
     )
   };
 
+  const applyRequestType = (serviceType: AgentVaultServiceType) => {
+    if (!fromRequest) return;
+    const next = formFromRequest(serviceType, fromRequest.host, fromRequest.path);
+    setTemplate(next.template);
+    setForm(next.form);
+    setErrors({});
+    setLoadedTools(null);
+  };
+
+  const switchRequestType = (serviceType: AgentVaultServiceType) => {
+    if (!fromRequest || serviceType === form.serviceType) return;
+    const untouched = formFromRequest(form.serviceType, fromRequest.host, fromRequest.path).form;
+    if (JSON.stringify(form) === JSON.stringify(untouched)) applyRequestType(serviceType);
+    else setSwitchingTo(serviceType);
+  };
+
   const steps: MultiStepStep[] = [
-    ...(isCreate ? [templateStep] : []),
+    ...(hasTemplateStep ? [templateStep] : []),
     {
       title: "Details",
       summary: form.name || undefined,
       validate: () => validateStep(ServiceStep.Details),
-      content: detailsContent
+      content: fromRequest ? (
+        <Stack gap={16}>
+          <Field label="Service type" wide>
+            <Select
+              label="Service type"
+              value={isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http}
+              options={[AgentVaultServiceType.Http, AgentVaultServiceType.Mcp].map((type) => ({
+                value: type,
+                label: SERVICE_TYPE_LABELS[type]
+              }))}
+              onChange={(next) => switchRequestType(next as AgentVaultServiceType)}
+            />
+          </Field>
+          {detailsContent}
+        </Stack>
+      ) : (
+        detailsContent
+      )
     },
     {
       title: "Credential",
@@ -999,7 +1050,7 @@ export const ServiceSheet = ({
         open
         step={step}
         onStepChange={(next) => {
-          if (isCreate && next === 0) setPicked(false);
+          if (hasTemplateStep && next === 0) setPicked(false);
           setStep(next);
         }}
         onOpenChange={(next) => {
@@ -1015,6 +1066,14 @@ export const ServiceSheet = ({
         steps={steps}
       />
       <DiscardChangesAlertDialog open={discarding} onOpenChange={setDiscarding} onDiscard={close} />
+      <DiscardChangesAlertDialog
+        open={Boolean(switchingTo)}
+        onOpenChange={(open) => !open && setSwitchingTo(null)}
+        onDiscard={() => {
+          if (switchingTo) applyRequestType(switchingTo);
+          setSwitchingTo(null);
+        }}
+      />
       <AlertDialog
         open={Boolean(notice)}
         onOpenChange={(open) => !open && !saving && setNotice(null)}
