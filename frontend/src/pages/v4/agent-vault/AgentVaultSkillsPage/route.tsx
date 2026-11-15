@@ -10,13 +10,7 @@ export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/agent-vault/$projectId/skills"
 )({
   staticData: {
-    readiness: "partial",
-    missing: [
-      "Upload a skill",
-      "Add, rename or delete skill files",
-      "Review changes before saving a version",
-      "Download a skill"
-    ]
+    readiness: "full"
   },
   component: AgentVaultSkillsPage,
   validateSearch: zodValidator(
