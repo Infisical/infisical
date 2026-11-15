@@ -23,7 +23,7 @@ const buildResource = ({ isRequesterProjectMember }: { isRequesterProjectMember:
   const createPrivilege = vi.fn().mockResolvedValue({ id: "privilege-1" });
 
   const resource = secretAccessApprovalGlobalResourceFactory({
-    approvalPolicyDAL: { findSecretAccessPolicyByEnvIdAndSecretPath: vi.fn() },
+    approvalPolicyDAL: { findSecretAccessPoliciesByEnvId: vi.fn() },
     approvalRequestGrantsDAL: { find: vi.fn(), create: createGrant },
     additionalPrivilegeDAL: { create: createPrivilege },
     membershipDAL: { lockUserProjectMemberships }

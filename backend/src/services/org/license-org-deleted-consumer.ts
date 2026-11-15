@@ -1,3 +1,4 @@
+import type { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
@@ -8,7 +9,6 @@ import {
   TEvent,
   TEventConsumerResult
 } from "@app/services/event-outbox/event-outbox-types";
-import { TLicenseClientFactory } from "@app/services/license-client/license-client";
 
 import { OrganizationModifiedEventV1, TOrganizationModifiedEventData } from "./org-events";
 
@@ -17,13 +17,13 @@ const LICENSE_ORG_DELETED_CONCURRENCY = 10;
 
 type TLicenseOrgDeletedConsumerDep = {
   envConfig: Pick<TEnvConfig, "isCloud">;
-  licenseClient: Pick<TLicenseClientFactory, "deleteOrganization" | "invalidateEntitlements">;
+  licenseService: Pick<TLicenseService, "closeDeletedOrg">;
 };
 
 // Cloud only. Sub-orgs bill through their root, so we skip them.
 export const licenseOrgDeletedConsumerFactory = ({
   envConfig,
-  licenseClient
+  licenseService
 }: TLicenseOrgDeletedConsumerDep): IEventConsumer<TOrganizationModifiedEventData> => {
   const subscribesTo = (eventType: string) => envConfig.isCloud && eventType === OrganizationModifiedEventV1.type;
 
@@ -37,8 +37,7 @@ export const licenseOrgDeletedConsumerFactory = ({
     }
 
     try {
-      const result = await licenseClient.deleteOrganization(organizationId);
-      await licenseClient.invalidateEntitlements(organizationId);
+      const result = await licenseService.closeDeletedOrg(organizationId);
       logger.info(
         `license-org-deleted: closed the organization's licenses [orgId=${organizationId}] [licensesClosed=${result.licensesClosed}] [canceledSubscriptions=${result.canceledSubscriptionIds.join(",")}]`
       );

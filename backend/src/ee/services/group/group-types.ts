@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -10,7 +11,6 @@ import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privile
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -132,8 +132,7 @@ export type TAddUsersToGroupByUserIds = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
-  // Optional so SSO/SCIM callers can meter the secret-manager identity count when they sync groups.
-  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: TUsageMeteringService;
 };
 
 export type TAddIdentitiesToGroup = {
@@ -143,7 +142,7 @@ export type TAddIdentitiesToGroup = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
-  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: TUsageMeteringService;
 };
 
 // Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
@@ -167,7 +166,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   // Skip the Agent Vault personal value clear and return the group's project ids instead, for a caller that removes
   // the same user from several groups in one transaction and clears once after every group's rows are locked.
   deferPersonalValueClear?: boolean;
-  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: TUsageMeteringService;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
@@ -191,7 +190,7 @@ export type TRemoveIdentitiesFromGroup = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: TUsageMeteringService;
   eventEmitter: TEventEmitter;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;

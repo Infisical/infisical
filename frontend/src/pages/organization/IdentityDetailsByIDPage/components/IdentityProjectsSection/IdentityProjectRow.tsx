@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { MoreHorizontalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { useIsNamedByProduct } from "@app/components/organization/ProductAccess";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,12 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { getInstancePinningLink, getProjectBaseURL } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLucideIcon,
+  getProjectTitle
+} from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserProjects } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
@@ -53,6 +59,11 @@ export const IdentityProjectRow = ({
     return workspaceIds.has(project.id);
   }, [workspaces, project]);
 
+  const productName = getProjectTitle(project.type);
+  const ProductIcon = getProjectLucideIcon(project.type);
+  const isNamedByProduct = useIsNamedByProduct()(project.type);
+  const membershipLabel = isNamedByProduct ? productName : project.name;
+
   const projectLink =
     getInstancePinningLink(
       currentOrg.id,
@@ -72,13 +83,19 @@ export const IdentityProjectRow = ({
       onClick={
         isAccessible
           ? undefined
-          : () => createNotification({ text: "Unable to access project", type: "error" })
+          : () => createNotification({ text: `Unable to access ${membershipLabel}`, type: "error" })
       }
     >
       <TableCell className="max-w-0 truncate">
         <RowLink {...projectLink} search={projectSearch} disabled={!isAccessible}>
-          {project.name}
+          <span className="flex min-w-0 items-center gap-2">
+            <ProductIcon className="size-4 shrink-0 text-muted" />
+            <span className="truncate">{productName}</span>
+          </span>
         </RowLink>
+      </TableCell>
+      <TableCell className="max-w-0 truncate">
+        {isNamedByProduct ? <span className="text-muted">-</span> : project.name}
       </TableCell>
       <TableCell>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
@@ -94,7 +111,7 @@ export const IdentityProjectRow = ({
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild isDisabled={!isAccessible}>
               <Link {...projectLink} search={projectSearch}>
-                Access Project
+                {isNamedByProduct ? `Open ${productName}` : "Open Project"}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -106,11 +123,12 @@ export const IdentityProjectRow = ({
                   identityId: identity.id,
                   identityName: identity.name,
                   projectId: project.id,
-                  projectName: project.name
+                  projectType: project.type,
+                  projectName: membershipLabel
                 });
               }}
             >
-              Remove From Project
+              {isNamedByProduct ? `Remove From ${productName}` : "Remove From Project"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

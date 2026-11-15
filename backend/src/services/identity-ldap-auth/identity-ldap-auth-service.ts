@@ -4,10 +4,10 @@ import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -79,7 +79,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -209,7 +209,7 @@ export const identityLdapAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     const plan = await licenseService.getPlan(identity.orgId);
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message:
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
@@ -405,13 +405,13 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message: "Failed to add LDAP Auth to identity due to plan restriction. Upgrade plan to add LDAP Auth."
       });
     }
 
-    if (templateId && !plan.machineIdentityAuthTemplates) {
+    if (templateId && !plan.has(PlanFeature.MachineIdentityAuthTemplates)) {
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -420,7 +420,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -636,7 +636,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.has(PlanFeature.Ldap)) {
       throw new BadRequestError({
         message: "Failed to update LDAP Auth due to plan restriction. Upgrade plan to update LDAP Auth."
       });
@@ -644,7 +644,11 @@ export const identityLdapAuthServiceFactory = ({
 
     // only a link change is new template use; a re-sent current templateId must not
     // break routine edits for orgs that have since downgraded
-    if (templateId && templateId !== identityLdapAuth.templateId && !plan.machineIdentityAuthTemplates) {
+    if (
+      templateId &&
+      templateId !== identityLdapAuth.templateId &&
+      !plan.has(PlanFeature.MachineIdentityAuthTemplates)
+    ) {
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -653,7 +657,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.has(PlanFeature.IpAllowlisting) &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

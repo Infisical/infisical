@@ -107,7 +107,7 @@ func TestOrg_UsageReports(t *testing.T) {
 		rec := httptest.NewRecorder()
 
 		// Action
-		(&Org{plan: Enterprise()}).ServeHTTP(rec, req)
+		(&Org{state: State{Plan: Enterprise()}}).ServeHTTP(rec, req)
 
 		// Assert
 		require.Equal(t, http.StatusOK, rec.Code)
@@ -122,7 +122,7 @@ func TestOrg_UsageReports(t *testing.T) {
 		rec := httptest.NewRecorder()
 
 		// Action
-		(&Org{plan: Enterprise()}).ServeHTTP(rec, req)
+		(&Org{state: State{Plan: Enterprise()}}).ServeHTTP(rec, req)
 
 		// Assert
 		require.Equal(t, http.StatusOK, rec.Code)

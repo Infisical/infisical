@@ -306,10 +306,17 @@ func statusOf(t *testing.T, proj *fixture.Project, requestID string) string {
 // readGuarded reads the guarded secret as actor and reports the status.
 func readGuarded(t *testing.T, actor *harness.Principal, proj *fixture.Project) int {
 	t.Helper()
+	return readAt(t, actor, proj, guardedPath)
+}
+
+// readAt reads the guarded secret's key at secretPath in dev as actor and reports the
+// status. The secret there must hold the guarded value.
+func readAt(t *testing.T, actor *harness.Principal, proj *fixture.Project, secretPath string) int {
+	t.Helper()
 	res, err := actor.API.GetSecretByNameV4WithResponse(t.Context(), secretKey, &api.GetSecretByNameV4Params{
 		ProjectId:       proj.ID,
 		Environment:     new("dev"),
-		SecretPath:      new(guardedPath),
+		SecretPath:      new(secretPath),
 		ViewSecretValue: new(api.GetSecretByNameV4ParamsViewSecretValue("true")),
 	})
 	require.NoError(t, err)
@@ -331,12 +338,17 @@ func requireNothingGranted(t *testing.T, g guarded, requestID string) {
 
 func awaitRead(t *testing.T, actor *harness.Principal, proj *fixture.Project, allowed bool) {
 	t.Helper()
-	what := "the requester to read the guarded secret"
+	awaitReadAt(t, actor, proj, guardedPath, allowed)
+}
+
+func awaitReadAt(t *testing.T, actor *harness.Principal, proj *fixture.Project, secretPath string, allowed bool) {
+	t.Helper()
+	what := "the requester to read the secret at " + secretPath
 	if !allowed {
-		what = "the requester to lose read access to the guarded secret"
+		what = "the requester to lose read access to the secret at " + secretPath
 	}
 	wait.Until(t, what, func() bool {
-		status := readGuarded(t, actor, proj)
+		status := readAt(t, actor, proj, secretPath)
 		if allowed {
 			return status == http.StatusOK
 		}

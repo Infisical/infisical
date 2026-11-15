@@ -186,8 +186,8 @@ const STORED_TYPES = [
     allowedMethods: null,
     allowedPathPrefixes: null,
     credential: BEARER,
-    fields: ["serverUrl", "transport", "hostPattern"],
-    bundleFields: ["allowedTools", "customHeaders"],
+    fields: ["serverUrl", "transport", "hostPattern", "allowedTools"],
+    bundleFields: ["customHeaders"],
     inlineFields: ["customHeaders"]
   },
   {
@@ -292,7 +292,7 @@ describe("service responses", () => {
         })
       );
       expect(keysOf(parsed)).toEqual(
-        ["id", "name", "description", "type", ...fields, ...inlineFields, "credential"].sort()
+        ["id", "name", "description", "hook", "type", ...fields, ...inlineFields, "credential"].sort()
       );
     }
   );
@@ -314,6 +314,7 @@ describe("service responses", () => {
       id: "00000000-0000-4000-8000-000000000001",
       name: "analytics",
       description: null,
+      hook: null,
       ...postgresFields,
       credential: BASIC,
       customHeaders: [{ name: "X-Team", prefix: "" }],
@@ -366,6 +367,7 @@ describe("service responses", () => {
       id: "00000000-0000-4000-8000-000000000001",
       name: "service",
       description: null,
+      hook: null,
       ...toServiceTypeFields(row),
       credential,
       customHeaders: [],
@@ -402,6 +404,7 @@ describe("service responses", () => {
       id: "00000000-0000-4000-8000-000000000001",
       name: "bastion",
       description: null,
+      hook: null,
       type: AgentVaultServiceType.Ssh,
       host: "bastion.internal",
       port: 22,
@@ -417,6 +420,77 @@ describe("service responses", () => {
     expect(parsed).not.toHaveProperty("hostPattern");
     expect(parsed).not.toHaveProperty("database");
     expect(parsed).not.toHaveProperty("allowedMethods");
+  });
+});
+
+describe("hooks", () => {
+  const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
+  const ssh = (extra: Record<string, unknown> = {}) => ({
+    type: "ssh",
+    name: "bastion",
+    host: "bastion.internal",
+    credential: { type: "basic", username: "agent", password: "p" },
+    ...extra
+  });
+
+  test.each([
+    ["http", httpService({ hook })],
+    ["mcp", mcpService({ hook })],
+    ["postgres", postgres({ hook })],
+    ["mysql", postgres({ type: "mysql", hook })],
+    ["ssh", ssh({ hook })]
+  ])("a %s service can be created with one", (_type, body) => {
+    expect(createMessages(body)).toEqual([]);
+    expect(AgentVaultCreateServiceBodySchema.parse(body).hook).toEqual(hook);
+  });
+
+  test("create refuses a hook without a signing secret or with a bad URL, at the field", () => {
+    expect(createIssues(httpService({ hook: { url: hook.url } }))).toEqual([
+      expect.objectContaining({ path: ["hook", "signingSecret"] })
+    ]);
+    expect(createIssues(httpService({ hook: { ...hook, url: "https://hooks.example.com/?a=1" } }))).toEqual([
+      expect.objectContaining({ path: ["hook", "url"], message: "Hook URLs can't include a query string." })
+    ]);
+  });
+
+  test.each(["http", "mcp", "postgres", "mysql", "ssh"])(
+    "a %s service's update takes null, a URL alone, or both, each on its own",
+    (type) => {
+      expect(updateMessages({ type, hook: null })).toEqual([]);
+      expect(updateMessages({ type, hook: { url: hook.url } })).toEqual([]);
+      expect(updateMessages({ type, hook })).toEqual([]);
+      expect(AgentVaultUpdateServiceBodySchema.parse({ type, hook: null }).hook).toBeNull();
+    }
+  );
+
+  test("a bundle service's read carries the URL, null, or nothing, and never a secret", () => {
+    const row = toServiceTypeFields(STORED_TYPES[0]);
+    const read = (extra: Record<string, unknown>) =>
+      AgentVaultServiceSchema.parse(
+        bundleService({ ...row, credential: { type: AgentVaultCredentialType.Passthrough }, ...extra })
+      );
+    expect(read({ hook: { url: hook.url } }).hook).toEqual({ url: hook.url });
+    expect(read({ hook: null }).hook).toBeNull();
+    expect(read({})).not.toHaveProperty("hook");
+    expect(read({ hook: { url: hook.url, secret: "x", signingSecret: "y" } }).hook).toEqual({ url: hook.url });
+  });
+
+  test("a session's own service always carries its hook", () => {
+    const inline = (extra: Record<string, unknown>) =>
+      AgentVaultInlineServiceSchema.safeParse({
+        id: "00000000-0000-4000-8000-000000000001",
+        name: "bastion",
+        description: null,
+        type: AgentVaultServiceType.Ssh,
+        host: "bastion.internal",
+        port: 22,
+        credential: SSH_KEY,
+        ...extra
+      });
+    expect(inline({}).success).toBe(false);
+    expect(inline({ hook: null }).success).toBe(true);
+    const parsed = inline({ hook: { url: hook.url, secret: "x" } });
+    expect(parsed.success && parsed.data.hook).toEqual({ url: hook.url });
   });
 });
 

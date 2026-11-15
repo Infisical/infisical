@@ -1,5 +1,5 @@
 import { OrgMembershipRole } from "@app/db/schemas";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { Plan, PlanFeature } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TRoleDALFactory } from "../role/role-dal";
@@ -18,10 +18,10 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   orgId: string;
   membershipRoleSlug: string;
   roleDAL: TRoleDALFactory;
-  plan: TFeatureSet;
+  plan: Plan;
 }) => {
   if (isCustomOrgRole(membershipRoleSlug)) {
-    if (!plan?.rbac)
+    if (!plan?.has(PlanFeature.Rbac))
       throw new BadRequestError({
         message:
           "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."

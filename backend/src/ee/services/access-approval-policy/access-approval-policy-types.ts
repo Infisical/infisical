@@ -1,5 +1,5 @@
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { EnforcementLevel, OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -99,7 +99,7 @@ export type TListAccessApprovalPoliciesDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSecretAccessApprovalPolicyServiceFactoryDep = {
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findEffectiveProjectSubjectsMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;

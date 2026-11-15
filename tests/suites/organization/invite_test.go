@@ -110,9 +110,7 @@ func TestInvite_Create(t *testing.T) {
 			billed, so the one seat in use is the machine identity.`)
 
 		// Setup
-		limited := license.Enterprise().With(license.MaxIdentityLimit, 1)
-		limited.Slug = "pro"
-		tn := h.NewTenant(t, harness.WithPlan(limited))
+		tn := h.NewTenant(t, harness.WithPlan(license.SeatLimited(1)))
 		tn.NewMachineIdentity(t)
 		addr := tn.Email("overflow")
 

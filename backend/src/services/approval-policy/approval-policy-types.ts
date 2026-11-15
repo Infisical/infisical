@@ -206,7 +206,8 @@ export type TApprovalResource<
   validateConstraints: (policy: P, requestData: R) => { valid: boolean; errors?: string[] };
 
   // Whatever the approval entitles the requester to goes in the Tx variant, which commits with the
-  // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit.
+  // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit. Each
+  // runs at most once, for the approval that completes the request.
   postApprovalTxRoutine?: (
     request: TApprovalRequest,
     tx: Knex,

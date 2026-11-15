@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { v7 as uuidv7 } from "uuid";
 
 import type { TAuditLogs } from "@app/db/schemas";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -18,7 +19,6 @@ import { sanitizeLogPayload, sanitizeLogText } from "@app/lib/validator/log-safe
 import { JOB_SCHEDULER_PREFIX, QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { getAuditLogEventClass, isAlwaysRecordedEventClass } from "./audit-log-event-classes";
 import { getAuditLogExpiresAt, hasAuditLogRetention } from "./audit-log-retention-fns";
@@ -30,7 +30,7 @@ type TAuditLogQueueServiceFactoryDep = {
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForLogs">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;

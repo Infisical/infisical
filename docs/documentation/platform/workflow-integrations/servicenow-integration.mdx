@@ -43,6 +43,7 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
     - **Access Requests**: every request Infisical has sent
     - **Pending Requests**: requests waiting for a decision
     - **Admin Console** (admins only): every request, with a [**Resend to Infisical**](#resend-to-infisical) button for a decision that didn't reach Infisical
+    - **Allowed Callback Hosts**: the Infisical URLs that the application is allowed to send decisions to
 
     You can't approve or reject a request from these modules. Your approvers decide in the approval flow you set up in [Step 3](#step-3-set-up-the-approval-flow).
 
@@ -52,10 +53,46 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
 
     | Role | Assign it to |
     | --- | --- |
-    | `x_infis_approvals.admin` | The people who manage the integration. The role grants full access to every request, including delete, and the **Admin Console**. |
+    | `x_infis_approvals.admin` | The people who manage the integration. The role grants full access to every request, including delete, the **Admin Console**, and **Allowed Callback Hosts**. It's an elevated role, so admins have to elevate to it before they can use it. |
     | `x_infis_approvals.approver` | Every approver in a flow you build. Members of the **Infisical Approvers** group, which you set up in [Step 3](#step-3-set-up-the-approval-flow), get the role from the group. |
     | `x_infis_approvals.viewer` | People who only need to read requests and their audit trail. |
     | `x_infis_approvals.secret-manager-integration` | Only the integration user that Infisical signs in as, which you create in [Step 2](#step-2-connect-infisical-to-servicenow). |
+
+  </Step>
+  <Step>
+    Elevate to the `x_infis_approvals.admin` role, which you need to change the application's settings. Select your user avatar in the top-right corner, then select **Elevate role**.
+
+    ![Elevate Role in the User Menu](/images/platform/workflow-integrations/servicenow-integration/elevate-role-menu.png)
+
+  </Step>
+  <Step>
+    Select `x_infis_approvals.admin`, then select **Update**. The elevation ends when you log out.
+
+    ![Elevate to the Admin Role](/images/platform/workflow-integrations/servicenow-integration/elevate-role-admin.png)
+
+  </Step>
+  <Step>
+    Allow the application to send decisions to your Infisical URL. The application only notifies Infisical at a URL on this list.
+
+    In the navigator, go to **Infisical** > **Administration** > **Allowed Callback Hosts**.
+
+    ![Allowed Callback Hosts in the ServiceNow Navigator](/images/platform/workflow-integrations/servicenow-integration/allowed-callback-hosts-menu.png)
+
+  </Step>
+  <Step>
+    Select **New**.
+
+    ![New Callback Host](/images/platform/workflow-integrations/servicenow-integration/allowed-callback-hosts-new.png)
+
+  </Step>
+  <Step>
+    In **Infisical URL**, enter the URL of your Infisical instance, then select **Submit**:
+
+    - Infisical Cloud (US): `https://app.infisical.com/`
+    - Infisical Cloud (EU): `https://eu.infisical.com/`
+    - Self-hosted Infisical: your [`SITE_URL`](/self-hosting/configuration/envars)
+
+    ![Add the Infisical URL](/images/platform/workflow-integrations/servicenow-integration/allowed-callback-hosts-create.png)
 
   </Step>
 </Steps>
@@ -70,7 +107,11 @@ Infisical uses this connection to create each record and to read each decision b
 
 The Infisical application includes an approval flow, **Infisical - Default Approval**, and a group of approvers, **Infisical Approvers**. The flow asks the members of the group to approve each new request, so the first member who approves or rejects the request decides it. In the final step, the flow then notifies Infisical of the decision.
 
-When you install the application, the group has no members and the flow is inactive. Add your approvers to the group, then activate the flow.
+When you install the application, the group has no members and the flow is inactive. Add your approvers to the group, then activate the flow. If the **Infisical Approvers** group doesn't exist on your instance, see [The Infisical Approvers group is missing](#approvers-group-missing).
+
+<Note>
+  You can change the flow, for example to add approval steps or a trigger condition, as long as every branch still ends with the **Infisical - Notify Decision** action. See [Notify Infisical of the decision](#notify-infisical-of-the-decision).
+</Note>
 
 ### Add your approvers to the group
 
@@ -127,10 +168,6 @@ When you install the application, the group has no members and the flow is inact
 
   </Step>
 </Steps>
-
-<Note>
-  You can change the flow, for example to add approval steps or a trigger condition, as long as every branch still ends with the **Infisical - Notify Decision** action. See [Notify Infisical of the decision](#notify-infisical-of-the-decision).
-</Note>
 
 ### Use your own flow instead
 
@@ -250,11 +287,108 @@ Both sides keep their own record:
 - In ServiceNow, the access request record carries the full approval history, including who approved at each step and when, through the standard approval and audit tables
 - In Infisical, the project's [audit log](/documentation/platform/audit-logs) records the request, the decision received from ServiceNow (`access-approval-request-delegated-decision`), and the resulting access grant
 
-If your flow fills in **Approved By** or **Decision Notes** on the record, Infisical copies them into the decision's audit log event.
+If your flow fills in **Approvals** or **Decision Notes** on the record, Infisical copies them into the decision's audit log event, with every user listed in **Approvals** as an approver.
 
 ## Troubleshooting
 
 <AccordionGroup>
+  <Accordion title="The Infisical Approvers group is missing" id="approvers-group-missing">
+    The application creates the **Infisical Approvers** group and assigns it to
+    **Infisical - Default Approval** when you install it. If you can't find the
+    group in ServiceNow, create a group for your approvers and assign it to the
+    flow yourself.
+
+    Create the group:
+
+    <Steps>
+      <Step>
+        In ServiceNow, go to **All** > **System Security** > **Users and Groups** > **Groups**, then select **New**.
+
+        ![New Group](/images/platform/workflow-integrations/servicenow-integration/groups-new.png)
+
+      </Step>
+      <Step>
+        Enter a **Name** for the group, such as `Infisical Approvers Group`, then select **Submit**.
+
+        ![Create the Group](/images/platform/workflow-integrations/servicenow-integration/approvers-group-create.png)
+
+      </Step>
+      <Step>
+        Search the list for the name you entered and open the group.
+
+        ![Approvers Group in the Groups List](/images/platform/workflow-integrations/servicenow-integration/approvers-group-search.png)
+
+      </Step>
+      <Step>
+        Select **Edit...** on the **Roles** tab.
+
+        ![Roles Tab](/images/platform/workflow-integrations/servicenow-integration/approvers-group-roles-tab.png)
+
+      </Step>
+      <Step>
+        Move `x_infis_approvals.approver` from **Collection** to **Roles List**, then select **Save**.
+
+        ![Edit Group Roles](/images/platform/workflow-integrations/servicenow-integration/approvers-group-edit-roles.png)
+
+      </Step>
+      <Step>
+        Select **Edit...** on the **Group Members** tab.
+
+        ![Group Members Tab](/images/platform/workflow-integrations/servicenow-integration/approvers-group-members-tab.png)
+
+      </Step>
+      <Step>
+        Move each approver from **Collection** to **Group Members List**, then select **Save**.
+      </Step>
+    </Steps>
+
+    Then assign the group to the flow:
+
+    <Steps>
+      <Step>
+        Go to **All** > **Process Automation** > **Flow Designer**, open **Infisical - Default Approval**, and select **Edit flow**.
+
+        ![Edit the Flow](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-edit.png)
+
+      </Step>
+      <Step>
+        Select the **Ask For Approval on x_infis_approvals_access_request** action. Under **Rules**, select the group icon next to the approvers field.
+
+        ![Add a Group to the Approval Rule](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-add-group.png)
+
+      </Step>
+      <Step>
+        Search for the group you created and select it.
+
+        ![Pick the Approvers Group](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-pick-group.png)
+
+      </Step>
+      <Step>
+        Check that the group appears in the approvers field, then select **Done**.
+
+        ![Approvers Group Assigned to the Rule](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-group-done.png)
+
+      </Step>
+      <Step>
+        Select **Activate**.
+
+        ![Activate the Flow](/images/platform/workflow-integrations/servicenow-integration/approvers-group-flow-activate.png)
+
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="An approver doesn't see the request under My Approvals">
+    Open the list of approvals waiting on you directly. Replace
+    `<servicenow-instance>` with the host of your ServiceNow instance, such as
+    `example.service-now.com`:
+
+    ```
+    https://<servicenow-instance>/sysapproval_approver_list.do?sysparm_query=approverDYNAMIC90d1921e5f510100a9ad2572f2b477fe%5Estate%3Drequested
+    ```
+
+    The list shows every approval assigned to you that's still waiting for a
+    decision, including Infisical access requests.
+  </Accordion>
   <Accordion title="A request shows Not Submitted in Infisical">
     Infisical couldn't create the record, and the reason on the request says
     why: the integration user's credentials or role, a missing Infisical
@@ -293,7 +427,8 @@ If your flow fills in **Approved By** or **Decision Notes** on the record, Infis
   <Accordion title="Callback Failed with a connection error" id="resend-to-infisical">
     The ServiceNow instance can't reach the **Callback URL** on the record. Fix
     the instance's outbound firewall rules, then select **Resend to Infisical**
-    on the request in the **Admin Console**. If the URL itself is wrong, cancel the current request, correct
+    on the request in the **Admin Console** (elevate to `x_infis_approvals.admin`
+    first). If the URL itself is wrong, cancel the current request, correct
     `SITE_URL` and create the request again.
   </Accordion>
   <Accordion title="Callback Failed with an invalid decision">

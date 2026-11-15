@@ -1,3 +1,4 @@
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
@@ -24,6 +25,7 @@ import { addUserMembership, createUser, deleteUsers } from "./testUtils/users";
 const membershipDAL = membershipDALFactory(testDb);
 
 const removalDeps = {
+  usageMeteringService: new FakeUsageMeteringService(),
   userDAL: userDALFactory(testDb),
   userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
   identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),

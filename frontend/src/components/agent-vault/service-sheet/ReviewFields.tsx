@@ -103,6 +103,12 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
     hasStoredKey &&
     service?.credential.type === AgentVaultCredentialType.SshKey &&
     service.credential.hasCertificate;
+  const hasStoredHook = isUpdate && Boolean(service?.hook);
+  const hookSecretOutcome = () => {
+    if (!hasStoredHook) return "Set";
+    if (form.hookSigningSecret === UNCHANGED_SECRET || !form.hookSigningSecret) return "Unchanged";
+    return "Replaced";
+  };
 
   const headerRows = form.customHeaders
     .filter((header) => header.name)
@@ -311,6 +317,28 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
           </Detail>
         </DetailGroup>
       )}
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">Hook</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Hook</DetailLabel>
+            <DetailValue>{form.hookEnabled ? "On" : "Off"}</DetailValue>
+          </Detail>
+          {form.hookEnabled && (
+            <>
+              <Detail>
+                <DetailLabel>URL</DetailLabel>
+                <DetailValue className="break-all">{form.hookUrl.trim()}</DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Signing Secret</DetailLabel>
+                <DetailValue>{hookSecretOutcome()}</DetailValue>
+              </Detail>
+            </>
+          )}
+        </div>
+      </DetailGroup>
     </div>
   );
 };
