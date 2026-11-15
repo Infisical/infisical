@@ -33,7 +33,12 @@ import { accessDemo } from "../access/demo";
 import { DEMO_PAM_PROJECT_ID } from "../access/fixtures";
 import { createFixtureStore } from "../fixture-store";
 import type { PamAdapter } from "./contract";
-import { demoApplicablePolicies, pamOperationsDemo, templateStore } from "./operations/demo";
+import {
+  demoApplicablePolicies,
+  discoveredAccountsOf,
+  pamOperationsDemo,
+  templateStore
+} from "./operations/demo";
 
 const uuid = (prefix: string, index: number) =>
   `${prefix}000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
@@ -462,6 +467,53 @@ const isMemberFolder = (folderId: string) => {
 
 const folderPermissions = (folderName?: string) =>
   folderName === "contractors" ? launchOnly : fullAccess;
+
+const moveTemplateCount = (from: string | null, to: string | null) =>
+  templateStore.update((current) =>
+    current.map((template) => {
+      const delta = (template.id === to ? 1 : 0) - (template.id === from ? 1 : 0);
+      return delta
+        ? { ...template, accountCount: Math.max(0, template.accountCount + delta) }
+        : template;
+    })
+  );
+
+const newAccount = (
+  fields: Pick<
+    TPamAccountListItem,
+    | "id"
+    | "name"
+    | "description"
+    | "accountType"
+    | "folderId"
+    | "templateId"
+    | "gatewayId"
+    | "gatewayPoolId"
+  >
+): TPamAccountListItem => {
+  const folder = folderStore.get().find(({ id }) => id === fields.folderId);
+  const template = templateStore.get().find(({ id }) => id === fields.templateId);
+  const now = new Date().toISOString();
+  return {
+    ...accounts[0],
+    ...fields,
+    folderName: folder?.name ?? "",
+    templateName: template?.name ?? "Default",
+    isAccessible: true,
+    accessibilityIssues: [],
+    isStale: false,
+    warnings: [],
+    heartbeatStatus: null,
+    heartbeatEnabled: false,
+    requiresApproval: false,
+    accessStatus: PamAccessStatus.None,
+    grantExpiresAt: null,
+    pendingRequestId: null,
+    permissions: folderPermissions(folder?.name ?? ""),
+    createdAt: now,
+    updatedAt: now
+  };
+};
 
 const accountTypeOf = (type: string) =>
   accountTypes.find((meta) => meta.type === type) ?? accountTypes[0];
@@ -919,9 +971,7 @@ export const pamDemo: PamAdapter = {
         accountStore.get().some((account) => account.name === name && account.folderId === folderId)
       )
         throw new Error(`An account named ${name} already exists in this folder`);
-      const template = templateStore.get().find(({ id }) => id === templateId);
       createdCount += 1;
-      const now = new Date().toISOString();
       const id = uuid("a1", createdCount);
       const credentials = Object.fromEntries(
         Object.entries(rest.credentials).filter(
@@ -931,33 +981,18 @@ export const pamDemo: PamAdapter = {
             )
         )
       );
-      const account: TPamAccountListItem = {
-        ...accounts[0],
+      const account = newAccount({
         id,
         name,
         description: description ?? null,
-        folderId,
-        folderName: folder.name,
-        templateId,
-        templateName: template?.name ?? "Default",
         accountType,
+        folderId,
+        templateId,
         gatewayId: rest.gatewayId ?? null,
-        gatewayPoolId: rest.gatewayPoolId ?? null,
-        isAccessible: true,
-        accessibilityIssues: [],
-        isStale: false,
-        warnings: [],
-        heartbeatStatus: null,
-        heartbeatEnabled: false,
-        requiresApproval: false,
-        accessStatus: PamAccessStatus.None,
-        grantExpiresAt: null,
-        pendingRequestId: null,
-        permissions: folderPermissions(folder.name),
-        createdAt: now,
-        updatedAt: now
-      };
+        gatewayPoolId: rest.gatewayPoolId ?? null
+      });
       accountStore.update((current) => [...current, account]);
+      moveTemplateCount(null, templateId);
       accountDetailStore.update((current) => ({
         ...current,
         [id]: { connectionDetails: rest.connectionDetails, credentials }
@@ -989,6 +1024,7 @@ export const pamDemo: PamAdapter = {
       accountStore.update((current) =>
         current.map((account) => (account.id === accountId ? updated : account))
       );
+      moveTemplateCount(existing.templateId, updated.templateId);
       const secretKeys = new Set(
         accountTypeOf(accountType)
           .credentialFields.filter((field) => field.secret)
@@ -1012,12 +1048,45 @@ export const pamDemo: PamAdapter = {
       return { ...updated, corsProbeUrl: null };
     }
   }),
+  useImportDiscoveredAccounts: () => {
+    const base = pamOperationsDemo.useImportDiscoveredAccounts();
+    return {
+      ...base,
+      mutateAsync: async (input: Parameters<typeof base.mutateAsync>[0]) => {
+        const discovered = discoveredAccountsOf(input.sourceId);
+        const results = await base.mutateAsync(input);
+        results.forEach(({ status, accountId, discoveredAccountId }) => {
+          const entry = input.accounts.find(
+            (item) => item.discoveredAccountId === discoveredAccountId
+          );
+          const found = discovered.find(({ id }) => id === discoveredAccountId);
+          if (status !== "imported" || !accountId || !entry || !found) return;
+          accountStore.update((current) => [
+            ...current,
+            newAccount({
+              id: accountId,
+              name: entry.name ?? found.name,
+              description: null,
+              accountType: found.accountType,
+              folderId: input.folderId,
+              templateId: entry.templateId,
+              gatewayId: null,
+              gatewayPoolId: null
+            })
+          ]);
+          moveTemplateCount(null, entry.templateId);
+        });
+        return results;
+      }
+    };
+  },
   useDeleteAccount: () => ({
     isPending: false,
     mutateAsync: async ({ accountId }) => {
       const existing = accountStore.get().find(({ id }) => id === accountId);
       if (!existing) throw new Error("This account no longer exists");
       accountStore.update((current) => current.filter(({ id }) => id !== accountId));
+      moveTemplateCount(existing.templateId, null);
       return existing;
     }
   }),

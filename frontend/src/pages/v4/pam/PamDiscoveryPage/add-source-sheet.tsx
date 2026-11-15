@@ -35,7 +35,7 @@ export const AddSourceSheet = ({
   const [form, setForm] = useState(emptySourceForm);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const isDirty = step === 2 && JSON.stringify(form) !== JSON.stringify(emptySourceForm());
+  const isDirty = JSON.stringify(form) !== JSON.stringify(emptySourceForm());
   const reset = () => {
     setType(undefined);
     setStep(1);

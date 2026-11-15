@@ -388,6 +388,7 @@ export const useAccountOverlays = ({
 } = {}) => {
   const accountSheet = usePamSheetState("accountId");
   const [creating, setCreating] = useState<{ folderId?: string } | null>(null);
+  const [createSeq, setCreateSeq] = useState(0);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState<AccountTarget | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<FolderTarget | null>(null);
@@ -397,6 +398,7 @@ export const useAccountOverlays = ({
   const overlays = (
     <>
       <CreateAccountSheet
+        key={createSeq}
         open={Boolean(creating)}
         defaultFolderId={lockedFolderId ?? creating?.folderId}
         folderLocked={Boolean(lockedFolderId)}
@@ -442,7 +444,10 @@ export const useAccountOverlays = ({
 
   return {
     overlays,
-    openCreateAccount: (folderId?: string) => setCreating({ folderId }),
+    openCreateAccount: (folderId?: string) => {
+      setCreateSeq((seq) => seq + 1);
+      setCreating({ folderId });
+    },
     openCreateFolder: () => setCreatingFolder(true),
     openAccount: (accountId: string) => accountSheet.openSheet(accountId),
     openDeleteAccount: setDeletingAccount,

@@ -596,6 +596,8 @@ const runStore = createFixtureStore(runs);
 const discoveredStore = createFixtureStore(discovered);
 const staleStore = createFixtureStore(stale);
 
+export const discoveredAccountsOf = (id: string) => discoveredStore.get()[id] ?? [];
+
 const page = <T extends { name: string }>(rows: T[], params?: TPamPageParams) => {
   const search = params?.search?.trim().toLowerCase();
   const matching = search ? rows.filter((row) => row.name.toLowerCase().includes(search)) : rows;

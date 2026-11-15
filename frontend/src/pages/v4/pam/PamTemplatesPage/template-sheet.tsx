@@ -3,6 +3,7 @@ import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-chan
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
+import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -32,13 +33,14 @@ import {
   maxGeneratedPasswordLength,
   pamAccountTypeSupportsSessionLogMasking,
   PamPolicyType,
+  type TPamAccountTemplate,
   type TPamAccountTemplateDetail,
   type TPamAccountTypeMetadata,
   type TUpdatePamAccountTemplateDTO
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { failed, saved, toast } from "../../access/toast";
+import { errorMessage, failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { GatewayPicker } from "../../networking/gateway-picker";
@@ -76,8 +78,31 @@ const APPROVAL_DEPENDENT_POLICIES = [
 ];
 const DEFAULT_INTERVAL = 86400;
 
-const settingsOf = (template: TPamAccountTemplateDetail) =>
+type TemplateState = Pick<TPamAccountTemplate, "settings" | "policies" | "updatedAt">;
+
+const settingsOf = (template: TemplateState) =>
   (template.settings ?? {}) as Record<string, unknown>;
+const policiesOf = (template: TemplateState) =>
+  (template.policies ?? {}) as Record<string, unknown>;
+
+// Settings and policies are replaced whole on save, so each card's change is replayed onto the
+// newest saved copy, one save at a time, instead of sending the snapshot it rendered with.
+const saveQueues = new Map<string, Promise<unknown>>();
+const lastSaved = new Map<string, TemplateState>();
+
+const rebase = (
+  latest: Record<string, unknown>,
+  base: Record<string, unknown>,
+  next: Record<string, unknown>
+) => {
+  const out = { ...latest };
+  new Set([...Object.keys(base), ...Object.keys(next)]).forEach((key) => {
+    if (JSON.stringify(base[key]) === JSON.stringify(next[key])) return;
+    if (key in next) out[key] = next[key];
+    else delete out[key];
+  });
+  return out;
+};
 
 const useTemplateUpdate = (template: TPamAccountTemplateDetail) => {
   const update = useV4Adapter("pam").useUpdateTemplate();
@@ -86,8 +111,26 @@ const useTemplateUpdate = (template: TPamAccountTemplateDetail) => {
     success: string,
     failure: string
   ) => {
+    const base = template;
+    const queued = (saveQueues.get(base.id) ?? Promise.resolve()).then(async () => {
+      const stored = lastSaved.get(base.id);
+      const latest = stored && stored.updatedAt > base.updatedAt ? stored : base;
+      const result = await update.mutateAsync({
+        templateId: base.id,
+        ...patch,
+        ...(patch.settings && {
+          settings: rebase(settingsOf(latest), settingsOf(base), patch.settings)
+        }),
+        ...(patch.policies && {
+          policies: rebase(policiesOf(latest), policiesOf(base), patch.policies)
+        })
+      });
+      lastSaved.set(base.id, result);
+      return result;
+    });
+    saveQueues.set(base.id, Promise.allSettled([queued]));
     try {
-      const result = await update.mutateAsync({ templateId: template.id, ...patch });
+      const result = await queued;
       saved(success);
       return result;
     } catch (error) {
@@ -741,7 +784,7 @@ export const TemplateSheet = ({
   onClose: () => void;
 }) => {
   const pam = useV4Adapter("pam");
-  const { data: template } = pam.useTemplate(templateId);
+  const { data: template, error } = pam.useTemplate(templateId);
   const { data: accountTypes = [] } = pam.useAccountTypes();
   const [drafts, setDrafts] = useState<Drafts>({});
   const close = () => {
@@ -795,7 +838,16 @@ export const TemplateSheet = ({
                   <GeneralTab {...cardProps} meta={meta} />
                 )}
               </Stack>
-            ) : (
+            ) : null}
+            {!cardProps && error ? (
+              <EmptyState
+                size="sm"
+                icon="alert"
+                title="Could not load this template"
+                description={errorMessage(error) || "Please try again."}
+              />
+            ) : null}
+            {!cardProps && !error && (
               <Stack gap={16}>
                 <Skeleton height={32} width={240} />
                 <Skeleton lines={6} />

@@ -30,6 +30,7 @@ import {
 } from "@app/hooks/api/pam";
 import { isBrokenChunkMarker } from "@app/hooks/api/pam/session-playback/types";
 
+import { errorMessage } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { formatDuration, isMachineSession } from "./session-format";
 import { SessionStatus } from "./session-status";
@@ -255,7 +256,7 @@ export const SessionSheet = ({
   onTerminate: (session: TPamSession) => void;
 }) => {
   const pam = useV4Adapter("pam");
-  const { data: session } = pam.useSession(sessionId ?? "");
+  const { data: session, error } = pam.useSession(sessionId ?? "");
   const { can } = pam.useAccountActions(session?.accountId ?? "", Boolean(session?.accountId));
   const canTerminate =
     session?.status === PamSessionStatus.Active &&
@@ -269,9 +270,16 @@ export const SessionSheet = ({
           {session && <SheetDescription>{session.actorName}</SheetDescription>}
         </SheetHeader>
         <SheetBody>
-          {session ? (
-            <SessionBody session={session} />
-          ) : (
+          {session && <SessionBody session={session} />}
+          {!session && error ? (
+            <EmptyState
+              size="sm"
+              icon="alert"
+              title="Could not load this session"
+              description={errorMessage(error) || "Please try again."}
+            />
+          ) : null}
+          {!session && !error && (
             <Stack gap={16}>
               <Skeleton height={32} width={240} />
               <Skeleton lines={6} />

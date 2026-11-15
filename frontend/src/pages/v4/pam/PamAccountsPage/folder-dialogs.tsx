@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -7,7 +8,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -59,14 +61,16 @@ export const CreateFolderDialog = ({
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
   const [pending, setPending] = useState(false);
 
-  const close = (next: boolean) => {
-    if (!next) {
-      setName("");
-      setDescription("");
-      setErrors({});
-    }
-    onOpenChange(next);
+  const close = () => {
+    setName("");
+    setDescription("");
+    setErrors({});
+    onOpenChange(false);
   };
+  const guard = useDiscardChangesGuard({
+    isDirty: Boolean(name.trim() || description.trim()),
+    onDiscard: close
+  });
 
   const submit = async () => {
     const next = {
@@ -86,7 +90,7 @@ export const CreateFolderDialog = ({
       });
       saved("Folder created");
       onCreated?.(folder);
-      close(false);
+      close();
     } catch (error) {
       failed("Failed to create folder", error);
     } finally {
@@ -95,57 +99,69 @@ export const CreateFolderDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={close}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>Add folder</DialogTitle>
-        </DialogHeader>
-        <form
-          id="pam-create-folder"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Stack gap={16}>
-            <Field label="Name" error={errors.name}>
-              <Input
-                autoComplete="off"
-                placeholder="backend-team"
-                value={name}
-                invalid={Boolean(errors.name)}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setErrors((current) => ({ ...current, name: undefined }));
-                }}
-              />
-            </Field>
-            <Field label="Description" optional error={errors.description}>
-              <Textarea
-                rows={3}
-                placeholder="Who needs access and what accounts will this contain?"
-                value={description}
-                aria-invalid={Boolean(errors.description) || undefined}
-                onChange={(event) => {
-                  setDescription(event.target.value);
-                  setErrors((current) => ({ ...current, description: undefined }));
-                }}
-              />
-            </Field>
-          </Stack>
-        </form>
-        <DialogFooter>
-          <Inline gap={8} justify="end">
-            <Button variant="outline" onClick={() => close(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" form="pam-create-folder" loading={pending}>
-              Add folder
-            </Button>
-          </Inline>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (next) onOpenChange(true);
+          else guard.requestDiscard();
+        }}
+      >
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>Add folder</DialogTitle>
+          </DialogHeader>
+          <form
+            id="pam-create-folder"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <Stack gap={16}>
+              <Field label="Name" error={errors.name}>
+                <Input
+                  autoComplete="off"
+                  placeholder="backend-team"
+                  value={name}
+                  invalid={Boolean(errors.name)}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setErrors((current) => ({ ...current, name: undefined }));
+                  }}
+                />
+              </Field>
+              <Field label="Description" optional error={errors.description}>
+                <Textarea
+                  rows={3}
+                  placeholder="Who needs access and what accounts will this contain?"
+                  value={description}
+                  aria-invalid={Boolean(errors.description) || undefined}
+                  onChange={(event) => {
+                    setDescription(event.target.value);
+                    setErrors((current) => ({ ...current, description: undefined }));
+                  }}
+                />
+              </Field>
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Inline gap={8} justify="end">
+              <Button variant="outline" onClick={guard.requestDiscard}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" form="pam-create-folder" loading={pending}>
+                Add folder
+              </Button>
+            </Inline>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        {...guard.discardDialogProps}
+        description="The folder you started will be lost."
+      />
+    </>
   );
 };
 

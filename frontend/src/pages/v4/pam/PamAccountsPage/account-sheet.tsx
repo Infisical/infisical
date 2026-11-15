@@ -1,7 +1,9 @@
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
+import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -33,8 +35,9 @@ import {
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useOrgId } from "../../access/permissions";
-import { failed, saved } from "../../access/toast";
+import { errorMessage, failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import type { PamAdapter } from "../../data/pam/contract";
 import { orgHref, useGo } from "../../links";
 import {
   applyForcedRules,
@@ -84,21 +87,22 @@ const AccountForm = ({
   account,
   metadata,
   lead,
+  update,
   onDirtyChange
 }: {
   account: TPamAccount;
   metadata: TPamAccountTypeMetadata;
   lead: ReactNode;
+  update: ReturnType<PamAdapter["useUpdateAccount"]>;
   onDirtyChange: (dirty: boolean) => void;
 }) => {
   const pam = useV4Adapter("pam");
   const { data: folders = [] } = pam.useFolders();
   const { data: templates = [] } = pam.useTemplates({ type: account.accountType });
-  const update = pam.useUpdateAccount();
   const initial = useMemo(() => draftOf(account, metadata), [account, metadata]);
   const [draft, setDraft] = useState(initial);
   const [errors, setErrors] = useState<TFieldErrors>({});
-  const [pending, setPending] = useState(false);
+  const pending = update.isPending;
   const dirty = !sameDraft(draft, initial);
 
   const setDirtyDraft = (next: Draft) => {
@@ -127,7 +131,6 @@ const AccountForm = ({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     const credentials = filterUnchangedCredentials(draft.values.credentials);
-    setPending(true);
     try {
       await update.mutateAsync({
         accountId: account.id,
@@ -152,8 +155,6 @@ const AccountForm = ({
           "Failed to update account",
           unmapped.length ? new Error(unmapped.join(", ")) : error
         );
-    } finally {
-      setPending(false);
     }
   };
 
@@ -281,18 +282,19 @@ export const AccountSheet = ({
   const orgId = useOrgId();
   const go = useGo();
   const pam = useV4Adapter("pam");
-  const { data: account, isPending } = pam.useAccount(accountId);
+  const { data: account, isPending, error } = pam.useAccount(accountId);
   const { data: accountTypes = [] } = pam.useAccountTypes();
   const { can } = pam.useAccountActions(accountId ?? "", Boolean(accountId));
   const canEdit = can(PamResourcePermissionActions.EditAccounts);
-  const dirty = useRef(false);
-  const [discarding, setDiscarding] = useState(false);
+  const update = pam.useUpdateAccount();
+  const [dirty, setDirty] = useState(false);
   const metadata = accountTypes.find(({ type }) => type === account?.accountType);
 
   const close = () => {
-    dirty.current = false;
+    setDirty(false);
     onOpenChange(false);
   };
+  const guard = useDiscardChangesGuard({ isDirty: dirty, onDiscard: close });
 
   const summary: DataListItem[] = account
     ? [
@@ -344,6 +346,17 @@ export const AccountSheet = ({
       </Stack>
     </SheetBody>
   );
+  if (!account && error)
+    body = (
+      <SheetBody>
+        <EmptyState
+          size="sm"
+          icon="alert"
+          title="Could not load this account"
+          description={errorMessage(error) || "Please try again."}
+        />
+      </SheetBody>
+    );
   if (!isPending && account && metadata)
     body = canEdit ? (
       <AccountForm
@@ -351,9 +364,8 @@ export const AccountSheet = ({
         account={account}
         metadata={metadata}
         lead={lead}
-        onDirtyChange={(next) => {
-          dirty.current = next;
-        }}
+        update={update}
+        onDirtyChange={setDirty}
       />
     ) : (
       <SheetBody>{lead}</SheetBody>
@@ -364,15 +376,10 @@ export const AccountSheet = ({
       <Sheet
         open={Boolean(accountId)}
         onOpenChange={(next) => {
-          if (next) return;
-          if (dirty.current) {
-            setDiscarding(true);
-            return;
-          }
-          close();
+          if (!next) guard.requestDiscard();
         }}
       >
-        <SheetContent size="lg">
+        <SheetContent size="lg" pending={update.isPending}>
           <SheetHeader>
             <Inline gap={12} align="center" wrap={false}>
               {metadata && <ProviderIcon icon={metadata.icon} alt={metadata.name} size="md" />}
@@ -390,13 +397,8 @@ export const AccountSheet = ({
         </SheetContent>
       </Sheet>
       <DiscardChangesAlertDialog
-        open={discarding}
-        onOpenChange={setDiscarding}
+        {...guard.discardDialogProps}
         description="Your unsaved account changes will be lost."
-        onDiscard={() => {
-          setDiscarding(false);
-          close();
-        }}
       />
     </>
   );
