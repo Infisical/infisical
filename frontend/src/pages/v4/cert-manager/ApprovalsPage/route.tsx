@@ -11,10 +11,7 @@ const SearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/v4/organizations/$orgId/cert-manager/approvals/")({
-  staticData: {
-    readiness: "partial",
-    missing: ["Create a certificate profile from the policy form"]
-  },
+  staticData: { readiness: "full" },
   component: ApprovalsPage,
   validateSearch: zodValidator(SearchSchema),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

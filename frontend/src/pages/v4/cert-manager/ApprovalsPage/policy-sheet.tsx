@@ -13,6 +13,10 @@ import { Heading } from "@infisical/cipher/ui/text";
 import ms from "ms";
 
 import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   ApprovalPolicyType,
   ApproverType,
   type CertRequestPolicyConditions,
@@ -20,8 +24,10 @@ import {
 } from "@app/hooks/api/approvalPolicies/types";
 import type { TPkiApplicationMember } from "@app/hooks/api/pkiApplications/types";
 
+import { useProjectPermission } from "../../access/permissions";
 import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { CertificateProfileSheet } from "../components/profile-sheet";
 
 type StepDraft = {
   key: string;
@@ -153,6 +159,11 @@ export const PolicySheet = ({
   const [errors, setErrors] = useState<Errors>({});
   const [step, setStep] = useState(0);
   const [discarding, setDiscarding] = useState(false);
+  const [creatingProfile, setCreatingProfile] = useState<string>();
+  const canCreateProfile = useProjectPermission(projectId).permission.can(
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionSub.CertificateProfiles
+  );
   const completed = useRef(false);
   const initial = useRef(draftOf(policy));
 
@@ -316,6 +327,8 @@ export const PolicySheet = ({
                     options={profileOptions}
                     value={draft.profileNames}
                     onChange={(value) => set("profileNames", value)}
+                    onCreate={canCreateProfile ? (query) => setCreatingProfile(query) : undefined}
+                    createLabel={(query) => `Create profile ${query}`}
                   />
                 </Field>
                 <Checkbox
@@ -453,6 +466,14 @@ export const PolicySheet = ({
         }}
         description="Your unsaved policy changes will be lost."
       />
+      {creatingProfile !== undefined && (
+        <CertificateProfileSheet
+          projectId={projectId}
+          initialSlug={creatingProfile}
+          onCreated={(profile) => set("profileNames", [...draft.profileNames, profile.slug])}
+          onClose={() => setCreatingProfile(undefined)}
+        />
+      )}
     </>
   );
 };
