@@ -12,6 +12,7 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
+import { FileInput } from "@infisical/cipher/ui/file-input";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
@@ -90,45 +91,6 @@ const UploadNotices = ({
   </>
 );
 
-const PickedFile = ({
-  file,
-  reading,
-  disabled,
-  onPick,
-  onRemove
-}: {
-  file?: File;
-  reading: boolean;
-  disabled: boolean;
-  onPick: () => void;
-  onRemove: () => void;
-}) =>
-  file ? (
-    <div className={styles.uploadItem}>
-      <Icon name="file" />
-      <span className={styles.uploadName} title={file.name}>
-        {file.name}
-      </span>
-      <Meta>{formatSkillBytes(file.size)}</Meta>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        icon="x"
-        iconOnly
-        aria-label={`Remove ${file.name}`}
-        disabled={disabled}
-        loading={reading}
-        onClick={onRemove}
-      />
-    </div>
-  ) : (
-    <Inline gap={8}>
-      <Button variant="outline" icon="upload" disabled={disabled} onClick={onPick}>
-        Choose a .zip or .md file
-      </Button>
-    </Inline>
-  );
-
 const UploadedFiles = ({
   files,
   uploadedPaths
@@ -178,7 +140,6 @@ export const SkillUploadDialog = ({
   const [conflict, setConflict] = useState<number>();
   const [pending, setPending] = useState(false);
   const readId = useRef(0);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   const { filesToPublish, uploadedPaths, renamedTo } = useMemo(
     () => planUpload(upload, latest.data?.files, skill?.name),
@@ -198,7 +159,6 @@ export const SkillUploadDialog = ({
     readId.current += 1;
     const { current } = readId;
     setConflict(undefined);
-    if (fileInput.current) fileInput.current.value = "";
     if (!file) {
       setUpload({ status: "empty" });
       return;
@@ -282,18 +242,11 @@ export const SkillUploadDialog = ({
               error={upload.status === "invalid" ? upload.message : undefined}
               wide
             >
-              <input
-                ref={fileInput}
-                type="file"
+              <FileInput
                 accept=".zip,.md"
-                hidden
-                onChange={(event) => selectFile(event.target.files?.[0])}
-              />
-              <PickedFile
-                file={upload.status === "empty" ? undefined : upload.file}
-                reading={upload.status === "reading"}
-                disabled={pending}
-                onPick={() => fileInput.current?.click()}
+                files={upload.status === "empty" ? [] : [upload.file]}
+                disabled={pending || upload.status === "reading"}
+                onFiles={([file]) => selectFile(file)}
                 onRemove={() => selectFile()}
               />
             </Field>
