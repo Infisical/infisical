@@ -128,7 +128,6 @@ export const MemberRolesSection = ({
     <Gate allowed={!addReason} reason={addReason}>
       <Button
         variant="accent"
-        size="xs"
         icon="plus"
         disabled={Boolean(addReason)}
         onClick={() => setAdding(Date.now())}

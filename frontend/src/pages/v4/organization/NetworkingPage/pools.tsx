@@ -223,7 +223,6 @@ export const PoolSheet = ({
                     <MultiSelect
                       label="Select gateways"
                       placeholder="Select gateways"
-                      size="sm"
                       options={available.map((gateway) => ({
                         value: gateway.id,
                         label: gateway.name

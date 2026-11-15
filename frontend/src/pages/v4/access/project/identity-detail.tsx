@@ -291,13 +291,12 @@ const DetailsCard = ({
           <Gate allowed={canEdit}>
             <Button
               variant="outline"
-              size="icon"
+              icon={PencilIcon}
+              iconOnly
               aria-label="Edit machine identity"
               disabled={!canEdit}
               onClick={onEdit}
-            >
-              <Icon icon={PencilIcon} size={12} />
-            </Button>
+            />
           </Gate>
         )
       }
