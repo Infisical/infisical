@@ -51,8 +51,6 @@ import { AuditLogStreamsTab } from "./streams/streams";
 
 const PAGE_SIZE = 500;
 const rowHeight = 48;
-const initialFrame = 11 * rowHeight;
-const maxFrame = 840;
 const hour = 3600 * 1000;
 const day = 24 * hour;
 
@@ -127,7 +125,8 @@ const makeColumns = (
     id: "time",
     header: "Time",
     width: 184,
-    render: (row) => <Meta>{formatTime(row.createdAt)}</Meta>
+    mono: true,
+    render: (row) => formatTime(row.createdAt)
   },
   {
     id: "actor",
@@ -143,6 +142,7 @@ const makeColumns = (
     grow: true,
     maxWidth: 380,
     primary: true,
+    mono: true,
     text: (row) => row.event.type,
     render: (row) => {
       const detail = [showProject && row.projectName, environmentOf(row), targetOf(row)]
@@ -151,7 +151,7 @@ const makeColumns = (
       return (
         <Inline
           gap={12}
-          align="center"
+          align="baseline"
           wrap={false}
           style={{ minWidth: 0, overflow: "hidden" }}
           title={[row.event.type, detail].filter(Boolean).join(", ")}
@@ -160,7 +160,7 @@ const makeColumns = (
             variant="link"
             underline="hover"
             onClick={() => onOpen(row)}
-            style={{ minWidth: 0, flexShrink: 1 }}
+            style={{ minWidth: 0, flexShrink: 1, font: "inherit" }}
           >
             <code style={truncate}>{row.event.type}</code>
           </Button>
@@ -179,11 +179,11 @@ const makeColumns = (
   {
     id: "source",
     header: "Source",
-    width: 232,
+    width: 280,
     render: (row) => (
-      <Inline gap={8} align="center" wrap={false}>
+      <Inline gap={8} align="baseline" wrap={false} style={{ minWidth: 0, overflow: "hidden" }}>
         {sourceOf(row)}
-        <Meta>{row.ipAddress}</Meta>
+        <Meta style={truncate}>{row.ipAddress}</Meta>
       </Inline>
     )
   }
@@ -250,7 +250,6 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
   const [custom, setCustom] = useState<DateRange>();
   const [anchor, setAnchor] = useState(() => Date.now());
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
-  const [frame, setFrame] = useState(initialFrame);
   const [opened, setOpened] = useState<AuditLog | null>(null);
   const columns = useMemo(() => makeColumns(setOpened, !project), [project]);
   const preset = ranges.find((item) => item.value === range);
@@ -396,10 +395,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
     }
   ];
 
-  const reset = () => {
-    setFrame(initialFrame);
-    setAnchor(Date.now());
-  };
+  const reset = () => setAnchor(Date.now());
 
   let empty = (
     <EmptyState
@@ -546,7 +542,6 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
           getRowId={(row) => row.id}
           rowLabel={(row) => `${row.event.type} by ${actorName(row.actor)}`}
           onRowActivate={setOpened}
-          height={frame}
           rowHeight={rowHeight}
           virtual
           loadMore={
@@ -554,11 +549,7 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
               ? {
                   label: `Load ${PAGE_SIZE} more`,
                   loading: isFetchingNextPage,
-                  onClick: () => {
-                    fetchNextPage().then(() =>
-                      setFrame((height) => Math.min(maxFrame, height + 6 * rowHeight))
-                    );
-                  }
+                  onClick: () => fetchNextPage()
                 }
               : undefined
           }
