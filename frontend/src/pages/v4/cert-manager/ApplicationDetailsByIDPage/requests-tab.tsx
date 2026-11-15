@@ -129,7 +129,11 @@ export const RequestsTab = ({
   const status = filters.find((filter) => filter.field === "status")?.values[0] as
     | StatusFilter
     | undefined;
-  const { data, isPending, error: loadError } = adapter.useCertificateRequests({
+  const {
+    data,
+    isPending,
+    error: loadError
+  } = adapter.useCertificateRequests({
     applicationId: application?.id,
     offset: (page - 1) * pageSize,
     limit: pageSize,
