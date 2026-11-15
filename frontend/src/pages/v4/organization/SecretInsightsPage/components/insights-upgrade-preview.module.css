@@ -1,0 +1,26 @@
+.preview {
+  display: grid;
+}
+
+.backdrop {
+  grid-area: 1 / 1;
+  pointer-events: none;
+  user-select: none;
+  filter: blur(var(--cipher-space-3));
+  mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+}
+
+.prompt {
+  position: relative;
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--cipher-space-16);
+  padding-block-start: var(--cipher-space-48);
+}
+
+.promptCard {
+  inline-size: 100%;
+  max-inline-size: var(--cipher-size-dialog);
+}
