@@ -3,6 +3,7 @@ import {
   AlertPrincipalType,
   AlertRunStatus,
   CertificateAlertResourceType,
+  CertificateApplicationAlertEventType,
   CertificateManagerAlertEventType,
   SignerAlertEventType,
   type TAlert,
@@ -16,9 +17,12 @@ import type { OrgUser } from "@app/hooks/api/users/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
+import { demoApplications } from "../pki-applications/demo-store";
 import type { CertManagerAlertsAdapter } from "./contract-alerts";
 
 const PROJECT_ID = "internal-pki";
+const PAYMENTS_APPLICATION_ID =
+  demoApplications.get().find((entry) => entry.name === "payments-api")?.id ?? "payments-api";
 const hoursAgo = (count: number) => new Date(Date.now() - count * 3_600_000).toISOString();
 
 const application = (id: string, name: string, certificateCount: number) => ({
@@ -266,16 +270,59 @@ const alerts = createFixtureStore<TAlert[]>([
         ]
       }
     ]
+  }),
+  alert({
+    id: "e5b7a9c1-6f8b-4dae-8c42-5b7d9f1b3c45",
+    name: "Payments certificates expiring",
+    eventType: CertificateApplicationAlertEventType.Expiry,
+    resourceType: CertificateAlertResourceType.Application,
+    resourceId: PAYMENTS_APPLICATION_ID,
+    condition: { alertBefore: "30d", dailyReminder: true },
+    channels: [
+      {
+        id: "c1a2b3c4-0005-4000-8000-000000000001",
+        name: "Email",
+        channelType: AlertChannelType.Email,
+        enabled: true,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.User, principalId: "u-sarah" }]
+      }
+    ],
+    lastRun: { timestamp: hoursAgo(5), status: AlertRunStatus.Success }
+  }),
+  alert({
+    id: "f6c8b0d2-7a9c-4ebf-9d53-6c8e0a2c4d56",
+    name: "Issuance failures",
+    eventType: CertificateApplicationAlertEventType.Issuance,
+    resourceType: CertificateAlertResourceType.Application,
+    resourceId: PAYMENTS_APPLICATION_ID,
+    enabled: false,
+    condition: null,
+    channels: [
+      {
+        id: "c1a2b3c4-0006-4000-8000-000000000001",
+        name: "Slack",
+        channelType: AlertChannelType.Slack,
+        enabled: true,
+        config: { hasWebhookUrl: true },
+        recipients: []
+      }
+    ]
   })
 ]);
 
 const byId = (alertId: string) => alerts.get().find((entry) => entry.id === alertId) as TAlert;
 
 export const alertsDemo: CertManagerAlertsAdapter = {
-  useAlerts: ({ resourceType, projectId }) => ({
+  useAlerts: ({ resourceType, projectId, resourceId }) => ({
     data: alerts
       .use()
-      .filter((entry) => entry.resourceType === resourceType && entry.projectId === projectId),
+      .filter(
+        (entry) =>
+          entry.resourceType === resourceType &&
+          entry.projectId === projectId &&
+          (!resourceId || entry.resourceId === resourceId)
+      ),
     isPending: false,
     error: null
   }),
