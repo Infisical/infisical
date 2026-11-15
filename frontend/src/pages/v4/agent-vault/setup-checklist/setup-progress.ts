@@ -38,7 +38,7 @@ export const useAgentVaultSetupProgress = (orgId: string, projectId: string) => 
     orgId,
     projectId,
     { limit: PROXY_PAGE_SIZE },
-    { enabled: isAdmin }
+    { enabled: isAdmin, pollUntil: (data) => data.proxies.some((proxy) => proxy.heartbeat) }
   );
   const newestBundles = agentVault.useAccessBundles(
     orgId,
@@ -56,7 +56,7 @@ export const useAgentVaultSetupProgress = (orgId: string, projectId: string) => 
     orgId,
     projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
-    { enabled: isAdmin }
+    { enabled: isAdmin, pollUntil: (data) => data.totalCount > 0 }
   );
   const queries = [proxies, newestBundles, fullestBundles, sessions];
 
