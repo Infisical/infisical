@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
@@ -238,6 +239,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
@@ -364,6 +366,7 @@ export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
   kmsDataKeyService,
+  instanceConfigService,
   licenseService,
   gatewayV2Service,
   gatewayPoolService,
@@ -678,7 +681,15 @@ export const appConnectionServiceFactory = ({
           projectType: project?.type
         } as TAppConnectionConfig,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsDataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
+        {
+          identityUaDAL,
+          gitHubAppDAL,
+          kmsDataKeyService,
+          instanceConfigService,
+          keyStore,
+          oidcIssuerService,
+          actorId: actor.id
+        }
       );
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -999,7 +1010,15 @@ export const appConnectionServiceFactory = ({
             projectType: updateProject?.type
           } as TAppConnectionConfig,
           gatewayV2Service,
-          { identityUaDAL, gitHubAppDAL, kmsDataKeyService, keyStore, oidcIssuerService, actorId: actor.id }
+          {
+            identityUaDAL,
+            gitHubAppDAL,
+            kmsDataKeyService,
+            instanceConfigService,
+            keyStore,
+            oidcIssuerService,
+            actorId: actor.id
+          }
         );
 
       // Validation only dials the target and reads back, so retrying it on another member is safe.

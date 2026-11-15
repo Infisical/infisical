@@ -1,7 +1,14 @@
 import type { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
+import {
+  getConfig,
+  getOriginalConfig,
+  overridableKeys,
+  overwriteSchema,
+  resolveOverridableEnv,
+  TEnvConfig
+} from "@app/lib/config/env";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 
@@ -10,6 +17,7 @@ import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
+import { InstanceConfigCoreModule, TInstanceConfigEnv } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
@@ -104,6 +112,20 @@ export const startStandaloneKmsCore = async ({
   return kmsCore;
 };
 
+const instanceConfigEnv: TInstanceConfigEnv = {
+  groups: overwriteSchema,
+  keys: overridableKeys,
+  resolve: resolveOverridableEnv,
+  hasEnvValue: (key) => {
+    const original: Readonly<Record<string, unknown>> = getOriginalConfig() ?? {};
+    return Boolean(original[key]);
+  },
+  slackDefaults: () => ({
+    clientId: getConfig().WORKFLOW_SLACK_CLIENT_ID,
+    clientSecret: getConfig().WORKFLOW_SLACK_CLIENT_SECRET
+  })
+};
+
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
@@ -154,5 +176,24 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsDataKeyService: kmsCore.kmsDataKeyService
   });
 
-  return { license, licenseBilling, kmsCoreEe, kmsCore, externalKms, organizationsProjects, certManager, agentVault };
+  const instanceConfigCore = await InstanceConfigCoreModule.create({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    kmsRootKeyService: kmsCore.kmsRootKeyService,
+    instanceConfigEnv
+  });
+
+  return {
+    license,
+    licenseBilling,
+    kmsCoreEe,
+    kmsCore,
+    externalKms,
+    instanceConfigCore,
+    organizationsProjects,
+    certManager,
+    agentVault
+  };
 };
+
+export type TDomains = Awaited<ReturnType<typeof createDomains>>;

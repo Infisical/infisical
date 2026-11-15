@@ -9,6 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
@@ -60,7 +61,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -88,6 +88,7 @@ import { buildLdapTlsOptions, pinLdapTarget, searchGroups, testLDAPConfig } from
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
@@ -146,6 +147,7 @@ type TLdapConfigServiceFactoryDep = {
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
 
 export const ldapConfigServiceFactory = ({
+  instanceConfigService,
   ldapConfigDAL,
   auditLogService,
   ldapGroupMapDAL,
@@ -520,7 +522,7 @@ export const ldapConfigServiceFactory = ({
     userAgent,
     callbackPort
   }: TLdapLoginDTO) => {
-    const serverCfg = await getServerCfg();
+    const serverCfg = await instanceConfigService.getInstanceConfig();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
       throw new ForbiddenRequestError({

@@ -5,6 +5,7 @@ import * as x509 from "@peculiar/x509";
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { startStandaloneKmsCore } from "@app/domains/domains";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
@@ -298,7 +299,7 @@ const createAccessBundle = async (name: string) => {
 let kmsDataKeyService: TKmsDataKeyService | undefined;
 const projectCipher = async (projectId: string) => {
   if (!kmsDataKeyService) {
-    await initEnvConfig(testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
     const kmsCore = await startStandaloneKmsCore({ db: testDb, envConfig: getConfig() });
     kmsDataKeyService = kmsCore.kmsDataKeyService;
   }

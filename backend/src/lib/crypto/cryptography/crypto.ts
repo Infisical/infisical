@@ -9,8 +9,6 @@ import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
-import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 
 import { getConfig, TEnvConfig } from "../../config/env";
 import { CryptographyError } from "../../errors";
@@ -108,7 +106,10 @@ const cryptographyFactory = () => {
     $isInitialized = true;
   };
 
-  const initialize = async (superAdminDAL: TSuperAdminDALFactory) => {
+  // readFipsSetting returns the stored super_admin.fipsEnabled (InstanceConfigCoreModule.readFipsSetting), or null when
+  // the instance has no config row yet, which with FIPS_ENABLED=true means a fresh FIPS deployment. It is called only
+  // when FIPS_ENABLED=true, so a non-FIPS boot never touches the database here.
+  const initialize = async (readFipsSetting: () => Promise<boolean | null>) => {
     if ($isInitialized) {
       return isFipsModeEnabled();
     }
@@ -119,11 +120,10 @@ const cryptographyFactory = () => {
       return false;
     }
 
-    const serverCfg = await superAdminDAL.findById(ADMIN_CONFIG_DB_UUID).catch(() => null);
-
     // if fips mode is enabled, we need to check if the deployment is a new deployment or an old one.
-    if (serverCfg) {
-      if (serverCfg.fipsEnabled) {
+    const fipsSetting = await readFipsSetting();
+    if (fipsSetting !== null) {
+      if (fipsSetting) {
         logger.info("[FIPS]: Instance is configured for FIPS mode of operation. Continuing startup with FIPS enabled.");
         $setFipsModeEnabled(true);
         return true;

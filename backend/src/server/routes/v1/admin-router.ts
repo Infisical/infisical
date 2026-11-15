@@ -29,7 +29,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -88,7 +87,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const config = await getServerCfg();
+      const config = await server.services.instanceConfigService.getInstanceConfig();
       const serverEnvs = getConfig();
 
       const hasOfflineLicense = server.services.licenseService.hasOfflineLicenseKey();
@@ -128,7 +127,23 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       return {
         config: {
-          ...config,
+          id: config.id,
+          initialized: config.initialized,
+          allowSignUp: config.allowSignUp,
+          allowedSignUpDomain: config.allowedSignUpDomain,
+          defaultAuthOrgId: config.defaultAuthOrgId,
+          defaultAuthOrgSlug: config.defaultAuthOrgSlug,
+          defaultAuthOrgAuthEnforced: config.defaultAuthOrgAuthEnforced,
+          defaultAuthOrgAuthMethod: config.defaultAuthOrgAuthMethod,
+          enabledLoginMethods: config.enabledLoginMethods,
+          authConsentContent: config.authConsentContent,
+          pageFrameContent: config.pageFrameContent,
+          allowedStorageHostnames: config.allowedStorageHostnames,
+          instanceId: config.instanceId,
+          createdAt: config.createdAt,
+          trustLdapEmails: config.trustLdapEmails,
+          onboardingCompleted: config.onboardingCompleted,
+          adminIdentityIds: config.adminIdentityIds,
           passwordPolicy: PASSWORD_POLICY,
           pkcs12PasswordPolicy: PKCS12_PASSWORD_POLICY,
           fipsEnabled: crypto.isFipsModeEnabled(),
@@ -462,7 +477,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const adminIntegrationsConfig = await server.services.superAdmin.getAdminIntegrationsConfig();
+      const adminIntegrationsConfig = await server.services.instanceConfigService.getIntegrationCredentials();
 
       return adminIntegrationsConfig;
     }
@@ -499,7 +514,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const envOverrides = await server.services.superAdmin.getEnvOverridesOrganized();
+      const envOverrides = await server.services.instanceConfigService.getEnvOverridesOrganized();
       return envOverrides;
     }
   });
@@ -853,8 +868,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const appCfg = getConfig();
-      const serverCfg = await getServerCfg();
-      if (serverCfg.initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
+      const { initialized } = await server.services.instanceConfigService.getInstanceConfig();
+      if (initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
       const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,
         ip: req.realIp,
@@ -952,10 +967,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const identity = await server.services.superAdmin.deleteIdentitySuperAdminAccess(
-        req.params.identityId,
-        req.permission.id
-      );
+      const identity = await server.services.superAdmin.deleteIdentitySuperAdminAccess(req.params.identityId);
 
       return {
         identity
