@@ -266,6 +266,26 @@ const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativ
 const intoBundle = (accessBundleId?: string) =>
   accessBundleId ? { accessBundleIds: [accessBundleId] } : {};
 
+// Only On sends a hook. A secret at the sentinel, or emptied, keeps the stored one.
+const typedHookSecret = (data: TServiceForm) =>
+  data.hookSigningSecret && data.hookSigningSecret !== UNCHANGED_SECRET
+    ? data.hookSigningSecret
+    : undefined;
+
+const buildHookCreate = (data: TServiceForm) =>
+  data.hookEnabled
+    ? { hook: { url: data.hookUrl.trim(), signingSecret: data.hookSigningSecret } }
+    : {};
+
+// Sent only when something changed, so a save that didn't touch the hook can't trip the plan check.
+const buildHookPatch = (service: TAgentVaultService, data: TServiceForm) => {
+  if (!data.hookEnabled) return service.hook ? { hook: null } : {};
+  const url = data.hookUrl.trim();
+  const signingSecret = typedHookSecret(data);
+  if (service.hook && url === service.hook.url && !signingSecret) return {};
+  return { hook: { url, ...(signingSecret ? { signingSecret } : {}) } };
+};
+
 const buildNativeCreateRequest = (
   accessBundleId: string | undefined,
   data: TServiceForm,
@@ -305,7 +325,11 @@ export const buildCreateServiceRequest = (
 ): TCreateAgentVaultServiceDTO => {
   const description = data.description.trim() || undefined;
   if (isNativeServiceType(data.serviceType)) {
-    return { ...buildNativeCreateRequest(accessBundleId, data, data.serviceType), description };
+    return {
+      ...buildNativeCreateRequest(accessBundleId, data, data.serviceType),
+      description,
+      ...buildHookCreate(data)
+    };
   }
   return data.serviceType === AgentVaultServiceType.Mcp
     ? {
@@ -313,14 +337,16 @@ export const buildCreateServiceRequest = (
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
         description,
-        credential: buildMcpCredential(data)
+        credential: buildMcpCredential(data),
+        ...buildHookCreate(data)
       }
     : {
         ...intoBundle(accessBundleId),
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
         description,
-        credential: buildHttpCredential(data)
+        credential: buildHttpCredential(data),
+        ...buildHookCreate(data)
       };
 };
 
@@ -336,7 +362,8 @@ export const buildUpdateServiceRequest = (
       type: data.serviceType,
       ...buildNativeConnection(data, data.serviceType),
       description,
-      credential: buildNativeCredentialPatch(data)
+      credential: buildNativeCredentialPatch(data),
+      ...buildHookPatch(service, data)
     };
   }
   return data.serviceType === AgentVaultServiceType.Mcp
@@ -345,14 +372,16 @@ export const buildUpdateServiceRequest = (
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
         description,
-        ...withCredential(buildMcpCredentialPatch(data, service))
+        ...withCredential(buildMcpCredentialPatch(data, service)),
+        ...buildHookPatch(service, data)
       }
     : {
         serviceId: service.id,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
         description,
-        credential: buildHttpCredentialPatch(data)
+        credential: buildHttpCredentialPatch(data),
+        ...buildHookPatch(service, data)
       };
 };
 

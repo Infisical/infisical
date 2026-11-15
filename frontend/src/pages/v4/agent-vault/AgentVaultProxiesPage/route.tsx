@@ -1,11 +1,17 @@
 import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 
-import { NotPortedPage } from "../../organization/NotPortedPage/NotPortedPage";
+import { agentVaultCreateIntentSearchParams } from "@app/hooks/useAgentVaultCreateIntent";
+
+import { AgentVaultProxiesPage } from "./AgentVaultProxiesPage";
 
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/agent-vault/$projectId/proxies"
 )({
-  staticData: { readiness: "none" },
-  component: NotPortedPage,
+  staticData: {
+    readiness: "full"
+  },
+  component: AgentVaultProxiesPage,
+  validateSearch: zodValidator(agentVaultCreateIntentSearchParams),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });
