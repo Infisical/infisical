@@ -10,7 +10,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { RowLink } from "@infisical/cipher/ui/row-link";
+import { CellLink, RowLink } from "@infisical/cipher/ui/row-link";
 import { useParams } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -34,6 +34,16 @@ const routeId = v4Path("/organizations/$orgId/cert-manager/certificate-profiles/
 
 type Editing = { profile?: TCertificateProfile; mode: "create" | "edit" | "clone" };
 
+const PolicyCell = ({ orgId, policyId }: { orgId: string; policyId: string }) => {
+  const go = useGo();
+  const { data: policy } = useV4Adapter("pkiPolicies").usePolicy({ policyId });
+  return (
+    <CellLink link={go.link(orgHref(orgId, `/cert-manager/certificate-policies/${policyId}`))}>
+      {policy?.name ?? policyId}
+    </CellLink>
+  );
+};
+
 const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const go = useGo();
   const { permission } = useProjectPermission(projectId);
@@ -47,7 +57,6 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
     offset: (page - 1) * pageSize,
     includeConfigs: true
   });
-  const { data: policyData } = pki.usePolicies({ limit: 100, offset: 0 });
   const { data: authorities = [] } = useV4Adapter("certificates").useCertificateAuthorities();
   const rows = data?.certificateProfiles ?? [];
   const total = data?.totalCount ?? 0;
@@ -74,9 +83,6 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
       ""
     );
   };
-  const policyName = (profile: TCertificateProfile) =>
-    policyData?.certificatePolicies.find((policy) => policy.id === profile.certificatePolicyId)
-      ?.name ?? profile.certificatePolicyId;
 
   const columns: DataTableColumn<TCertificateProfile>[] = [
     {
@@ -111,8 +117,7 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
       id: "policy",
       header: "Certificate policy",
       width: 240,
-      text: policyName,
-      render: policyName
+      render: (profile) => <PolicyCell orgId={orgId} policyId={profile.certificatePolicyId} />
     }
   ];
 
@@ -238,7 +243,13 @@ const ProfileList = ({ orgId, projectId }: { orgId: string; projectId: string })
           onClose={() => setEditing(undefined)}
         />
       )}
-      <DeleteProfileDialog profile={deleting} onClose={() => setDeleting(undefined)} />
+      <DeleteProfileDialog
+        profile={deleting}
+        onClose={() => setDeleting(undefined)}
+        onDeleted={() => {
+          if (rows.length === 1 && page > 1) setPage(page - 1);
+        }}
+      />
     </Stack>
   );
 };

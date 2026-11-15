@@ -771,7 +771,10 @@ export const applyPreset = (draft: PolicyDraft, presetId: string): PolicyDraft =
   const preset = POLICY_PRESETS.find((entry) => entry.id === presetId);
   if (!preset) return { ...draft, preset: "custom" };
   const hasUsages = (rules: UsageRules) => Boolean(rules.required.length || rules.allowed.length);
-  const basicConstraints = preset.basicConstraints ?? draft.basicConstraints;
+  const basicConstraints: PolicyDraft["basicConstraints"] = preset.basicConstraints ?? {
+    isCA: "denied",
+    maxPathLength: ""
+  };
   return {
     ...draft,
     preset: preset.id,

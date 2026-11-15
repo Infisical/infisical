@@ -107,7 +107,7 @@ const policies = createFixtureStore<TCertificatePolicy[]>([
   }
 ]);
 
-const profiles = createFixtureStore<TCertificateProfile[]>([
+export const demoCertificateProfiles = createFixtureStore<TCertificateProfile[]>([
   {
     id: "4a6c2e81-0b3d-4f57-8e19-7d2a5c0f3b64",
     projectId,
@@ -198,9 +198,15 @@ const caRef = (caId?: string) =>
     .map((ca) => ({ ...ca, status: "active", isExternal: false }))[0];
 
 export const pkiPoliciesDemo: PkiPoliciesAdapter = {
-  usePolicies: () => {
+  usePolicies: ({ limit, offset }) => {
     const rows = policies.use();
-    return ok({ certificatePolicies: rows, totalCount: rows.length });
+    return ok({
+      certificatePolicies: rows.slice(
+        offset ?? 0,
+        limit === undefined ? undefined : (offset ?? 0) + limit
+      ),
+      totalCount: rows.length
+    });
   },
   usePolicy: ({ policyId }) => ok(policies.use().find((policy) => policy.id === policyId)),
   useCreatePolicy: fixtureMutation((dto) => {
@@ -223,22 +229,28 @@ export const pkiPoliciesDemo: PkiPoliciesAdapter = {
   useDeletePolicy: fixtureMutation(({ policyId }) => {
     const current = policies.get().find((policy) => policy.id === policyId);
     if (!current) throw new Error("Certificate policy not found");
-    if (profiles.get().some((profile) => profile.certificatePolicyId === policyId))
+    if (demoCertificateProfiles.get().some((profile) => profile.certificatePolicyId === policyId))
       throw new Error("Profiles still use this policy. Move them to another policy first.");
     policies.update((rows) => rows.filter((policy) => policy.id !== policyId));
     return current;
   }),
-  useProfiles: () => {
-    const rows = profiles.use();
-    return ok({ certificateProfiles: rows, totalCount: rows.length });
+  useProfiles: ({ limit, offset }) => {
+    const rows = demoCertificateProfiles.use();
+    return ok({
+      certificateProfiles: rows.slice(
+        offset ?? 0,
+        limit === undefined ? undefined : (offset ?? 0) + limit
+      ),
+      totalCount: rows.length
+    });
   },
   useProfile: ({ profileId }) => {
     policies.use();
-    const profile = profiles.use().find((entry) => entry.id === profileId);
+    const profile = demoCertificateProfiles.use().find((entry) => entry.id === profileId);
     return ok(profile ? withDetails(profile) : undefined);
   },
   useCreateProfile: fixtureMutation((dto) => {
-    if (profiles.get().some((profile) => profile.slug === dto.slug))
+    if (demoCertificateProfiles.get().some((profile) => profile.slug === dto.slug))
       throw new Error(`A certificate profile named ${dto.slug} already exists`);
     const created: TCertificateProfile = {
       ...dto,
@@ -249,22 +261,22 @@ export const pkiPoliciesDemo: PkiPoliciesAdapter = {
       certificateAuthority: caRef(dto.caId),
       ...stamp(0)
     };
-    profiles.update((rows) => [created, ...rows]);
+    demoCertificateProfiles.update((rows) => [created, ...rows]);
     return created;
   }),
   useUpdateProfile: fixtureMutation(({ profileId, ...dto }) => {
-    const current = profiles.get().find((profile) => profile.id === profileId);
+    const current = demoCertificateProfiles.get().find((profile) => profile.id === profileId);
     if (!current) throw new Error("Certificate profile not found");
     const updated = { ...current, ...dto, updatedAt: daysAgo(0) };
-    profiles.update((rows) =>
+    demoCertificateProfiles.update((rows) =>
       rows.map((profile) => (profile.id === profileId ? updated : profile))
     );
     return updated;
   }),
   useDeleteProfile: fixtureMutation(({ profileId }) => {
-    const current = profiles.get().find((profile) => profile.id === profileId);
+    const current = demoCertificateProfiles.get().find((profile) => profile.id === profileId);
     if (!current) throw new Error("Certificate profile not found");
-    profiles.update((rows) => rows.filter((profile) => profile.id !== profileId));
+    demoCertificateProfiles.update((rows) => rows.filter((profile) => profile.id !== profileId));
     return current;
   }),
   useAzureAdcsTemplates: () =>

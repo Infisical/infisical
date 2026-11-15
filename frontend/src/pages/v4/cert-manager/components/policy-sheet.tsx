@@ -118,10 +118,12 @@ const RuleRow = ({
   value,
   placeholder,
   trailing,
+  mono,
   onChange,
   onRemove
 }: {
   label: string;
+  mono: boolean;
   type: string;
   options: { value: string; label: string }[];
   effect: RuleEffect;
@@ -149,7 +151,7 @@ const RuleRow = ({
     <InlineGrow>
       <Input
         aria-label={`${label} value`}
-        mono
+        mono={mono}
         placeholder={placeholder}
         value={value}
         autoComplete="off"
@@ -513,6 +515,7 @@ const SubjectStep = ({
                 <RuleRow
                   label="Subject attribute"
                   type={rule.type}
+                  mono={rule.type === "domain_component"}
                   options={subjectOptions}
                   effect={rule.effect}
                   value={rule.value}
@@ -583,6 +586,7 @@ const SubjectStep = ({
               key={rule.key}
               label="SAN"
               type={rule.type}
+              mono
               options={sanOptions}
               effect={rule.effect}
               value={rule.value}

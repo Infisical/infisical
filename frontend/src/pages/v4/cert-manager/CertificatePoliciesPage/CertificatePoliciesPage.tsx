@@ -196,7 +196,13 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
           }}
         />
       )}
-      <DeletePolicyDialog policy={deleting} onClose={() => setDeleting(undefined)} />
+      <DeletePolicyDialog
+        policy={deleting}
+        onClose={() => setDeleting(undefined)}
+        onDeleted={() => {
+          if (rows.length === 1 && page > 1) setPage(page - 1);
+        }}
+      />
     </Stack>
   );
 };

@@ -37,6 +37,7 @@ import {
 } from "@app/hooks/api/signers/types";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
+import { demoCertificateProfiles } from "../pki-policies/demo";
 import type { CertificatesAdapter } from "./contract";
 
 const projectId = "internal-pki";
@@ -603,8 +604,10 @@ export const certificatesDemo: CertificatesAdapter = {
     };
   },
   useCertificateAuthorities: () => result(authorities),
-  useCertificateProfiles: () =>
-    result({ certificateProfiles: profiles, totalCount: profiles.length }),
+  useCertificateProfiles: () => {
+    const rows = demoCertificateProfiles.use();
+    return result({ certificateProfiles: rows, totalCount: rows.length });
+  },
   useInstallations: ({ certificateId }) => {
     const cert = store.use().find((entry) => entry.id === certificateId);
     const found =
