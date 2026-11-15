@@ -129,7 +129,7 @@ export const RequestsTab = ({
   const status = filters.find((filter) => filter.field === "status")?.values[0] as
     | StatusFilter
     | undefined;
-  const { data, isPending } = adapter.useCertificateRequests({
+  const { data, isPending, error: loadError } = adapter.useCertificateRequests({
     applicationId: application?.id,
     offset: (page - 1) * pageSize,
     limit: pageSize,
@@ -302,7 +302,10 @@ export const RequestsTab = ({
           }
         }}
         empty={
-          filtered ? (
+          (Boolean(loadError) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load certificate requests" />
+          )) ||
+          (filtered ? (
             <EmptyState
               size="sm"
               icon="search"
@@ -322,7 +325,7 @@ export const RequestsTab = ({
             />
           ) : (
             <EmptyState size="sm" icon="inbox" title="No certificate requests yet" />
-          )
+          ))
         }
         persistentStatus={totalCount ? plural(totalCount, "request", "requests") : undefined}
         pagination={
