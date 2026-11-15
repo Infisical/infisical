@@ -285,7 +285,6 @@ export const OverviewPage = () => {
     label: string;
   }>();
   const revealed = useRef("");
-  const searchInput = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const projectEnvironments = (projectQuery.data?.environments ?? []).map((environment) => ({
     value: environment.slug,
@@ -658,43 +657,10 @@ export const OverviewPage = () => {
   const unavailable = loading || noEnvironments || legacy || failed;
   let writeBlock: string | undefined;
   if (unavailable) writeBlock = "Resources are not available right now";
-  const overlayOpen = Boolean(
-    importRequest ||
-    copyInvocation ||
-    tagging ||
-    moving ||
-    commitEnvironment ||
-    syncOpen ||
-    reviewOpen ||
-    deletingEnvironment
-  );
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(query), 300);
     return () => window.clearTimeout(timer);
   }, [query]);
-  useEffect(() => {
-    const focus = (event: KeyboardEvent) => {
-      if (
-        event.key !== "/" ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        editingFolder ||
-        deletingFolder ||
-        deleting ||
-        flowOpen ||
-        rowAction ||
-        overlayOpen
-      )
-        return;
-      if ((event.target as HTMLElement).closest("input, textarea, [contenteditable=true]")) return;
-      if (!root.current?.getClientRects().length) return;
-      event.preventDefault();
-      searchInput.current?.focus();
-    };
-    document.addEventListener("keydown", focus);
-    return () => document.removeEventListener("keydown", focus);
-  }, [editingFolder, deletingFolder, deleting, flowOpen, rowAction, overlayOpen]);
 
   const updateSearch = (patch: Partial<typeof search>) =>
     routerNavigate({
@@ -1696,11 +1662,10 @@ export const OverviewPage = () => {
                   </div>
                   <div className={styles.search}>
                     <Input
-                      ref={searchInput}
                       aria-label="Search resources"
                       icon="search"
                       placeholder="Search by secret or folder name..."
-                      kbd="/"
+                      slashShortcut
                       value={query}
                       disabled={unavailable}
                       onChange={(event) => {

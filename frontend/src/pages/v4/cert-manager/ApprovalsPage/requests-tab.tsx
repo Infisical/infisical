@@ -144,7 +144,7 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
             icon="search"
             aria-label="Search certificate requests"
             placeholder="Search certificate requests"
-            kbd="/"
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

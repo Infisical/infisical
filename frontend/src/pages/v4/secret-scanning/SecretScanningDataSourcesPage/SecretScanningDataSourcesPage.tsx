@@ -433,7 +433,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
               icon="search"
               aria-label="Search data sources"
               placeholder="Search data sources..."
-              kbd="/"
+              slashShortcut
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);

@@ -373,7 +373,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
               icon="search"
               aria-label="Search sessions"
               placeholder="Search by label, identity, email, or access bundle..."
-              kbd="/"
+              slashShortcut
               maxLength={255}
               value={search}
               onChange={(event) => {

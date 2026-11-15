@@ -487,7 +487,7 @@ export const PamAccountsPage = () => {
               icon="search"
               aria-label="Search accounts"
               placeholder="Search accounts..."
-              kbd="/"
+              slashShortcut
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
