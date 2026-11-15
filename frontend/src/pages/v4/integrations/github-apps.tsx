@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { type Control, Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
@@ -143,13 +143,13 @@ const GitHubAppsDialog = ({
     resolver: zodResolver(createSchema),
     defaultValues: { name: "", githubOrg: "" }
   });
-  const [discardAction, setDiscardAction] = useState<() => void>(() => onClose);
+  const discardAction = useRef<() => void>(onClose);
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty: creating && isDirty,
-    onDiscard: () => discardAction()
+    onDiscard: () => discardAction.current()
   });
   const request = (action: () => void) => {
-    setDiscardAction(() => action);
+    discardAction.current = action;
     requestDiscard();
   };
   const back = () => {
