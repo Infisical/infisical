@@ -9,7 +9,10 @@ import { AgentVaultSessionsPage } from "./AgentVaultSessionsPage";
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions"
 )({
-  staticData: { readiness: "full" },
+  staticData: {
+    readiness: "partial",
+    missing: ["Add a service from a session log"]
+  },
   component: AgentVaultSessionsPage,
   validateSearch: zodValidator(
     agentVaultSheetSearchParams.merge(agentVaultCreateIntentSearchParams)

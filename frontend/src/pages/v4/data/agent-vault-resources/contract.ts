@@ -56,6 +56,7 @@ type QueryOf<H extends QueryHook> = (...args: Parameters<H>) => V4QueryResult<
   NonNullable<ReturnType<H>["data"]>
 > & {
   isFetching?: boolean;
+  refetch?: () => unknown;
 };
 
 type ProjectMutationOf<H extends MutationHook> = (

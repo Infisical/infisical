@@ -118,6 +118,33 @@ const getDescriptionError = (description: string) => {
   return undefined;
 };
 
+const VersionPending = ({
+  failed: hasFailed,
+  retrying,
+  onRetry
+}: {
+  failed: boolean;
+  retrying: boolean;
+  onRetry?: () => unknown;
+}) =>
+  hasFailed ? (
+    <EmptyState
+      size="sm"
+      media="bare"
+      icon="alert"
+      title="Couldn't load this version"
+      actions={
+        onRetry ? (
+          <Button variant="outline" icon="sync" loading={retrying} onClick={() => onRetry()}>
+            Try again
+          </Button>
+        ) : undefined
+      }
+    />
+  ) : (
+    <Loader label="Loading version" />
+  );
+
 const SaveActions = ({
   hasChanges,
   saving,
@@ -673,11 +700,12 @@ const SkillSheetEditor = ({
   const [conflict, setConflict] = useState<number>();
 
   const isOlder = viewed !== null && viewed !== skill.latestVersion;
-  const { data: olderVersion } = resources.useSkillVersion(
+  const olderVersionQuery = resources.useSkillVersion(
     projectId,
     skillId,
     isOlder ? viewed : undefined
   );
+  const olderVersion = olderVersionQuery.data;
   const latestFiles = useMemo(() => toDraftFiles(skill.files), [skill]);
   const editable = canEdit && !isOlder;
   const shownFiles = useMemo(() => {
@@ -777,7 +805,11 @@ const SkillSheetEditor = ({
               Files
             </Heading>
             {isOlder && !olderVersion ? (
-              <Loader label="Loading version" />
+              <VersionPending
+                failed={Boolean(olderVersionQuery.error)}
+                retrying={Boolean(olderVersionQuery.isFetching)}
+                onRetry={olderVersionQuery.refetch}
+              />
             ) : (
               <SkillFilesEditor
                 key={shownVersion?.version}
