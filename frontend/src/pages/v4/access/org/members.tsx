@@ -465,6 +465,7 @@ export const OrgMembersTab = () => {
             icon="search"
             aria-label="Search organization users..."
             placeholder="Search organization users..."
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />

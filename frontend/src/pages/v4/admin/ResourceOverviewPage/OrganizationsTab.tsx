@@ -150,6 +150,7 @@ export const OrganizationsTab = () => {
             icon="search"
             aria-label="Search organizations"
             placeholder="Search organizations..."
+            slashShortcut
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);

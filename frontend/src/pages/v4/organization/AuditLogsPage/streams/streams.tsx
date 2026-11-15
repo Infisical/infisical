@@ -196,6 +196,7 @@ export const AuditLogStreamsTab = () => {
             icon="search"
             aria-label="Search log streams"
             placeholder="Search log streams..."
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

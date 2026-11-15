@@ -223,6 +223,7 @@ export const CertificatesTab = ({
             icon="search"
             aria-label="Search certificates"
             placeholder="Search by SAN, CN, ID or serial number"
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

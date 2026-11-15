@@ -9,6 +9,7 @@ import { BitbucketOauthCallbackQueryParamsSchema } from "./BitbucketOauthCallbac
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(BitbucketOauthCallbackQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;

@@ -353,6 +353,7 @@ export const ChangeRequests = ({
             icon="search"
             aria-label="Search change requests"
             placeholder="Search by author, environment, path or secret"
+            slashShortcut
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);

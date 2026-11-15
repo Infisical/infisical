@@ -195,6 +195,7 @@ const OauthClientsList = ({
             icon="search"
             aria-label="Search applications"
             placeholder="Search applications"
+            slashShortcut
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />

@@ -11,6 +11,7 @@ import { isAxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { useCompleteAgentVaultOauthAuthorization } from "@app/hooks/api/agentVault/mutations";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   agentVaultKeys,
@@ -301,7 +302,8 @@ export const agentVaultLive: AgentVaultAdapter = {
   useSessions: (orgId, projectId, params, options) =>
     useQuery({
       enabled: options?.enabled ?? true,
-      refetchInterval: 30_000,
+      refetchInterval: (query) =>
+        query.state.data && options?.pollUntil?.(query.state.data) ? false : 30_000,
       placeholderData: keepPreviousInProject(projectId),
       queryKey: agentVaultKeys.sessionList(orgId, projectId, params),
       queryFn: async () => {
@@ -427,7 +429,8 @@ export const agentVaultLive: AgentVaultAdapter = {
   },
   useProxies: (orgId, projectId, params, options) =>
     useQuery({
-      refetchInterval: 30_000,
+      refetchInterval: (query) =>
+        query.state.data && options?.pollUntil?.(query.state.data) ? false : 30_000,
       placeholderData: keepPreviousInProject(projectId),
       enabled: options?.enabled ?? true,
       refetchOnWindowFocus: options?.refetchOnWindowFocus ?? true,
@@ -688,5 +691,6 @@ export const agentVaultLive: AgentVaultAdapter = {
       },
       onSuccess: (delegation, { machineIdentityId }) => writeResult(machineIdentityId, delegation)
     });
-  }
+  },
+  useCompleteOauthAuthorization: useCompleteAgentVaultOauthAuthorization
 };

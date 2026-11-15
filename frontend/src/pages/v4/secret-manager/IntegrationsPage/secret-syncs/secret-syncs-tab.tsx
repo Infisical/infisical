@@ -361,6 +361,7 @@ export const SecretSyncsTab = ({
             icon="search"
             aria-label="Search secret syncs"
             placeholder="Search secret syncs..."
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

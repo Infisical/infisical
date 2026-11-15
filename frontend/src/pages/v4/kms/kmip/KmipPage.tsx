@@ -194,6 +194,7 @@ export const KmipPage = () => {
               icon="search"
               aria-label="Search KMIP clients by name"
               placeholder="Search KMIP clients by name"
+              slashShortcut
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

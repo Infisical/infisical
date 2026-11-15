@@ -67,6 +67,7 @@ export const IdentitiesTab = () => {
             icon="search"
             aria-label="Search machine identities"
             placeholder="Search machine identities by name..."
+            slashShortcut
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);

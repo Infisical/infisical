@@ -17,6 +17,7 @@ import {
 
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 
+import { useAgentVaultSetupSidebar } from "../agent-vault/setup-checklist/SetupChecklist";
 import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
@@ -74,6 +75,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
   const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const readiness = useMatches({ select: (matches) => matches.at(-1)?.staticData.readiness });
+  const toClassic = useMatches({ select: (matches) => matches.at(-1)?.staticData.classicHref });
   const [switchingTo, setSwitchingTo] = useState<string>();
   const switching =
     switchingTo !== undefined &&
@@ -96,6 +98,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
   const hue = hueOf(product);
   const sidebarCurrent = at.current ?? (at.projectId ? at.sections[0]?.items[0] : undefined);
   const project = session.projects.find((entry) => entry.id === at.projectId);
+  const agentVaultSetup = useAgentVaultSetupSidebar(orgId, at);
   const trail = shellTrail({
     at,
     projectName: project?.name,
@@ -184,7 +187,9 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
       ];
 
   const classicHref =
-    orgId !== V4_DEMO_ORG_ID && readiness === "partial" ? toV3Href(location.href) : undefined;
+    orgId !== V4_DEMO_ORG_ID && readiness === "partial"
+      ? (toClassic ?? String)(toV3Href(location.href))
+      : undefined;
   let content = children;
   if (switching) content = <Loader size="page" label="Loading organization" />;
   else if (at.projectId)
@@ -233,6 +238,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
         current={nav ? nav.current : sidebarCurrent && `${shown.id}:${sidebarCurrent.id}`}
         help={chrome.help}
         announcements={chrome.announcements}
+        {...agentVaultSetup}
       />
       <HuePortal {...hue}>
         <AppInset {...hueScope(hue.hue, hue.level)}>
