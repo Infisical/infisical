@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -17,7 +17,7 @@ import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table
 import { Field } from "@infisical/cipher/ui/field";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
+import { DataList, type DataListItem, List, ListRow } from "@infisical/cipher/ui/list";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import {
   Sheet,
@@ -63,7 +63,9 @@ import { failed, toast } from "../../../access/toast";
 import type { AccessRequestMember } from "../../../data/access-approvals/contract";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
+import { AccessRequestScope } from "./AccessRequestScope";
 import { canBypassPolicy, isAccessExpired, isSoftEnforced, personName, stamp } from "./model";
+import { ENTIRE_SCOPE_PATH, getRequestedSecretPath, isGlobPath } from "./scope";
 
 const ACTION_LABEL_OVERRIDES: Record<string, string> = {
   read: "Read",
@@ -241,6 +243,9 @@ const REVIEW_STATUS: Record<
   [ApprovalStatus.APPROVED]: { label: "Approved", tone: "ok", icon: "check-c" },
   [ApprovalStatus.REJECTED]: { label: "Rejected", tone: "bad", icon: "x" }
 };
+// Past this length a value wraps badly beside another, so the details stack in one column.
+const DETAILS_COLLAPSE_THRESHOLD = 30;
+
 const PENDING_REVIEW = { label: "Pending", tone: "warn" as const, icon: "clock" as const };
 
 export const ReviewRequestSheet = ({
@@ -493,6 +498,13 @@ export const ReviewRequestSheet = ({
       ? `${requesterName} (${requester.email})`
       : requesterName;
   const permissionGroups = groupPermissions(request);
+  const requestedPath = getRequestedSecretPath(request);
+  const isEntireScope = requestedPath === ENTIRE_SCOPE_PATH;
+  const isLongDetail =
+    environment.length > DETAILS_COLLAPSE_THRESHOLD ||
+    requestedPath.length > DETAILS_COLLAPSE_THRESHOLD ||
+    request.policy.name.length + (request.policy.secretPath?.length ?? 0) >
+      DETAILS_COLLAPSE_THRESHOLD;
   const requestExpires =
     request.expiresAt &&
     request.status === ApprovalStatus.PENDING &&
@@ -556,6 +568,28 @@ export const ReviewRequestSheet = ({
   };
 
   const showFooter = !isClosed || isDelegatedOpen || hasApproved;
+  const details: [string, ReactNode][] = [
+    ["Environment", environment],
+    [
+      "Secret path",
+      <Inline key="path" gap={8} align="center">
+        <code>{requestedPath}</code>
+        {isEntireScope && (
+          <Badge tone="warn" icon="alert">
+            Entire scope
+          </Badge>
+        )}
+      </Inline>
+    ],
+    [
+      "Policy",
+      <span key="policy">
+        {request.policy.name} <code>{request.policy.secretPath}</code>
+      </span>
+    ],
+    ["Access duration", getAccessDurationLabel(request.isTemporary, request.temporaryRange)],
+    ...(requestExpires ? ([["Request expires", requestExpires]] as [string, ReactNode][]) : [])
+  ];
 
   return (
     <>
@@ -582,24 +616,28 @@ export const ReviewRequestSheet = ({
                   variant="props"
                   density="compact"
                   items={[
-                    [`Environment`, environment, { span: "half" }],
-                    [
-                      "Secret path",
-                      <code key="path">{request.policy.secretPath}</code>,
-                      { span: "half" }
-                    ],
-                    [
-                      "Access duration",
-                      getAccessDurationLabel(request.isTemporary, request.temporaryRange),
-                      { span: "half" }
-                    ],
-                    ...(requestExpires
-                      ? ([["Request expires", requestExpires, { span: "half" }]] as const)
-                      : []),
+                    ...details.map(([label, value]): DataListItem =>
+                      isLongDetail ? [label, value] : [label, value, { span: "half" }]
+                    ),
                     ...(request.note ? ([["Note", request.note]] as const) : [])
                   ]}
                 />
               </Stack>
+              {isGlobPath(requestedPath) && (
+                <Stack gap={8}>
+                  <Heading level={3}>Requested scope</Heading>
+                  {isEntireScope && (
+                    <Alert tone="warn">
+                      {`${ENTIRE_SCOPE_PATH} grants every folder in ${environment}, including folders created later.`}
+                    </Alert>
+                  )}
+                  <AccessRequestScope
+                    projectId={project.id}
+                    environment={request.environmentName}
+                    secretPath={requestedPath}
+                  />
+                </Stack>
+              )}
               <Stack gap={8}>
                 <Heading level={3}>Requested permissions</Heading>
                 <DataTable
