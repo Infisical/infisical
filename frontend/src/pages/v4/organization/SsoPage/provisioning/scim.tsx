@@ -363,7 +363,6 @@ export const ScimProvisioning = () => {
         action={
           <Button
             variant="outline"
-            size="xs"
             loading={isSubscriptionPending}
             disabledReason={canRead ? undefined : "You need permission to read SCIM."}
             onClick={() => (entitlements?.scim ? setConfiguring(true) : openScimUpgrade())}

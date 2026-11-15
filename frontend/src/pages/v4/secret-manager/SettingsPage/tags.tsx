@@ -283,7 +283,6 @@ export const TagsSettings = () => {
           <Inline gap={8} wrap={false}>
             {canRead && rows.length > 0 && (
               <ListToolbar
-                band
                 search={list.search}
                 onSearch={list.setSearch}
                 placeholder="Search tags"
@@ -291,7 +290,6 @@ export const TagsSettings = () => {
             )}
             <Button
               variant="accent"
-              size="xs"
               icon="plus"
               disabledReason={canCreate ? undefined : RESTRICTED}
               onClick={() => setDialog({ open: true, key: Date.now() })}

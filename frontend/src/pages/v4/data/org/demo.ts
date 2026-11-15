@@ -55,6 +55,33 @@ const announcements = createFixtureStore<TRecentAnnouncementsResponse>({
   lastSeenAnnouncementId: null,
   announcements: [
     {
+      id: "settings-autosave",
+      title: "Some settings now save as you change them",
+      body: "LDAP email verification, audit log event classes, your profile name and brand colors save on their own, with a Saving status beside the card title.",
+      imageUrl: null,
+      link: null,
+      linkLabel: null,
+      published: "2026-11-14T12:00:00Z"
+    },
+    {
+      id: "header-search",
+      title: "Search from the card header",
+      body: "Lists like members, tags, email domains and app connections now search from an icon in the card header. A dot on it shows when a search is applied.",
+      imageUrl: null,
+      link: null,
+      linkLabel: null,
+      published: "2026-11-14T11:00:00Z"
+    },
+    {
+      id: "product-hue",
+      title: "Each product keeps its color",
+      body: "Buttons, menus and dialogs now take the color of the product you're in.",
+      imageUrl: null,
+      link: null,
+      linkLabel: null,
+      published: "2026-11-14T10:00:00Z"
+    },
+    {
       id: "agent-vault",
       title: "Agent Vault is in preview",
       body: "Give AI agents scoped access to the secrets and services they need, with every session recorded.",

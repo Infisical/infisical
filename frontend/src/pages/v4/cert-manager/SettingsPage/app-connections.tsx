@@ -451,13 +451,12 @@ export const AppConnectionsTab = () => {
         action={
           <Inline gap={8} align="center">
             <ListToolbar
-              band
               search={search}
               onSearch={(value) => {
                 setSearch(value);
                 setPage(1);
               }}
-              placeholder="Search connections..."
+              placeholder="Search connections"
               filter={{
                 label: "Filter by app",
                 options: appFilterOptions,
@@ -475,7 +474,6 @@ export const AppConnectionsTab = () => {
             />
             <Button
               variant="outline"
-              size="xs"
               icon="plus"
               disabledReason={canCreate ? undefined : RESTRICTED}
               onClick={() => setAdding(true)}

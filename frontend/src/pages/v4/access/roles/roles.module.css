@@ -247,14 +247,14 @@
   gap: var(--cipher-space-12);
 }
 .templateCard {
-  border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-12);
 }
 .templateCardHead {
   display: flex;
   align-items: center;
   gap: var(--cipher-space-12);
-  padding: var(--cipher-space-8) var(--cipher-space-12);
-  border-bottom: var(--cipher-size-control-border) solid var(--cipher-line-soft);
 }
 .tile {
   display: inline-flex;
@@ -270,7 +270,7 @@
   flex-wrap: wrap;
   gap: var(--cipher-space-8);
   margin: 0;
-  padding: var(--cipher-space-12);
+  padding: 0;
   list-style: none;
 }
 

@@ -9,8 +9,8 @@ import {
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
+import { HeaderSearch } from "@infisical/cipher/ui/header-search";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
@@ -54,13 +54,11 @@ export const ListToolbar = ({
   search,
   onSearch,
   placeholder,
-  band = false,
   filter
 }: {
   search: string;
   onSearch: (value: string) => void;
   placeholder: string;
-  band?: boolean;
   filter?: {
     label: string;
     options: readonly { value: string; label: string }[];
@@ -71,23 +69,18 @@ export const ListToolbar = ({
     onOpenChange?: (open: boolean) => void;
   };
 }) => (
-  <div className={band ? `${styles.toolbar} ${styles.bandSearch}` : styles.toolbar}>
-    <div className={styles.grow}>
-      <Input
-        size={band ? "xs" : undefined}
-        icon="search"
-        placeholder={placeholder}
-        aria-label={placeholder}
-        value={search}
-        onChange={(event) => onSearch(event.target.value)}
-      />
-    </div>
+  <div className={styles.toolbar}>
+    <HeaderSearch
+      label={placeholder}
+      placeholder={placeholder}
+      value={search}
+      onValueChange={onSearch}
+    />
     {filter && (
       <DropdownMenu open={filter.open} onOpenChange={filter.onOpenChange}>
         {filter.disabledReason ? (
           <Button
             variant="outline"
-            size={band ? "xs" : undefined}
             aria-label={filter.label}
             disabledReason={filter.disabledReason}
           >
@@ -96,7 +89,7 @@ export const ListToolbar = ({
         ) : (
           <Tooltip content={filter.label}>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size={band ? "xs" : undefined} aria-label={filter.label}>
+              <Button variant="outline" aria-label={filter.label}>
                 <Icon icon={FilterIcon} />
                 {filter.selected.length > 0 && <Count tone="ink">{filter.selected.length}</Count>}
               </Button>

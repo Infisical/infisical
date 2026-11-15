@@ -426,7 +426,7 @@ export const RequestAccessSheet = ({
                           action={
                             <Button
                               variant="ghost"
-                              size="icon-sm"
+                              size="icon"
                               icon="x"
                               iconOnly
                               aria-label={`Remove ${config.label}`}

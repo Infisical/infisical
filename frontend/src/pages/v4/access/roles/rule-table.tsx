@@ -397,7 +397,6 @@ export const RuleTable = (props: RuleTableProps) => {
         action={
           <Inline gap={8}>
             <ListToolbar
-              band
               search={search}
               onSearch={setSearch}
               placeholder="Search rules"
@@ -418,7 +417,6 @@ export const RuleTable = (props: RuleTableProps) => {
             <Gate allowed={editable} reason={reason}>
               <Button
                 variant="accent"
-                size="xs"
                 icon="plus"
                 disabled={!editable}
                 onClick={() =>

@@ -516,7 +516,6 @@ export const ValidationRulesSection = ({
         action={
           <Button
             variant="accent"
-            size="xs"
             icon="plus"
             disabledReason={permissions.canCreate ? undefined : RESTRICTED}
             onClick={() => setSheet({ mode: "create" })}

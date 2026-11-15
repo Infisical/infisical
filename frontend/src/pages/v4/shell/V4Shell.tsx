@@ -1,4 +1,6 @@
 import { type MouseEvent, type ReactNode, useState } from "react";
+import { hueScope } from "@infisical/cipher/lib/hue";
+import { HuePortal } from "@infisical/cipher/scope";
 import type { BreadcrumbCrumb } from "@infisical/cipher/ui/breadcrumb";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -24,7 +26,7 @@ import { CommandPalette } from "./command-palette";
 import { shellTrail, type V4ShellLevel } from "./levels";
 import { resolveShellLocation, type ShellLocation } from "./location";
 import {
-  hueScopeOf,
+  hueOf,
   orgSections,
   products,
   productHome,
@@ -91,6 +93,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
       );
   const go = (href: string) => navigate({ href: resolve(href) });
   const product = at.product ? productOf(at.product) : undefined;
+  const hue = hueOf(product);
   const sidebarCurrent = at.current ?? (at.projectId ? at.sections[0]?.items[0] : undefined);
   const project = session.projects.find((entry) => entry.id === at.projectId);
   const trail = shellTrail({
@@ -231,9 +234,11 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
         help={chrome.help}
         announcements={chrome.announcements}
       />
-      <AppInset {...hueScopeOf(product)}>
-        <PageGutter className={styles.content}>{content}</PageGutter>
-      </AppInset>
+      <HuePortal {...hue}>
+        <AppInset {...hueScope(hue.hue, hue.level)}>
+          <PageGutter className={styles.content}>{content}</PageGutter>
+        </AppInset>
+      </HuePortal>
       {chrome.dialog}
       <CommandPalette
         orgId={orgId}

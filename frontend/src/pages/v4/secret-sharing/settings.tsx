@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +15,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
-import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText, Text } from "@infisical/cipher/ui/text";
@@ -307,14 +307,18 @@ const ColorField = ({
   placeholder,
   value,
   error,
-  onChange
+  disabled,
+  onChange,
+  onCommit
 }: {
   label: string;
   description: string;
   placeholder: string;
   value: string;
   error?: string;
+  disabled: boolean;
   onChange: (value: string) => void;
+  onCommit: (value: string) => void;
 }) => (
   <Field label={label} description={error ? undefined : description} error={error}>
     <Input
@@ -322,13 +326,22 @@ const ColorField = ({
       value={value}
       placeholder={placeholder}
       invalid={Boolean(error)}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
+      onBlur={(event) => onCommit(event.target.value)}
       trailing={
         <input
+          ref={(node) => {
+            if (!node) return undefined;
+            const commit = () => onCommit(node.value);
+            node.addEventListener("change", commit);
+            return () => node.removeEventListener("change", commit);
+          }}
           type="color"
           aria-label={`Pick ${label.toLowerCase()}`}
           className={styles.swatch}
           value={HEX_COLOR.test(value) ? value : placeholder}
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
         />
       }
@@ -341,12 +354,29 @@ const Branding = ({ organization, canEdit }: Props) => {
   const updateOrganization = useV4Adapter("org").useUpdateOrganization();
   const { data: entitled, isPending } = sharing.useBrandingEntitlement(organization.id);
   const { data: config } = sharing.useBrandingConfig();
-  const initial = {
-    primaryColor: organization.secretShareBrandConfig?.primaryColor || "",
-    secondaryColor: organization.secretShareBrandConfig?.secondaryColor || ""
-  };
-  const [saved, setSaved] = useState(initial);
-  const [draft, setDraft] = useState(initial);
+  const storedPrimary = organization.secretShareBrandConfig?.primaryColor || "";
+  const storedSecondary = organization.secretShareBrandConfig?.secondaryColor || "";
+  const stored = useMemo(
+    () => ({ primaryColor: storedPrimary, secondaryColor: storedSecondary }),
+    [storedPrimary, storedSecondary]
+  );
+  const { value, edit, save, status, pending } = useAutosave({
+    value: stored,
+    errorMessage: "Couldn't update brand colors. Try again.",
+    onSave: async ({ primaryColor, secondaryColor }) => {
+      await updateOrganization.mutateAsync({
+        orgId: organization.id,
+        secretShareBrandConfig:
+          primaryColor || secondaryColor
+            ? {
+                primaryColor: primaryColor || undefined,
+                secondaryColor: secondaryColor || undefined
+              }
+            : null
+      });
+      toast({ tone: "ok", title: "Updated branding colors" });
+    }
+  });
   if (isPending) return <SettingsCard title="Custom branding" loading />;
   if (!entitled)
     return (
@@ -368,11 +398,17 @@ const Branding = ({ organization, canEdit }: Props) => {
         }
       />
     );
-  const colorError = (value: string) =>
-    value && !HEX_COLOR.test(value) ? `Use a hex color, such as ${HEX_COLOR_EXAMPLE}` : undefined;
+  const colorError = (hex: string) =>
+    hex && !HEX_COLOR.test(hex) ? `Use a hex color, such as ${HEX_COLOR_EXAMPLE}` : undefined;
   const errors = {
-    primary: colorError(draft.primaryColor),
-    secondary: colorError(draft.secondaryColor)
+    primary: colorError(value.primaryColor),
+    secondary: colorError(value.secondaryColor)
+  };
+  const commit = (next: typeof value) => {
+    if (colorError(next.primaryColor) || colorError(next.secondaryColor)) return;
+    if (next.primaryColor === stored.primaryColor && next.secondaryColor === stored.secondaryColor)
+      return;
+    save(next);
   };
   return (
     <>
@@ -394,37 +430,18 @@ const Branding = ({ organization, canEdit }: Props) => {
           />
         </div>
       </SettingsCard>
-      <SettingsCard
-        title="Brand colors"
-        dirty={JSON.stringify(draft) !== JSON.stringify(saved)}
-        locked={canEdit ? undefined : NO_EDIT}
-        onDiscard={() => setDraft(saved)}
-        onSave={async () => {
-          if (errors.primary || errors.secondary)
-            throw new Error("Fix the highlighted colors, then save again.");
-          await updateOrganization.mutateAsync({
-            orgId: organization.id,
-            secretShareBrandConfig:
-              draft.primaryColor || draft.secondaryColor
-                ? {
-                    primaryColor: draft.primaryColor || undefined,
-                    secondaryColor: draft.secondaryColor || undefined
-                  }
-                : null
-          });
-          setSaved(draft);
-          toast({ tone: "ok", title: "Updated branding colors" });
-        }}
-      >
+      <SettingsCard title="Brand colors" locked={canEdit ? undefined : NO_EDIT} saveStatus={status}>
         <Inline gap={12} align="start" wrap={false} className={styles.pair}>
           <div className={styles.grow}>
             <ColorField
               label="Primary color"
               description="Page background."
               placeholder={DEFAULT_PRIMARY}
-              value={draft.primaryColor}
+              value={value.primaryColor}
               error={errors.primary}
-              onChange={(primaryColor) => setDraft({ ...draft, primaryColor })}
+              disabled={pending}
+              onChange={(primaryColor) => edit({ ...value, primaryColor })}
+              onCommit={(primaryColor) => commit({ ...value, primaryColor })}
             />
           </div>
           <div className={styles.grow}>
@@ -432,9 +449,11 @@ const Branding = ({ organization, canEdit }: Props) => {
               label="Secondary color"
               description="Panel and component background."
               placeholder={DEFAULT_SECONDARY}
-              value={draft.secondaryColor}
+              value={value.secondaryColor}
               error={errors.secondary}
-              onChange={(secondaryColor) => setDraft({ ...draft, secondaryColor })}
+              disabled={pending}
+              onChange={(secondaryColor) => edit({ ...value, secondaryColor })}
+              onCommit={(secondaryColor) => commit({ ...value, secondaryColor })}
             />
           </div>
         </Inline>

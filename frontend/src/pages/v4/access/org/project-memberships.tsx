@@ -250,7 +250,7 @@ const AddGroupProjectsSheet = ({
           <Stack gap={16}>
             <Input
               icon="search"
-              placeholder="Search projects..."
+              placeholder="Search projects"
               aria-label="Search projects"
               value={list.search}
               onChange={(event) => list.setSearch(event.target.value)}
@@ -453,16 +453,14 @@ export const ProjectMembershipsSection = ({
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
-              band
               search={list.search}
               onSearch={list.setSearch}
-              placeholder="Search projects..."
+              placeholder="Search projects"
             />
             {canAdd && (
               <Gate allowed={canEdit}>
                 <Button
                   variant="accent"
-                  size="xs"
                   icon="plus"
                   disabled={!canEdit}
                   onClick={() => setAdding(true)}

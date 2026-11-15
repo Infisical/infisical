@@ -301,13 +301,12 @@ const GroupMembersSection = ({ group, canEdit }: { group: TGroup; canEdit: boole
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
-              band
               search={search}
               onSearch={(value) => {
                 setSearch(value);
                 setPage(1);
               }}
-              placeholder="Search members..."
+              placeholder="Search members"
               filter={{
                 label: "Filter by member type",
                 options: [
@@ -493,7 +492,7 @@ export const OrgGroupDetail = () => {
                 <Gate allowed={canEdit}>
                   <Button
                     variant="outline"
-                    size="icon-xs"
+                    size="icon"
                     aria-label="Edit group"
                     disabled={!canEdit}
                     onClick={() => setEditing(true)}

@@ -234,7 +234,6 @@ export const PoolSheet = ({
                     />
                     <Button
                       variant="outline"
-                      size="xs"
                       loading={adding}
                       disabledReason={addReason}
                       disabled={!selected.length}

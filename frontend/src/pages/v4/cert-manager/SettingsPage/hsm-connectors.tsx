@@ -254,15 +254,9 @@ const ConnectorsCard = ({ orgId, plan }: { orgId: string; plan: HsmPlan }) => {
         title={<Title />}
         action={
           <Inline gap={8} align="center">
-            <ListToolbar
-              band
-              search={search}
-              onSearch={setSearch}
-              placeholder="Search HSM connectors..."
-            />
+            <ListToolbar search={search} onSearch={setSearch} placeholder="Search HSM connectors" />
             <Button
               variant="outline"
-              size="xs"
               icon="plus"
               disabledReason={blocked(ProjectPermissionHsmConnectorActions.Create)}
               onClick={() => setAdding(true)}

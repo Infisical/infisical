@@ -523,7 +523,6 @@ export const WebhooksSettings = () => {
         action={
           <Button
             variant="outline"
-            size="xs"
             icon="plus"
             disabledReason={canCreate ? undefined : RESTRICTED}
             onClick={() => setAdding(true)}

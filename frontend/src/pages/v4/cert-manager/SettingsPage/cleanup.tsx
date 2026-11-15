@@ -15,6 +15,8 @@ import type { TCertificateCleanupConfig } from "@app/hooks/api/certificateCleanu
 import { saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 
+const noop = () => {};
+
 const DOCS_URL =
   "https://infisical.com/docs/documentation/platform/pki/settings/certificate-cleanup";
 
@@ -135,6 +137,6 @@ const CleanupForm = ({ config }: { config: TCertificateCleanupConfig | null }) =
 
 export const CleanupTab = () => {
   const { data: config, isPending } = useV4Adapter("certManagerSettings").useCleanupConfig();
-  if (isPending) return <SettingsCard title={<Title />} loading />;
+  if (isPending) return <SettingsCard title={<Title />} loading onSave={noop} />;
   return <CleanupForm config={config ?? null} />;
 };

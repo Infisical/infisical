@@ -438,7 +438,6 @@ export const SessionLogConnections = ({ inUseId }: { inUseId: string | null }) =
         action={
           <Button
             variant="accent"
-            size="xs"
             icon="plus"
             disabledReason={canCreate ? undefined : RESTRICTED}
             onClick={() => setAdding(true)}

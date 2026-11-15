@@ -207,12 +207,7 @@ const UserGroupsSection = ({ username }: { username: string }) => {
         title="Groups"
         flush={hasRows}
         action={
-          <ListToolbar
-            band
-            search={list.search}
-            onSearch={list.setSearch}
-            placeholder="Search groups..."
-          />
+          <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search groups" />
         }
       >
         {hasRows && (
@@ -428,7 +423,7 @@ export const OrgMemberDetail = () => {
                   <Gate allowed={canEdit}>
                     <Button
                       variant="outline"
-                      size="icon-xs"
+                      size="icon"
                       aria-label="Edit user"
                       disabled={!canEdit}
                       onClick={() => setEditing(true)}

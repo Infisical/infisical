@@ -116,7 +116,6 @@ export const TrendCard = <TPoint extends { period: string }>({
         <Inline gap={8} wrap={false}>
           <ToggleGroup
             type="single"
-            size="sm"
             value={range}
             aria-label={`${title} period`}
             onValueChange={(next) => next && onRangeChange(next)}

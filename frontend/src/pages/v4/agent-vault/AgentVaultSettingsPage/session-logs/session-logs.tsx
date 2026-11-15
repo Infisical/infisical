@@ -60,6 +60,8 @@ import {
 } from "./connections";
 import { UpgradeDialog } from "./upgrade-dialog";
 
+const noop = () => {};
+
 const SESSION_LOGS_DOCS =
   "https://infisical.com/docs/documentation/platform/agent-vault/session-logs";
 
@@ -572,7 +574,7 @@ export const SessionLogsTab = () => {
   const { data: plan } = adapter.useSessionLogPlan(orgId);
   const [upgradeFor, setUpgradeFor] = useState<AgentVaultSessionLogStorageType | null>(null);
   const [awsSetup, setAwsSetup] = useState<AwsSetupTarget | null>(null);
-  if (!state || !plan) return <SettingsCard title="Session logs" loading />;
+  if (!state || !plan) return <SettingsCard title="Session logs" loading onSave={noop} />;
   return (
     <Stack gap={24}>
       <SessionLogAlerts

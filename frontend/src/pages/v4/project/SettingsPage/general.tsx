@@ -36,6 +36,8 @@ import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 
+const noop = () => {};
+
 const CONFIRM_KEYWORD = "confirm";
 const RESTRICTED = "Your role doesn't allow this";
 
@@ -385,7 +387,7 @@ export const ProjectGeneralSettings = ({
   const { data: project } = useV4Adapter("projectSettings").useProject(projectId);
   const { permission, isPending } = useProjectPermission(projectId);
   const { data: facts } = useV4Adapter("projectSettings").useMembershipFacts(projectId);
-  if (!project || isPending) return <SettingsCard title="Project details" loading />;
+  if (!project || isPending) return <SettingsCard title="Project details" loading onSave={noop} />;
   const showDanger = !adminOnlyDanger || Boolean(facts?.isAdmin);
   return (
     <Stack gap={24}>
