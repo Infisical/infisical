@@ -1,11 +1,5 @@
 import { createMongoAbility } from "@casl/ability";
 
-import {
-  AlertRunStatus,
-  CertificateAlertResourceType,
-  CertificateApplicationAlertEventType
-} from "@app/hooks/api/alerts/types";
-import type { TAlert } from "@app/hooks/api/alerts/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   ApprovalPolicyScope,
@@ -24,6 +18,7 @@ import type {
 import { PkiSync, PkiSyncStatus } from "@app/hooks/api/pkiSyncs/enums";
 import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
+import { alertsDemo } from "../cert-manager-settings/demo-alerts";
 import { certificatesDemo } from "../certificates/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { PkiApplicationsAdapter } from "./contract";
@@ -193,53 +188,6 @@ const policyApplication: Record<string, string> = {
   "pol-8f2c1d3e-4a5b-4c6d-9e7f-0a1b2c3d4e72": PAYMENTS
 };
 
-const alert = (
-  id: string,
-  applicationId: string,
-  name: string,
-  eventType: string,
-  condition: TAlert["condition"],
-  enabled: boolean,
-  lastRun: TAlert["lastRun"]
-): TAlert => ({
-  id,
-  name,
-  description: null,
-  resourceType: CertificateAlertResourceType.Application,
-  resourceId: applicationId,
-  eventType,
-  condition,
-  enabled,
-  orgId: "demo",
-  projectId: DEMO_PROJECT_ID,
-  resourceName: null,
-  channels: [],
-  lastRun,
-  createdAt: ago(24 * 20),
-  updatedAt: ago(24 * 3)
-});
-
-const alerts = createFixtureStore<TAlert[]>([
-  alert(
-    "alert-1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e81",
-    PAYMENTS,
-    "Payments certificates expiring",
-    CertificateApplicationAlertEventType.Expiry,
-    { alertBefore: "30d", dailyReminder: true },
-    true,
-    { timestamp: ago(5), status: AlertRunStatus.Success }
-  ),
-  alert(
-    "alert-1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e82",
-    PAYMENTS,
-    "Issuance failures",
-    CertificateApplicationAlertEventType.Issuance,
-    null,
-    false,
-    null
-  )
-]);
-
 const legacyAlerts = createFixtureStore<TPkiAlertV2[]>([
   {
     id: "legacy-alert-9a8b7c6d-5e4f-4a3b-2c1d-0e9f8a7b6c51",
@@ -386,8 +334,7 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
     ready(syncs.use().filter((entry) => entry.applicationId === applicationId)),
   useApplicationPolicies: (applicationId) =>
     ready(policies.use().filter((entry) => policyApplication[entry.id] === applicationId)),
-  useApplicationAlerts: ({ resourceId }) =>
-    ready(alerts.use().filter((entry) => entry.resourceId === resourceId)),
+  useApplicationAlerts: alertsDemo.useAlerts,
   useLegacyAlerts: (applicationId) =>
     ready(legacyAlerts.use().filter((entry) => entry.applicationId === applicationId)),
   useCreateApplication: fixtureMutation(({ name, description, profileIds = [] }) => {
@@ -562,27 +509,8 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
     policies.update((current) => current.filter((entry) => entry.id !== policyId));
     return policyId;
   }),
-  useUpdateAlert: fixtureMutation(({ alertId, ...changes }) => {
-    let updated: TAlert | undefined;
-    alerts.update((current) =>
-      current.map((entry) => {
-        if (entry.id !== alertId) return entry;
-        updated = {
-          ...entry,
-          enabled: changes.enabled ?? entry.enabled,
-          name: changes.name ?? entry.name,
-          updatedAt: now()
-        };
-        return updated;
-      })
-    );
-    if (!updated) throw new Error("Alert not found");
-    return updated;
-  }),
-  useDeleteAlert: fixtureMutation(({ alertId }) => {
-    alerts.update((current) => current.filter((entry) => entry.id !== alertId));
-    return { id: alertId };
-  }),
+  useUpdateAlert: alertsDemo.useUpdateAlert,
+  useDeleteAlert: alertsDemo.useDeleteAlert,
   useDeleteLegacyAlert: fixtureMutation(({ alertId }) => {
     legacyAlerts.update((current) => current.filter((entry) => entry.id !== alertId));
     return { id: alertId };

@@ -25,6 +25,22 @@ import { CertSource } from "@app/hooks/api/certificates/enums";
 import type { OrgUser } from "@app/hooks/api/users/types";
 import { getCertSourceLabel } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
+export enum CertificateAlertScopeKind {
+  Application = "application",
+  CertificateManager = "certificate-manager"
+}
+
+export type TCertificateAlertScope =
+  | { kind: CertificateAlertScopeKind.Application; applicationId: string }
+  | { kind: CertificateAlertScopeKind.CertificateManager };
+
+export const CERTIFICATE_MANAGER_SCOPE: TCertificateAlertScope = {
+  kind: CertificateAlertScopeKind.CertificateManager
+};
+
+export const getAlertResourceId = (scope: TCertificateAlertScope) =>
+  scope.kind === CertificateAlertScopeKind.Application ? scope.applicationId : null;
+
 export const ALERT_EVENT_LABELS: Record<TCertificateAlertEventType, string> = {
   [CertificateApplicationAlertEventType.Expiry]: "Certificate expiration",
   [CertificateApplicationAlertEventType.Issuance]: "Certificate issuance",
@@ -33,19 +49,34 @@ export const ALERT_EVENT_LABELS: Record<TCertificateAlertEventType, string> = {
   [SignerAlertEventType.CertificateExpiry]: "Signer certificate expiration"
 };
 
-export const ALERT_EVENT_DESCRIPTIONS: Record<TCertificateAlertEventType, string> = {
-  [CertificateApplicationAlertEventType.Expiry]: "Fires ahead of a certificate's expiry date.",
-  [CertificateApplicationAlertEventType.Issuance]:
-    "Fires when Infisical issues a certificate in Certificate Manager.",
-  [CertificateApplicationAlertEventType.Renewal]:
-    "Fires when a certificate in Certificate Manager is renewed.",
-  [CertificateApplicationAlertEventType.Revocation]:
-    "Fires when a certificate in Certificate Manager is revoked.",
-  [SignerAlertEventType.CertificateExpiry]:
+const ALERT_EVENT_DESCRIPTIONS: Record<TCertificateAlertEventType, (where: string) => string> = {
+  [CertificateApplicationAlertEventType.Expiry]: () =>
+    "Fires ahead of a certificate's expiry date.",
+  [CertificateApplicationAlertEventType.Issuance]: (where) =>
+    `Fires when Infisical issues a certificate ${where}.`,
+  [CertificateApplicationAlertEventType.Renewal]: (where) =>
+    `Fires when a certificate ${where} is renewed.`,
+  [CertificateApplicationAlertEventType.Revocation]: (where) =>
+    `Fires when a certificate ${where} is revoked.`,
+  [SignerAlertEventType.CertificateExpiry]: () =>
     "Fires ahead of the expiry date of the certificate each signer currently signs with."
 };
 
-export const ALERT_EVENT_GROUPS: { label: string; events: TCertificateAlertEventType[] }[] = [
+export const getAlertEventDescription = (
+  scope: TCertificateAlertScope,
+  eventType: TCertificateAlertEventType
+) =>
+  ALERT_EVENT_DESCRIPTIONS[eventType](
+    scope.kind === CertificateAlertScopeKind.Application
+      ? "in this application"
+      : "in Certificate Manager"
+  );
+
+const ALERT_EVENT_GROUPS: {
+  label: string;
+  events: TCertificateAlertEventType[];
+  scopes: CertificateAlertScopeKind[];
+}[] = [
   {
     label: "Certificate lifecycle",
     events: [
@@ -53,10 +84,21 @@ export const ALERT_EVENT_GROUPS: { label: string; events: TCertificateAlertEvent
       CertificateApplicationAlertEventType.Issuance,
       CertificateApplicationAlertEventType.Renewal,
       CertificateApplicationAlertEventType.Revocation
-    ]
+    ],
+    scopes: [CertificateAlertScopeKind.Application, CertificateAlertScopeKind.CertificateManager]
   },
-  { label: "Code signing", events: [SignerAlertEventType.CertificateExpiry] }
+  {
+    label: "Code signing",
+    events: [SignerAlertEventType.CertificateExpiry],
+    scopes: [CertificateAlertScopeKind.CertificateManager]
+  }
 ];
+
+export const getScopeEventGroups = (scope: TCertificateAlertScope) =>
+  ALERT_EVENT_GROUPS.filter((group) => group.scopes.includes(scope.kind));
+
+export const getScopeEventTypes = (scope: TCertificateAlertScope) =>
+  getScopeEventGroups(scope).flatMap((group) => group.events);
 
 export const isExpiryEventType = (eventType: TCertificateAlertEventType) =>
   eventType === CertificateApplicationAlertEventType.Expiry ||
@@ -78,16 +120,26 @@ const EVENT_TYPES_BY_API_EVENT = Object.fromEntries(
   Object.entries(API_EVENT_TYPES).map(([eventType, apiEventType]) => [apiEventType, eventType])
 ) as Record<string, TCertificateAlertEventType>;
 
-export const toApiEventType = (eventType: TCertificateAlertEventType): string =>
-  API_EVENT_TYPES[eventType] ?? eventType;
+export const toApiEventType = (
+  scope: TCertificateAlertScope,
+  eventType: TCertificateAlertEventType
+): string =>
+  (scope.kind === CertificateAlertScopeKind.CertificateManager && API_EVENT_TYPES[eventType]) ||
+  eventType;
 
 export const fromApiEventType = (eventType: string) =>
   EVENT_TYPES_BY_API_EVENT[eventType] ?? eventType;
 
-export const getAlertResourceType = (eventType: TCertificateAlertEventType) =>
-  eventType === SignerAlertEventType.CertificateExpiry
-    ? CertificateAlertResourceType.Signer
-    : CertificateAlertResourceType.CertificateManager;
+export const getAlertResourceType = (
+  scope: TCertificateAlertScope,
+  eventType: TCertificateAlertEventType
+) => {
+  if (eventType === SignerAlertEventType.CertificateExpiry)
+    return CertificateAlertResourceType.Signer;
+  return scope.kind === CertificateAlertScopeKind.CertificateManager
+    ? CertificateAlertResourceType.CertificateManager
+    : CertificateAlertResourceType.Application;
+};
 
 export const MAX_CHANNELS = 10;
 
@@ -184,7 +236,13 @@ export const getFilterKinds = (eventType: TCertificateAlertEventType): Certifica
 
 export const FILTER_DEFINITIONS: Record<
   CertificateFilterKind,
-  { label: string; noun: string; hint: string; allLabel: string; unknownLabel: string }
+  {
+    label: string;
+    noun: string;
+    hint: string;
+    allLabel: string;
+    unknownLabel: string;
+  }
 > = {
   [CertificateFilterKind.Applications]: {
     label: "Applications",
@@ -279,7 +337,11 @@ export const alertFormSchema = z
   .superRefine((form, ctx) => {
     getFilterKinds(form.eventType).forEach((kind) => {
       if (form[kind]?.length === 0) {
-        ctx.addIssue({ code: "custom", path: [kind], message: UNFINISHED_FILTER_MESSAGES[kind] });
+        ctx.addIssue({
+          code: "custom",
+          path: [kind],
+          message: UNFINISHED_FILTER_MESSAGES[kind]
+        });
       }
     });
     if (!isExpiryEventType(form.eventType)) return;
@@ -309,8 +371,10 @@ export const DETAILS_FIELDS: (keyof TAlertForm)[] = [
   "dailyReminder"
 ];
 
-export const emptyAlertForm = (): TAlertForm => ({
-  eventType: CertificateApplicationAlertEventType.Expiry,
+export const emptyAlertForm = (
+  eventType: TCertificateAlertEventType = CertificateApplicationAlertEventType.Expiry
+): TAlertForm => ({
+  eventType,
   name: "",
   description: "",
   alertBefore: "30d",
@@ -346,14 +410,21 @@ export const toAlertForm = (
   }))
 });
 
-export const toCondition = (form: TAlertForm) => {
-  const filters = Object.fromEntries(
-    getFilterKinds(form.eventType).flatMap((kind) =>
-      form[kind]?.length ? [[kind, form[kind]] as const] : []
-    )
-  );
+export const toCondition = (scope: TCertificateAlertScope, form: TAlertForm) => {
+  const filters =
+    scope.kind === CertificateAlertScopeKind.CertificateManager
+      ? Object.fromEntries(
+          getFilterKinds(form.eventType).flatMap((kind) =>
+            form[kind]?.length ? [[kind, form[kind]] as const] : []
+          )
+        )
+      : {};
   if (isExpiryEventType(form.eventType)) {
-    return { alertBefore: form.alertBefore.trim(), dailyReminder: form.dailyReminder, ...filters };
+    return {
+      alertBefore: form.alertBefore.trim(),
+      dailyReminder: form.dailyReminder,
+      ...filters
+    };
   }
   return Object.keys(filters).length ? filters : null;
 };
@@ -416,7 +487,9 @@ export const validateChannels = (channels: TDraftChannel[]): TFieldErrors => {
   return result.success ? {} : toFieldErrors(result.error, () => true);
 };
 
-export type TAlertDraft = Omit<TAlertForm, "channels"> & { channels: TDraftChannel[] };
+export type TAlertDraft = Omit<TAlertForm, "channels"> & {
+  channels: TDraftChannel[];
+};
 
 export const toAlertDraft = (form: TAlertForm): TAlertDraft => ({
   ...form,

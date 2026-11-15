@@ -33,24 +33,29 @@ import { useV4Adapter } from "../../data/adapters";
 import { ChannelsStep } from "./alert-channels";
 import { FiltersStep } from "./alert-filters";
 import {
-  ALERT_EVENT_DESCRIPTIONS,
-  ALERT_EVENT_GROUPS,
   ALERT_EVENT_LABELS,
   alertFormSchema,
+  CERTIFICATE_MANAGER_SCOPE,
+  CertificateAlertScopeKind,
   CertificateFilterKind,
   DETAILS_FIELDS,
   describeChannel,
   emptyAlertForm,
   FILTER_DEFINITIONS,
   formatAlertBefore,
+  getAlertEventDescription,
+  getAlertResourceId,
   getAlertResourceType,
   getFilterKinds,
   getFilterName,
   getNoFiltersDescription,
+  getScopeEventGroups,
+  getScopeEventTypes,
   isExpiryEventType,
   isSignerEventType,
   type TAlertDraft,
   type TAlertForm,
+  type TCertificateAlertScope,
   type TFieldErrors,
   type TMemberEmails,
   toAlertDraft,
@@ -68,10 +73,12 @@ const OnOff = ({ on, labels = ["Enabled", "Disabled"] }: { on: boolean; labels?:
 
 export const AlertReview = ({
   values,
-  members
+  members,
+  scope = CERTIFICATE_MANAGER_SCOPE
 }: {
   values: TAlertForm;
   members: TMemberEmails;
+  scope?: TCertificateAlertScope;
 }) => {
   const isExpiry = isExpiryEventType(values.eventType);
   const filterKinds = getFilterKinds(values.eventType);
@@ -101,35 +108,37 @@ export const AlertReview = ({
           ]}
         />
       </Stack>
-      <Stack gap={8}>
-        <Heading level={4} size="subsection">
-          {isSignerEventType(values.eventType) ? "Signer filters" : "Certificate filters"}
-        </Heading>
-        {hasFilters ? (
-          <DataList
-            variant="props"
-            items={filterKinds.map((kind) => {
-              const ids = values[kind] ?? [];
-              return [
-                FILTER_DEFINITIONS[kind].label,
-                ids.length ? (
-                  <Inline key={kind} gap={4} wrap>
-                    {ids.map((id) => (
-                      <Badge key={id} tone="soft">
-                        {getFilterName(kind, id, values.conditionNames)}
-                      </Badge>
-                    ))}
-                  </Inline>
-                ) : (
-                  FILTER_DEFINITIONS[kind].allLabel
-                )
-              ] as const;
-            })}
-          />
-        ) : (
-          <SmallText muted>{getNoFiltersDescription(values.eventType)}</SmallText>
-        )}
-      </Stack>
+      {scope.kind === CertificateAlertScopeKind.CertificateManager && (
+        <Stack gap={8}>
+          <Heading level={4} size="subsection">
+            {isSignerEventType(values.eventType) ? "Signer filters" : "Certificate filters"}
+          </Heading>
+          {hasFilters ? (
+            <DataList
+              variant="props"
+              items={filterKinds.map((kind) => {
+                const ids = values[kind] ?? [];
+                return [
+                  FILTER_DEFINITIONS[kind].label,
+                  ids.length ? (
+                    <Inline key={kind} gap={4} wrap>
+                      {ids.map((id) => (
+                        <Badge key={id} tone="soft">
+                          {getFilterName(kind, id, values.conditionNames)}
+                        </Badge>
+                      ))}
+                    </Inline>
+                  ) : (
+                    FILTER_DEFINITIONS[kind].allLabel
+                  )
+                ] as const;
+              })}
+            />
+          ) : (
+            <SmallText muted>{getNoFiltersDescription(values.eventType)}</SmallText>
+          )}
+        </Stack>
+      )}
       <Stack gap={8}>
         <Heading level={4} size="subsection">
           Notification channels
@@ -141,7 +150,13 @@ export const AlertReview = ({
               [
                 ALERT_CHANNEL_TYPE_LABELS[channel.channelType],
                 <Inline key={channel.name} gap={8} align="center" justify="between" wrap={false}>
-                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span
+                    style={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                  >
                     {describeChannel(channel, members)}
                   </span>
                   <OnOff on={channel.enabled} />
@@ -155,12 +170,16 @@ export const AlertReview = ({
 };
 
 const DetailsStep = ({
+  scope,
   isEditing,
+  usedEventTypes,
   draft,
   errors,
   onChange
 }: {
+  scope: TCertificateAlertScope;
   isEditing: boolean;
+  usedEventTypes: ReadonlySet<TCertificateAlertEventType>;
   draft: TAlertDraft;
   errors: TFieldErrors;
   onChange: (patch: Partial<TAlertDraft>) => void;
@@ -168,16 +187,17 @@ const DetailsStep = ({
   const { eventType, dailyReminder } = draft;
   return (
     <Stack gap={16}>
-      <Field wide label="Alert type" description={ALERT_EVENT_DESCRIPTIONS[eventType]}>
+      <Field wide label="Alert type" description={getAlertEventDescription(scope, eventType)}>
         <Select
           label="Alert type"
           value={eventType}
           disabled={isEditing}
-          options={ALERT_EVENT_GROUPS.flatMap((group) =>
+          options={getScopeEventGroups(scope).flatMap((group) =>
             group.events.map((event) => ({
               value: event,
               label: ALERT_EVENT_LABELS[event],
-              group: group.label
+              group: group.label,
+              disabled: !isEditing && usedEventTypes.has(event)
             }))
           )}
           onChange={(value) => {
@@ -241,6 +261,8 @@ const DetailsStep = ({
   );
 };
 
+const NO_USED_EVENT_TYPES: ReadonlySet<TCertificateAlertEventType> = new Set();
+
 type WizardProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -248,6 +270,8 @@ type WizardProps = {
   projectId: string;
   members: TMemberEmails;
   hasEnterprise: boolean;
+  scope?: TCertificateAlertScope;
+  usedEventTypes?: ReadonlySet<TCertificateAlertEventType>;
 };
 
 export const AlertWizard = ({
@@ -256,13 +280,19 @@ export const AlertWizard = ({
   alert,
   projectId,
   members,
-  hasEnterprise
+  hasEnterprise,
+  scope = CERTIFICATE_MANAGER_SCOPE,
+  usedEventTypes = NO_USED_EVENT_TYPES
 }: WizardProps) => {
   const settings = useV4Adapter("certManagerSettings");
   const createAlert = settings.useCreateAlert();
   const updateAlert = settings.useUpdateAlert();
   const [initial] = useState(() =>
-    toAlertDraft(alert ? toAlertForm(alert, members) : emptyAlertForm())
+    toAlertDraft(
+      alert
+        ? toAlertForm(alert, members)
+        : emptyAlertForm(getScopeEventTypes(scope).find((event) => !usedEventTypes.has(event)))
+    )
   );
   const [draft, setDraft] = useState(initial);
   const [errors, setErrors] = useState<TFieldErrors>({});
@@ -274,6 +304,10 @@ export const AlertWizard = ({
   });
   const { eventType } = draft;
   const isSignerEvent = isSignerEventType(eventType);
+  const resource = {
+    resourceType: getAlertResourceType(scope, eventType),
+    resourceId: getAlertResourceId(scope)
+  };
 
   const update = (patch: Partial<TAlertDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
@@ -296,7 +330,7 @@ export const AlertWizard = ({
     if (!parsed.success) throw new Error("Fix the highlighted fields, then try again.");
     const { data } = parsed;
     const channels = data.channels.map(toChannelInput);
-    const condition = toCondition(data);
+    const condition = toCondition(scope, data);
     if (alert) {
       await updateAlert
         .mutateAsync({
@@ -314,9 +348,9 @@ export const AlertWizard = ({
         .mutateAsync({
           name: data.name,
           description: data.description || undefined,
-          resourceType: getAlertResourceType(data.eventType),
-          resourceId: null,
-          eventType: toApiEventType(data.eventType),
+          resourceType: getAlertResourceType(scope, data.eventType),
+          resourceId: getAlertResourceId(scope),
+          eventType: toApiEventType(scope, data.eventType),
           condition,
           enabled: data.enabled,
           projectId,
@@ -351,24 +385,35 @@ export const AlertWizard = ({
             validate: () => validateFields(DETAILS_FIELDS),
             content: (
               <DetailsStep
+                scope={scope}
                 isEditing={Boolean(alert)}
+                usedEventTypes={usedEventTypes}
                 draft={draft}
                 errors={errors}
                 onChange={update}
               />
             )
           },
-          {
-            title: "Filters",
-            heading: isSignerEvent ? "Signer filters" : "Certificate filters",
-            description: isSignerEvent
-              ? "Narrow which signers this alert covers, or leave it on every active signer."
-              : "Narrow which certificates this alert covers, or leave it on every certificate.",
-            validate: () => validateFields(Object.values(CertificateFilterKind)),
-            content: (
-              <FiltersStep projectId={projectId} draft={draft} errors={errors} onChange={update} />
-            )
-          },
+          ...(scope.kind === CertificateAlertScopeKind.CertificateManager
+            ? [
+                {
+                  title: "Filters",
+                  heading: isSignerEvent ? "Signer filters" : "Certificate filters",
+                  description: isSignerEvent
+                    ? "Narrow which signers this alert covers, or leave it on every active signer."
+                    : "Narrow which certificates this alert covers, or leave it on every certificate.",
+                  validate: () => validateFields(Object.values(CertificateFilterKind)),
+                  content: (
+                    <FiltersStep
+                      projectId={projectId}
+                      draft={draft}
+                      errors={errors}
+                      onChange={update}
+                    />
+                  )
+                }
+              ]
+            : []),
           {
             title: "Channels",
             heading: "Notification channels",
@@ -389,13 +434,13 @@ export const AlertWizard = ({
                 alertId={alert?.id}
                 members={members}
                 hasEnterprise={hasEnterprise}
-                resource={{ resourceType: getAlertResourceType(eventType), resourceId: null }}
+                resource={resource}
               />
             )
           },
           {
             title: "Review",
-            content: <AlertReview values={draft} members={members} />
+            content: <AlertReview values={draft} members={members} scope={scope} />
           }
         ]}
       />

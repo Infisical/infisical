@@ -18,6 +18,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { Text } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import {
   ApprovalPolicyScope,
@@ -31,10 +32,44 @@ import { useV4Adapter } from "../../data/adapters";
 import { requestedAgo } from "../components/approval";
 import { PolicySheet } from "./policy-sheet";
 
-export const profileNamesOf = (policy: TApprovalPolicy) =>
+const profileNamesOf = (policy: TApprovalPolicy) =>
   (policy.conditions.conditions as CertRequestPolicyConditions).flatMap(
     (condition) => condition.profileNames
   );
+
+const MAX_PROFILE_BADGES = 3;
+
+export const PolicyProfileBadges = ({
+  policy,
+  mono
+}: {
+  policy: TApprovalPolicy;
+  mono?: boolean;
+}) => {
+  const names = profileNamesOf(policy);
+  const overflow = names.slice(MAX_PROFILE_BADGES);
+  return (
+    <Inline gap={4} align="center" wrap={false} style={{ minWidth: 0 }}>
+      {names.slice(0, MAX_PROFILE_BADGES).map((name) => (
+        <Badge
+          key={name}
+          size="sm"
+          tone="outline"
+          mono={mono}
+          title={name}
+          style={{ minWidth: 0, flexShrink: 1 }}
+        >
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+        </Badge>
+      ))}
+      {overflow.length > 0 && (
+        <Tooltip content={overflow.join(", ")}>
+          <Badge size="sm" tone="soft" style={{ flexShrink: 0 }}>{`+${overflow.length}`}</Badge>
+        </Tooltip>
+      )}
+    </Inline>
+  );
+};
 
 export const PoliciesTab = ({ projectId }: { projectId: string }) => {
   const approvals = useV4Adapter("approvalRequests");
@@ -87,19 +122,7 @@ export const PoliciesTab = ({ projectId }: { projectId: string }) => {
       id: "profiles",
       header: "Profiles",
       width: 360,
-      render: (policy) => {
-        const names = profileNamesOf(policy);
-        return (
-          <Inline gap={4} align="center" wrap={false}>
-            {names.slice(0, 3).map((name) => (
-              <Badge key={name} size="sm" tone="outline">
-                {name}
-              </Badge>
-            ))}
-            {names.length > 3 && <Badge size="sm" tone="soft">{`+${names.length - 3}`}</Badge>}
-          </Inline>
-        );
-      }
+      render: (policy) => <PolicyProfileBadges policy={policy} />
     },
     {
       id: "steps",

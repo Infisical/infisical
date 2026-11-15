@@ -45,6 +45,10 @@ import { formatDistanceToNow } from "date-fns";
 
 import { CertificateApprovalPoliciesUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
@@ -52,12 +56,12 @@ import {
   AlertRunStatus,
   CertificateAlertResourceType,
   CertificateApplicationAlertEventType,
-  type TAlert
+  type TAlert,
+  type TCertificateAlertEventType
 } from "@app/hooks/api/alerts/types";
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
-  type CertRequestPolicyConditions,
   type TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies/types";
 import { PkiAlertEventTypeV2, type TPkiAlertV2 } from "@app/hooks/api/pkiAlertsV2/types";
@@ -68,7 +72,7 @@ import {
   type TPkiApplicationProfile
 } from "@app/hooks/api/pkiApplications/types";
 
-import { useProjectPermission } from "../../access/permissions";
+import { useOrgPermission, useProjectPermission } from "../../access/permissions";
 import { formatDate } from "../../access/roles";
 import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
@@ -77,8 +81,16 @@ import type { PkiApplicationPermission } from "../../data/pki-applications/contr
 import { useUpgradeGate } from "../../license/useUpgradeGate";
 import { orgHref, useGo } from "../../links";
 import { useProfileCreation, useProfileOptions } from "../ApplicationsPage/application-dialogs";
+import { PolicyProfileBadges } from "../ApprovalsPage/policies-tab";
 import { PolicySheet } from "../ApprovalsPage/policy-sheet";
 import { canCreateAttachableProfile } from "../components/profile-model";
+import {
+  CertificateAlertScopeKind,
+  getScopeEventTypes,
+  type TCertificateAlertScope,
+  toMemberEmails
+} from "../SettingsPage/alert-model";
+import { AlertWizard } from "../SettingsPage/alert-sheet";
 import { type EnrollmentMethod, EnrollmentSheet, METHOD_LABELS } from "./enrollment-sheet";
 import { APPLICATION_DOCS, appCan, copyId, formatAlertBefore } from "./shared";
 
@@ -90,11 +102,6 @@ const methodsOf = (profile: TPkiApplicationProfile) => {
   if (profile.scepConfigId) methods.push("scep");
   return methods;
 };
-
-const profileNamesOf = (policy: TApprovalPolicy) =>
-  (policy.conditions.conditions as CertRequestPolicyConditions).flatMap(
-    (condition) => condition.profileNames
-  );
 
 const ago = (date: string) => formatDistanceToNow(new Date(date), { addSuffix: true });
 
@@ -530,19 +537,7 @@ const PoliciesCard = ({
       id: "profiles",
       header: "Profiles",
       width: 280,
-      render: (policy) => {
-        const names = profileNamesOf(policy);
-        return (
-          <Inline gap={4} align="center" wrap={false}>
-            {names.slice(0, 3).map((name) => (
-              <Badge key={name} size="sm" tone="outline" mono>
-                {name}
-              </Badge>
-            ))}
-            {names.length > 3 && <Badge size="sm" tone="soft">{`+${names.length - 3}`}</Badge>}
-          </Inline>
-        );
-      }
+      render: (policy) => <PolicyProfileBadges policy={policy} mono />
     },
     {
       id: "steps",
@@ -674,15 +669,31 @@ const PoliciesCard = ({
 };
 
 const AlertsCard = ({
+  orgId,
   projectId,
   application,
   access
 }: {
+  orgId: string;
   projectId: string;
   application: TPkiApplication;
   access: PkiApplicationPermission;
 }) => {
   const adapter = useV4Adapter("pkiApplications");
+  const settings = useV4Adapter("certManagerSettings");
+  const { permission: orgPermission } = useOrgPermission();
+  const hasEnterprise = settings.useHasEnterpriseAlerting(orgId).data ?? false;
+  const [opened, setOpened] = useState<{ alert?: TAlert; session: number }>({ session: 0 });
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const canReadMembers = orgPermission.can(
+    OrgPermissionMemberActions.Read,
+    OrgPermissionSubjects.Member
+  );
+  const orgUsers = settings.useAlertOrgUsers(orgId, {
+    enabled: isWizardOpen && canReadMembers
+  });
+  const members = toMemberEmails(orgUsers.data);
+  const isMembersPending = canReadMembers && orgUsers.isPending;
   const update = adapter.useUpdateAlert();
   const remove = adapter.useDeleteAlert();
   const { data, isPending } = adapter.useApplicationAlerts({
@@ -691,11 +702,31 @@ const AlertsCard = ({
     resourceId: application.id
   });
   const [deleting, setDeleting] = useState<TAlert>();
+  const scope: TCertificateAlertScope = {
+    kind: CertificateAlertScopeKind.Application,
+    applicationId: application.id
+  };
   const can = (action: PkiApplicationResourceActions) =>
     appCan(access, action, PkiApplicationResourceSub.PkiAlerts);
+  const canCreate = can(PkiApplicationResourceActions.Create);
   const canEdit = can(PkiApplicationResourceActions.Edit);
   const canDelete = can(PkiApplicationResourceActions.Delete);
   const alerts = data ?? [];
+  const usedEventTypes = new Set(
+    alerts.map((alert) => alert.eventType as TCertificateAlertEventType)
+  );
+  const hasAllEventTypes = getScopeEventTypes(scope).every((eventType) =>
+    usedEventTypes.has(eventType)
+  );
+  let createRestriction: string | undefined;
+  if (!canCreate) createRestriction = RESTRICTED;
+  else if (hasAllEventTypes)
+    createRestriction = "This application already has an alert for every alert type";
+
+  const openWizard = (alert?: TAlert) => {
+    setOpened((current) => ({ alert, session: current.session + 1 }));
+    setIsWizardOpen(true);
+  };
 
   const toggle = async (alert: TAlert, enabled: boolean) => {
     try {
@@ -715,7 +746,19 @@ const AlertsCard = ({
       grow: true,
       text: (alert) => alert.name,
       secondary: (alert) => alert.description || undefined,
-      render: (alert) => alert.name
+      render: (alert) =>
+        canEdit ? (
+          <Button
+            variant="link"
+            underline="hover"
+            style={{ maxWidth: "100%" }}
+            onClick={() => openWizard(alert)}
+          >
+            <span className="truncate">{alert.name}</span>
+          </Button>
+        ) : (
+          alert.name
+        )
     },
     {
       id: "event",
@@ -732,7 +775,7 @@ const AlertsCard = ({
     {
       id: "lastRun",
       header: "Last run",
-      width: 176,
+      width: 208,
       render: (alert) =>
         alert.lastRun ? (
           <LastRun
@@ -766,6 +809,17 @@ const AlertsCard = ({
         flush
         title="Alerts"
         badges={<DocumentationLink href={APPLICATION_DOCS.alerting} subject="Alerts" />}
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            icon="plus"
+            disabledReason={createRestriction}
+            onClick={() => openWizard()}
+          >
+            Create alert
+          </Button>
+        }
       >
         <DataTable
           label="Application alerts"
@@ -788,6 +842,14 @@ const AlertsCard = ({
                   <Icon name="copy" />
                   Copy ID
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canEdit}
+                  description={canEdit ? undefined : RESTRICTED}
+                  onSelect={() => openWizard(alert)}
+                >
+                  <Icon name="pencil" />
+                  Edit alert
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -804,6 +866,19 @@ const AlertsCard = ({
           empty={<EmptyState size="sm" icon="bell" title="No alerts for this application" />}
         />
       </Card>
+      {!isMembersPending && opened.session > 0 && (
+        <AlertWizard
+          key={opened.session}
+          open={isWizardOpen}
+          onOpenChange={setIsWizardOpen}
+          alert={opened.alert}
+          projectId={projectId}
+          members={members}
+          hasEnterprise={hasEnterprise}
+          scope={scope}
+          usedEventTypes={usedEventTypes}
+        />
+      )}
       <ConfirmDelete
         open={Boolean(deleting)}
         title={`Delete ${deleting?.name ?? "alert"}?`}
@@ -1030,7 +1105,7 @@ export const SettingsTab = ({
   <Stack gap={24}>
     <ProfilesCard orgId={orgId} projectId={projectId} application={application} access={access} />
     <PoliciesCard orgId={orgId} projectId={projectId} application={application} access={access} />
-    <AlertsCard projectId={projectId} application={application} access={access} />
+    <AlertsCard orgId={orgId} projectId={projectId} application={application} access={access} />
     <LegacyAlertsCard application={application} access={access} />
   </Stack>
 );
