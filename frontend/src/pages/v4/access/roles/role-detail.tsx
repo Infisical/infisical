@@ -47,6 +47,7 @@ import { useOrgPermission, useProjectPermission } from "../permissions";
 import { useProjectScope } from "../project/scope";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../ui";
+import type { PermissionSubject } from "./catalog";
 import {
   orgToApi,
   type PermissionErrors,
@@ -68,13 +69,16 @@ const DEFAULT_ROLE = "This is the default role for new members. Set another defa
 
 type Overlay = "edit" | "duplicate" | "delete" | "discard" | "template" | "vault";
 
-type EditorProps = {
+export type RoleEditorProps = {
   scope: RoleScope;
   role: TOrgRole | TProjectRole;
   isCustom: boolean;
   isDefault: boolean;
   taken: readonly string[];
   backHref: string;
+  backLabel?: string;
+  describable?: boolean;
+  subjects?: PermissionSubject[];
   can: { edit: boolean; create: boolean; delete: boolean };
   references: { environments?: readonly string[]; tags?: readonly string[] };
   vaultConnections: readonly { id: string; name: string }[];
@@ -84,13 +88,16 @@ type EditorProps = {
   remove: () => Promise<void>;
 };
 
-const RoleEditor = ({
+export const RoleEditor = ({
   scope,
   role,
   isCustom,
   isDefault,
   taken,
   backHref,
+  backLabel,
+  describable = true,
+  subjects,
   can,
   references,
   vaultConnections,
@@ -98,7 +105,7 @@ const RoleEditor = ({
   update,
   duplicate,
   remove
-}: EditorProps) => {
+}: RoleEditorProps) => {
   const stored = useMemo(
     () => permissionsFromApi(scope, role.permissions),
     [scope, role.permissions]
@@ -184,7 +191,7 @@ const RoleEditor = ({
       <Stack gap={8}>
         <div>
           <Button variant="ghost" size="sm" icon="chev-left" asChild>
-            <a href={backHref}>{scope === "org" ? "Roles" : "Project roles"}</a>
+            <a href={backHref}>{backLabel ?? (scope === "org" ? "Roles" : "Project roles")}</a>
           </Button>
         </div>
         <PageHeader
@@ -263,7 +270,7 @@ const RoleEditor = ({
       <RuleTable
         scope={scope}
         draft={current}
-        subjects={subjectsFor(scope)}
+        subjects={subjects ?? subjectsFor(scope)}
         editable={editable}
         reason={reason}
         errors={errors}
@@ -284,6 +291,7 @@ const RoleEditor = ({
           <ProjectRoleSheet
             role={role}
             mode="update"
+            withDescription={describable}
             taken={taken.filter((slug) => slug !== role.slug)}
             open
             onOpenChange={closeOverlay}
@@ -304,6 +312,7 @@ const RoleEditor = ({
           <ProjectRoleSheet
             role={role}
             mode="duplicate"
+            withDescription={describable}
             taken={taken}
             open
             onOpenChange={closeOverlay}

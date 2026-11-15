@@ -89,11 +89,6 @@
 .dimmed {
   opacity: 0.7;
 }
-.projectCell {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
 .usageList {
   display: flex;
   flex-direction: column;

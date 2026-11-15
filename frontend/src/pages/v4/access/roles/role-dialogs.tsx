@@ -52,6 +52,7 @@ const RoleFields = ({
   autoSlug,
   descriptionOptional,
   descriptionPlaceholder,
+  withDescription = true,
   onChange
 }: {
   formId: string;
@@ -60,6 +61,7 @@ const RoleFields = ({
   autoSlug: boolean;
   descriptionOptional: boolean;
   descriptionPlaceholder: string;
+  withDescription?: boolean;
   onChange: (draft: RoleDraft, slugTouched?: boolean) => void;
 }) => (
   <Stack gap={16}>
@@ -92,16 +94,18 @@ const RoleFields = ({
         onChange={(event) => onChange({ ...draft, slug: event.target.value }, true)}
       />
     </Field>
-    <Field label="Description" optional={descriptionOptional}>
-      <Input
-        id={`${formId}-description`}
-        placeholder={descriptionPlaceholder}
-        autoComplete="off"
-        data-1p-ignore
-        value={draft.description}
-        onChange={(event) => onChange({ ...draft, description: event.target.value })}
-      />
-    </Field>
+    {withDescription && (
+      <Field label="Description" optional={descriptionOptional}>
+        <Input
+          id={`${formId}-description`}
+          placeholder={descriptionPlaceholder}
+          autoComplete="off"
+          data-1p-ignore
+          value={draft.description}
+          onChange={(event) => onChange({ ...draft, description: event.target.value })}
+        />
+      </Field>
+    )}
   </Stack>
 );
 
@@ -223,11 +227,13 @@ export const ProjectRoleSheet = ({
   mode,
   taken,
   open,
+  withDescription,
   onOpenChange,
   onSubmit
 }: {
   role: Role;
   mode: "update" | "duplicate";
+  withDescription?: boolean;
   taken: readonly string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -275,6 +281,7 @@ export const ProjectRoleSheet = ({
               autoSlug={form.autoSlug}
               descriptionOptional={false}
               descriptionPlaceholder="Manage billing settings"
+              withDescription={withDescription}
               onChange={form.change}
             />
           </form>
