@@ -584,7 +584,7 @@ export const ServiceSheet = ({
             value={form.hosts}
             invalid={Boolean(err("hosts") ?? err("hostDraft"))}
             placeholder={form.hostDraft || "api.example.com"}
-            onChange={(hosts) => set("hosts", hosts)}
+            onChange={(hosts) => patch({ hosts, hostDraft: "" })}
           />
         </Field>
         <Field label="Allowed methods" error={err("methods")} wide>
@@ -635,10 +635,15 @@ export const ServiceSheet = ({
     service?.credential.type === form.credentialType &&
     !storedMemberProvided(service, AgentVaultVariableReferenceField.CredentialUsername);
   const isBearer = form.credentialType === AgentVaultCredentialType.Bearer;
-  const variableField = (key: "secret" | "username", label: string, hasStored: boolean) => (
+  const variableField = (
+    key: "secret" | "username",
+    label: string,
+    hasStored: boolean,
+    allowsVariables = true
+  ) => (
     <Field
       label={label}
-      description="Paste the value, or type {{ to use a variable."
+      description={allowsVariables ? "Paste the value, or type {{ to use a variable." : undefined}
       error={err(key)}
       wide
     >
@@ -647,6 +652,7 @@ export const ServiceSheet = ({
         label={label}
         value={form[key]}
         hasStored={hasStored}
+        allowsVariables={allowsVariables}
         invalid={Boolean(err(key))}
         onChange={(value) => set(key, value)}
       />
@@ -718,7 +724,12 @@ export const ServiceSheet = ({
             }
           />
           {!memberProvides(AgentVaultVariableReferenceField.CredentialUsername) &&
-            variableField("username", "Username", hasStoredUsername)}
+            variableField(
+              "username",
+              "Username",
+              hasStoredUsername,
+              form.credentialType !== AgentVaultCredentialType.SshKey
+            )}
         </>
       )}
       {form.credentialType === AgentVaultCredentialType.SshKey && (

@@ -1227,7 +1227,8 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
         ...field,
         isSet: false,
         updatedAt: null,
-        variableReferences: []
+        variableReferences: [],
+        oauth: null
       }))
     };
     return {
