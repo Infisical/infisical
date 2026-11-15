@@ -5,7 +5,9 @@ import { z } from "zod";
 import { RequestsPage } from "./RequestsPage";
 
 const SearchSchema = z.object({
-  selectedTab: z.enum(["application-requests", "signing-requests"]).optional()
+  selectedTab: z
+    .enum(["application-requests", "signing-requests", "certificate-requests"])
+    .optional()
 });
 
 export const Route = createFileRoute("/v4/organizations/$orgId/cert-manager/requests")({

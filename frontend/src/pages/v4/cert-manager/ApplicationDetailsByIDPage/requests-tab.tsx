@@ -79,7 +79,7 @@ const RequestStatus = ({
 }: {
   request: TCertificateRequestListItem;
   orgId: string;
-  applicationName: string;
+  applicationName?: string;
 }) => {
   const meta = statusMeta[request.status] ?? { label: request.status, tone: "outline" };
   if (request.status === CertificateRequestStatus.PENDING_APPROVAL && request.approvalRequestId)
@@ -88,7 +88,7 @@ const RequestStatus = ({
         <a
           href={orgHref(
             orgId,
-            `/cert-manager/approvals/${request.approvalRequestId}?applicationName=${encodeURIComponent(applicationName)}`
+            `/cert-manager/approvals/${request.approvalRequestId}${applicationName ? `?applicationName=${encodeURIComponent(applicationName)}` : ""}`
           )}
         >
           Pending approval
@@ -115,7 +115,7 @@ export const RequestsTab = ({
   application
 }: {
   orgId: string;
-  application: TPkiApplication;
+  application?: TPkiApplication;
 }) => {
   const navigate = useNavigate();
   const adapter = useV4Adapter("pkiApplications");
@@ -130,7 +130,7 @@ export const RequestsTab = ({
     | StatusFilter
     | undefined;
   const { data, isPending } = adapter.useCertificateRequests({
-    applicationId: application.id,
+    applicationId: application?.id,
     offset: (page - 1) * pageSize,
     limit: pageSize,
     sortBy: "createdAt",
@@ -200,7 +200,7 @@ export const RequestsTab = ({
       header: "Status",
       width: 176,
       render: (request) => (
-        <RequestStatus request={request} orgId={orgId} applicationName={application.name} />
+        <RequestStatus request={request} orgId={orgId} applicationName={application?.name} />
       )
     },
     {
@@ -247,7 +247,7 @@ export const RequestsTab = ({
         }
       />
       <DataTable
-        label={`Certificate requests in ${application.name}`}
+        label={application ? `Certificate requests in ${application.name}` : "Certificate requests"}
         rows={rows}
         loading={isPending}
         columns={columns}
@@ -273,7 +273,7 @@ export const RequestsTab = ({
                       navigate({
                         to: certificatePath,
                         params: { orgId, certificateId: request.certificateId ?? "" },
-                        search: { fromApplication: application.name }
+                        search: application ? { fromApplication: application.name } : {}
                       })
                     }
                   >

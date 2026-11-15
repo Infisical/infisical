@@ -6,8 +6,7 @@ const POLICIES_ROUTE = v4Path("/organizations/$orgId/cert-manager/policies");
 
 const TAB_DESTINATIONS = {
   profiles: v4Path("/organizations/$orgId/cert-manager/certificate-profiles"),
-  policies: v4Path("/organizations/$orgId/cert-manager/certificate-policies"),
-  "certificate-requests": v4Path("/organizations/$orgId/cert-manager/requests")
+  policies: v4Path("/organizations/$orgId/cert-manager/certificate-policies")
 } as const;
 
 export const LegacyPoliciesRedirect = () => {
@@ -15,6 +14,15 @@ export const LegacyPoliciesRedirect = () => {
   const { selectedTab, ...filters } = useSearch({ from: POLICIES_ROUTE });
   const destination = TAB_DESTINATIONS[selectedTab as keyof typeof TAB_DESTINATIONS];
   if (destination) return <Navigate replace to={destination} params={{ orgId }} />;
+  if (selectedTab === "certificate-requests")
+    return (
+      <Navigate
+        replace
+        to={v4Path("/organizations/$orgId/cert-manager/requests")}
+        params={{ orgId }}
+        search={{ selectedTab }}
+      />
+    );
   return (
     <Navigate
       replace

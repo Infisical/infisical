@@ -309,7 +309,7 @@ export const pkiSections: readonly ShellNavSection[] = [
       { id: "dashboard", label: "Dashboard", icon: "home", path: `${pki}/overview` },
       { id: "inventory", label: "Inventory", icon: "cert", path: `${pki}/inventory` },
       { id: "discovery", label: "Discovery", icon: "search", path: `${pki}/discovery` },
-      { id: "requests", label: "Approval requests", icon: "inbox", path: `${pki}/requests` }
+      { id: "requests", label: "Requests", icon: "inbox", path: `${pki}/requests` }
     ]
   },
   {
