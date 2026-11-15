@@ -10,7 +10,7 @@ import {
 } from "@app/hooks/api/certificateProfiles/types";
 import type { SubscriptionPlan } from "@app/hooks/api/types";
 
-import { demoCreatedCas } from "../certificate-authorities/demo-store";
+import { demoCreatedCas } from "../certificate-authorities/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { PkiPoliciesAdapter } from "./contract";
 
@@ -194,7 +194,7 @@ const withDetails = (profile: TCertificateProfile): TCertificateProfileWithDetai
 });
 
 const caRef = (caId?: string) =>
-  [issuingCa, rootCa, ...demoCreatedCas.get()]
+  [issuingCa, rootCa, ...demoCreatedCas()]
     .filter((ca) => ca.id === caId)
     .map((ca) => ({ ...ca, status: "active", isExternal: false }))[0];
 

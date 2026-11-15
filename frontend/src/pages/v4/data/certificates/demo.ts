@@ -37,7 +37,7 @@ import {
   type TSigningOperation
 } from "@app/hooks/api/signers/types";
 
-import { demoCreatedCas } from "../certificate-authorities/demo-store";
+import { useDemoCreatedCas } from "../certificate-authorities/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import { demoApplications, demoCertificateRequests } from "../pki-applications/demo-store";
 import { demoCertificateProfiles } from "../pki-policies/demo";
@@ -652,7 +652,7 @@ export const certificatesDemo: CertificatesAdapter = {
       error: found ? null : new Error("Certificate not found")
     };
   },
-  useCertificateAuthorities: () => result([...authorities, ...demoCreatedCas.use()]),
+  useCertificateAuthorities: () => result([...authorities, ...useDemoCreatedCas()]),
   useCertificateProfiles: () => {
     const rows = demoCertificateProfiles.use();
     return result({ certificateProfiles: rows, totalCount: rows.length });

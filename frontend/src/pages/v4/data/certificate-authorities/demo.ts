@@ -33,7 +33,6 @@ import {
   partnerRootPem,
   rootPem
 } from "./demo-pems";
-import { demoCreatedCas } from "./demo-store";
 
 const projectId = "internal-pki";
 const ready = <T>(data: T) => ({ data, isPending: false, error: null });
@@ -209,6 +208,10 @@ const initialCas = (): TUnifiedCertificateAuthority[] => [
 ];
 
 const cas = createFixtureStore<TUnifiedCertificateAuthority[]>(initialCas());
+const createdCaIds = new Set<string>();
+
+export const useDemoCreatedCas = () => cas.use().filter((ca) => createdCaIds.has(ca.id));
+export const demoCreatedCas = () => cas.get().filter((ca) => createdCaIds.has(ca.id));
 
 const certificates = createFixtureStore<Record<string, TCaCertificateVersion[]>>({
   [ROOT_ID]: [
@@ -559,7 +562,7 @@ export const certificateAuthoritiesDemo: CertificateAuthoritiesAdapter = {
       projectId,
       enableDirectIssuance: true
     } as TUnifiedCertificateAuthority;
-    demoCreatedCas.update((entries) => [...entries, created]);
+    createdCaIds.add(created.id);
     if (created.type !== CaType.INTERNAL) {
       cas.update((entries) => [...entries, created]);
       return created;
