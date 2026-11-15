@@ -1,12 +1,12 @@
 import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
 import { SettingsPage } from "./SettingsPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/secret-scanning/settings")({
-  staticData: {
-    readiness: "partial",
-    missing: ["General settings for organizations with several Secret Scanning projects"]
-  },
+  staticData: { readiness: "full" },
   component: SettingsPage,
+  validateSearch: zodValidator(z.object({ selectedTab: z.string().optional().catch(undefined) })),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

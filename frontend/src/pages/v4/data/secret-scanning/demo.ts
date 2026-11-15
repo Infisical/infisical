@@ -1,3 +1,4 @@
+import { resolveSecretScanningProjectId } from "@app/helpers/secretScanningActiveProject";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -10,6 +11,10 @@ import {
   SecretScanningScanStatus,
   SecretScanningScanType
 } from "@app/hooks/api/secretScanningV2/enums";
+import type {
+  TSecretScanningInstanceProject,
+  TSecretScanningInstanceState
+} from "@app/hooks/api/secretScanningV2/queries";
 import type {
   TSecretScanningDataSource,
   TSecretScanningDataSourceOption,
@@ -506,13 +511,34 @@ const availableFor = (dataSourceId: string, included: TSecretScanningResource[])
   );
 };
 
+const instanceProjects: TSecretScanningInstanceProject[] = [
+  { id: projectId, name: "Secret Scanning", slug: "secret-scanning", createdAt: ago(60 * 24 * 90) },
+  {
+    id: "platform-scanning",
+    name: "platform-scanning",
+    slug: "platform-scanning",
+    createdAt: ago(60 * 24 * 240)
+  }
+];
+
+const instanceState: TSecretScanningInstanceState = {
+  activeProjectId: projectId,
+  projects: instanceProjects,
+  isMultiInstance: instanceProjects.length > 1
+};
+
 export const secretScanningDemo: SecretScanningAdapter = {
-  useProjectId: () => ({ data: projectId, isPending: false, error: null }),
-  useInstanceState: () => ({
-    data: { activeProjectId: projectId, projects: [], isMultiInstance: false },
+  useProjectId: (orgId) => ({
+    data:
+      resolveSecretScanningProjectId({
+        orgId,
+        activeProjectId: projectId,
+        memberProjectIds: instanceProjects.map((project) => project.id)
+      }) ?? projectId,
     isPending: false,
     error: null
   }),
+  useInstanceState: () => ({ data: instanceState, isPending: false, error: null }),
   useFindings: ({ status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit }) => {
     const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
     const matched = store

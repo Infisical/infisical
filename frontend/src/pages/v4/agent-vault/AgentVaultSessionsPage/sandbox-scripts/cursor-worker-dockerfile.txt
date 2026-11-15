@@ -1,0 +1,24 @@
+# worker/Dockerfile
+FROM ubuntu:24.04
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl git \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY agent-vault-ca.pem /tmp/agent-vault-ca.pem
+RUN mkdir -p /etc/agent-vault \
+  && cat /etc/ssl/certs/ca-certificates.crt /tmp/agent-vault-ca.pem > /etc/agent-vault/ca.pem
+
+COPY agent-vault-env.sh /etc/agent-vault/env.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+RUN useradd --create-home --uid 2000 agent \
+  && mkdir /workspace && chown agent /workspace
+USER 2000
+
+RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/home/agent/.local/bin:${PATH}"
+
+WORKDIR /workspace
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -4,9 +4,18 @@ import { isAxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { agentVaultKeys, type TAgentVaultSessionList } from "@app/hooks/api/agentVault/queries";
+import {
+  agentVaultKeys,
+  type TAgentVaultProxyList,
+  type TAgentVaultSessionList
+} from "@app/hooks/api/agentVault/queries";
 import type {
+  TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
+  TAgentVaultMintedSession,
+  TAgentVaultSession,
+  TCreateAgentVaultSessionDTO,
+  TUpdateAgentVaultSessionLabelDTO,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultDelegation,
@@ -21,12 +30,46 @@ import type {
   TSetAgentVaultDelegationDTO,
   TUpdateAgentVaultMemberRolesDTO
 } from "@app/hooks/api/agentVault/types";
+import { useGetIdentityUniversalAuth } from "@app/hooks/api/identities/queries";
 import { useDeleteProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { useGetUserProjectPermissions } from "@app/hooks/api/roles/queries";
 
-import type { AgentVaultAdapter, TAgentVaultAccessBundleList } from "./contract";
+import {
+  type AgentVaultAdapter,
+  isNoUniversalAuthError,
+  type TAgentVaultAccessBundleList
+} from "./contract";
 
 const AVAILABLE_MEMBER_LIMIT = 50;
+const MEMBER_CHECK_PAGE_SIZE = 100;
+
+const findAccessBundleMember = async (
+  accessBundleId: string,
+  actor: { type: AgentVaultMemberType; id: string; name: string },
+  offset = 0
+): Promise<boolean> => {
+  const { data } = await apiRequest.get<{ members: { id: string }[]; totalCount: number }>(
+    `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
+    {
+      params: {
+        actorType: actor.type,
+        search: actor.name,
+        limit: MEMBER_CHECK_PAGE_SIZE,
+        offset
+      }
+    }
+  );
+  if (data.members.some((member) => member.id === actor.id)) return true;
+  const nextOffset = offset + data.members.length;
+  if (data.members.length < MEMBER_CHECK_PAGE_SIZE || nextOffset >= data.totalCount) return false;
+  return findAccessBundleMember(accessBundleId, actor, nextOffset);
+};
+
+const useInvalidateSessions = (orgId: string, projectId: string) => {
+  const queryClient = useQueryClient();
+  return () =>
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(orgId, projectId) });
+};
 
 const useOrgId = () => useParams({ from: "/v4/organizations/$orgId" }).orgId;
 
@@ -59,8 +102,9 @@ const keepPreviousInProject =
 
 export const agentVaultLive: AgentVaultAdapter = {
   useProjectPermission: useGetUserProjectPermissions,
-  useSessions: (orgId, projectId, params) =>
+  useSessions: (orgId, projectId, params, options) =>
     useQuery({
+      enabled: options?.enabled ?? true,
       refetchInterval: 30_000,
       placeholderData: keepPreviousInProject(projectId),
       queryKey: agentVaultKeys.sessionList(orgId, projectId, params),
@@ -79,8 +123,74 @@ export const agentVaultLive: AgentVaultAdapter = {
         return data;
       }
     }),
-  useAccessBundles: (orgId, projectId, params) =>
+  useSession: (orgId, projectId, sessionId) =>
     useQuery({
+      queryKey: agentVaultKeys.session(orgId, projectId, sessionId ?? ""),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ session: TAgentVaultSession }>(
+          `/api/v1/agent-vault/sessions/${sessionId}`
+        );
+        return data.session;
+      },
+      enabled: Boolean(sessionId),
+      refetchInterval: 30_000,
+      retry: false
+    }),
+  useCreateSession: (orgId, projectId) => {
+    const invalidate = useInvalidateSessions(orgId, projectId);
+    return useMutation({
+      mutationFn: async (dto: TCreateAgentVaultSessionDTO) => {
+        const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
+          "/api/v1/agent-vault/sessions",
+          { ...dto, projectId }
+        );
+        return data.session;
+      },
+      onSuccess: invalidate
+    });
+  },
+  useUpdateSessionLabel: (orgId, projectId) => {
+    const invalidate = useInvalidateSessions(orgId, projectId);
+    return useMutation({
+      mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+        const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
+          `/api/v1/agent-vault/sessions/${sessionId}`,
+          { label }
+        );
+        return data.session;
+      },
+      onSuccess: invalidate
+    });
+  },
+  useRevokeSession: (orgId, projectId) => {
+    const invalidate = useInvalidateSessions(orgId, projectId);
+    return useMutation({
+      mutationFn: async (sessionId: string) => {
+        const { data } = await apiRequest.post<{
+          session: { id: string; revokedAt: string | null };
+        }>(`/api/v1/agent-vault/sessions/${sessionId}/revoke`);
+        return data.session;
+      },
+      onSuccess: invalidate
+    });
+  },
+  useProxies: (orgId, projectId, params, options) =>
+    useQuery({
+      refetchInterval: 30_000,
+      placeholderData: keepPreviousInProject(projectId),
+      enabled: options?.enabled ?? true,
+      refetchOnWindowFocus: options?.refetchOnWindowFocus ?? true,
+      queryKey: agentVaultKeys.proxyList(orgId, projectId, params),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<TAgentVaultProxyList>("/api/v1/agent-vault/proxies", {
+          params: { ...params, projectId }
+        });
+        return data;
+      }
+    }),
+  useAccessBundles: (orgId, projectId, params, options) =>
+    useQuery({
+      enabled: options?.enabled ?? true,
       placeholderData: keepPreviousInProject(projectId),
       queryKey: agentVaultKeys.accessBundleList(orgId, projectId, params),
       queryFn: async () => {
@@ -90,6 +200,40 @@ export const agentVaultLive: AgentVaultAdapter = {
         );
         return data;
       }
+    }),
+  useIsAccessBundleMember: (orgId, projectId, accessBundleId, actor) =>
+    useQuery({
+      queryKey: agentVaultKeys.accessBundleMemberCheck(
+        orgId,
+        projectId,
+        accessBundleId,
+        actor?.type ?? AgentVaultMemberType.MachineIdentity,
+        actor?.id ?? ""
+      ),
+      queryFn: () => (actor ? findAccessBundleMember(accessBundleId, actor) : false),
+      enabled: Boolean(accessBundleId && actor),
+      refetchOnWindowFocus: "always"
+    }),
+  useGrantAccessBundle: (orgId, projectId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
+        const { data } = await apiRequest.post(
+          `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
+          params
+        );
+        return data;
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) });
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) });
+      }
+    });
+  },
+  useIdentityUniversalAuth: (identityId) =>
+    useGetIdentityUniversalAuth(identityId, {
+      retry: (failureCount, error) => !isNoUniversalAuthError(error) && failureCount < 1,
+      refetchOnWindowFocus: true
     }),
   useMembers: <T extends AgentVaultMemberType>(
     projectId: string,

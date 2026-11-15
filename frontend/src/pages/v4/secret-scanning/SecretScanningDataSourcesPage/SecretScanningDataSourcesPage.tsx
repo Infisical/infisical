@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
@@ -47,15 +47,13 @@ import {
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
-import {
-  SecretScanningDataSource,
-  SecretScanningScanStatus
-} from "@app/hooks/api/secretScanningV2/enums";
+import { SecretScanningScanStatus } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
+import { AccessRestricted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { UpgradeGate } from "../../license";
 import { v4Path } from "../../links";
@@ -124,32 +122,21 @@ const LastScan = ({ dataSource }: { dataSource: TSecretScanningDataSourceWithDet
   );
 };
 
-const EditDataSourceSheet = ({
-  dataSource,
-  onClose,
-  onSaved
-}: {
-  dataSource?: TSecretScanningDataSourceWithDetails;
+type EditDataSourceProps = {
+  dataSource: TSecretScanningDataSourceWithDetails;
   onClose: () => void;
   onSaved: (message: string) => void;
-}) => {
+};
+
+const EditDataSourceContent = ({ dataSource, onClose, onSaved }: EditDataSourceProps) => {
   const update = useV4Adapter("secretScanning").useUpdateDataSource();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [scanNewCommits, setScanNewCommits] = useState(true);
+  const [name, setName] = useState(dataSource.name);
+  const [description, setDescription] = useState(dataSource.description ?? "");
+  const [scanNewCommits, setScanNewCommits] = useState(dataSource.isScanNewCommitsEnabled);
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
 
-  useEffect(() => {
-    if (!dataSource) return;
-    setName(dataSource.name);
-    setDescription(dataSource.description ?? "");
-    setScanNewCommits(dataSource.isScanNewCommitsEnabled);
-    setError(undefined);
-  }, [dataSource]);
-
   const submit = async () => {
-    if (!dataSource) return;
     if (!name.trim()) {
       setError("Required");
       return;
@@ -173,77 +160,218 @@ const EditDataSourceSheet = ({
     }
   };
 
-  const resource = dataSource ? RESOURCE_DESCRIPTION_HELPER[dataSource.type] : undefined;
+  const resource = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
   return (
-    <Sheet open={Boolean(dataSource)} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent pending={pending}>
-        <SheetHeader>
-          <SheetTitle>Edit data source</SheetTitle>
-          <SheetDescription>
-            {dataSource
-              ? `${SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name} data source`
-              : ""}
-          </SheetDescription>
-        </SheetHeader>
-        <SheetBody>
-          <form
-            id="edit-secret-scanning-data-source"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit();
+    <SheetContent pending={pending}>
+      <SheetHeader>
+        <SheetTitle>Edit data source</SheetTitle>
+        <SheetDescription>
+          {`${SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name} data source`}
+        </SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+        <form
+          id="edit-secret-scanning-data-source"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit();
+          }}
+        >
+          <Stack gap={16}>
+            <Field label="Name" error={error}>
+              <Input
+                autoComplete="off"
+                value={name}
+                invalid={Boolean(error)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setError(undefined);
+                }}
+              />
+            </Field>
+            <Field label="Description" optional>
+              <Textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </Field>
+            <Switch
+              layout="row"
+              label="Auto-scan"
+              description={`Scan ${resource.pluralNoun} when a ${resource.verb} occurs.`}
+              checked={scanNewCommits}
+              onCheckedChange={setScanNewCommits}
+            />
+          </Stack>
+        </form>
+      </SheetBody>
+      <SheetFooter>
+        <Inline gap={8} justify="end">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="edit-secret-scanning-data-source"
+            loading={pending}
+          >
+            Save
+          </Button>
+        </Inline>
+      </SheetFooter>
+    </SheetContent>
+  );
+};
+
+const EditDataSourceSheet = ({
+  dataSource,
+  onClose,
+  onSaved
+}: Omit<EditDataSourceProps, "dataSource"> & {
+  dataSource?: TSecretScanningDataSourceWithDetails;
+}) => (
+  <Sheet open={Boolean(dataSource)} onOpenChange={(next) => !next && onClose()}>
+    {dataSource && (
+      <EditDataSourceContent
+        key={dataSource.id}
+        dataSource={dataSource}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    )}
+  </Sheet>
+);
+
+const dataSourceColumns = (
+  orgId: string
+): DataTableColumn<TSecretScanningDataSourceWithDetails>[] => [
+  {
+    id: "type",
+    header: "Type",
+    width: 152,
+    text: (row) => SECRET_SCANNING_DATA_SOURCE_MAP[row.type].name,
+    render: (row) => {
+      const { name, image } = SECRET_SCANNING_DATA_SOURCE_MAP[row.type];
+      return (
+        <Inline gap={8} align="center" wrap={false}>
+          <ProviderIcon icon={image} alt={`${name} data source`} size="sm" />
+          {name}
+        </Inline>
+      );
+    }
+  },
+  {
+    id: "name",
+    header: "Name",
+    primary: true,
+    sortable: true,
+    grow: true,
+    text: (row) => row.name,
+    render: (row) => (
+      <Stack gap={0} style={{ minWidth: 0 }}>
+        <RowLink
+          link={{
+            to: v4Path("/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId"),
+            params: { orgId, type: row.type, dataSourceId: row.id }
+          }}
+          chevron={false}
+        >
+          {row.name}
+        </RowLink>
+        {row.description && (
+          <Meta mono={false} style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            {row.description}
+          </Meta>
+        )}
+      </Stack>
+    )
+  },
+  {
+    id: "resources",
+    header: "Resources",
+    width: 152,
+    render: (row) => {
+      const resource = RESOURCE_DESCRIPTION_HELPER[row.type];
+      return `${row.resourceCount} ${row.resourceCount === 1 ? resource.singularTitle : resource.pluralTitle}`;
+    }
+  },
+  {
+    id: "findings",
+    header: "Unresolved findings",
+    sortable: true,
+    width: 184,
+    render: (row) => {
+      if (!row.lastScannedAt || row.unresolvedFindings === null) return <Meta>-</Meta>;
+      if (row.unresolvedFindings === 0) return "0";
+      return (
+        <StatusText tone="bad" icon="alert">
+          {row.unresolvedFindings}
+        </StatusText>
+      );
+    }
+  },
+  {
+    id: "lastScan",
+    header: "Last scan",
+    sortable: true,
+    width: 152,
+    render: (row) => <LastScan dataSource={row} />
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: 144,
+    render: (row) => <DataSourceStatus dataSource={row} />
+  }
+];
+
+const DeleteDataSourceDialog = ({
+  dataSource,
+  onClose
+}: {
+  dataSource?: TSecretScanningDataSourceWithDetails;
+  onClose: () => void;
+}) => {
+  const deleteDataSource = useV4Adapter("secretScanning").useDeleteDataSource();
+  return (
+    <AlertDialog open={Boolean(dataSource)} onOpenChange={(next) => !next && onClose()}>
+      <AlertDialogContent tone="danger" confirmText={dataSource?.name ?? ""}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Delete ${dataSource?.name ?? "data source"}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            Its findings and scan history are deleted too. You cannot undo this.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              if (!dataSource) return;
+              try {
+                await deleteDataSource.mutateAsync({
+                  dataSourceId: dataSource.id,
+                  type: dataSource.type,
+                  projectId: dataSource.projectId
+                });
+              } catch (error) {
+                failed("Failed to delete data source", error);
+                return;
+              }
+              toast({
+                tone: "ok",
+                title: `Deleted ${SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name} data source ${dataSource.name}`
+              });
+              onClose();
             }}
           >
-            <Stack gap={16}>
-              <Field label="Name" error={error}>
-                <Input
-                  autoFocus
-                  autoComplete="off"
-                  value={name}
-                  invalid={Boolean(error)}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    setError(undefined);
-                  }}
-                />
-              </Field>
-              <Field label="Description" optional>
-                <Textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                />
-              </Field>
-              <Switch
-                layout="row"
-                label="Auto-scan"
-                description={
-                  resource
-                    ? `Scan ${resource.pluralNoun} when a ${resource.verb} occurs.`
-                    : undefined
-                }
-                checked={scanNewCommits}
-                onCheckedChange={setScanNewCommits}
-              />
-            </Stack>
-          </form>
-        </SheetBody>
-        <SheetFooter>
-          <Inline gap={8} justify="end">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              form="edit-secret-scanning-data-source"
-              loading={pending}
-            >
-              Save
-            </Button>
-          </Inline>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 
@@ -252,7 +380,6 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
   const { data: dataSources = [], isPending } = scanning.useDashboardDataSources(projectId, {
     refetchInterval: 30000
   });
-  const deleteDataSource = scanning.useDeleteDataSource();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
@@ -270,16 +397,34 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
       ProjectPermissionSecretScanningDataSourceActions.Create,
       ProjectPermissionSub.SecretScanningDataSources
     );
+  const canRead =
+    permissionPending ||
+    permission.can(
+      ProjectPermissionSecretScanningDataSourceActions.Read,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
+  const createDisabledReason = canCreate
+    ? undefined
+    : "You don't have permission to add data sources";
+  const startAdding = () => {
+    if (!subscription?.secretScanning) {
+      setUpgrading(true);
+      return;
+    }
+    setAdding(true);
+  };
 
-  const typeFilter = (filters.find((filter) => filter.field === "type")?.values ??
-    []) as SecretScanningDataSource[];
+  const typeFilter = useMemo(
+    () => new Set(filters.find((filter) => filter.field === "type")?.values ?? []),
+    [filters]
+  );
   const availableTypes = [...new Set(dataSources.map(({ type }) => type))];
 
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
     return dataSources
       .filter(({ type, name, connection }) => {
-        if (typeFilter.length && !typeFilter.includes(type)) return false;
+        if (typeFilter.size && !typeFilter.has(type)) return false;
         return (
           SECRET_SCANNING_DATA_SOURCE_MAP[type].name.toLowerCase().includes(search) ||
           name.toLowerCase().includes(search) ||
@@ -291,93 +436,19 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
       );
   }, [dataSources, query, typeFilter, sort]);
 
-  useEffect(() => {
-    const lastPage = Math.max(1, Math.ceil(filtered.length / pageSize));
-    if (page > lastPage) setPage(lastPage);
-  }, [filtered.length, page, pageSize]);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
 
-  const columns: DataTableColumn<TSecretScanningDataSourceWithDetails>[] = [
-    {
-      id: "type",
-      header: "Type",
-      width: 152,
-      text: (row) => SECRET_SCANNING_DATA_SOURCE_MAP[row.type].name,
-      render: (row) => {
-        const { name, image } = SECRET_SCANNING_DATA_SOURCE_MAP[row.type];
-        return (
-          <Inline gap={8} align="center" wrap={false}>
-            <ProviderIcon icon={image} alt={`${name} data source`} size="sm" />
-            {name}
-          </Inline>
-        );
-      }
-    },
-    {
-      id: "name",
-      header: "Name",
-      primary: true,
-      sortable: true,
-      grow: true,
-      text: (row) => row.name,
-      render: (row) => (
-        <Stack gap={0} style={{ minWidth: 0 }}>
-          <RowLink
-            link={{
-              to: v4Path("/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId"),
-              params: { orgId, type: row.type, dataSourceId: row.id }
-            }}
-            chevron={false}
-          >
-            {row.name}
-          </RowLink>
-          {row.description && (
-            <Meta mono={false} style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-              {row.description}
-            </Meta>
-          )}
-        </Stack>
-      )
-    },
-    {
-      id: "resources",
-      header: "Resources",
-      width: 152,
-      render: (row) => {
-        const resource = RESOURCE_DESCRIPTION_HELPER[row.type];
-        return `${row.resourceCount} ${row.resourceCount === 1 ? resource.singularTitle : resource.pluralTitle}`;
-      }
-    },
-    {
-      id: "findings",
-      header: "Unresolved findings",
-      sortable: true,
-      width: 184,
-      render: (row) => {
-        if (!row.lastScannedAt || row.unresolvedFindings === null) return <Meta>-</Meta>;
-        if (row.unresolvedFindings === 0) return "0";
-        return (
-          <StatusText tone="bad" icon="alert">
-            {row.unresolvedFindings}
-          </StatusText>
-        );
-      }
-    },
-    {
-      id: "lastScan",
-      header: "Last scan",
-      sortable: true,
-      width: 152,
-      render: (row) => <LastScan dataSource={row} />
-    },
-    {
-      id: "status",
-      header: "Status",
-      width: 144,
-      render: (row) => <DataSourceStatus dataSource={row} />
-    }
-  ];
+  const columns = dataSourceColumns(orgId);
 
-  const isFiltered = Boolean(query.trim()) || typeFilter.length > 0;
+  const isFiltered = Boolean(query.trim()) || typeFilter.size > 0;
+
+  if (!canRead)
+    return (
+      <Stack gap={24}>
+        <PageHeader title="Data sources" />
+        <AccessRestricted requirement="read Secret Scanning data sources" />
+      </Stack>
+    );
 
   return (
     <TooltipProvider>
@@ -395,16 +466,8 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
             <Button
               variant="accent"
               icon="plus"
-              disabledReason={
-                canCreate ? undefined : "You don't have permission to add data sources"
-              }
-              onClick={() => {
-                if (!subscription?.secretScanning) {
-                  setUpgrading(true);
-                  return;
-                }
-                setAdding(true);
-              }}
+              disabledReason={createDisabledReason}
+              onClick={startAdding}
             >
               Add data source
             </Button>
@@ -444,7 +507,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
         />
         <DataTable
           label="Data sources"
-          rows={filtered.slice((page - 1) * pageSize, page * pageSize)}
+          rows={filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)}
           columns={columns}
           loading={isPending}
           loadingRows={3}
@@ -496,7 +559,22 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                 }
               />
             ) : (
-              <EmptyState size="sm" media="bare" icon="git" title="No data sources yet" />
+              <EmptyState
+                size="sm"
+                media="bare"
+                icon="git"
+                title="No data sources yet"
+                actions={
+                  <Button
+                    variant="outline"
+                    icon="plus"
+                    disabledReason={createDisabledReason}
+                    onClick={startAdding}
+                  >
+                    Add data source
+                  </Button>
+                }
+              />
             )
           }
           pagination={
@@ -504,7 +582,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
               <Pagination
                 label="Data source pages"
                 variant="compact"
-                page={page}
+                page={currentPage}
                 onPageChange={setPage}
                 total={filtered.length}
                 pageSize={pageSize}
@@ -534,45 +612,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
           onClose={() => setEditing(undefined)}
           onSaved={(title) => toast({ tone: "ok", title })}
         />
-        <AlertDialog
-          open={Boolean(deleting)}
-          onOpenChange={(next) => !next && setDeleting(undefined)}
-        >
-          <AlertDialogContent tone="danger" confirmText={deleting?.name ?? ""}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{`Delete ${deleting?.name ?? "data source"}?`}</AlertDialogTitle>
-              <AlertDialogDescription>
-                Its findings and scan history are deleted too. You cannot undo this.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={async () => {
-                  if (!deleting) return;
-                  try {
-                    await deleteDataSource.mutateAsync({
-                      dataSourceId: deleting.id,
-                      type: deleting.type,
-                      projectId: deleting.projectId
-                    });
-                  } catch (error) {
-                    failed("Failed to delete data source", error);
-                    return;
-                  }
-                  toast({
-                    tone: "ok",
-                    title: `Deleted ${SECRET_SCANNING_DATA_SOURCE_MAP[deleting.type].name} data source ${deleting.name}`
-                  });
-                  setDeleting(undefined);
-                }}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeleteDataSourceDialog dataSource={deleting} onClose={() => setDeleting(undefined)} />
       </Stack>
     </TooltipProvider>
   );

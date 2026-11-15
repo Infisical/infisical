@@ -11,6 +11,7 @@ import { Switch } from "@infisical/cipher/ui/switch";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   ProjectPermissionAuditLogsActions,
   ProjectPermissionSub
@@ -282,12 +283,12 @@ const ProjectAuditLogs = ({ projectId, projectType }: Scope) => {
   );
 };
 
-export const ProjectAuditLogsPage = () => {
+const ProjectAuditLogsBody = () => {
   const { projectId, projectType } = useProjectScope();
   return <ProjectAuditLogs key={projectId} projectId={projectId} projectType={projectType} />;
 };
 
-export const CertManagerAuditLogsPage = () => {
+const CertManagerAuditLogsBody = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { projectId, isPending } = useCertManagerProjectId(orgId);
   if (isPending) return <PageLoader label="Loading audit logs" />;
@@ -295,9 +296,20 @@ export const CertManagerAuditLogsPage = () => {
   return <ProjectAuditLogs projectId={projectId} projectType={ProjectType.CertificateManager} />;
 };
 
-export const PamAuditLogsPage = () => {
+const PamAuditLogsBody = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { data: projectId, isPending } = useV4Adapter("auditLogs").usePamProjectId(orgId);
   if (isPending || !projectId) return <PageLoader label="Loading audit logs" />;
   return <ProjectAuditLogs projectId={projectId} projectType={ProjectType.PAM} />;
 };
+
+const withAuditLogsTitle = (Body: () => React.JSX.Element) => () => (
+  <>
+    <PageTitle title="Audit logs" />
+    <Body />
+  </>
+);
+
+export const ProjectAuditLogsPage = withAuditLogsTitle(ProjectAuditLogsBody);
+export const CertManagerAuditLogsPage = withAuditLogsTitle(CertManagerAuditLogsBody);
+export const PamAuditLogsPage = withAuditLogsTitle(PamAuditLogsBody);
