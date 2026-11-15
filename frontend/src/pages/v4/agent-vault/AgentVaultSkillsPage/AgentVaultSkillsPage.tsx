@@ -176,7 +176,7 @@ const Skills = ({ projectId }: { projectId: string }) => {
           icon="search"
           aria-label="Search skills"
           placeholder="Search skills..."
-          kbd="/"
+          slashShortcut
           maxLength={255}
           value={search}
           onChange={(event) => {

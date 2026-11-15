@@ -440,7 +440,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
           icon="search"
           aria-label="Search variables"
           placeholder="Search variables..."
-          kbd="/"
+          slashShortcut
           maxLength={255}
           value={search}
           onChange={(event) => {

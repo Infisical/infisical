@@ -233,7 +233,7 @@ export const GatewaysPanel = ({
             icon="search"
             aria-label={isPools ? "Search gateway pools" : "Search gateways"}
             placeholder={isPools ? "Search pools" : "Search gateways"}
-            kbd="/"
+            slashShortcut
             value={isPools ? poolSearch : list.search}
             onChange={(event) =>
               isPools ? setPoolSearch(event.target.value) : list.setSearch(event.target.value)

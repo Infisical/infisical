@@ -176,7 +176,7 @@ export const PamApprovalRequestsPage = () => {
               icon="search"
               aria-label="Search approval requests"
               placeholder="Search by requester, account or folder..."
-              kbd="/"
+              slashShortcut
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

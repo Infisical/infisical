@@ -302,7 +302,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
           icon="search"
           aria-label="Search access bundles"
           placeholder="Search access bundles..."
-          kbd="/"
+          slashShortcut
           maxLength={255}
           value={search}
           onChange={(event) => {

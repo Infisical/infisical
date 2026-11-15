@@ -264,7 +264,7 @@ export const RelaysPanel = ({
             icon="search"
             aria-label="Search relays"
             placeholder="Search relays"
-            kbd="/"
+            slashShortcut
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />
