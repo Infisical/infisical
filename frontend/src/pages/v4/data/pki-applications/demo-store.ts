@@ -1,3 +1,4 @@
+import type { TCertificateRequestListItem } from "@app/hooks/api/certificates/types";
 import type {
   TPkiApplication,
   TPkiApplicationMember,
@@ -213,6 +214,95 @@ export const demoMembers = createFixtureStore<TPkiApplicationMember[]>([
     name: "k8s-cluster-issuer",
     createdAt: "2026-08-20T09:00:00Z"
   })
+]);
+
+const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
+
+const request = (
+  id: string,
+  status: TCertificateRequestListItem["status"],
+  commonName: string,
+  profileSlug: string,
+  hoursAgo: number,
+  extra: Partial<TCertificateRequestListItem> = {}
+): TCertificateRequestListItem & { applicationId: string } => {
+  const profileId =
+    Object.keys(demoProfileSlugs).find((key) => demoProfileSlugs[key] === profileSlug) ?? null;
+  return {
+    id,
+    applicationId: PAYMENTS,
+    status,
+    commonName,
+    altNames: commonName,
+    profileId,
+    profileName: profileSlug,
+    caId: null,
+    certificateId: null,
+    approvalRequestId: null,
+    errorMessage: null,
+    pendingMessage: null,
+    createdAt: ago(hoursAgo),
+    updatedAt: ago(hoursAgo),
+    certificate: null,
+    ...extra
+  };
+};
+
+export const demoCertificateRequests = createFixtureStore([
+  request("creq-7a1d2c3b-4e5f-4a6b-8c9d-0e1f2a3b4c51", "issued", "api.acme.dev", "tls-server", 3, {
+    certificateId: "0f6b2d84-1e9a-4c37-b5d2-8a3e7c1f9d06",
+    certificate: {
+      id: "0f6b2d84-1e9a-4c37-b5d2-8a3e7c1f9d06",
+      serialNumber: "4FA19C2B7E11D0E2",
+      status: "active"
+    }
+  }),
+  request(
+    "creq-7a1d2c3b-4e5f-4a6b-8c9d-0e1f2a3b4c52",
+    "pending_approval",
+    "checkout.acme.dev",
+    "tls-server",
+    6,
+    { approvalRequestId: "apr-5c2e7d1a-9b3f-4e68-a0c4-1d7f2b9e6a35" }
+  ),
+  request(
+    "creq-7a1d2c3b-4e5f-4a6b-8c9d-0e1f2a3b4c53",
+    "pending_validation",
+    "webhooks.acme.dev",
+    "tls-server",
+    20,
+    { pendingMessage: "Waiting for the ACME DNS-01 challenge to propagate" }
+  ),
+  request(
+    "creq-7a1d2c3b-4e5f-4a6b-8c9d-0e1f2a3b4c54",
+    "failed",
+    "ledger-worker.payments.internal",
+    "mtls-client",
+    49,
+    { errorMessage: "The EST passphrase did not match the configured value" }
+  ),
+  request(
+    "creq-7a1d2c3b-4e5f-4a6b-8c9d-0e1f2a3b4c55",
+    "pending",
+    "settlement.payments.internal",
+    "mtls-client",
+    1
+  ),
+  request(
+    "creq-7a1d2c3b-4e5f-4a6b-8c9d-0e1f2a3b4c56",
+    "issued",
+    "payments.acme.dev",
+    "tls-server",
+    170,
+    {
+      certificateId: "6c1e8a3f-4b2d-4f90-8e75-d03a9b6c2e41",
+      certificate: {
+        id: "6c1e8a3f-4b2d-4f90-8e75-d03a9b6c2e41",
+        serialNumber: "610BE4935AC7284D",
+        status: "active"
+      }
+    }
+  )
 ]);
 
 export const demoMember = member;

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import {
@@ -101,6 +103,12 @@ export const CertificateManagementDialog = ({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selected, setSelected] = useState<string[]>(selectedOrderIds);
   const orderNamesSeen = useRef(new Map<string, string>());
+  const initialSelection = new Set(selectedOrderIds);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty:
+      selected.length !== initialSelection.size || selected.some((id) => !initialSelection.has(id)),
+    onDiscard: onClose
+  });
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -186,82 +194,88 @@ export const CertificateManagementDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={styles.wide}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <Stack gap={12}>
-          <Input
-            icon="search"
-            aria-label="Search certificates"
-            placeholder="Search by common name, serial number, or SAN"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            trailing={
-              search ? (
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  icon="x"
-                  iconOnly
-                  onClick={() => setSearch("")}
-                >
-                  Clear search
-                </Button>
-              ) : undefined
-            }
-          />
-          <DataTable
-            label="Certificates"
-            rows={certificates}
-            columns={columns}
-            loading={isPending}
-            loadingRows={4}
-            getRowId={(cert) => cert.id}
-            rowLabel={(cert) => getCertificateDisplayName(cert).originalDisplayName}
-            selectable
-            selectedIds={certificates
-              .filter((cert) => cert.orderId && selected.includes(cert.orderId))
-              .map((cert) => cert.id)}
-            onSelectionChange={changeSelection}
-            selectionDisabledReason={selectionBlock}
-            empty={
-              <EmptyState
-                size="sm"
-                media="bare"
-                icon={search ? "search" : "cert"}
-                title={
-                  search
-                    ? "No certificates match your search"
-                    : "No certificates available for sync"
-                }
-              />
-            }
-            pagination={
-              totalCount > PAGE_SIZE ? (
-                <Pagination
-                  label="Certificate pages"
-                  variant="compact"
-                  page={page}
-                  onPageChange={setPage}
-                  total={totalCount}
-                  pageSize={PAGE_SIZE}
+    <>
+      <Dialog open onOpenChange={(open) => !open && requestDiscard()}>
+        <DialogContent className={styles.wide}>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
+          <Stack gap={12}>
+            <Input
+              icon="search"
+              aria-label="Search certificates"
+              placeholder="Search by common name, serial number, or SAN"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              trailing={
+                search ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    icon="x"
+                    iconOnly
+                    onClick={() => setSearch("")}
+                  >
+                    Clear search
+                  </Button>
+                ) : undefined
+              }
+            />
+            <DataTable
+              label="Certificates"
+              rows={certificates}
+              columns={columns}
+              loading={isPending}
+              loadingRows={4}
+              getRowId={(cert) => cert.id}
+              rowLabel={(cert) => getCertificateDisplayName(cert).originalDisplayName}
+              selectable
+              selectedIds={certificates
+                .filter((cert) => cert.orderId && selected.includes(cert.orderId))
+                .map((cert) => cert.id)}
+              onSelectionChange={changeSelection}
+              selectionDisabledReason={selectionBlock}
+              empty={
+                <EmptyState
+                  size="sm"
+                  media="bare"
+                  icon={search ? "search" : "cert"}
+                  title={
+                    search
+                      ? "No certificates match your search"
+                      : "No certificates available for sync"
+                  }
                 />
-              ) : undefined
-            }
-          />
-        </Stack>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={save}>
-            {saveLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              }
+              pagination={
+                totalCount > PAGE_SIZE ? (
+                  <Pagination
+                    label="Certificate pages"
+                    variant="compact"
+                    page={page}
+                    onPageChange={setPage}
+                    total={totalCount}
+                    pageSize={PAGE_SIZE}
+                  />
+                ) : undefined
+              }
+            />
+          </Stack>
+          <DialogFooter>
+            <Button variant="outline" onClick={requestDiscard}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={save}>
+              {saveLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="Your certificate selection will be lost."
+      />
+    </>
   );
 };

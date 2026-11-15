@@ -473,6 +473,44 @@ export const codeSigningDemo: CodeSigningAdapter = {
       createdAt: new Date().toISOString()
     });
     signers.update((rows) => [created, ...rows]);
+    const seeds = {
+      user: demoMemberSeeds.users,
+      identity: demoMemberSeeds.identities,
+      group: demoMemberSeeds.groups
+    };
+    const added = (dto.members ?? []).map(({ kind, id, role }) => {
+      const seed: { name: string; email?: string | null } | undefined = seeds[kind].find(
+        (entry) => entry.id === id
+      );
+      return member(created.id, kind, id, seed?.name ?? id, role, seed?.email ?? undefined);
+    });
+    members.update((rows) => [...rows, ...added]);
+    if (dto.approvalPolicy?.steps.length) {
+      const { steps, constraints } = dto.approvalPolicy;
+      policies.update((rows) => [
+        ...rows,
+        {
+          id: `policy-${created.id}`,
+          signerId: created.id,
+          hasSteps: true,
+          steps: steps.map(
+            ({ stepNumber, name, requiredApprovals, approverUserIds, approverGroupIds }) => ({
+              stepNumber,
+              name,
+              requiredApprovals,
+              approvers: [
+                ...approverUserIds.map((id) => ({ type: "user" as const, id })),
+                ...(approverGroupIds ?? []).map((id) => ({ type: "group" as const, id }))
+              ]
+            })
+          ),
+          constraints: {
+            maxSignings: constraints?.maxSignings ?? null,
+            maxWindowDuration: constraints?.maxWindowDuration ?? null
+          }
+        }
+      ]);
+    }
     return created;
   }),
   useUpdateSigner: announce("Signer updated successfully", ({ signerId, ...patch }) =>

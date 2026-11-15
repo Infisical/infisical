@@ -528,7 +528,6 @@ export const RequestCertificateSheet = ({
           >
             <Select
               aria-label="Certificate profile"
-              width="md"
               placeholder="Select a certificate profile"
               invalid={Boolean(errors.profileId)}
               options={profileOptions.map(({ profile: option, isApiEnabled }) => ({

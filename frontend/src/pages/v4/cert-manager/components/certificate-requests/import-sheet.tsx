@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -228,7 +229,6 @@ export const ImportCertificatesSheet = ({
   const [failures, setFailures] = useState<Record<string, string>>({});
   const [hasRun, setHasRun] = useState(false);
   const [step, setStep] = useState(0);
-  const [discarding, setDiscarding] = useState(false);
   const completed = useRef(false);
 
   const isKeystore = format === "pkcs12";
@@ -396,10 +396,11 @@ export const ImportCertificatesSheet = ({
 
   const isDirty =
     Object.values(pem).some((value) => value.trim()) || Boolean(file) || Boolean(entries);
-  const requestClose = () => {
-    if (completed.current || allDone || !isDirty) close();
-    else setDiscarding(true);
-  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: isDirty && !allDone,
+    onDiscard: close
+  });
+  const requestClose = () => (completed.current ? close() : requestDiscard());
 
   const entryColumns: DataTableColumn<TPkcs12Entry>[] = [
     {
@@ -844,12 +845,7 @@ export const ImportCertificatesSheet = ({
         steps={stepKeys.map((key) => STEPS[key])}
       />
       <DiscardChangesAlertDialog
-        open={discarding}
-        onOpenChange={setDiscarding}
-        onDiscard={() => {
-          setDiscarding(false);
-          close();
-        }}
+        {...discardDialogProps}
         description="The certificates you added will not be imported."
       />
     </>

@@ -1,4 +1,5 @@
 import { type ReactNode, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -297,7 +298,6 @@ const RenewWizard = ({
   const newOrderTtl = useRef("");
   const [confirmingRemoval, setConfirmingRemoval] = useState(false);
   const [isConfirmPending, setIsConfirmPending] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
   const completed = useRef(false);
 
   const refusals = keySourceRefusals({ cert, profile, preview });
@@ -477,14 +477,11 @@ const RenewWizard = ({
     onClose();
   };
 
-  const requestClose = () => {
-    if (completed.current) {
-      close();
-      return;
-    }
-    if (step > 0 || JSON.stringify(draft) !== JSON.stringify(initial)) setDiscarding(true);
-    else close();
-  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: step > 0 || JSON.stringify(draft) !== JSON.stringify(initial),
+    onDiscard: close
+  });
+  const requestClose = () => (completed.current ? close() : requestDiscard());
 
   const validityField = (description?: string) => (
     <ValidityField
@@ -800,12 +797,7 @@ const RenewWizard = ({
         </AlertDialogContent>
       </AlertDialog>
       <DiscardChangesAlertDialog
-        open={discarding}
-        onOpenChange={setDiscarding}
-        onDiscard={() => {
-          setDiscarding(false);
-          close();
-        }}
+        {...discardDialogProps}
         description="Your renewal settings will be lost."
       />
     </>

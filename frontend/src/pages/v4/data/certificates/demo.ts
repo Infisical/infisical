@@ -38,10 +38,13 @@ import {
 } from "@app/hooks/api/signers/types";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
+import { demoApplications, demoCertificateRequests } from "../pki-applications/demo-store";
 import { demoCertificateProfiles } from "../pki-policies/demo";
 import type { CertificatesAdapter } from "./contract";
 
 const projectId = "internal-pki";
+const applicationName = (applicationId?: string | null) =>
+  demoApplications.get().find((entry) => entry.id === applicationId)?.name;
 const day = (offset: number) => new Date(Date.now() + offset * 864e5).toISOString();
 
 const authority = (
@@ -706,6 +709,7 @@ export const certificatesDemo: CertificatesAdapter = {
           source: CertSource.Imported,
           profileId: profileId ?? undefined,
           applicationId: applicationId ?? undefined,
+          applicationName: applicationName(applicationId),
           hasPrivateKey: Boolean(privateKeyPem)
         }
       )
@@ -733,6 +737,7 @@ export const certificatesDemo: CertificatesAdapter = {
             source: CertSource.Imported,
             profileId,
             applicationId,
+            applicationName: applicationName(applicationId),
             hasPrivateKey: Boolean(entry.privateKeyPem)
           }
         )
@@ -752,10 +757,34 @@ export const certificatesDemo: CertificatesAdapter = {
         ttlDays(attributes?.ttl),
         demoCertificateProfiles.get().find((entry) => entry.id === profileId) ?? tlsServer,
         (attributes?.keyAlgorithm as CertKeyAlgorithm) || CertKeyAlgorithm.RSA_2048,
-        { applicationId }
+        { applicationId, applicationName: applicationName(applicationId) }
       )
     );
-    return { certificate: issuedResponse(issued), certificateRequestId: crypto.randomUUID() };
+    const certificateRequestId = crypto.randomUUID();
+    if (applicationId) {
+      const createdAt = new Date().toISOString();
+      demoCertificateRequests.update((current) => [
+        {
+          id: certificateRequestId,
+          applicationId,
+          status: CertificateRequestStatus.ISSUED,
+          commonName,
+          altNames: issued.altNames ?? commonName,
+          profileId: issued.profileId ?? null,
+          profileName: issued.profileName ?? null,
+          caId: issued.caId ?? null,
+          certificateId: issued.id,
+          approvalRequestId: null,
+          errorMessage: null,
+          pendingMessage: null,
+          createdAt,
+          updatedAt: createdAt,
+          certificate: { id: issued.id, serialNumber: issued.serialNumber, status: issued.status }
+        },
+        ...current
+      ]);
+    }
+    return { certificate: issuedResponse(issued), certificateRequestId };
   }),
   useDigiCertOrders: () => result([])
 };
