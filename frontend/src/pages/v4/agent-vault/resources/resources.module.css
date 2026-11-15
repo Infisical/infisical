@@ -1,0 +1,47 @@
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--cipher-size-control-sm);
+  height: var(--cipher-size-control-sm);
+  color: var(--cipher-muted);
+  background: var(--cipher-inset);
+}
+
+.stack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-2);
+}
+
+.chipCount {
+  composes: chip;
+  font-size: var(--cipher-type-caption-font-size);
+}
+
+.detailPage {
+  container-type: inline-size;
+}
+
+.name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.description {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkWrap {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
