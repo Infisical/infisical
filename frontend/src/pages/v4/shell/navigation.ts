@@ -316,6 +316,7 @@ export const pkiSections: readonly ShellNavSection[] = [
     label: "Resources",
     items: [
       { id: "applications", label: "Applications", icon: "apps", path: `${pki}/applications` },
+      { id: "syncs", label: "Certificate syncs", icon: "sync", path: `${pki}/integrations` },
       { id: "signers", label: "Signers", icon: "file", path: `${pki}/code-signing` },
       {
         id: "authorities",
@@ -393,6 +394,7 @@ export const agentVaultSections = (base: string): readonly ShellNavSection[] => 
         icon: "folder",
         path: `${base}/access-bundles`
       },
+      { id: "services", label: "Services", icon: "link", path: `${base}/services` },
       { id: "variables", label: "Variables", icon: "key", path: `${base}/variables` },
       { id: "skills", label: "Skills", icon: "file", path: `${base}/skills` }
     ]
