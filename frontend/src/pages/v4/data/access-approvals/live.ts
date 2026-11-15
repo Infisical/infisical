@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import {
   useCancelAccessRequest,
@@ -19,6 +19,7 @@ import {
 } from "@app/hooks/api/accessApproval/retrying-delegated-dispatch";
 import { useDelegatedApprovalOptions } from "@app/hooks/api/delegatedApprovals/queries";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api/projects/queries";
+import { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 import { useGetOrgSubscription } from "@app/hooks/api/subscriptions/queries";
 
 import type { AccessApprovalsAdapter } from "./contract";
@@ -75,6 +76,14 @@ export const accessApprovalsLive: AccessApprovalsAdapter = {
     };
   },
   useDelegatedApprovalOptions: (enabled) => useDelegatedApprovalOptions({ enabled }),
+  useEnvironmentFolderPaths: ({ projectId, environment, enabled }) => {
+    const folders = useListProjectEnvironmentsFolders(projectId, { environment, enabled });
+    const data = useMemo(
+      () => folders.data?.[environment]?.folders.map((folder) => folder.path),
+      [folders.data, environment]
+    );
+    return { data, isPending: folders.isPending, error: folders.error };
+  },
   useIsDispatchRetrying: () => {
     useDelegatedDispatchRetryVersion();
     return isDelegatedDispatchRetrying;
