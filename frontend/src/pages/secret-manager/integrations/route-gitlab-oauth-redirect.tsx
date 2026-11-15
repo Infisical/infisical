@@ -9,6 +9,7 @@ import { GitlabOAuthCallbackPageQueryParamsSchema } from "./GitlabOauthCallbackP
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(GitlabOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;

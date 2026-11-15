@@ -9,6 +9,7 @@ import { HerokuOAuthCallbackPageQueryParamsSchema } from "./HerokuOauthCallbackP
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(HerokuOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;

@@ -9,6 +9,7 @@ import { GcpSecretManagerOAuthCallbackPageQueryParamsSchema } from "./GcpSecretM
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(GcpSecretManagerOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;

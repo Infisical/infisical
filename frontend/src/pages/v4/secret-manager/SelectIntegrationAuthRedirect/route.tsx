@@ -1,13 +1,16 @@
 import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { NotPortedPage } from "../../organization/NotPortedPage/NotPortedPage";
+import { SelectIntegrationAuthRedirect } from "../LegacyIntegrationRedirect/LegacyIntegrationRedirect";
 
-// Main's native integration create flow still owns this path; without its own leaf it would match
-// the v4 details route's $integrationId and never reach classic.
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth"
 )({
-  staticData: { readiness: "none" },
-  component: NotPortedPage,
+  staticData: { readiness: "full" },
+  component: SelectIntegrationAuthRedirect,
+  validateSearch: zodValidator(
+    z.object({ integrationSlug: z.string().optional().catch(undefined) })
+  ),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

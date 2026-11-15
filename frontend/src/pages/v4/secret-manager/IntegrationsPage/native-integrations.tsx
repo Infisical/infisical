@@ -22,6 +22,7 @@ import type { TIntegration } from "@app/hooks/api/integrations/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
+import { formatDateTime } from "../../access/roles";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useGo } from "../../links";
@@ -45,6 +46,28 @@ import {
 } from "./native-parts";
 
 const STATUS_ORDER: Record<SyncState, number> = { failed: 0, synced: 1, pending: 2 };
+
+const destinationDetail = (integration: TIntegration) => (
+  <Tooltip
+    content={
+      <Stack gap={4}>
+        {destinationFacts(integration).map(([label, value]) => (
+          <span key={label}>
+            {label}: {value}
+          </span>
+        ))}
+      </Stack>
+    }
+  >
+    <span style={{ minWidth: 0 }} data-row-interactive>
+      <MiddleTruncate text={destinationOf(integration)} />
+    </span>
+  </Tooltip>
+);
+
+const sourcePath = (integration: TIntegration) => (
+  <MiddleTruncate mono text={integration.secretPath} />
+);
 
 export const RetirementNotice = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const go = useGo();
@@ -111,7 +134,8 @@ export const NativeIntegrationsTab = ({
   const environmentName = (integration: TIntegration) =>
     environmentById.get(integration.envId)?.name ?? "-";
 
-  const picked = (field: string) => filters.find((filter) => filter.field === field)?.values ?? [];
+  const picked = (field: string) =>
+    new Set<string>(filters.find((filter) => filter.field === field)?.values ?? []);
   const statusFilter = picked("status");
   const appFilter = picked("integration");
   const environmentFilter = picked("environment");
@@ -119,9 +143,9 @@ export const NativeIntegrationsTab = ({
   const filtered = integrations
     .filter(
       (integration) =>
-        (!statusFilter.length || statusFilter.includes(syncStateOf(integration))) &&
-        (!appFilter.length || appFilter.includes(integration.integration)) &&
-        (!environmentFilter.length || environmentFilter.includes(integration.envId)) &&
+        (!statusFilter.size || statusFilter.has(syncStateOf(integration))) &&
+        (!appFilter.size || appFilter.has(integration.integration)) &&
+        (!environmentFilter.size || environmentFilter.has(integration.envId)) &&
         [
           nameOf(integration),
           integration.secretPath,
@@ -132,12 +156,13 @@ export const NativeIntegrationsTab = ({
     .sort((a, b) => {
       const order = (() => {
         switch (sort.columnId) {
-          case "path":
-            return a.secretPath.localeCompare(b.secretPath);
-          case "environment":
-            return environmentName(a).localeCompare(environmentName(b));
-          case "destination":
-            return destinationOf(a).toLowerCase().localeCompare(destinationOf(b).toLowerCase());
+          case "source":
+            return (
+              environmentName(a).localeCompare(environmentName(b)) ||
+              a.secretPath.localeCompare(b.secretPath)
+            );
+          case "lastSync":
+            return (Date.parse(a.lastUsed ?? "") || 0) - (Date.parse(b.lastUsed ?? "") || 0);
           case "status":
             return STATUS_ORDER[syncStateOf(a)] - STATUS_ORDER[syncStateOf(b)];
           default:
@@ -204,10 +229,10 @@ export const NativeIntegrationsTab = ({
   const columns: DataTableColumn<TIntegration>[] = [
     {
       id: "integration",
-      header: "Integration",
+      header: "Provider",
       primary: true,
       sortable: true,
-      width: 240,
+      grow: true,
       text: nameOf,
       render: (integration) => {
         const option = options?.find((entry) => entry.slug === integration.integration);
@@ -219,48 +244,17 @@ export const NativeIntegrationsTab = ({
             </RowLink>
           </Inline>
         );
-      }
+      },
+      secondary: destinationDetail
     },
     {
-      id: "path",
-      header: "Source path",
+      id: "source",
+      header: "Source",
       sortable: true,
-      mono: true,
-      width: 200,
-      text: (integration) => integration.secretPath,
-      render: (integration) => <MiddleTruncate mono text={integration.secretPath} />
-    },
-    {
-      id: "environment",
-      header: "Source environment",
-      sortable: true,
-      width: 180,
-      text: environmentName,
-      render: environmentName
-    },
-    {
-      id: "destination",
-      header: "Destination",
-      sortable: true,
-      grow: true,
-      text: destinationOf,
-      render: (integration) => (
-        <Tooltip
-          content={
-            <Stack gap={4}>
-              {destinationFacts(integration).map(([label, value]) => (
-                <span key={label}>
-                  {label}: {value}
-                </span>
-              ))}
-            </Stack>
-          }
-        >
-          <span style={{ minWidth: 0 }}>
-            <MiddleTruncate text={destinationOf(integration)} />
-          </span>
-        </Tooltip>
-      )
+      width: 240,
+      text: (integration) => `${environmentName(integration)} ${integration.secretPath}`,
+      render: environmentName,
+      secondary: sourcePath
     },
     {
       id: "status",
@@ -269,6 +263,16 @@ export const NativeIntegrationsTab = ({
       width: 150,
       text: (integration) => SYNC_STATE_LABEL[syncStateOf(integration)],
       render: (integration) => <SyncStatus integration={integration} />
+    },
+    {
+      id: "lastSync",
+      header: "Last sync",
+      sortable: true,
+      width: 190,
+      text: (integration) =>
+        integration.lastUsed ? formatDateTime(integration.lastUsed) : "Never",
+      render: (integration) =>
+        integration.lastUsed ? formatDateTime(integration.lastUsed) : "Never"
     }
   ];
 

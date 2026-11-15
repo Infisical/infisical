@@ -9,6 +9,7 @@ declare module "@tanstack/react-router" {
     readiness?: V4Readiness;
     missing?: string[];
     v3Alias?: boolean;
+    classicHref?: (v3Href: string) => string;
   }
 }
 

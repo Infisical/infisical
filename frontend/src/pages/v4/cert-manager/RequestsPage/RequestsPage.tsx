@@ -24,13 +24,14 @@ import {
 
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
+import { RequestsTab as CertificateRequestsTab } from "../ApplicationDetailsByIDPage/requests-tab";
 import { certDataOf, RequestStatus, requestedAgo, signingDataOf } from "../components/approval";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/requests");
 const detailPath = v4Path("/organizations/$orgId/cert-manager/approvals/$approvalRequestId");
 
-type Tab = "application-requests" | "signing-requests";
+type Tab = "application-requests" | "signing-requests" | "certificate-requests";
 
 const statusMatches: Record<string, (status: ApprovalRequestStatus) => boolean> = {
   pending: (status) => status === ApprovalRequestStatus.Pending,
@@ -281,14 +282,14 @@ export const RequestsPage = () => {
     <TooltipProvider>
       <Stack gap={24}>
         <PageHeader
-          title="Approval requests"
+          title="Requests"
           tabs={
             <Tabs
               label="Approval request sections"
               value={tab}
               onValueChange={(next) =>
                 navigate({
-                  search: next === "signing-requests" ? { selectedTab: next } : {}
+                  search: next === "application-requests" ? {} : { selectedTab: next as Tab }
                 })
               }
               tabs={[
@@ -301,12 +302,14 @@ export const RequestsPage = () => {
                   value: "signing-requests",
                   label: "Signing requests",
                   count: pendingCount(signingRequests.data)
-                }
+                },
+                { value: "certificate-requests", label: "Certificate requests" }
               ]}
             />
           }
         />
-        {tab === "application-requests" ? (
+        {tab === "certificate-requests" && <CertificateRequestsTab orgId={orgId} />}
+        {tab === "application-requests" && (
           <RequestsTable
             key="application-requests"
             orgId={orgId}
@@ -314,7 +317,8 @@ export const RequestsPage = () => {
             requests={certRequests.data ?? []}
             loading={certRequests.isPending}
           />
-        ) : (
+        )}
+        {tab === "signing-requests" && (
           <RequestsTable
             key="signing-requests"
             orgId={orgId}
