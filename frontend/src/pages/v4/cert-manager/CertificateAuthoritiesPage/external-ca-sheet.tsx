@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { type ChangeEvent, useId, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -25,6 +25,7 @@ import { z } from "zod";
 
 import { ExternalCertificateAuthoritiesUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
+import { isValidEmail } from "@app/helpers/email";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
@@ -47,18 +48,9 @@ import { ConnectionField } from "./install/forms";
 
 const UNCHANGED_CREDENTIAL = "__INFISICAL_UNCHANGED__";
 
-const typedOver = (previous: string, next: string) => {
-  let start = 0;
-  while (start < next.length && start < previous.length && next[start] === previous[start])
-    start += 1;
-  let end = 0;
-  while (
-    end < next.length - start &&
-    end < previous.length - start &&
-    next[next.length - 1 - end] === previous[previous.length - 1 - end]
-  )
-    end += 1;
-  return next.slice(start, next.length - end);
+const replacementOf = (event: ChangeEvent<HTMLInputElement>) => {
+  const { inputType, data } = event.nativeEvent as InputEvent;
+  return inputType?.startsWith("delete") ? "" : (data ?? "");
 };
 
 const REQUIRED_EAB_DIRECTORIES = [
@@ -335,7 +327,7 @@ const validate = (draft: Draft, editing: boolean, csRequiresContact: boolean): E
           issue(z.string().url("Must be a valid URL"), draft.directoryUrl.trim()),
         accountEmail:
           required(draft.accountEmail, "Enter the account email") ??
-          issue(z.string().email("Must be a valid email address"), draft.accountEmail.trim()),
+          (isValidEmail(draft.accountEmail.trim()) ? undefined : "Must be a valid email address"),
         eabKid:
           REQUIRED_EAB_DIRECTORIES.includes(draft.directoryUrl) && !draft.eabKid.trim()
             ? "This directory requires an EAB key identifier"
@@ -367,7 +359,7 @@ const validate = (draft: Draft, editing: boolean, csRequiresContact: boolean): E
                 const value = draft.contact[key].trim();
                 if (!value) return [`contact.${key}`, `${label} is required for code signing CAs`];
                 if (value.length > max) return [`contact.${key}`, `Up to ${max} characters`];
-                if (key === "email" && !z.string().email().safeParse(value).success)
+                if (key === "email" && !isValidEmail(value))
                   return [`contact.${key}`, "Email must be valid"];
                 return [`contact.${key}`, undefined];
               })
@@ -693,12 +685,15 @@ const AcmeFields = ({ draft, errors, projectId, editing, set, patch }: FieldsPro
         value={draft.eabHmacKey}
         mono
         autoComplete="new-password"
+        onPaste={(event) => {
+          if (draft.eabHmacKey !== UNCHANGED_CREDENTIAL) return;
+          event.preventDefault();
+          set("eabHmacKey", event.clipboardData.getData("text"));
+        }}
         onChange={(event) =>
           set(
             "eabHmacKey",
-            draft.eabHmacKey === UNCHANGED_CREDENTIAL
-              ? typedOver(UNCHANGED_CREDENTIAL, event.target.value)
-              : event.target.value
+            draft.eabHmacKey === UNCHANGED_CREDENTIAL ? replacementOf(event) : event.target.value
           )
         }
       />
