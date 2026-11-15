@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -7,7 +8,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -107,6 +109,12 @@ const CrlSettingsDialog = ({
   const [validity, setValidity] = useState(String(currentValidity));
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const isExpired = expired(ca);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty:
+      JSON.stringify(urls.map((url) => url.value)) !== JSON.stringify(current) ||
+      validity !== String(currentValidity),
+    onDiscard: onClose
+  });
 
   const submit = async () => {
     const next = { ...crlUrlErrors(urls), crlValidityDays: crlValidityIssue(validity) };
@@ -128,57 +136,65 @@ const CrlSettingsDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !pending && onClose()}>
-      <DialogContent pending={pending}>
-        <DialogHeader>
-          <DialogTitle>Edit CRL settings</DialogTitle>
-          <DialogDescription>
-            URL changes apply to certificates issued after you save. Changing the validity
-            regenerates the CRL.
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          id={formId}
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Stack gap={16}>
-            <CrlUrlsField
-              urls={urls}
-              errors={errors}
-              locked={!plan?.caCrl}
-              onChange={(next) => {
-                setUrls(next);
-                setErrors({});
-              }}
-            />
-            <CrlValidityField
-              value={validity}
-              error={errors.crlValidityDays}
-              locked={!plan?.caCrl}
-              disabledReason={
-                isExpired ? "This CA has expired. Renew it to change the CRL validity." : undefined
-              }
-              onChange={(value) => {
-                setValidity(value);
-                setErrors((currentErrors) => ({ ...currentErrors, crlValidityDays: undefined }));
-              }}
-            />
-          </Stack>
-        </form>
-        <DialogFooter>
-          <Button variant="primary" type="submit" form={formId} loading={pending}>
-            Save
-          </Button>
-          <Button variant="outline" disabled={pending} onClick={onClose}>
-            Cancel
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={(next) => !next && !pending && requestDiscard()}>
+        <DialogContent pending={pending}>
+          <DialogHeader>
+            <DialogTitle>Edit CRL settings</DialogTitle>
+            <DialogDescription>
+              URL changes apply to certificates issued after you save. Changing the validity
+              regenerates the CRL.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            id={formId}
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <Stack gap={16}>
+              <CrlUrlsField
+                urls={urls}
+                errors={errors}
+                locked={!plan?.caCrl}
+                onChange={(next) => {
+                  setUrls(next);
+                  setErrors({});
+                }}
+              />
+              <CrlValidityField
+                value={validity}
+                error={errors.crlValidityDays}
+                locked={!plan?.caCrl}
+                disabledReason={
+                  isExpired
+                    ? "This CA has expired. Renew it to change the CRL validity."
+                    : undefined
+                }
+                onChange={(value) => {
+                  setValidity(value);
+                  setErrors((currentErrors) => ({ ...currentErrors, crlValidityDays: undefined }));
+                }}
+              />
+            </Stack>
+          </form>
+          <DialogFooter>
+            <Button variant="primary" type="submit" form={formId} loading={pending}>
+              Save
+            </Button>
+            <Button variant="outline" disabled={pending} onClick={requestDiscard}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="Your changes to the CRL settings will be lost."
+      />
+    </>
   );
 };
 

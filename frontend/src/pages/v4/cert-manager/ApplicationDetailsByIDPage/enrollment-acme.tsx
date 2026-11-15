@@ -146,6 +146,7 @@ const ConfiguredAcme = ({
   state,
   header,
   busy,
+  run,
   onCancel
 }: EnrollmentPanelProps<"acme">) => {
   const adapter = useV4Adapter("pkiApplications");
@@ -161,7 +162,7 @@ const ConfiguredAcme = ({
     value: stored,
     errorMessage: "Couldn't update ACME enrollment. Try again.",
     onSave: async (next) => {
-      await set.mutateAsync({ applicationId, profileId, ...next });
+      await run(() => set.mutateAsync({ applicationId, profileId, ...next }));
       saved("ACME enrollment updated");
     }
   });

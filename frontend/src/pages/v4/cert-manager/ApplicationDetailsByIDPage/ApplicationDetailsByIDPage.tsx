@@ -28,6 +28,7 @@ import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { isAxiosError } from "axios";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
@@ -260,7 +261,7 @@ const ApplicationDetail = ({
   );
 };
 
-export const ApplicationDetailsByIDPage = () => {
+const Page = () => {
   const { orgId, applicationName } = useParams({ from: routeId });
   const { projectId, isPending: isResolving } = useCertManagerProjectId(orgId);
   const adapter = useV4Adapter("pkiApplications");
@@ -295,5 +296,17 @@ export const ApplicationDetailsByIDPage = () => {
       application={application}
       access={permissions.data}
     />
+  );
+};
+
+export const ApplicationDetailsByIDPage = () => {
+  const { applicationName } = useParams({ from: routeId });
+  const { data: application } =
+    useV4Adapter("pkiApplications").useApplicationByName(applicationName);
+  return (
+    <>
+      <PageTitle title={application?.name ?? "Application"} />
+      <Page />
+    </>
   );
 };

@@ -1,4 +1,6 @@
 import { useId, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -236,7 +238,15 @@ const formFor = (method?: Method, integration?: Integration) => {
   return method && METHOD_FORMS[method];
 };
 
-const InstallFlow = ({ caId, onClose }: { caId: string; onClose: () => void }) => {
+const InstallFlow = ({
+  caId,
+  open,
+  onClose
+}: {
+  caId: string;
+  open: boolean;
+  onClose: () => void;
+}) => {
   const { orgId, projectId } = useCaScope();
   const { data: plan } = useV4Adapter("certificateAuthorities").useCaPlan(orgId);
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -268,70 +278,86 @@ const InstallFlow = ({ caId, onClose }: { caId: string; onClose: () => void }) =
     setIntegration(undefined);
   };
 
+  const close = () => {
+    restart();
+    onClose();
+  };
+
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: Boolean(method),
+    onDiscard: close
+  });
+
   return (
     <>
-      <SheetContent pending={pending}>
-        <SheetHeader>
-          <SheetTitle>
-            {step === "integration"
-              ? "Choose a CA integration"
-              : "Install intermediate CA certificate"}
-          </SheetTitle>
-          {step === "method" && (
-            <SheetDescription>
-              Choose how this CA&apos;s signing certificate is issued.
-            </SheetDescription>
-          )}
-        </SheetHeader>
-        <SheetBody>
-          {step === "method" && <MethodPicker method={method} locked={locked} onPick={pick} />}
-          {step === "integration" && (
-            <IntegrationPicker integration={integration} onPick={setIntegration} />
-          )}
-          {step === "form" && Form && (
-            <Stack gap={24}>
-              <ChosenMethod
-                method={method}
-                integration={integration}
-                pending={pending}
-                onRestart={restart}
-              />
-              <Form
-                caId={caId}
-                projectId={projectId}
-                formId={formId}
-                onPendingChange={setPending}
-                onDone={onClose}
-              />
-            </Stack>
-          )}
-        </SheetBody>
-        <SheetFooter>
-          <PrimaryStepButton
-            step={step}
-            method={method}
-            integration={integration}
-            pending={pending}
-            formId={formId}
-            onStep={setStep}
-          />
-          {step === "integration" ? (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setStep("method");
-                setIntegration(undefined);
-              }}
-            >
-              Back
-            </Button>
-          ) : (
-            <Button variant="outline" disabled={pending} onClick={onClose}>
-              Cancel
-            </Button>
-          )}
-        </SheetFooter>
-      </SheetContent>
+      <Sheet open={open} onOpenChange={(next) => !next && !pending && requestDiscard()}>
+        <SheetContent pending={pending}>
+          <SheetHeader>
+            <SheetTitle>
+              {step === "integration"
+                ? "Choose a CA integration"
+                : "Install intermediate CA certificate"}
+            </SheetTitle>
+            {step === "method" && (
+              <SheetDescription>
+                Choose how this CA&apos;s signing certificate is issued.
+              </SheetDescription>
+            )}
+          </SheetHeader>
+          <SheetBody>
+            {step === "method" && <MethodPicker method={method} locked={locked} onPick={pick} />}
+            {step === "integration" && (
+              <IntegrationPicker integration={integration} onPick={setIntegration} />
+            )}
+            {step === "form" && Form && (
+              <Stack gap={24}>
+                <ChosenMethod
+                  method={method}
+                  integration={integration}
+                  pending={pending}
+                  onRestart={restart}
+                />
+                <Form
+                  caId={caId}
+                  projectId={projectId}
+                  formId={formId}
+                  onPendingChange={setPending}
+                  onDone={close}
+                />
+              </Stack>
+            )}
+          </SheetBody>
+          <SheetFooter>
+            <PrimaryStepButton
+              step={step}
+              method={method}
+              integration={integration}
+              pending={pending}
+              formId={formId}
+              onStep={setStep}
+            />
+            {step === "integration" ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStep("method");
+                  setIntegration(undefined);
+                }}
+              >
+                Back
+              </Button>
+            ) : (
+              <Button variant="outline" disabled={pending} onClick={requestDiscard}>
+                Cancel
+              </Button>
+            )}
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="The signing method you chose will be lost."
+      />
       {upgradeGate}
     </>
   );
@@ -345,8 +371,7 @@ export const InstallCaCertificateSheet = ({
   caId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) => (
-  <Sheet open={open && Boolean(caId)} onOpenChange={onOpenChange}>
-    {caId && <InstallFlow key={caId} caId={caId} onClose={() => onOpenChange(false)} />}
-  </Sheet>
-);
+}) =>
+  caId ? (
+    <InstallFlow key={caId} caId={caId} open={open} onClose={() => onOpenChange(false)} />
+  ) : null;

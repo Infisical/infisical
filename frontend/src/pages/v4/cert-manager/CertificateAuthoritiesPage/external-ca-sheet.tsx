@@ -47,6 +47,20 @@ import { ConnectionField } from "./install/forms";
 
 const UNCHANGED_CREDENTIAL = "__INFISICAL_UNCHANGED__";
 
+const typedOver = (previous: string, next: string) => {
+  let start = 0;
+  while (start < next.length && start < previous.length && next[start] === previous[start])
+    start += 1;
+  let end = 0;
+  while (
+    end < next.length - start &&
+    end < previous.length - start &&
+    next[next.length - 1 - end] === previous[previous.length - 1 - end]
+  )
+    end += 1;
+  return next.slice(start, next.length - end);
+};
+
 const REQUIRED_EAB_DIRECTORIES = [
   "https://acme.digicert.com/v2/acme/directory",
   "https://acme.zerossl.com/v2/DV90",
@@ -353,7 +367,7 @@ const validate = (draft: Draft, editing: boolean, csRequiresContact: boolean): E
                 const value = draft.contact[key].trim();
                 if (!value) return [`contact.${key}`, `${label} is required for code signing CAs`];
                 if (value.length > max) return [`contact.${key}`, `Up to ${max} characters`];
-                if (key === "email" && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value))
+                if (key === "email" && !z.string().email().safeParse(value).success)
                   return [`contact.${key}`, "Email must be valid"];
                 return [`contact.${key}`, undefined];
               })
@@ -679,8 +693,14 @@ const AcmeFields = ({ draft, errors, projectId, editing, set, patch }: FieldsPro
         value={draft.eabHmacKey}
         mono
         autoComplete="new-password"
-        onFocus={() => draft.eabHmacKey === UNCHANGED_CREDENTIAL && set("eabHmacKey", "")}
-        onChange={(event) => set("eabHmacKey", event.target.value)}
+        onChange={(event) =>
+          set(
+            "eabHmacKey",
+            draft.eabHmacKey === UNCHANGED_CREDENTIAL
+              ? typedOver(UNCHANGED_CREDENTIAL, event.target.value)
+              : event.target.value
+          )
+        }
       />
     </Field>
     <Field

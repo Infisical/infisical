@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -431,6 +431,7 @@ export const CreateCaSheet = ({
   const { draft } = stepProps;
   const [step, setStep] = useState(0);
   const [discarding, setDiscarding] = useState(false);
+  const completed = useRef(false);
 
   const close = () => {
     reset();
@@ -438,13 +439,21 @@ export const CreateCaSheet = ({
     onOpenChange(false);
   };
 
-  const requestClose = () => (step > 0 || changed ? setDiscarding(true) : close());
+  const requestClose = () => {
+    if (completed.current) {
+      completed.current = false;
+      return;
+    }
+    if (step > 0 || changed) setDiscarding(true);
+    else close();
+  };
 
   const submit = async () => {
     const created = await create
       .mutateAsync(toCreateCaDto(draft) as TCreateCertificateAuthorityDTO)
       .catch(readableFailure("Could not create the CA."));
     saved(`CA ${draft.name} created`);
+    completed.current = true;
     close();
     onCreated?.(created);
   };

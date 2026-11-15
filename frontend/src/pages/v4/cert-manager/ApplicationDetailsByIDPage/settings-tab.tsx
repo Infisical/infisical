@@ -600,7 +600,12 @@ const PoliciesCard = ({
           }
         />
       </Card>
-      <PolicySheet projectId={projectId} policy={editing} onClose={() => setEditing(undefined)} />
+      <PolicySheet
+        projectId={projectId}
+        policy={editing}
+        application={{ id: application.id, name: application.name }}
+        onClose={() => setEditing(undefined)}
+      />
       <ConfirmDelete
         open={Boolean(deleting)}
         title={`Delete ${deleting?.name ?? "policy"}?`}

@@ -35,7 +35,7 @@ import type {
 } from "@app/hooks/api/hsmConnectors/types";
 
 import { useProjectPermission } from "../../access/permissions";
-import { saved, toast } from "../../access/toast";
+import { failed, saved, toast } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -254,7 +254,10 @@ const ConnectorDetail = ({
   };
 
   const verify = async () => {
-    const result = await test.mutateAsync({ connectorId: connector.id }).catch(() => undefined);
+    const result = await test.mutateAsync({ connectorId: connector.id }).catch((error: unknown) => {
+      failed(`Couldn't verify ${connector.name}`, error);
+      return undefined;
+    });
     if (!result) return;
     if (result.ok) {
       toast({

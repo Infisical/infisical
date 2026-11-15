@@ -22,7 +22,7 @@ import { EnrollmentFooter } from "./enrollment-shared";
 
 const renewBeforeError = (raw: string) => {
   const days = parseCount(raw);
-  return days === null || (days >= 1 && days <= 365) ? undefined : "Enter a number from 1 to 365";
+  return days !== null && days >= 1 && days <= 365 ? undefined : "Enter a number from 1 to 365";
 };
 
 const toPayload = (value: ApiDraft) => ({
@@ -73,7 +73,6 @@ const ApiFields = ({
       {value.autoRenew && (
         <Field
           label="Renew before (days)"
-          optional
           description="How many days before expiry renewal starts."
           error={error}
         >
@@ -102,6 +101,7 @@ const ConfiguredApi = ({
   state,
   header,
   busy,
+  run,
   onCancel
 }: EnrollmentPanelProps<"api">) => {
   const adapter = useV4Adapter("pkiApplications");
@@ -115,7 +115,7 @@ const ConfiguredApi = ({
     value: stored,
     errorMessage: "Couldn't update API enrollment. Try again.",
     onSave: async (next) => {
-      await set.mutateAsync({ applicationId, profileId, ...toPayload(next) });
+      await run(() => set.mutateAsync({ applicationId, profileId, ...toPayload(next) }));
       saved("API enrollment updated");
     }
   });
@@ -143,7 +143,13 @@ const ConfiguredApi = ({
           disabled={pending}
           onToggle={(next) => {
             setError(undefined);
-            save({ autoRenew: next, renewBeforeDays: next ? value.renewBeforeDays : "" });
+            if (!next) {
+              save({ autoRenew: false, renewBeforeDays: "" });
+              return;
+            }
+            const draft = { autoRenew: true, renewBeforeDays: value.renewBeforeDays };
+            if (renewBeforeError(draft.renewBeforeDays)) edit(draft);
+            else save(draft);
           }}
           onDaysChange={(days) => {
             setError(undefined);

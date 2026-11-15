@@ -400,26 +400,44 @@ const patchInternal = (
     )
   );
 
-const install = (caId: string, maxPathLength?: number) => {
-  const ca = internalById(caId);
-  const version = {
-    certificate: issuingPem,
-    certificateChain: rootPem,
+const pemsFor = (caId: string) =>
+  internalById(caId)?.configuration.type === InternalCaType.ROOT
+    ? { certificate: rootPem, certificateChain: "" }
+    : { certificate: issuingPem, certificateChain: rootPem };
+
+const appendCertificate = (caId: string) => {
+  const entry = {
+    ...pemsFor(caId),
     serialNumber: crypto.randomUUID().replace(/-/g, ""),
-    version: 1
+    version: (certificates.get()[caId] ?? []).length + 1
   };
-  certificates.update((current) => ({ ...current, [caId]: [version] }));
+  certificates.update((all) => ({ ...all, [caId]: [...(all[caId] ?? []), entry] }));
+  return entry;
+};
+
+const activate = (
+  caId: string,
+  entry: TCaCertificateVersion,
+  validity: { notBefore?: string; notAfter: string },
+  maxPathLength?: number
+) => {
+  const ca = internalById(caId);
   patchInternal(
     caId,
     {
       dn: dn(ca?.configuration.commonName ?? ""),
-      serialNumber: version.serialNumber,
-      notBefore: new Date().toISOString(),
-      notAfter: day(365 * 3),
-      maxPathLength: maxPathLength ?? ca?.configuration.maxPathLength ?? 0
+      serialNumber: entry.serialNumber,
+      activeCaCertId: `${caId}-cert-v${entry.version}`,
+      notBefore: validity.notBefore ?? new Date().toISOString(),
+      notAfter: validity.notAfter,
+      maxPathLength: maxPathLength ?? ca?.configuration.maxPathLength
     },
     CaStatus.ACTIVE
   );
+};
+
+const install = (caId: string, maxPathLength?: number) => {
+  activate(caId, appendCertificate(caId), { notAfter: day(365 * 3) }, maxPathLength);
   return { message: "Certificate installed", caId };
 };
 
@@ -447,7 +465,7 @@ export const certificateAuthoritiesDemo: CertificateAuthoritiesAdapter = {
     ready(cas.use().find((ca) => ca.id === caId) as TInternalCertificateAuthority | undefined),
   useCaCerts: (caId) => ready(certificates.use()[caId] ?? []),
   useCaCert: (caId) => {
-    const [current] = certificates.use()[caId] ?? [];
+    const current = (certificates.use()[caId] ?? []).at(-1);
     return ready(
       current
         ? {
@@ -540,8 +558,20 @@ export const certificateAuthoritiesDemo: CertificateAuthoritiesAdapter = {
       projectId,
       enableDirectIssuance: true
     } as TUnifiedCertificateAuthority;
-    cas.update((entries) => [...entries, created]);
-    return created;
+    if (created.type !== CaType.INTERNAL) {
+      cas.update((entries) => [...entries, created]);
+      return created;
+    }
+    const isRoot = created.configuration.type === InternalCaType.ROOT;
+    cas.update((entries) => [
+      ...entries,
+      { ...created, status: isRoot ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE }
+    ]);
+    if (isRoot)
+      activate(created.id, appendCertificate(created.id), {
+        notAfter: new Date(created.configuration.notAfter ?? day(3650)).toISOString()
+      });
+    return byId(created.id) as TUnifiedCertificateAuthority;
   }),
   useUpdateCa: fixtureMutation((dto) => {
     cas.update((entries) =>
@@ -587,15 +617,8 @@ export const certificateAuthoritiesDemo: CertificateAuthoritiesAdapter = {
     return { caId };
   }),
   useRenewCa: fixtureMutation(({ caId, notAfter }) => {
-    const current = certificates.get()[caId] ?? [];
-    const next = {
-      certificate: issuingPem,
-      certificateChain: rootPem,
-      serialNumber: crypto.randomUUID().replace(/-/g, ""),
-      version: current.length + 1
-    };
-    certificates.update((all) => ({ ...all, [caId]: [next, ...current] }));
-    patchInternal(caId, { notAfter, serialNumber: next.serialNumber });
+    const next = appendCertificate(caId);
+    activate(caId, next, { notAfter });
     return {
       certificate: next.certificate,
       certificateChain: next.certificateChain,
@@ -657,38 +680,13 @@ export const certificateAuthoritiesDemo: CertificateAuthoritiesAdapter = {
       return next;
     }
   ),
-  useGenerateCaCertificate: fixtureMutation(
-    ({ caId, parentCaId, notBefore, notAfter, maxPathLength }) => {
-      const version = {
-        certificate: parentCaId ? issuingPem : rootPem,
-        certificateChain: parentCaId ? rootPem : "",
-        serialNumber: crypto.randomUUID().replace(/-/g, ""),
-        version: 1
-      };
-      certificates.update((all) => ({
-        ...all,
-        [caId]: [version, ...(all[caId] ?? [])].map((entry, index, list) => ({
-          ...entry,
-          version: list.length - index
-        }))
-      }));
-      const ca = internalById(caId);
-      patchInternal(
-        caId,
-        {
-          notBefore,
-          notAfter,
-          serialNumber: version.serialNumber,
-          dn: dn(ca?.configuration.commonName ?? ""),
-          maxPathLength: maxPathLength ?? ca?.configuration.maxPathLength ?? -1
-        },
-        CaStatus.ACTIVE
-      );
-      return {
-        certificate: version.certificate,
-        certificateChain: version.certificateChain,
-        serialNumber: version.serialNumber
-      };
-    }
-  )
+  useGenerateCaCertificate: fixtureMutation(({ caId, notBefore, notAfter, maxPathLength }) => {
+    const version = appendCertificate(caId);
+    activate(caId, version, { notBefore, notAfter }, maxPathLength);
+    return {
+      certificate: version.certificate,
+      certificateChain: version.certificateChain,
+      serialNumber: version.serialNumber
+    };
+  })
 };

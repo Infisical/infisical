@@ -19,6 +19,7 @@ import * as x509 from "@peculiar/x509";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { differenceInCalendarDays, format } from "date-fns";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCertificateAuthorityActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadTxtFile } from "@app/helpers/download";
 import {
@@ -430,20 +431,22 @@ const CaDetail = ({
   );
 };
 
-export const CertAuthDetailsByIDPage = () => {
-  const { orgId, caId } = useParams({ from: routeId });
-  const { hasProject, isPending: scopePending, permission } = useCaScope();
-  const adapter = useV4Adapter("certificateAuthorities");
-  const { data: plan } = adapter.useCaPlan(orgId);
-  const { data, isPending } = adapter.useCa({
-    caId,
-    type: CaType.INTERNAL,
-    options: { enabled: hasProject }
-  });
-  if (scopePending || (hasProject && isPending))
-    return <Loader size="page" label="Loading certificate authority" />;
+const CaDetailScreen = ({
+  orgId,
+  ca,
+  plan,
+  loading,
+  hasProject
+}: {
+  orgId: string;
+  ca?: TInternalCertificateAuthority;
+  plan?: CaPlan;
+  loading: boolean;
+  hasProject: boolean;
+}) => {
+  const { permission } = useCaScope();
+  if (loading) return <Loader size="page" label="Loading certificate authority" />;
   if (!hasProject) return <CertManagerNotSetUp orgId={orgId} />;
-  const ca = data?.type === CaType.INTERNAL ? data : undefined;
   if (!ca)
     return (
       <EmptyState
@@ -462,4 +465,29 @@ export const CertAuthDetailsByIDPage = () => {
   if (caBlock(permission, ProjectPermissionCertificateAuthorityActions.Read, ca.name))
     return <AccessRestricted />;
   return <CaDetail ca={ca} orgId={orgId} plan={plan} />;
+};
+
+export const CertAuthDetailsByIDPage = () => {
+  const { orgId, caId } = useParams({ from: routeId });
+  const { hasProject, isPending: scopePending } = useCaScope();
+  const adapter = useV4Adapter("certificateAuthorities");
+  const { data: plan } = adapter.useCaPlan(orgId);
+  const { data, isPending } = adapter.useCa({
+    caId,
+    type: CaType.INTERNAL,
+    options: { enabled: hasProject }
+  });
+  const ca = data?.type === CaType.INTERNAL ? data : undefined;
+  return (
+    <>
+      <PageTitle title={ca?.name ?? "Certificate Authority"} />
+      <CaDetailScreen
+        orgId={orgId}
+        ca={ca}
+        plan={plan}
+        loading={scopePending || (hasProject && isPending)}
+        hasProject={hasProject}
+      />
+    </>
+  );
 };

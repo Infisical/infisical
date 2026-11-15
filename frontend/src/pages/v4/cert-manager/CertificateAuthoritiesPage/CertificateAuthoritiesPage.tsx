@@ -19,6 +19,7 @@ import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { PencilIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCertificateAuthorityActions } from "@app/context/ProjectPermissionContext/types";
 import {
   caStatusToNameMap,
@@ -477,7 +478,7 @@ const ExternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
   );
 };
 
-export const CertificateAuthoritiesPage = () => {
+const CertificateAuthoritiesScreen = () => {
   const { selectedTab } = useSearch({ from: routeId });
   const navigate = useNavigate();
   const { orgId, projectId, hasProject, isPending, permission } = useCaScope();
@@ -517,3 +518,10 @@ export const CertificateAuthoritiesPage = () => {
     </TooltipProvider>
   );
 };
+
+export const CertificateAuthoritiesPage = () => (
+  <>
+    <PageTitle title="Certificate Authorities" />
+    <CertificateAuthoritiesScreen />
+  </>
+);

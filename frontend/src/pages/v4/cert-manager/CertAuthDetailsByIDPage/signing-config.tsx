@@ -1,4 +1,6 @@
 import { useId, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -226,6 +228,10 @@ const EditSigningSheet = ({
   const isVenafi = config.type === CaSigningConfigType.VENAFI;
   const isAzure = config.type === CaSigningConfigType.AZURE_ADCS;
   const connection = CONNECTIONS[config.type] ?? ADCS_CONNECTION;
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: JSON.stringify(draft) !== JSON.stringify(draftOf(config)),
+    onDiscard: onClose
+  });
   const fieldsProps = {
     draft,
     errors,
@@ -253,55 +259,61 @@ const EditSigningSheet = ({
   };
 
   return (
-    <Sheet open={open} onOpenChange={(next) => !next && !update.isPending && onClose()}>
-      <SheetContent pending={update.isPending}>
-        <SheetHeader>
-          <SheetTitle>Edit signing configuration</SheetTitle>
-        </SheetHeader>
-        <SheetBody>
-          <form
-            id={formId}
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit();
-            }}
-          >
-            <Stack gap={16}>
-              <ConnectionField
-                app={connection.app}
-                projectId={projectId}
-                label={connection.label}
-                value={draft.appConnectionId}
-                error={errors.appConnectionId}
-                onChange={(id) =>
-                  fieldsProps.patch({
-                    appConnectionId: id,
-                    applicationId: "",
-                    issuingTemplateId: "",
-                    template: ""
-                  })
-                }
-              />
-              {isVenafi ? (
-                <VenafiFields {...fieldsProps} />
-              ) : (
-                <TemplateField {...fieldsProps} isAzure={isAzure} />
-              )}
-              {(isVenafi || isAzure) && <ValidityField {...fieldsProps} />}
-            </Stack>
-          </form>
-        </SheetBody>
-        <SheetFooter>
-          <Button variant="primary" type="submit" form={formId} loading={update.isPending}>
-            Save
-          </Button>
-          <Button variant="outline" disabled={update.isPending} onClick={onClose}>
-            Cancel
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={open} onOpenChange={(next) => !next && !update.isPending && requestDiscard()}>
+        <SheetContent pending={update.isPending}>
+          <SheetHeader>
+            <SheetTitle>Edit signing configuration</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            <form
+              id={formId}
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                submit();
+              }}
+            >
+              <Stack gap={16}>
+                <ConnectionField
+                  app={connection.app}
+                  projectId={projectId}
+                  label={connection.label}
+                  value={draft.appConnectionId}
+                  error={errors.appConnectionId}
+                  onChange={(id) =>
+                    fieldsProps.patch({
+                      appConnectionId: id,
+                      applicationId: "",
+                      issuingTemplateId: "",
+                      template: ""
+                    })
+                  }
+                />
+                {isVenafi ? (
+                  <VenafiFields {...fieldsProps} />
+                ) : (
+                  <TemplateField {...fieldsProps} isAzure={isAzure} />
+                )}
+                {(isVenafi || isAzure) && <ValidityField {...fieldsProps} />}
+              </Stack>
+            </form>
+          </SheetBody>
+          <SheetFooter>
+            <Button variant="primary" type="submit" form={formId} loading={update.isPending}>
+              Save
+            </Button>
+            <Button variant="outline" disabled={update.isPending} onClick={requestDiscard}>
+              Cancel
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        {...discardDialogProps}
+        description="Your changes to the signing configuration will be lost."
+      />
+    </>
   );
 };
 

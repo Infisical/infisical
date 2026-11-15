@@ -14,6 +14,7 @@ import { RowLink } from "@infisical/cipher/ui/row-link";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import type { TPkiApplicationListItem } from "@app/hooks/api/pkiApplications/types";
 
 import { formatDate } from "../../access/roles";
@@ -30,7 +31,7 @@ const detailPath = v4Path("/organizations/$orgId/cert-manager/applications/$appl
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-export const ApplicationsPage = () => {
+const Page = () => {
   const { orgId } = useParams({ from: routeId });
   const navigate = useNavigate();
   const { projectId, isPending: isResolving } = useCertManagerProjectId(orgId);
@@ -238,3 +239,10 @@ export const ApplicationsPage = () => {
     </TooltipProvider>
   );
 };
+
+export const ApplicationsPage = () => (
+  <>
+    <PageTitle title="Applications" />
+    <Page />
+  </>
+);
