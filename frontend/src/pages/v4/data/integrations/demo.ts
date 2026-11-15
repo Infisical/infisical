@@ -99,6 +99,14 @@ const gitHubApps: TGitHubApp[] = [
   })
 ];
 
+const gitHubAppStore = createFixtureStore(gitHubApps);
+
+export const deleteDemoGitHubApp = (id: string) => {
+  const removed = gitHubAppStore.get().find((app) => app.id === id) as TGitHubApp;
+  gitHubAppStore.update((apps) => apps.filter((app) => app.id !== id));
+  return removed;
+};
+
 /** What the server sends back for a managed identity connection; the issuer follows SITE_URL. */
 const federatedCredential = (connectionId: string) => ({
   issuerUrl: `${window.location.origin}/api/v1/oidc-issuer/organizations/${V4_DEMO_ORG_ID}`,
@@ -559,7 +567,7 @@ export const integrationsDemo: IntegrationsAdapter = {
     store.update((entries) => entries.filter((entry) => entry.id !== connectionId));
     return removed;
   }),
-  useGitHubApps: () => ({ data: gitHubApps, isPending: false, error: null }),
+  useGitHubApps: () => ({ data: gitHubAppStore.use(), isPending: false, error: null }),
   useWorkflowIntegrations: () => ({ data: workflowStore.use(), isPending: false, error: null }),
   useSlackIntegration: (id) => {
     const entry = findWorkflow(id);

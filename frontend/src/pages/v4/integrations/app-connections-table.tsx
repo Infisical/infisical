@@ -46,14 +46,12 @@ import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
 import { projectBase } from "../shell/navigation";
 import {
   AddConnectionSheet,
-  appName,
   ConnectionCredentialsSheet,
   DeleteConnectionDialog,
   EditConnectionDetailsDialog,
-  methodName,
   RotationBadge
 } from "./app-connection-dialogs";
-import { credentialsBlock } from "./app-connection-model";
+import { appName, credentialsBlock, methodName } from "./app-connection-model";
 
 export type AppConnectionsScope =
   | { kind: "org" }
