@@ -14,7 +14,7 @@ const AppConnectionCallbackPageQueryParamsSchema = z.object({
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/app-connections/$appConnection/callback"
 )({
-  staticData: { readiness: "partial", missing: ["Callbacks for apps without a v4 preset"] },
+  staticData: { readiness: "full" },
   component: AppConnectionCallbackPage,
   validateSearch: zodValidator(AppConnectionCallbackPageQueryParamsSchema),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

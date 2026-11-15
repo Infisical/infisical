@@ -4,10 +4,13 @@ import type { TAppConnectionOption } from "@app/hooks/api/appConnections/types/a
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
 import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
+import { CloudflareConnectionMethod } from "@app/hooks/api/appConnections/types/cloudflare-connection";
 import {
   DatabricksConnectionMethod,
   DatabricksConnectionScope
 } from "@app/hooks/api/appConnections/types/databricks-connection";
+import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
+import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
 import { GcpConnectionMethod } from "@app/hooks/api/appConnections/types/gcp-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
 import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
@@ -16,9 +19,14 @@ import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/po
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
 import { VercelConnectionMethod } from "@app/hooks/api/appConnections/types/vercel-connection";
+import type { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import type { TGitHubApp } from "@app/hooks/api/gitHubApps/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import type { WorkflowIntegration } from "@app/hooks/api/workflowIntegrations/types";
+import {
+  type WorkflowIntegration,
+  WorkflowIntegrationPlatform,
+  WorkflowIntegrationStatus
+} from "@app/hooks/api/workflowIntegrations/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
@@ -90,6 +98,14 @@ const gitHubApps: TGitHubApp[] = [
     updatedAt: "2026-04-02T09:00:00Z"
   })
 ];
+
+const gitHubAppStore = createFixtureStore(gitHubApps);
+
+export const deleteDemoGitHubApp = (id: string) => {
+  const removed = gitHubAppStore.get().find((app) => app.id === id) as TGitHubApp;
+  gitHubAppStore.update((apps) => apps.filter((app) => app.id !== id));
+  return removed;
+};
 
 /** What the server sends back for a managed identity connection; the issuer follows SITE_URL. */
 const federatedCredential = (connectionId: string) => ({
@@ -329,10 +345,139 @@ const store = createFixtureStore<TAppConnection[]>([
       },
       project: project("payments-api", ProjectType.SecretManager)
     } as Partial<TAppConnection>
+  ),
+  connection(
+    "a1c3e5f7-0b2d-4f4a-9c6e-8a0c2e4f6b98",
+    AppConnection.GitHubRadar,
+    "github-radar-acme",
+    GitHubRadarConnectionMethod.App,
+    "2026-05-14T09:20:00Z",
+    {
+      description: "Scans every repository in the acme-corp organization",
+      project: project("secret-scanning", ProjectType.SecretScanning)
+    }
+  ),
+  connection(
+    "b2d4f6a8-1c3e-4a5b-8d7f-9b1d3f5a7c89",
+    AppConnection.Bitbucket,
+    "bitbucket-mobile-workspace",
+    BitbucketConnectionMethod.ApiToken,
+    "2026-08-03T14:55:00Z",
+    { project: project("secret-scanning", ProjectType.SecretScanning) }
+  ),
+  connection(
+    "c3e5a7b9-2d4f-4b6c-9e8a-0c2e4a6b8d7a",
+    AppConnection.GitLab,
+    "gitlab-platform-group",
+    GitLabConnectionMethod.AccessToken,
+    "2026-09-09T07:35:00Z",
+    { project: project("secret-scanning", ProjectType.SecretScanning) }
+  ),
+  connection(
+    "d4f6b8c0-3e5a-4c7d-8f9b-1d3f5b7c9e6b",
+    AppConnection.Cloudflare,
+    "cloudflare-dns-validation",
+    CloudflareConnectionMethod.ApiToken,
+    "2026-05-02T11:05:00Z",
+    { project: project("internal-pki", ProjectType.CertificateManager) }
+  ),
+  connection(
+    "e5a7c9d1-4f6b-4d8e-9a0c-2e4a6c8d0f5c",
+    AppConnection.DigiCert,
+    "digicert-public-tls",
+    DigiCertConnectionMethod.ApiKey,
+    "2026-01-21T08:30:00Z",
+    {
+      description: "Public TLS certificates for customer facing domains",
+      project: project("internal-pki", ProjectType.CertificateManager)
+    }
+  ),
+  connection(
+    "f6b8d0e2-5a7c-4e9f-8b1d-3f5b7d9e1a4d",
+    AppConnection.F5BigIp,
+    "f5-lb-prod",
+    F5BigIpConnectionMethod.BasicAuth,
+    "2026-08-11T17:25:00Z",
+    {
+      isPlatformManagedCredentials: true,
+      project: project("internal-pki", ProjectType.CertificateManager)
+    }
   )
 ]);
 
-const workflowIntegrations: WorkflowIntegration[] = [];
+type DemoWorkflowIntegration = WorkflowIntegration & { teamName?: string; tenantId?: string };
+
+const workflowStore = createFixtureStore<DemoWorkflowIntegration[]>([
+  {
+    id: "4d7e1a2b-6c3f-4e8a-9b1d-2f5c8e0a3b61",
+    slug: "platform-alerts",
+    description: "Access requests and secret sync failures for the platform team",
+    status: WorkflowIntegrationStatus.Installed,
+    integration: WorkflowIntegrationPlatform.SLACK,
+    teamName: "Acme Corp"
+  },
+  {
+    id: "8a2c5e7f-1b4d-4f6a-8c0e-3d5f7a9b1c22",
+    slug: "security-approvals",
+    description: "",
+    status: WorkflowIntegrationStatus.Installed,
+    integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS,
+    tenantId: "6f1d3b5a-7c9e-4a2b-8d4f-0e2a4c6e8b13"
+  },
+  {
+    id: "c3e5a7b9-2d4f-4b6c-9e1a-5f7b9d1e3a44",
+    slug: "finance-ops-approvals-and-access-requests-eu-central",
+    description: "Pending reinstall after the workspace moved to Enterprise Grid",
+    status: WorkflowIntegrationStatus.Pending,
+    integration: WorkflowIntegrationPlatform.SLACK,
+    teamName: "Acme Finance (EU)"
+  }
+]);
+
+const findWorkflow = (id?: string) => workflowStore.use().find((entry) => entry.id === id);
+
+const renameWorkflow = ({
+  id,
+  slug,
+  description
+}: {
+  id: string;
+  slug?: string;
+  description?: string;
+}) => {
+  workflowStore.update((entries) =>
+    entries.map((entry) =>
+      entry.id === id
+        ? { ...entry, slug: slug ?? entry.slug, description: description ?? entry.description }
+        : entry
+    )
+  );
+  return {};
+};
+
+const removeWorkflow = ({ id }: { id: string }) => {
+  workflowStore.update((entries) => entries.filter((entry) => entry.id !== id));
+  return {};
+};
+
+const migrationGateways = [
+  { id: "3f9a2c71-8e4b-4d15-a6c0-5b7e1d2f8a93", name: "prod-us-east" },
+  { id: "b81d4e06-2c9f-47a3-9e5b-0f6a3c8d1e27", name: "prod-eu-west" }
+].map(({ id, name }): TGatewayV2 => ({
+  id,
+  name,
+  identityId: null,
+  relayId: null,
+  createdAt: "2026-09-12T10:00:00Z",
+  updatedAt: "2026-09-12T10:00:00Z",
+  heartbeat: new Date().toISOString(),
+  heartbeatTTL: 180,
+  directAddress: null,
+  directHeartbeat: null,
+  canRevoke: true,
+  connectedResourcesCount: 0,
+  identity: null
+}));
 
 export const demoConnections = () => store.get();
 
@@ -365,7 +510,11 @@ export const integrationsDemo: IntegrationsAdapter = {
             ...schedule
           }
         }),
-      ...(input.projectId && { project: project(input.projectId, ProjectType.SecretManager) })
+      ...(input.projectId && {
+        project:
+          store.get().find((entry) => entry.project?.id === input.projectId)?.project ??
+          project(input.projectId, ProjectType.SecretManager)
+      })
     } as Partial<TAppConnection>);
     store.update((entries) => [...entries, created]);
     return created;
@@ -418,6 +567,96 @@ export const integrationsDemo: IntegrationsAdapter = {
     store.update((entries) => entries.filter((entry) => entry.id !== connectionId));
     return removed;
   }),
-  useGitHubApps: () => ({ data: gitHubApps, isPending: false, error: null }),
-  useWorkflowIntegrations: () => ({ data: workflowIntegrations, isPending: false, error: null })
+  useGitHubApps: () => ({ data: gitHubAppStore.use(), isPending: false, error: null }),
+  useWorkflowIntegrations: () => ({ data: workflowStore.use(), isPending: false, error: null }),
+  useSlackIntegration: (id) => {
+    const entry = findWorkflow(id);
+    return {
+      data: entry && {
+        id: entry.id,
+        slug: entry.slug,
+        description: entry.description,
+        teamName: entry.teamName ?? ""
+      },
+      isPending: false,
+      error: null
+    };
+  },
+  useMicrosoftTeamsIntegration: (id) => {
+    const entry = findWorkflow(id);
+    return {
+      data: entry && {
+        id: entry.id,
+        slug: entry.slug,
+        description: entry.description,
+        tenantId: entry.tenantId ?? ""
+      },
+      isPending: false,
+      error: null
+    };
+  },
+  useMicrosoftTeamsClientId: () => ({
+    data: { clientId: "demo-not-a-real-client-id" },
+    isPending: false,
+    error: null
+  }),
+  fetchSlackInstallUrl: async ({ slug, description }) => {
+    workflowStore.update((entries) => [
+      ...entries,
+      {
+        id: crypto.randomUUID(),
+        slug,
+        description: description ?? "",
+        status: WorkflowIntegrationStatus.Installed,
+        integration: WorkflowIntegrationPlatform.SLACK,
+        teamName: "Acme Corp"
+      }
+    ]);
+    return "";
+  },
+  fetchSlackReinstallUrl: async ({ id }) => {
+    workflowStore.update((entries) =>
+      entries.map((entry) =>
+        entry.id === id ? { ...entry, status: WorkflowIntegrationStatus.Installed } : entry
+      )
+    );
+    return "";
+  },
+  useUpdateSlackIntegration: fixtureMutation(renameWorkflow),
+  useUpdateMicrosoftTeamsIntegration: fixtureMutation(renameWorkflow),
+  useCreateMicrosoftTeamsIntegration: fixtureMutation(({ slug, description, tenantId }) => {
+    workflowStore.update((entries) => [
+      ...entries,
+      {
+        id: crypto.randomUUID(),
+        slug,
+        description: description ?? "",
+        status: WorkflowIntegrationStatus.Pending,
+        integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS,
+        tenantId
+      }
+    ]);
+    return {};
+  }),
+  useDeleteSlackIntegration: fixtureMutation(removeWorkflow),
+  useDeleteMicrosoftTeamsIntegration: fixtureMutation(removeWorkflow),
+  useCheckMicrosoftTeamsInstallation: fixtureMutation(({ workflowIntegrationId }) => {
+    workflowStore.update((entries) =>
+      entries.map((entry) =>
+        entry.id === workflowIntegrationId
+          ? { ...entry, status: WorkflowIntegrationStatus.Installed }
+          : entry
+      )
+    );
+    return {};
+  }),
+  useIsOrgAdmin: () => ({ data: true, isPending: false, error: null }),
+  useMigrationGateways: () => ({ data: migrationGateways, isPending: false, error: null }),
+  useCustomMigrationAvailable: () => ({
+    data: { data: { enabled: false } },
+    isPending: false,
+    error: null
+  }),
+  useImportEnvKey: fixtureMutation(() => undefined),
+  useImportVault: fixtureMutation(() => undefined)
 };

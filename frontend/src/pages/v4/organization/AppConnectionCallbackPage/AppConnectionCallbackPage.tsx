@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import type { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
@@ -104,7 +105,21 @@ export const AppConnectionCallbackPage = () => {
         back(pending.returnTo, connection).then(() => saved(message));
       })
       .catch((error: unknown) => fail("", pending.returnTo, error));
-  }, []);
+  }, [
+    appConnection,
+    callback,
+    createConnection,
+    navigate,
+    orgId,
+    resolve,
+    state,
+    updateConnection
+  ]);
 
-  return <Loader size="page" label="Connecting" />;
+  return (
+    <>
+      <PageTitle title="Connecting app" />
+      <Loader size="page" label="Connecting" />
+    </>
+  );
 };

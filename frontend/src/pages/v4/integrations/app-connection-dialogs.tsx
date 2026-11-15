@@ -57,7 +57,6 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
@@ -66,6 +65,7 @@ import { genericAppConnectionFieldsSchema } from "@app/lib/schemas/app-connectio
 import {
   AppConnectionForm,
   type AppConnectionFieldPreset,
+  type AppConnectionFormHandle,
   type AppConnectionFormValues,
   type AppConnectionMethodPreset,
   type AppConnectionPreset
@@ -89,16 +89,23 @@ import {
   useRotationConfirmation
 } from "./app-connection-extras";
 import {
+  appName,
   credentialsBlock,
   federatedCredentialOf,
   isManagedIdentity,
+  methodName,
   methodPreset,
   NOT_IN_V4,
   storedScopes
 } from "./app-connection-model";
-
-export const appName = (app: AppConnection) => APP_CONNECTION_MAP[app].name;
-export const methodName = (row: TAppConnection) => getAppConnectionMethodDetails(row.method).name;
+import {
+  clearDeletedGitHubApp,
+  gitHubInstanceOf,
+  hasResumedGitHubForm,
+  useGitHubAppCreation,
+  useResumedGitHubForm
+} from "./github-app-model";
+import { GitHubAppsField } from "./github-apps";
 
 const scopesPayload = (scopes: string[]) => (scopes.length ? { scopes } : {});
 
@@ -234,6 +241,265 @@ const AppPicker = ({
   );
 };
 
+/** The Azure managed identity step after creating the connection: verify it, or close and verify later. */
+const VerifyConnectionStep = ({
+  connection,
+  pending,
+  onPendingChange,
+  onClose
+}: {
+  connection: TAppConnection;
+  pending: boolean;
+  onPendingChange: (pending: boolean) => void;
+  onClose: () => void;
+}) => {
+  const updateConnection = useV4Adapter("integrations").useUpdateConnection();
+  const [failure, setFailure] = useState("");
+  const verify = async () => {
+    const { tenantId, clientId } = connection.credentials as { tenantId: string; clientId: string };
+    setFailure("");
+    onPendingChange(true);
+    try {
+      await updateConnection.mutateAsync({
+        connectionId: connection.id,
+        app: connection.app,
+        credentials: { tenantId, clientId } as TAppConnection["credentials"]
+      });
+      saved(`${connection.name} verified`);
+      onClose();
+    } catch (error) {
+      setFailure(errorMessage(error) ?? "Couldn't verify this connection. Try again.");
+    } finally {
+      onPendingChange(false);
+    }
+  };
+  return (
+    <>
+      <SheetBody>
+        <Stack gap={16}>
+          <FederatedCredentialDetails credential={federatedCredentialOf(connection)} />
+          {failure && (
+            <Alert variant="destructive">
+              <AlertDescription>{failure}</AlertDescription>
+            </Alert>
+          )}
+        </Stack>
+      </SheetBody>
+      <SheetFooter>
+        <Button variant="primary" loading={pending} onClick={verify}>
+          {failure ? "Retry verification" : "Verify connection"}
+        </Button>
+        <Button variant="outline" onClick={onClose} disabled={pending}>
+          Close
+        </Button>
+      </SheetFooter>
+    </>
+  );
+};
+
+type GatewayState = {
+  support: NonNullable<ReturnType<typeof useGatewaySupport>>;
+  value: GatewayPickerValue;
+  error?: string;
+  onChange: (next: GatewayPickerValue) => void;
+};
+
+/** The fields a few apps add under the method's own: Databricks scopes, GitHub Apps and a gateway. */
+const ConnectionExtras = ({
+  app,
+  scopes,
+  onScopesChange,
+  gateway,
+  gitHubApps,
+  pending
+}: {
+  app: AppConnection;
+  scopes: string[];
+  onScopesChange: (scopes: string[]) => void;
+  gateway?: GatewayState;
+  gitHubApps?: Pick<
+    React.ComponentProps<typeof GitHubAppsField>,
+    "projectId" | "readInstance" | "onCreate" | "onDeleted"
+  >;
+  pending: boolean;
+}) => (
+  <>
+    {app === AppConnection.Databricks && (
+      <DatabricksScopesField value={scopes} onChange={onScopesChange} disabled={pending} />
+    )}
+    {app === AppConnection.GitHub && gitHubApps && (
+      <GitHubAppsField
+        {...gitHubApps}
+        throughGateway={Boolean(gateway?.value.gatewayId || gateway?.value.gatewayPoolId)}
+        disabled={pending}
+      />
+    )}
+    {gateway && (
+      <GatewayField
+        support={gateway.support}
+        value={gateway.value}
+        disabled={pending}
+        error={gateway.error}
+        onChange={gateway.onChange}
+      />
+    )}
+  </>
+);
+
+/** Creates a connection from a preset's form values, or undefined when the person backs out. */
+const usePresetCreation = (projectId?: string) => {
+  const createConnection = useV4Adapter("integrations").useCreateConnection();
+  const rotation = useRotationConfirmation();
+  const create = async ({
+    name,
+    values,
+    gateway,
+    scopes,
+    onGatewayMissing
+  }: {
+    name: string;
+    values: AppConnectionFormValues;
+    gateway: { support: ReturnType<typeof useGatewaySupport>; value: GatewayPickerValue };
+    scopes: string[];
+    onGatewayMissing: () => void;
+  }) => {
+    if (gatewayMissing(gateway.support, gateway.value)) {
+      onGatewayMissing();
+      throw new Error(`${name} is only reachable through a gateway.`);
+    }
+    if (values.isAutoRotationEnabled && !(await rotation.confirm())) return undefined;
+    return createConnection
+      .mutateAsync({
+        ...values,
+        credentials: { ...values.credentials, ...scopesPayload(scopes) },
+        ...(gateway.support ? gateway.value : {}),
+        projectId
+      } as TCreateAppConnectionDTO)
+      .catch((error: unknown) => {
+        throw new Error(errorMessage(error));
+      });
+  };
+  return { create, dialog: rotation.dialog };
+};
+
+const addSheetTitle = (created?: TAppConnection, preset?: AppConnectionPreset) => {
+  if (created) return `Set up ${created.name}`;
+  return preset ? `Add ${preset.name} connection` : "Add connection";
+};
+
+/** The chosen app's form, with the fields some apps add and their own gateway and scope state. */
+const PresetStep = ({
+  preset,
+  formId,
+  returnTo,
+  projectId,
+  option,
+  resumeApp,
+  pending,
+  onDirtyChange,
+  onExtrasChange,
+  onPendingChange,
+  onSubmitLabelChange,
+  onCreated,
+  onDone
+}: {
+  preset: AppConnectionPreset;
+  formId: string;
+  returnTo: string;
+  projectId?: string;
+  option?: Record<string, unknown>;
+  resumeApp?: AppConnection;
+  pending: boolean;
+  onDirtyChange: (dirty: boolean) => void;
+  onExtrasChange: (dirty: boolean) => void;
+  onPendingChange: (pending: boolean) => void;
+  onSubmitLabelChange: (label: string) => void;
+  onCreated: (connection: TAppConnection) => void;
+  onDone: () => void;
+}) => {
+  const app = preset.app as AppConnection;
+  const formHandle = useRef<AppConnectionFormHandle>(null);
+  const resumed = useResumedGitHubForm(resumeApp);
+  const [initialGateway] = useState<GatewayPickerValue>(() => resumed?.gateway ?? NO_GATEWAY);
+  const [gateway, setGateway] = useState(initialGateway);
+  const isGatewayChanged = (next: GatewayPickerValue) =>
+    next.gatewayId !== initialGateway.gatewayId ||
+    next.gatewayPoolId !== initialGateway.gatewayPoolId;
+  const [gatewayError, setGatewayError] = useState<string>();
+  const [scopes, setScopes] = useState<string[]>([]);
+  const creation = usePresetCreation(projectId);
+  const gatewaySupport = useGatewaySupport(app);
+  const createGitHubApp = useGitHubAppCreation({
+    formHandle,
+    gateway: gatewaySupport ? gateway : undefined,
+    projectId,
+    returnTo
+  });
+  return (
+    <>
+      <AppConnectionForm
+        id={formId}
+        preset={preset}
+        handleRef={formHandle}
+        initialValues={resumed?.values}
+        redirect={connectionRedirect({
+          returnTo,
+          projectId,
+          option,
+          extras: gatewaySupport ? gateway : {}
+        })}
+        onDirtyChange={onDirtyChange}
+        onPendingChange={onPendingChange}
+        onSubmitLabelChange={onSubmitLabelChange}
+        onSubmit={async (values: AppConnectionFormValues) => {
+          const connection = await creation.create({
+            name: preset.name,
+            values,
+            gateway: { support: gatewaySupport, value: gateway },
+            scopes,
+            onGatewayMissing: () => setGatewayError(GATEWAY_REQUIRED)
+          });
+          if (!connection) return;
+          if (isManagedIdentity(connection)) {
+            onCreated(connection);
+            return;
+          }
+          saved(`${preset.name} connection added`);
+          onDone();
+        }}
+      />
+      <ConnectionExtras
+        app={app}
+        scopes={scopes}
+        onScopesChange={(next) => {
+          setScopes(next);
+          onExtrasChange(next.length > 0 || isGatewayChanged(gateway));
+        }}
+        gateway={
+          gatewaySupport && {
+            support: gatewaySupport,
+            value: gateway,
+            error: gatewayError,
+            onChange: (next) => {
+              setGateway(next);
+              setGatewayError(undefined);
+              onExtrasChange(scopes.length > 0 || isGatewayChanged(next));
+            }
+          }
+        }
+        gitHubApps={{
+          projectId,
+          onCreate: createGitHubApp,
+          readInstance: () => gitHubInstanceOf(formHandle.current),
+          onDeleted: (appId) => clearDeletedGitHubApp(formHandle.current, preset, appId)
+        }}
+        pending={pending}
+      />
+      {creation.dialog}
+    </>
+  );
+};
+
 /**
  * Picks an app, then creates the connection from its preset. Redirect methods (GitHub App install,
  * OAuth) come back to returnTo through the v4 callback route.
@@ -253,189 +519,110 @@ export const AddConnectionSheet = ({
   projectType?: ProjectType;
   app?: AppConnection;
 }) => {
-  const integrations = useV4Adapter("integrations");
-  const { data: options = [] } = integrations.useConnectionOptions(projectType);
-  const createConnection = integrations.useCreateConnection();
-  const updateConnection = integrations.useUpdateConnection();
+  const { data: options = [] } = useV4Adapter("integrations").useConnectionOptions(projectType);
   const formId = useId();
   const [selected, setSelected] = useState(app);
   const [dirty, setDirty] = useState(false);
+  const [extrasDirty, setExtrasDirty] = useState(() => hasResumedGitHubForm(app));
   const [pending, setPending] = useState(false);
   const [submitLabel, setSubmitLabel] = useState("Create connection");
   const discardAction = useRef<() => void>(() => undefined);
-  const [gateway, setGateway] = useState(NO_GATEWAY);
-  const [gatewayError, setGatewayError] = useState<string>();
-  const [scopes, setScopes] = useState<string[]>([]);
-  const pick = (next: AppConnection | undefined) => {
-    setSelected(next);
-    setGateway(NO_GATEWAY);
-    setGatewayError(undefined);
-    setScopes([]);
-  };
   const [created, setCreated] = useState<TAppConnection>();
-  const [verifyFailure, setVerifyFailure] = useState("");
   const { preset, loading } = useConnectionPreset(selected, projectId);
-  const rotation = useRotationConfirmation();
   const option = options.find((entry) => entry.app === selected);
-  const gatewaySupport = useGatewaySupport(selected);
-  const gatewayValues = gatewaySupport ? gateway : {};
 
-  const close = () => {
+  const pick = (next: AppConnection | undefined) => {
     setDirty(false);
+    setExtrasDirty(false);
+    setSelected(next);
+  };
+  const close = () => {
     pick(undefined);
     setCreated(undefined);
-    setVerifyFailure("");
     onOpenChange(false);
   };
-  const back = () => {
-    setDirty(false);
-    pick(undefined);
-  };
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty: !created && (dirty || gateway !== NO_GATEWAY || scopes.length > 0),
+    isDirty: !created && (dirty || extrasDirty),
     onDiscard: () => discardAction.current()
   });
   const request = (action: () => void) => {
     discardAction.current = action;
     requestDiscard();
   };
-  const verify = async () => {
-    if (!created) return;
-    const { tenantId, clientId } = created.credentials as { tenantId: string; clientId: string };
-    setVerifyFailure("");
-    setPending(true);
-    try {
-      await updateConnection.mutateAsync({
-        connectionId: created.id,
-        app: created.app,
-        credentials: { tenantId, clientId } as TAppConnection["credentials"]
-      });
-      saved(`${created.name} verified`);
-      close();
-    } catch (error) {
-      setVerifyFailure(errorMessage(error) ?? "Couldn't verify this connection. Try again.");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  let body: React.ReactNode = <AppPicker projectType={projectType} onPick={pick} />;
-  if (created)
-    body = (
-      <Stack gap={16}>
-        <FederatedCredentialDetails credential={federatedCredentialOf(created)} />
-        {verifyFailure && (
-          <Alert variant="destructive">
-            <AlertDescription>{verifyFailure}</AlertDescription>
-          </Alert>
-        )}
-      </Stack>
-    );
-  else if (selected && loading) body = <Loader label="Loading" />;
-  else if (preset)
-    body = (
-      <Stack gap={16}>
-        {!app && (
-          <Inline>
-            <Button
-              variant="outline"
-              size="sm"
-              icon="chev-left"
-              disabled={pending}
-              onClick={() => request(back)}
-            >
-              Choose another app
-            </Button>
-          </Inline>
-        )}
-        <AppConnectionForm
-          key={preset.app}
-          id={formId}
-          preset={preset}
-          redirect={connectionRedirect({
-            returnTo,
-            projectId,
-            option: option as Record<string, unknown> | undefined,
-            extras: gatewayValues
-          })}
-          onDirtyChange={setDirty}
-          onPendingChange={setPending}
-          onSubmitLabelChange={setSubmitLabel}
-          onSubmit={async (values: AppConnectionFormValues) => {
-            if (gatewayMissing(gatewaySupport, gateway)) {
-              setGatewayError(GATEWAY_REQUIRED);
-              throw new Error(`${preset.name} is only reachable through a gateway.`);
-            }
-            if (values.isAutoRotationEnabled && !(await rotation.confirm())) return;
-            const connection = await createConnection
-              .mutateAsync({
-                ...values,
-                credentials: { ...values.credentials, ...scopesPayload(scopes) },
-                ...gatewayValues,
-                projectId
-              } as TCreateAppConnectionDTO)
-              .catch((error: unknown) => {
-                throw new Error(errorMessage(error));
-              });
-            if (isManagedIdentity(connection)) {
-              setDirty(false);
-              setPending(false);
-              setCreated(connection);
-              return;
-            }
-            saved(`${preset.name} connection added`);
-            close();
-          }}
-        />
-        {selected === AppConnection.Databricks && (
-          <DatabricksScopesField value={scopes} onChange={setScopes} disabled={pending} />
-        )}
-        {gatewaySupport && (
-          <GatewayField
-            support={gatewaySupport}
-            value={gateway}
-            disabled={pending}
-            error={gatewayError}
-            onChange={(next) => {
-              setGateway(next);
-              setGatewayError(undefined);
-            }}
-          />
-        )}
-      </Stack>
-    );
-
-  let title = "Add connection";
-  if (created) title = `Set up ${created.name}`;
-  else if (preset) title = `Add ${preset.name} connection`;
+  const showForm = !created && preset && !loading;
 
   return (
     <>
       <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : request(close))}>
         <SheetContent size="md" pending={pending}>
           <SheetHeader>
-            <SheetTitle>{title}</SheetTitle>
+            <SheetTitle>{addSheetTitle(created, preset)}</SheetTitle>
           </SheetHeader>
-          <SheetBody>{body}</SheetBody>
           {created && (
-            <SheetFooter>
-              <Button variant="primary" loading={pending} onClick={verify}>
-                {verifyFailure ? "Retry verification" : "Verify connection"}
-              </Button>
-              <Button variant="outline" onClick={close} disabled={pending}>
-                Close
-              </Button>
-            </SheetFooter>
+            <VerifyConnectionStep
+              connection={created}
+              pending={pending}
+              onPendingChange={setPending}
+              onClose={close}
+            />
           )}
-          {!created && preset && !loading && (
-            <SheetFooter>
-              <Button variant="primary" type="submit" form={formId} loading={pending}>
-                {submitLabel}
-              </Button>
-              <Button variant="outline" onClick={() => request(close)} disabled={pending}>
-                Cancel
-              </Button>
-            </SheetFooter>
+          {!created && !preset && (
+            <SheetBody>
+              {selected && loading ? (
+                <Loader label="Loading" />
+              ) : (
+                <AppPicker projectType={projectType} onPick={pick} />
+              )}
+            </SheetBody>
+          )}
+          {showForm && (
+            <>
+              <SheetBody>
+                <Stack gap={16}>
+                  {!app && (
+                    <Inline>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon="chev-left"
+                        disabled={pending}
+                        onClick={() => request(() => pick(undefined))}
+                      >
+                        Choose another app
+                      </Button>
+                    </Inline>
+                  )}
+                  <PresetStep
+                    key={preset.app}
+                    preset={preset}
+                    formId={formId}
+                    returnTo={returnTo}
+                    projectId={projectId}
+                    option={option as Record<string, unknown> | undefined}
+                    resumeApp={app}
+                    pending={pending}
+                    onDirtyChange={setDirty}
+                    onExtrasChange={setExtrasDirty}
+                    onPendingChange={setPending}
+                    onSubmitLabelChange={setSubmitLabel}
+                    onCreated={(connection) => {
+                      setDirty(false);
+                      setPending(false);
+                      setCreated(connection);
+                    }}
+                    onDone={close}
+                  />
+                </Stack>
+              </SheetBody>
+              <SheetFooter>
+                <Button variant="primary" type="submit" form={formId} loading={pending}>
+                  {submitLabel}
+                </Button>
+                <Button variant="outline" onClick={() => request(close)} disabled={pending}>
+                  Cancel
+                </Button>
+              </SheetFooter>
+            </>
           )}
         </SheetContent>
       </Sheet>
@@ -444,7 +631,6 @@ export const AddConnectionSheet = ({
         title="Discard connection setup?"
         description="Your progress configuring this connection will be lost."
       />
-      {rotation.dialog}
     </>
   );
 };
@@ -497,6 +683,7 @@ export const EditConnectionDetailsDialog = ({
                 onClose();
               } catch (error) {
                 failed("Couldn't update this connection", error);
+              } finally {
                 setPending(false);
               }
             }}
@@ -641,6 +828,88 @@ const storedCredentials = (row: TAppConnection, keys: readonly string[]) => {
   );
 };
 
+const credentialsDefaults = ({
+  preset,
+  method,
+  connection,
+  hasRotation,
+  schedule,
+  initialRotateAt
+}: {
+  preset: AppConnectionPreset;
+  method: AppConnectionMethodPreset;
+  connection: TAppConnection;
+  hasRotation: boolean;
+  schedule: unknown;
+  initialRotateAt: unknown;
+}): FieldValues => ({
+  ...preset.values,
+  app: preset.app,
+  name: connection.name,
+  description: connection.description ?? "",
+  method: method.value,
+  ...storedCredentials(
+    connection,
+    method.fields.map((spec) => spec.name).filter((name) => !name.includes("."))
+  ),
+  credentials: {
+    ...method.credentials,
+    ...storedCredentials(connection, [
+      ...Object.keys(method.credentials),
+      ...method.fields
+        .filter((spec) => spec.name.startsWith("credentials."))
+        .map((spec) => spec.name.slice("credentials.".length))
+    ])
+  },
+  ...(hasRotation && {
+    isAutoRotationEnabled: connection.isAutoRotationEnabled ?? false,
+    rotation: schedule,
+    rotateAt: initialRotateAt
+  })
+});
+
+const isGitHubAppGone = (connection: TAppConnection, method: AppConnectionMethodPreset) => {
+  const stored = (connection.credentials as { gitHubAppId?: string | null } | undefined)
+    ?.gitHubAppId;
+  if (!stored) return false;
+  return !method.fields
+    .find((spec) => spec.name === "credentials.gitHubAppId")
+    ?.options?.some((entry) => entry.value === stored);
+};
+
+/** Sends the person to the provider to reconnect, or returns why it can't. */
+const startReconnect = ({
+  connection,
+  method,
+  href,
+  credentials,
+  reconnect,
+  gateway
+}: {
+  connection: TAppConnection;
+  method: AppConnectionMethodPreset;
+  href?: string;
+  credentials: Record<string, unknown>;
+  reconnect: ReconnectTarget;
+  gateway: GatewayPickerValue | Record<string, never>;
+}) => {
+  if (isGitHubAppGone(connection, method))
+    return "The GitHub App this connection was created with is no longer available, so it can't be reconnected.";
+  if (!href) return method.redirect?.unconfigured;
+  startConnectionRedirect(href, {
+    app: connection.app,
+    method: method.value,
+    name: connection.name,
+    description: connection.description,
+    credentials,
+    projectId: reconnect.projectId,
+    returnTo: reconnect.returnTo,
+    connectionId: connection.id,
+    ...gateway
+  });
+  return undefined;
+};
+
 const submitLabel = (redirect: AppConnectionMethodPreset["redirect"], managedIdentity: boolean) => {
   if (redirect) return redirect.submitLabel.replace(/^Connect/, "Reconnect");
   return managedIdentity ? "Verify connection" : "Update credentials";
@@ -691,13 +960,6 @@ const CredentialsForm = ({
   };
   const initialRotateAt = rotateAtLocal(schedule.rotateAtUtc);
   const managedIdentity = isManagedIdentity(connection);
-  const storedGitHubAppId = (connection.credentials as { gitHubAppId?: string | null } | undefined)
-    ?.gitHubAppId;
-  const gitHubAppGone =
-    Boolean(storedGitHubAppId) &&
-    !method.fields
-      .find((spec) => spec.name === "credentials.gitHubAppId")
-      ?.options?.some((entry) => entry.value === storedGitHubAppId);
   const fields = method.fields
     .filter(
       (spec) =>
@@ -708,31 +970,14 @@ const CredentialsForm = ({
     );
   const form = useForm<FieldValues>({
     resolver: zodResolver(preset.schema),
-    defaultValues: {
-      ...preset.values,
-      app: preset.app,
-      name: connection.name,
-      description: connection.description ?? "",
-      method: method.value,
-      ...storedCredentials(
-        connection,
-        method.fields.map((spec) => spec.name).filter((name) => !name.includes("."))
-      ),
-      credentials: {
-        ...method.credentials,
-        ...storedCredentials(connection, [
-          ...Object.keys(method.credentials),
-          ...method.fields
-            .filter((spec) => spec.name.startsWith("credentials."))
-            .map((spec) => spec.name.slice("credentials.".length))
-        ])
-      },
-      ...(hasRotation && {
-        isAutoRotationEnabled: connection.isAutoRotationEnabled ?? false,
-        rotation: schedule,
-        rotateAt: initialRotateAt
-      })
-    }
+    defaultValues: credentialsDefaults({
+      preset,
+      method,
+      connection,
+      hasRotation,
+      schedule,
+      initialRotateAt
+    })
   });
   const values = useWatch({ control: form.control });
   const { redirect } = method;
@@ -750,29 +995,16 @@ const CredentialsForm = ({
     }
     const gatewayValues = gatewaySupport ? gateway : {};
     if (redirect) {
-      if (gitHubAppGone) {
-        setFailure(
-          "The GitHub App this connection was created with is no longer available, so it can't be reconnected."
-        );
-        return;
-      }
-      const href = redirect.href({ values: submitted, option });
-      if (!href) {
-        setFailure(redirect.unconfigured);
-        return;
-      }
-      setRedirecting(true);
-      startConnectionRedirect(href, {
-        app: connection.app,
-        method: method.value,
-        name: connection.name,
-        description: connection.description,
+      const reconnectFailure = startReconnect({
+        connection,
+        method,
+        href: redirect.href({ values: submitted, option }),
         credentials: submitted.credentials ?? {},
-        projectId: reconnect.projectId,
-        returnTo: reconnect.returnTo,
-        connectionId: connection.id,
-        ...gatewayValues
+        reconnect,
+        gateway: gatewayValues
       });
+      if (reconnectFailure) setFailure(reconnectFailure);
+      else setRedirecting(true);
       return;
     }
     if (
@@ -817,24 +1049,26 @@ const CredentialsForm = ({
                   .map((spec) => (
                     <CredentialField key={spec.name} control={form.control} spec={spec} />
                   ))}
-                {connection.app === AppConnection.Databricks && (
-                  <DatabricksScopesField value={scopes} onChange={setScopes} disabled={pending} />
-                )}
                 {managedIdentity && (
                   <FederatedCredentialDetails credential={federatedCredentialOf(connection)} />
                 )}
-                {gatewaySupport && (
-                  <GatewayField
-                    support={gatewaySupport}
-                    value={gateway}
-                    disabled={pending}
-                    error={gatewayError}
-                    onChange={(next) => {
-                      setGateway(next);
-                      setGatewayError(undefined);
-                    }}
-                  />
-                )}
+                <ConnectionExtras
+                  app={connection.app}
+                  scopes={scopes}
+                  onScopesChange={setScopes}
+                  gateway={
+                    gatewaySupport && {
+                      support: gatewaySupport,
+                      value: gateway,
+                      error: gatewayError,
+                      onChange: (next) => {
+                        setGateway(next);
+                        setGatewayError(undefined);
+                      }
+                    }
+                  }
+                  pending={pending}
+                />
                 {redirect && !redirectHref && !failure && (
                   <Alert>
                     <AlertDescription>{redirect.unconfigured}</AlertDescription>
@@ -993,6 +1227,7 @@ export const DeleteConnectionDialog = ({
                 onClose();
               } catch (error) {
                 failed("Couldn't delete this connection", error);
+              } finally {
                 setPending(false);
               }
             }}

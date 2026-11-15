@@ -1,3 +1,4 @@
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection } from "@app/hooks/api/appConnections/types";
 import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
@@ -5,6 +6,9 @@ import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/typ
 import { CONNECTION_PRESETS } from "../data/integrations/connection-presets";
 
 export const NOT_IN_V4 = "Not in v4 yet";
+
+export const appName = (app: AppConnection) => APP_CONNECTION_MAP[app].name;
+export const methodName = (row: TAppConnection) => getAppConnectionMethodDetails(row.method).name;
 
 export const methodPreset = (row: TAppConnection) =>
   CONNECTION_PRESETS[row.app]?.methods.find((entry) => entry.value === row.method);
