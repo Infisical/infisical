@@ -3,6 +3,7 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultMemberType,
+  AgentVaultOauthAuthorizationStatus,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
@@ -17,6 +18,7 @@ import type {
   TAgentVaultBundleSkill,
   TAgentVaultMember,
   TAgentVaultMemberProvidedField,
+  TAgentVaultOauthAuthorization,
   TAgentVaultProductMember,
   TAgentVaultProjectService,
   TAgentVaultProxy,
@@ -265,6 +267,37 @@ const seedServices: TAgentVaultService[] = [
     credential: { type: AgentVaultCredentialType.SshKey, hasCertificate: true },
     variableReferences: [],
     hook: null
+  },
+  {
+    ...base(10, "notion-mcp", "Search and edit the team wiki", 2),
+    type: AgentVaultServiceType.Mcp,
+    serverUrl: "https://mcp.notion.com/mcp",
+    transport: AgentVaultMcpTransport.StreamableHttp,
+    hostPattern: "mcp.notion.com:443",
+    allowedTools: null,
+    credential: {
+      type: AgentVaultCredentialType.OAuth,
+      memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue],
+      status: AgentVaultOauthStatus.Connected,
+      issuer: "https://mcp.notion.com",
+      grantedScopes: [],
+      requiredScopes: []
+    },
+    customHeaders: [],
+    variableReferences: [],
+    personalValues: {
+      isConfigured: false,
+      fields: [
+        {
+          field: AgentVaultVariableReferenceField.CredentialValue,
+          isSet: false,
+          updatedAt: null,
+          variableReferences: [],
+          oauth: null
+        }
+      ]
+    },
+    hook: null
   }
 ];
 
@@ -298,7 +331,7 @@ const seedBundles: BundleSeed[] = [
     description: "Repository metadata and pull requests",
     createdAt: at(-60 * DAY),
     updatedAt: at(-7 * DAY),
-    serviceIds: [serviceId(1)],
+    serviceIds: [serviceId(1), serviceId(10)],
     skillIds: [skillId(2)],
     members: [member(actors[0], 50), member(actors[5], 45), member(actors[7], 40)]
   },
@@ -872,6 +905,25 @@ const sortBy = <T>(rows: T[], compare: (a: T, b: T) => number, direction?: "asc"
   return direction === "desc" ? sorted.reverse() : sorted;
 };
 
+const DEMO_OAUTH_SCOPES = ["read", "write"];
+
+const serverUrlOfDemo = (service: TAgentVaultService) =>
+  service.type === AgentVaultServiceType.Mcp ? new URL(service.serverUrl).origin : "";
+
+const demoAuthorizations = new Map<string, TAgentVaultOauthAuthorization>();
+const demoAuthorization = (id: string) => {
+  const existing = demoAuthorizations.get(id);
+  if (existing) return existing;
+  const created = {
+    id,
+    status: AgentVaultOauthAuthorizationStatus.Authorized,
+    error: null,
+    scopes: DEMO_OAUTH_SCOPES
+  };
+  demoAuthorizations.set(id, created);
+  return created;
+};
+
 export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
   useAccessBundles: query("accessBundles", (state, _projectId: string, params = {}) => {
     const rows = state.bundles
@@ -1182,7 +1234,8 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
         ...field,
         isSet: false,
         updatedAt: null,
-        variableReferences: []
+        variableReferences: [],
+        oauth: null
       }))
     };
     return {
@@ -1194,6 +1247,53 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       },
       result: personalValues
     };
+  }),
+
+  useConnectPersonalOauth: mutation(
+    ({ serviceId: id }: { serviceId: string; authorizationId: string }, state) => {
+      const service = state.services.find((seed) => seed.id === id) ?? notFound("Service");
+      const now = new Date().toISOString();
+      const personalValues = {
+        isConfigured: true,
+        fields: (service.personalValues?.fields ?? []).map((field) => ({
+          ...field,
+          isSet: true,
+          updatedAt: now,
+          oauth: {
+            status: AgentVaultOauthStatus.Connected,
+            issuer: serverUrlOfDemo(service),
+            grantedScopes: DEMO_OAUTH_SCOPES,
+            requiredScopes: DEMO_OAUTH_SCOPES,
+            expiresAt: null,
+            authorizedAt: now,
+            lastError: null
+          }
+        }))
+      };
+      return {
+        state: {
+          ...state,
+          services: state.services.map((seed) =>
+            seed.id === id ? { ...seed, personalValues } : seed
+          )
+        },
+        result: personalValues
+      };
+    }
+  ),
+  useCreateOauthAuthorization: mutation((_dto: { serverUrl: string }, state) => ({
+    state: bump(state),
+    result: {
+      registrationRequired: false,
+      oauthAdvertised: true,
+      redirectUri: `${window.location.origin}/agent-vault/oauth/callback`,
+      authorization: { id: nextId(state, "d9"), authorizeUrl: "about:blank" }
+    }
+  })),
+  useOauthAuthorization: (authorizationId: string) => ({
+    data: authorizationId ? demoAuthorization(authorizationId) : undefined,
+    isPending: false,
+    error: null
   }),
 
   useVariables: query("variables", (state, _projectId: string, params = {}) => {

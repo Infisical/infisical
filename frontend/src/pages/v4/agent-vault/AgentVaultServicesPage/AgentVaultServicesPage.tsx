@@ -27,7 +27,6 @@ import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs, useIsAgentVaultAdmin } from "../resources/agent-vault-utils";
 import { PersonalValuesDialog } from "../resources/personal-values-dialog";
-import { editUnavailableReason } from "../resources/service-form";
 import { ServiceSheet } from "../resources/service-sheet";
 import { ServicesTable } from "../resources/services-table";
 
@@ -217,7 +216,6 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
               />
             ) : undefined
           }
-          editDisabledReason={editUnavailableReason}
           onEdit={(service) => setSheet({ service })}
           onSetUp={setSettingUp}
         />

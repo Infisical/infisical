@@ -50,7 +50,6 @@ import { AddBundleServicesDialog, AddBundleSkillsDialog } from "../resources/add
 import { targetOf, AgentVaultDocs, useIsAgentVaultAdmin } from "../resources/agent-vault-utils";
 import { ManageAccessSheet } from "../resources/manage-access-sheet";
 import { PersonalValuesDialog } from "../resources/personal-values-dialog";
-import { editUnavailableReason } from "../resources/service-form";
 import { ServiceSheet } from "../resources/service-sheet";
 import { ServicesTable } from "../resources/services-table";
 import { CreateSkillDialog, SkillSheet } from "../resources/skills";
@@ -431,7 +430,6 @@ const AccessBundleDetail = ({
                     title="No services match your search"
                   />
                 }
-                editDisabledReason={editUnavailableReason}
                 onEdit={(service) => setSheet({ service })}
                 onSetUp={setSettingUp}
               />
