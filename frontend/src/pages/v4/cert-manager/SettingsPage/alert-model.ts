@@ -377,6 +377,22 @@ export const withoutErrors = (errors: TFieldErrors, prefix: string): TFieldError
     Object.entries(errors).filter(([key]) => key !== prefix && !key.startsWith(`${prefix}.`))
   );
 
+export const removeIndexedErrors = (
+  errors: TFieldErrors,
+  prefix: string,
+  removed: number
+): TFieldErrors =>
+  Object.fromEntries(
+    Object.entries(errors).flatMap(([key, message]) => {
+      if (!key.startsWith(prefix)) return [[key, message]];
+      const [index, ...rest] = key.slice(prefix.length).split(".");
+      const position = Number(index);
+      if (position === removed) return [];
+      if (position < removed) return [[key, message]];
+      return [[[`${prefix}${position - 1}`, ...rest].join("."), message]];
+    })
+  );
+
 export type TDraftHeader = { uid: string; key: string; value: string };
 
 export type TDraftChannel = Omit<TChannelForm, "headers"> & {

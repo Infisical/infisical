@@ -47,6 +47,7 @@ import {
   type TFieldErrors,
   type TMemberEmails,
   toDraftChannel,
+  removeIndexedErrors,
   toDraftHeader,
   toFieldErrors,
   toRecipientEmails,
@@ -188,7 +189,10 @@ const EmailRecipientsField = ({
 type TChannelFieldProps = {
   channel: TDraftChannel;
   error: (field: string) => string | undefined;
-  onChange: (patch: Partial<TDraftChannel>) => void;
+  onChange: (
+    patch: Partial<TDraftChannel>,
+    fixErrors?: (errors: TFieldErrors) => TFieldErrors
+  ) => void;
 };
 
 const WebhookAuthenticationField = ({ channel, error, onChange }: TChannelFieldProps) => {
@@ -316,10 +320,15 @@ const WebhookSigningSecretField = ({ channel, error, onChange }: TChannelFieldPr
 
 const WebhookHeadersField = ({ channel, error, onChange }: TChannelFieldProps) => {
   const { headers } = channel;
-  const setHeader = (uid: string, patch: { key?: string; value?: string }) =>
-    onChange({
-      headers: headers.map((header) => (header.uid === uid ? { ...header, ...patch } : header))
-    });
+  const setHeader = (headerIndex: number, field: "key" | "value", value: string) =>
+    onChange(
+      {
+        headers: headers.map((header, position) =>
+          position === headerIndex ? { ...header, [field]: value } : header
+        )
+      },
+      (errors) => withoutErrors(errors, `headers.${headerIndex}.${field}`)
+    );
 
   return (
     <Field wide label="Custom headers" optional group>
@@ -335,7 +344,7 @@ const WebhookHeadersField = ({ channel, error, onChange }: TChannelFieldProps) =
                   aria-label="Header name"
                   placeholder="X-Env"
                   value={header.key}
-                  onChange={(event) => setHeader(header.uid, { key: event.target.value })}
+                  onChange={(event) => setHeader(headerIndex, "key", event.target.value)}
                   invalid={Boolean(keyError)}
                 />
               </Field>
@@ -344,7 +353,7 @@ const WebhookHeadersField = ({ channel, error, onChange }: TChannelFieldProps) =
                   aria-label="Header value"
                   placeholder="production"
                   value={header.value}
-                  onChange={(event) => setHeader(header.uid, { value: event.target.value })}
+                  onChange={(event) => setHeader(headerIndex, "value", event.target.value)}
                   invalid={Boolean(valueError)}
                 />
               </Field>
@@ -355,7 +364,9 @@ const WebhookHeadersField = ({ channel, error, onChange }: TChannelFieldProps) =
                 icon="trash"
                 iconOnly
                 onClick={() =>
-                  onChange({ headers: headers.filter(({ uid }) => uid !== header.uid) })
+                  onChange({ headers: headers.filter(({ uid }) => uid !== header.uid) }, (errors) =>
+                    removeIndexedErrors(errors, "headers.", headerIndex)
+                  )
                 }
               >
                 Remove header
@@ -370,7 +381,10 @@ const WebhookHeadersField = ({ channel, error, onChange }: TChannelFieldProps) =
             size="sm"
             icon="plus"
             onClick={() =>
-              onChange({ headers: [...headers, toDraftHeader({ key: "", value: "" })] })
+              onChange(
+                { headers: [...headers, toDraftHeader({ key: "", value: "" })] },
+                (errors) => errors
+              )
             }
           >
             Add header
@@ -574,10 +588,9 @@ export const ChannelsStep = ({
         channelCount={channels.length}
         hasEnterprise={hasEnterprise}
         upgrade={upgrade}
-        onAdd={(channelType) => {
-          onChange([...channels, toDraftChannel(buildNextChannel(channels, channelType))]);
-          onErrorsChange(withoutErrors(errors, "channels"));
-        }}
+        onAdd={(channelType) =>
+          onChange([...channels, toDraftChannel(buildNextChannel(channels, channelType))])
+        }
       />
     </Inline>
     {channels.length === 0 ? (
@@ -593,16 +606,25 @@ export const ChannelsStep = ({
           key={channel.uid}
           channel={channel}
           error={(field) => errors[`${index}.${field}`]}
-          onChange={(patch) => {
+          onChange={(patch, fixErrors) => {
             onChange(
               channels.map((entry) => (entry.uid === channel.uid ? { ...entry, ...patch } : entry))
             );
-            onErrorsChange(
-              Object.keys(patch).reduce(
-                (next, field) => withoutErrors(next, `${index}.${field}`),
-                errors
-              )
+            const prefix = `${index}.`;
+            const own = Object.fromEntries(
+              Object.entries(errors)
+                .filter(([key]) => key.startsWith(prefix))
+                .map(([key, message]) => [key.slice(prefix.length), message])
             );
+            const fixed = fixErrors
+              ? fixErrors(own)
+              : Object.keys(patch).reduce((next, field) => withoutErrors(next, field), own);
+            onErrorsChange({
+              ...withoutErrors(errors, String(index)),
+              ...Object.fromEntries(
+                Object.entries(fixed).map(([key, message]) => [`${prefix}${key}`, message])
+              )
+            });
           }}
           onInvalid={(channelErrors) =>
             onErrorsChange({
@@ -621,7 +643,7 @@ export const ChannelsStep = ({
           resource={resource}
           onRemove={() => {
             onChange(channels.filter(({ uid }) => uid !== channel.uid));
-            onErrorsChange({});
+            onErrorsChange(removeIndexedErrors(errors, "", index));
           }}
         />
       ))
