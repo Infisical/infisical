@@ -6,10 +6,12 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { useParams } from "@tanstack/react-router";
 
 import {
   buildPamAccountCan,
   PamAccessStatus,
+  PamAccessType,
   PamAccountAccessibilityIssue,
   PamAccountWarning,
   PamFolderCallerAccess,
@@ -19,7 +21,7 @@ import {
   type TPamAccountTypeMetadata,
   type TPamFolderWithCount
 } from "@app/hooks/api/pam";
-import { usePamSheetState } from "@app/hooks/usePamSheetState";
+import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { toast } from "../../access/toast";
@@ -36,8 +38,8 @@ import {
   type FolderTarget,
   JoinFolderDialog
 } from "./folder-dialogs";
-
-const NOT_PORTED = "Not available in v4 yet";
+import { CredentialsDialog, RequestAccessSheet } from "./request-access";
+import { FOLDER_TABS, visibleAccountTabs } from "./sheet-tabs";
 
 const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
   [PamAccountAccessibilityIssue.NoGateway]: "No gateway is configured",
@@ -222,11 +224,15 @@ export const AccountMenu = ({
   orgId,
   account,
   onConfigure,
+  onRequestAccess,
+  onViewCredentials,
   onDelete
 }: {
   orgId: string;
   account: TPamAccountListItem;
-  onConfigure: () => void;
+  onConfigure: (tab: PamSheetTab) => void;
+  onRequestAccess: (accessType: PamAccessType) => void;
+  onViewCredentials: () => void;
   onDelete: () => void;
 }) => {
   const go = useGo();
@@ -241,6 +247,14 @@ export const AccountMenu = ({
     account.supportsCredentialReveal && can(PamResourcePermissionActions.ViewCredentials);
   const needsCredentialApproval =
     account.requiresApproval && account.credentialAccessStatus !== PamAccessStatus.Granted;
+  const isCredentialPending = account.credentialAccessStatus === PamAccessStatus.Pending;
+  const hasApprovalConfig = !account.accessibilityIssues.includes(
+    PamAccountAccessibilityIssue.NoApprovalConfig
+  );
+  const configureTab =
+    visibleAccountTabs(can, account.accountType).find(
+      ({ value }) => value === PamSheetTab.Configuration
+    ) ?? visibleAccountTabs(can, account.accountType)[0];
 
   let launchReason: string | undefined;
   if (!canLaunch) launchReason = "You don't have permission to launch sessions";
@@ -253,7 +267,7 @@ export const AccountMenu = ({
         Copy account ID
       </DropdownMenuItem>
       {needsApproval ? (
-        <DropdownMenuItem disabledReason={NOT_PORTED}>
+        <DropdownMenuItem onSelect={() => onRequestAccess(PamAccessType.Session)}>
           <Icon name={isPending ? "clock" : "key"} />
           {isPending ? "Access request pending" : "Request access"}
         </DropdownMenuItem>
@@ -266,20 +280,29 @@ export const AccountMenu = ({
           Launch session
         </DropdownMenuItem>
       )}
-      {canViewCredentials && (
-        <DropdownMenuItem disabledReason={NOT_PORTED}>
-          <Icon name={needsCredentialApproval ? "key" : "eye"} />
-          {needsCredentialApproval ? "Request credentials" : "View credentials"}
-        </DropdownMenuItem>
-      )}
+      {canViewCredentials &&
+        (needsCredentialApproval ? (
+          <DropdownMenuItem
+            disabledReason={
+              hasApprovalConfig ? undefined : "This folder has no approvers configured"
+            }
+            onSelect={() => onRequestAccess(PamAccessType.Credential)}
+          >
+            <Icon name={isCredentialPending ? "clock" : "key"} />
+            {isCredentialPending ? "Credential request pending" : "Request credentials"}
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onSelect={onViewCredentials}>
+            <Icon name="eye" />
+            View credentials
+          </DropdownMenuItem>
+        ))}
       <DropdownMenuSeparator />
       <DropdownMenuItem
         disabledReason={
-          can(PamResourcePermissionActions.EditAccounts)
-            ? undefined
-            : "You don't have permission to configure this account"
+          configureTab ? undefined : "You don't have permission to configure this account"
         }
-        onSelect={onConfigure}
+        onSelect={() => configureTab && onConfigure(configureTab.value)}
       >
         <Icon name="settings" />
         Configure
@@ -309,7 +332,7 @@ export const FolderMenu = ({
   onDelete
 }: {
   folder: TPamFolderWithCount;
-  onConfigure: () => void;
+  onConfigure: (tab: PamSheetTab) => void;
   onAddAccount?: () => void;
   onJoin?: () => void;
   onDelete: () => void;
@@ -322,6 +345,12 @@ export const FolderMenu = ({
     if (isLoading) return "Checking your permissions";
     return can(action) ? undefined : denied;
   };
+  const allowedTabs = isLoading ? [] : FOLDER_TABS.filter(({ action }) => can(action));
+  const configureTab =
+    allowedTabs.find(({ value }) => value === PamSheetTab.Configuration) ?? allowedTabs[0];
+  let configureReason: string | undefined;
+  if (isLoading) configureReason = "Checking your permissions";
+  else if (!configureTab) configureReason = "You don't have permission to configure this folder";
   let joinReason: string | undefined;
   if (folder.callerAccess === undefined)
     joinReason = "Only organization admins can join a folder as admin";
@@ -334,11 +363,8 @@ export const FolderMenu = ({
         Copy folder ID
       </DropdownMenuItem>
       <DropdownMenuItem
-        disabledReason={reason(
-          PamResourcePermissionActions.EditFolder,
-          "You don't have permission to configure this folder"
-        )}
-        onSelect={onConfigure}
+        disabledReason={configureReason}
+        onSelect={() => configureTab && onConfigure(configureTab.value)}
       >
         <Icon name="settings" />
         Configure
@@ -386,14 +412,21 @@ export const useAccountOverlays = ({
   lockedFolderId?: string;
   onFolderDeleted?: () => void;
 } = {}) => {
+  const go = useGo();
+  const { orgId } = useParams({ strict: false }) as { orgId: string };
   const accountSheet = usePamSheetState("accountId");
+  const folderSheet = usePamSheetState("folderId");
+  const [requesting, setRequesting] = useState<{
+    account: TPamAccountListItem;
+    accessType: PamAccessType;
+  } | null>(null);
+  const [revealing, setRevealing] = useState<TPamAccountListItem | null>(null);
   const [creating, setCreating] = useState<{ folderId?: string } | null>(null);
   const [createSeq, setCreateSeq] = useState(0);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState<AccountTarget | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<FolderTarget | null>(null);
   const [joining, setJoining] = useState<TPamFolderWithCount | null>(null);
-  const [configuringFolderId, setConfiguringFolderId] = useState<string | null>(null);
 
   const overlays = (
     <>
@@ -415,9 +448,26 @@ export const useAccountOverlays = ({
         }}
       />
       <FolderSheet
-        folder={folders.find(({ id }) => id === configuringFolderId)}
+        folderId={folderSheet.selectedId}
+        folders={folders}
         onOpenChange={(open) => {
-          if (!open) setConfiguringFolderId(null);
+          if (!open) folderSheet.closeSheet();
+        }}
+      />
+      <RequestAccessSheet
+        target={requesting}
+        onOpenChange={(open) => {
+          if (!open) setRequesting(null);
+        }}
+        onGranted={({ account, accessType }) => {
+          if (accessType === PamAccessType.Credential) setRevealing(account);
+          else go(accessHref(orgId, account));
+        }}
+      />
+      <CredentialsDialog
+        account={revealing}
+        onOpenChange={(open) => {
+          if (!open) setRevealing(null);
         }}
       />
       <DeleteAccountDialog
@@ -449,10 +499,14 @@ export const useAccountOverlays = ({
       setCreating({ folderId });
     },
     openCreateFolder: () => setCreatingFolder(true),
-    openAccount: (accountId: string) => accountSheet.openSheet(accountId),
+    openAccount: (accountId: string, tab?: PamSheetTab) => accountSheet.openSheet(accountId, tab),
+    openRequestAccess: (account: TPamAccountListItem, accessType: PamAccessType) =>
+      setRequesting({ account, accessType }),
+    openCredentials: setRevealing,
     openDeleteAccount: setDeletingAccount,
     openDeleteFolder: setDeletingFolder,
     openJoinFolder: setJoining,
-    openConfigureFolder: setConfiguringFolderId
+    openConfigureFolder: (folderId: string, tab?: PamSheetTab) =>
+      folderSheet.openSheet(folderId, tab)
   };
 };

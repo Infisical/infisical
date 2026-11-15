@@ -51,13 +51,24 @@ import {
 
 const NO_AUTH = "none";
 
+type TUpgradeGateRequest = Parameters<ReturnType<typeof useUpgradeGate>["openUpgradeGate"]>[0];
+
+export type TChannelResource = { resourceType: string; resourceId: string | null };
+
+const CERTIFICATE_CHANNEL_UPGRADE: TUpgradeGateRequest = {
+  intent: CertificateEnterpriseAlertingUpgradeIntent,
+  paywallKey: "cert-manager.application-alert-channels"
+};
+
 export const AddChannelMenu = ({
   channelCount,
   hasEnterprise,
+  upgrade = CERTIFICATE_CHANNEL_UPGRADE,
   onAdd
 }: {
   channelCount: number;
   hasEnterprise: boolean;
+  upgrade?: TUpgradeGateRequest;
   onAdd: (channelType: AlertChannelType) => void;
 }) => {
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -87,14 +98,7 @@ export const AddChannelMenu = ({
             return (
               <DropdownMenuItem
                 key={channelType}
-                onSelect={() =>
-                  isLocked
-                    ? openUpgradeGate({
-                        intent: CertificateEnterpriseAlertingUpgradeIntent,
-                        paywallKey: "cert-manager.application-alert-channels"
-                      })
-                    : onAdd(channelType)
-                }
+                onSelect={() => (isLocked ? openUpgradeGate(upgrade) : onAdd(channelType))}
               >
                 {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
                 {ALERT_CHANNEL_TYPE_LABELS[channelType]}
@@ -452,12 +456,14 @@ const ChannelCard = ({
   projectId,
   alertId,
   members,
+  resource,
   onRemove
 }: {
   index: number;
   projectId: string;
   alertId?: string;
   members: TMemberEmails;
+  resource?: TChannelResource;
   onRemove: () => void;
 }) => {
   const { control, getValues, trigger, formState } = useFormContext<TAlertForm>();
@@ -475,8 +481,7 @@ const ChannelCard = ({
     const { config, recipients } = toChannelInput(getValues(`channels.${index}`));
     try {
       const result = await testChannel.mutateAsync({
-        resourceType: getAlertResourceType(eventType),
-        resourceId: null,
+        ...(resource ?? { resourceType: getAlertResourceType(eventType), resourceId: null }),
         projectId,
         alertId,
         channelId: channel.id,
@@ -600,6 +605,8 @@ export const ChannelsStep = ({
   alertId,
   members,
   hasEnterprise,
+  resource,
+  upgrade,
   onAdd,
   onRemove,
   fieldIds
@@ -608,6 +615,8 @@ export const ChannelsStep = ({
   alertId?: string;
   members: TMemberEmails;
   hasEnterprise: boolean;
+  resource?: TChannelResource;
+  upgrade?: TUpgradeGateRequest;
   onAdd: (channelType: AlertChannelType) => void;
   onRemove: (index: number) => void;
   fieldIds: string[];
@@ -617,7 +626,12 @@ export const ChannelsStep = ({
       <SmallText muted>
         {fieldIds.length ? pluralize(fieldIds.length, "channel") : "No channels yet"}
       </SmallText>
-      <AddChannelMenu channelCount={fieldIds.length} hasEnterprise={hasEnterprise} onAdd={onAdd} />
+      <AddChannelMenu
+        channelCount={fieldIds.length}
+        hasEnterprise={hasEnterprise}
+        upgrade={upgrade}
+        onAdd={onAdd}
+      />
     </Inline>
     {fieldIds.length === 0 ? (
       <EmptyState
@@ -634,6 +648,7 @@ export const ChannelsStep = ({
           projectId={projectId}
           alertId={alertId}
           members={members}
+          resource={resource}
           onRemove={() => onRemove(index)}
         />
       ))

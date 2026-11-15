@@ -295,7 +295,7 @@ export const PamAccountsPage = () => {
                 return (
                   <FolderMenu
                     folder={row.folder}
-                    onConfigure={() => overlays.openConfigureFolder(row.folder.id)}
+                    onConfigure={(tab) => overlays.openConfigureFolder(row.folder.id, tab)}
                     onAddAccount={() => overlays.openCreateAccount(row.folder.id)}
                     onJoin={() => overlays.openJoinFolder(row.folder)}
                     onDelete={() => overlays.openDeleteFolder(row.folder)}
@@ -306,7 +306,9 @@ export const PamAccountsPage = () => {
                 <AccountMenu
                   orgId={orgId}
                   account={account}
-                  onConfigure={() => overlays.openAccount(account.id)}
+                  onConfigure={(tab) => overlays.openAccount(account.id, tab)}
+                  onRequestAccess={(accessType) => overlays.openRequestAccess(account, accessType)}
+                  onViewCredentials={() => overlays.openCredentials(account)}
                   onDelete={() =>
                     overlays.openDeleteAccount({
                       id: account.id,
