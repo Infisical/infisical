@@ -12,6 +12,7 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { endOfDay, format, startOfDay, subHours, subMinutes } from "date-fns";
 
+import { hostPatternCovers } from "@app/helpers/agentVaultHostPattern";
 import {
   isInfisicalLogHost,
   isInfisicalSessionEndpointRequest
@@ -354,18 +355,15 @@ export const SessionLogsPanel = ({
     const covered = bundleDetail.services.flatMap((service) =>
       "hostPattern" in service ? service.hostPattern.split(",").map((host) => host.trim()) : []
     );
-    const isCovered = (host: string) =>
-      covered.some(
-        (pattern) =>
-          pattern === host || (pattern.startsWith("*.") && host.endsWith(pattern.slice(1)))
-      );
+    const isCovered = (record: TAgentVaultSessionLogRecord) =>
+      covered.some((pattern) => hostPatternCovers(pattern, record.host, record.port));
     const isAddable = (record: TAgentVaultSessionLogRecord) =>
       !record.service &&
       !isNativeSessionLogRecord(record) &&
       (record.decision === AgentVaultSessionLogDecision.Blocked ||
         record.decision === AgentVaultSessionLogDecision.Passthrough) &&
       !isInfisicalSessionEndpointRequest(record) &&
-      !isCovered(hostPatternFor(record));
+      !isCovered(record);
     const addColumn: DataTableColumn<TAgentVaultSessionLogRecord> = {
       id: "add-service",
       header: "Add service",
