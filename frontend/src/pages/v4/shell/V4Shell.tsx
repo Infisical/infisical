@@ -74,6 +74,7 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
   const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const readiness = useMatches({ select: (matches) => matches.at(-1)?.staticData.readiness });
+  const toClassic = useMatches({ select: (matches) => matches.at(-1)?.staticData.classicHref });
   const [switchingTo, setSwitchingTo] = useState<string>();
   const switching =
     switchingTo !== undefined &&
@@ -184,7 +185,9 @@ export const V4Shell = ({ children, nav }: { children: ReactNode; nav?: V4ShellN
       ];
 
   const classicHref =
-    orgId !== V4_DEMO_ORG_ID && readiness === "partial" ? toV3Href(location.href) : undefined;
+    orgId !== V4_DEMO_ORG_ID && readiness === "partial"
+      ? (toClassic ?? String)(toV3Href(location.href))
+      : undefined;
   let content = children;
   if (switching) content = <Loader size="page" label="Loading organization" />;
   else if (at.projectId)
