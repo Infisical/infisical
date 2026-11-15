@@ -306,7 +306,7 @@ export const PamSessionsPage = () => {
               icon="search"
               aria-label="Search sessions"
               placeholder="Search by account, user, or folder..."
-              kbd="/"
+              slashShortcut
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);

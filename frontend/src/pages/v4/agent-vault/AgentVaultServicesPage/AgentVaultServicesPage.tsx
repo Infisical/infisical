@@ -170,7 +170,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
             icon="search"
             aria-label="Search services"
             placeholder="Search services..."
-            kbd="/"
+            slashShortcut
             maxLength={255}
             value={search}
             onChange={(event) => {

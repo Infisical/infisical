@@ -579,7 +579,7 @@ export const AppConnectionsTable = ({
             icon="search"
             aria-label="Search app connections"
             placeholder="Search by app, name or method"
-            kbd="/"
+            slashShortcut
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
