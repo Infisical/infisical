@@ -2,6 +2,8 @@ import type {
   useAddAgentVaultAccessBundleMembers,
   useAddAgentVaultAccessBundleService,
   useAddAgentVaultAccessBundleSkill,
+  useConnectAgentVaultPersonalOauth,
+  useCreateAgentVaultOauthAuthorization,
   useCreateAgentVaultAccessBundle,
   useCreateAgentVaultProxy,
   useCreateAgentVaultService,
@@ -31,6 +33,7 @@ import type {
 import type {
   useAgentVaultVariableKeyStatus,
   useGetAgentVaultAccessBundle,
+  useGetAgentVaultOauthAuthorization,
   useGetAgentVaultSkill,
   useGetAgentVaultSkillVersion,
   useListAgentVaultAccessBundleMembers,
@@ -87,6 +90,11 @@ export type AgentVaultResourcesAdapter = {
   useListMcpTools: ProjectMutationOf<typeof useListAgentVaultMcpTools>;
   useSetPersonalValues: ProjectMutationOf<typeof useSetAgentVaultPersonalValues>;
   useDeletePersonalValues: ProjectMutationOf<typeof useDeleteAgentVaultPersonalValues>;
+  useConnectPersonalOauth: ProjectMutationOf<typeof useConnectAgentVaultPersonalOauth>;
+  useCreateOauthAuthorization: ProjectMutationOf<typeof useCreateAgentVaultOauthAuthorization>;
+  useOauthAuthorization: (
+    authorizationId: string
+  ) => V4QueryResult<NonNullable<ReturnType<typeof useGetAgentVaultOauthAuthorization>["data"]>>;
 
   useVariables: QueryOf<typeof useListAgentVaultVariables>;
   useVariableKeyStatus: typeof useAgentVaultVariableKeyStatus;

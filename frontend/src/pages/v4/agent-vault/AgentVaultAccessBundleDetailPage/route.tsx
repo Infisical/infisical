@@ -12,11 +12,6 @@ export const Route = createFileRoute(
   staticData: {
     readiness: "partial",
     missing: [
-      "Service templates",
-      "OAuth credentials",
-      "Custom headers and substitutions",
-      "MCP tool allow-list",
-      "Personal OAuth connection",
       "Upload a skill",
       "Add, rename or delete skill files",
       "Review changes before saving a version",
