@@ -8,12 +8,17 @@ import { DateRangePicker, type DateRangePreset } from "@infisical/cipher/ui/date
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { endOfDay, format, startOfDay, subHours, subMinutes } from "date-fns";
 
-import { isInfisicalLogHost } from "@app/helpers/agentVaultSessionLogs";
+import {
+  isInfisicalLogHost,
+  isInfisicalSessionEndpointRequest
+} from "@app/helpers/agentVaultSessionLogs";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
+  AgentVaultSessionLogDecision,
   AgentVaultSessionLogStorageType,
   AgentVaultSessionStatus
 } from "@app/hooks/api/agentVault/enums";
@@ -34,6 +39,7 @@ import {
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { UpgradeDialog } from "../AgentVaultSettingsPage/session-logs/upgrade-dialog";
+import { ServiceSheet } from "../resources/service-sheet";
 import { ServiceIcon } from "../resources/shared";
 import { SessionLogDetailsDialog } from "./session-log-details-dialog";
 import {
@@ -43,6 +49,7 @@ import {
   decisionPresentation,
   GAP_EXPLANATION,
   groupSessionLogGaps,
+  hostPatternFor,
   isNativeSessionLogRecord,
   isProxyAnswered,
   isSessionEndpoint,
@@ -336,6 +343,40 @@ export const SessionLogsPanel = ({
 }) => {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [opened, setOpened] = useState<TAgentVaultSessionLogRecord | null>(null);
+  const [serviceRequest, setServiceRequest] = useState<{ host: string; path: string } | null>(null);
+  const [addedHosts, setAddedHosts] = useState<ReadonlySet<string>>(() => new Set());
+  const bundle = session.accessBundle;
+  const columns = useMemo(() => {
+    if (!isAdmin || !bundle?.id) return LOG_COLUMNS;
+    const isAddable = (record: TAgentVaultSessionLogRecord) =>
+      !record.service &&
+      !isNativeSessionLogRecord(record) &&
+      (record.decision === AgentVaultSessionLogDecision.Blocked ||
+        record.decision === AgentVaultSessionLogDecision.Passthrough) &&
+      !isInfisicalSessionEndpointRequest(record) &&
+      !addedHosts.has(hostPatternFor(record));
+    const addColumn: DataTableColumn<TAgentVaultSessionLogRecord> = {
+      id: "add-service",
+      header: "Add service",
+      hideHeader: true,
+      actions: true,
+      render: (record) =>
+        isAddable(record) ? (
+          <Tooltip content={`Add ${record.host} to ${bundle.name}`}>
+            <Button
+              variant="ghost"
+              size="icon-row"
+              icon="plus"
+              iconOnly
+              onClick={() => setServiceRequest({ host: hostPatternFor(record), path: record.path })}
+            >
+              Add service
+            </Button>
+          </Tooltip>
+        ) : null
+    };
+    return [...LOG_COLUMNS, addColumn];
+  }, [isAdmin, bundle, addedHosts]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [rangeDraft, setRangeDraft] = useState<{ from?: Date; to?: Date }>();
@@ -828,7 +869,7 @@ export const SessionLogsPanel = ({
       <DataTable<TAgentVaultSessionLogRecord>
         label="Session requests"
         rows={visible}
-        columns={LOG_COLUMNS}
+        columns={columns}
         getRowId={sessionLogRecordKey}
         rowLabel={(record) => `${sessionLogMethodLabel(record)} ${hostLabelOf(record)}`}
         onRowActivate={setOpened}
@@ -857,6 +898,15 @@ export const SessionLogsPanel = ({
       />
 
       <SessionLogDetailsDialog record={opened} onClose={() => setOpened(null)} />
+      {serviceRequest && bundle?.id && (
+        <ServiceSheet
+          projectId={projectId}
+          accessBundleId={bundle.id}
+          request={serviceRequest}
+          onSaved={() => setAddedHosts((hosts) => new Set(hosts).add(serviceRequest.host))}
+          onOpenChange={(open) => !open && setServiceRequest(null)}
+        />
+      )}
     </Stack>
   );
 };
