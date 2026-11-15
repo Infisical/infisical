@@ -127,7 +127,7 @@ export const TemplateDetailsDialog = ({
             </Stack>
           </form>
           <DialogFooter>
-            <Button variant="ghost" onClick={guard.requestDiscard}>
+            <Button variant="ghost" disabled={pending} onClick={guard.requestDiscard}>
               Cancel
             </Button>
             <Button type="submit" form={formId} variant="primary" loading={pending}>

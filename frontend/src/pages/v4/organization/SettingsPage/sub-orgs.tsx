@@ -153,7 +153,7 @@ const SubOrgDialog = ({ editing, onClose }: { editing?: Editing; onClose: () => 
             </Stack>
           </form>
           <DialogFooter>
-            <Button variant="outline" onClick={guard.requestDiscard}>
+            <Button variant="outline" disabled={pending} onClick={guard.requestDiscard}>
               Cancel
             </Button>
             <Button type="submit" form={formId} loading={pending}>
