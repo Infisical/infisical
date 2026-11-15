@@ -317,7 +317,7 @@ const SkillSheetBody = ({
   const changeText = (text: string) => {
     if (!file) return;
     setEdit((prev) => {
-      const current = prev ?? {
+      const current = (prev?.skillId === skill.id ? prev : undefined) ?? {
         skillId: skill.id,
         baseVersion: skill.latestVersion,
         base: latestFiles,
