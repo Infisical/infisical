@@ -27,10 +27,11 @@ import { useGetLDAPConfig, useGetLDAPGroupMaps } from "@app/hooks/api/ldapConfig
 import {
   useCreateOauthClient,
   useDeleteOauthClient,
+  useOauthConsent,
   useRotateOauthClientSecret,
   useUpdateOauthClient
 } from "@app/hooks/api/oauthClients/mutations";
-import { useGetOauthClients } from "@app/hooks/api/oauthClients/queries";
+import { useGetOauthAuthorizeInfo, useGetOauthClients } from "@app/hooks/api/oauthClients/queries";
 import { useCreateOIDCConfig, useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { useGetOIDCConfig } from "@app/hooks/api/oidcConfig/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
@@ -82,5 +83,7 @@ export const ssoLive: SsoAdapter = {
   useCreateOauthClient,
   useUpdateOauthClient,
   useDeleteOauthClient,
-  useRotateOauthClientSecret
+  useRotateOauthClientSecret,
+  useOauthAuthorizeInfo: useGetOauthAuthorizeInfo,
+  useOauthConsent
 };

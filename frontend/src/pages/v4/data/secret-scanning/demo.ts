@@ -11,6 +11,10 @@ import {
   SecretScanningScanType
 } from "@app/hooks/api/secretScanningV2/enums";
 import type {
+  TSecretScanningInstanceProject,
+  TSecretScanningInstanceState
+} from "@app/hooks/api/secretScanningV2/queries";
+import type {
   TSecretScanningDataSource,
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceWithDetails,
@@ -506,13 +510,25 @@ const availableFor = (dataSourceId: string, included: TSecretScanningResource[])
   );
 };
 
+const instanceProjects: TSecretScanningInstanceProject[] = [
+  { id: projectId, name: "Secret Scanning", slug: "secret-scanning", createdAt: ago(60 * 24 * 90) },
+  {
+    id: uuid("a7", 1),
+    name: "Platform scanning",
+    slug: "platform-scanning",
+    createdAt: ago(60 * 24 * 240)
+  }
+];
+
+const instanceState: TSecretScanningInstanceState = {
+  activeProjectId: projectId,
+  projects: instanceProjects,
+  isMultiInstance: instanceProjects.length > 1
+};
+
 export const secretScanningDemo: SecretScanningAdapter = {
   useProjectId: () => ({ data: projectId, isPending: false, error: null }),
-  useInstanceState: () => ({
-    data: { activeProjectId: projectId, projects: [], isMultiInstance: false },
-    isPending: false,
-    error: null
-  }),
+  useInstanceState: () => ({ data: instanceState, isPending: false, error: null }),
   useFindings: ({ status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit }) => {
     const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
     const matched = store

@@ -8,8 +8,10 @@ import {
   AgentVaultSessionStatus
 } from "@app/hooks/api/agentVault/enums";
 import type {
+  TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultProxy,
   TAgentVaultActorIdsDTO,
   TAgentVaultDelegationDetail,
   TAgentVaultProductMember,
@@ -17,9 +19,12 @@ import type {
   TAgentVaultSessionActor,
   TAgentVaultSessionInlineService,
   TChangeAgentVaultDelegationSubjectsDTO,
+  TCreateAgentVaultSessionDTO,
   TSetAgentVaultDelegationDTO,
-  TUpdateAgentVaultMemberRolesDTO
+  TUpdateAgentVaultMemberRolesDTO,
+  TUpdateAgentVaultSessionLabelDTO
 } from "@app/hooks/api/agentVault/types";
+import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { AgentVaultAdapter } from "./contract";
@@ -80,7 +85,13 @@ const bundles: TAgentVaultAccessBundleListItem[] = bundleSeeds.map(
     memberCount: 3 + index,
     hostPatterns,
     nativeServices: [],
-    servicesRequiringSetup: []
+    servicesRequiringSetup:
+      index === 1
+        ? [
+            { id: uuid("c2", 1), name: "Stripe test mode" },
+            { id: uuid("c2", 2), name: "Billing service" }
+          ]
+        : []
   })
 );
 
@@ -197,6 +208,45 @@ const store = createFixtureStore<(TAgentVaultSession & { projectId: string })[]>
     stats: null
   }))
 );
+
+const proxySeeds: [projectId: string, name: string, connectedMinutesAgo: number | null][] = [
+  ["agent-platform", "prod-egress", 1],
+  ["agent-platform", "staging-egress", 3],
+  ["support-agents", "support-egress", null]
+];
+
+const proxies = createFixtureStore<(TAgentVaultProxy & { projectId: string })[]>(
+  proxySeeds.map(([projectId, name, connected], index) => ({
+    projectId,
+    id: uuid("e1", index + 1),
+    name,
+    description: null,
+    heartbeat: connected === null ? null : at(-connected),
+    isHealthy: connected !== null,
+    rootCaFingerprint: null,
+    rootCaExpiresAt: null,
+    createdAt: at(-60 * 24 * 45)
+  }))
+);
+
+const grants = createFixtureStore<Record<string, string[]>>({
+  [bundles[0].id]: [machines[0].id as string],
+  [bundles[3].id]: [machines[0].id as string, machines[2].id as string]
+});
+
+const universalAuthIdentities = new Set([machines[0].id, machines[2].id]);
+
+const randomToken = () =>
+  `avs_${Array.from(crypto.getRandomValues(new Uint8Array(24)), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("")}`;
+
+const ttlMinutes = (ttl: string) => {
+  const match = /^(\d+(?:\.\d+)?)([smhdw])$/.exec(ttl.trim());
+  if (!match) return null;
+  const unit = { s: 1 / 60, m: 1, h: 60, d: 60 * 24, w: 60 * 24 * 7 }[match[2] as "s"];
+  return Number(match[1]) * unit;
+};
 
 const displayName = (actor: TAgentVaultSessionActor) =>
   actor.type === AgentVaultMemberType.User
@@ -339,10 +389,123 @@ export const agentVaultDemo: AgentVaultAdapter = {
       error: null
     };
   },
-  useAccessBundles: (_, projectId, { limit = 20, offset = 0 }) => {
-    const reachable = bundles.filter(
-      (_bundle, index) => (index === SUPPORT_BUNDLE) === (projectId === "support-agents")
-    );
+  useSession: (_, projectId, sessionId) => ({
+    data: store
+      .use()
+      .find((session) => session.projectId === projectId && session.id === sessionId),
+    isPending: false,
+    error: null
+  }),
+  useCreateSession: (_, projectId) =>
+    fixtureMutation(({ accessBundle, ttl, label }: TCreateAgentVaultSessionDTO) => {
+      const bundle = bundles.find((entry) => entry.name === accessBundle);
+      const minutes = ttl === "never" ? null : ttlMinutes(ttl);
+      const session: TAgentVaultSession & { projectId: string } = {
+        projectId,
+        id: crypto.randomUUID(),
+        label: label ?? null,
+        actor: sarah,
+        onBehalfOf: null,
+        status: Active,
+        createdAt: now(),
+        expiresAt: minutes === null ? null : new Date(Date.now() + minutes * 60_000).toISOString(),
+        revokedAt: null,
+        accessBundle: bundle ? { id: bundle.id, name: bundle.name } : null,
+        services: [],
+        stats: null
+      };
+      store.update((sessions) => [session, ...sessions]);
+      return {
+        id: session.id,
+        label: session.label,
+        token: randomToken(),
+        expiresAt: session.expiresAt,
+        createdAt: session.createdAt,
+        projectId,
+        accessBundle: session.accessBundle,
+        services: []
+      };
+    })(),
+  useUpdateSessionLabel: (_, projectId) =>
+    fixtureMutation(({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+      store.update((sessions) =>
+        sessions.map((session) =>
+          session.projectId === projectId && session.id === sessionId
+            ? { ...session, label }
+            : session
+        )
+      );
+      return store.get().find((session) => session.id === sessionId) as TAgentVaultSession;
+    })(),
+  useRevokeSession: (_, projectId) =>
+    fixtureMutation((sessionId: string) => {
+      const revokedAt = now();
+      store.update((sessions) =>
+        sessions.map((session) =>
+          session.projectId === projectId && session.id === sessionId
+            ? { ...session, status: Revoked, revokedAt }
+            : session
+        )
+      );
+      return { id: sessionId, revokedAt };
+    })(),
+  useProxies: (_, projectId, { limit = 20, offset = 0 }) => {
+    const matched = proxies.use().filter((proxy) => proxy.projectId === projectId);
+    const { rows, totalCount } = slice(matched, limit, offset);
+    return { data: { proxies: rows, totalCount }, isPending: false, error: null };
+  },
+  useIsAccessBundleMember: (_, __, accessBundleId, actor) => {
+    const granted = grants.use()[accessBundleId] ?? [];
+    return {
+      data: actor && accessBundleId ? granted.includes(actor.id) : undefined,
+      isPending: false,
+      error: null
+    };
+  },
+  useGrantAccessBundle: () =>
+    fixtureMutation(({ accessBundleId, machineIdentityIds = [] }: TAddAgentVaultMembersDTO) => {
+      grants.update((all) => ({
+        ...all,
+        [accessBundleId]: [...(all[accessBundleId] ?? []), ...machineIdentityIds]
+      }));
+    })(),
+  useIdentityUniversalAuth: (identityId) => {
+    if (!identityId) return { data: undefined, isPending: true, error: null };
+    if (!universalAuthIdentities.has(identityId))
+      return {
+        data: undefined,
+        isPending: false,
+        error: {
+          isAxiosError: true,
+          response: {
+            status: 404,
+            data: { message: "Failed to find Universal Auth configuration for this identity" }
+          }
+        }
+      };
+    return {
+      data: {
+        identityId,
+        clientId: `${identityId.slice(0, 8)}-5f2c-4b1e-9a7d-3c8e1f0b6d42`
+      } as IdentityUniversalAuth,
+      isPending: false,
+      error: null
+    };
+  },
+  useAccessBundles: (_, projectId, { search, orderBy, orderDirection, limit = 20, offset = 0 }) => {
+    const term = search?.trim().toLowerCase();
+    const reachable = bundles
+      .filter(
+        (bundle, index) =>
+          (index === SUPPORT_BUNDLE) === (projectId === "support-agents") &&
+          (!term || bundle.name.toLowerCase().includes(term))
+      )
+      .sort((a, b) => {
+        const direction = orderDirection === "desc" ? -1 : 1;
+        if (orderBy === "serviceCount") return (a.serviceCount - b.serviceCount) * direction;
+        if (orderBy === "createdAt") return a.createdAt.localeCompare(b.createdAt) * direction;
+        return orderBy === "name" ? a.name.localeCompare(b.name) * direction : 0;
+      });
     return {
       data: {
         accessBundles: reachable.slice(offset, offset + limit),

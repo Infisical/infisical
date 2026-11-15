@@ -1,9 +1,12 @@
 import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { NotPortedPage } from "../../organization/NotPortedPage/NotPortedPage";
+import { SecretSharingRedirect } from "./SecretSharingRedirect";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/secret-sharing")({
-  staticData: { readiness: "none" },
-  component: NotPortedPage,
+  validateSearch: zodValidator(z.object({ selectedTab: z.string().optional().catch(undefined) })),
+  staticData: { readiness: "full" },
+  component: SecretSharingRedirect,
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

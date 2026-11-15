@@ -1,9 +1,9 @@
 import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 
-import { NotPortedPage } from "../../organization/NotPortedPage/NotPortedPage";
+import { KmsIndexRedirect } from "./KmsIndexRedirect";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/projects/kms/$projectId/")({
-  staticData: { readiness: "none" },
-  component: NotPortedPage,
+  staticData: { readiness: "full" },
+  component: KmsIndexRedirect,
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

@@ -7,9 +7,10 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -17,13 +18,16 @@ import {
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import type { TSecretScanningConfig } from "@app/hooks/api/secretScanningV2/types";
 
 import { useProjectPermission } from "../../access/permissions";
+import { ProductProjectScope } from "../../access/project/scope";
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { ProjectGeneralSettings } from "../../project/SettingsPage/general";
 
 const route = v4Path("/organizations/$orgId/secret-scanning/settings");
 
@@ -134,6 +138,51 @@ const ScanningConfig = ({ orgId, projectId }: { orgId: string; projectId: string
   );
 };
 
+const tabs = [
+  { value: "general", label: "General" },
+  { value: "scanning-settings", label: "Scanning settings" }
+];
+
+const Settings = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
+  const navigate = useNavigate();
+  const { selectedTab } = useSearch({ from: route });
+  const { data: instanceState, isPending } = useV4Adapter("secretScanning").useInstanceState(orgId);
+  const hasMultipleProjects = Boolean(instanceState?.isMultiInstance);
+  const isGeneralRequested = !selectedTab || selectedTab === "general";
+  const activeTab =
+    !hasMultipleProjects && isGeneralRequested ? "scanning-settings" : selectedTab || "general";
+
+  let body = <ScanningConfig orgId={orgId} projectId={projectId} />;
+  if (isGeneralRequested && isPending) body = <Loader label="Loading settings" />;
+  else if (activeTab === "general")
+    body = (
+      <ProductProjectScope value={{ orgId, projectId, projectType: ProjectType.SecretScanning }}>
+        <ProjectGeneralSettings />
+      </ProductProjectScope>
+    );
+
+  return (
+    <Stack gap={24}>
+      <PageHeader
+        title="Settings"
+        tabs={
+          hasMultipleProjects ? (
+            <Tabs
+              label="Settings sections"
+              value={activeTab}
+              onValueChange={(next) =>
+                navigate({ to: ".", search: (prev) => ({ ...prev, selectedTab: next }) })
+              }
+              tabs={tabs.map((tab) => ({ ...tab, content: null }))}
+            />
+          ) : undefined
+        }
+      />
+      {body}
+    </Stack>
+  );
+};
+
 export const SettingsPage = () => {
   const { orgId } = useParams({ from: route });
   const { data: projectId, isPending } = useV4Adapter("secretScanning").useProjectId(orgId);
@@ -144,12 +193,7 @@ export const SettingsPage = () => {
       {!isPending && !projectId && (
         <EmptyState icon="search" title="Secret Scanning is not set up" />
       )}
-      {projectId && (
-        <Stack gap={24}>
-          <PageHeader title="Settings" />
-          <ScanningConfig orgId={orgId} projectId={projectId} />
-        </Stack>
-      )}
+      {projectId && <Settings orgId={orgId} projectId={projectId} />}
     </TooltipProvider>
   );
 };
