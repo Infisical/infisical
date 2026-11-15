@@ -28,12 +28,29 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route(
       "/secret-request/secret/$secretRequestId",
       "v4/secret-sharing/public/ViewSecretRequestPage/route.tsx"
-    )
+    ),
+    route("/share-secret", "v4/secret-sharing/public/ShareSecretLegacyPage/route.tsx")
   ]),
   route("/organizations/onboarding", "v4/auth/OrgOnboardingPage/route.tsx"),
   route("/organizations/none", "v4/auth/NoOrgPage/route.tsx"),
   route("/password-setup", "v4/auth/PasswordSetupPage/route.tsx"),
   route("/mfa-session/$mfaSessionId", "v4/auth/MfaSessionPage/route.tsx"),
+  route("/organization/oauth-consent", "v4/organization/OauthConsentPage/route.tsx"),
+  route("/cli-redirect", "v4/auth/CliRedirectPage/route.tsx"),
+  route("/agent-vault/oauth/callback", "v4/agent-vault/AgentVaultOAuthCallbackPage/route.tsx"),
+  route(
+    "/organization/app-connections/$appConnection/oauth/callback",
+    "v4/redirects/LegacyAppConnectionOauthCallbackRedirect/route.tsx"
+  ),
+  route(
+    "/organization/app-connections/github/manifest/callback",
+    "v4/redirects/LegacyGitHubManifestCallbackRedirect/route.tsx"
+  ),
+  route(
+    "/organization/settings/oauth/callback",
+    "v4/redirects/LegacySettingsOauthCallbackRedirect/route.tsx"
+  ),
+  route("/pam/access", "v4/redirects/LegacyPamAccessRedirect/route.tsx"),
   route("/admin", "v4/admin/route.tsx", [
     route("/welcome", "v4/admin/WelcomePage/route.tsx"),
     route("/setup", "v4/admin/SetupPage/route.tsx"),
@@ -143,6 +160,42 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "v4/project/RoleDetailsBySlugPage/agent-vault/route.tsx"
       ),
       route("/agent-vault/$projectId/settings", "v4/agent-vault/AgentVaultSettingsPage/route.tsx"),
+      route("/kms/$projectId/", "v4/redirects/KmsIndexRedirect/route.tsx"),
+      route("/secret-management/$projectId/", "v4/redirects/SecretManagerIndexRedirect/route.tsx"),
+      route("/secret-management/$projectId/insights", "v4/secret-manager/InsightsPage/route.tsx"),
+      route(
+        "/secret-management/$projectId/app-connections",
+        "v4/project/AppConnectionsPage/route.tsx"
+      ),
+      route("/secret-management/insights", "v4/organization/SecretInsightsPage/route.tsx"),
+      route(
+        "/secret-management/product-settings/",
+        "v4/organization/ProductSettingsPage/secret-management/route.tsx"
+      ),
+      route(
+        "/secret-management/product-settings/project-templates/$templateId",
+        "v4/organization/ProductSettingsPage/secret-management/ProjectTemplateDetailsPage/route.tsx"
+      ),
+      route("/product-settings/$type/", "v4/organization/ProductSettingsPage/route.tsx"),
+      route(
+        "/product-settings/$type/project-templates/$templateId",
+        "v4/organization/ProductSettingsPage/ProjectTemplateDetailsPage/route.tsx"
+      ),
+      route(
+        "/agent-vault/$projectId/access-bundles/",
+        "v4/agent-vault/AgentVaultAccessBundlesPage/route.tsx"
+      ),
+      route(
+        "/agent-vault/$projectId/access-bundles/$accessBundleId",
+        "v4/agent-vault/AgentVaultAccessBundleDetailPage/route.tsx"
+      ),
+      route("/agent-vault/$projectId/services", "v4/agent-vault/AgentVaultServicesPage/route.tsx"),
+      route(
+        "/agent-vault/$projectId/variables",
+        "v4/agent-vault/AgentVaultVariablesPage/route.tsx"
+      ),
+      route("/agent-vault/$projectId/skills", "v4/agent-vault/AgentVaultSkillsPage/route.tsx"),
+      route("/agent-vault/$projectId/proxies", "v4/agent-vault/AgentVaultProxiesPage/route.tsx"),
       route("/$type/", "v4/organization/ProjectsPage/ProjectTypePage/route.tsx"),
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
@@ -236,6 +289,85 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/pam/groups/$groupId", "v4/project/GroupDetailsByIDPage/pam/route.tsx"),
     route("/pam/roles/$roleSlug", "v4/project/RoleDetailsBySlugPage/pam/route.tsx"),
     route("/secret-scanning/", "v4/redirects/SecretScanningIndexRedirect/route.tsx"),
+    route("/app-connections/", "v4/organization/AppConnectionsPage/route.tsx"),
+    route(
+      "/app-connections/$appConnection/oauth/callback",
+      "v4/organization/AppConnectionOauthCallbackPage/route.tsx"
+    ),
+    route(
+      "/app-connections/github/manifest/callback",
+      "v4/organization/GitHubManifestCallbackPage/route.tsx"
+    ),
+    route("/settings/oauth/callback", "v4/organization/SettingsOauthCallbackPage/route.tsx"),
+    route("/secret-sharing", "v4/redirects/SecretSharingRedirect/route.tsx"),
+    route(
+      "/secret-manager/$projectId/approval",
+      "v4/redirects/LegacySecretManagerApprovalRedirect/route.tsx"
+    ),
+    route("/cert-manager/applications/", "v4/cert-manager/ApplicationsPage/route.tsx"),
+    route(
+      "/cert-manager/applications/$applicationName",
+      "v4/cert-manager/ApplicationDetailsByIDPage/route.tsx"
+    ),
+    route(
+      "/cert-manager/certificate-authorities",
+      "v4/cert-manager/CertificateAuthoritiesPage/route.tsx"
+    ),
+    route("/cert-manager/ca/$caId", "v4/cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+    route(
+      "/cert-manager/hsm-connectors/$connectorId",
+      "v4/cert-manager/HsmConnectorDetailsByIDPage/route.tsx"
+    ),
+    route(
+      "/cert-manager/certificate-policies/",
+      "v4/cert-manager/CertificatePoliciesPage/route.tsx"
+    ),
+    route(
+      "/cert-manager/certificate-policies/$policyId",
+      "v4/cert-manager/CertificatePolicyDetailsByIDPage/route.tsx"
+    ),
+    route(
+      "/cert-manager/certificate-profiles/",
+      "v4/cert-manager/CertificateProfilesPage/route.tsx"
+    ),
+    route(
+      "/cert-manager/certificate-profiles/$profileId",
+      "v4/cert-manager/CertificateProfileDetailsByIDPage/route.tsx"
+    ),
+    route("/cert-manager/alerting", "v4/redirects/CertManagerAlertingRedirect/route.tsx"),
+    route(
+      "/cert-manager/app-connections",
+      "v4/redirects/CertManagerAppConnectionsRedirect/route.tsx"
+    ),
+    route("/cert-manager/discovery/", "v4/cert-manager/DiscoveryPage/route.tsx"),
+    route(
+      "/cert-manager/discovery/$discoveryId",
+      "v4/cert-manager/DiscoveryDetailsByIDPage/route.tsx"
+    ),
+    route(
+      "/cert-manager/discovery/installations/$installationId",
+      "v4/cert-manager/InstallationDetailsByIDPage/route.tsx"
+    ),
+    route("/cert-manager/code-signing/", "v4/cert-manager/CodeSigningPage/route.tsx"),
+    route("/cert-manager/code-signing/$signerId/", "v4/cert-manager/SignerDetailPage/route.tsx"),
+    route(
+      "/cert-manager/code-signing/$signerId/operations/$operationId",
+      "v4/cert-manager/SigningOperationDetailPage/route.tsx"
+    ),
+    route("/cert-manager/integrations/", "v4/cert-manager/PkiSyncsPage/route.tsx"),
+    route("/cert-manager/integrations/$syncId", "v4/cert-manager/PkiSyncDetailsByIDPage/route.tsx"),
+    route("/pam/", "v4/redirects/PamIndexRedirect/route.tsx"),
+    route("/pam/accounts/my-accounts", "v4/pam/PamMyAccountsPage/route.tsx"),
+    route("/pam/accounts/$folderId", "v4/pam/PamFolderPage/route.tsx"),
+    route("/pam/accounts/$accountType/$accountId/access", "v4/pam/PamAccountAccessPage/route.tsx"),
+    route("/pam/sessions", "v4/pam/PamSessionsPage/route.tsx"),
+    route("/pam/templates", "v4/pam/PamTemplatesPage/route.tsx"),
+    route("/pam/discovery", "v4/pam/PamDiscoveryPage/route.tsx"),
+    route("/secret-scanning/audit-logs", "v4/project/AuditLogsPage/secret-scanning/route.tsx"),
+    route(
+      "/secret-scanning/app-connections",
+      "v4/project/AppConnectionsPage/secret-scanning/route.tsx"
+    ),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])
 ]);
