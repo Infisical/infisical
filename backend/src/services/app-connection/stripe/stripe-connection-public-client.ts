@@ -3,7 +3,6 @@ import crypto from "node:crypto";
 
 import { AxiosError, AxiosRequestConfig } from "axios";
 
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -12,9 +11,7 @@ export const STRIPE_PREVIEW_API_VERSION = "2026-08-26.preview";
 
 export const STRIPE_API_KEYS_URL = `${IntegrationUrls.STRIPE_API_URL}/v2/iam/api_keys`;
 
-export const getStripeSecretKey = () => {
-  const { INF_APP_CONNECTION_STRIPE_SECRET_KEY } = getConfig();
-
+export const getStripeSecretKey = (INF_APP_CONNECTION_STRIPE_SECRET_KEY?: string) => {
   if (!INF_APP_CONNECTION_STRIPE_SECRET_KEY) {
     throw new InternalServerError({
       message: "Stripe is not configured on this instance. Set the Stripe App Connection credentials to enable it."
@@ -29,9 +26,12 @@ export const getStripeSecretKey = () => {
  * every account the app is installed on, so callers must run assertStripeConnectionAuthorized first.
  * Stripe only serves the Managed API Keys API to the app's own key, not to OAuth access tokens.
  */
-export const getStripeAppRequestConfig = (accountId: string): AxiosRequestConfig => ({
+export const getStripeAppRequestConfig = (
+  accountId: string,
+  INF_APP_CONNECTION_STRIPE_SECRET_KEY?: string
+): AxiosRequestConfig => ({
   headers: {
-    Authorization: `Bearer ${getStripeSecretKey()}`,
+    Authorization: `Bearer ${getStripeSecretKey(INF_APP_CONNECTION_STRIPE_SECRET_KEY)}`,
     "Stripe-Version": STRIPE_PREVIEW_API_VERSION,
     "Stripe-Context": accountId
   }

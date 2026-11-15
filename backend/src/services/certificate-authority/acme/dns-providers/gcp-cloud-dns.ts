@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import RE2 from "re2";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
@@ -103,9 +104,10 @@ const submitWithRetry = async (
   hostedZoneId: string,
   zoneUrl: string,
   fqdn: string,
-  buildChange: TBuildChange
+  buildChange: TBuildChange,
+  instanceConfigService: TInstanceConfigService
 ) => {
-  const accessToken = await getGcpConnectionAuthToken(connection);
+  const accessToken = await getGcpConnectionAuthToken(connection, instanceConfigService);
 
   for (let attempt = 1; attempt <= MAX_CHANGE_ATTEMPTS; attempt += 1) {
     let changeHadDeletions = false;
@@ -135,6 +137,7 @@ const applyTxtRecordChange = async (
   recordName: string,
   buildChange: TBuildChange,
   keyStore: TDnsRecordLockKeyStore,
+  instanceConfigService: TInstanceConfigService,
   abortSignal?: AbortSignal
 ) => {
   const zoneUrl = getZoneUrl(hostedZoneId);
@@ -150,7 +153,7 @@ const applyTxtRecordChange = async (
       abortSignal
     },
     keyStore,
-    () => submitWithRetry(connection, hostedZoneId, zoneUrl, fqdn, buildChange)
+    () => submitWithRetry(connection, hostedZoneId, zoneUrl, fqdn, buildChange, instanceConfigService)
   );
 };
 
@@ -160,6 +163,7 @@ export const gcpCloudDnsInsertTxtRecord = async (
   recordName: string,
   value: string,
   keyStore: TDnsRecordLockKeyStore,
+  instanceConfigService: TInstanceConfigService,
   abortSignal?: AbortSignal
 ) => {
   await applyTxtRecordChange(
@@ -181,6 +185,7 @@ export const gcpCloudDnsInsertTxtRecord = async (
       };
     },
     keyStore,
+    instanceConfigService,
     abortSignal
   );
 };
@@ -190,7 +195,8 @@ export const gcpCloudDnsDeleteTxtRecord = async (
   hostedZoneId: string,
   recordName: string,
   value: string,
-  keyStore: TDnsRecordLockKeyStore
+  keyStore: TDnsRecordLockKeyStore,
+  instanceConfigService: TInstanceConfigService
 ) => {
   await applyTxtRecordChange(
     connection,
@@ -212,6 +218,7 @@ export const gcpCloudDnsDeleteTxtRecord = async (
         ...(remaining.length ? { additions: [{ ...existing, rrdatas: remaining }] } : {})
       };
     },
-    keyStore
+    keyStore,
+    instanceConfigService
   );
 };

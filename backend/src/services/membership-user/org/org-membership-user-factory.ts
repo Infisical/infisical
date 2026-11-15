@@ -257,9 +257,8 @@ export const newOrgMembershipUserFactory = ({
     const orgDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
       orgDAL.findById(dto.permission.orgId)
     );
-    const serverCfg = await instanceConfigService.getInstanceConfig();
-    const isEmailLoginEnabled =
-      !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
+    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
+    const isEmailLoginEnabled = !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
 
     if (orgDetails.rootOrgId) {
       // checking if the users have accepted the invitation in the root organization to send the email

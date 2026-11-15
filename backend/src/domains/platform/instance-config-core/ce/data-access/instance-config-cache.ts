@@ -12,18 +12,11 @@ const INSTANCE_CONFIG_CACHE_TTL_SECONDS = 60;
 
 type TSerializedBuffer = { type: "Buffer"; data: number[] };
 
-type TEncryptedColumn =
-  | "encryptedSlackClientId"
-  | "encryptedSlackClientSecret"
-  | "encryptedMicrosoftTeamsAppId"
-  | "encryptedMicrosoftTeamsClientSecret"
-  | "encryptedMicrosoftTeamsBotId"
-  | "encryptedGitHubAppConnectionClientId"
-  | "encryptedGitHubAppConnectionClientSecret"
-  | "encryptedGitHubAppConnectionSlug"
-  | "encryptedGitHubAppConnectionId"
-  | "encryptedGitHubAppConnectionPrivateKey"
-  | "encryptedEnvOverrides";
+// Every ciphertext column of the row, derived from its type, so a column added to super_admin fails to compile below
+// until get() converts it.
+type TEncryptedColumn = {
+  [K in keyof TInstanceConfigRecord]-?: NonNullable<TInstanceConfigRecord[K]> extends Buffer ? K : never;
+}[keyof TInstanceConfigRecord];
 
 // The row as JSON.stringify writes it: dates become strings, Buffers become { type: "Buffer", data }.
 type TCachedRow = Omit<TInstanceConfigRecord, TEncryptedColumn | "createdAt" | "updatedAt"> &

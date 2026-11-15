@@ -262,9 +262,9 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships,
     idpMfa
   }: TOidcLoginDTO) => {
-    const serverCfg = await instanceConfigService.getInstanceConfig();
+    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
+    if (enabledLoginMethods && !enabledLoginMethods.includes(LoginMethod.OIDC)) {
       throw new ForbiddenRequestError({
         message: "Login with OIDC is disabled by administrator."
       });

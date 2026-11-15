@@ -443,7 +443,7 @@ export const authLoginServiceFactory = ({
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
-    const serverCfg = await instanceConfigService.getInstanceConfig();
+    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
 
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find user");
@@ -453,11 +453,7 @@ export const authLoginServiceFactory = ({
       throw new BadRequestError({ message: "Salt or verifier not found" });
     }
 
-    if (
-      serverCfg.enabledLoginMethods &&
-      !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
-      !providerAuthToken
-    ) {
+    if (enabledLoginMethods && !enabledLoginMethods.includes(LoginMethod.EMAIL) && !providerAuthToken) {
       // bypass server configuration when user is an organization admin - this is to prevent lockout
       const userOrgs = await orgDAL.findAllOrgsByUserId(userEnc.userId);
       if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
@@ -610,8 +606,8 @@ export const authLoginServiceFactory = ({
         throw new BadRequestError({ message: "Invalid credentials" });
       }
 
-      const serverCfg = await instanceConfigService.getInstanceConfig();
-      if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL)) {
+      const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
+      if (enabledLoginMethods && !enabledLoginMethods.includes(LoginMethod.EMAIL)) {
         const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
         if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
           throw new BadRequestError({ message: "Invalid credentials" });
@@ -897,12 +893,13 @@ export const authLoginServiceFactory = ({
           ).length > 0
         : false;
 
-    const serverCfg = await instanceConfigService.getInstanceConfig();
+    const { enabledLoginMethods, allowSignUp, allowedSignUpDomain, defaultAuthOrgId } =
+      await instanceConfigService.getInstanceConfig();
 
     const oauthAuthMethod = authMethod as OAuthAuthMethod;
     let canBypassDisabledLoginMethod = false;
 
-    if (user && isOAuthLoginMethodDisabled(oauthAuthMethod, serverCfg.enabledLoginMethods)) {
+    if (user && isOAuthLoginMethodDisabled(oauthAuthMethod, enabledLoginMethods)) {
       // Existing organization admins retain access to prevent account lockout.
       const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
       canBypassDisabledLoginMethod = userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin);
@@ -910,7 +907,7 @@ export const authLoginServiceFactory = ({
 
     assertOAuthLoginMethodEnabled({
       authMethod: oauthAuthMethod,
-      enabledLoginMethods: serverCfg.enabledLoginMethods,
+      enabledLoginMethods,
       canBypass: canBypassDisabledLoginMethod
     });
 
@@ -920,11 +917,11 @@ export const authLoginServiceFactory = ({
     let orgName: undefined | string;
     if (!user) {
       // Create a new user based on oAuth
-      if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
+      if (!allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
 
-      if (serverCfg?.allowedSignUpDomain) {
+      if (allowedSignUpDomain) {
         const domain = email.split("@")[1];
-        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain))
+        if (!matchesAllowedEmailDomain(email, allowedSignUpDomain))
           throw new BadRequestError({
             message: `Email with a domain (@${domain}) is not supported`,
             name: "Oauth 2 login"
@@ -951,13 +948,13 @@ export const authLoginServiceFactory = ({
           tx
         );
 
-        if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-          const defaultOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(serverCfg.defaultAuthOrgId), () =>
-            orgDAL.findOrgById(serverCfg.defaultAuthOrgId as string)
+        if (authMethod === AuthMethod.GITHUB && defaultAuthOrgId && !appCfg.isCloud) {
+          const defaultOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(defaultAuthOrgId), () =>
+            orgDAL.findOrgById(defaultAuthOrgId as string)
           );
           if (!defaultOrg) {
             throw new BadRequestError({
-              message: `Failed to find default organization with ID ${serverCfg.defaultAuthOrgId}`
+              message: `Failed to find default organization with ID ${defaultAuthOrgId}`
             });
           }
           orgId = defaultOrg.id;

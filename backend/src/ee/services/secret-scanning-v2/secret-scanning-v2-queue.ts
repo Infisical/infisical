@@ -6,6 +6,7 @@ import {
   TSecretScanningFindings,
   TSecretScanningResourcesInsert
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
@@ -69,6 +70,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItemPrimary" | "deleteItem">;
@@ -108,6 +110,7 @@ export const secretScanningV2QueueServiceFactory = ({
   projectDAL,
   smtpService,
   kmsDataKeyService,
+  instanceConfigService,
   auditLogService,
   keyStore,
   appConnectionDAL,
@@ -261,7 +264,8 @@ export const secretScanningV2QueueServiceFactory = ({
 
       const factory = SECRET_SCANNING_FACTORY_MAP[type]({
         kmsDataKeyService,
-        appConnectionDAL
+        appConnectionDAL,
+        instanceConfigService
       });
 
       // Only the data source's resources are scanned. The provider is still listed so a renamed resource is cloned
@@ -418,7 +422,8 @@ export const secretScanningV2QueueServiceFactory = ({
 
       const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
         kmsDataKeyService,
-        appConnectionDAL
+        appConnectionDAL,
+        instanceConfigService
       });
 
       const findingsPath = join(tempFolder, "findings.json");
@@ -701,7 +706,8 @@ export const secretScanningV2QueueServiceFactory = ({
   }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
       kmsDataKeyService,
-      appConnectionDAL
+      appConnectionDAL,
+      instanceConfigService
     });
 
     const resourcePayload = factory.getDiffScanResourcePayload(payload);
@@ -797,7 +803,8 @@ export const secretScanningV2QueueServiceFactory = ({
 
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
       kmsDataKeyService,
-      appConnectionDAL
+      appConnectionDAL,
+      instanceConfigService
     });
 
     const report = factory.getRealtimeScanReport?.(payload);
@@ -1168,7 +1175,8 @@ export const secretScanningV2QueueServiceFactory = ({
 
       await SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
         kmsDataKeyService,
-        appConnectionDAL
+        appConnectionDAL,
+        instanceConfigService
       })
         .getScanReport?.({ scan, dataSource, resourceName: scan.resourceName })
         ?.fail({ reason: statusMessage, isTimedOut: true });
@@ -1377,14 +1385,18 @@ export const secretScanningV2QueueServiceFactory = ({
         logger.error(markError, `secretScanningV2Queue: Failed to mark reported realtime scan as failed ${logDetails}`);
       }
 
-      await SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsDataKeyService, appConnectionDAL })
+      await SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsDataKeyService, appConnectionDAL, instanceConfigService })
         .getRealtimeScanReport?.(payload)
         ?.fail({ reason: statusMessage });
     }
   };
 
   const processDataSourceEvent = async ({ dataSourceType, event }: TQueueSecretScanningDataSourceEvent) => {
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsDataKeyService, appConnectionDAL });
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
+      kmsDataKeyService,
+      appConnectionDAL,
+      instanceConfigService
+    });
 
     if (!factory.processEvent) {
       logger.error(`secretScanningV2Queue: Data source has no event processing [dataSourceType=${dataSourceType}]`);
@@ -1396,7 +1408,8 @@ export const secretScanningV2QueueServiceFactory = ({
       secretScanningV2DAL,
       auditLogService,
       discoverResource,
-      queueReportedRealtimeScan
+      queueReportedRealtimeScan,
+      instanceConfigService
     });
   };
 
@@ -1440,7 +1453,8 @@ export const secretScanningV2QueueServiceFactory = ({
   }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
       kmsDataKeyService,
-      appConnectionDAL
+      appConnectionDAL,
+      instanceConfigService
     });
 
     const resourcePayload = factory.getDiffScanResourcePayload(payload);

@@ -348,9 +348,8 @@ export const membershipUserServiceFactory = ({
     if (!newUserEmails.length && users.every((user) => existingUserIds.has(user.id))) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
-    const serverCfg = await instanceConfigService.getInstanceConfig();
-    const isEmailLoginEnabled =
-      !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
+    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
+    const isEmailLoginEnabled = !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
 
     const newExistingUsers = users.filter((user) => !existingUserIds.has(user.id));
     await factory.onCreateMembershipUserGuard(dto, newExistingUsers, newUserEmails);

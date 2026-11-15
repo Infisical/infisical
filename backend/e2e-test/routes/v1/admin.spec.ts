@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { TableName } from "@app/db/schemas";
 import type { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { overwriteSchema } from "@app/lib/config/env";
 import { LoginMethod, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 
 // registerRoutes publishes its services for the e2e suite; writes through the service also refresh the shared cache.
@@ -145,6 +146,52 @@ describe("Admin V1 Router", () => {
 
       expect(response.statusCode).toBe(400);
       expect(response.json().message).toContain("No recognized instance configuration fields were provided");
+    });
+  });
+
+  describe("overridable env values", () => {
+    const overridableKeyNames = Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key));
+    const privateKeyCanary = `override-canary-${randomUUID()}`;
+
+    beforeAll(async () => {
+      const response = await updateServerConfig({
+        envOverrides: { INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: privateKeyCanary }
+      });
+      expect(response.statusCode).toBe(200);
+    });
+
+    afterAll(async () => {
+      await updateServerConfig({ envOverrides: { INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: "" } });
+    });
+
+    const expectNoOverridableValues = (body: string) => {
+      expect(overridableKeyNames.filter((key) => body.includes(key))).toEqual([]);
+      expect(body).not.toContain(privateKeyCanary);
+    };
+
+    test("the super admin's instance config does not expose them", async () => {
+      const response = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/admin/config",
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+
+      expect(response.statusCode).toBe(200);
+      expectNoOverridableValues(response.body);
+    });
+
+    test("an anonymous caller's instance config does not expose them", async () => {
+      const response = await testServer.inject({ method: "GET", url: "/api/v1/admin/config" });
+
+      expect(response.statusCode).toBe(200);
+      expectNoOverridableValues(response.body);
+    });
+
+    test("the status endpoint does not expose them", async () => {
+      const response = await testServer.inject({ method: "GET", url: "/api/status" });
+
+      expect(response.statusCode).toBe(200);
+      expectNoOverridableValues(response.body);
     });
   });
 });

@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import {
   getConfig,
   getOriginalConfig,
+  hasOriginalEnvValue,
   overridableKeys,
   overwriteSchema,
   resolveOverridableEnv,
@@ -116,10 +117,7 @@ const instanceConfigEnv: TInstanceConfigEnv = {
   groups: overwriteSchema,
   keys: overridableKeys,
   resolve: resolveOverridableEnv,
-  hasEnvValue: (key) => {
-    const original: Readonly<Record<string, unknown>> = getOriginalConfig() ?? {};
-    return Boolean(original[key]);
-  },
+  hasEnvValue: hasOriginalEnvValue,
   slackDefaults: () => ({
     clientId: getConfig().WORKFLOW_SLACK_CLIENT_ID,
     clientSecret: getConfig().WORKFLOW_SLACK_CLIENT_SECRET

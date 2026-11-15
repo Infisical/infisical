@@ -867,17 +867,32 @@ const envSchema = z
       data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
   }));
 
-export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
-let envCfg: TEnvConfig;
-let originalEnvConfig: TEnvConfig;
+type TParsedEnvConfig = Readonly<z.infer<typeof envSchema>>;
 
-export const getConfig = () => envCfg;
-export const getOriginalConfig = () => originalEnvConfig;
+// The process env, without the values an instance admin can override (TOverridableKey). Read those from Instance
+// Config Core (instanceConfigService.getInstanceConfig()), which applies the stored overrides.
+export type TEnvConfig = Omit<TParsedEnvConfig, TOverridableKey>;
+
+let envCfg: TParsedEnvConfig;
+let originalEnvConfig: TParsedEnvConfig;
+
+export const getConfig = (): TEnvConfig => envCfg;
+export const getOriginalConfig = (): TEnvConfig => originalEnvConfig;
+
+// Whether the process env as it started sets this key, overridable keys included. For the admin console's view of
+// overrides, through Instance Config Core.
+export const hasOriginalEnvValue = (key: string): boolean => {
+  const original: Readonly<Record<string, unknown>> = originalEnvConfig ?? {};
+  return Boolean(original[key]);
+};
 
 // cannot import singleton logger directly as it needs config to load various transport
 // readFipsSetting is InstanceConfigCoreModule.readFipsSetting bound to a connection; leave it undefined to skip
 // initializing cryptography.
-export const initEnvConfig = async (readFipsSetting?: () => Promise<boolean | null>, logger?: CustomLogger) => {
+export const initEnvConfig = async (
+  readFipsSetting?: () => Promise<boolean | null>,
+  logger?: CustomLogger
+): Promise<TEnvConfig> => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -1226,7 +1241,7 @@ export const overwriteSchema = {
   }
 } as const satisfies Record<
   string,
-  { name: string; fields: readonly { key: keyof TEnvConfig; description?: string }[] }
+  { name: string; fields: readonly { key: keyof TParsedEnvConfig; description?: string }[] }
 >;
 
 // The env values an instance admin can override, plus the flag derived only from them.
@@ -1234,7 +1249,7 @@ export type TOverridableKey =
   | (typeof overwriteSchema)[keyof typeof overwriteSchema]["fields"][number]["key"]
   | "isGithubRadarConfigured";
 
-export type TOverridableEnvConfig = Pick<TEnvConfig, TOverridableKey>;
+export type TOverridableEnvConfig = Pick<TParsedEnvConfig, TOverridableKey>;
 
 export const overridableKeys: ReadonlySet<string> = new Set<string>(
   Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
@@ -1260,12 +1275,6 @@ export const resolveOverridableEnv = (
     };
   }
   return { success: true, config: pick(parsedResult.data, overridableOutputKeys) };
-};
-
-// Puts the resolved overridable values into this process's env holder, for code that still reads them through
-// getConfig(). Instance Config Core resolves them; routes/index.ts applies them at boot, on a timer and after an update.
-export const applyOverridableEnv = (config: TOverridableEnvConfig) => {
-  envCfg = Object.freeze({ ...envCfg, ...pick(config, overridableOutputKeys) });
 };
 
 export const formatSmtpConfig = () => {

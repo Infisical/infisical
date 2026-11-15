@@ -15,6 +15,7 @@ src/domains/
 ├── platform/                   # domains other products depend on
 │   ├── license/
 │   ├── kms-core/
+│   ├── instance-config-core/
 │   └── organizations-projects/
 ├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
@@ -25,7 +26,8 @@ src/domains/
 Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
 [organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
-[cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md).
+[cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
+[instance-config-core](platform/instance-config-core/AGENTS.md).
 
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
 `index.ts` and keeps its test doubles in its own `testing/`:

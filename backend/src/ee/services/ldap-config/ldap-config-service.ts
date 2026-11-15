@@ -522,9 +522,9 @@ export const ldapConfigServiceFactory = ({
     userAgent,
     callbackPort
   }: TLdapLoginDTO) => {
-    const serverCfg = await instanceConfigService.getInstanceConfig();
+    const { enabledLoginMethods, trustLdapEmails } = await instanceConfigService.getInstanceConfig();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
+    if (enabledLoginMethods && !enabledLoginMethods.includes(LoginMethod.LDAP)) {
       throw new ForbiddenRequestError({
         message: "Login with LDAP is disabled by administrator."
       });
@@ -547,7 +547,7 @@ export const ldapConfigServiceFactory = ({
     // instance-level trustLdapEmails flag is a server admin's own decision to skip verification and
     // is kept apart from it.
     const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
-    const skipEmailVerification = isIdpAuthoritative || Boolean(serverCfg.trustLdapEmails);
+    const skipEmailVerification = isIdpAuthoritative || Boolean(trustLdapEmails);
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the

@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TableName, TSuperAdminInsert } from "@app/db/schemas";
+import { TableName, TSuperAdmin, TSuperAdminInsert } from "@app/db/schemas";
 import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 
@@ -103,30 +103,37 @@ export class InstanceConfigStore implements TInstanceConfigStore {
   async save(config: InstanceConfig): Promise<void> {
     const record = config.toJSON();
     try {
-      await this.connection.writer()(TableName.SuperAdmin).where({ id: record.id }).update({
-        initialized: record.initialized,
-        allowSignUp: record.allowSignUp,
-        allowedSignUpDomain: record.allowedSignUpDomain,
-        trustLdapEmails: record.trustLdapEmails,
-        defaultAuthOrgId: record.defaultAuthOrgId,
-        enabledLoginMethods: record.enabledLoginMethods,
-        authConsentContent: record.authConsentContent,
-        pageFrameContent: record.pageFrameContent,
-        adminIdentityIds: record.adminIdentityIds,
-        onboardingCompleted: record.onboardingCompleted,
-        allowedStorageHostnames: record.allowedStorageHostnames,
-        encryptedSlackClientId: record.encryptedSlackClientId,
-        encryptedSlackClientSecret: record.encryptedSlackClientSecret,
-        encryptedMicrosoftTeamsAppId: record.encryptedMicrosoftTeamsAppId,
-        encryptedMicrosoftTeamsClientSecret: record.encryptedMicrosoftTeamsClientSecret,
-        encryptedMicrosoftTeamsBotId: record.encryptedMicrosoftTeamsBotId,
-        encryptedGitHubAppConnectionClientId: record.encryptedGitHubAppConnectionClientId,
-        encryptedGitHubAppConnectionClientSecret: record.encryptedGitHubAppConnectionClientSecret,
-        encryptedGitHubAppConnectionSlug: record.encryptedGitHubAppConnectionSlug,
-        encryptedGitHubAppConnectionId: record.encryptedGitHubAppConnectionId,
-        encryptedGitHubAppConnectionPrivateKey: record.encryptedGitHubAppConnectionPrivateKey,
-        encryptedEnvOverrides: record.encryptedEnvOverrides
-      });
+      await this.connection
+        .writer()(TableName.SuperAdmin)
+        .where({ id: record.id })
+        .update({
+          initialized: record.initialized,
+          allowSignUp: record.allowSignUp,
+          allowedSignUpDomain: record.allowedSignUpDomain,
+          trustLdapEmails: record.trustLdapEmails,
+          defaultAuthOrgId: record.defaultAuthOrgId,
+          enabledLoginMethods: record.enabledLoginMethods,
+          authConsentContent: record.authConsentContent,
+          pageFrameContent: record.pageFrameContent,
+          adminIdentityIds: record.adminIdentityIds,
+          onboardingCompleted: record.onboardingCompleted,
+          allowedStorageHostnames: record.allowedStorageHostnames,
+          encryptedSlackClientId: record.encryptedSlackClientId,
+          encryptedSlackClientSecret: record.encryptedSlackClientSecret,
+          encryptedMicrosoftTeamsAppId: record.encryptedMicrosoftTeamsAppId,
+          encryptedMicrosoftTeamsClientSecret: record.encryptedMicrosoftTeamsClientSecret,
+          encryptedMicrosoftTeamsBotId: record.encryptedMicrosoftTeamsBotId,
+          encryptedGitHubAppConnectionClientId: record.encryptedGitHubAppConnectionClientId,
+          encryptedGitHubAppConnectionClientSecret: record.encryptedGitHubAppConnectionClientSecret,
+          encryptedGitHubAppConnectionSlug: record.encryptedGitHubAppConnectionSlug,
+          encryptedGitHubAppConnectionId: record.encryptedGitHubAppConnectionId,
+          encryptedGitHubAppConnectionPrivateKey: record.encryptedGitHubAppConnectionPrivateKey,
+          encryptedEnvOverrides: record.encryptedEnvOverrides
+          // Fails to compile when super_admin gains a column until it is written here (or listed as never written).
+        } satisfies Record<
+          Exclude<keyof TSuperAdmin, "id" | "instanceId" | "fipsEnabled" | "createdAt" | "updatedAt">,
+          unknown
+        >);
     } catch (error) {
       throw new DatabaseError({ error, name: "Save instance config" });
     }

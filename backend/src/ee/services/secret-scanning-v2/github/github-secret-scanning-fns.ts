@@ -5,6 +5,7 @@ import { join } from "path";
 import { ProbotOctokit } from "probot";
 import { z } from "zod";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   SecretScanningDataSource,
@@ -83,6 +84,7 @@ type TPullRequestCheckRunTarget = {
   installationId: string;
   repositoryFullName: string;
   checkRunId: number;
+  instanceConfigService: TInstanceConfigService;
 };
 
 // The statuses a pull request check can be skipped with; each is offered as a button on a failing check, and its
@@ -116,13 +118,17 @@ export type TPullRequestCheckRunResult = {
   offerSkipActions?: boolean;
 };
 
-export const getGitHubRadarInstallationOctokit = (installationId: string) => {
-  const appCfg = getConfig();
+export const getGitHubRadarInstallationOctokit = async (
+  installationId: string,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY } =
+    await instanceConfigService.getInstanceConfig();
 
   return new ProbotOctokit({
     auth: {
-      appId: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
-      privateKey: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
+      appId: INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
+      privateKey: INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
       installationId
     }
   });
@@ -442,13 +448,15 @@ const listPullRequestCommits = async (
 export const scanGitHubPullRequest = async ({
   payload,
   resourceName,
-  configPath
+  configPath,
+  instanceConfigService
 }: {
   payload: TGitHubPullRequestScanPayload;
   resourceName: string;
   configPath?: string;
+  instanceConfigService: TInstanceConfigService;
 }): Promise<TSecretScanningRealtimeScanFindings> => {
-  const octokit = getGitHubRadarInstallationOctokit(payload.installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(payload.installationId, instanceConfigService);
 
   const { commits, totalCommits } = await listPullRequestCommits(octokit, {
     repositoryFullName: payload.repository.full_name,
@@ -476,15 +484,17 @@ export const createPullRequestCheckRun = async ({
   repositoryFullName,
   headSha,
   scanId,
-  detailsUrl
+  detailsUrl,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   headSha: string;
   scanId: string;
   detailsUrl?: string;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const { data } = await octokit.checks.create({
@@ -510,15 +520,18 @@ export const createSkippedPullRequestCheckRun = async ({
   repositoryFullName,
   headSha,
   title,
-  summary
+  summary,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   headSha: string;
   title: string;
   summary: string;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
+  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getInstanceConfig();
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const { data: existing } = await octokit.checks.listForRef({
@@ -526,7 +539,7 @@ export const createSkippedPullRequestCheckRun = async ({
     repo,
     ref: headSha,
     check_name: GITHUB_PULL_REQUEST_CHECK_NAME,
-    app_id: Number(getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID),
+    app_id: Number(INF_APP_CONNECTION_GITHUB_RADAR_APP_ID),
     per_page: 1
   });
 
@@ -550,13 +563,15 @@ export const createSkippedPullRequestCheckRun = async ({
 export const getLatestPullRequestCheckRunExternalId = async ({
   installationId,
   repositoryFullName,
-  checkSuiteId
+  checkSuiteId,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   checkSuiteId: number;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const { data } = await octokit.checks.listForSuite({
@@ -573,9 +588,10 @@ export const getLatestPullRequestCheckRunExternalId = async ({
 export const startPullRequestCheckRun = async ({
   installationId,
   repositoryFullName,
-  checkRunId
+  checkRunId,
+  instanceConfigService
 }: TPullRequestCheckRunTarget) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   await octokit.checks.update({
@@ -805,9 +821,10 @@ export const completePullRequestCheckRun = async ({
   installationId,
   repositoryFullName,
   checkRunId,
-  result
+  result,
+  instanceConfigService
 }: TPullRequestCheckRunTarget & { result: TPullRequestCheckRunResult }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const findingAnnotations = toCheckRunAnnotations((result.findings ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS));
@@ -876,14 +893,16 @@ export const createPullRequestScanReport = ({
   installationId,
   repositoryFullName,
   metadata,
-  findingsUrl
+  findingsUrl,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   metadata: TGitHubPullRequestScanMetadata;
   findingsUrl?: string;
+  instanceConfigService: TInstanceConfigService;
 }): TSecretScanningScanReport => {
-  const target = { installationId, repositoryFullName, checkRunId: metadata.checkRunId };
+  const target = { installationId, repositoryFullName, checkRunId: metadata.checkRunId, instanceConfigService };
 
   return {
     start: async () => {
@@ -926,7 +945,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
   secretScanningV2DAL,
   auditLogService,
   discoverResource,
-  queueReportedRealtimeScan
+  queueReportedRealtimeScan,
+  instanceConfigService
 }) => {
   // Pull requests are checked only while the data source scans new commits. A repository the data source doesn't cover
   // yet is discovered the same way a push discovers it, or skipped when discovery is off. If the check run cannot be
@@ -985,6 +1005,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
           installationId: String(installationId),
           repositoryFullName: repository.full_name,
           headSha: pullRequest.headSha,
+          instanceConfigService,
           title: "Fork not scanned",
           summary:
             "Infisical doesn't scan pull requests from forks. Their commits are scanned after they are merged into this repository."
@@ -1036,7 +1057,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
         repositoryFullName: repository.full_name,
         headSha: pullRequest.headSha,
         scanId,
-        detailsUrl: findingsUrl
+        detailsUrl: findingsUrl,
+        instanceConfigService
       });
     } catch (error) {
       logger.warn(
@@ -1124,7 +1146,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       externalId = await getLatestPullRequestCheckRunExternalId({
         installationId: String(installationId),
         repositoryFullName: repository.full_name,
-        checkSuiteId
+        checkSuiteId,
+        instanceConfigService
       });
     } catch (error) {
       logger.warn(

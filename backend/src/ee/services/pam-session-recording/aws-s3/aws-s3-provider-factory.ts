@@ -57,7 +57,11 @@ export const resolveS3RecordingAccess = async (
     throw new BadRequestError({ message: "Select the AWS region of the recording bucket" });
   }
 
-  const awsConfig = await getAwsConnectionConfig(appConnection as unknown as TAwsConnectionConfig, region as AWSRegion);
+  const awsConfig = await getAwsConnectionConfig(
+    appConnection as unknown as TAwsConnectionConfig,
+    instanceConfigService,
+    region as AWSRegion
+  );
   return { region, awsCredentials: awsConfig.credentials };
 };
 
