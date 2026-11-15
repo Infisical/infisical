@@ -38,6 +38,7 @@ const detailOwners: [RegExp, string][] = [
   [/\/(members|identities|groups|roles)\//, "access"],
   [/^\/cert-manager\/certificates\//, "inventory"],
   [/^\/cert-manager\/approvals\//, "requests"],
+  [/^\/cert-manager\/ca\//, "authorities"],
   [/^\/cert-manager\/hsm-connectors\//, "settings"]
 ];
 
