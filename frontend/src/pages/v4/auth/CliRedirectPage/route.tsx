@@ -2,7 +2,6 @@ import { createFileRoute, lazyRouteComponent, redirect } from "@tanstack/react-r
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { pushCliTokenToTerminal } from "./cli-token";
 import { CliRedirectPage } from "./CliRedirectPage";
 
 const SearchSchema = z.object({
@@ -18,6 +17,7 @@ export const Route = createFileRoute("/v4/cli-redirect")({
     if (!(await isV4AppEnabled())) {
       throw redirect({ href: location.href.replace(/^\/v4/, ""), replace: true });
     }
+    const { pushCliTokenToTerminal } = await import("./cli-token");
     await pushCliTokenToTerminal();
   },
   staticData: { readiness: "full" },
