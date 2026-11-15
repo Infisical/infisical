@@ -720,6 +720,7 @@ const AlertsCard = ({
   );
   let createRestriction: string | undefined;
   if (!canCreate) createRestriction = RESTRICTED;
+  else if (isPending) createRestriction = "Loading this application's alerts";
   else if (hasAllEventTypes)
     createRestriction = "This application already has an alert for every alert type";
 
