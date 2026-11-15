@@ -1,4 +1,6 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -118,16 +120,25 @@ const SkillEntryNameDialog = ({
   const initialName = edit.action === "rename" ? getSkillBaseName(edit.path) : "";
   const [name, setName] = useState(initialName);
   const noun = edit.type === "file" ? "file" : "folder";
+  const completed = useRef(false);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: name !== initialName,
+    onDiscard: onClose
+  });
 
   return (
     <div onSubmit={(event) => event.stopPropagation()}>
       <MultiStep
         variant="dialog"
         open
-        onOpenChange={(open) => !open && onClose()}
+        onOpenChange={(open) => !open && !completed.current && requestDiscard()}
         title={edit.action === "rename" ? `Rename ${initialName}` : `New ${noun}`}
         completeLabel={edit.action === "rename" ? "Rename" : `Add ${noun}`}
-        onComplete={() => (name === initialName ? onClose() : onCommit(name))}
+        onComplete={() => {
+          completed.current = true;
+          if (name === initialName) onClose();
+          else onCommit(name);
+        }}
         steps={[
           {
             title: "Name",
@@ -158,6 +169,7 @@ const SkillEntryNameDialog = ({
           }
         ]}
       />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
     </div>
   );
 };

@@ -258,7 +258,19 @@ export const SkillUploadDialog = ({
           </DialogHeader>
           <Stack gap={16}>
             {skill && Boolean(latest.error) && (
-              <Alert tone="bad">Couldn&apos;t load the current version of this skill.</Alert>
+              <Alert tone="bad">
+                <Inline gap={12} justify="between" align="center">
+                  Couldn&apos;t load the current version of this skill.
+                  <Button
+                    variant="outline"
+                    icon="sync"
+                    loading={latest.isFetching}
+                    onClick={() => latest.refetch?.()}
+                  >
+                    Retry
+                  </Button>
+                </Inline>
+              </Alert>
             )}
             <Field
               label="File"

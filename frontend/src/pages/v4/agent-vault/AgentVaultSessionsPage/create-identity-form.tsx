@@ -61,7 +61,9 @@ export const CreateIdentityForm = ({
     if (cleared) setErrors((prev) => ({ ...prev, [cleared]: undefined }));
   };
 
-  const isDirty = mode === "assign" ? Boolean(draft.identityId) : draft.name.trim() !== query;
+  const isDirty =
+    draft.role !== ProjectMembershipRole.Member ||
+    (mode === "assign" ? Boolean(draft.identityId) : draft.name.trim() !== query);
   useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
   useEffect(
     () => onSubmitLabelChange(mode === "assign" ? "Add" : undefined),

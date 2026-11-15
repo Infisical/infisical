@@ -69,7 +69,7 @@ import type {
   TAgentVaultSkillVersion
 } from "@app/hooks/api/agentVault/types";
 
-import { failed, readableFailure, saved, toast } from "../../access/toast";
+import { errorMessage, failed, readableFailure, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { DateCell } from "./shared";
 import { downloadSkillVersion } from "./skill-download";
@@ -234,6 +234,7 @@ export const CreateSkillDialog = ({
   const [selectedPath, setSelectedPath] = useState(SKILL_ENTRY_FILE);
   const [uploading, setUploading] = useState(false);
   const completed = useRef(false);
+  const created = useRef<{ id: string; name: string } | null>(null);
   const dirty =
     fields.name !== initialName || Boolean(fields.description) || files !== initialFiles;
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
@@ -293,7 +294,7 @@ export const CreateSkillDialog = ({
     setSelectedPath(SKILL_ENTRY_FILE);
   };
 
-  const validate = () => {
+  const validate = async () => {
     if (headerError) {
       setSelectedPath(SKILL_ENTRY_FILE);
       return { fields: { files: headerError } };
@@ -306,16 +307,13 @@ export const CreateSkillDialog = ({
         : `Write the instructions in ${SKILL_ENTRY_FILE}.`
     };
     if (next.files) setSelectedPath(SKILL_ENTRY_FILE);
-    if (!Object.values(next).some(Boolean)) return true;
-    return {
-      fields: Object.fromEntries(Object.entries(next).filter(([, message]) => message)) as Record<
-        string,
-        string
-      >
-    };
-  };
-
-  const complete = async () => {
+    if (Object.values(next).some(Boolean))
+      return {
+        fields: Object.fromEntries(Object.entries(next).filter(([, message]) => message)) as Record<
+          string,
+          string
+        >
+      };
     const text = getEntryText(files);
     const { frontmatter } = splitFrontmatter(text);
     const header = (frontmatter === null ? {} : parseSkillHeader(frontmatter)) ?? {};
@@ -329,9 +327,21 @@ export const CreateSkillDialog = ({
           : setSkillHeaderValue(current, key, fields[key]),
       text
     );
-    const { skill } = await create
-      .mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
-      .catch(readableFailure("Failed to create skill"));
+    try {
+      created.current = (
+        await create.mutateAsync({ files: fromDraftFiles(setEntryText(files, entryText)) })
+      ).skill;
+      return true;
+    } catch (error) {
+      const message = errorMessage(error);
+      if (message?.startsWith("A skill named")) return { fields: { name: message } };
+      return readableFailure("Failed to create skill")(error);
+    }
+  };
+
+  const complete = async () => {
+    const skill = created.current;
+    if (!skill) return;
     saved(`Skill ${skill.name} created`);
     completed.current = true;
     await onCreated?.(skill);
