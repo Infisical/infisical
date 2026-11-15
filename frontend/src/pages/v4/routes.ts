@@ -132,6 +132,22 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "v4/secret-manager/IntegrationDetailsByIDPage/route.tsx"
       ),
       route(
+        "/secret-management/$projectId/integrations/$provider/authorize",
+        "v4/secret-manager/LegacyIntegrationRedirect/authorize/route.tsx"
+      ),
+      route(
+        "/secret-management/$projectId/integrations/$provider/create",
+        "v4/secret-manager/LegacyIntegrationRedirect/create/route.tsx"
+      ),
+      route(
+        "/secret-management/$projectId/integrations/github/auth-mode-selection",
+        "v4/secret-manager/LegacyIntegrationRedirect/auth-mode-selection/route.tsx"
+      ),
+      route(
+        "/secret-management/$projectId/integrations/$provider/oauth2/callback",
+        "v4/secret-manager/IntegrationOauthCallbackPage/route.tsx"
+      ),
+      route(
         "/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId",
         "v4/secret-manager/SecretSyncDetailsByIDPage/route.tsx"
       ),
@@ -335,6 +351,23 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "v4/cert-manager/CertificateProfileDetailsByIDPage/route.tsx"
     ),
     route("/cert-manager/alerting", "v4/redirects/CertManagerAlertingRedirect/route.tsx"),
+    route("/cert-manager/policies", "v4/redirects/LegacyCertManagerRedirect/policies/route.tsx"),
+    route(
+      "/cert-manager/certificate-templates/",
+      "v4/redirects/LegacyCertManagerRedirect/certificate-templates/route.tsx"
+    ),
+    route(
+      "/cert-manager/subscribers/",
+      "v4/redirects/LegacyCertManagerRedirect/subscribers/route.tsx"
+    ),
+    route(
+      "/cert-manager/subscribers/$subscriberName",
+      "v4/redirects/LegacyCertManagerRedirect/subscriber/route.tsx"
+    ),
+    route(
+      "/cert-manager/pki-collections/$collectionId",
+      "v4/redirects/LegacyCertManagerRedirect/pki-collection/route.tsx"
+    ),
     route(
       "/cert-manager/app-connections",
       "v4/redirects/CertManagerAppConnectionsRedirect/route.tsx"

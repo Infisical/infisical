@@ -4,6 +4,7 @@ import { isAxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { useCompleteAgentVaultOauthAuthorization } from "@app/hooks/api/agentVault/mutations";
 import {
   agentVaultKeys,
   type TAgentVaultProxyList,
@@ -437,5 +438,6 @@ export const agentVaultLive: AgentVaultAdapter = {
       },
       onSuccess: (delegation, { machineIdentityId }) => writeResult(machineIdentityId, delegation)
     });
-  }
+  },
+  useCompleteOauthAuthorization: useCompleteAgentVaultOauthAuthorization
 };

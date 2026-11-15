@@ -11,7 +11,9 @@ import type {
   TAddAgentVaultProductMembersDTO,
   TAgentVaultDelegationDetail,
   TAgentVaultMintedSession,
+  TAgentVaultOauthAuthorization,
   TAgentVaultSession,
+  TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultSessionDTO,
   TListAgentVaultProxiesDTO,
   TUpdateAgentVaultSessionLabelDTO,
@@ -160,5 +162,9 @@ export type AgentVaultAdapter = {
     projectId: string
   ) => ReturnType<
     V4Mutation<TChangeAgentVaultDelegationSubjectsDTO, TAgentVaultDelegationDetail | null>
+  >;
+  useCompleteOauthAuthorization: V4Mutation<
+    TCompleteAgentVaultOauthAuthorizationDTO,
+    TAgentVaultOauthAuthorization
   >;
 };

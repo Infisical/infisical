@@ -9,6 +9,7 @@ import { AzureAppConfigurationOauthCallbackPageQueryParamsSchema } from "./Azure
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(AzureAppConfigurationOauthCallbackPageQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;
