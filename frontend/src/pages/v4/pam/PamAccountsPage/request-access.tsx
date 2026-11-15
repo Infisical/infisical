@@ -647,7 +647,7 @@ const NewRequestSheet = ({
           {
             title: "Request",
             completeVariant: breakGlassOnSubmit ? "destructive" : "primary",
-            completeIcon: breakGlassOnSubmit ? undefined : "arrow-up",
+            completeIcon: breakGlassOnSubmit ? undefined : "send",
             disabledReason: context.loaded ? undefined : "Loading approvers",
             validate: () => validateDraft(draft, breakGlassOnSubmit, requireReason),
             content: (
